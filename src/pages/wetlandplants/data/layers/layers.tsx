@@ -1,6 +1,6 @@
-import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE, PROD_POSTGREST_URL, GEN_GIS_WORKSPACE } from "@/lib/constants";
+import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
-import GeoJSON from "geojson";
+//import GeoJSON from "geojson";
 
 
 const studyAreasLayerName = 'studyareas_current';
