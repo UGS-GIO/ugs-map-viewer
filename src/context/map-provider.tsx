@@ -87,9 +87,6 @@ export function MapProvider({ children }: { children: React.ReactNode }) {
         else {
             const { map: initMap, view: initView } = await init(container, isMobile, { zoom, center }, layers, 'map');
 
-            // Wait for the view to be ready before setting state
-            await initView.when();
-
             setView(initView);
             setMap(initMap);
         }
