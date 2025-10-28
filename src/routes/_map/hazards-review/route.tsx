@@ -1,11 +1,13 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { auth } from '@/lib/auth'
 import { z } from 'zod'
+import { RouteErrorBoundary } from '@/components/route-error-boundary'
 
 export const HazardsReviewSearchParamsSchema = z.object({})
 
 export const Route = createFileRoute('/_map/hazards-review')({
   validateSearch: HazardsReviewSearchParamsSchema,
+  errorComponent: RouteErrorBoundary,
   beforeLoad: async ({ location }) => {
     // Wait for auth to initialize
     await new Promise<void>((resolve) => {

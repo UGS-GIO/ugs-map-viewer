@@ -14,6 +14,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ReportRouteImport } from './routes/_report'
 import { Route as MapRouteImport } from './routes/_map'
 import { Route as AuthRouteImport } from './routes/_auth'
+import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as MapHazardsReviewRouteRouteImport } from './routes/_map/hazards-review/route'
@@ -45,6 +46,11 @@ const MapRoute = MapRouteImport.update({
 } as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SplatRoute = SplatRouteImport.update({
+  id: '/$',
+  path: '/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -125,6 +131,7 @@ const ReportHazardsReportAoiLazyRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/hazards-review': typeof MapHazardsReviewRouteRouteWithChildren
   '/login': typeof AuthLoginRoute
   '/carbonstorage': typeof MapCarbonstorageIndexLazyRoute
@@ -138,6 +145,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/login': typeof AuthLoginRoute
   '/carbonstorage': typeof MapCarbonstorageIndexLazyRoute
   '/geophysics': typeof MapGeophysicsIndexLazyRoute
@@ -151,6 +159,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/$': typeof SplatRoute
   '/_auth': typeof AuthRouteWithChildren
   '/_map': typeof MapRouteWithChildren
   '/_report': typeof ReportRouteWithChildren
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/$'
     | '/hazards-review'
     | '/login'
     | '/carbonstorage'
@@ -182,6 +192,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/$'
     | '/login'
     | '/carbonstorage'
     | '/geophysics'
@@ -194,6 +205,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/$'
     | '/_auth'
     | '/_map'
     | '/_report'
@@ -211,6 +223,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  SplatRoute: typeof SplatRoute
   AuthRoute: typeof AuthRouteWithChildren
   MapRoute: typeof MapRouteWithChildren
   ReportRoute: typeof ReportRouteWithChildren
@@ -237,6 +250,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/$': {
+      id: '/$'
+      path: '/$'
+      fullPath: '/$'
+      preLoaderRoute: typeof SplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -377,6 +397,7 @@ const ReportRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  SplatRoute: SplatRoute,
   AuthRoute: AuthRouteWithChildren,
   MapRoute: MapRouteWithChildren,
   ReportRoute: ReportRouteWithChildren,
