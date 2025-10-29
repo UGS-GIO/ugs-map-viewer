@@ -1,65 +1,146 @@
-# Geological Hazards Portal v2
+# UGS Map Viewer
 
 <p align="center">
   <img src="public/logo_main.png" alt="Utah Geological Survey Logo" width="200"/>
 </p>
 
-The UGS Geological Hazards Portal v2 crafted with @arcgis/core, Shadcn and Vite. Built with responsiveness and accessibility in mind.
+A modern, modular geospatial mapping platform for exploring Utah's geological, hydrological, and environmental data. Built by the [Utah Geological Survey](https://geology.utah.gov).
 
-## Features
+## Overview
 
-- Light/dark mode
-- Responsive
-- Accessible
-- Sidebar and header layouts
-- Dynamic Layerlist
+UGS Map Viewer provides interactive tools for visualizing and analyzing geoscience data across multiple domains:
+
+- **Geological Hazards** - Earthquakes, landslides, flooding, and seismic risk
+- **Minerals & Energy** - Mining operations, energy resources, and geological formations
+- **Water Resources** - Wetlands, water quality, and hydrological data
+- **Geophysics** - Gravity, magnetic, and subsurface mapping
+- **Carbon Storage** - CO₂ sequestration and geothermal resources
+- **Botanical** - Wetland plants and vegetation mapping
+
+Each application shares a common mapping infrastructure with independent layer configurations and domain-specific features.
+
+## Key Features
+
+- 🗺️ **Interactive Mapping** - Pan, zoom, and explore geological data with multiple basemaps
+- 📊 **Layer Management** - Toggle and configure layers with advanced filtering
+- 🎨 **Light/Dark Mode** - Responsive UI with theme support
+- ♿ **Accessibility** - WCAG 2.1 compliant for inclusive access
+- 📱 **Responsive Design** - Works seamlessly on desktop, tablet, and mobile
+- 🔗 **Shareable States** - Deep linking support for saved map views
+- 🔍 **Feature Queries** - Click features to view detailed attributes
 
 ## Tech Stack
 
-**UI:** [ShadcnUI](https://ui.shadcn.com) (TailwindCSS + RadixUI)
+| Layer | Technology |
+|-------|-----------|
+| **UI Framework** | [React 18](https://react.dev) |
+| **UI Components** | [Shadcn/ui](https://ui.shadcn.com) (TailwindCSS + Radix UI) |
+| **Mapping** | [ArcGIS JS SDK](https://developers.arcgis.com/javascript/latest/) |
+| **Routing** | [TanStack Router](https://tanstack.com/router) |
+| **Data Fetching** | [TanStack Query](https://tanstack.com/query) |
+| **Build Tool** | [Vite](https://vitejs.dev/) |
+| **Type Safety** | [TypeScript](https://www.typescriptlang.org/) |
+| **Styling** | [TailwindCSS](https://tailwindcss.com) |
+| **Code Quality** | [ESLint](https://eslint.org) & [Prettier](https://prettier.io) |
+| **Icons** | [Lucide React](https://lucide.dev) |
 
-**Mapping** [ArcGIS JS SDK](https://developers.arcgis.com/javascript/latest/)
+## Getting Started
 
-**Build Tool:** [Vite](https://vitejs.dev/)
+### Prerequisites
 
-**Routing:** [React Router](https://reactrouter.com/en/main)
+- Node.js 18+
+- npm or yarn
 
-**Type Checking:** [TypeScript](https://www.typescriptlang.org/)
-
-**Linting/Formatting:** [Eslint](https://eslint.org/) & [Prettier](https://prettier.io/)
-
-**Icons:** [Lucide React Icons](https://lucide.dev/icons/)
-
-## Run Locally
-
-Clone the project
-
-```bash
-  git clone https://github.com/UGS-GIO/geohaz-v2.git
-```
-
-Go to the project directory
+### Installation
 
 ```bash
-  cd geohaz-v2
+# Clone the repository
+git clone https://github.com/ugs-gio/ugs-map-viewer.git
+cd ugs-map-viewer
+
+# Install dependencies
+npm install
 ```
 
-Install dependencies
+### Development
 
 ```bash
-  npm install
+# Start development server
+npm run dev
 ```
 
-Start the server
+Visit `http://localhost:5173` to see your changes live.
+
+### Building
 
 ```bash
-  npm run dev
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
 ```
 
-## Author
+### Linting
 
-Crafted with 🤍 by the [Utah Geological Survey](https://github.com/UGS-GIO/)
+```bash
+# Type check with TypeScript
+npm run build
+
+# Lint code
+npm run lint
+
+# Format code
+npm run format
+npm run format:check
+
+# Run tests
+npm test
+```
+
+## Development Workflow
+
+### Adding a New Layer
+
+1. Update the layer configuration in your application's `data/layers/layers.tsx`
+2. Add layer styling and symbology if needed
+3. Test in the map viewer
+
+### Adding a New Application
+
+1. Create a new directory in `src/pages/`
+2. Set up layer configuration in `data/layers/layers.tsx`
+3. Create a map container component
+4. Add routing in `src/routes/`
+
+### Working with Features
+
+- Click on map features to display details in the popup
+- Feature queries use WMS GetFeatureInfo via GeoServer
+- Customize feature display by modifying popup components
+
+## Contributing
+
+We welcome contributions! Please:
+
+1. Create a feature branch (`git checkout -b feature/your-feature`)
+2. Make your changes
+3. Run tests and linting: `npm run lint && npm test`
+4. Commit with clear messages
+5. Push and open a Pull Request
+
+## Support
+
+For issues, questions, or suggestions:
+- [Open an issue](https://github.com/ugs-gio/ugs-map-viewer/issues)
+- [Contact UGS](https://geology.utah.gov/contact/)
 
 ## License
 
-Licensed under the [MIT License](https://choosealicense.com/licenses/mit/)
+Licensed under the [MIT License](LICENSE)
+
+## About
+
+Maintained with ❤️ by the [Utah Geological Survey](https://geology.utah.gov)
+
+A modern geospatial platform for data visualization, analysis, and exploration.
