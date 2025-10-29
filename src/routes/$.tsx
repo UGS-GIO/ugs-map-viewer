@@ -21,7 +21,7 @@ const NotFoundComponent = () => {
                     <p className="mb-2 text-center text-sm font-semibold text-foreground">
                         Page Not Found
                     </p>
-                    <p className="mb-6 text-center text-sm text-muted-foreground">
+                    <p className="mb-6 text-center text-sm text-foreground/90">
                         The page you are looking for does not exist or has been moved.
                     </p>
 
