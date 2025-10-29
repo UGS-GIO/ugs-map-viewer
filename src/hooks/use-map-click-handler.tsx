@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { clearGraphics } from '@/lib/map/highlight-utils';
-import { MapPoint, ScreenPoint, CoordinateAdapter } from '@/lib/map/coordinate-adapter';
+import type { MapPoint, ScreenPoint, CoordinateAdapter } from '@/lib/map/coordinates/types';
 
 interface MapClickEvent {
     screenX: number;

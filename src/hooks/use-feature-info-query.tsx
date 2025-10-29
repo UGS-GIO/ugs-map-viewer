@@ -4,7 +4,7 @@ import { Feature } from 'geojson';
 import { LayerOrderConfig } from "@/hooks/use-get-layer-configs";
 import { LayerContentProps } from '@/components/custom/popups/popup-content-with-pagination';
 import { useLayerUrl } from '@/context/layer-url-provider';
-import { MapPoint, CoordinateAdapter } from '@/lib/map/coordinate-adapter';
+import type { MapPoint, CoordinateAdapter } from '@/lib/map/coordinates/types';
 import { GeoServerGeoJSON } from '@/lib/types/geoserver-types';
 
 interface WMSQueryProps {

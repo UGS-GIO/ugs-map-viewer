@@ -10,22 +10,45 @@ export const useMapPositionUrlParams = (view: __esri.MapView | __esri.SceneView 
     const updateUrlFromView = useCallback(() => {
         if (!view) return;
 
-        const { latitude, longitude } = view.center;
-        const zoom = view.zoom;
+        try {
+            const { latitude, longitude } = view.center;
+            const zoom = view.zoom;
 
-        const formattedLongitude = parseFloat(longitude?.toFixed(3) || '');
-        const formattedLatitude = parseFloat(latitude?.toFixed(3) || '');
+            // Validate all values before updating URL
+            if (
+                zoom === undefined ||
+                zoom === null ||
+                isNaN(zoom) ||
+                latitude === undefined ||
+                latitude === null ||
+                isNaN(latitude) ||
+                longitude === undefined ||
+                longitude === null ||
+                isNaN(longitude)
+            ) {
+                return;
+            }
 
-        navigate({
-            to: ".",
-            search: (prev) => ({
-                ...prev,
-                zoom: zoom,
-                lat: formattedLatitude,
-                lon: formattedLongitude,
-            }),
-            replace: true,
-        });
+            const formattedLongitude = parseFloat(longitude.toFixed(3));
+            const formattedLatitude = parseFloat(latitude.toFixed(3));
+
+            // Only update if values are valid numbers
+            if (!isNaN(formattedLongitude) && !isNaN(formattedLatitude) && !isNaN(zoom)) {
+                navigate({
+                    to: ".",
+                    search: (prev) => ({
+                        ...prev,
+                        zoom: zoom,
+                        lat: formattedLatitude,
+                        lon: formattedLongitude,
+                    }),
+                    replace: true,
+                });
+            }
+        } catch (error) {
+            // Silently fail if view is in an invalid state during transitions
+            console.debug('Map position update skipped during view transition');
+        }
     }, [view, navigate]);
 
     useEffect(() => {
@@ -33,7 +56,8 @@ export const useMapPositionUrlParams = (view: __esri.MapView | __esri.SceneView 
 
         const handleUpdate = () => {
             if (timeoutRef.current) clearTimeout(timeoutRef.current);
-            timeoutRef.current = setTimeout(updateUrlFromView, 300);
+            // Increased debounce to 500ms to ensure view is fully settled after basemap changes
+            timeoutRef.current = setTimeout(updateUrlFromView, 500);
         };
 
         const stationaryWatcher = view.watch("stationary", handleUpdate);

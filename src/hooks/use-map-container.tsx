@@ -11,13 +11,14 @@ import { useLayerVisibility } from '@/hooks/use-layer-visibility';
 import { useMapClickHandler } from '@/hooks/use-map-click-handler';
 import { useFeatureResponseHandler } from '@/hooks/use-feature-response-handler';
 import { useMapUrlSync } from '@/hooks/use-map-url-sync';
-import { createCoordinateAdapter, CoordinateAdapter } from '@/lib/map/coordinate-adapter';
+import { createCoordinateAdapter } from '@/lib/map/coordinates/factory';
+import type { CoordinateAdapter } from '@/lib/map/coordinates/types';
+import { getMapImplementation } from '@/lib/map/get-map-implementation';
 
 interface UseMapContainerProps {
     wmsUrl: string;
     layerOrderConfigs?: LayerOrderConfig[];
     layersConfig: ReturnType<typeof useGetLayerConfigsData>;
-    mapType?: 'arcgis' | 'maplibre'; // New prop to specify map type
 }
 
 /**
@@ -25,17 +26,19 @@ interface UseMapContainerProps {
  * Coordinates layer visibility, click handling, feature queries, and URL synchronization.
  * Designed to be gradually migrated from ArcGIS to MapLibre by extracting concerns
  * into separate, testable hooks.
- * 
+ *
+ * Uses the VITE_MAP_IMPL environment variable to determine which map implementation
+ * to use (ArcGIS or MapLibre). This enables feature flag-based switching without
+ * code changes.
+ *
  * @param wmsUrl - Base URL for WMS feature info queries
  * @param layerOrderConfigs - Optional configuration for reordering layers in popups
- * @param mapType - Type of map library to use ('arcgis' or 'maplibre')
  * @returns Map container state and event handlers
  */
 export function useMapContainer({
     wmsUrl,
     layerOrderConfigs = [],
-    layersConfig,
-    mapType = 'arcgis'
+    layersConfig
 }: UseMapContainerProps) {
     const mapRef = useRef<HTMLDivElement>(null);
     const { loadMap, view, isSketching } = useMap();
@@ -48,10 +51,11 @@ export function useMapContainer({
     const [visibleLayersMap, setVisibleLayersMap] = useState({});
     const { selectedLayerTitles, hiddenGroupTitles } = useLayerUrl();
 
-    // Create coordinate adapter based on map type
+    // Create coordinate adapter based on active map implementation from feature flag
     const coordinateAdapter: CoordinateAdapter = useMemo(() => {
-        return createCoordinateAdapter(mapType);
-    }, [mapType]);
+        const mapImpl = getMapImplementation();
+        return createCoordinateAdapter(mapImpl);
+    }, []);
 
     // Extract URL synchronization
     const { center, zoom } = useMapUrlSync();
