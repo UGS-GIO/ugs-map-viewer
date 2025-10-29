@@ -98,27 +98,6 @@ npm run format:check
 npm test
 ```
 
-## Development Workflow
-
-### Adding a New Layer
-
-1. Update the layer configuration in your application's `data/layers/layers.tsx`
-2. Add layer styling and symbology if needed
-3. Test in the map viewer
-
-### Adding a New Application
-
-1. Create a new directory in `src/pages/`
-2. Set up layer configuration in `data/layers/layers.tsx`
-3. Create a map container component
-4. Add routing in `src/routes/`
-
-### Working with Features
-
-- Click on map features to display details in the popup
-- Feature queries use WMS GetFeatureInfo via GeoServer
-- Customize feature display by modifying popup components
-
 ## Contributing
 
 We welcome contributions! Please:
