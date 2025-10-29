@@ -1,15 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, useRef } from 'react';
-import { Feature, Geometry, GeoJsonProperties } from 'geojson';
+import { Feature } from 'geojson';
 import { LayerOrderConfig } from "@/hooks/use-get-layer-configs";
 import { LayerContentProps } from '@/components/custom/popups/popup-content-with-pagination';
 import { useLayerUrl } from '@/context/layer-url-provider';
-import { MapPoint, CoordinateAdapter } from '@/lib/map/coordinate-adapter';
+import type { MapPoint, CoordinateAdapter } from '@/lib/map/coordinates/types';
 import { GeoServerGeoJSON } from '@/lib/types/geoserver-types';
+import proj4 from 'proj4';
 
 interface WMSQueryProps {
     mapPoint: MapPoint;
-    view: __esri.MapView | __esri.SceneView;
+    view?: __esri.MapView | __esri.SceneView;
+    map?: any; // MapLibre map instance
     layers: string[];
     url: string;
     version?: '1.1.1' | '1.3.0';
@@ -24,6 +26,7 @@ interface WMSQueryProps {
 export async function fetchWMSFeatureInfo({
     mapPoint,
     view,
+    map,
     layers,
     url,
     version = '1.3.0',
@@ -32,20 +35,68 @@ export async function fetchWMSFeatureInfo({
     buffer = 10,
     featureCount = 50,
     cql_filter = null,
-    coordinateAdapter
-}: WMSQueryProps): Promise<any> {
+    coordinateAdapter,
+    crs = 'EPSG:3857'
+}: WMSQueryProps & { crs?: string }): Promise<any> {
     if (layers.length === 0) {
         console.warn('No layers specified to query.');
         return null;
     }
 
-    const bbox = coordinateAdapter.createBoundingBox({
+    // Get resolution and viewport dimensions based on which map implementation is in use
+    let resolution: number;
+    let width: number;
+    let height: number;
+
+    if (view) {
+        // ArcGIS
+        resolution = view.resolution;
+        width = view.width;
+        height = view.height;
+    } else if (map) {
+        // MapLibre
+        resolution = coordinateAdapter.getResolution(map);
+        width = map.getCanvas().width;
+        height = map.getCanvas().height;
+    } else {
+        throw new Error('Either view or map must be provided');
+    }
+
+    // Create bbox in Web Mercator (coordinateAdapter uses this)
+    const bboxWebMercator = coordinateAdapter.createBoundingBox({
         mapPoint,
-        resolution: view.resolution,
+        resolution,
         buffer
     });
 
-    const { minX, minY, maxX, maxY } = bbox;
+    // If requesting a different CRS, transform the bbox
+    let minX = bboxWebMercator.minX;
+    let minY = bboxWebMercator.minY;
+    let maxX = bboxWebMercator.maxX;
+    let maxY = bboxWebMercator.maxY;
+
+    // console.log('[FetchWMSFeatureInfo] Initial bbox (Web Mercator):', { minX, minY, maxX, maxY, crs });
+
+    if (crs !== 'EPSG:3857') {
+        // Transform bbox from Web Mercator (3857) to target CRS
+        // Transform the four corners
+        const [minX_transformed, minY_transformed] = proj4('EPSG:3857', crs, [minX, minY]);
+        const [maxX_transformed, maxY_transformed] = proj4('EPSG:3857', crs, [maxX, maxY]);
+
+        // console.log('[FetchWMSFeatureInfo] Transformed bbox corners:', {
+        //     min: [minX_transformed, minY_transformed],
+        //     max: [maxX_transformed, maxY_transformed],
+        //     targetCrs: crs
+        // });
+
+        // Get the min/max values (in case projection reverses axes)
+        minX = Math.min(minX_transformed, maxX_transformed);
+        minY = Math.min(minY_transformed, maxY_transformed);
+        maxX = Math.max(minX_transformed, maxX_transformed);
+        maxY = Math.max(minY_transformed, maxY_transformed);
+
+        // console.log('[FetchWMSFeatureInfo] Final transformed bbox:', { minX, minY, maxX, maxY });
+    }
 
     // Different versions handle coordinates differently
     const bboxString = version === '1.1.1'
@@ -62,18 +113,24 @@ export async function fetchWMSFeatureInfo({
     params.set('query_layers', layers.join(','));
     params.set('info_format', infoFormat);
     params.set('bbox', bboxString);
-    params.set('crs', 'EPSG:3857');
-    params.set('width', view.width.toString());
-    params.set('height', view.height.toString());
+    params.set('crs', crs);
+    params.set('width', width.toString());
+    params.set('height', height.toString());
     params.set('feature_count', featureCount.toString());
+    params.set('buffer', '50'); // Buffer around query pixel to catch nearby features (especially point symbols)
 
     // Add version-specific pixel coordinates
+    // For GetFeatureInfo, we query at a specific pixel in the rendered WMS image
+    // Always use the center of the rendered image for consistent results
+    const pixelX = Math.round(width / 2);
+    const pixelY = Math.round(height / 2);
+
     if (version === '1.3.0') {
-        params.set('i', Math.round(view.width / 2).toString());
-        params.set('j', Math.round(view.height / 2).toString());
+        params.set('i', pixelX.toString());
+        params.set('j', pixelY.toString());
     } else {
-        params.set('x', Math.round(view.width / 2).toString());
-        params.set('y', Math.round(view.height / 2).toString());
+        params.set('x', pixelX.toString());
+        params.set('y', pixelY.toString());
     }
 
     if (cql_filter) {
@@ -81,9 +138,19 @@ export async function fetchWMSFeatureInfo({
     }
 
     const fullUrl = `${url}?${params.toString()}`;
+    // console.log('[FetchWMSFeatureInfo] Sending request:', {
+    //     layers: params.get('layers'),
+    //     query_layers: params.get('query_layers'),
+    //     cql_filter: params.get('cql_filter'),
+    //     i: params.get('i'),
+    //     j: params.get('j'),
+    //     bbox: params.get('bbox')
+    // });
+
     const response = await fetch(fullUrl, { headers });
 
     if (!response.ok) {
+        console.error('[FetchWMSFeatureInfo] Request failed with status:', response.status);
         throw new Error(`GetFeatureInfo request failed with status ${response.status}`);
     }
 
@@ -95,17 +162,17 @@ export async function fetchWMSFeatureInfo({
         return data.results[0]?.value;
     } else if (data.features) {
         // Vector response - add namespaces
-        const namespaceMap: Record<string, string> = layers.reduce((acc: Record<string, string>, layer) => {
+        const namespaceMap = layers.reduce((acc, layer) => {
             const [namespace, layerName] = layer.split(':');
             if (namespace && layerName) {
                 acc[layerName] = namespace;
             }
             return acc;
-        }, {});
+        }, {} as Record<string, string>);
 
-        const featuresWithNamespace = data.features.map((feature: Feature<Geometry, GeoJsonProperties>) => {
-            const layerName = feature.id?.toString().split('.')[0];
-            const namespace = layerName ? namespaceMap[layerName] || null : null;
+        const featuresWithNamespace = data.features.map((feature: any) => {
+            const layerName = feature.id?.split('.')[0];
+            const namespace = namespaceMap[layerName] || null;
             return {
                 ...feature,
                 namespace,
@@ -116,6 +183,116 @@ export async function fetchWMSFeatureInfo({
     }
 
     return data;
+}
+
+/**
+ * WFS GetFeature query for geometry-based feature retrieval
+ * More reliable than WMS GetFeatureInfo for line and polygon features
+ */
+interface WFSQueryProps {
+    mapPoint: MapPoint;
+    layers: string[];
+    url: string;
+    cql_filter?: string | null;
+    crs?: string;
+    featureCount?: number;
+}
+
+export async function fetchWFSFeature({
+    mapPoint,
+    layers,
+    url,
+    cql_filter = null,
+    crs = 'EPSG:4326',
+    featureCount = 50
+}: WFSQueryProps): Promise<any> {
+    if (layers.length === 0) {
+        console.warn('No layers specified for WFS query.');
+        return null;
+    }
+
+    // Build CQL filter with spatial intersection using BBOX
+    // Convert mapPoint to target CRS if needed
+    let queryX = mapPoint.x;
+    let queryY = mapPoint.y;
+
+    if (crs !== 'EPSG:4326') {
+        // mapPoint is in WGS84 (4326), transform to target CRS
+        [queryX, queryY] = proj4('EPSG:4326', crs, [mapPoint.x, mapPoint.y]);
+    }
+
+    // Create a small buffer around the point for spatial intersection
+    // Using a small buffer (100m) to catch nearby features
+    const buffer = 100;
+    const bbox = {
+        minX: queryX - buffer,
+        minY: queryY - buffer,
+        maxX: queryX + buffer,
+        maxY: queryY + buffer
+    };
+
+    const params = new URLSearchParams();
+    params.set('service', 'WFS');
+    params.set('version', '2.0.0');
+    params.set('request', 'GetFeature');
+    params.set('typeNames', layers.join(','));
+    params.set('outputFormat', 'application/json');
+    params.set('count', featureCount.toString());
+
+    // GeoServer limitation: bbox and cql_filter are mutually exclusive
+    // If we have an attribute filter, skip spatial filter and do client-side filtering
+    if (cql_filter) {
+        // Use attribute filter only, return more features for client-side spatial filtering
+        params.set('cql_filter', cql_filter);
+        params.set('count', (featureCount * 10).toString()); // Get more features since no spatial filter
+    } else {
+        // No attribute filter, use bbox for spatial filtering
+        params.set('bbox', `${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY},${crs}`);
+    }
+
+    const fullUrl = `${url}?${params.toString()}`;
+    // console.log('[FetchWFSFeature] Querying layers:', { layers, crs, geometryField: geometryFieldName, spatialFilter });
+
+    try {
+        const response = await fetch(fullUrl);
+
+        if (!response.ok) {
+            console.error('[FetchWFSFeature] Request failed with status:', response.status);
+            throw new Error(`WFS GetFeature request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.features && data.features.length > 0) {
+            // console.log('[FetchWFSFeature] Features returned:', data.features.length);
+
+            // Add namespace to features for consistency with WMS response
+            const namespaceMap = layers.reduce((acc, layer) => {
+                const [namespace, layerName] = layer.split(':');
+                if (namespace && layerName) {
+                    acc[layerName] = namespace;
+                }
+                return acc;
+            }, {} as Record<string, string>);
+
+            const featuresWithNamespace = data.features.map((feature: any) => {
+                const layerName = feature.id?.split('.')[0];
+                const namespace = namespaceMap[layerName] || null;
+                return {
+                    ...feature,
+                    namespace,
+                };
+            });
+
+            return { ...data, features: featuresWithNamespace };
+        }
+
+        // console.log('[FetchWFSFeature] No features found');
+        return data;
+    } catch (error) {
+        console.error('[FetchWFSFeature] Error:', error);
+        throw error;
+    }
 }
 
 // Reorder layers based on the specified order config. this is useful for reordering layers in the popup
@@ -202,7 +379,8 @@ export function getStaticCqlFilter(layer: LayerContentProps): string | null {
 }
 
 interface UseFeatureInfoQueryProps {
-    view: __esri.MapView | __esri.SceneView | undefined;
+    view?: __esri.MapView | __esri.SceneView;
+    map?: any; // MapLibre map instance
     wmsUrl: string;
     visibleLayersMap: Record<string, LayerContentProps>;
     layerOrderConfigs: LayerOrderConfig[];
@@ -211,6 +389,7 @@ interface UseFeatureInfoQueryProps {
 
 export function useFeatureInfoQuery({
     view,
+    map,
     wmsUrl,
     visibleLayersMap,
     layerOrderConfigs,
@@ -224,111 +403,105 @@ export function useFeatureInfoQuery({
     const [currentClickId, setCurrentClickId] = useState<number | null>(null);
 
     const queryFn = async (): Promise<LayerContentProps[]> => {
-        if (!view || !mapPoint) return [];
+        if ((!view && !map) || !mapPoint) {
+            console.log('[FeatureInfoQuery] Early return - no view/map or mapPoint');
+            return [];
+        }
 
         const queryableLayers = Object.entries(visibleLayersMap)
             .filter(([_, layerInfo]) => layerInfo.visible && layerInfo.queryable)
             .map(([key]) => key);
 
-        if (queryableLayers.length === 0) return [];
+        console.log('[FeatureInfoQuery] Queryable layers (filtered):', queryableLayers);
 
-        // Create a mapping from titles to layer keys for easier lookup
-        const titleToKeyMap: Record<string, string> = {};
-        Object.entries(visibleLayersMap).forEach(([key, layerConfig]) => {
-            const layerTitle = getLayerTitle(layerConfig);
-            titleToKeyMap[layerTitle] = key;
-        });
-
-        // Build CQL filters - one filter per layer, separated by semicolons
-        let combinedCqlFilter: string | null = null;
-
-        // Check if we have any filters at all
-        const hasAnyFilters = queryableLayers.some(layerKey => {
-            const layerConfig = visibleLayersMap[layerKey];
-
-            const layerTitle = getLayerTitle(layerConfig);
-            const staticFilter = getStaticCqlFilter(layerConfig);
-
-            const dynamicFilter = activeFilters && activeFilters[layerTitle];
-            return staticFilter || dynamicFilter;
-        });
-
-        if (hasAnyFilters) {
-            const filterParts: string[] = [];
-
-            // Build one filter per layer in the same order as queryableLayers
-            queryableLayers.forEach(layerKey => {
-                const layerConfig = visibleLayersMap[layerKey];
-                const layerTitle = getLayerTitle(layerConfig);
-                // Collect filters for this specific layer
-                const layerFilters: string[] = [];
-
-                // Add static filter from the layer's config (if it exists)
-                const staticFilter = getStaticCqlFilter(layerConfig);
-                if (staticFilter) {
-                    layerFilters.push(staticFilter);
-                }
-
-                // Add dynamic filter from the URL via the context hook - match by title
-                if (activeFilters && activeFilters[layerTitle]) {
-                    layerFilters.push(activeFilters[layerTitle]);
-                }
-
-                // Combine filters for this layer with AND, or use INCLUDE if no filters
-                if (layerFilters.length > 0) {
-                    const combinedLayerFilter = layerFilters.join(' AND ');
-                    filterParts.push(combinedLayerFilter);
-                } else {
-                    // In WMS CQL filter context, 'INCLUDE' acts as a no-op filter for layers without specific filters. 
-                    // If omitted, the WMS server may skip the layer or return an error, so it must be present for each layer.
-                    filterParts.push('INCLUDE');
-                }
-            });
-
-            // Join all layer filters with semicolons
-            combinedCqlFilter = filterParts.join(';');
+        if (queryableLayers.length === 0) {
+            // console.log('[FeatureInfoQuery] No queryable layers');
+            return [];
         }
 
-        const featureInfo = await fetchWMSFeatureInfo({
-            mapPoint,
-            view,
-            layers: queryableLayers,
-            url: wmsUrl,
-            cql_filter: combinedCqlFilter,
-            coordinateAdapter,
-            buffer: 1000
-        });
+        // Query each layer separately to avoid rendering occlusion issues
+        // When multiple layers are rendered together, only the top layer is returned at a given pixel
+        const allFeatures: Feature[] = [];
+        let sourceCRS = 'EPSG:4326'; // Default, will be updated from responses
 
-        if (!featureInfo || !featureInfo.features) return [];
+        for (const layerKey of queryableLayers) {
+            const layerConfig = visibleLayersMap[layerKey];
+            const layerCrs = (layerConfig as any)?.layerCrs || 'EPSG:3857';
 
-        const sourceCRS = getSourceCRSFromGeoJSON(featureInfo);
+            // Get the CQL filter for this specific layer
+            const layerTitle = getLayerTitle(layerConfig);
+            const staticFilter = getStaticCqlFilter(layerConfig);
+            const dynamicFilter = activeFilters && activeFilters[layerTitle];
+
+            const layerFilters: string[] = [];
+            if (staticFilter) layerFilters.push(staticFilter);
+            if (dynamicFilter) layerFilters.push(dynamicFilter);
+            const layerCqlFilter = layerFilters.length > 0 ? layerFilters.join(' AND ') : null;
+
+            // console.log(`[FeatureInfoQuery] Querying layer separately: ${layerKey} with CRS ${layerCrs}`);
+
+            // Use WFS instead of WMS for more reliable geometry-based queries
+            const wfsUrl = wmsUrl.replace('/wms', '/wfs');
+            const featureInfo = await fetchWFSFeature({
+                mapPoint,
+                layers: [layerKey],
+                url: wfsUrl,
+                cql_filter: layerCqlFilter,
+                crs: layerCrs,
+                featureCount: 50
+            });
+
+            if (featureInfo && featureInfo.features && featureInfo.features.length > 0) {
+                // console.log(`[FeatureInfoQuery] Layer ${layerKey}: ${featureInfo.features.length} features returned`);
+                allFeatures.push(...featureInfo.features);
+                sourceCRS = getSourceCRSFromGeoJSON(featureInfo);
+            } else {
+                // console.log(`[FeatureInfoQuery] Layer ${layerKey}: 0 features returned`);
+            }
+        }
+
+        if (allFeatures.length === 0) {
+            // console.log('[FeatureInfoQuery] No features returned from any layer');
+            return [];
+        }
+
+        const featureInfo = { features: allFeatures, crs: { type: 'name', properties: { name: `urn:ogc:def:crs:EPSG::${sourceCRS.split(':')[1]}` } } };
+        // console.log('[FeatureInfoQuery] Total features from all layers:', allFeatures.length);
 
         const layerInfoPromises = Object.entries(visibleLayersMap)
             .filter(([_, value]) => value.visible)
-            .map(async ([key, value]): Promise<LayerContentProps> => {
-                const baseLayerInfo: LayerContentProps = {
+            .map(async ([key, value]) => {
+                const matchingFeatures = featureInfo.features.filter((feature: Feature) => {
+                    const featureId = feature.id?.toString() || '';
+                    const keyParts = key.split(':');
+
+                    // Handle different layer key formats
+                    if (keyParts.length >= 2) {
+                        // Format: "namespace:layername"
+                        const namespace = keyParts[0];
+                        const layerName = keyParts[1];
+
+                        // Check if feature ID contains the layer name (common GeoServer pattern)
+                        const matches = featureId.includes(layerName) || featureId.includes(namespace);
+                        if (!matches && featureId) {
+                            // console.log('[FeatureInfoQuery] Feature ID mismatch:', { featureId, layerName, namespace, key });
+                        }
+                        return matches;
+                    } else {
+                        // Fallback: check if feature ID contains the full key
+                        return featureId.includes(key);
+                    }
+                });
+
+                // console.log('[FeatureInfoQuery] Layer filter:', { key, matchCount: matchingFeatures.length, featureSample: featureInfo.features[0]?.id });
+
+                const baseLayerInfo = {
                     customLayerParameters: value.customLayerParameters,
                     visible: value.visible,
                     layerTitle: value.layerTitle,
                     groupLayerTitle: value.groupLayerTitle,
                     sourceCRS: sourceCRS,
-                    features: featureInfo.features.filter((feature: Feature) => {
-                        const featureId = feature.id?.toString() || '';
-                        const keyParts = key.split(':');
-
-                        // Handle different layer key formats
-                        if (keyParts.length >= 2) {
-                            // Format: "namespace:layername"
-                            const namespace = keyParts[0];
-                            const layerName = keyParts[1];
-
-                            // Check if feature ID contains the layer name (common GeoServer pattern)
-                            return featureId.includes(layerName) || featureId.includes(namespace);
-                        } else {
-                            // Fallback: check if feature ID contains the full key
-                            return featureId.includes(key);
-                        }
-                    }),
+                    features: matchingFeatures,
                     popupFields: value.popupFields,
                     linkFields: value.linkFields,
                     colorCodingMap: value.colorCodingMap,
@@ -345,6 +518,7 @@ export function useFeatureInfoQuery({
                     const rasterFeatureInfo = await fetchWMSFeatureInfo({
                         mapPoint,
                         view,
+                        map,
                         layers: [value.rasterSource.layerName],
                         url: value.rasterSource.url,
                         coordinateAdapter
@@ -352,11 +526,13 @@ export function useFeatureInfoQuery({
                     baseLayerInfo.rasterSource = { ...value.rasterSource, data: rasterFeatureInfo };
                 }
 
-                return baseLayerInfo;
+                return baseLayerInfo as LayerContentProps;
             });
 
         const resolvedLayerInfo = await Promise.all(layerInfoPromises);
+
         const layerInfoFiltered = resolvedLayerInfo.filter(layer => layer.features.length > 0);
+        // console.log('[FeatureInfoQuery] Layers with features:', layerInfoFiltered.map(l => ({ title: l.layerTitle, count: l.features.length })));
 
         return layerOrderConfigs.length > 0
             ? reorderLayers(layerInfoFiltered, layerOrderConfigs)

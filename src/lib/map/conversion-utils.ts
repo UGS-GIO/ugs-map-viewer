@@ -40,17 +40,33 @@ export const convertCoordinate = (point: number[], sourceEPSG: string, targetEPS
 export const convertBbox = (bbox: number[], sourceEPSG: string, targetEPSG: string = "EPSG:4326"): number[] => {
 
     try {
-        // Convert each corner of the bbox
-        const minXConverted = convertCoordinate([bbox[0], bbox[1]], sourceEPSG, targetEPSG);
-        const maxXConverted = convertCoordinate([bbox[2], bbox[3]], sourceEPSG, targetEPSG);
+        // Check if bbox values are already in degrees (EPSG:4326)
+        // WMS GetFeatureInfo always returns bbox in EPSG:4326 regardless of requested CRS
+        const isAlreadyDegrees = Math.abs(bbox[0]) <= 180 && Math.abs(bbox[1]) <= 90 &&
+                                  Math.abs(bbox[2]) <= 180 && Math.abs(bbox[3]) <= 90;
+
+        if (isAlreadyDegrees && (sourceEPSG === "EPSG:3857" || sourceEPSG === "EPSG:26912")) {
+            // Bbox is already in EPSG:4326, just return it
+            return bbox;
+        }
+
+        // Convert all four corners of the bbox to handle projection distortions
+        const sw = convertCoordinate([bbox[0], bbox[1]], sourceEPSG, targetEPSG); // southwest
+        const se = convertCoordinate([bbox[2], bbox[1]], sourceEPSG, targetEPSG); // southeast
+        const nw = convertCoordinate([bbox[0], bbox[3]], sourceEPSG, targetEPSG); // northwest
+        const ne = convertCoordinate([bbox[2], bbox[3]], sourceEPSG, targetEPSG); // northeast
+
+        // Find actual min/max after projection (coordinates may flip)
+        const allX = [sw[0], se[0], nw[0], ne[0]];
+        const allY = [sw[1], se[1], nw[1], ne[1]];
+
+        const minX = Math.min(...allX);
+        const minY = Math.min(...allY);
+        const maxX = Math.max(...allX);
+        const maxY = Math.max(...allY);
 
         // Return in [minX, minY, maxX, maxY] format for target coordinate system
-        return [
-            minXConverted[0],
-            minXConverted[1],
-            maxXConverted[0],
-            maxXConverted[1]
-        ];
+        return [minX, minY, maxX, maxY];
     } catch (error) {
         console.error('Bbox conversion error:', error);
         return bbox; // fallback to original bbox

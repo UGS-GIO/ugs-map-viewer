@@ -1,6 +1,5 @@
 import { useCallback } from 'react';
-import { clearGraphics } from '@/lib/map/highlight-utils';
-import { MapPoint, ScreenPoint, CoordinateAdapter } from '@/lib/map/coordinate-adapter';
+import type { MapPoint, ScreenPoint, CoordinateAdapter } from '@/lib/map/coordinates/types';
 
 interface MapClickEvent {
     screenX: number;
@@ -8,45 +7,85 @@ interface MapClickEvent {
 }
 
 interface UseMapClickHandlerProps {
-    view: __esri.MapView | __esri.SceneView | undefined;
+    map: any; // MapLibre map instance
     isSketching: boolean;
     onPointClick: (point: MapPoint) => void;
-    getVisibleLayers: (params: { view: __esri.MapView | __esri.SceneView }) => any;
     setVisibleLayersMap: (layers: any) => void;
     coordinateAdapter: CoordinateAdapter;
+    layersConfig?: any; // MapLibre layer config to build visibleLayersMap
 }
 
 /**
- * Custom hook to handle map click events.
+ * Custom hook to handle MapLibre map click events.
  * Clears existing graphics, updates visible layers, converts screen coordinates to map coordinates,
  * and triggers a callback with the map point.
- * Now uses abstracted coordinate system for better portability.
- * @param view - The ArcGIS MapView or SceneView instance.
- * @param isSketching - Boolean indicating if sketching mode is active.
- * @param onPointClick - Callback function to be called with the map point on click.
- * @param getVisibleLayers - Function to retrieve currently visible layers from the view.
- * @param setVisibleLayersMap - Function to update the state of visible layers.
- * @param coordinateAdapter - Adapter for coordinate system operations.
- * @returns An object containing the handleMapClick function.
  */
 export function useMapClickHandler({
-    view,
+    map,
     isSketching,
     onPointClick,
-    getVisibleLayers,
     setVisibleLayersMap,
-    coordinateAdapter
+    coordinateAdapter,
+    layersConfig
 }: UseMapClickHandlerProps) {
 
     const handleMapClick = useCallback((event: MapClickEvent) => {
-        if (!view || isSketching) return;
+        if (isSketching) {
+            return;
+        }
 
-        // Clear existing graphics
-        clearGraphics(view);
+        if (!map) {
+            return;
+        }
 
-        // Update visible layers state
-        const layers = getVisibleLayers({ view });
-        setVisibleLayersMap(layers.layerVisibilityMap);
+        // Build visibleLayersMap from layersConfig
+        if (layersConfig) {
+            const visibleLayersMap: Record<string, any> = {};
+
+            const buildLayerMap = (layers: any[]) => {
+                for (const layer of layers) {
+                    if (layer.type === 'wms' && layer.sublayers) {
+                        for (const sublayer of layer.sublayers) {
+                            if (sublayer.name) {
+                                // Check if the layer is actually visible on the map
+                                let isVisible = layer.visible ?? true;
+
+                                // Generate the same layer ID that was used when adding the layer
+                                const sourceId = `wms-${layer.title || 'layer'}`.replace(/\s+/g, '-').toLowerCase();
+                                const mapLayerId = `wms-layer-${sourceId}`;
+
+                                const mapLayer = map.getLayer(mapLayerId);
+                                if (mapLayer) {
+                                    const visibility = map.getLayoutProperty(mapLayerId, 'visibility');
+                                    isVisible = visibility !== 'none';
+                                }
+
+                                visibleLayersMap[sublayer.name] = {
+                                    visible: isVisible,
+                                    groupLayerTitle: layer.title || '',
+                                    layerTitle: layer.title || sublayer.name,
+                                    popupFields: sublayer.popupFields,
+                                    relatedTables: sublayer.relatedTables,
+                                    queryable: sublayer.queryable ?? true,
+                                    linkFields: sublayer.linkFields,
+                                    customLayerParameters: layer.customLayerParameters,
+                                    rasterSource: sublayer.rasterSource,
+                                    schema: sublayer.schema,
+                                    layerCrs: (layer as any).crs || 'EPSG:3857',
+                                };
+                            }
+                        }
+                    } else if (layer.type === 'group' && layer.layers) {
+                        buildLayerMap(layer.layers);
+                    }
+                }
+            };
+
+            if (Array.isArray(layersConfig)) {
+                buildLayerMap(layersConfig);
+            }
+            setVisibleLayersMap(visibleLayersMap);
+        }
 
         // Convert screen coordinates to map coordinates using adapter
         const screenPoint: ScreenPoint = {
@@ -54,11 +93,11 @@ export function useMapClickHandler({
             y: event.screenY
         };
 
-        const mapPoint = coordinateAdapter.screenToMap(screenPoint, view);
+        const mapPoint = coordinateAdapter.screenToMap(screenPoint, map);
 
         // Trigger the callback with the abstracted map point
         onPointClick(mapPoint);
-    }, [view, isSketching, onPointClick, getVisibleLayers, setVisibleLayersMap, coordinateAdapter]);
+    }, [map, isSketching, onPointClick, setVisibleLayersMap, coordinateAdapter, layersConfig]);
 
     return { handleMapClick };
 }

@@ -202,6 +202,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: qFaultsWMSTitle,
     visible: true,
+    crs: 'EPSG:26912', // Utah State Plane North
     customLayerParameters: {
         cql_filter: `is_current = 'Y'`,
     },
@@ -904,6 +905,7 @@ const studyAreasWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: studyAreasWMSTitle,
     visible: true,
+    crs: 'EPSG:26912', // Utah State Plane North
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${studyAreasLayerName}`,

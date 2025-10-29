@@ -54,8 +54,11 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
 
     // This handler now explicitly sets the accordion state.
     const handleLocalToggle = (checked: boolean) => {
-        if (!view || !map) return;
-        clearGraphics(view, layerConfig.title || '');
+        // Only clear graphics if using MapLibre (has map)
+        if (map) {
+            clearGraphics(map, layerConfig.title || '');
+        }
+
         handleToggleSelection(checked);
         setIsUserExpanded(checked);
     };

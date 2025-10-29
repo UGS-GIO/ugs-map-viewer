@@ -101,7 +101,8 @@ interface BaseLayerProps {
 export interface WMSLayerProps extends BaseLayerProps {
     type: 'wms';
     sublayers: __esri.CollectionProperties<ExtendedSublayerProperties>;
-    customLayerParameters?: object | null | undefined
+    customLayerParameters?: object | null | undefined;
+    crs?: string; // EPSG code (e.g., 'EPSG:26912', 'EPSG:3857') for WMS GetFeatureInfo requests
 }
 
 export interface GroupLayerProps extends BaseLayerProps {

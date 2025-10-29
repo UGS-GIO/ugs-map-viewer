@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useMap } from '@/hooks/use-map';
-import { useMapLibreScreenshot } from '@/hooks/use-maplibre-screenshot';
+import { useTerraDrawPolygon } from '@/hooks/use-terra-draw';
 import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import Layer from "@arcgis/core/layers/Layer";
@@ -11,54 +11,200 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import { useToast } from "@/hooks/use-toast";
+import Map from "@arcgis/core/Map";
+import MapView from "@arcgis/core/views/MapView";
+import Graphic from "@arcgis/core/Graphic";
 import { Link } from "@/components/custom/link";
-import { serializePolygonForUrl } from "@/lib/map/conversion-utils";
+import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
 
 
 type ActiveButtonOptions = 'currentMapExtent' | 'customArea' | 'reset';
 type DialogType = 'areaTooLarge' | 'confirmation' | null;
 
 function ReportGenerator() {
-    const { view, setIsSketching } = useMap();
+    const { view, map, setIsSketching } = useMap();
     const [activeButton, setActiveButton] = useState<ActiveButtonOptions>();
     const tempGraphicsLayer = useRef<__esri.GraphicsLayer | undefined>(undefined);
     const sketchVM = useRef<__esri.SketchViewModel | undefined>(undefined);
     const { setNavOpened } = useSidebar();
     const isMobile = useIsMobile();
     const [activeDialog, setActiveDialog] = useState<DialogType>(null);
+    const [screenshot, setScreenshot] = useState<string>("");
     const [pendingAoi, setPendingAoi] = useState<__esri.Geometry | null>(null);
-    const [aoiForScreenshot, setAoiForScreenshot] = useState<string | null>(null);
     const { toast } = useToast();
 
-    // Use the MapLibre screenshot hook (only generates when aoiForScreenshot is set)
-    const { screenshot, isLoading: isCapturing } = useMapLibreScreenshot({
-        polygon: aoiForScreenshot,
-        width: '50vw',
-        height: '50vh'
+    // Wrap draw complete handler in useCallback to ensure stable reference
+    const handleMapLibreDrawCompleteCallback = useCallback((geometry: any) => {
+        console.log('[ReportGenerator] MapLibre draw complete callback triggered');
+        try {
+            // Convert MapLibre geometry to Polygon-like format
+            if (geometry.rings && geometry.rings.length > 0) {
+                const rings = geometry.rings;
+
+                // Check area constraints
+                // For simplicity, estimate area using a simple bounding box
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                for (const ring of rings) {
+                    for (const [lng, lat] of ring) {
+                        minX = Math.min(minX, lng);
+                        maxX = Math.max(maxX, lng);
+                        minY = Math.min(minY, lat);
+                        maxY = Math.max(maxY, lat);
+                    }
+                }
+
+                // Rough conversion to meters for comparison
+                const degreesToMeters = 111320;
+                const areaWidth = (maxX - minX) * degreesToMeters * Math.cos((minY + maxY) / 2 * Math.PI / 180);
+                const areaHeight = (maxY - minY) * degreesToMeters;
+
+                console.log('[ReportGenerator] MapLibre draw dimensions:', { areaWidth, areaHeight });
+
+                if (areaHeight < 12000 && areaWidth < 18000) {
+                    // Create a geometry object compatible with the rest of the code
+                    const aoiGeometry = {
+                        spatialReference: { wkid: 4326 },
+                        rings: rings
+                    };
+                    handleNavigate(aoiGeometry as any);
+                } else {
+                    setActiveDialog('areaTooLarge');
+                }
+            }
+        } catch (error) {
+            console.error('Error handling MapLibre draw complete:', error);
+            setActiveDialog('areaTooLarge');
+        }
+    }, []);
+
+    // Terra Draw hook for MapLibre
+    const terraDraw = useTerraDrawPolygon({
+        map: map,
+        onDrawComplete: handleMapLibreDrawCompleteCallback
     });
 
+    const createMap = async (aoi: string): Promise<{ view: __esri.MapView, cleanup: () => void }> => {
+        // Remove any existing map containers
+        const existingDiv = document.getElementById('screenshotMapDiv');
+        if (existingDiv) {
+            existingDiv.remove();
+        }
 
+        // Create new map container
+        const mapDiv = document.createElement('div');
+        mapDiv.id = 'screenshotMapDiv';
+        mapDiv.style.width = '50vw';
+        mapDiv.style.height = '50vh';
+        document.body.appendChild(mapDiv);
 
-    const handleNavigate = (aoi: __esri.Geometry) => {
+        const polygonSymbol = new SimpleFillSymbol({
+            color: "#8a2be2cc",
+            style: "solid",
+            outline: {
+                color: "white",
+                width: 1
+            }
+        });
+
+        const parsedAoi = JSON.parse(aoi);
+        const polygon = new Polygon(parsedAoi);
+
+        const polylineGraphic = new Graphic({
+            geometry: polygon,
+            symbol: polygonSymbol
+        });
+
+        const map = new Map({
+            basemap: "topo"
+        });
+
+        const extentClone = polygon.extent?.clone();
+
+        const screenshotView = new MapView({
+            map: map,
+            container: mapDiv,
+            ui: {
+                components: ['attribution']
+            },
+            extent: extentClone?.expand(2),
+            constraints: {
+                snapToZoom: false
+            }
+        });
+
+        // Add graphic after view initialization
+        screenshotView.graphics.add(polylineGraphic);
+
+        // Wait for the view to be ready
+        await screenshotView.when();
+
+        // Wait for the basemap to load
+        await map.basemap?.load();
+
+        // Important: Wait for ALL basemap layers to load
+        const basemapLayerPromises = map.basemap?.baseLayers.map(layer => layer.load());
+        await Promise.all(basemapLayerPromises || []);
+
+        // Go to extent after layers are loaded
+        await screenshotView.goTo(extentClone?.expand(2), {
+            animate: false,
+            duration: 0
+        });
+
+        // Wait for rendering to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        const cleanup = () => {
+            screenshotView.destroy();
+            mapDiv.remove();
+        };
+
+        return { view: screenshotView, cleanup };
+    };
+
+    const getScreenshot = async (geometry: __esri.Geometry) => {
+        try {
+            const aoi = JSON.stringify(geometry);
+            const { view: screenshotView, cleanup } = await createMap(aoi);
+
+            // Dynamically get the width and height of the map container
+            const mapDiv = document.getElementById('screenshotMapDiv');
+            const width = mapDiv?.offsetWidth || 0;
+            const height = mapDiv?.offsetHeight || 0;
+
+            // Capture the screenshot with dynamic width and height
+            const screenshot = await screenshotView.takeScreenshot({
+                width: width,
+                height: height,
+                format: "png"
+            });
+
+            // Clean up
+            cleanup();
+
+            return screenshot?.dataUrl;
+        } catch (error) {
+            console.error('Failed to capture screenshot:', error);
+            return null;
+        }
+    };
+
+    const handleNavigate = async (aoi: __esri.Geometry) => {
         setPendingAoi(aoi);
-        setAoiForScreenshot(JSON.stringify(aoi));
+        const screenshotDataUrl = await getScreenshot(aoi);
+
+        if (screenshotDataUrl) {
+            setScreenshot(screenshotDataUrl);
+        }
+
         setActiveDialog('confirmation');
     };
 
     const handleConfirmNavigation = () => {
         if (!pendingAoi) return;
 
-        const serialized = serializePolygonForUrl(pendingAoi);
-        if (!serialized) {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to serialize polygon for report",
-            });
-            return;
-        }
-
-        const reportUrl = `/hazards/report?aoi=${serialized}`;
+        const aoiString = JSON.stringify(pendingAoi);
+        const reportUrl = '/hazards/report/' + aoiString;
 
         // Open in new tab
         window.open(reportUrl, '_blank');
@@ -68,17 +214,8 @@ function ReportGenerator() {
     const handleCopyLink = () => {
         if (!pendingAoi) return;
 
-        const serialized = serializePolygonForUrl(pendingAoi);
-        if (!serialized) {
-            toast({
-                variant: "destructive",
-                title: "Error",
-                description: "Failed to serialize polygon for report",
-            });
-            return;
-        }
-
-        const reportUrl = window.location.origin + `/hazards/report?aoi=${serialized}`;
+        const aoiString = JSON.stringify(pendingAoi);
+        const reportUrl = window.location.origin + '/hazards/report/' + aoiString;
 
         navigator.clipboard.writeText(reportUrl)
             .catch(err => {
@@ -182,79 +319,90 @@ function ReportGenerator() {
         handleActiveButton('customArea');
         if (isMobile) setNavOpened(false); // Close the sidebar on mobile so user can see the map
 
-        sketchVM.current = new SketchViewModel({
-            view: view,
-            layer: tempGraphicsLayer.current,
-            updateOnGraphicClick: false,
-            polygonSymbol: {
-                type: "simple-fill",
-                color: "rgba(138,43,226, 0.8)",
-                style: "solid",
-                outline: {
-                    color: "white",
-                    width: 1
+        // Use Terra Draw (MapLibre) if map is available, otherwise use ArcGIS SketchViewModel
+        if (map && terraDraw) {
+            console.log('[ReportGenerator] Starting Terra Draw polygon mode');
+            terraDraw.startPolygonDraw();
+        } else if (view) {
+            console.log('[ReportGenerator] Starting ArcGIS sketch');
+            sketchVM.current = new SketchViewModel({
+                view: view,
+                layer: tempGraphicsLayer.current,
+                updateOnGraphicClick: false,
+                polygonSymbol: {
+                    type: "simple-fill",
+                    color: "rgba(138,43,226, 0.8)",
+                    style: "solid",
+                    outline: {
+                        color: "white",
+                        width: 1
+                    }
                 }
-            }
-        });
+            });
 
-        sketchVM.current.on('create', (event) => {
-            if (event.state === "start") {
-                if (isMobile) {
-                    const completeButton = document.createElement("button");
-                    // onclick to complete the sketch
-                    completeButton.onclick = () => {
-                        sketchVM.current?.complete();
-                    };
-                    completeButton.innerHTML = "Complete";
-                    completeButton.id = "complete-button";
-                    completeButton.classList.add("esri-widget-button", "esri-widget", "esri-interactive", "p-2", "bg-background");
+            sketchVM.current.on('create', (event) => {
+                if (event.state === "start") {
+                    if (isMobile) {
+                        const completeButton = document.createElement("button");
+                        // onclick to complete the sketch
+                        completeButton.onclick = () => {
+                            sketchVM.current?.complete();
+                        };
+                        completeButton.innerHTML = "Complete";
+                        completeButton.id = "complete-button";
+                        completeButton.classList.add("esri-widget-button", "esri-widget", "esri-interactive", "p-2", "bg-background");
 
-                    view?.ui.add(completeButton, "top-right");
-                }
-                setIsSketching?.(true);
-            }
-
-            if (event.state === "active") {
-                addGraphic(event, tempGraphicsLayer.current, setActiveButton);
-            }
-
-            if (event.state === "complete") {
-                setIsSketching?.(true); // Ensure it remains true immediately after completion
-                const completeButton = view?.ui.find("complete-button")
-                if (completeButton) view?.ui.remove(completeButton);
-
-                const extent = event.graphic.geometry?.extent;
-                const areaHeight = extent?.height;
-                const areaWidth = extent?.width;
-                const geometry = event.graphic.geometry as __esri.Polygon;
-
-                if (areaHeight && areaWidth && areaHeight < 12000 && areaWidth < 18000) {
-
-                    const aoi = new Polygon({
-                        spatialReference: {
-                            wkid: 102100
-                        },
-                        rings: geometry.rings
-                    });
-                    handleNavigate(aoi);
-                } else {
-                    setActiveDialog('areaTooLarge');
+                        view?.ui.add(completeButton, "top-right");
+                    }
+                    setIsSketching?.(true);
                 }
 
-            }
+                if (event.state === "active") {
+                    addGraphic(event, tempGraphicsLayer.current, setActiveButton);
+                }
 
-            return;
-        });
+                if (event.state === "complete") {
+                    setIsSketching?.(true); // Ensure it remains true immediately after completion
+                    const completeButton = view?.ui.find("complete-button")
+                    if (completeButton) view?.ui.remove(completeButton);
 
-        sketchVM.current.create("polygon", {
-            mode: "click"
-        });
+                    const extent = event.graphic.geometry?.extent;
+                    const areaHeight = extent?.height;
+                    const areaWidth = extent?.width;
+                    const geometry = event.graphic.geometry as __esri.Polygon;
+
+                    if (areaHeight && areaWidth && areaHeight < 12000 && areaWidth < 18000) {
+
+                        const aoi = new Polygon({
+                            spatialReference: {
+                                wkid: 102100
+                            },
+                            rings: geometry.rings
+                        });
+                        handleNavigate(aoi);
+                    } else {
+                        setActiveDialog('areaTooLarge');
+                    }
+
+                }
+
+                return;
+            });
+
+            sketchVM.current.create("polygon", {
+                mode: "click"
+            });
+        }
     };
 
     const handleReset = () => {
         sketchVM.current?.cancel();
         if (tempGraphicsLayer.current) {
             tempGraphicsLayer.current?.removeAll();
+        }
+        // Also reset Terra Draw if active
+        if (map && terraDraw) {
+            terraDraw.clearDrawings();
         }
         setActiveButton(undefined);
         requestAnimationFrame(() => {
@@ -339,30 +487,17 @@ function ReportGenerator() {
                     </DialogHeader>
                     <div>
                         <div className="flex justify-center">
-                            {isCapturing ? (
-                                <div className="flex items-center justify-center w-full h-80 bg-muted rounded-md">
-                                    <div className="text-center">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                                        <p className="text-sm text-muted-foreground">Generating map preview...</p>
-                                    </div>
-                                </div>
-                            ) : screenshot ? (
-                                <img
-                                    src={screenshot}
-                                    alt="map preview"
-                                    className="rounded-md w-full max-w-full h-auto"
-                                />
-                            ) : (
-                                <div className="flex items-center justify-center w-full h-80 bg-destructive/10 rounded-md">
-                                    <p className="text-sm text-destructive">Failed to generate map preview</p>
-                                </div>
-                            )}
+                            <img
+                                src={screenshot}
+                                alt="map"
+                                className="rounded-md w-full max-w-full h-auto"
+                            />
                         </div>
                         <div className="flex flex-row space-x-2 mt-4 justify-end">
-                            <Button onClick={handleConfirmNavigation} variant="default" disabled={isCapturing || !screenshot}>
+                            <Button onClick={handleConfirmNavigation} variant="default">
                                 Generate Report
                             </Button>
-                            <Button onClick={handleCopyLink} variant="secondary" disabled={isCapturing}>
+                            <Button onClick={handleCopyLink} variant="secondary">
                                 Copy Link
                             </Button>
                             <Button onClick={handleCloseDialog} variant="secondary">

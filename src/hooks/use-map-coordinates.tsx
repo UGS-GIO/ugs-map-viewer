@@ -5,6 +5,7 @@ import { convertDDToDMS } from '@/lib/map/conversion-utils';
 import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
 import Point from '@arcgis/core/geometry/Point';
 import { useIsMobile } from '@/hooks/use-mobile';
+import type maplibregl from 'maplibre-gl';
 
 const COORD_PRECISION = 3;
 
@@ -26,7 +27,7 @@ const convertToDisplayFormat = (x: string, y: string, isDD: boolean, convertDDTo
 };
 
 export function useMapCoordinates() {
-    const { view } = useMap();
+    const { view, map } = useMap();
     const isMobile = useIsMobile();
     const navigate = useNavigate();
     const search = useSearch({ from: '/_map' });
@@ -102,8 +103,58 @@ export function useMapCoordinates() {
         [updateDisplayedCoordinatesAndScale]
     );
 
+    const handleMapLibreChange = useCallback(
+        (mapLibreInstance: maplibregl.Map) => {
+            const updateFromMapLibre = (mapPoint?: { lng: number; lat: number }) => {
+                if (!mapPoint) {
+                    const center = mapLibreInstance.getCenter();
+                    mapPoint = center;
+                }
+
+                // For MapLibre, coordinates are already in geographic WGS84
+                lastDecimalCoordinates.current = {
+                    x: formatCoord(mapPoint.lng),
+                    y: formatCoord(mapPoint.lat),
+                };
+                setCoordinates(convertToDisplayFormat(
+                    lastDecimalCoordinates.current.x,
+                    lastDecimalCoordinates.current.y,
+                    isDecimalDegrees,
+                    convertDDToDMS
+                ));
+
+                // Calculate scale from zoom level (approximate)
+                const zoomLevel = mapLibreInstance.getZoom();
+                const approximateScale = 559192 / Math.pow(2, zoomLevel);
+                setScale(Math.round(approximateScale));
+            };
+
+            // Update on initial load
+            updateFromMapLibre();
+
+            // Update on zoom change
+            const handleZoom = () => updateFromMapLibre();
+            mapLibreInstance.on('zoom', handleZoom);
+
+            // Update on mouse move (desktop)
+            const handleMouseMove = (e: maplibregl.MapMouseEvent) => {
+                updateFromMapLibre(e.lngLat);
+            };
+            mapLibreInstance.on('mousemove', handleMouseMove);
+
+            return () => {
+                mapLibreInstance.off('zoom', handleZoom);
+                mapLibreInstance.off('mousemove', handleMouseMove);
+            };
+        },
+        [isDecimalDegrees]
+    );
+
     useEffect(() => {
-        if (view) {
+        // Use MapLibre if available, otherwise use ArcGIS
+        if (map && typeof map.on === 'function' && typeof map.getCenter === 'function') {
+            return handleMapLibreChange(map);
+        } else if (view) {
             let cleanupFunction: () => void;
             if (isMobile) {
                 cleanupFunction = handleMobileViewChange(view);
@@ -112,7 +163,7 @@ export function useMapCoordinates() {
             }
             return cleanupFunction;
         }
-    }, [view, isMobile, handleDesktopViewChange, handleMobileViewChange]);
+    }, [view, map, isMobile, handleDesktopViewChange, handleMobileViewChange, handleMapLibreChange]);
 
     const setCoordinateFormat = useCallback((newIsDecimalDegrees: boolean) => {
         navigate({
