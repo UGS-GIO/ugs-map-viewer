@@ -1,6 +1,7 @@
 import { MapContext, MapContextProps } from "@/context/map-context";
 import { ArcGISMapProvider } from "@/context/arcgis-map-provider";
 import { MapLibreMapProvider } from "@/context/maplibre-map-provider";
+import { getMapImplementation } from "@/lib/map/get-map-implementation";
 
 /**
  * Conditional MapProvider wrapper
@@ -18,11 +19,11 @@ import { MapLibreMapProvider } from "@/context/maplibre-map-provider";
  * 3. Easy deletion of ArcGIS code after migration
  *
  * Feature flag: VITE_MAP_IMPL
- * - 'arcgis': Use ArcGIS Maps SDK (current default)
- * - 'maplibre': Use MapLibre GL JS (new implementation)
+ * - 'arcgis': Use ArcGIS Maps SDK
+ * - 'maplibre': Use MapLibre GL JS (current default)
  */
 export function MapProvider({ children }: { children: React.ReactNode }) {
-    const mapImpl = import.meta.env.VITE_MAP_IMPL || 'arcgis';
+    const mapImpl = getMapImplementation();
 
     if (mapImpl === 'maplibre') {
         return (
