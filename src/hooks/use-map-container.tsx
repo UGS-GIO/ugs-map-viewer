@@ -41,7 +41,7 @@ export function useMapContainer({
     layersConfig
 }: UseMapContainerProps) {
     const mapRef = useRef<HTMLDivElement>(null);
-    const { loadMap, view, isSketching } = useMap();
+    const { loadMap, view, map, isSketching } = useMap();
     const { coordinates, setCoordinates } = useMapCoordinates();
     const { handleOnContextMenu, getVisibleLayers } = useMapInteractions({ layersConfig: layersConfig });
     const [popupContainer, setPopupContainer] = useState<HTMLDivElement | null>(null);
@@ -70,6 +70,7 @@ export function useMapContainer({
     // Feature info query handling with coordinate adapter
     const featureInfoQuery = useFeatureInfoQuery({
         view,
+        map,
         wmsUrl,
         visibleLayersMap,
         layerOrderConfigs,
@@ -88,13 +89,15 @@ export function useMapContainer({
     // Handle map clicks with coordinate adapter
     const { handleMapClick } = useMapClickHandler({
         view,
+        map,
         isSketching,
         onPointClick: (mapPoint) => {
             featureInfoQuery.fetchForPoint(mapPoint);
         },
         getVisibleLayers,
         setVisibleLayersMap,
-        coordinateAdapter
+        coordinateAdapter,
+        layersConfig
     });
 
     // Handle click or drag events on the map
@@ -106,6 +109,32 @@ export function useMapContainer({
             });
         }
     });
+
+    // For MapLibre, attach click handler to the map instance directly
+    useEffect(() => {
+        if (!map || isSketching) {
+            return;
+        }
+
+        const handleMapLibreClick = (e: any) => {
+            // Convert MapLibre click event to our expected format
+            const rect = (e.originalEvent?.target as HTMLElement)?.getBoundingClientRect?.();
+            if (rect) {
+                const screenX = e.originalEvent.clientX - rect.left;
+                const screenY = e.originalEvent.clientY - rect.top;
+                handleMapClick({
+                    screenX,
+                    screenY
+                });
+            }
+        };
+
+        // Use optional chaining to safely add and remove event listener
+        map?.on?.('click', handleMapLibreClick);
+        return () => {
+            map?.off?.('click', handleMapLibreClick);
+        };
+    }, [map, isSketching, handleMapClick]);
 
     // Initialize the map when the container is ready
     useEffect(() => {

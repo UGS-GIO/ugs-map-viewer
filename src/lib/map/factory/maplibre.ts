@@ -16,6 +16,14 @@ export class MapLibreMapFactory implements MapFactory {
     _initialView?: 'map' | 'scene'
   ): Promise<MapInitResult> {
     const map = this.createMap(container, options);
+
+    // Wait for style to load before adding layers
+    if (!map.isStyleLoaded()) {
+      await new Promise<void>(resolve => {
+        map.on('style.load', () => resolve());
+      });
+    }
+
     await this.addLayersToMap(map, layers);
 
     return { map };
@@ -97,32 +105,37 @@ export class MapLibreMapFactory implements MapFactory {
   }
 
   private async addWMSLayer(map: maplibregl.Map, layerConfig: WMSLayerProps): Promise<void> {
-    const sourceId = `wms-${layerConfig.title || 'layer'}`;
+    if (!layerConfig.url) return;
+
+    const sourceId = `wms-${layerConfig.title || 'layer'}`.replace(/\s+/g, '-').toLowerCase();
     const layerId = `wms-layer-${sourceId}`;
 
     const sublayerName = this.getFirstSublayerName(layerConfig.sublayers);
 
+    // Build WMS GetMap URL with dynamic bbox for tile requests
+    // MapLibre will replace {bbox-epsg-3857} with the actual tile bounds
     const params = new URLSearchParams({
       service: 'WMS',
-      version: '1.1.1',
+      version: '1.1.0',
       request: 'GetMap',
       layers: sublayerName,
       styles: '',
-      srs: 'EPSG:4326',
-      bbox: '-180,-85,180,85',
+      srs: 'EPSG:3857',
       width: '256',
       height: '256',
       format: 'image/png',
       transparent: 'true',
     });
 
-    const sourceUrl = `${layerConfig.url}?${params.toString()}`;
+    const baseUrl = layerConfig.url.replace(/\/$/, ''); // Remove trailing slash if present
+    const sourceUrl = `${baseUrl}?${params.toString()}&bbox={bbox-epsg-3857}`;
 
     if (!map.getSource(sourceId)) {
       map.addSource(sourceId, {
         type: 'raster',
         tiles: [sourceUrl],
         tileSize: 256,
+        scheme: 'tms',
       });
     }
 
@@ -136,6 +149,9 @@ export class MapLibreMapFactory implements MapFactory {
         },
         paint: {
           'raster-opacity': layerConfig.opacity || 1,
+        },
+        metadata: {
+          title: layerConfig.title,
         },
       },
       undefined
@@ -146,30 +162,32 @@ export class MapLibreMapFactory implements MapFactory {
   private async addMapImageLayer(map: maplibregl.Map, layerConfig: LayerProps): Promise<void> {
     if (!layerConfig.url) return;
 
-    const sourceId = `mapimage-${layerConfig.title || 'layer'}`;
+    const sourceId = `mapimage-${layerConfig.title || 'layer'}`.replace(/\s+/g, '-').toLowerCase();
     const layerId = `mapimage-layer-${sourceId}`;
 
+    // Build WMS GetMap URL with dynamic bbox for tile requests
     const params = new URLSearchParams({
       service: 'WMS',
-      version: '1.1.1',
+      version: '1.1.0',
       request: 'GetMap',
       layers: '0',
       styles: '',
-      srs: 'EPSG:4326',
-      bbox: '-180,-85,180,85',
+      srs: 'EPSG:3857',
       width: '256',
       height: '256',
       format: 'image/png',
       transparent: 'true',
     });
 
-    const sourceUrl = `${layerConfig.url}?${params.toString()}`;
+    const baseUrl = layerConfig.url.replace(/\/$/, ''); // Remove trailing slash if present
+    const sourceUrl = `${baseUrl}?${params.toString()}&bbox={bbox-epsg-3857}`;
 
     if (!map.getSource(sourceId)) {
       map.addSource(sourceId, {
         type: 'raster',
         tiles: [sourceUrl],
         tileSize: 256,
+        scheme: 'tms',
       });
     }
 
@@ -183,6 +201,9 @@ export class MapLibreMapFactory implements MapFactory {
         },
         paint: {
           'raster-opacity': layerConfig.opacity || 1,
+        },
+        metadata: {
+          title: layerConfig.title,
         },
       },
       undefined

@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useMap } from '@/hooks/use-map';
+import { useTerraDrawPolygon } from '@/hooks/use-terra-draw';
 import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import Layer from "@arcgis/core/layers/Layer";
@@ -21,7 +22,7 @@ type ActiveButtonOptions = 'currentMapExtent' | 'customArea' | 'reset';
 type DialogType = 'areaTooLarge' | 'confirmation' | null;
 
 function ReportGenerator() {
-    const { view, setIsSketching } = useMap();
+    const { view, map, setIsSketching } = useMap();
     const [activeButton, setActiveButton] = useState<ActiveButtonOptions>();
     const tempGraphicsLayer = useRef<__esri.GraphicsLayer | undefined>(undefined);
     const sketchVM = useRef<__esri.SketchViewModel | undefined>(undefined);
@@ -30,7 +31,57 @@ function ReportGenerator() {
     const [activeDialog, setActiveDialog] = useState<DialogType>(null);
     const [screenshot, setScreenshot] = useState<string>("");
     const [pendingAoi, setPendingAoi] = useState<__esri.Geometry | null>(null);
-    const { toast } = useToast()
+    const { toast } = useToast();
+
+    // Wrap draw complete handler in useCallback to ensure stable reference
+    const handleMapLibreDrawCompleteCallback = useCallback((geometry: any) => {
+        console.log('[ReportGenerator] MapLibre draw complete callback triggered');
+        try {
+            // Convert MapLibre geometry to Polygon-like format
+            if (geometry.rings && geometry.rings.length > 0) {
+                const rings = geometry.rings;
+
+                // Check area constraints
+                // For simplicity, estimate area using a simple bounding box
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                for (const ring of rings) {
+                    for (const [lng, lat] of ring) {
+                        minX = Math.min(minX, lng);
+                        maxX = Math.max(maxX, lng);
+                        minY = Math.min(minY, lat);
+                        maxY = Math.max(maxY, lat);
+                    }
+                }
+
+                // Rough conversion to meters for comparison
+                const degreesToMeters = 111320;
+                const areaWidth = (maxX - minX) * degreesToMeters * Math.cos((minY + maxY) / 2 * Math.PI / 180);
+                const areaHeight = (maxY - minY) * degreesToMeters;
+
+                console.log('[ReportGenerator] MapLibre draw dimensions:', { areaWidth, areaHeight });
+
+                if (areaHeight < 12000 && areaWidth < 18000) {
+                    // Create a geometry object compatible with the rest of the code
+                    const aoiGeometry = {
+                        spatialReference: { wkid: 4326 },
+                        rings: rings
+                    };
+                    handleNavigate(aoiGeometry as any);
+                } else {
+                    setActiveDialog('areaTooLarge');
+                }
+            }
+        } catch (error) {
+            console.error('Error handling MapLibre draw complete:', error);
+            setActiveDialog('areaTooLarge');
+        }
+    }, []);
+
+    // Terra Draw hook for MapLibre
+    const terraDraw = useTerraDrawPolygon({
+        map: map,
+        onDrawComplete: handleMapLibreDrawCompleteCallback
+    });
 
     const createMap = async (aoi: string): Promise<{ view: __esri.MapView, cleanup: () => void }> => {
         // Remove any existing map containers
@@ -137,8 +188,6 @@ function ReportGenerator() {
             return null;
         }
     };
-
-
 
     const handleNavigate = async (aoi: __esri.Geometry) => {
         setPendingAoi(aoi);
@@ -270,79 +319,90 @@ function ReportGenerator() {
         handleActiveButton('customArea');
         if (isMobile) setNavOpened(false); // Close the sidebar on mobile so user can see the map
 
-        sketchVM.current = new SketchViewModel({
-            view: view,
-            layer: tempGraphicsLayer.current,
-            updateOnGraphicClick: false,
-            polygonSymbol: {
-                type: "simple-fill",
-                color: "rgba(138,43,226, 0.8)",
-                style: "solid",
-                outline: {
-                    color: "white",
-                    width: 1
+        // Use Terra Draw (MapLibre) if map is available, otherwise use ArcGIS SketchViewModel
+        if (map && terraDraw) {
+            console.log('[ReportGenerator] Starting Terra Draw polygon mode');
+            terraDraw.startPolygonDraw();
+        } else if (view) {
+            console.log('[ReportGenerator] Starting ArcGIS sketch');
+            sketchVM.current = new SketchViewModel({
+                view: view,
+                layer: tempGraphicsLayer.current,
+                updateOnGraphicClick: false,
+                polygonSymbol: {
+                    type: "simple-fill",
+                    color: "rgba(138,43,226, 0.8)",
+                    style: "solid",
+                    outline: {
+                        color: "white",
+                        width: 1
+                    }
                 }
-            }
-        });
+            });
 
-        sketchVM.current.on('create', (event) => {
-            if (event.state === "start") {
-                if (isMobile) {
-                    const completeButton = document.createElement("button");
-                    // onclick to complete the sketch
-                    completeButton.onclick = () => {
-                        sketchVM.current?.complete();
-                    };
-                    completeButton.innerHTML = "Complete";
-                    completeButton.id = "complete-button";
-                    completeButton.classList.add("esri-widget-button", "esri-widget", "esri-interactive", "p-2", "bg-background");
+            sketchVM.current.on('create', (event) => {
+                if (event.state === "start") {
+                    if (isMobile) {
+                        const completeButton = document.createElement("button");
+                        // onclick to complete the sketch
+                        completeButton.onclick = () => {
+                            sketchVM.current?.complete();
+                        };
+                        completeButton.innerHTML = "Complete";
+                        completeButton.id = "complete-button";
+                        completeButton.classList.add("esri-widget-button", "esri-widget", "esri-interactive", "p-2", "bg-background");
 
-                    view?.ui.add(completeButton, "top-right");
-                }
-                setIsSketching?.(true);
-            }
-
-            if (event.state === "active") {
-                addGraphic(event, tempGraphicsLayer.current, setActiveButton);
-            }
-
-            if (event.state === "complete") {
-                setIsSketching?.(true); // Ensure it remains true immediately after completion
-                const completeButton = view?.ui.find("complete-button")
-                if (completeButton) view?.ui.remove(completeButton);
-
-                const extent = event.graphic.geometry?.extent;
-                const areaHeight = extent?.height;
-                const areaWidth = extent?.width;
-                const geometry = event.graphic.geometry as __esri.Polygon;
-
-                if (areaHeight && areaWidth && areaHeight < 12000 && areaWidth < 18000) {
-
-                    const aoi = new Polygon({
-                        spatialReference: {
-                            wkid: 102100
-                        },
-                        rings: geometry.rings
-                    });
-                    handleNavigate(aoi);
-                } else {
-                    setActiveDialog('areaTooLarge');
+                        view?.ui.add(completeButton, "top-right");
+                    }
+                    setIsSketching?.(true);
                 }
 
-            }
+                if (event.state === "active") {
+                    addGraphic(event, tempGraphicsLayer.current, setActiveButton);
+                }
 
-            return;
-        });
+                if (event.state === "complete") {
+                    setIsSketching?.(true); // Ensure it remains true immediately after completion
+                    const completeButton = view?.ui.find("complete-button")
+                    if (completeButton) view?.ui.remove(completeButton);
 
-        sketchVM.current.create("polygon", {
-            mode: "click"
-        });
+                    const extent = event.graphic.geometry?.extent;
+                    const areaHeight = extent?.height;
+                    const areaWidth = extent?.width;
+                    const geometry = event.graphic.geometry as __esri.Polygon;
+
+                    if (areaHeight && areaWidth && areaHeight < 12000 && areaWidth < 18000) {
+
+                        const aoi = new Polygon({
+                            spatialReference: {
+                                wkid: 102100
+                            },
+                            rings: geometry.rings
+                        });
+                        handleNavigate(aoi);
+                    } else {
+                        setActiveDialog('areaTooLarge');
+                    }
+
+                }
+
+                return;
+            });
+
+            sketchVM.current.create("polygon", {
+                mode: "click"
+            });
+        }
     };
 
     const handleReset = () => {
         sketchVM.current?.cancel();
         if (tempGraphicsLayer.current) {
             tempGraphicsLayer.current?.removeAll();
+        }
+        // Also reset Terra Draw if active
+        if (map && terraDraw) {
+            terraDraw.clearDrawings();
         }
         setActiveButton(undefined);
         requestAnimationFrame(() => {

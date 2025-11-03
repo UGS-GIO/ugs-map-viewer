@@ -93,6 +93,7 @@ export function MapLibreMapProvider({ children }: { children: React.ReactNode })
             const result = await factory.init(container, isMobile, { zoom, center }, layers);
 
             if (result.map && 'getStyle' in result.map) {
+                await factory.addLayersToMap(result.map, layers);
                 setMap(result.map as maplibregl.Map);
             }
         }

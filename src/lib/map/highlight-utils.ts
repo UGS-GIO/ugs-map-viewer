@@ -7,44 +7,59 @@ export type { HighlightOptions };
 
 /**
  * Highlight a feature on the map
- * @deprecated Use createHighlightProvider() factory for new code
- * This function provides backward compatibility for existing code
+ * Supports both ArcGIS (view) and MapLibre (map) implementations
  */
 export const highlightFeature = async (
   feature: Feature<Geometry, GeoJsonProperties>,
-  view: __esri.MapView | __esri.SceneView,
+  viewOrMap: __esri.MapView | __esri.SceneView | any,
   sourceCRS: string,
   title: string,
   options?: HighlightOptions
 ): Promise<Graphic | null> => {
-  const provider = createHighlightProvider(view, undefined);
+  // Determine if this is an ArcGIS view or MapLibre map
+  const isArcGIS = viewOrMap?.type === 'map' || viewOrMap?.goTo;
+
+  const provider = isArcGIS
+    ? createHighlightProvider(viewOrMap, undefined)
+    : createHighlightProvider(undefined, viewOrMap);
+
   const success = await provider.highlightFeature(feature, sourceCRS, title, options);
   return success ? ({} as Graphic) : null;
 };
 
 /**
  * Clear graphics from the map
- * @deprecated Use createHighlightProvider() factory for new code
- * This function provides backward compatibility for existing code
+ * Supports both ArcGIS (view) and MapLibre (map) implementations
  */
 export const clearGraphics = (
-  view: __esri.MapView | __esri.SceneView,
+  viewOrMap: __esri.MapView | __esri.SceneView | any,
   title?: string
 ) => {
-  const provider = createHighlightProvider(view, undefined);
+  // Determine if this is an ArcGIS view or MapLibre map
+  const isArcGIS = viewOrMap?.type === 'map' || viewOrMap?.goTo;
+
+  const provider = isArcGIS
+    ? createHighlightProvider(viewOrMap, undefined)
+    : createHighlightProvider(undefined, viewOrMap);
+
   provider.clearGraphics(title);
 };
 
 /**
  * Create a pin marker on the map
- * @deprecated Use createHighlightProvider() factory for new code
- * This function provides backward compatibility for existing code
+ * Supports both ArcGIS (view) and MapLibre (map) implementations
  */
 export function createPinGraphic(
   lat: number,
   long: number,
-  view: __esri.SceneView | __esri.MapView
+  viewOrMap: __esri.SceneView | __esri.MapView | any
 ) {
-  const provider = createHighlightProvider(view, undefined);
+  // Determine if this is an ArcGIS view or MapLibre map
+  const isArcGIS = viewOrMap?.type === 'map' || viewOrMap?.goTo;
+
+  const provider = isArcGIS
+    ? createHighlightProvider(viewOrMap, undefined)
+    : createHighlightProvider(undefined, viewOrMap);
+
   provider.createPinGraphic(lat, long);
 }

@@ -1,4 +1,9 @@
 import type { CoordinateAdapter, ScreenPoint, MapPoint, BoundingBox } from './types';
+import proj4 from 'proj4';
+
+// Define projections using standard EPSG definitions
+const WGS84 = 'EPSG:4326';
+const WEB_MERCATOR = 'EPSG:3857';
 
 /** MapLibre coordinate transformation (WGS84/4326) */
 export class MapLibreCoordinateAdapter implements CoordinateAdapter {
@@ -14,12 +19,17 @@ export class MapLibreCoordinateAdapter implements CoordinateAdapter {
     }
 
     createBoundingBox({ mapPoint, resolution, buffer }: { mapPoint: MapPoint; resolution: number; buffer: number }): BoundingBox {
-        const degreesBuffer = buffer * resolution;
+        // Convert point from geographic (4326) to Web Mercator (3857) using proj4
+        const [mercatorX, mercatorY] = proj4(WGS84, WEB_MERCATOR, [mapPoint.x, mapPoint.y]);
+
+        // Calculate buffer in Web Mercator meters (resolution is already in meters/pixel)
+        const metersBuffer = buffer * resolution;
+
         return {
-            minX: mapPoint.x - degreesBuffer,
-            minY: mapPoint.y - degreesBuffer,
-            maxX: mapPoint.x + degreesBuffer,
-            maxY: mapPoint.y + degreesBuffer,
+            minX: mercatorX - metersBuffer,
+            minY: mercatorY - metersBuffer,
+            maxX: mercatorX + metersBuffer,
+            maxY: mercatorY + metersBuffer,
         };
     }
 
@@ -58,11 +68,16 @@ export class MapLibreCoordinateAdapter implements CoordinateAdapter {
         try {
             if (!map?.getZoom) throw new Error('Invalid MapLibre map instance');
             const zoom = map.getZoom();
-            const metersPerPixel = (40075017 / (256 * Math.pow(2, zoom))) * Math.cos(0);
-            return metersPerPixel / 111320;
+            // Return resolution in meters per pixel (Web Mercator projection)
+            // Formula: earthCircumference / (tileSize * 2^zoom)
+            // Where: earthCircumference = 40075017m, tileSize = 256px (standard Web Mercator)
+            const EARTH_CIRCUMFERENCE = 40075017;
+            const TILE_SIZE = 256;
+            const metersPerPixel = (EARTH_CIRCUMFERENCE / (TILE_SIZE * Math.pow(2, zoom)));
+            return metersPerPixel;
         } catch (error) {
             console.error('MapLibre getResolution failed:', error);
-            return 0.0001;
+            return 1;
         }
     }
 }
