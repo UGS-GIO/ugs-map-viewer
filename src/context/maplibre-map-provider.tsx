@@ -1,11 +1,14 @@
 import { useState, useCallback, useRef } from "react";
+import type maplibregl from "maplibre-gl";
 import { LayerProps } from "@/lib/types/mapping-types";
+import { createMapFactory } from "@/lib/map/factory/factory";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MapContext, MapContextProps } from "@/context/map-context";
 
 /**
- * MapLibre Map Provider (Stub)
+ * MapLibre Map Provider
  * Manages MapLibre GL JS map initialization and state
+ * Uses the MapFactory for initialization
  *
  * Exposes the unified MapContext with:
  * - map: maplibre-gl.Map instance
@@ -18,42 +21,81 @@ import { MapContext, MapContextProps } from "@/context/map-context";
  * - No separate View class, Map contains both rendering and interaction
  * - No view.extent, instead use map.getBounds()
  * - Coordinates are [lng, lat]
- *
- * TODO: Phase 1.1
- * - Create MapLibre factory function (similar to ArcGIS init())
- * - Initialize Map with style and layers
- * - Implement layer visibility toggling
- * - Handle click events and feature queries
  */
 export function MapLibreMapProvider({ children }: { children: React.ReactNode }) {
-    const [map, _setMap] = useState<any>();
+    const [map, setMap] = useState<maplibregl.Map>();
     const [isSketching, setIsSketching] = useState<boolean>(false);
     const isMobile = useIsMobile();
 
     // Use refs to access the latest map without causing loadMap to recreate
-    const mapRef = useRef<any>();
+    const mapRef = useRef<maplibregl.Map>();
 
     // Keep ref in sync with state
     mapRef.current = map;
 
-    const loadMap = useCallback(async (_params: {
+    const loadMap = useCallback(async ({
+        container,
+        zoom = 10,
+        center = [0, 0],
+        layers = []
+    }: {
         container: HTMLDivElement,
         zoom?: number,
         center?: [number, number],
         layers?: LayerProps[]
     }) => {
-        // TODO: Phase 1.1 - Implement MapLibre initialization
-        // 1. Create MapLibre Map instance with:
-        //    - container
-        //    - style (basemap)
-        //    - initial center and zoom
-        // 2. Add layers to the map (converting from LayerProps to MapLibre sources/layers)
-        // 3. Handle layer visibility toggling (similar to ArcGIS)
+        // If the map already exists, we just sync visibility without rebuilding the map.
+        if (mapRef.current) {
+            // Create a simple lookup map of what *should* be visible from the URL state
+            const visibilityMap = new Map<string, boolean>();
 
-        console.warn('MapLibreMapProvider.loadMap not yet implemented');
+            // Helper to recursively get all titles and their visibility
+            const populateVisibilityMap = (layerConfigs: LayerProps[]) => {
+                for (const config of layerConfigs) {
+                    if (config.title) {
+                        visibilityMap.set(config.title, config.visible ?? true);
+                    }
+                    if (config.type === 'group' && 'layers' in config) {
+                        populateVisibilityMap(config.layers || []);
+                    }
+                }
+            };
+            populateVisibilityMap(layers);
 
-        // Temporary: throw error to prevent silent failures
-        throw new Error('MapLibre provider not yet implemented. Set VITE_MAP_IMPL=arcgis');
+            // Iterate through the LIVE layers on the map and update visibility
+            const style = mapRef.current.getStyle();
+            if (style && style.layers) {
+                for (const layer of style.layers) {
+                    const metadata = layer.metadata as Record<string, unknown> | undefined;
+                    const layerTitle = metadata?.title as string | undefined;
+
+                    if (layerTitle) {
+                        const shouldBeVisible = visibilityMap.get(layerTitle);
+                        if (shouldBeVisible !== undefined) {
+                            const currentVisibility = mapRef.current.getLayoutProperty(layer.id, 'visibility');
+                            const isCurrentlyVisible = currentVisibility !== 'none';
+                            if (isCurrentlyVisible !== shouldBeVisible) {
+                                mapRef.current.setLayoutProperty(
+                                    layer.id,
+                                    'visibility',
+                                    shouldBeVisible ? 'visible' : 'none'
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // If the map does NOT exist, run the initial creation logic.
+        else {
+            const factory = createMapFactory();
+            const result = await factory.init(container, isMobile, { zoom, center }, layers);
+
+            if (result.map && 'getStyle' in result.map) {
+                setMap(result.map as maplibregl.Map);
+            }
+        }
     }, [isMobile]);
 
     const value: MapContextProps = {
