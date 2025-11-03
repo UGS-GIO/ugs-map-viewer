@@ -1,0 +1,227 @@
+import UniqueValueRenderer from "@arcgis/core/renderers/UniqueValueRenderer.js";
+import SimpleRenderer from "@arcgis/core/renderers/SimpleRenderer.js";
+import WMSSublayer from "@arcgis/core/layers/support/WMSSublayer.js";
+import GroupLayer from "@arcgis/core/layers/GroupLayer";
+import { createSVGSymbol } from '@/lib/legend/symbol-generator';
+import { Legend } from '@/lib/types/geoserver-types';
+import { MapImageLayerType } from '@/lib/types/mapping-types'
+import { LegendProvider, RendererData } from './types';
+
+/**
+ * ArcGIS-specific legend provider
+ * Uses ArcGIS SDK layer types and renderers
+ */
+export class ArcGISLegend implements LegendProvider {
+  constructor(
+    private view: __esri.SceneView | __esri.MapView,
+    private map: __esri.Map
+  ) {}
+
+  async getRenderer(layerId: string): Promise<RendererData> {
+    const layer = findLayerById(this.map.layers, layerId);
+
+    await this.view.when();
+    if (!layer) {
+      console.error(`Layer with id ${layerId} not found`);
+      return;
+    }
+
+    if (layer.type === 'group') {
+      return await this.getGroupLayerRenderer(layer as __esri.GroupLayer) as any;
+    }
+
+    if (layer.type === 'map-image') {
+      return await this.getMapImageLayerRenderer(layer as __esri.MapImageLayer) as any;
+    }
+
+    if (layer.type === 'feature') {
+      return await this.getFeatureLayerRenderer(layer as __esri.FeatureLayer) as any;
+    }
+
+    if (layer.type === 'wms') {
+      return await this.getWMSLayerRenderer(layer as __esri.WMSLayer) as any;
+    }
+
+    console.error('Layer type not supported:', layer.type);
+    return;
+  }
+
+  private async getGroupLayerRenderer(layer: __esri.GroupLayer) {
+    for (const sublayer of layer.allLayers) {
+      try {
+        switch (sublayer.type) {
+          case 'feature':
+            return await this.getFeatureLayerRenderer(sublayer as __esri.FeatureLayer);
+          case 'map-image':
+            return await this.getMapImageLayerRenderer(sublayer as __esri.MapImageLayer);
+          case 'wms':
+            return await this.getWMSLayerRenderer(sublayer as __esri.WMSLayer);
+          default:
+            console.error('Unsupported GroupLayer type:', sublayer.type);
+        }
+      } catch (error) {
+        console.error('Error processing sublayer:', sublayer.type, error);
+      }
+    }
+  }
+
+  private async getMapImageLayerRenderer(layer: __esri.MapImageLayer) {
+    const response = await fetch(`${layer.url}/legend?f=pjson`);
+    const legend: MapImageLayerType = await response.json();
+    const legendEntries = legend.layers[0]?.legend;
+
+    if (legendEntries && legendEntries.length > 0) {
+      const allRenderers = [];
+
+      for (const entry of legendEntries) {
+        allRenderers.push({
+          type: 'map-image-renderer' as const,
+          label: entry.label,
+          imageData: entry.imageData,
+          id: layer.id,
+          url: layer.url,
+          title: layer.title,
+        });
+      }
+
+      return allRenderers;
+    }
+
+    console.error('No legend data found for MapImageLayer.');
+    return;
+  }
+
+  private async getFeatureLayerRenderer(layer: __esri.FeatureLayer) {
+    if (layer.renderer?.type === 'unique-value') {
+      const renderer = new UniqueValueRenderer(layer.renderer);
+      const results = [];
+
+      if (renderer.uniqueValueInfos) {
+        for (const info of renderer.uniqueValueInfos) {
+          results.push({
+            type: 'regular-layer-renderer' as const,
+            renderer: info.symbol,
+            id: layer.id,
+            label: info.label,
+            url: layer.url,
+          });
+        }
+      }
+
+      return results;
+    }
+
+    if (layer.renderer?.type === 'simple') {
+      const renderer = new SimpleRenderer(layer.renderer);
+      return [{
+        type: 'regular-layer-renderer' as const,
+        renderer: renderer.symbol,
+        id: layer.id,
+        label: layer.title,
+        url: layer.url,
+      }];
+    }
+
+    console.error('Unsupported renderer type for FeatureLayer.');
+    return [{
+      type: 'regular-layer-renderer' as const,
+      renderer: new SimpleRenderer(),
+      id: layer.id,
+      label: layer.title,
+      url: layer.url,
+    }];
+  }
+
+  private async getWMSLayerRenderer(layer: __esri.WMSLayer) {
+    const sublayer: __esri.WMSSublayer = layer.sublayers.getItemAt(0) || new WMSSublayer();
+
+    const legendUrl = `${layer.url}?service=WMS&request=GetLegendGraphic&format=application/json&layer=${sublayer.name}`;
+
+    try {
+      const response = await fetch(legendUrl, {
+        method: 'GET',
+        headers: { Accept: 'application/json' },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status} for sublayer ${sublayer.name}`);
+      }
+
+      const legendData: Legend = await response.json();
+
+      const rules = legendData?.Legend?.[0]?.rules || [];
+
+      if (rules.length === 0) {
+        console.warn('No rules found in the legend data.');
+        return;
+      }
+
+      function isAutoGeneratedDefaultSymbolizer(rule: any) {
+        const symbolizer = rule.symbolizers?.[0]?.Point;
+        const graphic = symbolizer?.graphics?.[0];
+
+        return rule.symbolizers?.length === 1 &&
+          symbolizer &&
+          symbolizer.graphics?.length === 1 &&
+          graphic?.mark &&
+          !graphic.fill &&
+          !graphic.stroke;
+      }
+
+      const previews = [];
+
+      for (const rule of rules) {
+        const isAutoGeneratedDefault = isAutoGeneratedDefaultSymbolizer(rule);
+        const label = rule.title || rule.name;
+
+        if (isAutoGeneratedDefault) {
+          const emptySvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          emptySvg.setAttribute("width", "32");
+          emptySvg.setAttribute("height", "20");
+          emptySvg.setAttribute("viewBox", "0 0 32 20");
+          emptySvg.style.display = "block";
+          emptySvg.style.visibility = "hidden";
+
+          previews.push({
+            type: 'regular-layer-renderer' as const,
+            label: label,
+            id: layer.id.toString(),
+            url: layer.url,
+          });
+        } else {
+          previews.push({
+            type: 'regular-layer-renderer' as const,
+            label: label,
+            renderer: createSVGSymbol(rule.symbolizers),
+            id: layer.id.toString(),
+            url: layer.url,
+          });
+        }
+      }
+
+      return previews;
+    } catch (error) {
+      console.error('Error fetching WMS legend data:', error);
+    }
+    return [];
+  }
+}
+
+/**
+ * Helper function to find a layer by ID in the layer collection
+ */
+function findLayerById(layers: __esri.Collection<__esri.Layer>, id: string): __esri.Layer | undefined {
+  let foundLayer: __esri.Layer | undefined;
+
+  layers.forEach(layer => {
+    if (layer.id === id) {
+      foundLayer = layer;
+    } else if (layer instanceof GroupLayer) {
+      const childLayer = findLayerById(layer.layers, id);
+      if (childLayer) {
+        foundLayer = childLayer;
+      }
+    }
+  });
+  return foundLayer;
+}
