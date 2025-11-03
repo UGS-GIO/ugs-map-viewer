@@ -337,7 +337,7 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
                 'Disclaimer': {
                     field: 'Formation Tops Disclaimer',
                     type: 'custom',
-                    transform: () => 'Formation tops and LAS file availability is provided as-is and may not be fully complete or accurate'
+                    transform: () => 'Formation top information and LAS file availability is provided as-is and may not be fully complete or accurate.'
                 }
             },
             relatedTables: [
@@ -555,7 +555,6 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
                         return `${topFt} - ${bottomFt} ft`;
                     }
                 },
-                'Cored Intervals': { field: 'cored_formation', type: 'string' },
                 'Cored Formations': {
                     field: 'custom',
                     type: 'custom',
