@@ -108,18 +108,16 @@ export class MapLibreLegend implements LegendProvider {
    */
   private async getWMSLegend(sourceId: string, source: any): Promise<RendererData> {
     try {
-      // Extract WMS URL from source - this is a best-effort approach
-      // MapLibre WMS sources typically have a tiles URL
-      const wmsUrl = source.tiles?.[0] || source.url;
+      // Get WMS URL and layer name from source metadata
+      const wmsUrl = source.metadata?.['wms-url'];
+      const layerName = source.metadata?.['wms-layer'];
 
-      if (!wmsUrl) {
+      if (!wmsUrl || !layerName) {
+        console.warn(`Missing WMS metadata for source ${sourceId}, falling back to paint properties`);
         return this.getLegendFromPaint({ id: sourceId }, sourceId);
       }
 
-      // Try to extract layer name from URL or metadata
-      const layerName = source.metadata?.['wms-layer'] || sourceId;
-
-      const legendUrl = `${wmsUrl.split('?')[0]}?service=WMS&request=GetLegendGraphic&format=application/json&layer=${layerName}`;
+      const legendUrl = `${wmsUrl}?service=WMS&request=GetLegendGraphic&format=application/json&layer=${layerName}&version=1.3.0`;
 
       const response = await fetch(legendUrl, {
         method: 'GET',
@@ -128,6 +126,13 @@ export class MapLibreLegend implements LegendProvider {
 
       if (!response.ok) {
         console.warn(`Failed to fetch WMS legend: ${response.status}`);
+        return undefined;
+      }
+
+      // Check if response is actually JSON before parsing
+      const contentType = response.headers.get('content-type');
+      if (!contentType?.includes('application/json')) {
+        console.warn(`WMS legend returned non-JSON content: ${contentType}`);
         return undefined;
       }
 
@@ -183,8 +188,9 @@ export class MapLibreLegend implements LegendProvider {
 
       return previews;
     } catch (error) {
-      console.error('Error fetching WMS legend:', error);
-      return;
+      console.warn('Error fetching WMS legend, falling back to paint properties:', error);
+      // Fall back to paint-based legend when WMS fails
+      return this.getLegendFromPaint({ id: sourceId }, sourceId);
     }
   }
 

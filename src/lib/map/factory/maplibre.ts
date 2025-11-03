@@ -136,7 +136,11 @@ export class MapLibreMapFactory implements MapFactory {
         tiles: [sourceUrl],
         tileSize: 256,
         scheme: 'tms',
-      });
+        metadata: {
+          'wms-layer': sublayerName,
+          'wms-url': baseUrl,
+        },
+      } as any);
     }
 
     if (!map.getLayer(layerId)) {
