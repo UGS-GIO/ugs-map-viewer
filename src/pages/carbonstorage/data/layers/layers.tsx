@@ -12,7 +12,7 @@ const basinNamesWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: basinNamesWMSTitle,
     visible: true,
-    opacity: 0.5,
+    opacity: 0.3,
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${basinNamesLayerName}`,
@@ -333,7 +333,12 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
             queryable: true,
             popupFields: {
                 'API': { field: 'api', type: 'string' },
-                'Well Name': { field: 'wellname', type: 'string' }
+                'Well Name': { field: 'wellname', type: 'string' },
+                'Disclaimer': {
+                    field: 'Formation Tops Disclaimer',
+                    type: 'custom',
+                    transform: () => 'Formation top information and LAS file availability is provided as-is and may not be fully complete or accurate.'
+                }
             },
             relatedTables: [
                 {
@@ -377,7 +382,7 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
                                 }
                                 return value !== '' ? value : 'No Data';
                             }
-                        },
+                        }
                     ]
                 }
             ]
@@ -526,7 +531,7 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
                 'UWI': { field: 'uwi', type: 'string' },
                 'Well Name': { field: 'well_name', type: 'string' },
                 'Sample Types': {
-                    field: 'all_types', type: 'string', transform: (value) => {
+                    field: 'type', type: 'string', transform: (value) => {
                         if (value) {
                             return toTitleCase(value.replace(/,/g, ', '));
                         }
@@ -550,9 +555,6 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
                         return `${topFt} - ${bottomFt} ft`;
                     }
                 },
-                'Cored Intervals': { field: 'cored_formation', type: 'string' },
-                'Formation': { field: 'formation', type: 'string' },
-                'Formation at TD': { field: 'form_td', type: 'string', transform: (value) => toTitleCase(value || '') },
                 'Cored Formations': {
                     field: 'custom',
                     type: 'custom',
@@ -577,25 +579,6 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
                     transform: () => 'Utah Core Research Center Inventory'
                 },
             },
-            relatedTables: [
-                {
-                    fieldLabel: 'Formation Tops',
-                    matchingField: 'api',
-                    targetField: 'apishort',
-                    url: PROD_POSTGREST_URL + '/view_wellswithtops_hascore',
-                    headers: {
-                        "Accept-Profile": 'emp',
-                        "Accept": "application/json",
-                        "Cache-Control": "no-cache",
-                    },
-                    displayFields: [
-                        { field: 'formation_alias', label: 'Formation Name' },
-                        { field: 'formation_depth', label: 'Formation Depth (ft)' },
-                    ],
-                    sortBy: 'formation_depth',
-                    sortDirection: 'asc'
-                },
-            ],
             linkFields: {
                 'inventory_link': {
                     transform: (value) => {
