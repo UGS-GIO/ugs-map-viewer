@@ -1,4 +1,4 @@
-import { MapWidgets } from '@/pages/carbonstorage/components/map-widgets';
+import { MapControls } from '@/pages/carbonstorage/components/map-controls';
 import { MapContextMenu } from "@/components/custom/map/map-context-menu";
 import { PopupDrawer } from "@/components/custom/popups/popup-drawer";
 import { useMapContainer } from "@/hooks/use-map-container";
@@ -56,7 +56,7 @@ export default function MapContainer({ searchParams, updateLayerSelection }: Map
                 ref={mapRef}
                 onContextMenu={e => handleOnContextMenu(e, contextMenuTriggerRef, setCoordinates)}
             >
-                <MapWidgets />
+                <MapControls />
             </div>
             <PopupDrawer
                 container={popupContainer}

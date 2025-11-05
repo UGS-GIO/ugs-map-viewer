@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from "react";
 import type SceneView from "@arcgis/core/views/SceneView";
 import type MapView from "@arcgis/core/views/MapView";
 import { LayerProps } from "@/lib/types/mapping-types";
-import { init } from "@/lib/map/utils";
+import { createMapFactory } from "@/lib/map/factory/factory";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MapContext, MapContextProps } from "@/context/map-context";
 
@@ -72,7 +72,8 @@ export function ArcGISMapProvider({ children }: { children: React.ReactNode }) {
 
         // If the view does NOT exist, run the initial creation logic.
         else {
-            const { map: initMap, view: initView } = await init(container, isMobile, { zoom, center }, layers, 'map');
+            const factory = createMapFactory();
+            const { map: initMap, view: initView } = await factory.init(container, isMobile, { zoom, center }, layers, 'map');
 
             setView(initView);
             setMap(initMap);

@@ -14,6 +14,7 @@ export class MapLibreHighlight implements HighlightProvider {
   constructor(private map: maplibregl.Map) {}
 
   async highlightFeature(
+    
     feature: Feature<Geometry, GeoJsonProperties>,
     sourceCRS: string,
     title: string,

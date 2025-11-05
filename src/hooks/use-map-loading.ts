@@ -1,35 +1,35 @@
 import { useState, useRef, useEffect } from 'react';
+import maplibregl from 'maplibre-gl';
 
-interface UseIsMapLoadingProps {
-    view?: __esri.MapView | __esri.SceneView | undefined;
+interface UseMapLoadingProps {
+    map?: maplibregl.Map;
     debounceMs?: number;
 }
 
-export function useIsMapLoading({
-    view,
+/**
+ * Hook to detect MapLibre map loading state
+ * Returns true while the map is loading tiles and rendering
+ */
+export function useMapLoading({
+    map,
     debounceMs = 200
-}: UseIsMapLoadingProps): boolean {
+}: UseMapLoadingProps): boolean {
     const [isLoading, setIsLoading] = useState(true);
-
-    // Track if we've completed the initial load
     const hasInitiallyLoadedRef = useRef(false);
     const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const handlesRef = useRef<__esri.Handle[]>([]);
 
     useEffect(() => {
         // Cleanup previous effects
-        handlesRef.current.forEach(handle => handle.remove());
-        handlesRef.current = [];
         if (debounceTimeoutRef.current) {
             clearTimeout(debounceTimeoutRef.current);
         }
 
-        if (!view) {
+        if (!map) {
             setIsLoading(false);
             return;
         }
 
-        // If we've already completed initial load for any view, don't show loading
+        // If we've already completed initial load, don't show loading
         if (hasInitiallyLoadedRef.current) {
             setIsLoading(false);
             return;
@@ -41,7 +41,9 @@ export function useIsMapLoading({
                 return;
             }
 
-            const isCurrentlyLoading = view.updating || !view.stationary || !view.ready;
+            // MapLibre doesn't have direct loading events like ArcGIS
+            // Check if style is loaded and all sources are ready
+            const isCurrentlyLoading = !map.isStyleLoaded();
 
             // Clear any pending timeout
             if (debounceTimeoutRef.current) {
@@ -58,33 +60,29 @@ export function useIsMapLoading({
                     if (!hasInitiallyLoadedRef.current) {
                         setIsLoading(false);
                         hasInitiallyLoadedRef.current = true;
-
-                        // Clean up watchers after initial load
-                        handlesRef.current.forEach(handle => handle.remove());
-                        handlesRef.current = [];
                     }
                 }, debounceMs);
             }
         };
 
-        // Set up watchers to detect loading state
-        handlesRef.current = [
-            view.watch("ready", updateLoadingStatus),
-            view.watch("updating", updateLoadingStatus),
-            view.watch("stationary", updateLoadingStatus)
-        ];
+        // Listen to MapLibre loading events
+        map.on('load', updateLoadingStatus);
+        map.on('sourcedata', updateLoadingStatus);
+        map.on('styledata', updateLoadingStatus);
 
         // Check initial state
         updateLoadingStatus();
 
         // Cleanup function
         return () => {
-            handlesRef.current.forEach(handle => handle.remove());
+            map.off('load', updateLoadingStatus);
+            map.off('sourcedata', updateLoadingStatus);
+            map.off('styledata', updateLoadingStatus);
             if (debounceTimeoutRef.current) {
                 clearTimeout(debounceTimeoutRef.current);
             }
         };
-    }, [view, debounceMs]);
+    }, [map, debounceMs]);
 
     return isLoading;
 }
