@@ -275,7 +275,7 @@ const transmissionLinesWMSConfig: WMSLayerProps = {
 }
 
 // Seamless Geological Units WMS Layer
-const seamlessGeolunitsLayerName = 'seamlessgeolunits';
+const seamlessGeolunitsLayerName = 'mapping_geolunits_500k';
 const seamlessGeolunitsWMSTitle = 'Geologic Units (500k)';
 const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     type: 'wms',
