@@ -1,210 +1,133 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useRef } from "react";
 import { useMap } from '@/hooks/use-map';
 import { useTerraDrawPolygon } from '@/hooks/use-terra-draw';
-import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel";
-import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
-import Layer from "@arcgis/core/layers/Layer";
+import { useMapLibreScreenshot } from '@/hooks/use-maplibre-screenshot';
 import { Button } from '@/components/custom/button';
 import { BackToMenuButton } from "@/components/custom/back-to-menu-button";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import Polygon from "@arcgis/core/geometry/Polygon";
 import { useToast } from "@/hooks/use-toast";
-import Map from "@arcgis/core/Map";
-import MapView from "@arcgis/core/views/MapView";
-import Graphic from "@arcgis/core/Graphic";
 import { Link } from "@/components/custom/link";
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
-
+import proj4 from 'proj4';
+import { serializePolygonForUrl, PolygonGeometry } from '@/lib/map/conversion-utils';
 
 type ActiveButtonOptions = 'currentMapExtent' | 'customArea' | 'reset';
 type DialogType = 'areaTooLarge' | 'confirmation' | null;
 
+// Terra Draw geometry format (WGS84)
+interface DrawGeometry {
+    type: 'polygon';
+    rings: number[][][];
+}
+
 function ReportGenerator() {
-    const { view, map, setIsSketching } = useMap();
+    const { map, setIsSketching, setIgnoreNextClick } = useMap();
     const [activeButton, setActiveButton] = useState<ActiveButtonOptions>();
-    const tempGraphicsLayer = useRef<__esri.GraphicsLayer | undefined>(undefined);
-    const sketchVM = useRef<__esri.SketchViewModel | undefined>(undefined);
     const { setNavOpened } = useSidebar();
     const isMobile = useIsMobile();
     const [activeDialog, setActiveDialog] = useState<DialogType>(null);
-    const [screenshot, setScreenshot] = useState<string>("");
-    const [pendingAoi, setPendingAoi] = useState<__esri.Geometry | null>(null);
+    const [pendingAoi, setPendingAoi] = useState<PolygonGeometry | null>(null);
+    const [aoiForScreenshot, setAoiForScreenshot] = useState<string | null>(null);
     const { toast } = useToast();
 
-    // Wrap draw complete handler in useCallback to ensure stable reference
-    const handleMapLibreDrawCompleteCallback = useCallback((geometry: any) => {
-        console.log('[ReportGenerator] MapLibre draw complete callback triggered');
-        try {
-            // Convert MapLibre geometry to Polygon-like format
-            if (geometry.rings && geometry.rings.length > 0) {
-                const rings = geometry.rings;
+    // Use ref to track sketching state synchronously to prevent race conditions
+    // The ref is checked immediately in click handlers before React re-renders
+    const isSketchingRef = useRef(false);
 
-                // Check area constraints
-                // For simplicity, estimate area using a simple bounding box
-                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-                for (const ring of rings) {
-                    for (const [lng, lat] of ring) {
-                        minX = Math.min(minX, lng);
-                        maxX = Math.max(maxX, lng);
-                        minY = Math.min(minY, lat);
-                        maxY = Math.max(maxY, lat);
-                    }
-                }
-
-                // Rough conversion to meters for comparison
-                const degreesToMeters = 111320;
-                const areaWidth = (maxX - minX) * degreesToMeters * Math.cos((minY + maxY) / 2 * Math.PI / 180);
-                const areaHeight = (maxY - minY) * degreesToMeters;
-
-                console.log('[ReportGenerator] MapLibre draw dimensions:', { areaWidth, areaHeight });
-
-                if (areaHeight < 12000 && areaWidth < 18000) {
-                    // Create a geometry object compatible with the rest of the code
-                    const aoiGeometry = {
-                        spatialReference: { wkid: 4326 },
-                        rings: rings
-                    };
-                    handleNavigate(aoiGeometry as any);
-                } else {
-                    setActiveDialog('areaTooLarge');
-                }
-            }
-        } catch (error) {
-            console.error('Error handling MapLibre draw complete:', error);
-            setActiveDialog('areaTooLarge');
-        }
-    }, []);
-
-    // Terra Draw hook for MapLibre
-    const terraDraw = useTerraDrawPolygon({
-        map: map,
-        onDrawComplete: handleMapLibreDrawCompleteCallback
+    // Use the MapLibre screenshot hook
+    const { screenshot, isLoading: isCapturing } = useMapLibreScreenshot({
+        polygon: aoiForScreenshot,
+        width: '50vw',
+        height: '50vh'
     });
 
-    const createMap = async (aoi: string): Promise<{ view: __esri.MapView, cleanup: () => void }> => {
-        // Remove any existing map containers
-        const existingDiv = document.getElementById('screenshotMapDiv');
-        if (existingDiv) {
-            existingDiv.remove();
-        }
+    // Setup Terra Draw for custom area drawing
+    const { startPolygonDraw, clearDrawings, cancelDraw, isReady: isTerraDrawReady } = useTerraDrawPolygon({
+        map: map as any,
+        onDrawComplete: (geometry: DrawGeometry) => {
+            console.log('[ReportGenerator] Draw complete:', geometry);
 
-        // Create new map container
-        const mapDiv = document.createElement('div');
-        mapDiv.id = 'screenshotMapDiv';
-        mapDiv.style.width = '50vw';
-        mapDiv.style.height = '50vh';
-        document.body.appendChild(mapDiv);
+            // Convert from WGS84 (Terra Draw GeoJSON) to Web Mercator for area check
+            const rings = geometry.rings;
+            const mercatorRings = [];
 
-        const polygonSymbol = new SimpleFillSymbol({
-            color: "#8a2be2cc",
-            style: "solid",
-            outline: {
-                color: "white",
-                width: 1
+            for (const ring of rings) {
+                const mercatorRing = [];
+                for (const coord of ring) {
+                    const [x, y] = proj4('EPSG:4326', 'EPSG:3857', [coord[0], coord[1]]);
+                    mercatorRing.push([x, y]);
+                }
+                mercatorRings.push(mercatorRing);
             }
-        });
 
-        const parsedAoi = JSON.parse(aoi);
-        const polygon = new Polygon(parsedAoi);
-
-        const polylineGraphic = new Graphic({
-            geometry: polygon,
-            symbol: polygonSymbol
-        });
-
-        const map = new Map({
-            basemap: "topo"
-        });
-
-        const extentClone = polygon.extent?.clone();
-
-        const screenshotView = new MapView({
-            map: map,
-            container: mapDiv,
-            ui: {
-                components: ['attribution']
-            },
-            extent: extentClone?.expand(2),
-            constraints: {
-                snapToZoom: false
+            // Calculate extent from Web Mercator coordinates
+            const allX = [];
+            const allY = [];
+            for (const ring of mercatorRings) {
+                for (const coord of ring) {
+                    allX.push(coord[0]);
+                    allY.push(coord[1]);
+                }
             }
-        });
 
-        // Add graphic after view initialization
-        screenshotView.graphics.add(polylineGraphic);
+            const minX = Math.min(...allX);
+            const maxX = Math.max(...allX);
+            const minY = Math.min(...allY);
+            const maxY = Math.max(...allY);
 
-        // Wait for the view to be ready
-        await screenshotView.when();
+            const areaWidth = maxX - minX;
+            const areaHeight = maxY - minY;
 
-        // Wait for the basemap to load
-        await map.basemap?.load();
+            console.log('[ReportGenerator] Area size:', { areaWidth, areaHeight });
 
-        // Important: Wait for ALL basemap layers to load
-        const basemapLayerPromises = map.basemap?.baseLayers.map(layer => layer.load());
-        await Promise.all(basemapLayerPromises || []);
+            // Check if area is within limits (12000m x 18000m)
+            if (areaHeight < 12000 && areaWidth < 18000) {
+                const aoi: PolygonGeometry = {
+                    rings: mercatorRings,
+                    crs: 'EPSG:3857' // Web Mercator
+                };
+                setPendingAoi(aoi);
+                setAoiForScreenshot(JSON.stringify(aoi));
+                setActiveDialog('confirmation');
+                setActiveButton(undefined);
+            } else {
+                setActiveDialog('areaTooLarge');
+                setActiveButton(undefined);
+            }
 
-        // Go to extent after layers are loaded
-        await screenshotView.goTo(extentClone?.expand(2), {
-            animate: false,
-            duration: 0
-        });
+            clearDrawings();
 
-        // Wait for rendering to complete
-        await new Promise(resolve => setTimeout(resolve, 1000));
+            // Set flag to ignore the next click (the finishing double-click)
+            // This will be checked and cleared by the click handler
+            setIgnoreNextClick?.(true);
 
-        const cleanup = () => {
-            screenshotView.destroy();
-            mapDiv.remove();
-        };
-
-        return { view: screenshotView, cleanup };
-    };
-
-    const getScreenshot = async (geometry: __esri.Geometry) => {
-        try {
-            const aoi = JSON.stringify(geometry);
-            const { view: screenshotView, cleanup } = await createMap(aoi);
-
-            // Dynamically get the width and height of the map container
-            const mapDiv = document.getElementById('screenshotMapDiv');
-            const width = mapDiv?.offsetWidth || 0;
-            const height = mapDiv?.offsetHeight || 0;
-
-            // Capture the screenshot with dynamic width and height
-            const screenshot = await screenshotView.takeScreenshot({
-                width: width,
-                height: height,
-                format: "png"
-            });
-
-            // Clean up
-            cleanup();
-
-            return screenshot?.dataUrl;
-        } catch (error) {
-            console.error('Failed to capture screenshot:', error);
-            return null;
+            // Now safe to clear sketching state
+            isSketchingRef.current = false;
+            setIsSketching?.(false);
         }
-    };
+    });
 
-    const handleNavigate = async (aoi: __esri.Geometry) => {
+    const handleNavigate = (aoi: PolygonGeometry) => {
         setPendingAoi(aoi);
-        const screenshotDataUrl = await getScreenshot(aoi);
-
-        if (screenshotDataUrl) {
-            setScreenshot(screenshotDataUrl);
-        }
-
+        setAoiForScreenshot(JSON.stringify(aoi));
         setActiveDialog('confirmation');
     };
 
     const handleConfirmNavigation = () => {
         if (!pendingAoi) return;
 
-        const aoiString = JSON.stringify(pendingAoi);
-        const reportUrl = '/hazards/report/' + aoiString;
+        const serialized = serializePolygonForUrl(pendingAoi);
+        if (!serialized) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to serialize polygon for report",
+            });
+            return;
+        }
+
+        const reportUrl = `/hazards/report?aoi=${encodeURIComponent(serialized)}`;
 
         // Open in new tab
         window.open(reportUrl, '_blank');
@@ -214,15 +137,24 @@ function ReportGenerator() {
     const handleCopyLink = () => {
         if (!pendingAoi) return;
 
-        const aoiString = JSON.stringify(pendingAoi);
-        const reportUrl = window.location.origin + '/hazards/report/' + aoiString;
+        const serialized = serializePolygonForUrl(pendingAoi);
+        if (!serialized) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to serialize polygon for report",
+            });
+            return;
+        }
+
+        const reportUrl = window.location.origin + `/hazards/report?aoi=${encodeURIComponent(serialized)}`;
 
         navigator.clipboard.writeText(reportUrl)
             .catch(err => {
                 toast({
                     variant: "destructive",
                     title: "Uh oh! Something went wrong.",
-                    description: "There was a copying the link. Please try again.",
+                    description: "There was a problem copying the link. Please try again.",
                 })
                 console.error('Failed to copy URL:', err)
             });
@@ -233,81 +165,43 @@ function ReportGenerator() {
         })
     };
 
-    function addGraphic(
-        event: __esri.SketchViewModelCreateEvent,
-        tempGraphicsLayer: __esri.GraphicsLayer | undefined,
-        setActiveButton: React.Dispatch<React.SetStateAction<ActiveButtonOptions | undefined>>
-    ) {
-        if (event.state === "complete" && event.graphic && event.graphic.geometry && event.graphic.geometry.extent) {
-            tempGraphicsLayer?.remove(event.graphic);
-            const drawAOIHeight = event.graphic.geometry.extent.height;
-            const drawAOIWidth = event.graphic.geometry.extent.width;
-            const aoi = event.graphic.geometry;
-
-            if (drawAOIHeight < 12000 && drawAOIWidth < 18000) {
-                handleNavigate(aoi);
-                setActiveButton(undefined);
-            } else {
-                setActiveDialog('areaTooLarge');
-                setActiveButton(undefined);
-            }
-        }
-    }
-
     const handleActiveButton = (buttonName: ActiveButtonOptions) => {
         setActiveButton(buttonName);
-        view?.focus();
     };
 
-    useEffect(() => {
-        // Only run if the view is available
-        if (!view) return;
-
-        tempGraphicsLayer.current = new GraphicsLayer();
-        // Correcty chain the check for '.map'
-        view.map?.add(tempGraphicsLayer.current as Layer);
-
-        return () => {
-            if (tempGraphicsLayer.current) {
-                view.map?.remove(tempGraphicsLayer.current as Layer);
-            }
-        };
-    }, [view]);
-
-    useEffect(() => {
-        if (sketchVM.current) {
-            sketchVM.current.destroy();
-        }
-    }, []);
-
     const handleCurrentMapExtentButton = () => {
-        handleReset()
+        handleReset();
         handleActiveButton('currentMapExtent');
 
-        const extent = view?.extent;
-        const areaHeight = extent?.height;
-        const areaWidth = extent?.width;
+        if (!map) return;
 
-        if (areaHeight && areaWidth && areaHeight < 12000 && areaWidth < 18000) {
-            const xMini = extent.xmin;
-            const xMaxi = extent.xmax;
-            const yMini = extent.ymin;
-            const yMaxi = extent.ymax;
+        const bounds = map.getBounds();
+        const sw = bounds.getSouthWest();
+        const ne = bounds.getNorthEast();
 
-            const newRings = [
-                [xMaxi, yMaxi],
-                [xMaxi, yMini],
-                [xMini, yMini],
-                [xMini, yMaxi],
-                [xMaxi, yMaxi]
-            ];
+        // Convert to Web Mercator for area calculation
+        const [swX, swY] = proj4('EPSG:4326', 'EPSG:3857', [sw.lng, sw.lat]);
+        const [neX, neY] = proj4('EPSG:4326', 'EPSG:3857', [ne.lng, ne.lat]);
 
-            const aoi = new Polygon({
-                spatialReference: {
-                    wkid: 102100
-                },
-                rings: [newRings]
-            });
+        const areaWidth = Math.abs(neX - swX);
+        const areaHeight = Math.abs(neY - swY);
+
+        console.log('[ReportGenerator] Current extent size:', { areaWidth, areaHeight });
+
+        if (areaHeight < 12000 && areaWidth < 18000) {
+            // Create polygon from bounds (in Web Mercator)
+            const rings = [[
+                [neX, neY],
+                [neX, swY],
+                [swX, swY],
+                [swX, neY],
+                [neX, neY]
+            ]];
+
+            const aoi: PolygonGeometry = {
+                rings: [rings[0]],
+                crs: 'EPSG:3857' // Web Mercator
+            };
             handleNavigate(aoi);
         } else {
             setActiveDialog('areaTooLarge');
@@ -315,100 +209,26 @@ function ReportGenerator() {
     };
 
     const handleCustomAreaButton = () => {
-        handleReset()
-        handleActiveButton('customArea');
-        if (isMobile) setNavOpened(false); // Close the sidebar on mobile so user can see the map
+        // Clear any existing drawings but don't reset sketching state
+        cancelDraw();
+        clearDrawings();
+        setActiveButton('customArea');
+        if (isMobile) setNavOpened(false);
 
-        // Use Terra Draw (MapLibre) if map is available, otherwise use ArcGIS SketchViewModel
-        if (map && terraDraw) {
-            console.log('[ReportGenerator] Starting Terra Draw polygon mode');
-            terraDraw.startPolygonDraw();
-        } else if (view) {
-            console.log('[ReportGenerator] Starting ArcGIS sketch');
-            sketchVM.current = new SketchViewModel({
-                view: view,
-                layer: tempGraphicsLayer.current,
-                updateOnGraphicClick: false,
-                polygonSymbol: {
-                    type: "simple-fill",
-                    color: "rgba(138,43,226, 0.8)",
-                    style: "solid",
-                    outline: {
-                        color: "white",
-                        width: 1
-                    }
-                }
-            });
-
-            sketchVM.current.on('create', (event) => {
-                if (event.state === "start") {
-                    if (isMobile) {
-                        const completeButton = document.createElement("button");
-                        // onclick to complete the sketch
-                        completeButton.onclick = () => {
-                            sketchVM.current?.complete();
-                        };
-                        completeButton.innerHTML = "Complete";
-                        completeButton.id = "complete-button";
-                        completeButton.classList.add("esri-widget-button", "esri-widget", "esri-interactive", "p-2", "bg-background");
-
-                        view?.ui.add(completeButton, "top-right");
-                    }
-                    setIsSketching?.(true);
-                }
-
-                if (event.state === "active") {
-                    addGraphic(event, tempGraphicsLayer.current, setActiveButton);
-                }
-
-                if (event.state === "complete") {
-                    setIsSketching?.(true); // Ensure it remains true immediately after completion
-                    const completeButton = view?.ui.find("complete-button")
-                    if (completeButton) view?.ui.remove(completeButton);
-
-                    const extent = event.graphic.geometry?.extent;
-                    const areaHeight = extent?.height;
-                    const areaWidth = extent?.width;
-                    const geometry = event.graphic.geometry as __esri.Polygon;
-
-                    if (areaHeight && areaWidth && areaHeight < 12000 && areaWidth < 18000) {
-
-                        const aoi = new Polygon({
-                            spatialReference: {
-                                wkid: 102100
-                            },
-                            rings: geometry.rings
-                        });
-                        handleNavigate(aoi);
-                    } else {
-                        setActiveDialog('areaTooLarge');
-                    }
-
-                }
-
-                return;
-            });
-
-            sketchVM.current.create("polygon", {
-                mode: "click"
-            });
-        }
+        // Set sketching state synchronously with ref
+        isSketchingRef.current = true;
+        setIsSketching?.(true);
+        startPolygonDraw();
     };
 
     const handleReset = () => {
-        sketchVM.current?.cancel();
-        if (tempGraphicsLayer.current) {
-            tempGraphicsLayer.current?.removeAll();
-        }
-        // Also reset Terra Draw if active
-        if (map && terraDraw) {
-            terraDraw.clearDrawings();
-        }
+        cancelDraw();
+        clearDrawings();
         setActiveButton(undefined);
-        requestAnimationFrame(() => {
-            setIsSketching?.(false);
-        })
         setActiveDialog(null);
+        isSketchingRef.current = false;
+        setIsSketching?.(false);
+        setIgnoreNextClick?.(false);
     };
 
     const buttonText = (buttonName: ActiveButtonOptions, defaultText: string) => {
@@ -443,7 +263,7 @@ function ReportGenerator() {
                         <Button onClick={handleCurrentMapExtentButton} variant="default" className="w-full md:w-auto flex-grow mb-2 md:mb-0">
                             {buttonText('currentMapExtent', 'Current Map Extent')}
                         </Button>
-                        <Button onClick={handleCustomAreaButton} variant="default" className="w-full md:w-auto flex-grow mb-2 md:mb-0">
+                        <Button onClick={handleCustomAreaButton} variant="default" className="w-full md:w-auto flex-grow mb-2 md:mb-0" disabled={!isTerraDrawReady}>
                             {buttonText('customArea', 'Draw Custom Area')}
                         </Button>
                     </div>
@@ -487,17 +307,30 @@ function ReportGenerator() {
                     </DialogHeader>
                     <div>
                         <div className="flex justify-center">
-                            <img
-                                src={screenshot}
-                                alt="map"
-                                className="rounded-md w-full max-w-full h-auto"
-                            />
+                            {isCapturing ? (
+                                <div className="flex items-center justify-center w-full h-80 bg-muted rounded-md">
+                                    <div className="text-center">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                                        <p className="text-sm text-muted-foreground">Generating map preview...</p>
+                                    </div>
+                                </div>
+                            ) : screenshot ? (
+                                <img
+                                    src={screenshot}
+                                    alt="map preview"
+                                    className="rounded-md w-full max-w-full h-auto"
+                                />
+                            ) : (
+                                <div className="flex items-center justify-center w-full h-80 bg-destructive/10 rounded-md">
+                                    <p className="text-sm text-destructive">Failed to generate map preview</p>
+                                </div>
+                            )}
                         </div>
                         <div className="flex flex-row space-x-2 mt-4 justify-end">
-                            <Button onClick={handleConfirmNavigation} variant="default">
+                            <Button onClick={handleConfirmNavigation} variant="default" disabled={isCapturing || !screenshot}>
                                 Generate Report
                             </Button>
-                            <Button onClick={handleCopyLink} variant="secondary">
+                            <Button onClick={handleCopyLink} variant="secondary" disabled={isCapturing}>
                                 Copy Link
                             </Button>
                             <Button onClick={handleCloseDialog} variant="secondary">

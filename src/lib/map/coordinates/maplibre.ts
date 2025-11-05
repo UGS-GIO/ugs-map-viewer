@@ -1,4 +1,5 @@
 import type { CoordinateAdapter, ScreenPoint, MapPoint, BoundingBox } from './types';
+import type { MapLibreMap } from '@/lib/types/map-types';
 import proj4 from 'proj4';
 
 // Define projections using standard EPSG definitions
@@ -7,14 +8,14 @@ const WEB_MERCATOR = 'EPSG:3857';
 
 /** MapLibre coordinate transformation (WGS84/4326) */
 export class MapLibreCoordinateAdapter implements CoordinateAdapter {
-    screenToMap(screenPoint: ScreenPoint, map: any): MapPoint {
+    screenToMap(screenPoint: ScreenPoint, map: MapLibreMap): MapPoint {
         try {
             if (!map?.unproject) throw new Error('Invalid MapLibre map instance');
             const lngLat = map.unproject([screenPoint.x, screenPoint.y]);
-            return { x: lngLat.lng, y: lngLat.lat, spatialReference: { wkid: 4326 } };
+            return { x: lngLat.lng, y: lngLat.lat, crs: WGS84 };
         } catch (error) {
             console.error('MapLibre screenToMap conversion failed:', error);
-            return { x: 0, y: 0, spatialReference: { wkid: 4326 } };
+            return { x: 0, y: 0, crs: WGS84 };
         }
     }
 
@@ -34,10 +35,10 @@ export class MapLibreCoordinateAdapter implements CoordinateAdapter {
     }
 
     toJSON(point: MapPoint | null): any {
-        return point ? { x: point.x, y: point.y, spatialReference: point.spatialReference } : null;
+        return point ? { x: point.x, y: point.y, crs: point.crs } : null;
     }
 
-    mapToScreen(mapPoint: MapPoint, map: any): ScreenPoint {
+    mapToScreen(mapPoint: MapPoint, map: MapLibreMap): ScreenPoint {
         try {
             if (!map?.project) throw new Error('Invalid MapLibre map instance');
             const screenCoords = map.project([mapPoint.x, mapPoint.y]);
@@ -48,7 +49,7 @@ export class MapLibreCoordinateAdapter implements CoordinateAdapter {
         }
     }
 
-    getViewBounds(map: any): BoundingBox {
+    getViewBounds(map: MapLibreMap): BoundingBox {
         try {
             if (!map?.getBounds) throw new Error('Invalid MapLibre map instance');
             const bounds = map.getBounds();
@@ -64,7 +65,7 @@ export class MapLibreCoordinateAdapter implements CoordinateAdapter {
         }
     }
 
-    getResolution(map: any): number {
+    getResolution(map: MapLibreMap): number {
         try {
             if (!map?.getZoom) throw new Error('Invalid MapLibre map instance');
             const zoom = map.getZoom();

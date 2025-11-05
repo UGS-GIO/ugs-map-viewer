@@ -13,25 +13,25 @@ type WFSProperties = Record<string, string | number | boolean | null>;
 type WFSResponse = FeatureCollection<Geometry, WFSProperties>;
 
 /**
- * Convert ESRI polygon JSON to WKT format in UTM Zone 12N (EPSG:26912)
- * @param polygonString - ESRI polygon JSON string
+ * Convert polygon JSON to WKT format in UTM Zone 12N (EPSG:26912)
+ * @param polygonString - Polygon JSON string
  * @returns WKT polygon string in EPSG:26912
  */
 function convertPolygonToWKT(polygonString: string): string {
     try {
         const polygon = JSON.parse(polygonString);
 
-        // Handle ESRI format: { rings: [[[x, y], ...]], spatialReference: {...} }
+        // Handle polygon format: { rings: [[[x, y], ...]], crs: "EPSG:..." }
         if (polygon.rings && Array.isArray(polygon.rings[0])) {
             const coords = polygon.rings[0];
-            const wkid = polygon.spatialReference?.wkid || polygon.spatialReference?.latestWkid;
+            const sourceCRS = polygon.crs || 'EPSG:4326'; // Default to WGS84
 
             let wgs84Coords = coords;
 
-            // Convert from Web Mercator to WGS84 first if needed
-            if (wkid === 3857 || wkid === 102100) {
+            // Convert to WGS84 first if needed
+            if (sourceCRS !== 'EPSG:4326') {
                 wgs84Coords = coords.map(([x, y]: number[]) => {
-                    return convertCoordinate([x, y], 'EPSG:3857', 'EPSG:4326');
+                    return convertCoordinate([x, y], sourceCRS, 'EPSG:4326');
                 });
             }
 
@@ -183,7 +183,7 @@ export async function queryGeoServerForHazardUnits(polygon: string) {
 }
 
 /**
- * Convert ESRI polygon string to WKT (exported for external use)
+ * Convert polygon string to WKT (exported for external use)
  */
 export function convertPolygonStringToWKT(polygonString: string): string {
     return convertPolygonToWKT(polygonString);

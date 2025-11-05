@@ -10,18 +10,14 @@ export interface MapInitOptions {
 }
 
 /**
- * Map initialization result
- * map: ArcGIS Map or MapLibre Map instance
- * view: ArcGIS MapView/SceneView (not used for MapLibre)
+ * Map initialization result (MapLibre GL JS)
  */
 export interface MapInitResult {
-  map: __esri.Map | maplibregl.Map;
-  view?: __esri.MapView | __esri.SceneView;
+  map: maplibregl.Map;
 }
 
 /**
- * Base interface for map factory providers
- * Both ArcGIS and MapLibre implementations must conform to this interface
+ * MapLibre GL JS factory interface
  */
 export interface MapFactory {
   /**
@@ -37,12 +33,11 @@ export interface MapFactory {
 
   /**
    * Find a layer by title
-   * Returns layer object specific to implementation (ArcGIS Layer or MapLibre LayerSpecification)
    */
-  findLayerByTitle(mapInstance: __esri.Map | maplibregl.Map, title: string): __esri.Layer | LayerSpecification | null;
+  findLayerByTitle(mapInstance: maplibregl.Map, title: string): LayerSpecification | null;
 
   /**
    * Add layers to the map
    */
-  addLayersToMap(mapInstance: __esri.Map | maplibregl.Map, layersConfig: LayerProps[]): Promise<void>;
+  addLayersToMap(mapInstance: maplibregl.Map, layersConfig: LayerProps[]): Promise<void>;
 }

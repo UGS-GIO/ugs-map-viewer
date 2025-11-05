@@ -4,14 +4,14 @@ import { createLegendProvider } from '@/lib/map/legend/factory';
 import { useMap } from '@/hooks/use-map';
 
 const useLegendPreview = (layerId: string, url: string) => {
-    const { view, map } = useMap();
+    const { map } = useMap();
 
     const fetchLegendData = async () => {
-        if (!view?.map && !map) return [];
+        if (!map) return [];
 
         try {
             // Create the appropriate legend provider based on implementation
-            const legendProvider = createLegendProvider(view, view?.map, map);
+            const legendProvider = createLegendProvider(map);
 
             // Fetch the renderer(s) for the given layer ID
             const renderer = await legendProvider.getRenderer(layerId);
@@ -43,11 +43,11 @@ const useLegendPreview = (layerId: string, url: string) => {
         }
     };
 
-    // Query with dependencies: view, map, layerId, and url (for caching and refetch logic)
+    // Query with dependencies: map, layerId, and url (for caching and refetch logic)
     const { data: preview = [], isLoading, error } = useQuery({
         queryKey: ['legendPreview', layerId, url],
         queryFn: fetchLegendData,
-        enabled: !!(view?.map || map), // Only run the query when view or map is available
+        enabled: !!map, // Only run the query when map is available
         staleTime: 1000 * 60 * 60 * 1, // Cache for 1 hour
     });
 

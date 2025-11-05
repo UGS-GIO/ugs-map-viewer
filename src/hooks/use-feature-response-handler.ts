@@ -1,11 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { highlightFeature } from '@/lib/map/highlight-utils';
 import { LayerContentProps } from '@/components/custom/popups/popup-content-with-pagination';
+import { useMap } from '@/hooks/use-map';
 
 interface UseFeatureResponseHandlerProps {
     isSuccess: boolean;
     featureData: LayerContentProps[];
-    view: __esri.MapView | __esri.SceneView | undefined;
     drawerTriggerRef: React.RefObject<HTMLButtonElement>;
     clickId?: number | null; // Allow null from initial state
 }
@@ -16,17 +16,16 @@ interface UseFeatureResponseHandlerProps {
  * based on whether features are found.
  * @param isSuccess - Indicates if the feature query was successful.
  * @param featureData - The data returned from the feature query.
- * @param view - The ArcGIS MapView or SceneView instance.
  * @param drawerTriggerRef - Ref to the button that toggles the drawer visibility.
  * @param clickId - Unique identifier for each map click to prevent filter changes from closing drawer.
  */
 export function useFeatureResponseHandler({
     isSuccess,
     featureData,
-    view,
     drawerTriggerRef,
     clickId
 }: UseFeatureResponseHandlerProps) {
+    const { map } = useMap();
     // Track the last click we processed to avoid re-processing on filter changes
     const lastProcessedClickRef = useRef<number | null | undefined>();
 
@@ -46,9 +45,9 @@ export function useFeatureResponseHandler({
         const drawerState = drawerTriggerRef.current?.getAttribute('data-state');
 
         // Handle feature highlighting
-        if (hasFeatures && firstFeature && view && firstLayer) {
+        if (hasFeatures && firstFeature && map && firstLayer) {
             const title = firstLayer.layerTitle || firstLayer.groupLayerTitle;
-            highlightFeature(firstFeature, view, firstLayer.sourceCRS, title);
+            highlightFeature(firstFeature, map, firstLayer.sourceCRS, title);
         }
 
         // Handle drawer visibility - only for NEW clicks
@@ -60,5 +59,5 @@ export function useFeatureResponseHandler({
             drawerTriggerRef.current?.click();
         }
         // If drawer is already open and we have features, leave it open (don't re-click)
-    }, [isSuccess, featureData, view, drawerTriggerRef, clickId]);
+    }, [isSuccess, featureData, map, drawerTriggerRef, clickId]);
 }

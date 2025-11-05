@@ -150,7 +150,7 @@ const LayerCard = ({
             <CardHeader className="p-4">
                 <CardTitle>
                     {layer.groupLayerTitle}
-                    {layer.layerTitle && ` - ${layer.layerTitle}`}
+                    {layer.layerTitle && layer.layerTitle !== layer.groupLayerTitle && ` - ${layer.layerTitle}`}
                 </CardTitle>
                 {layer.features.length > ITEMS_PER_PAGE_OPTIONS[0] && (
                     <PopupPagination

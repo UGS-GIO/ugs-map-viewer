@@ -27,16 +27,10 @@ function parsePolygonCoordinates(polygon: string | undefined): number[][] | null
 
         if (parsed.rings && Array.isArray(parsed.rings[0])) {
             const coords = parsed.rings[0];
-            const wkid = parsed.spatialReference?.wkid || parsed.spatialReference?.latestWkid;
+            const sourceCRS = parsed.crs || 'EPSG:4326'; // Default to WGS84
 
-            if (wkid && wkid !== 4326) {
-                // Map ArcGIS WKIDs to EPSG codes
-                let sourceCRS = `EPSG:${wkid}`;
-                if (wkid === 102100 || wkid === 102113) {
-                    sourceCRS = 'EPSG:3857'; // Web Mercator
-                }
-
-                // Use standard conversion utility for all coordinate systems
+            // Convert to WGS84 if not already
+            if (sourceCRS !== 'EPSG:4326') {
                 return coords.map(([x, y]: number[]) => {
                     const converted = convertCoordinate([x, y], sourceCRS, 'EPSG:4326');
                     return converted;

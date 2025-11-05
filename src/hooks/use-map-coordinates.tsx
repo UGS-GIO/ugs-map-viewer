@@ -2,9 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useMap } from '@/hooks/use-map';
 import { convertDDToDMS } from '@/lib/map/conversion-utils';
-import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
-import Point from '@arcgis/core/geometry/Point';
-import { useIsMobile } from '@/hooks/use-mobile';
 import type maplibregl from 'maplibre-gl';
 
 const COORD_PRECISION = 3;
@@ -27,12 +24,11 @@ const convertToDisplayFormat = (x: string, y: string, isDD: boolean, convertDDTo
 };
 
 export function useMapCoordinates() {
-    const { view, map } = useMap();
-    const isMobile = useIsMobile();
+    const { map } = useMap();
     const navigate = useNavigate();
     const search = useSearch({ from: '/_map' });
     const isDecimalDegrees = search.coordinate_format !== 'dms';
-    const [scale, setScale] = useState<number>(view?.scale || 0);
+    const [scale, setScale] = useState<number>(0);
     const [coordinates, setCoordinates] = useState<{ x: string; y: string }>({ x: "", y: "" });
     const lastDecimalCoordinates = useRef<{ x: string; y: string }>({ x: "", y: "" });
 
@@ -44,64 +40,6 @@ export function useMapCoordinates() {
             setCoordinates(convertToDisplayFormat(x, y, isDecimalDegrees, convertDDToDMS));
         }
     }, [isDecimalDegrees]);
-
-    const updateDisplayedCoordinatesAndScale = useCallback((point: __esri.Point | nullish, currentScale: number) => {
-        if (point && typeof point.x === 'number' && typeof point.y === 'number') {
-            const geoPoint = webMercatorUtils.webMercatorToGeographic(point) as Point;
-            if (geoPoint && typeof geoPoint.x === 'number' && typeof geoPoint.y === 'number') {
-                lastDecimalCoordinates.current = {
-                    x: formatCoord(geoPoint.x),
-                    y: formatCoord(geoPoint.y),
-                };
-                setCoordinates(convertToDisplayFormat(lastDecimalCoordinates.current.x, lastDecimalCoordinates.current.y, isDecimalDegrees, convertDDToDMS));
-            }
-        }
-        setScale(currentScale);
-    }, [isDecimalDegrees]);
-
-    const handleDesktopViewChange = useCallback(
-        (currentView: __esri.MapView | __esri.SceneView) => {
-            let zoomWatcher: __esri.WatchHandle;
-            let pointerMoveHandler: __esri.WatchHandle;
-
-            currentView.when(() => {
-                updateDisplayedCoordinatesAndScale(currentView.center, currentView.scale);
-                zoomWatcher = currentView.watch("zoom", () => {
-                    updateDisplayedCoordinatesAndScale(
-                        currentView.toMap(currentView.center) || currentView.center,
-                        currentView.scale
-                    );
-                });
-                pointerMoveHandler = currentView.on("pointer-move", (event: __esri.ViewPointerMoveEvent) => {
-                    const mapPoint = currentView.toMap({ x: event.x, y: event.y });
-                    updateDisplayedCoordinatesAndScale(mapPoint, currentView.scale);
-                });
-            });
-            return () => {
-                zoomWatcher?.remove();
-                pointerMoveHandler?.remove();
-            };
-        },
-        [updateDisplayedCoordinatesAndScale]
-    );
-
-    const handleMobileViewChange = useCallback(
-        (currentView: __esri.MapView | __esri.SceneView) => {
-            let stationaryWatcher: __esri.WatchHandle;
-            currentView.when(() => {
-                updateDisplayedCoordinatesAndScale(currentView.center, currentView.scale);
-                stationaryWatcher = currentView.watch("stationary", (isStationary) => {
-                    if (isStationary) {
-                        updateDisplayedCoordinatesAndScale(currentView.center, currentView.scale);
-                    }
-                });
-            });
-            return () => {
-                stationaryWatcher?.remove();
-            };
-        },
-        [updateDisplayedCoordinatesAndScale]
-    );
 
     const handleMapLibreChange = useCallback(
         (mapLibreInstance: maplibregl.Map) => {
@@ -151,19 +89,11 @@ export function useMapCoordinates() {
     );
 
     useEffect(() => {
-        // Use MapLibre if available, otherwise use ArcGIS
+        // Use MapLibre map
         if (map && typeof map.on === 'function' && typeof map.getCenter === 'function') {
             return handleMapLibreChange(map);
-        } else if (view) {
-            let cleanupFunction: () => void;
-            if (isMobile) {
-                cleanupFunction = handleMobileViewChange(view);
-            } else {
-                cleanupFunction = handleDesktopViewChange(view);
-            }
-            return cleanupFunction;
         }
-    }, [view, map, isMobile, handleDesktopViewChange, handleMobileViewChange, handleMapLibreChange]);
+    }, [map, handleMapLibreChange]);
 
     const setCoordinateFormat = useCallback((newIsDecimalDegrees: boolean) => {
         navigate({

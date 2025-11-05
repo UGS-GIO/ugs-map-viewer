@@ -1,5 +1,3 @@
-@import 'https://js.arcgis.com/4.30/@arcgis/core/assets/esri/themes/light/main.css';
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -140,42 +138,4 @@
   .faded-bottom {
     @apply after:pointer-events-none after:absolute after:bottom-0 after:left-0 after:hidden after:h-32 after:w-full after:bg-[linear-gradient(180deg,_transparent_10%,_hsl(var(--background))_70%)] after:md:block;
   }
-}
-
-.esri-view-width-xlarge .esri-popup__main-container,
-.esri-view-width-large .esri-popup__main-container,
-.esri-view-width-medium .esri-popup__main-container
-{
-  max-height: 900px !important;
-  max-width: 900px !important;
-}‍‍‍‍‍‍
-
-/* 
-  basic styling for the text inside of a feature widget, 
-  possibly consider using tailwind classes directly in the component, 
-  but i cannot find a way to do that yet
-*/
-.esri-feature {
-  letter-spacing: 0em;
-  line-height: 1.55rem;
-  font-feature-settings:
-    "liga" 1,
-    "calt" 0;
-  background: #fff;
-  padding: 1em;
-}
-
-h2.esri-widget__heading.esri-feature__title {
-    margin: 0;
-}
-
-/* adding color to a custom-cooltip */
-.custom-tooltip a {
-  color: #0079c1;
-  text-decoration: underline;
-}
-
-/* removing the outline from the map */
-.esri-view .esri-view-surface--touch-none:focus::after {
-  outline: none !important;
 }

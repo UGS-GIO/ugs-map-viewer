@@ -6,12 +6,12 @@ import { LayerContentProps } from '@/components/custom/popups/popup-content-with
 import { useLayerUrl } from '@/context/layer-url-provider';
 import type { MapPoint, CoordinateAdapter } from '@/lib/map/coordinates/types';
 import { GeoServerGeoJSON } from '@/lib/types/geoserver-types';
+import type { MapLibreMap } from '@/lib/types/map-types';
 import proj4 from 'proj4';
 
 interface WMSQueryProps {
     mapPoint: MapPoint;
-    view?: __esri.MapView | __esri.SceneView;
-    map?: any; // MapLibre map instance
+    map: MapLibreMap;
     layers: string[];
     url: string;
     version?: '1.1.1' | '1.3.0';
@@ -25,7 +25,6 @@ interface WMSQueryProps {
 
 export async function fetchWMSFeatureInfo({
     mapPoint,
-    view,
     map,
     layers,
     url,
@@ -43,24 +42,10 @@ export async function fetchWMSFeatureInfo({
         return null;
     }
 
-    // Get resolution and viewport dimensions based on which map implementation is in use
-    let resolution: number;
-    let width: number;
-    let height: number;
-
-    if (view) {
-        // ArcGIS
-        resolution = view.resolution;
-        width = view.width;
-        height = view.height;
-    } else if (map) {
-        // MapLibre
-        resolution = coordinateAdapter.getResolution(map);
-        width = map.getCanvas().width;
-        height = map.getCanvas().height;
-    } else {
-        throw new Error('Either view or map must be provided');
-    }
+    // Get resolution and viewport dimensions from MapLibre
+    const resolution = coordinateAdapter.getResolution(map);
+    const width = map.getCanvas().width;
+    const height = map.getCanvas().height;
 
     // Create bbox in Web Mercator (coordinateAdapter uses this)
     const bboxWebMercator = coordinateAdapter.createBoundingBox({
@@ -379,8 +364,7 @@ export function getStaticCqlFilter(layer: LayerContentProps): string | null {
 }
 
 interface UseFeatureInfoQueryProps {
-    view?: __esri.MapView | __esri.SceneView;
-    map?: any; // MapLibre map instance
+    map: MapLibreMap;
     wmsUrl: string;
     visibleLayersMap: Record<string, LayerContentProps>;
     layerOrderConfigs: LayerOrderConfig[];
@@ -388,7 +372,6 @@ interface UseFeatureInfoQueryProps {
 }
 
 export function useFeatureInfoQuery({
-    view,
     map,
     wmsUrl,
     visibleLayersMap,
@@ -403,8 +386,8 @@ export function useFeatureInfoQuery({
     const [currentClickId, setCurrentClickId] = useState<number | null>(null);
 
     const queryFn = async (): Promise<LayerContentProps[]> => {
-        if ((!view && !map) || !mapPoint) {
-            console.log('[FeatureInfoQuery] Early return - no view/map or mapPoint');
+        if (!map || !mapPoint) {
+            console.log('[FeatureInfoQuery] Early return - no map or mapPoint');
             return [];
         }
 
@@ -517,7 +500,6 @@ export function useFeatureInfoQuery({
                 if (value.rasterSource) {
                     const rasterFeatureInfo = await fetchWMSFeatureInfo({
                         mapPoint,
-                        view,
                         map,
                         layers: [value.rasterSource.layerName],
                         url: value.rasterSource.url,

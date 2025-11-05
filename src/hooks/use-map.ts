@@ -1,7 +1,7 @@
 import { MapContext } from "@/context/map-context";
 import { useContext } from "react";
 
-/** Access the map context (ArcGIS or MapLibre) */
+/** Access the MapLibre map context */
 export function useMap() {
     const context = useContext(MapContext);
     if (context === undefined) {

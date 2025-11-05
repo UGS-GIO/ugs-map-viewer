@@ -41,7 +41,6 @@ export function useMapLoading({
                 return;
             }
 
-            // MapLibre doesn't have direct loading events like ArcGIS
             // Check if style is loaded and all sources are ready
             const isCurrentlyLoading = !map.isStyleLoaded();
 

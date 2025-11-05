@@ -3,11 +3,16 @@ import {
   convertDDToDMS,
   convertCoordinate,
   convertBbox,
-  convertCoordinates,
-  extractCoordinates,
-  convertGeometryToWGS84
+  convertGeometryToWGS84,
+  convertPolygonToWGS84,
+  serializePolygonForUrl,
+  deserializePolygonFromUrl,
+  calculateBounds,
+  calculateZoomFromBounds,
+  reduceCoordinatePrecision
 } from '../conversion-utils';
 import type { Geometry } from 'geojson';
+import type { PolygonGeometry } from '../conversion-utils';
 
 describe('convertDDToDMS', () => {
   it('converts positive longitude to DMS', () => {
@@ -145,113 +150,6 @@ describe('convertBbox', () => {
   });
 });
 
-describe('convertCoordinates', () => {
-  it('converts array of linestring coordinates', () => {
-    const coordinates = [
-      [[0, 0], [1, 1], [2, 2]]
-    ];
-    const result = convertCoordinates(coordinates, 'EPSG:4326');
-
-    expect(result.length).toBe(3);
-    expect(result[0]).toEqual([0, 0]);
-  });
-
-  it('flattens multiple linestrings', () => {
-    const coordinates = [
-      [[0, 0], [1, 1]],
-      [[2, 2], [3, 3]]
-    ];
-    const result = convertCoordinates(coordinates, 'EPSG:4326');
-
-    expect(result.length).toBe(4);
-  });
-
-  it('handles conversion errors gracefully', () => {
-    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const coordinates = [
-      [[0, 0], [1, 1]]
-    ];
-    const result = convertCoordinates(coordinates, 'INVALID_CRS');
-
-    expect(result.length).toBe(2);
-    consoleSpy.mockRestore();
-  });
-});
-
-describe('extractCoordinates', () => {
-  it('extracts coordinates from Point geometry', () => {
-    const geometry: Geometry = {
-      type: 'Point',
-      coordinates: [100, 50]
-    };
-    const result = extractCoordinates(geometry);
-
-    expect(result).toEqual([[[100, 50]]]);
-  });
-
-  it('extracts coordinates from LineString geometry', () => {
-    const geometry: Geometry = {
-      type: 'LineString',
-      coordinates: [[100, 50], [101, 51]]
-    };
-    const result = extractCoordinates(geometry);
-
-    expect(result).toEqual([[[100, 50], [101, 51]]]);
-  });
-
-  it('extracts coordinates from Polygon geometry', () => {
-    const geometry: Geometry = {
-      type: 'Polygon',
-      coordinates: [
-        [[100, 50], [101, 50], [101, 51], [100, 51], [100, 50]]
-      ]
-    };
-    const result = extractCoordinates(geometry);
-
-    expect(result.length).toBe(1);
-    expect(result[0].length).toBe(5);
-  });
-
-  it('extracts coordinates from MultiLineString geometry', () => {
-    const geometry: Geometry = {
-      type: 'MultiLineString',
-      coordinates: [
-        [[100, 50], [101, 51]],
-        [[102, 52], [103, 53]]
-      ]
-    };
-    const result = extractCoordinates(geometry);
-
-    expect(result.length).toBe(2);
-  });
-
-  it('extracts coordinates from MultiPolygon geometry', () => {
-    const geometry: Geometry = {
-      type: 'MultiPolygon',
-      coordinates: [
-        [[[100, 50], [101, 50], [101, 51], [100, 51], [100, 50]]],
-        [[[102, 52], [103, 52], [103, 53], [102, 53], [102, 52]]]
-      ]
-    };
-    const result = extractCoordinates(geometry);
-
-    expect(result.length).toBe(2);
-  });
-
-  it('returns empty array for unsupported geometry types', () => {
-    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const geometry = {
-      type: 'GeometryCollection',
-      geometries: []
-    } as any;
-    const result = extractCoordinates(geometry);
-
-    expect(result).toEqual([]);
-    expect(consoleSpy).toHaveBeenCalled();
-    consoleSpy.mockRestore();
-  });
-});
-
 describe('convertGeometryToWGS84', () => {
   it('returns null for null geometry', () => {
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -355,5 +253,265 @@ describe('convertGeometryToWGS84', () => {
 
     expect(result).toBeNull();
     consoleSpy.mockRestore();
+  });
+});
+
+describe('convertPolygonToWGS84', () => {
+  it('converts polygon from EPSG:3857 to WGS84', () => {
+    const polygon = JSON.stringify({
+      rings: [[[-12367126, 4871080], [-12367000, 4871000], [-12367126, 4871080]]],
+      crs: 'EPSG:3857'
+    });
+    const result = convertPolygonToWGS84(polygon);
+
+    expect(result).not.toBeNull();
+    if (result) {
+      expect(result.length).toBe(3);
+      expect(result[0][0]).toBeCloseTo(-111.09, 1);
+      expect(result[0][1]).toBeCloseTo(40.04, 1);
+    }
+  });
+
+  it('returns coordinates as-is when already in EPSG:4326', () => {
+    const coords = [[-111.09, 40.76], [-111.08, 40.75], [-111.09, 40.76]];
+    const polygon = JSON.stringify({
+      rings: [coords],
+      crs: 'EPSG:4326'
+    });
+    const result = convertPolygonToWGS84(polygon);
+
+    expect(result).toEqual(coords);
+  });
+
+  it('defaults to EPSG:4326 when crs is missing', () => {
+    const coords = [[-111.09, 40.76], [-111.08, 40.75], [-111.09, 40.76]];
+    const polygon = JSON.stringify({
+      rings: [coords]
+    });
+    const result = convertPolygonToWGS84(polygon);
+
+    expect(result).toEqual(coords);
+  });
+
+  it('returns null for invalid JSON', () => {
+    const result = convertPolygonToWGS84('invalid json');
+    expect(result).toBeNull();
+  });
+
+  it('returns null for missing rings', () => {
+    const polygon = JSON.stringify({ crs: 'EPSG:4326' });
+    const result = convertPolygonToWGS84(polygon);
+    expect(result).toBeNull();
+  });
+});
+
+describe('serializePolygonForUrl', () => {
+  it('serializes polygon from Web Mercator to WGS84', () => {
+    const polygon: PolygonGeometry = {
+      rings: [[[-12367126, 4871080], [-12367000, 4871000], [-12367126, 4871080]]],
+      crs: 'EPSG:3857'
+    };
+    const result = serializePolygonForUrl(polygon);
+
+    expect(result).not.toBeNull();
+    if (result) {
+      const parsed = JSON.parse(result);
+      expect(parsed.rings).toBeDefined();
+      expect(parsed.rings[0][0][0]).toBeCloseTo(-111.09, 1);
+      expect(parsed.rings[0][0][1]).toBeCloseTo(40.04, 1);
+    }
+  });
+
+  it('reduces coordinate precision to 6 decimals', () => {
+    const polygon: PolygonGeometry = {
+      rings: [[[-111.123456789, 40.987654321]]],
+      crs: 'EPSG:4326'
+    };
+    const result = serializePolygonForUrl(polygon);
+
+    expect(result).not.toBeNull();
+    if (result) {
+      const parsed = JSON.parse(result);
+      expect(parsed.rings[0][0][0]).toBe(-111.123457);
+      expect(parsed.rings[0][0][1]).toBe(40.987654);
+    }
+  });
+
+  it('returns null for null polygon', () => {
+    const result = serializePolygonForUrl(null);
+    expect(result).toBeNull();
+  });
+
+  it('returns null for polygon without rings', () => {
+    const polygon = { crs: 'EPSG:4326' } as any;
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = serializePolygonForUrl(polygon);
+
+    expect(result).toBeNull();
+    consoleSpy.mockRestore();
+  });
+
+  it('defaults to EPSG:3857 when crs is missing', () => {
+    const polygon: PolygonGeometry = {
+      rings: [[[-12367126, 4871080]]]
+    };
+    const result = serializePolygonForUrl(polygon);
+
+    expect(result).not.toBeNull();
+    if (result) {
+      const parsed = JSON.parse(result);
+      expect(parsed.rings[0][0][0]).toBeCloseTo(-111.09, 1);
+    }
+  });
+});
+
+describe('deserializePolygonFromUrl', () => {
+  it('deserializes WGS84 polygon to Web Mercator', () => {
+    const serialized = JSON.stringify({
+      rings: [[[-111.09, 40.76], [-111.08, 40.75], [-111.09, 40.76]]]
+    });
+    const result = deserializePolygonFromUrl(serialized);
+
+    expect(result).not.toBeNull();
+    if (result) {
+      expect(result.crs).toBe('EPSG:3857');
+      expect(result.rings[0][0][0]).toBeCloseTo(-12366482, -1);
+      expect(result.rings[0][0][1]).toBeCloseTo(4977006, -1);
+    }
+  });
+
+  it('handles URL-encoded input', () => {
+    const serialized = encodeURIComponent(JSON.stringify({
+      rings: [[[-111.09, 40.76]]]
+    }));
+    const result = deserializePolygonFromUrl(serialized);
+
+    expect(result).not.toBeNull();
+    if (result) {
+      expect(result.crs).toBe('EPSG:3857');
+    }
+  });
+
+  it('returns null for invalid JSON', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const result = deserializePolygonFromUrl('invalid');
+
+    expect(result).toBeNull();
+    consoleSpy.mockRestore();
+  });
+
+  it('returns null for missing rings', () => {
+    const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = deserializePolygonFromUrl(JSON.stringify({}));
+
+    expect(result).toBeNull();
+    consoleSpy.mockRestore();
+  });
+});
+
+describe('calculateBounds', () => {
+  it('calculates bounds from coordinates', () => {
+    const coords = [[-111.09, 40.76], [-111.08, 40.75], [-111.10, 40.77]];
+    const result = calculateBounds(coords);
+
+    expect(result).not.toBeNull();
+    if (result) {
+      expect(result[0][0]).toBe(-111.10);
+      expect(result[0][1]).toBe(40.75);
+      expect(result[1][0]).toBe(-111.08);
+      expect(result[1][1]).toBe(40.77);
+    }
+  });
+
+  it('returns null for empty coordinates', () => {
+    const result = calculateBounds([]);
+    expect(result).toBeNull();
+  });
+
+  it('returns null for null coordinates', () => {
+    const result = calculateBounds(null as any);
+    expect(result).toBeNull();
+  });
+
+  it('filters out invalid coordinates', () => {
+    const coords = [[-111.09, 40.76], [null, null] as any, [-111.08, 40.75]];
+    const result = calculateBounds(coords);
+
+    expect(result).not.toBeNull();
+    if (result) {
+      expect(result[0][0]).toBe(-111.09);
+      expect(result[1][0]).toBe(-111.08);
+    }
+  });
+
+  it('handles single point', () => {
+    const coords = [[-111.09, 40.76]];
+    const result = calculateBounds(coords);
+
+    expect(result).not.toBeNull();
+    if (result) {
+      expect(result[0]).toEqual([-111.09, 40.76]);
+      expect(result[1]).toEqual([-111.09, 40.76]);
+    }
+  });
+});
+
+describe('calculateZoomFromBounds', () => {
+  it('returns zoom 7 for large bounds', () => {
+    const bounds: [[number, number], [number, number]] = [[-112, 40], [-110, 42]];
+    const result = calculateZoomFromBounds(bounds);
+    expect(result).toBe(7);
+  });
+
+  it('returns zoom 11 for medium bounds', () => {
+    const bounds: [[number, number], [number, number]] = [[-111.1, 40.7], [-111.0, 40.8]];
+    const result = calculateZoomFromBounds(bounds);
+    expect(result).toBe(11);
+  });
+
+  it('returns zoom 13 for small bounds', () => {
+    const bounds: [[number, number], [number, number]] = [[-111.09, 40.76], [-111.08, 40.77]];
+    const result = calculateZoomFromBounds(bounds);
+    expect(result).toBe(13);
+  });
+
+  it('returns default zoom 10 for null bounds', () => {
+    const result = calculateZoomFromBounds(null);
+    expect(result).toBe(10);
+  });
+});
+
+describe('reduceCoordinatePrecision', () => {
+  it('reduces precision to 6 decimals by default', () => {
+    const coords = [[-111.123456789, 40.987654321]];
+    const result = reduceCoordinatePrecision(coords);
+
+    expect(result[0][0]).toBe(-111.123457);
+    expect(result[0][1]).toBe(40.987654);
+  });
+
+  it('reduces precision to specified decimals', () => {
+    const coords = [[-111.123456789, 40.987654321]];
+    const result = reduceCoordinatePrecision(coords, 2);
+
+    expect(result[0][0]).toBe(-111.12);
+    expect(result[0][1]).toBe(40.99);
+  });
+
+  it('handles multiple coordinates', () => {
+    const coords = [[-111.123456, 40.987654], [-110.234567, 41.876543]];
+    const result = reduceCoordinatePrecision(coords, 3);
+
+    expect(result).toHaveLength(2);
+    expect(result[0][0]).toBe(-111.123);
+    expect(result[1][1]).toBe(41.877);
+  });
+
+  it('handles zero decimals', () => {
+    const coords = [[-111.7, 40.8]];
+    const result = reduceCoordinatePrecision(coords, 0);
+
+    expect(result[0][0]).toBe(-112);
+    expect(result[0][1]).toBe(41);
   });
 });

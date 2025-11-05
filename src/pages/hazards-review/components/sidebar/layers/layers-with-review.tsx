@@ -5,7 +5,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import Layers from "@/components/sidebar/layers";
 import { useCustomLayerList } from "@/hooks/use-custom-layerlist";
 import { useFetchReviewableLayers } from "@/hooks/use-fetch-reviewable-layers";
-import { LayerProps } from "@/lib/types/mapping-types";
+import { ExtendedSublayerProperties, LayerProps } from "@/lib/types/mapping-types";
 import { isGroupLayer, isWMSLayer } from "@/lib/map/utils";
 import { useGetLayerConfigsData } from "@/hooks/use-get-layer-configs";
 
@@ -16,7 +16,7 @@ const getFilteredLayers = (
     return layers
         .map((layer): LayerProps | null => {
             if (isWMSLayer(layer)) {
-                const sublayers = layer.sublayers?.filter(sub => sub.name !== undefined && reviewableNames.has(sub.name));
+                const sublayers = layer.sublayers?.filter((sub: ExtendedSublayerProperties) => sub.name !== undefined && reviewableNames.has(sub.name));
                 return sublayers?.length ? { ...layer, sublayers } : null;
             }
 

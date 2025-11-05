@@ -10,17 +10,13 @@ import { MapContext, MapContextProps } from "@/context/map-context";
  * Manages MapLibre GL JS map initialization and state
  * Uses the MapFactory for initialization
  *
- * Exposes the unified MapContext with:
+ * Provides MapContext with:
  * - map: maplibre-gl.Map instance
  * - loadMap: Initialization and layer sync function
  * - isSketching: Sketch mode state
  * - setIsSketching: Sketch mode setter
- * - view: undefined (MapLibre doesn't have separate view)
- *
- * Note: MapLibre API differences from ArcGIS:
- * - No separate View class, Map contains both rendering and interaction
- * - No view.extent, instead use map.getBounds()
- * - Coordinates are [lng, lat]
+ * - getIsSketching: Synchronous sketch state check
+ * - shouldIgnoreNextClick/setIgnoreNextClick/consumeIgnoreClick: Click ignore flags for drawing tools
  */
 export function MapLibreMapProvider({ children }: { children: React.ReactNode }) {
     const [map, setMap] = useState<maplibregl.Map>();

@@ -2,22 +2,15 @@ import { createContext } from "react";
 import { LayerProps } from "@/lib/types/mapping-types";
 
 /**
- * Unified MapContext interface
+ * MapContext interface for MapLibre GL JS
  *
- * This interface abstracts over both ArcGIS and MapLibre implementations.
- * Consumers use this and don't need to know which implementation is active.
- *
- * Note: This is a union type where view is optional (MapLibre has no view)
- * Consumers should check which fields are defined to determine the active implementation
+ * Provides access to map instance and shared functionality
  */
 export type MapContextProps = {
-    // ArcGIS specific
-    view?: any, // SceneView | MapView - using any to avoid hard dependency
-
-    // MapLibre specific
+    // MapLibre map instance
     map?: any, // maplibre-gl.Map - using any to avoid hard dependency
 
-    // Shared interface
+    // Map initialization and management
     loadMap?: ({
         container,
         zoom,
@@ -29,19 +22,20 @@ export type MapContextProps = {
         center?: [number, number],
         layers?: LayerProps[]
     }) => Promise<void>,
+
+    // Sketching state for drawing tools (e.g., Terra Draw)
     isSketching: boolean
     setIsSketching?: (isSketching: boolean) => void
 }
 
 /**
- * Unified MapContext
+ * MapContext for MapLibre GL JS
  *
  * Created here and imported by:
  * - useMap hook (for consumers)
- * - map-provider.tsx (wrapper component that conditionally renders ArcGIS or MapLibre)
+ * - MapLibreMapProvider (provides the map instance)
  */
 export const MapContext = createContext<MapContextProps>({
-    view: undefined,
     map: undefined,
     loadMap: async () => { },
     isSketching: false,

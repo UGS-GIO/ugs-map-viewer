@@ -1,7 +1,6 @@
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE, PROD_POSTGREST_URL, GEN_GIS_WORKSPACE } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
-import { generateFaultDescription } from "@/lib/utils";
-import GeoJSON, { GeoJsonProperties } from "geojson";
+import GeoJSON from "geojson";
 
 export const landslideLegacyLayerName = 'landslidelegacy_current';
 const landslideLegacyWMSTitle = 'Legacy Landslide Compilation - Statewide';
@@ -195,7 +194,7 @@ export interface QFaultsFeatureType {
     strandnames: string[];
 
 }
-export const qFaultsLayerName = 'quaternaryfaults_test';
+export const qFaultsLayerName = 'quaternaryfaults_current';
 export const qFaultsWMSTitle = 'Hazardous (Quaternary age) Faults - Statewide';
 const qFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',
@@ -203,24 +202,12 @@ const qFaultsWMSConfig: WMSLayerProps = {
     title: qFaultsWMSTitle,
     visible: true,
     crs: 'EPSG:26912', // Utah State Plane North
-    customLayerParameters: {
-        cql_filter: `is_current = 'Y'`,
-    },
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${qFaultsLayerName}`,
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                // ADD THE CUSTOM FIELD HERE
-                'Description': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: (properties: GeoJsonProperties): string => {
-                        return generateFaultDescription(properties);
-                    }
-                },
-                // --- Keep existing fields for data reference ---
                 'Fault Zone Name': { field: 'faultzone', type: 'string' },
                 'Summary': { field: 'summary', type: 'string' },
                 'Fault Name': { field: 'faultname', type: 'string' },
@@ -233,37 +220,17 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 'Slip Rate': { field: 'sliprate', type: 'string' },
                 'Structure Class': { field: 'faultclass', type: 'string' },
                 'Structure Age': { field: 'faultage', type: 'string' },
-                // The custom link field is here (using the corrected version from your second paste)
-                '': {
-                    field: 'usgs_link',
-                    type: 'custom',
-                    transform: (value) => {
-                        if (!value) {
-                            return 'No USGS link available';
-                        }
-                        // If the API returns a properties object for the custom field
-                        if (typeof value === 'object' && value !== null && 'usgs_link' in value) {
-                            return value['usgs_link'] || 'No USGS link available';
-                        }
-                        // If the API returns the string value directly
-                        return String(value) || 'No USGS link available';
-                    }
-                },
+                '': { field: 'usgs_link', type: 'string', transform: (link: string | null) => link },
             },
-            // The linkFields for 'usgs_link' remains the same as it correctly handles the link transformation
             linkFields: {
                 'usgs_link': {
-                    transform: (usgsLink) => {
-                        if (!usgsLink || usgsLink === 'No USGS link available' || usgsLink === '') {
-                            return [{
-                                label: 'No USGS link available',
-                                href: ''
-                            }];
-                        }
-                        return [{
-                            label: 'Detailed Report',
-                            href: `${usgsLink}`
-                        }];
+                    transform: (usgsLink: string | null) => {
+                        return [
+                            {
+                                label: 'Detailed Report',
+                                href: usgsLink || ''
+                            }
+                        ];
                     }
                 }
             },

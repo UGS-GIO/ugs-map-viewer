@@ -1,6 +1,7 @@
 import { Feature, Geometry, GeoJsonProperties } from 'geojson';
 import { createHighlightProvider } from './highlight/factory';
 import type { HighlightOptions } from './highlight/types';
+import type { MapLibreMap } from '@/lib/types/map-types';
 
 export type { HighlightOptions };
 
@@ -9,12 +10,12 @@ export type { HighlightOptions };
  */
 export const highlightFeature = async (
   feature: Feature<Geometry, GeoJsonProperties>,
-  map: any,
+  map: MapLibreMap,
   sourceCRS: string,
   title: string,
   options?: HighlightOptions
 ): Promise<boolean> => {
-  const provider = createHighlightProvider(undefined, map);
+  const provider = createHighlightProvider(map);
   return await provider.highlightFeature(feature, sourceCRS, title, options);
 };
 
@@ -22,10 +23,11 @@ export const highlightFeature = async (
  * Clear graphics from the MapLibre map
  */
 export const clearGraphics = (
-  map: any,
+  map: MapLibreMap,
   title?: string
 ) => {
-  const provider = createHighlightProvider(undefined, map);
+  if (!map) return;
+  const provider = createHighlightProvider(map);
   provider.clearGraphics(title);
 };
 
@@ -35,8 +37,9 @@ export const clearGraphics = (
 export function createPinGraphic(
   lat: number,
   long: number,
-  map: any
+  map: MapLibreMap
 ) {
-  const provider = createHighlightProvider(undefined, map);
+  if (!map) return;
+  const provider = createHighlightProvider(map);
   provider.createPinGraphic(lat, long);
 }
