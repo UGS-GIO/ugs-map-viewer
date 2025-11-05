@@ -30,10 +30,10 @@ export const useMapInteractions = ({ layersConfig }: UseMapInteractionsType) => 
 
                 // Convert screen coordinates to map coordinates using the coordinate adapter
                 const adapter = createCoordinateAdapter();
-                const mapCoords = adapter.screenToMap([x, y]);
+                const mapCoords = adapter.screenToMap({ x, y }, map);
 
                 if (mapCoords) {
-                    const [lng, lat] = mapCoords;
+                    const { x: lng, y: lat } = mapCoords;
                     setCoordinates({ x: lng.toString(), y: lat.toString() });
                     clearGraphics(map);
                     createPinGraphic(lat, lng, map);

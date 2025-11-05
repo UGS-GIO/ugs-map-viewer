@@ -23,7 +23,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
         handleSelectAllToggle,
     } = useLayerItemState(layerConfig);
 
-    const { map, view } = useMap();
+    const { map } = useMap();
     const { setIsCollapsed, setNavOpened } = useSidebar();
     const { data: layerDescriptions } = useFetchLayerDescriptions();
     const isMobile = useIsMobile();
