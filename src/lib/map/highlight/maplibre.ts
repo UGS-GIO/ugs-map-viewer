@@ -1,4 +1,4 @@
-import maplibregl from 'maplibre-gl';
+import maplibregl, { LayerSpecification } from 'maplibre-gl';
 import { Feature, Geometry, GeoJsonProperties } from 'geojson';
 import { convertGeometryToWGS84 } from '@/lib/map/conversion-utils';
 import { HighlightProvider, HighlightOptions } from './types';
@@ -9,6 +9,7 @@ import { HighlightProvider, HighlightOptions } from './types';
  */
 export class MapLibreHighlight implements HighlightProvider {
   private highlightSources: Set<string> = new Set();
+  private sourceToTitle: Map<string, string> = new Map();
 
   constructor(private map: maplibregl.Map) {}
 
@@ -50,11 +51,12 @@ export class MapLibreHighlight implements HighlightProvider {
     });
 
     this.highlightSources.add(sourceId);
+    this.sourceToTitle.set(sourceId, title);
 
     const geometryType = wgs84Geometry.type;
 
     if (geometryType === 'Point') {
-      this.map.addLayer({
+      const outlineLayer: LayerSpecification = {
         id: outlineLayerId,
         type: 'circle',
         source: sourceId,
@@ -64,9 +66,9 @@ export class MapLibreHighlight implements HighlightProvider {
           'circle-stroke-width': finalOptions.outlineWidth / 2,
           'circle-stroke-color': `rgba(0, 0, 0, 0.5)`
         }
-      });
+      };
 
-      this.map.addLayer({
+      const mainLayer: LayerSpecification = {
         id: layerId,
         type: 'circle',
         source: sourceId,
@@ -76,11 +78,14 @@ export class MapLibreHighlight implements HighlightProvider {
           'circle-stroke-width': finalOptions.outlineWidth > 0 ? 2 : 0,
           'circle-stroke-color': `rgba(${finalOptions.outlineColor.join(',')})`
         }
-      });
+      };
+
+      this.map.addLayer(outlineLayer);
+      this.map.addLayer(mainLayer);
     }
 
     if (geometryType === 'LineString' || geometryType === 'MultiLineString') {
-      this.map.addLayer({
+      const outlineLayer: LayerSpecification = {
         id: outlineLayerId,
         type: 'line',
         source: sourceId,
@@ -88,9 +93,9 @@ export class MapLibreHighlight implements HighlightProvider {
           'line-color': `rgba(0, 0, 0, 0.5)`,
           'line-width': finalOptions.outlineWidth + 2
         }
-      });
+      };
 
-      this.map.addLayer({
+      const mainLayer: LayerSpecification = {
         id: layerId,
         type: 'line',
         source: sourceId,
@@ -98,11 +103,14 @@ export class MapLibreHighlight implements HighlightProvider {
           'line-color': `rgba(${finalOptions.outlineColor.join(',')})`,
           'line-width': finalOptions.outlineWidth
         }
-      });
+      };
+
+      this.map.addLayer(outlineLayer);
+      this.map.addLayer(mainLayer);
     }
 
     if (geometryType === 'Polygon' || geometryType === 'MultiPolygon') {
-      this.map.addLayer({
+      const outlineLayer: LayerSpecification = {
         id: outlineLayerId,
         type: 'fill',
         source: sourceId,
@@ -110,9 +118,9 @@ export class MapLibreHighlight implements HighlightProvider {
           'fill-color': 'rgba(0, 0, 0, 0)',
           'fill-outline-color': 'rgba(0, 0, 0, 1)'
         }
-      });
+      };
 
-      this.map.addLayer({
+      const outlineStrokeLayer: LayerSpecification = {
         id: `${outlineLayerId}-stroke`,
         type: 'line',
         source: sourceId,
@@ -120,9 +128,9 @@ export class MapLibreHighlight implements HighlightProvider {
           'line-color': 'rgba(0, 0, 0, 1)',
           'line-width': finalOptions.outlineWidth + 2
         }
-      });
+      };
 
-      this.map.addLayer({
+      const mainLayer: LayerSpecification = {
         id: layerId,
         type: 'fill',
         source: sourceId,
@@ -130,9 +138,9 @@ export class MapLibreHighlight implements HighlightProvider {
           'fill-color': `rgba(${finalOptions.fillColor.join(',')})`,
           'fill-outline-color': `rgba(${finalOptions.outlineColor.join(',')})`
         }
-      });
+      };
 
-      this.map.addLayer({
+      const mainStrokeLayer: LayerSpecification = {
         id: `${layerId}-stroke`,
         type: 'line',
         source: sourceId,
@@ -140,7 +148,12 @@ export class MapLibreHighlight implements HighlightProvider {
           'line-color': `rgba(${finalOptions.outlineColor.join(',')})`,
           'line-width': finalOptions.outlineWidth
         }
-      });
+      };
+
+      this.map.addLayer(outlineLayer);
+      this.map.addLayer(outlineStrokeLayer);
+      this.map.addLayer(mainLayer);
+      this.map.addLayer(mainStrokeLayer);
     }
 
     return true;
@@ -151,12 +164,9 @@ export class MapLibreHighlight implements HighlightProvider {
 
     for (const sourceId of this.highlightSources) {
       if (title) {
-        const source = this.map.getSource(sourceId);
-        if (source && source.type === 'geojson') {
-          const data = (source as any)._data;
-          if (data && data.properties && data.properties.title === title) {
-            sourcesToRemove.push(sourceId);
-          }
+        const sourceTitle = this.sourceToTitle.get(sourceId);
+        if (sourceTitle === title) {
+          sourcesToRemove.push(sourceId);
         }
       } else {
         sourcesToRemove.push(sourceId);
@@ -176,6 +186,7 @@ export class MapLibreHighlight implements HighlightProvider {
       }
 
       this.highlightSources.delete(sourceId);
+      this.sourceToTitle.delete(sourceId);
     }
   }
 
@@ -199,7 +210,7 @@ export class MapLibreHighlight implements HighlightProvider {
 
     this.highlightSources.add(sourceId);
 
-    this.map.addLayer({
+    const pinLayer: LayerSpecification = {
       id: layerId,
       type: 'circle',
       source: sourceId,
@@ -209,6 +220,8 @@ export class MapLibreHighlight implements HighlightProvider {
         'circle-stroke-width': 2,
         'circle-stroke-color': '#ffffff'
       }
-    });
+    };
+
+    this.map.addLayer(pinLayer);
   }
 }

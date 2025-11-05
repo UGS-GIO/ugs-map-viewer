@@ -97,7 +97,7 @@ const LayerCard = ({
     buttons: React.ReactNode[] | null,
     handleZoomToFeature: (feature: ExtendedFeature, sourceCRS: string, title: string) => Promise<void>
 }) => {
-    const { view, map } = useMap();
+    const { map } = useMap();
     const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE_OPTIONS[0])
     const [currentPage, setCurrentPage] = useState(1)
     const title = layer.layerTitle || layer.groupLayerTitle;
@@ -125,10 +125,9 @@ const LayerCard = ({
 
         // Only highlight to the first feature if items per page is 1
         if (itemsPerPage === 1 && newPaginatedFeatures.length > 0) {
-            const mapOrView = view || map
-            if (!mapOrView) return
-            clearGraphics(mapOrView)
-            highlightFeature(newPaginatedFeatures[0], mapOrView, layer.sourceCRS, title)
+            if (!map) return
+            clearGraphics(map)
+            highlightFeature(newPaginatedFeatures[0], map, layer.sourceCRS, title)
         }
     }
 
@@ -192,7 +191,7 @@ const LayerCard = ({
 }
 
 const PopupContentWithPagination = ({ layerContent, onSectionChange }: SidebarInsetWithPaginationProps) => {
-    const { view, map } = useMap()
+    const { map } = useMap()
     const buttons = useGetPopupButtons()
 
     const sectionIds = useMemo(
@@ -203,9 +202,8 @@ const PopupContentWithPagination = ({ layerContent, onSectionChange }: SidebarIn
     // Auto-highlight first feature of first layer when popup opens
     useEffect(() => {
         if (layerContent.length > 0 && layerContent[0].features.length > 0) {
-            const mapOrView = view || map
-            if (!mapOrView) {
-                console.log('[PopupContent] No map or view available for highlighting');
+            if (!map) {
+                console.log('[PopupContent] No map available for highlighting');
                 return
             }
 
@@ -215,12 +213,12 @@ const PopupContentWithPagination = ({ layerContent, onSectionChange }: SidebarIn
 
             console.log('[PopupContent] Highlighting first feature:', { title, featureType: firstFeature.geometry?.type });
             // Clear ALL previous highlights from all layers when showing new popup
-            clearGraphics(mapOrView)
-            highlightFeature(firstFeature, mapOrView, firstLayer.sourceCRS, title).catch(error => {
+            clearGraphics(map)
+            highlightFeature(firstFeature, map, firstLayer.sourceCRS, title).catch(error => {
                 console.error('[PopupContent] Error highlighting first feature:', error)
             })
         }
-    }, [layerContent.length > 0 ? layerContent[0].groupLayerTitle + layerContent[0].layerTitle : null, view, map])
+    }, [layerContent.length > 0 ? layerContent[0].groupLayerTitle + layerContent[0].layerTitle : null, map])
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -253,22 +251,21 @@ const PopupContentWithPagination = ({ layerContent, onSectionChange }: SidebarIn
         return () => observer.disconnect()
     }, [sectionIds, onSectionChange])
     const handleZoomToFeature = async (feature: ExtendedFeature, sourceCRS: string, title: string) => {
-        if (!view && !map) {
-            console.warn('[PopupContent] No map or view available for zoom');
+        if (!map) {
+            console.warn('[PopupContent] No map available for zoom');
             return;
         }
 
         // Clear ALL previous graphics from all layers when zooming to a feature
         try {
-            const mapOrView = view || map;
-            clearGraphics(mapOrView)  // Clear all graphics, not just this layer
-            await highlightFeature(feature, mapOrView, sourceCRS, title)
+            clearGraphics(map)  // Clear all graphics, not just this layer
+            await highlightFeature(feature, map, sourceCRS, title)
         } catch (error) {
             console.error('[PopupContent] Error highlighting feature:', error);
         }
 
-        // Zoom to feature (works with both ArcGIS and MapLibre)
-        zoomToFeature(feature, view || map, sourceCRS)
+        // Zoom to feature
+        zoomToFeature(feature, map, sourceCRS)
     }
 
     // If no layers, return null

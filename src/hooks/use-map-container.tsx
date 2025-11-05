@@ -3,7 +3,6 @@ import { useMapCoordinates } from "@/hooks/use-map-coordinates";
 import { useMapInteractions } from "@/hooks/use-map-interactions";
 import { useMapPositionUrlParams } from "@/hooks/use-map-position-url-params";
 import { LayerOrderConfig, useGetLayerConfigsData } from "@/hooks/use-get-layer-configs";
-import { useMapClickOrDrag } from "@/hooks/use-map-click-or-drag";
 import { useFeatureInfoQuery } from "@/hooks/use-feature-info-query";
 import { useLayerUrl } from '@/context/layer-url-provider';
 import { useMap } from '@/hooks/use-map';
@@ -14,6 +13,7 @@ import { useMapUrlSync } from '@/hooks/use-map-url-sync';
 import { createCoordinateAdapter } from '@/lib/map/coordinates/factory';
 import type { CoordinateAdapter } from '@/lib/map/coordinates/types';
 import { getMapImplementation } from '@/lib/map/get-map-implementation';
+import { clearGraphics } from '@/lib/map/highlight-utils';
 
 interface UseMapContainerProps {
     wmsUrl: string;
@@ -24,12 +24,9 @@ interface UseMapContainerProps {
 /**
  * Main map container hook that orchestrates all map-related functionality.
  * Coordinates layer visibility, click handling, feature queries, and URL synchronization.
- * Designed to be gradually migrated from ArcGIS to MapLibre by extracting concerns
- * into separate, testable hooks.
  *
- * Uses the VITE_MAP_IMPL environment variable to determine which map implementation
- * to use (ArcGIS or MapLibre). This enables feature flag-based switching without
- * code changes.
+ * Attaches MapLibre click handlers to query features and display popups when users
+ * click on map features.
  *
  * @param wmsUrl - Base URL for WMS feature info queries
  * @param layerOrderConfigs - Optional configuration for reordering layers in popups
@@ -43,7 +40,7 @@ export function useMapContainer({
     const mapRef = useRef<HTMLDivElement>(null);
     const { loadMap, view, map, isSketching } = useMap();
     const { coordinates, setCoordinates } = useMapCoordinates();
-    const { handleOnContextMenu, getVisibleLayers } = useMapInteractions({ layersConfig: layersConfig });
+    const { handleOnContextMenu } = useMapInteractions({ layersConfig: layersConfig });
     const [popupContainer, setPopupContainer] = useState<HTMLDivElement | null>(null);
     const contextMenuTriggerRef = useRef<HTMLDivElement>(null);
     const drawerTriggerRef = useRef<HTMLButtonElement>(null);
@@ -88,43 +85,31 @@ export function useMapContainer({
 
     // Handle map clicks with coordinate adapter
     const { handleMapClick } = useMapClickHandler({
-        view,
         map,
         isSketching,
         onPointClick: (mapPoint) => {
             featureInfoQuery.fetchForPoint(mapPoint);
         },
-        getVisibleLayers,
         setVisibleLayersMap,
         coordinateAdapter,
         layersConfig
     });
 
-    // Handle click or drag events on the map
-    const { clickOrDragHandlers } = useMapClickOrDrag({
-        onClick: (e) => {
-            handleMapClick({
-                screenX: e.nativeEvent.offsetX,
-                screenY: e.nativeEvent.offsetY
-            });
-        }
-    });
-
-    // For MapLibre, attach click handler to the map instance directly
+    // Attach MapLibre click handler to the map instance
     useEffect(() => {
         if (!map || isSketching) {
             return;
         }
 
         const handleMapLibreClick = (e: any) => {
-            // Convert MapLibre click event to our expected format
-            const rect = (e.originalEvent?.target as HTMLElement)?.getBoundingClientRect?.();
-            if (rect) {
-                const screenX = e.originalEvent.clientX - rect.left;
-                const screenY = e.originalEvent.clientY - rect.top;
+            // Clear any previous graphics immediately
+            clearGraphics(map);
+
+            // MapLibre's click event provides point with screen coordinates
+            if (e.point) {
                 handleMapClick({
-                    screenX,
-                    screenY
+                    screenX: e.point.x,
+                    screenY: e.point.y
                 });
             }
         };
@@ -155,7 +140,6 @@ export function useMapContainer({
         popupContainer,
         setPopupContainer,
         popupContent: featureInfoQuery.data || [],
-        clickOrDragHandlers,
         handleOnContextMenu,
         coordinates,
         setCoordinates,

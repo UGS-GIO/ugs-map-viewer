@@ -29,7 +29,7 @@ function PopupDrawer({
     const [activeLayerTitle, setActiveLayerTitle] = useState<string>("");
     const screenSize = useScreenSize();
     const isMobile = useIsMobile();
-    const { view, map } = useMap();
+    const { map } = useMap();
 
     // Group layers and extract titles - NO side effects
     const { groupedLayers, layerTitles } = useMemo(() => {
@@ -86,15 +86,14 @@ function PopupDrawer({
     }, []);
 
     const handleClose = useCallback(() => {
-        const mapOrView = view || map;
-        if (mapOrView) {
+        if (map) {
             try {
-                clearGraphics(mapOrView);
+                clearGraphics(map);
             } catch (error) {
                 console.error('Error clearing highlights:', error);
             }
         }
-    }, [view, map]);
+    }, [map]);
 
     return (
         <Drawer

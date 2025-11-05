@@ -4,6 +4,9 @@ import { MapLibreHighlight } from './maplibre';
 import { HighlightProvider } from './types';
 import { getMapImplementation } from '../get-map-implementation';
 
+// Cache providers per map instance using WeakMap for automatic cleanup
+const maplibreProviderCache = new WeakMap<maplibregl.Map, MapLibreHighlight>();
+
 /**
  * Factory function to create the appropriate highlight provider
  * based on the active map implementation
@@ -22,7 +25,15 @@ export function createHighlightProvider(
     if (!map) {
       throw new Error('maplibre map instance is required for maplibre implementation');
     }
-    return new MapLibreHighlight(map);
+
+    // Reuse the same provider instance for this map to preserve highlight tracking
+    let provider = maplibreProviderCache.get(map);
+    if (!provider) {
+      provider = new MapLibreHighlight(map);
+      maplibreProviderCache.set(map, provider);
+    }
+
+    return provider;
   }
 
   if (!view) {

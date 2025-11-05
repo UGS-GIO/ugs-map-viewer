@@ -82,11 +82,11 @@ interface QueryResultWrapper<TData = QueryData> {
 interface SearchComboboxProps {
     config: SearchSourceConfig[];
     // Called when a PostgREST feature OR a finalized Masquerade candidate is selected
-    onFeatureSelect?: (searchResult: Feature<Geometry, GeoJsonProperties> | null, _sourceUrl: string, sourceIndex: number, searchConfig: SearchSourceConfig[], view: __esri.MapView | __esri.SceneView | undefined) => void
+    onFeatureSelect?: (searchResult: Feature<Geometry, GeoJsonProperties> | null, _sourceUrl: string, sourceIndex: number, searchConfig: SearchSourceConfig[], map: any) => void
     // Called when Enter is pressed on PostgREST results
-    onCollectionSelect?: (collection: FeatureCollection<Geometry, GeoJsonProperties> | null, _sourceUrl: string | null, _sourceIndex: number, searchConfig: SearchSourceConfig[], view: __esri.MapView | __esri.SceneView | undefined) => void;
+    onCollectionSelect?: (collection: FeatureCollection<Geometry, GeoJsonProperties> | null, _sourceUrl: string | null, _sourceIndex: number, searchConfig: SearchSourceConfig[], map: any) => void;
     // Called when a Masquerade suggestion is clicked
-    onSuggestionSelect?: (suggestion: Suggestion, sourceConfig: MasqueradeConfig, sourceIndex: number, view: __esri.MapView | __esri.SceneView | undefined, searchConfig: SearchSourceConfig[]) => void;
+    onSuggestionSelect?: (suggestion: Suggestion, sourceConfig: MasqueradeConfig, sourceIndex: number, map: any, searchConfig: SearchSourceConfig[]) => void;
     className?: string;
 }
 
@@ -111,7 +111,7 @@ function SearchCombobox({
     const [debouncedSearch] = useDebounce(search, 500);
     const [activeSourceIndex, setActiveSourceIndex] = useState<number | null>(null);
     const [isShaking, setIsShaking] = useState(false);
-    const { view } = useMap()
+    const { map, view } = useMap()
     const commandRef = useRef<HTMLDivElement>(null);
     const { toast } = useToast();
 
@@ -307,7 +307,7 @@ function SearchCombobox({
 
         // Use type guards or property checks on itemData
         if (sourceConfig.type === 'masquerade' && 'magicKey' in itemData) { // Check if it's a Suggestion
-            onSuggestionSelect?.(itemData, sourceConfig, sourceIndex, view, searchConfig);
+            onSuggestionSelect?.(itemData, sourceConfig, sourceIndex, map, searchConfig);
             setInputValue(formatAddressCase(itemData.text));
         } else if (sourceConfig.type === 'postgREST' && 'type' in itemData && itemData.type === 'Feature') {
             const displayValue = String(itemData.properties?.[sourceConfig.displayField] ?? '');
@@ -317,7 +317,7 @@ function SearchCombobox({
 
             ensureLayerVisibleByTitle(typedConfig.layerName, `PostgREST feature select (source index ${sourceIndex})`);
 
-            onFeatureSelect?.(itemData, sourceConfig.url, sourceIndex, searchConfig, view);
+            onFeatureSelect?.(itemData, sourceConfig.url, sourceIndex, searchConfig, map);
         } else {
             console.error("Mismatched item data type or config type in handleResultSelect", itemData, sourceConfig);
             setInputValue(value);
@@ -374,7 +374,7 @@ function SearchCombobox({
         }
 
         // Call the actual select handler provided by the parent component
-        onCollectionSelect?.(combinedCollection, firstValidSourceUrl, firstValidSourceIndex, searchConfig, view);
+        onCollectionSelect?.(combinedCollection, firstValidSourceUrl, firstValidSourceIndex, searchConfig, map);
 
         if (combinedCollection !== null) {
             setOpen(false);
@@ -578,15 +578,15 @@ const handleSuggestionSelect = async (
     suggestion: Suggestion,
     sourceConfig: SearchSourceConfig,
     sourceIndex: number,
-    view: __esri.MapView | __esri.SceneView | undefined,
+    map: any,
     searchConfig: SearchSourceConfig[],
 ) => {
 
-    if (sourceConfig.type !== 'masquerade' || !view) {
+    if (sourceConfig.type !== 'masquerade' || !map) {
         return;
     }
 
-    clearGraphics(view);
+    clearGraphics(map);
 
     // findAddressCandidates
     try {
@@ -624,7 +624,7 @@ const handleSuggestionSelect = async (
                 }
             };
 
-            handleSearchSelect(feature, sourceConfig.url, sourceIndex, searchConfig, view);
+            handleSearchSelect(feature, sourceConfig.url, sourceIndex, searchConfig, map);
 
         } else {
             console.warn("No candidates found for magicKey:", suggestion.magicKey);
@@ -641,16 +641,16 @@ const handleSearchSelect = (
     _sourceUrl: string,
     sourceIndex: number,
     searchConfig: SearchSourceConfig[],
-    view: __esri.MapView | __esri.SceneView | undefined,
+    map: any,
 ) => {
     const geom = searchResult?.geometry;
     const sourceConfig = searchConfig[sourceIndex];
 
-    if (!geom || !view || !sourceConfig) {
-        console.warn("No geometry, view, or valid source config for single feature select.", { geom, view, sourceConfig, sourceIndex });
+    if (!geom || !map || !sourceConfig) {
+        console.warn("No geometry, map, or valid source config for single feature select.", { geom, map, sourceConfig, sourceIndex });
         return;
     }
-    clearGraphics(view);
+    clearGraphics(map);
 
     try {
         let sourceCRS: string;
@@ -690,7 +690,7 @@ const handleSearchSelect = (
             namespace: (searchResult as ExtendedFeature).namespace || ''
         };
 
-        highlightFeature(featureToHighlight, view, sourceCRS, 'Search Box Single Feature Highlight');
+        highlightFeature(featureToHighlight, map, sourceCRS, 'Search Box Single Feature Highlight');
 
         const featureBbox = bbox(geom);
         if (!featureBbox || !featureBbox.every(isFinite)) {
@@ -701,7 +701,7 @@ const handleSearchSelect = (
         const targetCRS = "EPSG:4326";
         const [xmin, ymin, xmax, ymax] = convertBbox(featureBbox, sourceCRS, targetCRS);
         const shouldAddScaleValue = geom.type === "Point" ? 13000 : undefined;
-        zoomToExtent(xmin, ymin, xmax, ymax, view, shouldAddScaleValue);
+        zoomToExtent(xmin, ymin, xmax, ymax, map, shouldAddScaleValue);
 
     } catch (error) {
         console.error("Error processing single feature selection:", error);
@@ -723,13 +723,13 @@ const handleCollectionSelect = (
     _sourceUrl: string | null,
     sourceIndex: number,
     searchConfig: SearchSourceConfig[],
-    view: __esri.MapView | __esri.SceneView | undefined,
+    map: any,
 ) => {
-    if (!collection?.features?.length || !view) {
-        console.warn("No features/view for collection select.");
+    if (!collection?.features?.length || !map) {
+        console.warn("No features/map for collection select.");
         return;
     }
-    clearGraphics(view);
+    clearGraphics(map);
 
     // --- Definitive CRS Determination Logic ---
     let sourceCRS: string;
@@ -766,13 +766,13 @@ const handleCollectionSelect = (
 
         const targetCRS = "EPSG:4326";
         const [xmin, ymin, xmax, ymax] = convertBbox(collectionBbox, sourceCRS, targetCRS);
-        zoomToExtent(xmin, ymin, xmax, ymax, view);
+        zoomToExtent(xmin, ymin, xmax, ymax, map);
 
         collection.features.forEach(feature => {
             const extendedFeature: ExtendedFeature = { ...feature, namespace: '' };
             highlightFeature(
                 extendedFeature,
-                view,
+                map,
                 sourceCRS,
                 'Search Box Collection Highlight'
             );

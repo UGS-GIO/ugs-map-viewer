@@ -14,7 +14,6 @@ export default function ArcGISMap() {
         popupContainer,
         setPopupContainer,
         popupContent,
-        clickOrDragHandlers,
         handleOnContextMenu,
         coordinates,
         setCoordinates,
@@ -30,7 +29,6 @@ export default function ArcGISMap() {
                 className="relative w-full h-full"
                 ref={mapRef}
                 onContextMenu={e => handleOnContextMenu(e, contextMenuTriggerRef, setCoordinates)}
-                {...clickOrDragHandlers}
             >
                 <MapWidgets />
             </div>

@@ -1,65 +1,42 @@
 import { Feature, Geometry, GeoJsonProperties } from 'geojson';
-import Graphic from '@arcgis/core/Graphic';
 import { createHighlightProvider } from './highlight/factory';
 import type { HighlightOptions } from './highlight/types';
 
 export type { HighlightOptions };
 
 /**
- * Highlight a feature on the map
- * Supports both ArcGIS (view) and MapLibre (map) implementations
+ * Highlight a feature on the MapLibre map
  */
 export const highlightFeature = async (
   feature: Feature<Geometry, GeoJsonProperties>,
-  viewOrMap: __esri.MapView | __esri.SceneView | any,
+  map: any,
   sourceCRS: string,
   title: string,
   options?: HighlightOptions
-): Promise<Graphic | null> => {
-  // Determine if this is an ArcGIS view or MapLibre map
-  const isArcGIS = viewOrMap?.type === 'map' || viewOrMap?.goTo;
-
-  const provider = isArcGIS
-    ? createHighlightProvider(viewOrMap, undefined)
-    : createHighlightProvider(undefined, viewOrMap);
-
-  const success = await provider.highlightFeature(feature, sourceCRS, title, options);
-  return success ? ({} as Graphic) : null;
+): Promise<boolean> => {
+  const provider = createHighlightProvider(undefined, map);
+  return await provider.highlightFeature(feature, sourceCRS, title, options);
 };
 
 /**
- * Clear graphics from the map
- * Supports both ArcGIS (view) and MapLibre (map) implementations
+ * Clear graphics from the MapLibre map
  */
 export const clearGraphics = (
-  viewOrMap: __esri.MapView | __esri.SceneView | any,
+  map: any,
   title?: string
 ) => {
-  // Determine if this is an ArcGIS view or MapLibre map
-  const isArcGIS = viewOrMap?.type === 'map' || viewOrMap?.goTo;
-
-  const provider = isArcGIS
-    ? createHighlightProvider(viewOrMap, undefined)
-    : createHighlightProvider(undefined, viewOrMap);
-
+  const provider = createHighlightProvider(undefined, map);
   provider.clearGraphics(title);
 };
 
 /**
- * Create a pin marker on the map
- * Supports both ArcGIS (view) and MapLibre (map) implementations
+ * Create a pin marker on the MapLibre map
  */
 export function createPinGraphic(
   lat: number,
   long: number,
-  viewOrMap: __esri.SceneView | __esri.MapView | any
+  map: any
 ) {
-  // Determine if this is an ArcGIS view or MapLibre map
-  const isArcGIS = viewOrMap?.type === 'map' || viewOrMap?.goTo;
-
-  const provider = isArcGIS
-    ? createHighlightProvider(viewOrMap, undefined)
-    : createHighlightProvider(undefined, viewOrMap);
-
+  const provider = createHighlightProvider(undefined, map);
   provider.createPinGraphic(lat, long);
 }

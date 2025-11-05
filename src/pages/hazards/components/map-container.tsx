@@ -15,7 +15,6 @@ export default function MapContainer() {
         popupContainer,
         setPopupContainer,
         popupContent,
-        clickOrDragHandlers,
         handleOnContextMenu,
         coordinates,
         setCoordinates,
@@ -31,7 +30,6 @@ export default function MapContainer() {
                 className="relative w-full h-full"
                 ref={mapRef}
                 onContextMenu={e => handleOnContextMenu(e, contextMenuTriggerRef, setCoordinates)}
-                {...clickOrDragHandlers}
             >
                 <MapWidgets />
             </div>

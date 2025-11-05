@@ -75,7 +75,7 @@ export async function fetchWMSFeatureInfo({
     let maxX = bboxWebMercator.maxX;
     let maxY = bboxWebMercator.maxY;
 
-    console.log('[FetchWMSFeatureInfo] Initial bbox (Web Mercator):', { minX, minY, maxX, maxY, crs });
+    // console.log('[FetchWMSFeatureInfo] Initial bbox (Web Mercator):', { minX, minY, maxX, maxY, crs });
 
     if (crs !== 'EPSG:3857') {
         // Transform bbox from Web Mercator (3857) to target CRS
@@ -83,11 +83,11 @@ export async function fetchWMSFeatureInfo({
         const [minX_transformed, minY_transformed] = proj4('EPSG:3857', crs, [minX, minY]);
         const [maxX_transformed, maxY_transformed] = proj4('EPSG:3857', crs, [maxX, maxY]);
 
-        console.log('[FetchWMSFeatureInfo] Transformed bbox corners:', {
-            min: [minX_transformed, minY_transformed],
-            max: [maxX_transformed, maxY_transformed],
-            targetCrs: crs
-        });
+        // console.log('[FetchWMSFeatureInfo] Transformed bbox corners:', {
+        //     min: [minX_transformed, minY_transformed],
+        //     max: [maxX_transformed, maxY_transformed],
+        //     targetCrs: crs
+        // });
 
         // Get the min/max values (in case projection reverses axes)
         minX = Math.min(minX_transformed, maxX_transformed);
@@ -95,7 +95,7 @@ export async function fetchWMSFeatureInfo({
         maxX = Math.max(minX_transformed, maxX_transformed);
         maxY = Math.max(minY_transformed, maxY_transformed);
 
-        console.log('[FetchWMSFeatureInfo] Final transformed bbox:', { minX, minY, maxX, maxY });
+        // console.log('[FetchWMSFeatureInfo] Final transformed bbox:', { minX, minY, maxX, maxY });
     }
 
     // Different versions handle coordinates differently
@@ -138,14 +138,14 @@ export async function fetchWMSFeatureInfo({
     }
 
     const fullUrl = `${url}?${params.toString()}`;
-    console.log('[FetchWMSFeatureInfo] Sending request:', {
-        layers: params.get('layers'),
-        query_layers: params.get('query_layers'),
-        cql_filter: params.get('cql_filter'),
-        i: params.get('i'),
-        j: params.get('j'),
-        bbox: params.get('bbox')
-    });
+    // console.log('[FetchWMSFeatureInfo] Sending request:', {
+    //     layers: params.get('layers'),
+    //     query_layers: params.get('query_layers'),
+    //     cql_filter: params.get('cql_filter'),
+    //     i: params.get('i'),
+    //     j: params.get('j'),
+    //     bbox: params.get('bbox')
+    // });
 
     const response = await fetch(fullUrl, { headers });
 
@@ -248,7 +248,7 @@ export async function fetchWFSFeature({
     params.set('count', featureCount.toString());
 
     const fullUrl = `${url}?${params.toString()}`;
-    console.log('[FetchWFSFeature] Querying layers:', { layers, crs, bbox, spatialFilter: spatialFilter.substring(0, 80) + '...' });
+    // console.log('[FetchWFSFeature] Querying layers:', { layers, crs, bbox, spatialFilter: spatialFilter.substring(0, 80) + '...' });
 
     try {
         const response = await fetch(fullUrl);
@@ -261,7 +261,7 @@ export async function fetchWFSFeature({
         const data = await response.json();
 
         if (data.features && data.features.length > 0) {
-            console.log('[FetchWFSFeature] Features returned:', data.features.length);
+            // console.log('[FetchWFSFeature] Features returned:', data.features.length);
 
             // Add namespace to features for consistency with WMS response
             const namespaceMap = layers.reduce((acc, layer) => {
@@ -284,7 +284,7 @@ export async function fetchWFSFeature({
             return { ...data, features: featuresWithNamespace };
         }
 
-        console.log('[FetchWFSFeature] No features found');
+        // console.log('[FetchWFSFeature] No features found');
         return data;
     } catch (error) {
         console.error('[FetchWFSFeature] Error:', error);
@@ -405,17 +405,6 @@ export function useFeatureInfoQuery({
             return [];
         }
 
-        const allLayers = Object.entries(visibleLayersMap).map(([key, layerInfo]) => ({
-            key,
-            visible: layerInfo.visible,
-            queryable: layerInfo.queryable,
-            title: layerInfo.layerTitle
-        }));
-        const visibleLayers = allLayers.filter(l => l.visible);
-        const queryableLayers_detail = allLayers.filter(l => l.visible && l.queryable);
-        console.log('[FeatureInfoQuery] Visible layers:', visibleLayers.length, visibleLayers.map(l => l.title).join(', '));
-        console.log('[FeatureInfoQuery] Visible + Queryable:', queryableLayers_detail.length, queryableLayers_detail.map(l => l.title).join(', '));
-
         const queryableLayers = Object.entries(visibleLayersMap)
             .filter(([_, layerInfo]) => layerInfo.visible && layerInfo.queryable)
             .map(([key]) => key);
@@ -423,7 +412,7 @@ export function useFeatureInfoQuery({
         console.log('[FeatureInfoQuery] Queryable layers (filtered):', queryableLayers);
 
         if (queryableLayers.length === 0) {
-            console.log('[FeatureInfoQuery] No queryable layers');
+            // console.log('[FeatureInfoQuery] No queryable layers');
             return [];
         }
 
@@ -446,7 +435,7 @@ export function useFeatureInfoQuery({
             if (dynamicFilter) layerFilters.push(dynamicFilter);
             const layerCqlFilter = layerFilters.length > 0 ? layerFilters.join(' AND ') : null;
 
-            console.log(`[FeatureInfoQuery] Querying layer separately: ${layerKey} with CRS ${layerCrs}`);
+            // console.log(`[FeatureInfoQuery] Querying layer separately: ${layerKey} with CRS ${layerCrs}`);
 
             // Use WFS instead of WMS for more reliable geometry-based queries
             const wfsUrl = wmsUrl.replace('/wms', '/wfs');
@@ -460,21 +449,21 @@ export function useFeatureInfoQuery({
             });
 
             if (featureInfo && featureInfo.features && featureInfo.features.length > 0) {
-                console.log(`[FeatureInfoQuery] Layer ${layerKey}: ${featureInfo.features.length} features returned`);
+                // console.log(`[FeatureInfoQuery] Layer ${layerKey}: ${featureInfo.features.length} features returned`);
                 allFeatures.push(...featureInfo.features);
                 sourceCRS = getSourceCRSFromGeoJSON(featureInfo);
             } else {
-                console.log(`[FeatureInfoQuery] Layer ${layerKey}: 0 features returned`);
+                // console.log(`[FeatureInfoQuery] Layer ${layerKey}: 0 features returned`);
             }
         }
 
         if (allFeatures.length === 0) {
-            console.log('[FeatureInfoQuery] No features returned from any layer');
+            // console.log('[FeatureInfoQuery] No features returned from any layer');
             return [];
         }
 
         const featureInfo = { features: allFeatures, crs: { type: 'name', properties: { name: `urn:ogc:def:crs:EPSG::${sourceCRS.split(':')[1]}` } } };
-        console.log('[FeatureInfoQuery] Total features from all layers:', allFeatures.length);
+        // console.log('[FeatureInfoQuery] Total features from all layers:', allFeatures.length);
 
         const layerInfoPromises = Object.entries(visibleLayersMap)
             .filter(([_, value]) => value.visible)
@@ -492,7 +481,7 @@ export function useFeatureInfoQuery({
                         // Check if feature ID contains the layer name (common GeoServer pattern)
                         const matches = featureId.includes(layerName) || featureId.includes(namespace);
                         if (!matches && featureId) {
-                            console.log('[FeatureInfoQuery] Feature ID mismatch:', { featureId, layerName, namespace, key });
+                            // console.log('[FeatureInfoQuery] Feature ID mismatch:', { featureId, layerName, namespace, key });
                         }
                         return matches;
                     } else {
@@ -501,7 +490,7 @@ export function useFeatureInfoQuery({
                     }
                 });
 
-                console.log('[FeatureInfoQuery] Layer filter:', { key, matchCount: matchingFeatures.length, featureSample: featureInfo.features[0]?.id });
+                // console.log('[FeatureInfoQuery] Layer filter:', { key, matchCount: matchingFeatures.length, featureSample: featureInfo.features[0]?.id });
 
                 const baseLayerInfo = {
                     customLayerParameters: value.customLayerParameters,
@@ -540,7 +529,7 @@ export function useFeatureInfoQuery({
         const resolvedLayerInfo = await Promise.all(layerInfoPromises);
 
         const layerInfoFiltered = resolvedLayerInfo.filter(layer => layer.features.length > 0);
-        console.log('[FeatureInfoQuery] Layers with features:', layerInfoFiltered.map(l => ({ title: l.layerTitle, count: l.features.length })));
+        // console.log('[FeatureInfoQuery] Layers with features:', layerInfoFiltered.map(l => ({ title: l.layerTitle, count: l.features.length })));
 
         return layerOrderConfigs.length > 0
             ? reorderLayers(layerInfoFiltered, layerOrderConfigs)

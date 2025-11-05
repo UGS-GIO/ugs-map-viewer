@@ -54,13 +54,9 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
 
     // This handler now explicitly sets the accordion state.
     const handleLocalToggle = (checked: boolean) => {
-        // For MapLibre, view is undefined; for ArcGIS, map may be undefined
-        // Just need one of them to exist to proceed
-        if (!view && !map) return;
-
-        // Only clear graphics if using ArcGIS (has view)
-        if (view) {
-            clearGraphics(view, layerConfig.title || '');
+        // Only clear graphics if using MapLibre (has map)
+        if (map) {
+            clearGraphics(map, layerConfig.title || '');
         }
 
         handleToggleSelection(checked);
