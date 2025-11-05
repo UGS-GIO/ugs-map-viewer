@@ -14,7 +14,7 @@ export const highlightFeature = async (
   title: string,
   options?: HighlightOptions
 ): Promise<boolean> => {
-  const provider = createHighlightProvider(undefined, map);
+  const provider = createHighlightProvider(map);
   return await provider.highlightFeature(feature, sourceCRS, title, options);
 };
 
@@ -25,7 +25,8 @@ export const clearGraphics = (
   map: any,
   title?: string
 ) => {
-  const provider = createHighlightProvider(undefined, map);
+  if (!map) return;
+  const provider = createHighlightProvider(map);
   provider.clearGraphics(title);
 };
 
@@ -37,6 +38,7 @@ export function createPinGraphic(
   long: number,
   map: any
 ) {
-  const provider = createHighlightProvider(undefined, map);
+  if (!map) return;
+  const provider = createHighlightProvider(map);
   provider.createPinGraphic(lat, long);
 }

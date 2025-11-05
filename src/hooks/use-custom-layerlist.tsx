@@ -3,16 +3,14 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, Accordion
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { useLayerItemState } from '@/hooks/use-layer-item-state';
-import { LayerProps } from '@/lib/types/mapping-types';
+import { LayerProps, WMSLayerProps } from '@/lib/types/mapping-types';
 import { useMap } from '@/hooks/use-map';
-import { findLayerByTitle } from '@/lib/map/utils';
+import { findLayerByTitle, isWMSLayer } from '@/lib/map/utils';
 import { useLayerExtent } from '@/hooks/use-layer-extent';
 import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions';
 import { useSidebar } from '@/hooks/use-sidebar';
 import LayerControls from '@/components/custom/layer-controls';
-import Extent from '@arcgis/core/geometry/Extent';
 import { useIsMobile } from './use-mobile';
-import Layer from '@arcgis/core/layers/Layer';
 import { clearGraphics } from '@/lib/map/highlight-utils';
 
 const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerProps; isTopLevel: boolean }) => {
@@ -42,9 +40,28 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
     const liveLayer = useMemo(() => {
         if (!map || !layerConfig.title) return null;
         return findLayerByTitle(map, layerConfig.title);
-    }, [map, map?.allLayers, layerConfig.title]);
+    }, [map, layerConfig.title]);
 
-    const { refetch: fetchExtent, data: cachedExtent, isLoading: isExtentLoading } = useLayerExtent(liveLayer || new Layer());
+    // Extract WMS URL and layer name from the config for extent queries
+    const wmsUrl = useMemo(() => {
+        if (isWMSLayer(layerConfig)) {
+            return (layerConfig as WMSLayerProps).url;
+        }
+        return null;
+    }, [layerConfig]);
+
+    const layerName = useMemo(() => {
+        if (isWMSLayer(layerConfig)) {
+            const wmsLayer = layerConfig as WMSLayerProps;
+            const sublayers = wmsLayer.sublayers as any[];
+            if (Array.isArray(sublayers) && sublayers.length > 0 && sublayers[0].name) {
+                return sublayers[0].name;
+            }
+        }
+        return null;
+    }, [layerConfig]);
+
+    const { refetch: fetchExtent, data: cachedExtent, isLoading: isExtentLoading } = useLayerExtent(wmsUrl || null, layerName || null);
 
     const handleOpacityChange = (value: number) => {
         if (liveLayer) {
@@ -64,13 +81,21 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
     };
 
     const handleZoomToLayer = async () => {
-        if (!liveLayer || isExtentLoading) return;
+        if (!liveLayer || !map) return;
         try {
-            const extent = cachedExtent || await fetchExtent().then(result => result.data);
-            if (extent) {
+            let extent = cachedExtent;
+            if (!extent) {
+                const result = await fetchExtent();
+                extent = result.data;
+            }
+            if (extent && extent.length === 4) {
                 handleToggleSelection(true);
                 setIsUserExpanded(true);
-                view?.goTo(new Extent({ ...extent, spatialReference: { wkid: 4326 } }));
+                // extent is [minLng, minLat, maxLng, maxLat]
+                map.fitBounds(
+                    [[extent[0], extent[1]], [extent[2], extent[3]]],
+                    { padding: 50, animate: true }
+                );
                 if (isMobile) {
                     setIsCollapsed(true);
                     setNavOpened(false);
@@ -133,16 +158,6 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
     }
 
     // --- Single Layer Rendering ---
-    let typedLayer: __esri.FeatureLayer | __esri.MapImageLayer | __esri.WMSLayer | null = null;
-    if (liveLayer) {
-        switch (liveLayer.type) {
-            case 'feature': typedLayer = liveLayer as __esri.FeatureLayer; break;
-            case 'map-image': typedLayer = liveLayer as __esri.MapImageLayer; break;
-            case 'wms': typedLayer = liveLayer as __esri.WMSLayer; break;
-            default: break;
-        }
-    }
-
     return (
         <div className={`mr-2 my-1 ${isTopLevel ? 'border border-secondary rounded' : ''}`}>
             <Accordion
@@ -184,7 +199,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
                             description={layerDescriptions ? layerDescriptions[layerConfig.title || ''] : ''}
                             handleZoomToLayer={handleZoomToLayer}
                             layerId={liveLayer?.id || ''}
-                            url={typedLayer && 'url' in typedLayer ? typedLayer.url || '' : ''}
+                            url={wmsUrl || ''}
                             openLegend={isUserExpanded}
                         />
                     </AccordionContent>

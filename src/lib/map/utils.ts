@@ -226,12 +226,3 @@ export const isGroupLayer = (layer: LayerProps): layer is GroupLayerProps => {
     return layer.type === 'group';
 }
 
-// Type guard to check if the layer is a WMS map layer
-export const isWMSMapLayer = (layer: __esri.Layer): layer is __esri.WMSLayer => {
-    return layer.type === 'wms';
-}
-
-// Type guard to check if the layer is a group map layer
-export const isGroupMapLayer = (layer: __esri.Layer): layer is __esri.GroupLayer => {
-    return layer.type === 'group';
-}

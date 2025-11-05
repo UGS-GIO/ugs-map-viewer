@@ -12,7 +12,6 @@ import { useFeatureResponseHandler } from '@/hooks/use-feature-response-handler'
 import { useMapUrlSync } from '@/hooks/use-map-url-sync';
 import { createCoordinateAdapter } from '@/lib/map/coordinates/factory';
 import type { CoordinateAdapter } from '@/lib/map/coordinates/types';
-import { getMapImplementation } from '@/lib/map/get-map-implementation';
 import { clearGraphics } from '@/lib/map/highlight-utils';
 
 interface UseMapContainerProps {
@@ -48,10 +47,9 @@ export function useMapContainer({
     const [visibleLayersMap, setVisibleLayersMap] = useState({});
     const { selectedLayerTitles, hiddenGroupTitles } = useLayerUrl();
 
-    // Create coordinate adapter based on active map implementation from feature flag
+    // Create coordinate adapter for MapLibre
     const coordinateAdapter: CoordinateAdapter = useMemo(() => {
-        const mapImpl = getMapImplementation();
-        return createCoordinateAdapter(mapImpl);
+        return createCoordinateAdapter();
     }, []);
 
     // Extract URL synchronization
