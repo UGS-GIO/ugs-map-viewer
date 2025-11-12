@@ -34,7 +34,6 @@ export default function MapContainer({ searchParams, updateLayerSelection }: Map
         handleOnContextMenu,
         coordinates,
         setCoordinates,
-        view,
     } = useMapContainer({
         wmsUrl: `${PROD_GEOSERVER_URL}wms`,
         layersConfig: defaultLayersConfig,
@@ -42,7 +41,6 @@ export default function MapContainer({ searchParams, updateLayerSelection }: Map
 
     // Use the generalized domain filters hook
     useDomainFilters({
-        view,
         filters: searchParams.filters,
         updateLayerSelection,
         filterMapping: CCS_FILTER_MAPPING

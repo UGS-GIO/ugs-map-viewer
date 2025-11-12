@@ -9,7 +9,7 @@ interface FilterMapping {
 }
 
 interface UseDomainFiltersProps {
-    view: __esri.MapView | __esri.SceneView | undefined;
+    view?: __esri.MapView | __esri.SceneView | undefined;
     filters: Record<string, string> | undefined;
     updateLayerSelection: (title: string, selected: boolean) => void;
     filterMapping: FilterMapping;

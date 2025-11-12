@@ -1,7 +1,6 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { useMapCoordinates } from "@/hooks/use-map-coordinates";
 import { useMapInteractions } from "@/hooks/use-map-interactions";
-import { useMapPositionUrlParams } from "@/hooks/use-map-position-url-params";
 import { LayerOrderConfig, useGetLayerConfigsData } from "@/hooks/use-get-layer-configs";
 import { useFeatureInfoQuery } from "@/hooks/use-feature-info-query";
 import { useLayerUrl } from '@/context/layer-url-provider';
@@ -37,13 +36,12 @@ export function useMapContainer({
     layersConfig
 }: UseMapContainerProps) {
     const mapRef = useRef<HTMLDivElement>(null);
-    const { loadMap, view, map, isSketching } = useMap();
+    const { loadMap, map, isSketching } = useMap();
     const { coordinates, setCoordinates } = useMapCoordinates();
-    const { handleOnContextMenu } = useMapInteractions({ layersConfig: layersConfig });
+    const { handleOnContextMenu } = useMapInteractions();
     const [popupContainer, setPopupContainer] = useState<HTMLDivElement | null>(null);
     const contextMenuTriggerRef = useRef<HTMLDivElement>(null);
     const drawerTriggerRef = useRef<HTMLButtonElement>(null);
-    useMapPositionUrlParams(view);
     const [visibleLayersMap, setVisibleLayersMap] = useState({});
     const { selectedLayerTitles, hiddenGroupTitles } = useLayerUrl();
 
@@ -64,7 +62,6 @@ export function useMapContainer({
 
     // Feature info query handling with coordinate adapter
     const featureInfoQuery = useFeatureInfoQuery({
-        view,
         map,
         wmsUrl,
         visibleLayersMap,
@@ -76,7 +73,6 @@ export function useMapContainer({
     useFeatureResponseHandler({
         isSuccess: featureInfoQuery.isSuccess,
         featureData: featureInfoQuery.data || [],
-        view,
         drawerTriggerRef,
         clickId: featureInfoQuery.clickId
     });
@@ -141,7 +137,6 @@ export function useMapContainer({
         handleOnContextMenu,
         coordinates,
         setCoordinates,
-        view,
         layersConfig: processedLayers,
     };
 }

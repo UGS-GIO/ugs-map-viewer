@@ -61,7 +61,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
         return null;
     }, [layerConfig]);
 
-    const { refetch: fetchExtent, data: cachedExtent, isLoading: isExtentLoading } = useLayerExtent(wmsUrl || null, layerName || null);
+    const { refetch: fetchExtent, data: cachedExtent } = useLayerExtent(wmsUrl || null, layerName || null);
 
     const handleOpacityChange = (value: number) => {
         if (liveLayer) {

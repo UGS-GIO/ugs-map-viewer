@@ -1,19 +1,13 @@
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useMap } from "@/hooks/use-map";
 import { createCoordinateAdapter } from "@/lib/map/coordinates/factory";
-import { useGetLayerConfigsData } from "./use-get-layer-configs";
 import { createPinGraphic, clearGraphics } from "@/lib/map/highlight-utils";
-
-type UseMapInteractionsType = {
-    layersConfig: ReturnType<typeof useGetLayerConfigsData>;
-};
 
 /**
  * Map interactions hook for MapLibre GL JS
  * Handles context menu (right-click) events and coordinate conversion
  */
-export const useMapInteractions = ({ layersConfig }: UseMapInteractionsType) => {
-    const [visibleLayers, setVisibleLayers] = useState<Record<string, any>>();
+export const useMapInteractions = () => {
     const { map } = useMap();
 
     // Handle right-click to show context menu and update coordinates
@@ -52,5 +46,5 @@ export const useMapInteractions = ({ layersConfig }: UseMapInteractionsType) => 
         [map]
     );
 
-    return { handleOnContextMenu, visibleLayers };
+    return { handleOnContextMenu };
 };

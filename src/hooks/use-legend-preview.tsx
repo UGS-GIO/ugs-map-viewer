@@ -4,7 +4,7 @@ import { createLegendProvider } from '@/lib/map/legend/factory';
 import { useMap } from '@/hooks/use-map';
 
 const useLegendPreview = (layerId: string, url: string) => {
-    const { view, map } = useMap();
+    const { map } = useMap();
 
     const fetchLegendData = async () => {
         if (!map) return [];

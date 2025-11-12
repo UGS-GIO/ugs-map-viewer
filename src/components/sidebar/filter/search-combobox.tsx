@@ -111,7 +111,7 @@ function SearchCombobox({
     const [debouncedSearch] = useDebounce(search, 500);
     const [activeSourceIndex, setActiveSourceIndex] = useState<number | null>(null);
     const [isShaking, setIsShaking] = useState(false);
-    const { map, view } = useMap()
+    const { map } = useMap()
     const commandRef = useRef<HTMLDivElement>(null);
     const { toast } = useToast();
 
@@ -119,7 +119,7 @@ function SearchCombobox({
         layerTitle: string | undefined,
         contextMessage: string
     ) => {
-        if (!view?.map) {
+        if (!map) {
             console.error(`Map is not defined. Cannot ensure layer visibility for ${contextMessage}.`);
             return;
         }
@@ -127,7 +127,7 @@ function SearchCombobox({
             return;
         }
 
-        const foundLayer = findLayerByTitle(view.map, layerTitle);
+        const foundLayer = findLayerByTitle(map, layerTitle);
         if (foundLayer) {
             foundLayer.visible = true;
         } else {
