@@ -1,4 +1,6 @@
 import maplibregl from 'maplibre-gl';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { Home } from 'lucide-react';
 
 export interface HomeControlOptions {
   initialBounds?: maplibregl.LngLatBounds;
@@ -26,15 +28,16 @@ export class HomeControl implements maplibregl.IControl {
     button.title = 'Go to home view';
     button.setAttribute('aria-label', 'Go to home view');
 
-    // SVG home icon
-    button.innerHTML = `
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M10 2L2 9v7h4v-4h8v4h4V9L10 2z" fill="black"/>
-      </svg>
-    `;
+    // Lucide Home icon (rendered from React component)
+    // Use currentColor so it inherits from MapLibre's control styling
+    const homeIcon = renderToStaticMarkup(
+      Home({ size: 20, strokeWidth: 2 })
+    );
+    button.innerHTML = homeIcon;
     button.style.display = 'flex';
     button.style.alignItems = 'center';
     button.style.justifyContent = 'center';
+    button.style.color = '#333'; // MapLibre's default icon color
 
     button.addEventListener('click', () => {
       if (this.initialBounds) {
