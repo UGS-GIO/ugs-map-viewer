@@ -1,5 +1,6 @@
 import maplibregl from 'maplibre-gl';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { createElement } from 'react';
 import { Home } from 'lucide-react';
 
 export interface HomeControlOptions {
@@ -31,7 +32,7 @@ export class HomeControl implements maplibregl.IControl {
     // Lucide Home icon (rendered from React component)
     // Use currentColor so it inherits from MapLibre's control styling
     const homeIcon = renderToStaticMarkup(
-      Home({ size: 20, strokeWidth: 2 })
+      createElement(Home, { size: 20, strokeWidth: 2 })
     );
     button.innerHTML = homeIcon;
     button.style.display = 'flex';
