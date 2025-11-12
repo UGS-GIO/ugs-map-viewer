@@ -202,9 +202,6 @@ const qFaultsWMSConfig: WMSLayerProps = {
     title: qFaultsWMSTitle,
     visible: true,
     crs: 'EPSG:26912', // Utah State Plane North
-    customLayerParameters: {
-        cql_filter: `is_current	= 'Y'`,
-    },
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${qFaultsLayerName}`,

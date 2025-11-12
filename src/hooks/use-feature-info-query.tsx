@@ -237,17 +237,18 @@ export async function fetchWFSFeature({
     params.set('request', 'GetFeature');
     params.set('typeNames', layers.join(','));
     params.set('outputFormat', 'application/json');
-    params.set('count', featureCount.toString());
-
     // GeoServer limitation: bbox and cql_filter are mutually exclusive
-    // If we have an attribute filter, skip spatial filter and do client-side filtering
+    // If we have an attribute filter, use only bbox (no cql_filter needed for most cases)
     if (cql_filter) {
-        // Use attribute filter only, return more features for client-side spatial filtering
-        params.set('cql_filter', cql_filter);
-        params.set('count', (featureCount * 10).toString()); // Get more features since no spatial filter
+        // When we have attribute filters, just use them - skip spatial filter
+        // This returns more results but is filtered by the layer's native filter
+        const normalizedAttributeFilter = cql_filter.trim().replace(/\s*=\s*/g, '=');
+        params.set('cql_filter', normalizedAttributeFilter);
+        params.set('count', featureCount.toString());
     } else {
         // No attribute filter, use bbox for spatial filtering
         params.set('bbox', `${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY},${crs}`);
+        params.set('count', featureCount.toString());
     }
 
     const fullUrl = `${url}?${params.toString()}`;

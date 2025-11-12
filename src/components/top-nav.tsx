@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -53,12 +53,42 @@ function TopNav({ className, ...props }: TopNavProps) {
 
   const activeBasemap = searchParams.basemap || DEFAULT_BASEMAP.id;
 
+  // Track if this is the initial mount to skip basemap loading on first render
+  const isInitialMount = useRef(true);
+
   // Load basemap from URL on mount or when URL changes
   useEffect(() => {
     if (!map) return;
 
+    // Skip on initial mount - map is already loaded with default basemap
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+
     const basemap = BASEMAP_STYLES.find(b => b.id === activeBasemap);
     if (!basemap) return;
+
+    // Preserve WMS layers before changing basemap
+    const style = map.getStyle();
+    const wmsLayers: any[] = [];
+    const wmsSources: Record<string, any> = {};
+
+    if (style) {
+      // Save WMS sources
+      for (const [sourceId, source] of Object.entries(style.sources || {})) {
+        if (sourceId.startsWith('wms-') || sourceId.startsWith('mapimage-')) {
+          wmsSources[sourceId] = source;
+        }
+      }
+
+      // Save WMS layers
+      for (const layer of style.layers || []) {
+        if (layer.id.startsWith('wms-') || layer.id.startsWith('mapimage-')) {
+          wmsLayers.push(layer);
+        }
+      }
+    }
 
     // Check if the URL is a raster tile URL (satellite imagery)
     if (basemap.url.includes('{x}') && basemap.url.includes('{y}') && basemap.url.includes('{z}')) {
@@ -71,19 +101,38 @@ function TopNav({ className, ...props }: TopNavProps) {
             tiles: [basemap.url],
             tileSize: 256,
             attribution: '© Sentinel-2 cloudless by EOX IT Services GmbH'
-          }
+          },
+          ...wmsSources
         },
         layers: [
           {
             id: 'raster-layer',
             type: 'raster' as const,
             source: 'raster-tiles'
-          }
+          },
+          ...wmsLayers
         ]
       };
       map.setStyle(rasterStyle);
     } else {
-      // It's a style JSON URL
+      // It's a style JSON URL - restore layers after style loads
+      const restoreLayers = () => {
+        // Re-add sources
+        for (const [sourceId, source] of Object.entries(wmsSources)) {
+          if (!map.getSource(sourceId)) {
+            map.addSource(sourceId, source);
+          }
+        }
+
+        // Re-add layers
+        for (const layer of wmsLayers) {
+          if (!map.getLayer(layer.id)) {
+            map.addLayer(layer);
+          }
+        }
+      };
+
+      map.once('styledata', restoreLayers);
       map.setStyle(basemap.url);
     }
 
