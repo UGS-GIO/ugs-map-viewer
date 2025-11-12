@@ -4,6 +4,7 @@ import { LayerProps } from "@/lib/types/mapping-types";
 import { createMapFactory } from "@/lib/map/factory/factory";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { MapContext, MapContextProps } from "@/context/map-context";
+import { useMapPositionUrlParams } from "@/hooks/use-map-position-url-params";
 
 /**
  * MapLibre Map Provider
@@ -28,6 +29,9 @@ export function MapLibreMapProvider({ children }: { children: React.ReactNode })
 
     // Keep ref in sync with state
     mapRef.current = map;
+
+    // Sync map position with URL parameters
+    useMapPositionUrlParams(map || null);
 
     const loadMap = useCallback(async ({
         container,

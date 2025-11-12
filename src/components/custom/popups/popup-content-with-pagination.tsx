@@ -145,7 +145,7 @@ const LayerCard = ({
     return (
         <Card
             id={`section-${layer.layerTitle !== '' ? layer.layerTitle : layer.groupLayerTitle}`}
-            className="w-full"
+            className="w-full bg-background/40 backdrop-blur-sm border-border/50"
         >
             <CardHeader className="p-4">
                 <CardTitle>
@@ -167,12 +167,13 @@ const LayerCard = ({
                     <div
                         key={idx}
                         className={`
-                                space-y-4 
-                                p-4 
-                                rounded-lg 
-                                bg-border/50
-                                border 
-                                border-secondary/20
+                                space-y-4
+                                p-4
+                                rounded-lg
+                                bg-background/30
+                                backdrop-blur-sm
+                                border
+                                border-border/30
                             `}
                     >
                         <PopupButtons feature={feature} />
@@ -203,7 +204,6 @@ const PopupContentWithPagination = ({ layerContent, onSectionChange }: SidebarIn
     useEffect(() => {
         if (layerContent.length > 0 && layerContent[0].features.length > 0) {
             if (!map) {
-                console.log('[PopupContent] No map available for highlighting');
                 return
             }
 
@@ -211,7 +211,6 @@ const PopupContentWithPagination = ({ layerContent, onSectionChange }: SidebarIn
             const firstFeature = firstLayer.features[0]
             const title = firstLayer.layerTitle || firstLayer.groupLayerTitle
 
-            console.log('[PopupContent] Highlighting first feature:', { title, featureType: firstFeature.geometry?.type });
             // Clear ALL previous highlights from all layers when showing new popup
             clearGraphics(map)
             highlightFeature(firstFeature, map, firstLayer.sourceCRS, title).catch(error => {

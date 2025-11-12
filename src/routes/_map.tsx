@@ -13,13 +13,16 @@ const mapSearchSchema = z.object({
     tab: z.string().optional().default('info'),
     sidebar_collapsed: z.coerce.boolean().optional().default(false),
     coordinate_format: z.enum(['dd', 'dms']).optional(),
-    layers: z.union([
-        z.string(),
-        z.object({
-            selected: z.array(z.string()).optional(),
-            hidden: z.array(z.string()).optional(),
-        })
-    ]).optional()
+    basemap: z.string().optional(),
+    layers: z.preprocess((val) => {
+        if (typeof val === 'string') {
+            try { return JSON.parse(val); } catch (e) { return undefined; }
+        }
+        return val;
+    }, z.object({
+        selected: z.array(z.string()).optional(),
+        hidden: z.array(z.string()).optional(),
+    }).optional())
 }).strip()
 
 export type MapSearchParams = z.infer<typeof mapSearchSchema>;
