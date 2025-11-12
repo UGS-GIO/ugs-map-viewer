@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { findAndApplyWMSFilter } from '@/lib/sidebar/filter/util';
+import { findAndApplyMapLibreWMSFilter } from '@/lib/sidebar/filter/util';
+import maplibregl from 'maplibre-gl';
 
 interface FilterMapping {
     [filterKey: string]: {
@@ -9,7 +10,7 @@ interface FilterMapping {
 }
 
 interface UseDomainFiltersProps {
-    view?: __esri.MapView | __esri.SceneView | undefined;
+    map?: maplibregl.Map | undefined;
     filters: Record<string, string> | undefined;
     updateLayerSelection: (title: string, selected: boolean) => void;
     filterMapping: FilterMapping;
@@ -19,20 +20,20 @@ interface UseDomainFiltersProps {
  * Hook that handles domain-specific filter application for WMS layers.
  * Applies WMS filters from URL parameters to the map and updates layer selection state.
  * This is separated from generic URL sync to keep domain logic isolated.
- * 
- * @param view - ArcGIS map view instance
- * @param filters - Filter values from URL parameters  
+ *
+ * @param map - MapLibre map instance
+ * @param filters - Filter values from URL parameters
  * @param updateLayerSelection - Function to update layer selection state
  * @param filterMapping - Mapping of filter keys to layer configurations
  */
 export function useDomainFilters({
-    view,
+    map,
     filters,
     updateLayerSelection,
     filterMapping
 }: UseDomainFiltersProps) {
     useEffect(() => {
-        if (!view || !view.map) return;
+        if (!map) return;
 
         const filtersFromUrl = filters ?? {};
 
@@ -41,11 +42,11 @@ export function useDomainFilters({
             const filterValue = filtersFromUrl[filterKey] || null;
             const { layerTitle, autoSelectLayer = true } = config;
 
-            findAndApplyWMSFilter(view.map, layerTitle, filterValue);
+            findAndApplyMapLibreWMSFilter(map, layerTitle, filterValue);
 
             if (filterValue && autoSelectLayer) {
                 updateLayerSelection(layerTitle, true);
             }
         });
-    }, [view, filters, updateLayerSelection, filterMapping]);
+    }, [map, filters, updateLayerSelection, filterMapping]);
 }

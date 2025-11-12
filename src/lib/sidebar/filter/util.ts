@@ -1,7 +1,4 @@
 import { ExtendedGeometry } from "@/components/sidebar/filter/search-combobox";
-import { findLayerByTitle } from "@/lib/map/utils";
-import Extent from "@arcgis/core/geometry/Extent";
-import WMSLayer from "@arcgis/core/layers/WMSLayer";
 import { Feature, GeoJsonProperties } from "geojson";
 import maplibregl from 'maplibre-gl';
 import type {
@@ -41,50 +38,35 @@ function isRecordObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
 }
 
-export const zoomToExtent = (xmin: number, ymin: number, xmax: number, ymax: number, view: __esri.SceneView | __esri.MapView, scale?: number) => {
-    const extent = new Extent({
-        xmin: xmin,
-        ymin: ymin,
-        xmax: xmax,
-        ymax: ymax,
-        spatialReference: { wkid: 4326 } // Assuming WGS 84 from the CRS
-    });
-
-    view.goTo({
-        target: extent.expand(1.5),
-        scale: scale ? scale : undefined,
-    }).catch(error => {
-        if (error.name !== "AbortError") {
-            console.error("Error zooming to extent:", error);
-        }
-    });
-}
-
-export const findAndApplyWMSFilter = (
-    mapInstance: __esri.Map | null | undefined,
-    layerTitle: string,
-    cqlFilter: string | null
+export const zoomToExtent = (
+    xmin: number,
+    ymin: number,
+    xmax: number,
+    ymax: number,
+    map: maplibregl.Map,
+    scale?: number
 ) => {
-    if (!mapInstance) return;
-
-    const layer = findLayerByTitle(mapInstance, layerTitle);
-
-    if (layer?.type === 'wms') {
-        const wmsLayer = layer as WMSLayer;
-        const newCustomParameters = { ...(wmsLayer.customParameters || {}) };
-
-        if (cqlFilter) {
-            newCustomParameters.cql_filter = cqlFilter;
-        } else {
-            delete newCustomParameters.cql_filter;
-        }
-
-        if (JSON.stringify(wmsLayer.customParameters) !== JSON.stringify(newCustomParameters)) {
-            wmsLayer.customParameters = newCustomParameters;
-            wmsLayer.refresh();
-        }
+    if (!map) {
+        console.warn('No map instance provided to zoomToExtent');
+        return;
     }
-};
+
+    // If scale is provided, convert it to zoom level
+    // ArcGIS scale to zoom level conversion: zoom ≈ log2(591657550.5 / scale)
+    let zoom: number | undefined = undefined;
+    if (scale) {
+        zoom = Math.log2(591657550.5 / scale);
+    }
+
+    map.fitBounds(
+        [[xmin, ymin], [xmax, ymax]] as [[number, number], [number, number]],
+        {
+            padding: 50, // Padding in pixels for expansion effect
+            zoom: zoom,
+            maxZoom: zoom || 18
+        }
+    );
+}
 
 /**
  * Apply CQL filter to MapLibre WMS layers
