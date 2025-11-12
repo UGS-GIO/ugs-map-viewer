@@ -231,24 +231,27 @@ export async function fetchWFSFeature({
         maxY: queryY + buffer
     };
 
-    // Build CQL filter with BBOX spatial operator
-    let spatialFilter = `BBOX(shape,${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY},'${crs}')`;
-
-    if (cql_filter) {
-        spatialFilter = `${spatialFilter} AND ${cql_filter}`;
-    }
-
     const params = new URLSearchParams();
     params.set('service', 'WFS');
     params.set('version', '2.0.0');
     params.set('request', 'GetFeature');
     params.set('typeNames', layers.join(','));
     params.set('outputFormat', 'application/json');
-    params.set('cql_filter', spatialFilter);
     params.set('count', featureCount.toString());
 
+    // GeoServer limitation: bbox and cql_filter are mutually exclusive
+    // If we have an attribute filter, skip spatial filter and do client-side filtering
+    if (cql_filter) {
+        // Use attribute filter only, return more features for client-side spatial filtering
+        params.set('cql_filter', cql_filter);
+        params.set('count', (featureCount * 10).toString()); // Get more features since no spatial filter
+    } else {
+        // No attribute filter, use bbox for spatial filtering
+        params.set('bbox', `${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY},${crs}`);
+    }
+
     const fullUrl = `${url}?${params.toString()}`;
-    // console.log('[FetchWFSFeature] Querying layers:', { layers, crs, bbox, spatialFilter: spatialFilter.substring(0, 80) + '...' });
+    // console.log('[FetchWFSFeature] Querying layers:', { layers, crs, geometryField: geometryFieldName, spatialFilter });
 
     try {
         const response = await fetch(fullUrl);

@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { useSidebar } from '@/hooks/use-sidebar';
 import Layers from '@/components/sidebar/layers';
 import { LayersIcon } from '@radix-ui/react-icons';
-import { findAndApplyWMSFilter } from '@/lib/sidebar/filter/util';
+import { findAndApplyMapLibreWMSFilter } from '@/lib/sidebar/filter/util';
 
 type YesNoAll = "yes" | "no" | "all";
 
@@ -91,16 +91,23 @@ const fetchFormationData = async (): Promise<FormationMapping[]> => {
         throw new Error(`HTTP error fetching formation mappings! status: ${response.status}`);
     }
 
-    const data: Array<Record<string, any>> = await response.json();
+    const data: unknown = await response.json();
+    if (!Array.isArray(data)) {
+        throw new Error('Expected array response from formation data endpoint');
+    }
+
     const uniqueMappings = new Map<string, string>();
 
-    data.forEach(item => {
-        const alias = item[displayField];
-        const columnName = item[columnNameField];
-        if (alias && columnName && !uniqueMappings.has(alias)) {
+    for (const item of data) {
+        if (typeof item !== 'object' || item === null) continue;
+
+        const alias = displayField in item ? item[displayField] : undefined;
+        const columnName = columnNameField in item ? item[columnNameField] : undefined;
+
+        if (typeof alias === 'string' && typeof columnName === 'string' && !uniqueMappings.has(alias)) {
             uniqueMappings.set(alias, columnName);
         }
-    });
+    }
 
     return Array.from(uniqueMappings, ([label, value]) => ({ label, value }))
         .sort((a, b) => a.label.localeCompare(b.label));
@@ -249,8 +256,20 @@ const MapConfigurations = () => {
 
     // Apply filter to map when it changes
     useEffect(() => {
+        if (!map) {
+            console.log('[MapConfigurations] Map not ready yet, skipping filter application');
+            return;
+        }
+
         const filterFromUrl = search.filters?.[wellWithTopsWMSTitle] ?? null;
-        findAndApplyWMSFilter(map, wellWithTopsWMSTitle, filterFromUrl);
+
+        console.log('[MapConfigurations] Applying MapLibre WMS filter:', {
+            layerTitle: wellWithTopsWMSTitle,
+            filter: filterFromUrl,
+            searchFilters: search.filters
+        });
+
+        findAndApplyMapLibreWMSFilter(map, wellWithTopsWMSTitle, filterFromUrl);
     }, [map, search.filters]);
 
     const handleCoordFormatChange = useCallback((value: 'dd' | 'dms') => {

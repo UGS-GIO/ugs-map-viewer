@@ -1,7 +1,29 @@
 import maplibregl from 'maplibre-gl';
-import { LayerSpecification } from '@maplibre/maplibre-gl-style-spec';
+import { LayerSpecification, RasterSourceSpecification } from '@maplibre/maplibre-gl-style-spec';
 import { LayerProps, WMSLayerProps, GroupLayerProps } from '@/lib/types/mapping-types';
 import { MapFactory, MapInitOptions, MapInitResult } from './types';
+
+function hasStringSource(layer: unknown): layer is { source: string } {
+  return (
+    typeof layer === 'object' &&
+    layer !== null &&
+    'source' in layer &&
+    typeof layer.source === 'string'
+  );
+}
+
+function hasRasterPaint(layer: unknown): layer is { paint?: { 'raster-opacity'?: number } } {
+  return (
+    typeof layer === 'object' &&
+    layer !== null &&
+    'paint' in layer &&
+    (layer.paint === undefined || typeof layer.paint === 'object')
+  );
+}
+
+interface RasterSourceWithMetadata extends RasterSourceSpecification {
+  metadata?: Record<string, unknown>;
+}
 
 /**
  * MapLibre-specific map factory
@@ -40,6 +62,96 @@ export class MapLibreMapFactory implements MapFactory {
     }
 
     return null;
+  }
+
+  /**
+   * Refresh a WMS layer by removing and re-adding its source
+   * This forces MapLibre to re-request all tiles from the WMS server
+   */
+  refreshWMSLayer(mapInstance: maplibregl.Map, title: string): void {
+    // Find the layer by title
+    const layer = this.findLayerByTitle(mapInstance, title);
+    if (!layer) {
+      console.warn(`[refreshWMSLayer] Layer not found: ${title}`);
+      return;
+    }
+
+    // Check if this is a raster layer
+    if (layer.type !== 'raster') {
+      console.warn(`[refreshWMSLayer] Layer is not a raster layer: ${title}`);
+      return;
+    }
+
+    const layerId = layer.id;
+
+    if (!hasStringSource(layer)) {
+      console.warn(`[refreshWMSLayer] Invalid source for layer: ${title}`);
+      return;
+    }
+
+    const sourceId = layer.source;
+
+    // Get the current source configuration
+    const source = mapInstance.getSource(sourceId);
+    if (!source || source.type !== 'raster') {
+      console.warn(`[refreshWMSLayer] Source not found or not a raster source: ${sourceId}`);
+      return;
+    }
+
+    // Preserve current layer visibility
+    const visibility = layer.layout?.visibility || 'visible';
+
+    let opacity = 1;
+    if (hasRasterPaint(layer) && layer.paint && 'raster-opacity' in layer.paint) {
+      const paintOpacity = layer.paint['raster-opacity'];
+      if (typeof paintOpacity === 'number') {
+        opacity = paintOpacity;
+      }
+    }
+
+    // Get source configuration from the serialized source
+    const serialized = source.serialize();
+    if (!serialized || typeof serialized !== 'object') {
+      console.warn(`[refreshWMSLayer] Failed to serialize source: ${sourceId}`);
+      return;
+    }
+
+    const sourceConfig = serialized as RasterSourceSpecification;
+
+    // Remove and re-add the layer and source
+    try {
+      mapInstance.removeLayer(layerId);
+      mapInstance.removeSource(sourceId);
+
+      // Re-add source with cache-busting timestamp
+      const tiles = sourceConfig.tiles?.map((tileUrl) => {
+        const separator = tileUrl.includes('?') ? '&' : '?';
+        return `${tileUrl}${separator}_t=${Date.now()}`;
+      });
+
+      mapInstance.addSource(sourceId, {
+        ...sourceConfig,
+        tiles: tiles || sourceConfig.tiles,
+      });
+
+      // Re-add layer with preserved settings
+      mapInstance.addLayer({
+        id: layerId,
+        type: 'raster',
+        source: sourceId,
+        layout: {
+          visibility: visibility,
+        },
+        paint: {
+          'raster-opacity': opacity,
+        },
+        metadata: layer.metadata,
+      });
+
+      console.log(`[refreshWMSLayer] ✓ Refreshed layer: ${title}`);
+    } catch (error) {
+      console.error(`[refreshWMSLayer] Error refreshing layer ${title}:`, error);
+    }
   }
 
   private getLayerTitle(layer: LayerSpecification): string | undefined {
@@ -113,7 +225,7 @@ export class MapLibreMapFactory implements MapFactory {
     const sublayerName = this.getFirstSublayerName(layerConfig.sublayers);
 
     // Build WMS GetMap URL with dynamic bbox for tile requests
-    // MapLibre will replace {bbox-epsg-3857} with the actual tile bounds
+    // Use larger tile size and buffer to prevent symbol clipping
     const params = new URLSearchParams({
       service: 'WMS',
       version: '1.1.0',
@@ -121,27 +233,49 @@ export class MapLibreMapFactory implements MapFactory {
       layers: sublayerName,
       styles: '',
       srs: 'EPSG:3857',
-      width: '256',
-      height: '256',
+      width: '512',  // Larger tiles to reduce seams
+      height: '512',
       format: 'image/png',
       transparent: 'true',
+      // GeoServer vendor parameters to handle symbol overlap
+      buffer: '32',  // Buffer around tiles for symbols that cross boundaries
     });
+
+    // Add any custom parameters (including filters)
+    if (layerConfig.customLayerParameters) {
+      for (const [key, value] of Object.entries(layerConfig.customLayerParameters)) {
+        if (value !== null && value !== undefined) {
+          params.set(key.toLowerCase(), String(value));
+        }
+      }
+    }
 
     const baseUrl = layerConfig.url.replace(/\/$/, ''); // Remove trailing slash if present
     const sourceUrl = `${baseUrl}?${params.toString()}&bbox={bbox-epsg-3857}`;
 
-    if (!map.getSource(sourceId)) {
-      map.addSource(sourceId, {
-        type: 'raster',
-        tiles: [sourceUrl],
-        tileSize: 256,
-        scheme: 'tms',
-        metadata: {
-          'wms-layer': sublayerName,
-          'wms-url': baseUrl,
-        },
-      } as any);
+    // Remove existing source and layer if they exist (for refresh)
+    if (map.getLayer(layerId)) {
+      map.removeLayer(layerId);
     }
+    if (map.getSource(sourceId)) {
+      map.removeSource(sourceId);
+    }
+
+    // Add source with proper scheme
+    const sourceSpec: RasterSourceWithMetadata = {
+      type: 'raster',
+      tiles: [sourceUrl],
+      tileSize: 512,  // Match the tile size in the request
+      scheme: 'xyz', // Use xyz scheme for standard WMS
+      minzoom: 0,
+      maxzoom: 22,
+      metadata: {
+        'wms-layer': sublayerName,
+        'wms-url': baseUrl,
+        'custom-parameters': layerConfig.customLayerParameters,
+      },
+    };
+    map.addSource(sourceId, sourceSpec);
 
     if (!map.getLayer(layerId)) {
       map.addLayer({
