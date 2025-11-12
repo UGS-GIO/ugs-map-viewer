@@ -51,21 +51,31 @@ export const zoomToExtent = (
         return;
     }
 
-    // If scale is provided, convert it to zoom level
+    // If scale is provided, convert it to zoom level and use it as a target
     // ArcGIS scale to zoom level conversion: zoom ≈ log2(591657550.5 / scale)
-    let zoom: number | undefined = undefined;
     if (scale) {
-        zoom = Math.log2(591657550.5 / scale);
-    }
+        const targetZoom = Math.log2(591657550.5 / scale);
 
-    map.fitBounds(
-        [[xmin, ymin], [xmax, ymax]] as [[number, number], [number, number]],
-        {
-            padding: 50, // Padding in pixels for expansion effect
-            zoom: zoom,
-            maxZoom: zoom || 18
-        }
-    );
+        // For points with a scale, we want to zoom to that specific level
+        // First fit to the bounds, then zoom to the target level
+        map.fitBounds(
+            [[xmin, ymin], [xmax, ymax]] as [[number, number], [number, number]],
+            {
+                padding: 100,
+                zoom: targetZoom,
+                duration: 500
+            }
+        );
+    } else {
+        // For polygons/lines without a scale, just fit to bounds with padding
+        map.fitBounds(
+            [[xmin, ymin], [xmax, ymax]] as [[number, number], [number, number]],
+            {
+                padding: 50,
+                duration: 500
+            }
+        );
+    }
 }
 
 /**
