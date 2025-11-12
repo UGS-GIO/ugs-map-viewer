@@ -2,6 +2,7 @@ import maplibregl from 'maplibre-gl';
 import { LayerSpecification, RasterSourceSpecification } from '@maplibre/maplibre-gl-style-spec';
 import { LayerProps, WMSLayerProps, GroupLayerProps } from '@/lib/types/mapping-types';
 import { MapFactory, MapInitOptions, MapInitResult } from './types';
+import { DEFAULT_BASEMAP } from '@/lib/basemaps';
 
 function hasStringSource(layer: unknown): layer is { source: string } {
   return (
@@ -192,7 +193,7 @@ export class MapLibreMapFactory implements MapFactory {
   ): maplibregl.Map {
     return new maplibregl.Map({
       container,
-      style: 'https://basemaps.cartocdn.com/gl/voyager-nolabels-gl-style/style.json',
+      style: DEFAULT_BASEMAP.url,
       center: [options.center[0], options.center[1]],
       zoom: options.zoom,
     });

@@ -13,6 +13,7 @@ const mapSearchSchema = z.object({
     tab: z.string().optional().default('info'),
     sidebar_collapsed: z.coerce.boolean().optional().default(false),
     coordinate_format: z.enum(['dd', 'dms']).optional(),
+    basemap: z.string().optional(),
     layers: z.preprocess((val) => {
         if (typeof val === 'string') {
             try { return JSON.parse(val); } catch (e) { return undefined; }
