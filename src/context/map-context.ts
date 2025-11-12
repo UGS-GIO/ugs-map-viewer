@@ -2,12 +2,15 @@ import { createContext } from "react";
 import { LayerProps } from "@/lib/types/mapping-types";
 
 /**
- * MapContext interface for MapLibre GL JS
+ * MapContext interface supporting both ArcGIS and MapLibre implementations
  *
- * Provides access to the MapLibre map instance and shared functionality
+ * Provides access to map instances and shared functionality
  */
 export type MapContextProps = {
-    // MapLibre map instance
+    // ArcGIS map instance (present when using ArcGIS implementation)
+    view?: any, // MapView - using any to avoid hard dependency
+
+    // MapLibre map instance (present when using MapLibre implementation)
     map?: any, // maplibre-gl.Map - using any to avoid hard dependency
 
     // Shared interface
