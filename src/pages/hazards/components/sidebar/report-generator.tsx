@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useMap } from '@/hooks/use-map';
+import { useMapLibreScreenshot } from '@/hooks/use-maplibre-screenshot';
 import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer";
 import Layer from "@arcgis/core/layers/Layer";
@@ -10,11 +11,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import Polygon from "@arcgis/core/geometry/Polygon";
 import { useToast } from "@/hooks/use-toast";
-import Map from "@arcgis/core/Map";
-import MapView from "@arcgis/core/views/MapView";
-import Graphic from "@arcgis/core/Graphic";
 import { Link } from "@/components/custom/link";
-import SimpleFillSymbol from "@arcgis/core/symbols/SimpleFillSymbol";
+import { serializePolygonForUrl } from "@/lib/map/conversion-utils";
 
 
 type ActiveButtonOptions = 'currentMapExtent' | 'customArea' | 'reset';
@@ -28,134 +26,39 @@ function ReportGenerator() {
     const { setNavOpened } = useSidebar();
     const isMobile = useIsMobile();
     const [activeDialog, setActiveDialog] = useState<DialogType>(null);
-    const [screenshot, setScreenshot] = useState<string>("");
     const [pendingAoi, setPendingAoi] = useState<__esri.Geometry | null>(null);
-    const { toast } = useToast()
+    const [aoiForScreenshot, setAoiForScreenshot] = useState<string | null>(null);
+    const { toast } = useToast();
 
-    const createMap = async (aoi: string): Promise<{ view: __esri.MapView, cleanup: () => void }> => {
-        // Remove any existing map containers
-        const existingDiv = document.getElementById('screenshotMapDiv');
-        if (existingDiv) {
-            existingDiv.remove();
-        }
-
-        // Create new map container
-        const mapDiv = document.createElement('div');
-        mapDiv.id = 'screenshotMapDiv';
-        mapDiv.style.width = '50vw';
-        mapDiv.style.height = '50vh';
-        document.body.appendChild(mapDiv);
-
-        const polygonSymbol = new SimpleFillSymbol({
-            color: "#8a2be2cc",
-            style: "solid",
-            outline: {
-                color: "white",
-                width: 1
-            }
-        });
-
-        const parsedAoi = JSON.parse(aoi);
-        const polygon = new Polygon(parsedAoi);
-
-        const polylineGraphic = new Graphic({
-            geometry: polygon,
-            symbol: polygonSymbol
-        });
-
-        const map = new Map({
-            basemap: "topo"
-        });
-
-        const extentClone = polygon.extent?.clone();
-
-        const screenshotView = new MapView({
-            map: map,
-            container: mapDiv,
-            ui: {
-                components: ['attribution']
-            },
-            extent: extentClone?.expand(2),
-            constraints: {
-                snapToZoom: false
-            }
-        });
-
-        // Add graphic after view initialization
-        screenshotView.graphics.add(polylineGraphic);
-
-        // Wait for the view to be ready
-        await screenshotView.when();
-
-        // Wait for the basemap to load
-        await map.basemap?.load();
-
-        // Important: Wait for ALL basemap layers to load
-        const basemapLayerPromises = map.basemap?.baseLayers.map(layer => layer.load());
-        await Promise.all(basemapLayerPromises || []);
-
-        // Go to extent after layers are loaded
-        await screenshotView.goTo(extentClone?.expand(2), {
-            animate: false,
-            duration: 0
-        });
-
-        // Wait for rendering to complete
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        const cleanup = () => {
-            screenshotView.destroy();
-            mapDiv.remove();
-        };
-
-        return { view: screenshotView, cleanup };
-    };
-
-    const getScreenshot = async (geometry: __esri.Geometry) => {
-        try {
-            const aoi = JSON.stringify(geometry);
-            const { view: screenshotView, cleanup } = await createMap(aoi);
-
-            // Dynamically get the width and height of the map container
-            const mapDiv = document.getElementById('screenshotMapDiv');
-            const width = mapDiv?.offsetWidth || 0;
-            const height = mapDiv?.offsetHeight || 0;
-
-            // Capture the screenshot with dynamic width and height
-            const screenshot = await screenshotView.takeScreenshot({
-                width: width,
-                height: height,
-                format: "png"
-            });
-
-            // Clean up
-            cleanup();
-
-            return screenshot?.dataUrl;
-        } catch (error) {
-            console.error('Failed to capture screenshot:', error);
-            return null;
-        }
-    };
+    // Use the MapLibre screenshot hook (only generates when aoiForScreenshot is set)
+    const { screenshot, isLoading: isCapturing } = useMapLibreScreenshot({
+        polygon: aoiForScreenshot,
+        width: '50vw',
+        height: '50vh'
+    });
 
 
 
-    const handleNavigate = async (aoi: __esri.Geometry) => {
+    const handleNavigate = (aoi: __esri.Geometry) => {
         setPendingAoi(aoi);
-        const screenshotDataUrl = await getScreenshot(aoi);
-
-        if (screenshotDataUrl) {
-            setScreenshot(screenshotDataUrl);
-        }
-
+        setAoiForScreenshot(JSON.stringify(aoi));
         setActiveDialog('confirmation');
     };
 
     const handleConfirmNavigation = () => {
         if (!pendingAoi) return;
 
-        const aoiString = JSON.stringify(pendingAoi);
-        const reportUrl = '/hazards/report/' + aoiString;
+        const serialized = serializePolygonForUrl(pendingAoi);
+        if (!serialized) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to serialize polygon for report",
+            });
+            return;
+        }
+
+        const reportUrl = `/hazards/report?aoi=${serialized}`;
 
         // Open in new tab
         window.open(reportUrl, '_blank');
@@ -165,8 +68,17 @@ function ReportGenerator() {
     const handleCopyLink = () => {
         if (!pendingAoi) return;
 
-        const aoiString = JSON.stringify(pendingAoi);
-        const reportUrl = window.location.origin + '/hazards/report/' + aoiString;
+        const serialized = serializePolygonForUrl(pendingAoi);
+        if (!serialized) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to serialize polygon for report",
+            });
+            return;
+        }
+
+        const reportUrl = window.location.origin + `/hazards/report?aoi=${serialized}`;
 
         navigator.clipboard.writeText(reportUrl)
             .catch(err => {
@@ -427,17 +339,30 @@ function ReportGenerator() {
                     </DialogHeader>
                     <div>
                         <div className="flex justify-center">
-                            <img
-                                src={screenshot}
-                                alt="map"
-                                className="rounded-md w-full max-w-full h-auto"
-                            />
+                            {isCapturing ? (
+                                <div className="flex items-center justify-center w-full h-80 bg-muted rounded-md">
+                                    <div className="text-center">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                                        <p className="text-sm text-muted-foreground">Generating map preview...</p>
+                                    </div>
+                                </div>
+                            ) : screenshot ? (
+                                <img
+                                    src={screenshot}
+                                    alt="map preview"
+                                    className="rounded-md w-full max-w-full h-auto"
+                                />
+                            ) : (
+                                <div className="flex items-center justify-center w-full h-80 bg-destructive/10 rounded-md">
+                                    <p className="text-sm text-destructive">Failed to generate map preview</p>
+                                </div>
+                            )}
                         </div>
                         <div className="flex flex-row space-x-2 mt-4 justify-end">
-                            <Button onClick={handleConfirmNavigation} variant="default">
+                            <Button onClick={handleConfirmNavigation} variant="default" disabled={isCapturing || !screenshot}>
                                 Generate Report
                             </Button>
-                            <Button onClick={handleCopyLink} variant="secondary">
+                            <Button onClick={handleCopyLink} variant="secondary" disabled={isCapturing}>
                                 Copy Link
                             </Button>
                             <Button onClick={handleCloseDialog} variant="secondary">

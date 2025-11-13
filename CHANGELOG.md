@@ -1,3 +1,48 @@
+## [1.16.2](https://github.com/UGS-GIO/geohaz-v2/compare/v1.16.1...v1.16.2) (2025-10-06)
+
+
+### ccs
+
+* **♻️ Refactors**(`ccs`): add data sources information, change sitla layer name ([#314](https://github.com/UGS-GIO/geohaz-v2/issues/314))
+
+### common
+
+* **🐛 Bug Fixes**(`common`): prevent popup drawer from closing and reopening ([#313](https://github.com/UGS-GIO/geohaz-v2/issues/313))
+
+### data-reviewer
+
+* **♻️ Refactors**(`data-reviewer`): change some text, update packages ([#312](https://github.com/UGS-GIO/geohaz-v2/issues/312))* **🐛 Bug Fixes**(`data-reviewer`): flood hazards review data now showing ([#319](https://github.com/UGS-GIO/geohaz-v2/issues/319))* **🐛 Bug Fixes**(`data-reviewer`): remove wrong visibility flag for landslides review layer ([#310](https://github.com/UGS-GIO/geohaz-v2/issues/310))
+
+### hazards
+
+* **♻️ Refactors**(`hazards`): add flooding hazard layers to hazards and hazards-review apps ([#315](https://github.com/UGS-GIO/geohaz-v2/issues/315))* **♻️ Refactors**(`hazards`): clean up routes and put report into a pathless route ([#316](https://github.com/UGS-GIO/geohaz-v2/issues/316))* **🐛 Bug Fixes**(`hazards`): correcting related tables for flood hazards ([#318](https://github.com/UGS-GIO/geohaz-v2/issues/318))
+
+## [1.16.1](https://github.com/UGS-GIO/geohaz-v2/compare/v1.16.0...v1.16.1) (2025-10-01)
+
+
+### data-reviewer
+
+* **🐛 Bug Fixes**(`data-reviewer`): remove wrong visibility flag for landslides review layer ([#310](https://github.com/UGS-GIO/geohaz-v2/issues/310)) ([#311](https://github.com/UGS-GIO/geohaz-v2/issues/311))
+
+## [1.16.0](https://github.com/UGS-GIO/geohaz-v2/compare/v1.15.0...v1.16.0) (2025-10-01)
+
+
+### ccs
+
+* **🐛 Bug Fixes**(`ccs`): allow or operator for formation search ([#309](https://github.com/UGS-GIO/geohaz-v2/issues/309))
+
+### common
+
+* **♻️ Refactors**(`common`): remove tabler/react-icons in favor of lucide icons ([#302](https://github.com/UGS-GIO/geohaz-v2/issues/302))* **♻️ Refactors**(`common`): some optimizing, upgrade packages, remove unused packages, ([#304](https://github.com/UGS-GIO/geohaz-v2/issues/304))
+
+### data-reviewer
+
+* **✨ Features**(`data-reviewer`): add splash screen for reviewer ([#306](https://github.com/UGS-GIO/geohaz-v2/issues/306))* **🐛 Bug Fixes**(`data-reviewer`): reorg folder structure to move params to _map, clear params from login page ([#308](https://github.com/UGS-GIO/geohaz-v2/issues/308))
+
+### geophysics
+
+* **✨ Features**(`geophysics`): add layers ([#305](https://github.com/UGS-GIO/geohaz-v2/issues/305))
+
 ## [1.15.0](https://github.com/UGS-GIO/geohaz-v2/compare/v1.14.0...v1.15.0) (2025-09-23)
 
 

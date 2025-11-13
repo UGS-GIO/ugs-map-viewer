@@ -1,0 +1,335 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "id": 1,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 1,
+                "HazardCode": "BPF",
+                "HazardGroup": "Problem Soil/Rock",
+                "GlobalID": "462155ea-74d1-41eb-8a77-d2bae36a1dda"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 2,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 2,
+                "HazardCode": "CAS",
+                "HazardGroup": "Problem Soil/Rock",
+                "GlobalID": "608e9440-94d5-4a52-b5be-c710f8cc5f15"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 3,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 3,
+                "HazardCode": "CRS",
+                "HazardGroup": "Problem Soil/Rock",
+                "GlobalID": "5f1dbd9e-ce3e-42e8-ae16-1f5719b75833"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 4,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 4,
+                "HazardCode": "ERZ",
+                "HazardGroup": "Flooding",
+                "GlobalID": "2ccecb2e-8c83-41ef-bd18-14c7680de3a6"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 5,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 5,
+                "HazardCode": "GSP",
+                "HazardGroup": "Problem Soil/Rock",
+                "GlobalID": "322fd071-90cb-4b00-92ad-ba3a27bbcd0c"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 6,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 6,
+                "HazardCode": "EFH",
+                "HazardGroup": "Problem Soil/Rock",
+                "GlobalID": "3c11f1e7-f849-4214-b9ab-c96e383d4f76"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 7,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 7,
+                "HazardCode": "GRS",
+                "HazardGroup": "Problem Soil/Rock",
+                "GlobalID": "7756e824-e95f-49ad-bc23-1ec4545598b7"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 8,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 8,
+                "HazardCode": "CSS",
+                "HazardGroup": "Problem Soil/Rock",
+                "GlobalID": "c0da4024-8c27-49b8-8ea8-34d033461c53"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 9,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 9,
+                "HazardCode": "EXS",
+                "HazardGroup": "Problem Soil/Rock",
+                "GlobalID": "94714717-04bc-4283-85dd-d975faaa06bc"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 10,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 10,
+                "HazardCode": "FLH",
+                "HazardGroup": "Flooding",
+                "GlobalID": "45f7b799-25e0-4486-a1f0-12f1955afb0f"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 11,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 11,
+                "HazardCode": "LSS",
+                "HazardGroup": "Landslide",
+                "GlobalID": "74358689-8d14-4725-a748-d766dc0b0912"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 12,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 12,
+                "HazardCode": "LQS",
+                "HazardGroup": "Earthquake",
+                "GlobalID": "96ce1dd6-c79b-45b3-9527-ed3232e6771d"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 13,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 13,
+                "HazardCode": "RFH",
+                "HazardGroup": "Landslide",
+                "GlobalID": "f3d52d1c-d246-4bd3-bc9b-488d12f9db76"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 14,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 14,
+                "HazardCode": "SBP",
+                "HazardGroup": "Problem Soil/Rock",
+                "GlobalID": "2c77ae41-38e8-44f3-9bbd-8918b8a883da"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 15,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 15,
+                "HazardCode": "SGS",
+                "HazardGroup": "Problem Soil/Rock",
+                "GlobalID": "261fa38a-adc3-4e34-a4a8-6ddf1d59c6ac"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 16,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 16,
+                "HazardCode": "SFR",
+                "HazardGroup": "Earthquake",
+                "GlobalID": "c69344e2-9a74-4daa-8c96-d72c6d1a52b2"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 17,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 17,
+                "HazardCode": "LSF",
+                "HazardGroup": "Landslide",
+                "GlobalID": "e4c4aa93-4bb4-4a78-ad3d-e9dc6a3f3463"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 18,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 18,
+                "HazardCode": "MKF",
+                "HazardGroup": "Problem Soil/Rock",
+                "GlobalID": "20f242df-5e91-400f-a318-2a83ea6f1d8a"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 19,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 19,
+                "HazardCode": "PES",
+                "HazardGroup": "Problem Soil/Rock",
+                "GlobalID": "66a308e1-dced-40e4-b3f5-480f2e5f3de2"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 20,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 20,
+                "HazardCode": "SDH",
+                "HazardGroup": "Problem Soil/Rock",
+                "GlobalID": "8e3229f7-4eb7-4594-a8ac-daa73479a841"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 21,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 21,
+                "HazardCode": "SLS",
+                "HazardGroup": "Problem Soil/Rock",
+                "GlobalID": "7274b3a1-02f1-451f-aa5d-373ed1904195"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 22,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 22,
+                "HazardCode": "WSS",
+                "HazardGroup": "Problem Soil/Rock",
+                "GlobalID": "80e5be01-9330-4885-94df-5ad75967dc6c"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 23,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 23,
+                "HazardCode": "EGS",
+                "HazardGroup": "Earthquake",
+                "GlobalID": "6a1175d6-61fb-4636-baab-5ab36a0190bc"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 24,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 24,
+                "HazardCode": "DFA",
+                "HazardGroup": "Flooding",
+                "GlobalID": "9b7eb5ee-5965-443d-8569-e73d50d3299b"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 25,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 25,
+                "HazardCode": "QFF",
+                "HazardGroup": "Earthquake",
+                "GlobalID": "8143833c-7269-4546-b525-c852eaf029cf"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 26,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 26,
+                "HazardCode": "LSC",
+                "HazardGroup": "Landslide",
+                "GlobalID": "9ae9844d-d23e-4089-a66d-96e2d0973187"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 27,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 27,
+                "HazardCode": "VOL",
+                "HazardGroup": "Volcanic",
+                "GlobalID": "839b27e4-37df-423f-b17e-a4ec533a67da"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 28,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 28,
+                "HazardCode": "THR",
+                "HazardGroup": "Volcanic",
+                "GlobalID": "6065c0a3-56e1-44a2-add1-1d3960b4a2d4"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 29,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 29,
+                "HazardCode": "VCN",
+                "HazardGroup": "Volcanic",
+                "GlobalID": "82247641-ccdd-4d81-8a21-d220f52145dc"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 30,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 30,
+                "HazardCode": "AAF",
+                "HazardGroup": "Flooding",
+                "GlobalID": "9bbf2e13-2396-4276-9328-fd59c2362b6e"
+            }
+        }
+    ]
+}

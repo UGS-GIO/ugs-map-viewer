@@ -47,6 +47,17 @@ const getDefaultVisible = (layers: LayerProps[]): { selected: string[], hidden: 
     return { selected, hidden };
 };
 
+const normalizeLayersObj = (layers: string | { selected?: string[]; hidden?: string[] } | undefined): { selected?: string[]; hidden?: string[] } => {
+    if (typeof layers === 'string') {
+        try {
+            return JSON.parse(layers);
+        } catch {
+            return {};
+        }
+    }
+    return layers || {};
+};
+
 interface LayerUrlProviderProps {
     children: ReactNode;
 }
@@ -58,13 +69,16 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
     const hasInitializedForPath = useRef<string | null>(null);
     const location = useLocation();
 
+    // Normalize layers: handle both string and object formats
+    const normalizedLayers = useMemo(() => normalizeLayersObj(urlLayers), [urlLayers]);
+
     useEffect(() => {
         if (!layersConfig || hasInitializedForPath.current === location.pathname) return;
 
         const allValidLayerTitles = getAllValidTitles(layersConfig);
         const defaults = getDefaultVisible(layersConfig);
 
-        let finalLayers = urlLayers;
+        let finalLayers: any = normalizedLayers;
         let finalFilters = urlFilters;
         let needsUpdate = false;
 
@@ -76,14 +90,14 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
             }
         }
 
-        if (!urlLayers || urlLayers.selected?.length === 0) {
-            finalLayers = { ...urlLayers, ...defaults };
+        if (!normalizedLayers || !normalizedLayers.selected || normalizedLayers.selected.length === 0) {
+            finalLayers = { ...normalizedLayers, ...defaults };
             needsUpdate = true;
         } else {
-            const currentSelected = urlLayers.selected || [];
-            const validSelected = currentSelected.filter(title => allValidLayerTitles.has(title));
+            const currentSelected = normalizedLayers.selected || [];
+            const validSelected = currentSelected.filter((title: string) => allValidLayerTitles.has(title));
             if (validSelected.length !== currentSelected.length) {
-                finalLayers = { ...urlLayers, selected: validSelected };
+                finalLayers = { ...normalizedLayers, selected: validSelected };
                 needsUpdate = true;
             }
         }
@@ -98,7 +112,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
 
         hasInitializedForPath.current = location.pathname;
 
-    }, [layersConfig, navigate, urlLayers, urlFilters, location.pathname]);
+    }, [layersConfig, navigate, normalizedLayers, urlFilters, location.pathname]);
 
     // Create a map to find a layer's parent group title
     const childToParentMap = useMemo(() => {
@@ -130,8 +144,8 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         return map;
     }, [layersConfig]);
 
-    const selectedLayerTitles = useMemo(() => new Set(urlLayers?.selected || []), [urlLayers]);
-    const hiddenGroupTitles = useMemo(() => new Set(urlLayers?.hidden || []), [urlLayers]);
+    const selectedLayerTitles = useMemo(() => new Set<string>(normalizedLayers?.selected || []), [normalizedLayers]);
+    const hiddenGroupTitles = useMemo(() => new Set<string>(normalizedLayers?.hidden || []), [normalizedLayers]);
     const activeFilters: ActiveFilters = useMemo(() => urlFilters || {}, [urlFilters]);
 
     // This function now turns on the parent group when a child is selected
@@ -141,8 +155,9 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         navigate({
             to: '.',
             search: (prev) => {
-                const currentSelected = new Set(prev.layers?.selected || []);
-                const currentHidden = new Set(prev.layers?.hidden || []);
+                const prevLayersObj = normalizeLayersObj(prev.layers);
+                const currentSelected = new Set(prevLayersObj?.selected || []);
+                const currentHidden = new Set(prevLayersObj?.hidden || []);
                 const currentFilters = { ...(prev.filters || {}) };
 
                 if (shouldBeSelected) {
@@ -164,7 +179,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
                 return {
                     ...prev,
                     layers: {
-                        ...prev.layers,
+                        ...prevLayersObj,
                         selected: Array.from(currentSelected),
                         hidden: Array.from(currentHidden),
                     },
@@ -179,8 +194,9 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         navigate({
             to: '.',
             search: (prev) => {
+                const prevLayersObj = normalizeLayersObj(prev.layers);
                 const currentFilters = { ...(prev.filters || {}) };
-                const currentSelected = new Set(prev.layers?.selected || []);
+                const currentSelected = new Set(prevLayersObj?.selected || []);
 
                 if (filterValue) {
                     currentFilters[layerTitle] = filterValue;
@@ -191,7 +207,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
 
                 return {
                     ...prev,
-                    layers: { ...prev.layers, selected: Array.from(currentSelected) },
+                    layers: { ...prevLayersObj, selected: Array.from(currentSelected) },
                     filters: Object.keys(currentFilters).length > 0 ? currentFilters : undefined,
                 };
             },
@@ -203,7 +219,8 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         navigate({
             to: '.',
             search: (prev) => {
-                const newHiddenSet = new Set(prev.layers?.hidden || []);
+                const prevLayersObj = normalizeLayersObj(prev.layers);
+                const newHiddenSet = new Set(prevLayersObj?.hidden || []);
                 if (newHiddenSet.has(title)) {
                     newHiddenSet.delete(title);
                 } else {
@@ -211,7 +228,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
                 }
                 return {
                     ...prev,
-                    layers: { ...prev.layers, hidden: Array.from(newHiddenSet) }
+                    layers: { ...prevLayersObj, hidden: Array.from(newHiddenSet) }
                 };
             },
             replace: true
