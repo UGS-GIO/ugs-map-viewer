@@ -102,7 +102,7 @@ export async function fetchWMSFeatureInfo({
     params.set('width', width.toString());
     params.set('height', height.toString());
     params.set('feature_count', featureCount.toString());
-    params.set('buffer', '10'); // Buffer around query pixel to catch nearby features (especially thin lines)
+    params.set('buffer', '50'); // Buffer around query pixel to catch nearby features (especially point symbols)
 
     // Add version-specific pixel coordinates
     // For GetFeatureInfo, we query at a specific pixel in the rendered WMS image

@@ -56,7 +56,7 @@ export class MapLibreHighlight implements HighlightProvider {
 
     const geometryType = wgs84Geometry.type;
 
-    if (geometryType === 'Point') {
+    if (geometryType === 'Point' || geometryType === 'MultiPoint') {
       const outlineLayer: LayerSpecification = {
         id: outlineLayerId,
         type: 'circle',
