@@ -207,7 +207,7 @@ const riversWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'name', type: 'string', transform: (value: unknown) => toTitleCase(value || '') },
+                'Name': { field: 'name', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
                 'Water Right Area': { field: 'drainage_a', type: 'number' }
             },
         },
@@ -228,7 +228,7 @@ const roadsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: false,
             popupFields: {
-                'Name': { field: 'fullname', type: 'string', transform: (value: unknown) => toTitleCase(value || '') },
+                'Name': { field: 'fullname', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
             },
         },
     ],
@@ -248,7 +248,7 @@ const railroadsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'railroad', type: 'string', transform: (value: unknown) => toTitleCase(value || '') },
+                'Name': { field: 'railroad', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
             },
         },
     ],
@@ -292,7 +292,7 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
                 'Unit': {
                     field: 'custom',
                     type: 'custom',
-                    transform: (props: unknown) => {
+                    transform: (props: GeoJsonProperties | null | undefined) => {
                         const unitName = props?.['unit_name'];
                         const unitSymbol = props?.['unit_symbol'];
                         const value = `${unitName} (${unitSymbol})`;
@@ -364,12 +364,12 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
                         "Cache-Control": "no-cache",
                     },
                     displayFields: [
-                        { field: 'display_description', label: 'Description', transform: (value: unknown) => value !== '' ? value : 'No Data' },
-                        { field: 'display_field_name', label: 'Field Name', transform: (value: unknown) => value !== '' ? value : 'No Data' },
-                        { field: 'display_well_status', label: 'Well Status', transform: (value: unknown) => value !== '' ? value : 'No Data' },
-                        { field: 'display_well_type', label: 'Well Type', transform: (value: unknown) => value !== '' ? value : 'No Data' },
+                        { field: 'display_description', label: 'Description', transform: (value: string | null) => value !== '' ? value : 'No Data' },
+                        { field: 'display_field_name', label: 'Field Name', transform: (value: string | null) => value !== '' ? value : 'No Data' },
+                        { field: 'display_well_status', label: 'Well Status', transform: (value: string | null) => value !== '' ? value : 'No Data' },
+                        { field: 'display_well_type', label: 'Well Type', transform: (value: string | null) => value !== '' ? value : 'No Data' },
                         {
-                            field: 'source', label: 'Source', transform: (value: unknown) => {
+                            field: 'source', label: 'Source', transform: (value: string | null) => {
                                 if (value === 'DOGM') {
                                     return <Link to="https://dataexplorer.ogm.utah.gov/">Utah Division of Oil, Gas and Mining</Link>
                                 } else if (value === 'UGS') {
@@ -418,7 +418,7 @@ const faultsWMSConfig: WMSLayerProps = {
                 'Description': {
                     field: 'custom',
                     type: 'custom',
-                    transform: (props: unknown) => {
+                    transform: (props: GeoJsonProperties | null | undefined) => {
                         const subtype = props?.['subtype'];
                         const type = props?.['type'];
                         const modifier = props?.['modifier'];
@@ -429,7 +429,7 @@ const faultsWMSConfig: WMSLayerProps = {
                 'Scale': {
                     field: 'scale',
                     type: 'string',
-                    transform: (value: unknown) => {
+                    transform: (value: string | null) => {
                         if (value === 'small') return '1:500,000'
                         return ''
                     }
@@ -481,7 +481,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 '': {
                     field: 'usgs_link',
                     type: 'custom',
-                    transform: (value: unknown) => {
+                    transform: (value: string | null) => {
                         if (!value) {
                             return 'No USGS link available';
                         }
@@ -526,7 +526,7 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
                 'UWI': { field: 'uwi', type: 'string' },
                 'Well Name': { field: 'well_name', type: 'string' },
                 'Sample Types': {
-                    field: 'all_types', type: 'string', transform: (value: unknown) => {
+                    field: 'all_types', type: 'string', transform: (value: string | null) => {
                         if (value) {
                             return toTitleCase(value.replace(/,/g, ', '));
                         }
@@ -534,11 +534,11 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
                     }
                 },
                 'Purpose': { field: 'purpose_description', type: 'string' },
-                'Operator': { field: 'operator', type: 'string', transform: (value: unknown) => toTitleCase(value || '') },
+                'Operator': { field: 'operator', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
                 'Depth': {
                     field: 'depth_display',
                     type: 'custom',
-                    transform: (props: unknown) => {
+                    transform: (props: GeoJsonProperties | null | undefined) => {
                         const top = props?.['top_ft'];
                         const bottom = props?.['bottom_ft'];
 
@@ -550,13 +550,11 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
                         return `${topFt} - ${bottomFt} ft`;
                     }
                 },
-                'Cored Intervals': { field: 'cored_formation', type: 'string' },
-                'Formation': { field: 'formation', type: 'string' },
-                'Formation at TD': { field: 'form_td', type: 'string', transform: (value: unknown) => toTitleCase(value || '') },
+                'Formation at TD': { field: 'form_td', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
                 'Cored Formations': {
                     field: 'custom',
                     type: 'custom',
-                    transform: (props: unknown) => {
+                    transform: (props: GeoJsonProperties | null | undefined) => {
                         const formation = props?.['formation'] || '';
                         const coredFormation = props?.['cored_formation'] || '';
 
@@ -574,7 +572,7 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
                 '': {
                     field: 'inventory_link',
                     type: 'custom',
-                    transform: (() => 'Utah Core Research Center Inventory') as (value: unknown) => string
+                    transform: (() => 'Utah Core Research Center Inventory')
                 },
             },
             relatedTables: [
@@ -598,7 +596,7 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
             ],
             linkFields: {
                 'inventory_link': {
-                    transform: (value: unknown) => {
+                    transform: (value: string | null) => {
                         return [
                             {
                                 label: `${value}`,
@@ -625,12 +623,12 @@ const co2SourcesWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Facility Name': { field: 'facility_name', type: 'string', transform: (value: unknown) => toTitleCase(value || '') },
+                'Facility Name': { field: 'facility_name', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
                 'Description': { field: 'description', type: 'string' },
                 'Greenhouse Gas Emissions': {
                     field: 'ghg_quantity__metric_tons_co2e_',
                     type: 'string',
-                    transform: (value: unknown) => {
+                    transform: (value: string | null) => {
                         if (value === null) {
                             return 'No Data';
                         }
@@ -641,12 +639,12 @@ const co2SourcesWMSConfig: WMSLayerProps = {
                 '': {
                     field: 'inventory_link',
                     type: 'custom',
-                    transform: (() => 'View data from the U.S. Environmental Protection Agency') as (value: unknown) => string
+                    transform: (() => 'View data from the U.S. Environmental Protection Agency')
                 },
             },
             linkFields: {
                 'inventory_link': {
-                    transform: (value: unknown) => {
+                    transform: (value: string | null) => {
                         return [
                             {
                                 label: `${value}`,
@@ -700,7 +698,7 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
                 'Name': { field: 'new_block_', type: 'string' },
                 'Ranking': {
                     field: 'ranking', type: 'string',
-                    transform: (value: unknown) => {
+                    transform: (value: string | null) => {
                         if (value === 'None' || value === null) {
                             return 'Not evaluated';
                         } else {
@@ -709,7 +707,7 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
                     }
                 },
                 'Description': { field: 'description', type: 'string' },
-                '': { field: 'linktoreport', type: 'string', transform: (value: unknown) => value },
+                '': { field: 'linktoreport', type: 'string', transform: (value: string | null) => value },
             },
             linkFields: {
                 'linktoreport': {
@@ -768,7 +766,7 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'plant', type: 'string', transform: (value: unknown) => toTitleCase(value || '') },
+                'Name': { field: 'plant', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
                 'Capacity (MW)': { field: 'capacity_mw', type: 'number' },
                 'Operator': { field: 'operator', type: 'string' },
                 'City': { field: 'city', type: 'string' },
