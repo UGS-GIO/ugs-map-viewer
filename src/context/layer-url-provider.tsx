@@ -138,12 +138,22 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
     const updateLayerSelection = useCallback((titles: string | string[], shouldBeSelected: boolean) => {
         const titlesToUpdate = Array.isArray(titles) ? titles : [titles];
 
+        console.log('[LayerUrlProvider] updateLayerSelection called:', {
+            titles: titlesToUpdate,
+            shouldBeSelected
+        });
+
         navigate({
             to: '.',
             search: (prev) => {
                 const currentSelected = new Set(prev.layers?.selected || []);
                 const currentHidden = new Set(prev.layers?.hidden || []);
                 const currentFilters = { ...(prev.filters || {}) };
+
+                console.log('[LayerUrlProvider] Current state before update:', {
+                    currentSelected: Array.from(currentSelected),
+                    currentFilters
+                });
 
                 if (shouldBeSelected) {
                     titlesToUpdate.forEach(title => {
@@ -161,7 +171,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
                     });
                 }
 
-                return {
+                const newState = {
                     ...prev,
                     layers: {
                         ...prev.layers,
@@ -170,6 +180,13 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
                     },
                     filters: Object.keys(currentFilters).length > 0 ? currentFilters : undefined,
                 };
+
+                console.log('[LayerUrlProvider] New state after update:', {
+                    selected: newState.layers.selected,
+                    filters: newState.filters
+                });
+
+                return newState;
             },
             replace: true,
         });

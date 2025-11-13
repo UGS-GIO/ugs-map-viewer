@@ -22,9 +22,6 @@ import { BackToMenuButton } from '@/components/custom/back-to-menu-button';
 import { useMap } from '@/hooks/use-map';
 import { wellWithTopsWMSTitle } from '@/pages/carbonstorage/data/layers/layers';
 import { Badge } from '@/components/ui/badge';
-import { useSidebar } from '@/hooks/use-sidebar';
-import Layers from '@/components/sidebar/layers';
-import { LayersIcon } from '@radix-ui/react-icons';
 import { findAndApplyMapLibreWMSFilter } from '@/lib/sidebar/filter/util';
 
 type YesNoAll = "yes" | "no" | "all";
@@ -207,7 +204,15 @@ const useWellFilterManager = () => {
             ...newState
         };
 
+        console.log('[useWellFilterManager] updateFilters called:', {
+            newState,
+            currentState: stateRef.current,
+            updatedState
+        });
+
         const combinedWellFilter = generateCQLFilter(updatedState);
+
+        console.log('[useWellFilterManager] Generated CQL filter:', combinedWellFilter);
 
         // Get current filters from the search object directly
         navigate({
@@ -215,12 +220,16 @@ const useWellFilterManager = () => {
                 const currentFilters = prev.filters || {};
                 let newFilters: Record<string, string> | undefined;
 
+                console.log('[useWellFilterManager] Before navigate - current filters:', currentFilters);
+
                 if (combinedWellFilter) {
                     newFilters = { ...currentFilters, [wellWithTopsWMSTitle]: combinedWellFilter };
                 } else {
                     const { [wellWithTopsWMSTitle]: _, ...rest } = currentFilters;
                     newFilters = Object.keys(rest).length > 0 ? rest : undefined;
                 }
+
+                console.log('[useWellFilterManager] After navigate - new filters:', newFilters);
 
                 return { ...prev, filters: newFilters };
             },
@@ -235,7 +244,6 @@ const MapConfigurations = () => {
     const { map } = useMap();
     const navigate = useNavigate({ from: '/carbonstorage' });
     const search = useSearch({ from: '/_map/carbonstorage/' });
-    const { setCurrentContent } = useSidebar();
 
     const { simpleState, updateFilters } = useWellFilterManager();
     const { core, las, formations, formation_operator } = simpleState;
@@ -249,10 +257,6 @@ const MapConfigurations = () => {
         queryFn: fetchFormationData,
         staleTime: 1000 * 60 * 60,
     });
-
-    const isWellsLayerVisible = useMemo(() => {
-        return search.layers?.selected?.includes(wellWithTopsWMSTitle) ?? false;
-    }, [search.layers?.selected]);
 
     // Apply filter to map when it changes
     useEffect(() => {
@@ -294,15 +298,6 @@ const MapConfigurations = () => {
     const handleFormationOperatorChange = useCallback((useAnd: boolean) => {
         updateFilters({ formation_operator: useAnd ? 'and' : undefined });
     }, [updateFilters]);
-
-    const handleLayersPanelClick = useCallback(() => {
-        setCurrentContent({
-            title: 'Layers',
-            label: '',
-            icon: <LayersIcon />,
-            component: Layers
-        });
-    }, [setCurrentContent]);
 
     return (
         <>
@@ -359,35 +354,20 @@ const MapConfigurations = () => {
                         <CardTitle className="text-base">Filter Wells Database</CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 space-y-4">
-                        {!isWellsLayerVisible && (
-                            <div className="rounded-md border bg-muted p-3 text-sm">
-                                <p className="text-center text-muted-foreground">
-                                    To filter features, turn on the Wells Database layer in the{' '}
-                                    <Button
-                                        variant="link"
-                                        className="h-auto p-1 inline-flex text-sm align-baseline"
-                                        onClick={handleLayersPanelClick}
-                                    >
-                                        layers panel
-                                    </Button>.
-                                </p>
-                            </div>
-                        )}
-
                         <WellCoreFilter
-                            disabled={!isWellsLayerVisible}
+                            disabled={false}
                             value={core}
                             onChange={handleHasCoreChange}
                         />
 
                         <WellLasFilter
-                            disabled={!isWellsLayerVisible}
+                            disabled={false}
                             value={las}
                             onChange={handleHasLasChange}
                         />
 
                         <WellFormationFilter
-                            disabled={!isWellsLayerVisible}
+                            disabled={false}
                             value={formations}
                             onChange={handleFormationChange}
                             mappings={formationMappings}

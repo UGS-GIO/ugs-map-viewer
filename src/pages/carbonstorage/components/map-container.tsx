@@ -45,6 +45,7 @@ export default function MapContainer({ searchParams, updateLayerSelection }: Map
     useDomainFilters({
         map,
         filters: searchParams.filters,
+        selectedLayers: searchParams.layers?.selected || [],
         updateLayerSelection,
         filterMapping: CCS_FILTER_MAPPING
     });
