@@ -2,7 +2,6 @@ import { GroupLayerProps, WMSLayerProps } from '@/lib/types/mapping-types'
 import { LayerProps } from "@/lib/types/mapping-types";
 import { ExtendedFeature } from '@/components/custom/popups/popup-content-with-pagination';
 import { convertBbox, convertCoordinate } from '@/lib/map/conversion-utils';
-import Extent from '@arcgis/core/geometry/Extent';
 import { createMapFactory } from '@/lib/map/factory/factory';
 import type { Geometry } from 'geojson';
 import { buffer } from '@turf/buffer';
@@ -10,38 +9,17 @@ import { point } from '@turf/helpers';
 import { bbox as turfBbox } from '@turf/bbox';
 import type { MapLibreMap } from '@/lib/types/map-types';
 
-export function findLayerByTitle(mapInstance: __esri.Map | MapLibreMap, title: string): __esri.Layer | any | null {
-    // Check if it's a MapLibre map (has getStyle method)
-    if (mapInstance && typeof mapInstance.getStyle === 'function') {
-        // Use factory for MapLibre - returns a proxy object with setter hooks
-        const factory = createMapFactory();
-        const layerSpec = factory.findLayerByTitle(mapInstance, title);
+export function findLayerByTitle(mapInstance: MapLibreMap, title: string): MapLibreLayerProxy | null {
+    // Use factory for MapLibre - returns a proxy object with setter hooks
+    const factory = createMapFactory();
+    const layerSpec = factory.findLayerByTitle(mapInstance, title);
 
-        if (layerSpec) {
-            // Return a proxy object that allows setting opacity and visibility
-            // The proxy intercepts property assignments and applies them to the MapLibre layer
-            return new MapLibreLayerProxy(mapInstance, layerSpec.id);
-        }
-        return null;
+    if (layerSpec) {
+        // Return a proxy object that allows setting opacity and visibility
+        // The proxy intercepts property assignments and applies them to the MapLibre layer
+        return new MapLibreLayerProxy(mapInstance, layerSpec.id);
     }
-
-    // Otherwise treat as ArcGIS map
-    let foundLayer: __esri.Layer | null = null;
-    if (mapInstance && mapInstance.layers) {
-        mapInstance.layers.forEach((layer: any) => {
-            if (layer.title === title) {
-                foundLayer = layer;
-            } else if (layer.type === 'group') {
-                const groupLayer = layer as __esri.GroupLayer;
-                // Search within sublayers of a group layer
-                const subLayer = groupLayer.layers.find((childLayer: any) => childLayer.title === title);
-                if (subLayer) {
-                    foundLayer = subLayer;
-                }
-            }
-        });
-    }
-    return foundLayer;
+    return null;
 }
 
 /**
@@ -92,18 +70,18 @@ class MapLibreLayerProxy {
 
 
 /**
- * Zooms the map or scene view to the bounding box of the specified feature.
+ * Zooms the MapLibre map to the bounding box of the specified feature.
  *
  * @param feature - The feature to zoom to, which must include a bounding box (bbox).
- * @param view - The MapView or SceneView instance to perform the zoom action on.
+ * @param map - The MapLibre map instance to perform the zoom action on.
  * @param sourceCRS - The coordinate reference system of the feature's bounding box.
  */
 export const zoomToFeature = (
     feature: ExtendedFeature,
-    viewOrMap: __esri.MapView | __esri.SceneView | MapLibreMap,
+    map: MapLibreMap,
     sourceCRS: string
 ) => {
-    if (!viewOrMap) return;
+    if (!map) return;
 
     let bbox: number[] | null = null;
 
@@ -139,29 +117,14 @@ export const zoomToFeature = (
         return;
     }
 
-    // Check if it's an ArcGIS view (has goTo method)
-    if (viewOrMap?.goTo) {
-        viewOrMap.goTo({
-            target: new Extent({
-                xmin: bbox[0],
-                ymin: bbox[1],
-                xmax: bbox[2],
-                ymax: bbox[3],
-                spatialReference: { wkid: 4326 }
-            })
-        });
-    }
-    // Check if it's a MapLibre map (has fitBounds method)
-    else if (viewOrMap?.fitBounds) {
-        // bbox is [minLng, minLat, maxLng, maxLat]
-        viewOrMap.fitBounds([
-            [bbox[0], bbox[1]], // southwest corner
-            [bbox[2], bbox[3]]  // northeast corner
-        ], {
-            padding: 50,
-            animate: true
-        });
-    }
+    // bbox is [minLng, minLat, maxLng, maxLat]
+    map.fitBounds([
+        [bbox[0], bbox[1]], // southwest corner
+        [bbox[2], bbox[3]]  // northeast corner
+    ], {
+        padding: 50,
+        animate: true
+    });
 }
 
 // Helper function to calculate bounds from geometry
