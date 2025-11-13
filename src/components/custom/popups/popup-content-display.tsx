@@ -253,9 +253,9 @@ const PopupContentDisplay = ({ feature, layout, layer }: PopupContentDisplayProp
         const content = (
             <div key={`feature-item-${label}-${index}`} className="flex flex-col" style={applyColor(colorCodingMap, fieldKey, finalDisplayValue)}>
                 <p className="font-bold underline text-primary">{label}</p>
-                <p className="break-words">
+                <div className="break-words">
                     {renderFieldContent(finalDisplayValue, fieldKey, properties, linkFields, urlPattern)}
-                </p>
+                </div>
             </div>
         );
 

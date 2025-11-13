@@ -155,18 +155,24 @@ function Info() {
             </div>
             <div data-vaul-no-drag className="overflow-y-auto p-4">
               {modalType === 'disclaimer' && (
-                <DrawerDescription>
-                  {pageInfo?.dataDisclaimer}
+                <DrawerDescription asChild>
+                  <div>
+                    {pageInfo?.dataDisclaimer}
+                  </div>
                 </DrawerDescription>
               )}
               {modalType === 'references' && (
-                <DrawerDescription>
-                  {pageInfo?.references}
+                <DrawerDescription asChild>
+                  <div>
+                    {pageInfo?.references}
+                  </div>
                 </DrawerDescription>
               )}
               {modalType === 'acknowledgments' && (
-                <DrawerDescription>
-                  {pageInfo?.acknowledgments}
+                <DrawerDescription asChild>
+                  <div>
+                    {pageInfo?.acknowledgments}
+                  </div>
                 </DrawerDescription>
               )}
             </div>
@@ -184,8 +190,10 @@ function Info() {
                 <DialogHeader>
                   <DialogTitle>Data Disclaimer</DialogTitle>
                 </DialogHeader>
-                <DialogDescription>
-                  {pageInfo?.dataDisclaimer}
+                <DialogDescription asChild>
+                  <div>
+                    {pageInfo?.dataDisclaimer}
+                  </div>
                 </DialogDescription>
               </>
             )}
@@ -194,8 +202,10 @@ function Info() {
                 <DialogHeader>
                   <DialogTitle>References</DialogTitle>
                 </DialogHeader>
-                <DialogDescription>
-                  {pageInfo?.references}
+                <DialogDescription asChild>
+                  <div>
+                    {pageInfo?.references}
+                  </div>
                 </DialogDescription>
               </>
             )}
@@ -204,8 +214,10 @@ function Info() {
                 <DialogHeader>
                   <DialogTitle>Acknowledgments</DialogTitle>
                 </DialogHeader>
-                <DialogDescription>
-                  {pageInfo?.acknowledgments}
+                <DialogDescription asChild>
+                  <div>
+                    {pageInfo?.acknowledgments}
+                  </div>
                 </DialogDescription>
               </>
             )}

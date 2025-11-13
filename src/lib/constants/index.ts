@@ -30,26 +30,28 @@ export interface LayerFetchConfig {
     acceptProfile: string;
 }
 
-export const layerFetchConfigs: Record<string, LayerFetchConfig> = {
-    'hazards': {
+export const layerFetchConfigs: Record<string, LayerFetchConfig[]> = {
+    'hazards': [{
         tableName: 'hazlayerinfo',
         acceptProfile: 'hazards'
-    },
-    'hazards-review': {
-        tableName: 'hazlayerreviewinfo',
-        acceptProfile: 'hazards'
-    },
-    'carbonstorage': {
+    }],
+    'hazards-review': [
+        {
+            tableName: 'hazlayerinfo',
+            acceptProfile: 'hazards'
+        },
+        {
+            tableName: 'hazlayerreviewinfo',
+            acceptProfile: 'hazards'
+        }
+    ],
+    'carbonstorage': [{
         tableName: 'ccuslayerinfo',
         acceptProfile: 'emp'
-    },
-    // 'default': {
-    //     tableName: 'default_layer_info',
-    //     acceptProfile: 'default_profile'
-    // }
+    }],
 };
 
-export const getLayerFetchConfig = (page: string | null): LayerFetchConfig | null => {
+export const getLayerFetchConfig = (page: string | null): LayerFetchConfig[] | null => {
     if (!page) return null;
     return layerFetchConfigs[page] || layerFetchConfigs['default'] || null;
 };

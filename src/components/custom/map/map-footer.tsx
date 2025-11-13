@@ -29,7 +29,7 @@ const MapFooter = () => {
                             <span className="sr-only">LinkedIn</span>
                             <LinkedinIcon className='stroke-foreground h-5 w-5' />
                         </Link>
-                        <Link to="https://github.com/UGS-GIO/geohaz-v2">
+                        <Link to="https://github.com/UGS-GIO/ugs-map-viewer">
                             <GithubIcon className='stroke-foreground h-5 w-5' />
                             <span className="sr-only">GitHub</span>
                         </Link>
