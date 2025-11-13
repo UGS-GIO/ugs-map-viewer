@@ -256,6 +256,79 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
     ],
 };
 
+// geothermalWells WMS Layer
+const geothermalWellsLayerName = 'mart_geothermal_wellsandsprings_current';
+const geothermalWellsWMSTitle = 'Geothermal Wells & Springs';
+const geothermalWellsWMSConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: geothermalWellsWMSTitle,
+    visible: true,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Map Number': { field: 'mapno', type: 'string' },
+                'Region': { field: 'region_loc', type: 'string' },
+                'Well/Spring Name': { field: 'source', type: 'string' },
+                'UGS Name': { field: 'idname', type: 'string' },
+                'Type': { field: 'type', type: 'string' },
+                'Temperature': { field: 'temp', type: 'string' },
+                'Class': { field: 'class', type: 'string' },
+                'Depth of Well': { field: 'depth', type: 'string' },
+                'Flow': { field: 'flow', type: 'string' },
+                'Rate': { field: 'rate', type: 'string' },
+                'Location': { field: 'lat', type: 'string' },
+                'UTM (Easting/Northing)': { field: 'utme', type: 'string' },
+                'Date': { field: 'date', type: 'string' },
+                'Reference': { field: 'reference', type: 'string' },
+                'PH': { field: 'ph', type: 'string' },
+                'Conductivity (microsiemens)': { field: 'cond', type: 'string' },
+                'Sodium': { field: 'na', type: 'string' },
+                'Calcium (mg/l)': { field: 'ca', type: 'string' },
+                'Magnesium (mg/l)': { field: 'mg', type: 'string' },
+                'Silica (mg/l)': { field: 'sio2', type: 'string' },
+                'Boron (mg/l)': { field: 'b', type: 'string' },
+                'Lithium (mg/l)': { field: 'li', type: 'string' },
+                'Bicarbonate (mg/l)': { field: 'hco3', type: 'string' },
+                'Sulfer (mg/l)': { field: 'so4', type: 'string' },
+                'Chlorine (mg/l)': { field: 'cl', type: 'string' },
+                'TDS Measured (mg/l)': { field: 'tdsm', type: 'string' },
+                'TDS Calculated (mg/l)': { field: 'tdsc', type: 'string' },
+                'Cat/Anion Charge Balance': { field: 'chgbal', type: 'string' },
+            },
+        },
+    ],
+};
+
+// heatflow Layer
+const heatflowLayeName = 'mart_geophysics_heatflowedwards_source_current';
+const heatflowLayeTitle = 'Heatflow Measurements';
+const heatflowLayerConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: heatflowLayeTitle,
+    visible: true,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${heatflowLayeName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'UWI': { field: 'uwi', type: 'string' },
+                'Name': { field: 'hole_name', type: 'string' },
+                'Drill Depth': { field: 'depth_start_m', type: 'string' },
+                'Bottom Hole Temperature': { field: 'bht_c', type: 'string' },
+                'Uncorrected Gradient (degrees/m)': { field: 'un_grad_c_km', type: 'string' },
+                'Uncorrected Heatflow': { field: 'un_hf_mw_m2', type: 'string' },
+                'Citation': { field: 'citation', type: 'string' },
+            },
+        },
+    ],
+};
+
 const infrastructureAndLandUseConfig: LayerProps = {
     type: 'group',
     title: 'Infrastructure and Land Use',
@@ -280,9 +353,20 @@ const geologicalInformationConfig: LayerProps = {
     ]
 }
 
+const geothermalWellsandSpringsConfig: LayerProps = {
+    type: 'group',
+    title: 'Geothermal Wells and Springs',
+    visible: true,
+    layers: [
+        geothermalWellsWMSConfig,
+        heatflowLayerConfig
+    ]
+}
+
 const layersConfig: LayerProps[] = [
     geologicalInformationConfig,
     infrastructureAndLandUseConfig,
+    geothermalWellsandSpringsConfig,
 ];
 
 export default layersConfig;
