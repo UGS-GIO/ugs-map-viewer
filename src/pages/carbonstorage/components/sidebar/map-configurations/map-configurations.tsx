@@ -2,6 +2,7 @@ import React from 'react';
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
+import type { PostgRESTRowOf } from '@/lib/types/postgrest-types';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -64,6 +65,11 @@ const formationNameMappingConfig = {
     acceptProfile: "emp"
 };
 
+type FormationRow = PostgRESTRowOf<{
+    formation_alias: string;
+    formation_name: string;
+}>;
+
 interface FormationMapping {
     value: string; // GeoServer column name (e.g., 'fm_greenriver')
     label: string; // user-friendly alias (e.g., 'Green River')
@@ -74,8 +80,6 @@ const fetchFormationData = async (): Promise<FormationMapping[]> => {
         postgrestUrl,
         tableName,
         fieldsToSelect,
-        displayField,
-        columnNameField,
         acceptProfile
     } = formationNameMappingConfig;
 
@@ -91,14 +95,14 @@ const fetchFormationData = async (): Promise<FormationMapping[]> => {
         throw new Error(`HTTP error fetching formation mappings! status: ${response.status}`);
     }
 
-    const data: Array<Record<string, any>> = await response.json();
+    const data = await response.json() as FormationRow[];
     const uniqueMappings = new Map<string, string>();
 
     data.forEach(item => {
-        const alias = item[displayField];
-        const columnName = item[columnNameField];
-        if (alias && columnName && !uniqueMappings.has(alias)) {
-            uniqueMappings.set(alias, columnName);
+        const alias = item.formation_alias;
+        const columnName = item.formation_name;
+        if (alias && columnName && !uniqueMappings.has(String(alias))) {
+            uniqueMappings.set(String(alias), String(columnName));
         }
     });
 
@@ -244,8 +248,18 @@ const MapConfigurations = () => {
     });
 
     const isWellsLayerVisible = useMemo(() => {
-        return search.layers?.selected?.includes(wellWithTopsWMSTitle) ?? false;
-    }, [search.layers?.selected]);
+        let layersObj: { selected?: string[]; hidden?: string[] } | undefined;
+        if (typeof search.layers === 'string') {
+            try {
+                layersObj = JSON.parse(search.layers);
+            } catch {
+                return false;
+            }
+        } else {
+            layersObj = search.layers;
+        }
+        return layersObj?.selected?.includes(wellWithTopsWMSTitle) ?? false;
+    }, [search.layers]);
 
     // Apply filter to map when it changes
     useEffect(() => {

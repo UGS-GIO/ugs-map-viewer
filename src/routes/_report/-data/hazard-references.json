@@ -1,0 +1,1479 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "id": 1,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 1,
+                "Hazard": "SFR",
+                "Text": "Utah Earthquakes (1850–2016) and Quaternary Faults Map (UGS M-277): \u003ca href=\"https://ugspub.nr.utah.gov/publications/maps/m-277.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/maps/m-277.pdf\u003c/a\u003e.",
+                "GlobalID": "cb6517db-c392-4dd0-b4ab-cc4992af6439"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 2,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 2,
+                "Hazard": "QFF",
+                "Text": "Utah Earthquakes (1850–2016) and Quaternary Faults Map (UGS M-277): \u003ca href=\"https://ugspub.nr.utah.gov/publications/maps/m-277.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/maps/m-277.pdf\u003c/a\u003e. ",
+                "GlobalID": "14d17559-8bb9-464d-b913-b47d4bc8fa53"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 3,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 3,
+                "Hazard": "EGS",
+                "Text": "Seismic Hazard Maps and Site-Specific Data (U.S. Geological Survey): \u003ca href=\"https://earthquake.usgs.gov/hazards/hazmaps/\" target=\"_blank\"\u003ehttps://earthquake.usgs.gov/hazards/hazmaps\u003c/a\u003e.",
+                "GlobalID": "f4b83372-c88c-4f48-af2e-2446b79fbbd5"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 4,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 4,
+                "Hazard": "LQS",
+                "Text": "Liquefaction Hazards in Utah (UGS Public Information Series 100): \u003ca href=\"https://ugspub.nr.utah.gov/publications/public_information/pi-100.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/public_information/pi-100.pdf\u003c/a\u003e.  ",
+                "GlobalID": "92a03ccc-1da8-4c40-b1d6-112e321bb289"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 5,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 5,
+                "Hazard": "LSS",
+                "Text": "Landslide Hazards in Utah (UGS Public Information Series 98): \u003ca href=\"https://ugspub.nr.utah.gov/publications/public_information/pi-98.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/public_information/pi-98.pdf\u003c/a\u003e.",
+                "GlobalID": "636652e3-14ea-4f94-a0a1-4ea142def621"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 6,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 6,
+                "Hazard": "LSF",
+                "Text": "Utah Landslide Database (UGS digital product): \u003ca href=\"https://gis.utah.gov/data/geoscience/landslides/\" target=\"_blank\"\u003ehttps://gis.utah.gov/data/geoscience/landslides/\u003c/a\u003e. \nLandslide Hazards in Utah (UGS Public Information Series 98): \u003ca href=\"https://ugspub.nr.utah.gov/publications/public_information/pi-98.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/public_information/pi-98.pdf\u003c/a\u003e.",
+                "GlobalID": "3ff962c0-5ca9-4cb9-9596-aaacc11cc2bd"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 7,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 7,
+                "Hazard": "RFH",
+                "Text": "Rockfall Hazards in Utah (UGS Public Information Series 94): \u003ca href=\"https://ugspub.nr.utah.gov/publications/public_information/pi-94.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/public_information/pi-94.pdf\u003c/a\u003e. ",
+                "GlobalID": "d9590066-8bc2-4ef3-b1d4-6ec7b8bc246b"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 8,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 8,
+                "Hazard": "FLH",
+                "Text": "Debris-Flow Hazards in Utah (UGS Public Information Series 70: \u003ca href=\"https://ugspub.nr.utah.gov/publications/public_information/pi-70.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/public_information/pi-70.pdf\u003c/a\u003e.\u003cbr\u003eWildfires and Debris Flows in Northern Utah (UGS Public Information Series 90): \u003ca href=\"https://ugspub.nr.utah.gov/publications/public_information/pi-90.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/public_information/pi-90.pdf\u003c/a\u003e.",
+                "GlobalID": "c74063bd-94ac-4466-b196-9f690390f776"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 9,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 9,
+                "Hazard": "EFH",
+                "Text": "Investigation of Land Subsidence and Earth Fissures in Cedar Valley, Iron County, Utah (UGS Special Study 150): \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-150.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-150.pdf\u003c/a\u003e. This report contains an in-depth description of land subsidence and earth fissures and is useful to more fully understand why and how earth fissures form, along with the resulting hazard.",
+                "GlobalID": "766cbfd6-3247-48f5-a744-660a8a02f424"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 10,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 10,
+                "Hazard": "SFR",
+                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin to Springdale, Washington County, Utah (UGS Special Study 148) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\u003c/a\u003e and Map, Plate 8— Surface Fault Rupture Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl8.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl8.pdf\u003c/a\u003e.",
+                "GlobalID": "db9da338-dab7-4d2c-bc67-767b54b7fdee"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 11,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 11,
+                "Hazard": "SFR",
+                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (UGS Special Study 133) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\u003c/a\u003e and Map, Plate 4— Surface Fault Rupture: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl4.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl4.pdf\u003c/a\u003e.",
+                "GlobalID": "950cf838-9488-452d-a1c4-a7bd5a437b02"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 12,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 12,
+                "Hazard": "SFR",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: \u003ca href= \"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\u003c/a\u003e and Map, Plate 1— Surface Fault Rupture: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl1.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl1.pdf\u003c/a\u003e.",
+                "GlobalID": "76e67218-10d8-417a-96f3-b8b8c3910ad5"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 13,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 13,
+                "Hazard": "SFR",
+                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (UGS Special Study 163) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\u003c/a\u003e and Map, Plate 3— Surface Fault Rupture Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-3.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-3.pdf\u003c/a\u003e.",
+                "GlobalID": "5e5cd057-2e29-49bb-882a-7382fe23d933"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 14,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 14,
+                "Hazard": "SFR",
+                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (UGS Special Study 137) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\u003c/a\u003e and Map, Plate 2— Surface Fault Rupture: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate2.pdf\"  target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate2.pdf\u003c/a\u003e.",
+                "GlobalID": "37896a32-c10e-473b-b291-9ea70283b574"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 15,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 15,
+                "Hazard": "SFR",
+                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (UGS Special Study 152) Report and Maps: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\u003c/a\u003e. ",
+                "GlobalID": "a8c666f0-9852-4dfe-821e-274cb7a491d0"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 16,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 16,
+                "Hazard": "SFR",
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Special Study 166) Report and Maps: \u003ca href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\"\u003e https://doi.org/10.34191/SS-166\u003c/a\u003e. ",
+                "GlobalID": "d3c6759b-fc1c-4323-8ee5-5f6d876dcef2"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 17,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 17,
+                "Hazard": "LQS",
+                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin to Springdale, Washington County, Utah (UGS Special Study 148) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\u003c/a\u003e and Map, Plate 9— Liquefaction Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl2.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl9.pdf\u003c/a\u003e.",
+                "GlobalID": "ea0b339b-320a-4732-a737-a469333eea96"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 18,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 18,
+                "Hazard": "LQS",
+                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (UGS Special Study 133) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\u003c/a\u003e  and Map, Plate 5— Liquefaction Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl5.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl5.pdf\u003c/a\u003e. ",
+                "GlobalID": "c0a55ad3-5981-4ad6-af82-fe2bdc4cc29f"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 19,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 19,
+                "Hazard": "LQS",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\u003c/a\u003e and Map, Plate 2— Liquefaction Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl2.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl2.pdf\u003c/a\u003e.",
+                "GlobalID": "f3c448a2-7949-4af3-835a-16a141363087"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 20,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 20,
+                "Hazard": "LQS",
+                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (UGS Special Study 163) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\u003c/a\u003e and Map, Plate 2— Liquefaction Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-2.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-2.pdf\u003c/a\u003e.",
+                "GlobalID": "8b82f2b2-3a21-4789-9e4d-02b58f7d67d3"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 21,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 21,
+                "Hazard": "LQS",
+                "Text": "\u003cp\u003eGeologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (UGS Special Study 137) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\u003c/a\u003e and Map, Plate 1&mdash; Liquefaction Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate1.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate1.pdf\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "720804e5-cce7-49c0-b943-61d16d36005e"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 22,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 22,
+                "Hazard": "LQS",
+                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (UGS Special Study 152) Report and Maps: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\u003c/a\u003e.",
+                "GlobalID": "dfc2c98d-cc3a-48d2-870c-d5775cc6f826"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 23,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 23,
+                "Hazard": "LQS",
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Special Study 166) Report and Maps: \u003ca href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\"\u003ehttps://doi.org/10.34191/SS-166\u003c/a\u003e.",
+                "GlobalID": "5f1f43f0-575f-4f51-be86-1c93b15a4e05"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 24,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 24,
+                "Hazard": "LSS",
+                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin to Springdale, Washington County, Utah (UGS Special Study 148) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\u003c/a\u003e and Map, Plate 2— Landslide Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl2.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl2.pdf\u003c/a\u003e.",
+                "GlobalID": "c783ad32-fcd9-46cf-9f9a-f8355de53ab8"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 25,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 25,
+                "Hazard": "LSS",
+                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (UGS Special Study 133) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\u003c/a\u003e and Map, Plate 3— Landslide Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl3.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl3.pdf\u003c/a\u003e.",
+                "GlobalID": "479d8342-6582-416c-8ed6-2534e91a5272"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 26,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 26,
+                "Hazard": "LSS",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\u003c/a\u003e and Map, Plate 4— Landslide Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl4.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl4.pdf\u003c/a\u003e.",
+                "GlobalID": "93bbfb60-eb5d-455c-8a4a-2de9c162c49a"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 27,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 27,
+                "Hazard": "LSS",
+                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (UGS Special Study 163) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\u003c/a\u003e and Map, Plate 5— Landslide Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-5.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-5.pdf\u003c/a\u003e.",
+                "GlobalID": "f599b309-9263-43b0-91f9-c387de469ed7"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 28,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 28,
+                "Hazard": "LSS",
+                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (UGS Special Study 137) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\u003c/a\u003e and Map, Plate 4— Landslide Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate4.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate4.pdf\u003c/a\u003e.",
+                "GlobalID": "c9225922-f04f-4ec1-9c06-9d2faa903724"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 29,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 29,
+                "Hazard": "LSS",
+                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (UGS Special Study 152) Report and Maps: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\u003c/a\u003e.",
+                "GlobalID": "29c571c8-104b-459e-966d-c8b98464aa14"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 30,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 30,
+                "Hazard": "LSS",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\u003c/a\u003e and Map, Plate 4— Landslide Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl4.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl4.pdf\u003c/a\u003e.",
+                "GlobalID": "cf26d623-3078-402a-ab1f-a57f368c24dc"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 31,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 31,
+                "Hazard": "LSS",
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Special Study 166) Report and Maps: \u003ca href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\"\u003ehttps://doi.org/10.34191/SS-166\u003c/a\u003e.",
+                "GlobalID": "b29a5006-9d79-4ea6-af46-82495109be57"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 32,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 32,
+                "Hazard": "RFH",
+                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin to Springdale, Washington County, Utah (UGS Special Study 148) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\u003c/a\u003e and Map, Plate 3— Rockfall Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl3.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl3.pdf\u003c/a\u003e.",
+                "GlobalID": "019b023f-2192-48c6-94d3-ca17f37538f2"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 33,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 33,
+                "Hazard": "RFH",
+                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (UGS Special Study 133) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\u003c/a\u003e and Map, Plate 2— Rockfall Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl2.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl2.pdf\u003c/a\u003e.",
+                "GlobalID": "a6048213-a4ab-4cda-937d-76b903955cfe"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 34,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 34,
+                "Hazard": "RFH",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\u003c/a\u003e and Map, Plate - Rockfall Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl5.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl5.pdf\u003c/a\u003e.",
+                "GlobalID": "fbf9489e-1707-40da-9624-fc0dd6ed94b5"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 35,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 35,
+                "Hazard": "RFH",
+                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (UGS Special Study 163) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\u003c/a\u003e and Map, Plate 6— Rockfall Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-6.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-6.pdf\u003c/a\u003e.",
+                "GlobalID": "b6faed74-d0a5-4b52-9bc9-e9fc210f6aa6"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 36,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 36,
+                "Hazard": "RFH",
+                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (UGS Special Study 137) Report: \u003ca hreft=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\u003c/a\u003e and Map, Plate 5— Rockfall Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate5.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate5.pdf\u003c/a\u003e.",
+                "GlobalID": "65aa514e-e980-4768-9a75-568ec749db31"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 37,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 37,
+                "Hazard": "RFH",
+                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (UGS Special Study 152) Report and Maps: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\u003c/a\u003e.",
+                "GlobalID": "ce70acca-e067-404c-9710-415c2d0cd5bc"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 38,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 38,
+                "Hazard": "RFH",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\u003c/a\u003e and Map, Plate 5— Rockfall Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl5.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl5.pdf\u003c/a\u003e.",
+                "GlobalID": "570bd11c-769f-42c8-87e0-b4ed9761ce89"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 39,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 39,
+                "Hazard": "RFH",
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Special Study 166) Report and Maps: \u003ca href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\"\u003ehttps://doi.org/10.34191/SS-166\u003c/a\u003e.",
+                "GlobalID": "9ef4f349-3f3a-433a-8322-f3c73be79944"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 40,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 40,
+                "Hazard": "FLH",
+                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin to Springdale, Washington County, Utah (UGS Special Study 148) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\u003c/a\u003e and Map, Plate 1— Flood and Debris-Flow Hazards: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl1.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl1.pdf\u003c/a\u003e.",
+                "GlobalID": "3a5745e9-fde6-4048-9419-1a5ebad4ec73"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 41,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 41,
+                "Hazard": "FLH",
+                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (UGS Special Study 133) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\u003c/a\u003e and Map, Plate 1— Flood and Debris-Flow Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl1.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl1.pdf\u003c/a\u003e.",
+                "GlobalID": "f444f4f6-bf3f-407f-9f75-c43809013e2f"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 42,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 42,
+                "Hazard": "FLH",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\u003c/a\u003e and Map, Plate 3— Flood and Debris-Flow Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl3.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl3.pdf\u003c/a\u003e.",
+                "GlobalID": "2986d555-a261-42f5-b487-0e4e7c329d87"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 43,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 43,
+                "Hazard": "FLH",
+                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (UGS Special Study 163) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\u003c/a\u003e and Map, Plate 4— Flood and Debris-Flow Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-4.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-4.pdf\u003c/a\u003e.",
+                "GlobalID": "4e86c9ab-e04c-4d9e-b15e-9931fe676fd6"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 44,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 44,
+                "Hazard": "FLH",
+                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (UGS Special Study 137) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\u003c/a\u003e and Map, Plate 3— Flood and Debris-Flow Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate3.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate3.pdf\u003c/a\u003e.",
+                "GlobalID": "cf0b03b3-c333-4198-a9e7-7d459dcc4e08"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 45,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 45,
+                "Hazard": "FLH",
+                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (UGS Special Study 152) Report and Maps: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\u003c/a\u003e.",
+                "GlobalID": "60941009-e73c-4e47-b5a0-6f86b78c1eaf"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 46,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 46,
+                "Hazard": "FLH",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\u003c/a\u003e and Map, Plate 3— Flood and Debris-Flow Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl3.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl3.pdf\u003c/a\u003e.",
+                "GlobalID": "9c920e11-6f9d-484c-8dc8-441bbd4a3e5a"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 47,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 47,
+                "Hazard": "FLH",
+                "Text": "Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Contract Deliverable) Report and Maps: \u003ca href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\"\u003ehttps://doi.org/10.34191/SS-166\u003c/a\u003e.",
+                "GlobalID": "1f534aba-7299-4ace-b56f-7988e3cf17f0"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 48,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 48,
+                "Hazard": "SGS",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\u003c/a\u003e and Map, Plate 14— Shallow Groundwater Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl14.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl14.pdf\u003c/a\u003e.",
+                "GlobalID": "ae47edd8-0fd9-46b5-b5c9-8a43aaaac771"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 49,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 49,
+                "Hazard": "SGS",
+                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (UGS Special Study 163) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\u003c/a\u003e and Map, Plate 1— Shallow Groundwater Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-1.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-1.pdf\u003c/a\u003e.",
+                "GlobalID": "ec2494d2-aa9f-48ea-b409-adacfe9a3e63"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 50,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 50,
+                "Hazard": "SGS",
+                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (UGS Special Study 137) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\u003c/a\u003e and Map, Plate 10— Shallow Groundwater Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate10.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate10.pdf\u003c/a\u003e.",
+                "GlobalID": "252dd8e5-90e4-4fc9-bf9e-316e2057a504"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 51,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 51,
+                "Hazard": "SGS",
+                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (UGS Special Study 152) Report and Maps: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\u003c/a\u003e.",
+                "GlobalID": "e4092b76-c125-4713-a8e1-5f1a2ac45196"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 52,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 52,
+                "Hazard": "SGS",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\u003c/a\u003e and Map, Plate 1— Shallow Groundwater Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl1.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl1.pdf\u003c/a\u003e.",
+                "GlobalID": "3fecd786-2dcd-49a7-9f2c-428c679fc092"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 53,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 53,
+                "Hazard": "CAS",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\u003c/a\u003e and Map, Plate 11— Caliche Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl11.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl11.pdf\u003c/a\u003e.",
+                "GlobalID": "a2e4c357-1138-4c55-98a6-8e6d42842473"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 54,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 54,
+                "Hazard": "CSS",
+                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin to Springdale, Washington County, Utah (UGS Special Study 148) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\u003c/a\u003e and Map, Plate 4— Collapsible Soil Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl4.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl4.pdf\u003c/a\u003e.",
+                "GlobalID": "05b7a4b0-312e-4b48-8bd1-3906d965e557"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 55,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 55,
+                "Hazard": "CSS",
+                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (UGS Special Study 133) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\u003c/a\u003e and Map, Plate 6— Collapsible Soil Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl6.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl6.pdf\u003c/a\u003e.",
+                "GlobalID": "19a3436e-eb2f-4a19-bb50-78ba42505aec"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 56,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 56,
+                "Hazard": "CSS",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\u003c/a\u003e and Map, Plate 7— Collapsible Soil Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl7.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl7.pdf\u003c/a\u003e.",
+                "GlobalID": "6848f56d-723a-4a15-8e14-262fd1304a23"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 57,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 57,
+                "Hazard": "CSS",
+                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (UGS Special Study 163) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\u003c/a\u003e and Map, Plate 8— Collapsible Soil Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-8.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-8.pdf\u003c/a\u003e.",
+                "GlobalID": "680152e6-7145-4509-b307-67cc71312de6"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 58,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 58,
+                "Hazard": "CSS",
+                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (UGS Special Study 137) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\u003c/a\u003eand Map, Plate 7— Collapsible Soil Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate7.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate7.pdf\u003c/a\u003e.",
+                "GlobalID": "872669d9-52d3-498f-84bf-39340304bafd"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 59,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 59,
+                "Hazard": "CSS",
+                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (UGS Special Study 152) Report and Maps: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\u003c/a\u003e.",
+                "GlobalID": "16f986e3-5077-41a2-88c1-347ef683cb80"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 60,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 60,
+                "Hazard": "CSS",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\u003c/a\u003e and Map, Plate 7— Collapsible Soil Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl7.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl7.pdf\u003c/a\u003e.",
+                "GlobalID": "5835b340-7730-4eb6-b496-060fdcc5b441"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 61,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 61,
+                "Hazard": "CSS",
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Contract Deliverable) Report and Maps: \u003ca href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\"\u003ehttps://doi.org/10.34191/SS-166\u003c/a\u003e.",
+                "GlobalID": "a84ddfb6-f210-40a4-ba7e-f6a8ac0202fb"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 62,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 62,
+                "Hazard": "CRS",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\u003c/a\u003e and Map, Plate 10— Corrosive Soil and Rock Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl10.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl10.pdf\u003c/a\u003e.",
+                "GlobalID": "a0bbb290-6ee2-4b31-8d67-29a253df43e3"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 63,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 63,
+                "Hazard": "CRS",
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Special Study 166) Report and Maps: \u003ca href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\"\u003ehttps://doi.org/10.34191/SS-166\u003c/a\u003e.",
+                "GlobalID": "aba09232-e93d-4a53-9e22-282d246cb38b"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 64,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 64,
+                "Hazard": "EXS",
+                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin to Springdale, Washington County, Utah (UGS Special Study 148) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\u003c/a\u003e and Map, Plate 5— Expansive Soil and Rock Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl5.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl5.pdf\u003c/a\u003e.",
+                "GlobalID": "d787edd6-371b-4bb9-b8c6-c2ced1fa8541"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 65,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 65,
+                "Hazard": "EXS",
+                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (UGS Special Study 133) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\u003c/a\u003e and Map, Plate 7— Expansive Soil and Rock: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl7.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl7.pdf\u003c/a\u003e.",
+                "GlobalID": "78be4c9b-b8f6-4bfc-afe9-ad9fcf1208e6"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 66,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 66,
+                "Hazard": "EXS",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\u003c/a\u003e and Map, Plate 6— Expansive Soil and Rock Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl6.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl6.pdf\u003c/a\u003e.",
+                "GlobalID": "750740aa-efe7-46ee-afdd-30d2becbf106"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 67,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 67,
+                "Hazard": "EXS",
+                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (UGS Special Study 163) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\u003c/a\u003e and Map, Plate 9— Expansive Soil and Rock Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-9.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-9.pdf\u003c/a\u003e.",
+                "GlobalID": "3d985502-b1a1-4683-9927-27d21d67236b"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 68,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 68,
+                "Hazard": "EXS",
+                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (UGS Special Study 137) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\u003c/a\u003e and Map, Plate 8— Expansive Soil and Rock Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate8.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate8.pdf\u003c/a\u003e.",
+                "GlobalID": "33568e95-f8e2-419f-a341-6faa60b3bbb9"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 69,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 69,
+                "Hazard": "EXS",
+                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (UGS Special Study 152) Report and Maps: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\u003c/a\u003e.",
+                "GlobalID": "2dd794f0-c483-43ee-a575-708ce4978d96"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 70,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 70,
+                "Hazard": "EXS",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\u003c/a\u003e and Map, Plate 8— Expansive Soil and Rock Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl8.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl8.pdf\u003c/a\u003e.",
+                "GlobalID": "c3ea6511-ce5f-4d6d-b320-f91a06cc5f20"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 71,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 71,
+                "Hazard": "EXS",
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Special Study 166) Report and Maps: \u003ca href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\"\u003ehttps://doi.org/10.34191/SS-166\u003c/a\u003e. ",
+                "GlobalID": "79a3613e-f0b0-4ecc-9c54-2472a89cd8b7"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 72,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 72,
+                "Hazard": "MKF",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\u003c/a\u003e and Map, Plate 9— Breccia Pipe and Paleokarst: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl9.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl9.pdf\u003c/a\u003e.",
+                "GlobalID": "d05ee277-d625-41ac-943a-bf31c122914b"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 73,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 73,
+                "Hazard": "GSP",
+                "Text": "Investigation of Land Subsidence and Earth Fissures in Cedar Valley, Iron County, Utah (UGS Special Study 150): \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-150.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-150.pdf\u003c/a\u003e.",
+                "GlobalID": "3d40c300-8f5e-46e3-b070-39c92cb17eea"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 74,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 74,
+                "Hazard": "GSP",
+                "Text": "The Origin and Extent of Earth Fissures in Escalante Valley, Southern Escalante Desert, Iron County, Utah (UGS Special Study 115): \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-115.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-115.pdf\u003c/a\u003e.",
+                "GlobalID": "90480aaf-6a1d-4b8b-889c-f686161c7bd9"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 75,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 75,
+                "Hazard": "PES",
+                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin to Springdale, Washington County, Utah (UGS Special Study 148) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\u003c/a\u003e and Map, Plate 7— Piping, Erosion, and Wind-Blown Sand Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl7.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl7.pdf\u003c/a\u003e.",
+                "GlobalID": "0238c968-2086-435a-a3a8-7c514324c4dd"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 76,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 76,
+                "Hazard": "PES",
+                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (UGS Special Study 133) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\u003c/a\u003e and Map, Plate 9— Piping and Erosion Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl9.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl9.pdf\u003c/a\u003e.",
+                "GlobalID": "46fd0134-236c-4e23-a88a-9e3c76dce6d1"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 77,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 77,
+                "Hazard": "PES",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\u003c/a\u003e and Map, Plate 13— Piping and Erosion Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl13.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl13.pdf\u003c/a\u003e.",
+                "GlobalID": "e2f0b967-dae9-432b-abec-16cba23d7e8e"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 78,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 78,
+                "Hazard": "PES",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\u003c/a\u003e and Map, Plate 11— Piping and Erosion Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl11.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl11.pdf\u003c/a\u003e.",
+                "GlobalID": "83454574-cdb3-4444-890b-a435f647e6c3"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 79,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 79,
+                "Hazard": "PES",
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Special Study 166) Report and Maps: \u003ca href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\"\u003ehttps://doi.org/10.34191/SS-166\u003c/a\u003e. ",
+                "GlobalID": "ad348506-a454-4d35-b6df-13dd4db087cb"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 80,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 80,
+                "Hazard": "GRS",
+                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (UGS Special Study 163) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\u003c/a\u003e and Map, Plate 7— Geologic Radon Hazard Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-7.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-7.pdf\u003c/a\u003e.",
+                "GlobalID": "e47a2770-af49-4924-b011-22cc129b9501"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 81,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 81,
+                "Hazard": "GRS",
+                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (UGS Special Study 137) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\u003c/a\u003e and Map, Plate 6— Geologic Radon Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate6.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate6.pdf\u003c/a\u003e.",
+                "GlobalID": "7caf5061-21f7-4a44-bc94-6ac09d752cea"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 82,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 82,
+                "Hazard": "GRS",
+                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (UGS Special Study 152) Report and Maps: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\u003c/a\u003e.",
+                "GlobalID": "3364d752-5608-45ae-a0e7-2801cf5cf002"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 83,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 83,
+                "Hazard": "GRS",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\u003c/a\u003e and Map, Plate 6— Geologic Radon Susceptibilty: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl6.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl6.pdf\u003c/a\u003e.",
+                "GlobalID": "4aeb3fce-0d68-4449-af80-f66d057a77d0"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 84,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 84,
+                "Hazard": "GRS",
+                "Text": "Radon Hazard Potential of Davis County, Utah (UGS Open-File Report 655): \u003ca href=\"https://ugspub.nr.utah.gov/publications/open_file_reports/ofr-655.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/open_file_reports/ofr-655.pdf\u003c/a\u003e.",
+                "GlobalID": "64587f44-17ab-442c-9b17-31d27ae51372"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 85,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 85,
+                "Hazard": "SDH",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: ,\u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\u003c/a\u003e and Map, Plate 2— Salt Tectonics-Related Ground Deformation Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl2.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl2.pdf\u003c/a\u003e.",
+                "GlobalID": "52fe2baf-5fe7-48e8-a6b0-3fab49e8efa0"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 86,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 86,
+                "Hazard": "SBP",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\u003c/a\u003e and Map, Plate 10— Shallow Bedrock Potential: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl10.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl10.pdf\u003c/a\u003e.",
+                "GlobalID": "ff4b27e4-17a5-434c-a7ae-b990e25b1856"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 87,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 87,
+                "Hazard": "SBP",
+                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (UGS Special Study 163) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\u003c/a\u003e and Map, Plate 10— Shallow Bedrock Potential: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-10.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-10.pdf\u003c/a\u003e.",
+                "GlobalID": "38080b64-399b-4072-866c-52177c5be5b0"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 88,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 88,
+                "Hazard": "SBP",
+                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (UGS Special Study 137) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\u003c/a\u003e and Map, Plate 9— Shallow Bedrock Potential: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate9.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate9.pdf\u003c/a\u003e.",
+                "GlobalID": "404bab5e-c0d8-4a61-9080-25735ef0c727"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 89,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 89,
+                "Hazard": "SBP",
+                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (UGS Special Study 152) Report and Maps: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\u003c/a\u003e.",
+                "GlobalID": "ed1a2526-1747-4561-bb72-d6f8fb170dc9"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 90,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 90,
+                "Hazard": "SBP",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\u003c/a\u003e and Map, Plate 13— Shallow Bedrock Potential: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl13.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl13.pdf\u003c/a\u003e.",
+                "GlobalID": "de565a61-771a-4730-a05b-c536e90396fc"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 91,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 91,
+                "Hazard": "SLS",
+                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin to Springdale, Washington County, Utah (UGS Special Study 148) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\u003c/a\u003e and Map, Plate 6— Gypsiferous Soil and Rock Hazard: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl6.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl6.pdf\u003c/a\u003e.",
+                "GlobalID": "71f60136-4efa-41bf-ba25-1d7748177178"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 92,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 92,
+                "Hazard": "SLS",
+                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (UGS Special Study 133) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\u003c/a\u003e and Map, Plate 8— Gypsiferous Soil and Rock: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl8.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl8.pdf\u003c/a\u003e.",
+                "GlobalID": "5424f80c-0f39-4ddf-935e-95b71d2a04c7"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 93,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 93,
+                "Hazard": "SLS",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\u003c/a\u003e and Map, Plate 8— Gypsiferous Soil and Rock: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl8.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl8.pdf\u003c/a\u003e.",
+                "GlobalID": "26b0131d-1da1-4fe3-9236-2c18fcf6f329"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 94,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 94,
+                "Hazard": "SLS",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\u003c/a\u003e and Map, Plate 9— Soluble Soil and Rock Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl9.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl9.pdf\u003c/a\u003e.",
+                "GlobalID": "72f5f6eb-021f-4808-afd9-95ae5e8580dd"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 95,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 95,
+                "Hazard": "SLS",
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Special Study 166) Report and Maps: \u003ca href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\"\u003ehttps://doi.org/10.34191/SS-166\u003c/a\u003e.",
+                "GlobalID": "63d40ec7-2ff8-482c-9ba4-b52098bc3a0d"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 96,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 96,
+                "Hazard": "WSS",
+                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin to Springdale, Washington County, Utah (UGS Special Study 148) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\u003c/a\u003e and Map, Plate 7— Piping, Erosion, and Wind-Blown-Sand Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl7.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl7.pdf\u003c/a\u003e.",
+                "GlobalID": "e1911dcb-ca18-4bee-b840-12b2c45c501f"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 97,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 97,
+                "Hazard": "WSS",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\u003c/a\u003e and Map, Plate 12— Wind Blown Sand: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl12.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl12.pdf\u003c/a\u003e.",
+                "GlobalID": "251abc7d-cd10-4e50-9bc6-211ae645c730"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 98,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 98,
+                "Hazard": "WSS",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\u003c/a\u003e and Map, Plate 12— Wind-Blown-Sand Susceptibility: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl12.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl12.pdf\u003c/a\u003e.",
+                "GlobalID": "6d405aba-07d0-4e3c-a2b0-8ce1a45e6b8f"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 99,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 99,
+                "Hazard": "WSS",
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Special Study 166) Report and Maps: \u003ca href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\"\u003ehttps://doi.org/10.34191/SS-166\u003c/a\u003e.",
+                "GlobalID": "e9d72ef8-aa7d-4a33-b490-7db085560643"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 100,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 100,
+                "Hazard": "LSC",
+                "Text": "Landslide Hazards in Utah (UGS Public Information Series 98): \u003ca href=\"https://ugspub.nr.utah.gov/publications/public_information/pi-98.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/public_information/pi-98.pdf\u003c/a\u003e.\u003cbr\u003eUtah Landslide Database (UGS digital product): \u003ca href=\"https://gis.utah.gov/data/geoscience/landslides/\" target=\"_blank\"\u003ehttps://gis.utah.gov/data/geoscience/landslides/\u003c/a\u003e.",
+                "GlobalID": "4e177ad9-eeb5-4bc4-8b72-d9a40c19b472"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 101,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 101,
+                "Hazard": "QFF",
+                "Text": "The \u003ci\u003eUtah Geological Survey Quaternary Fault and Fold Database and Map of Utah\u003c/i\u003e is a compilation of existing information on faults and fault-related folds considered to be potential earthquake sources (i.e., “active” faults and folds). The faults and folds contained in the database are those considered to have been sources of large earthquakes (about magnitude 6.5 or greater) during the Quaternary Period (past 2.6 million years); these geologic structures are the most likely sources of large earthquakes in the future. The database is intended to be a comprehensive source of the most current information available for characterizing active faults and folds in Utah for seismic-hazard analysis. This version of the database incorporates fault data from geologic maps and other documents formally published through 2013, along with several additional faults.\u003cbr\u003e\u003cbr/\u003eThe database was compiled and attributed using ESRI ArcGIS geographic information system software. In general, the database attribute conventions follow those of the \u003ci\u003eQuaternary Fault and Fold Database of the United States\u003c/i\u003e maintained by the U.S. Geological Survey (USGS).",
+                "GlobalID": "009ac404-bcfa-43c5-a793-b59205aa2b9c"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 102,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 102,
+                "Hazard": "ERZ",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\u003c/a\u003e and Map, Plate 3— Flood-Hazard Map: \u003ca href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl3.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl3.pdf\u003c/a\u003e.",
+                "GlobalID": "89312fbd-8bb9-4848-be54-ca518a074e98"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 103,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 103,
+                "Hazard": "VOL",
+                "Text": "\u003cp\u003eAnderson, R.E., and Christenson, G.E., 1989, Quaternary faults, folds, and selected volcanic features in the Cedar City 1' x 2' quadrangle, Utah: Utah Geological Survey Miscellaneous Publication 89-6, 29 p., 2 plates, scale 1:250,000. \u003ca href=\"https://doi.org/10.34191/mp-89-6\" target=\"_blank\"\u003ehttps://doi.org/10.34191/mp-89-6\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "4d9bf2ea-ac09-434e-8744-a3a9bda64bff"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 104,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 104,
+                "Hazard": "THR",
+                "Text": "Blackett, R.E., and Wakefield, S.I., 2004, Geothermal resources of Utah, a digital atlas of Utah's geothermal resources: Utah Geological Survey Open-File Report 431, 85 p., plus appendices. \u003c/span\u003e\u003ca href=\"https://doi.org/10.34191/ofr-431dm\" target=\"_blank\"\u003ehttps://doi.org/10.34191/ofr-431dm\u003c/a\u003e\u003cspan style=\"color: black;\"\u003e.\u003c/span\u003e",
+                "GlobalID": "61fae6b9-c016-40b2-8034-8ceac3fb0384"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 105,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 105,
+                "Hazard": "THR",
+                "Text": "\u003cp\u003eBiek, R.F., Rowley, P.D., Hayden, J.M., Hacker, D.B., Willis, G.C., Hintze, L.F., Anderson, R.E., and Brown, K.D., 2009, Geologic map of the St. George and east part of the Clover Mountains 30' x 60' quadrangles, Washington and Iron Counties, Utah: Utah Geological Survey Map 242, scale 1:100,000. \u003ca href=\"https://doi.org/10.34191/m-242dm\" target=\"_blank\"\u003ehttps://doi.org/10.34191/m-242dm\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "1d82e6bb-7259-4c17-8482-7d4061779a3f"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 106,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 106,
+                "Hazard": "THR",
+                "Text": "\u003cp\u003eBiek, R.F., Rowley, P.D., Anderson, J.J., Maldonado, F., Moore, D.W., Hacker, D.B., Eaton, J.G., Hereford, R., Sable, E.G., Filkorn, H.F., and Matyjasik, B., 2015, Geologic map of the Panguitch 30' x 60' quadrangle, Garfield, Iron, and Kane Counties, Utah: Utah Geological Survey Map 270DM, scale 1:62,500. \u003ca href=\"https://doi.org/10.34191/m-270dm\" target=\"_blank\"\u003ehttps://doi.org/10.34191/m-270dm\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "485e8b21-64dd-43b9-85c5-0cdd59d35570"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 107,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 107,
+                "Hazard": "THR",
+                "Text": "\u003cp\u003eBlackett, R.E., and Wakefield, S.I., 2004, Geothermal resources of Utah, a digital atlas of Utah's geothermal resources: Utah Geological Survey Open-File Report 431, 85 p., plus appendices. \u003ca href=\"https://doi.org/10.34191/ofr-431dm\" target=\"_blank\"\u003ehttps://doi.org/10.34191/ofr-431dm\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "aee26b5e-84f9-463a-923f-dfe78287c9eb"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 108,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 108,
+                "Hazard": "THR",
+                "Text": "\u003cp\u003eDoelling, H.H., 2008, Geologic Map of the Kanab 30'x 60' quadrangle Kane and Washington Counties, Utah, and Coconino and Mohave Counties, Arizona: Utah Geological Survey Miscellaneous Publication 08-2DM, scale 1:100,000. \u003ca href=\"https://doi.org/10.34191/mp-08-2dm\" target=\"_blank\"\u003ehttps://doi.org/10.34191/mp-08-2dm\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "f2232cdf-b565-4938-b934-4f3b25589604"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 109,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 109,
+                "Hazard": "THR",
+                "Text": "\u003cp\u003eHintze, L.F., and Davis, F.D., 2002, Geologic map of the Delta 30' X 60' Quadrangle and part of the Lynndyl 30' x 60' quadrangle, Northeast Millard County and Parts of Juab, Sanpete, and Sevier Counties, Utah: Utah Geological Survey Map 184, scale 1:100,000. \u003ca href=\"https://doi.org/10.34191/m-184\" target=\"_blank\"\u003ehttps://doi.org/10.34191/m-184\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "112f3d1c-7fcf-4632-a0dd-259e07ca3a93"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 110,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 110,
+                "Hazard": "THR",
+                "Text": "\u003cp\u003eHintze, L.F., Davis, F.D., Rowley, P.D., Cunningham, C.G., Steven, C.G., Steven, T.A., and Willis, G.C., 2003, Geologic map of the Richfield 30' x 60' quadrangle, Southeast Millard County and parts of Beaver, Piute, and Sevier Counties, Utah: Utah Geological Survey Map 195, scale 1:100,000. \u003ca href=\"https://doi.org/10.34191/m-195\" target=\"_blank\"\u003ehttps://doi.org/10.34191/m-195\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "cc6913f5-b9c4-4697-bf46-da2e3ec2439d"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 111,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 111,
+                "Hazard": "THR",
+                "Text": "\u003cp\u003eHardwick, C. L., Willis, H. W., and Gwynn, M. L., 2015, A Basin-Scaled Assessment of Co-Produced Waters in Oil and Gas Fields: Uinta Basin, Utah, USA, Geothermal Resource Council Transactions, Vol. 39, p. 661-669.\u003c/p\u003e",
+                "GlobalID": "d1bc6905-9a9d-497e-80e3-7c4b25b6c490"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 112,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 112,
+                "Hazard": "THR",
+                "Text": "\u003cp\u003eHardwick, C.L., Willis, H.W., and Gwynn, M.L., 2015, Geothermal Assessment and Modeling of the Uinta Basin, Utah, in Vanden Berg, M.D., Ressetar, R., and Birgenheier, L.P., editors, Geology of Utah&rsquo;s Uinta Basin and Uinta Mountains: Utah Geological Association Publication 44, p. 337-353. Online, \u003ca href=\"https://ugspub.nr.utah.gov/publications/uga_pubs/44-18.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/uga_pubs/44-18.pdf\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "03fc3343-ca64-4cc6-a515-b8a03e5ce0df"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 113,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 113,
+                "Hazard": "THR",
+                "Text": "\u003cp\u003eHecker, S., 1993, Quaternary Tectonics of Utah with Emphasis on Earthquake-Hazard Characterization: Utah Geologic Survey Bulletin 127, \u003ca href=\"https://doi.org/10.34191/b-127\" target=\"_blank\"\u003ehttps://doi.org/10.34191/b-127\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "b2362b53-4572-4397-bf96-effdfccd934f"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 114,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 114,
+                "Hazard": "THR",
+                "Text": "\u003cp\u003eKirby, S.M., 2019, Revised mapping of bedrock geology adjoining the Utah FORGE site, in Allis, R., and Moore, J.N., editors, Geothermal characteristics of the Roosevelt Hot Springs system and adjacent FORGE EGS site, Milford, Utah: Utah Geological Survey Miscellaneous Publication 169-A, 6 p., 2 plates, scale 1:24,000, \u003ca href=\"https://doi.org/10.34191/MP-169-A\" target=\"_blank\"\u003ehttps://doi.org/10.34191/MP-169-A\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "bb8289dc-d473-4d56-a28c-b41d024bd3fc"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 115,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 115,
+                "Hazard": "THR",
+                "Text": "\u003cp\u003eMachete, M.N., and Steven, T.A., 1983, Geologic map of the northwest-quarter of the Beaver quadrangle, Beaver County, Utah: U.S. Geological Survey I-1445 Gilles Hill Quad, scale 1:24,000. \u003ca href=\"https://doi.org/10.3133/i1445\" target=\"_blank\"\u003ehttps://doi.org/10.3133/i1445\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "29831a91-0ec6-4e09-90b3-70ccde64c66d"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 116,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 116,
+                "Hazard": "THR",
+                "Text": "\u003cp\u003ePampeyan, E.H., 2005, Geologic map of the Lynndyl 30' x 60' quadrangle, west-central Utah: Utah Geologic Survey Map 211DM, scale 1:100,000. \u003ca href=\"https://doi.org/10.34191/m-211\" target=\"_blank\"\u003ehttps://doi.org/10.34191/m-211\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "d1d3f1e5-c85c-4c1a-80bc-8a1e760024b7"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 117,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 117,
+                "Hazard": "THR",
+                "Text": "\u003cp\u003eRowley, P.D., Williams, V.S., Vice, G.S., Maxwell, D.J., Hacker, D.B., Snee, L.W., and Mackin, J.H., 2006, Interim geologic map of the Cedar City 30' x 60' quadrangle, Iron and Washington Counties, Utah: Utah Geological Survey Open-File Report 476DM, scale 1:100,000.&nbsp;\u003ca href=\"https://doi.org/10.34191/ofr-476dm\" target=\"_blank\"\u003ehttps://doi.org/10.34191/ofr-476dm\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "693e534c-aab5-44db-9af6-4ebcfc7d0c07"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 118,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 118,
+                "Hazard": "THR",
+                "Text": "\u003cp\u003eSibbett, B.S., and Nielsen, D.L., 2017, Geologic map of the central Mineral Mountains, Beaver County, Utah (GIS reproduction of 1980 map): Utah Geological Survey Map MP-17-2dm, 1:24,000. \u003ca href=\"https://doi.org/10.34191/mp-17-2dm\" target=\"_blank\"\u003ehttps://doi.org/10.34191/mp-17-2dm\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "fc9c38b3-59b5-46b9-926c-eba31fc30f57"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 119,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 119,
+                "Hazard": "VCN",
+                "Text": "\u003cp\u003eAnderson, R.E., and Christenson, G.E., 1989, Quaternary faults, folds, and selected volcanic features in the Cedar City 1' x 2' quadrangle, Utah: Utah Geological Survey Miscellaneous Publication 89-6, 29 p., 2 plates, scale 1:250,000. \u003ca href=\"https://doi.org/10.34191/mp-89-6\" target=\"_blank\"\u003ehttps://doi.org/10.34191/mp-89-6\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "617987fe-e8a3-490d-afd8-b26d516cdd6d"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 120,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 120,
+                "Hazard": "VCN",
+                "Text": "Blackett, R.E., and Wakefield, S.I., 2004, Geothermal resources of Utah, a digital atlas of Utah's geothermal resources: Utah Geological Survey Open-File Report 431, 85 p., plus appendices. \u003c/span\u003e\u003ca href=\"https://doi.org/10.34191/ofr-431dm\" target=\"_blank\"\u003ehttps://doi.org/10.34191/ofr-431dm\u003c/a\u003e\u003cspan style=\"color: black;\"\u003e.\u003c/span\u003e",
+                "GlobalID": "d5cc47c3-9685-490c-b28e-34029fdf2255"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 121,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 121,
+                "Hazard": "VCN",
+                "Text": "\u003cp\u003eBiek, R.F., Rowley, P.D., Hayden, J.M., Hacker, D.B., Willis, G.C., Hintze, L.F., Anderson, R.E., and Brown, K.D., 2009, Geologic map of the St. George and east part of the Clover Mountains 30' x 60' quadrangles, Washington and Iron Counties, Utah: Utah Geological Survey Map 242, scale 1:100,000. \u003ca href=\"https://doi.org/10.34191/m-242dm\" target=\"_blank\"\u003ehttps://doi.org/10.34191/m-242dm\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "fe9331fd-917d-4062-8417-cee1ef55a02a"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 122,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 122,
+                "Hazard": "VCN",
+                "Text": "\u003cp\u003eBiek, R.F., Rowley, P.D., Anderson, J.J., Maldonado, F., Moore, D.W., Hacker, D.B., Eaton, J.G., Hereford, R., Sable, E.G., Filkorn, H.F., and Matyjasik, B., 2015, Geologic map of the Panguitch 30' x 60' quadrangle, Garfield, Iron, and Kane Counties, Utah: Utah Geological Survey Map 270DM, scale 1:62,500. \u003ca href=\"https://doi.org/10.34191/m-270dm\" target=\"_blank\"\u003ehttps://doi.org/10.34191/m-270dm\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "f6e81b22-4fb3-4e4e-9a17-a1a57c3faa5b"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 123,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 123,
+                "Hazard": "VCN",
+                "Text": "\u003cp\u003eBlackett, R.E., and Wakefield, S.I., 2004, Geothermal resources of Utah, a digital atlas of Utah's geothermal resources: Utah Geological Survey Open-File Report 431, 85 p., plus appendices. \u003ca href=\"https://doi.org/10.34191/ofr-431dm\" target=\"_blank\"\u003ehttps://doi.org/10.34191/ofr-431dm\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "ac047810-1695-42f5-b97b-4216d395f2a0"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 124,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 124,
+                "Hazard": "VCN",
+                "Text": "\u003cp\u003eDoelling, H.H., 2008, Geologic Map of the Kanab 30'x 60' quadrangle Kane and Washington Counties, Utah, and Coconino and Mohave Counties, Arizona: Utah Geological Survey Miscellaneous Publication 08-2DM, scale 1:100,000. \u003ca href=\"https://doi.org/10.34191/mp-08-2dm\" target=\"_blank\"\u003ehttps://doi.org/10.34191/mp-08-2dm\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "3ca287a8-0b45-44af-a91a-51cf03fbf0e5"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 125,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 125,
+                "Hazard": "VCN",
+                "Text": "\u003cp\u003eHintze, L.F., and Davis, F.D., 2002, Geologic map of the Delta 30' X 60' Quadrangle and part of the Lynndyl 30' x 60' quadrangle, Northeast Millard County and Parts of Juab, Sanpete, and Sevier Counties, Utah: Utah Geological Survey Map 184, scale 1:100,000. \u003ca href=\"https://doi.org/10.34191/m-184\" target=\"_blank\"\u003ehttps://doi.org/10.34191/m-184\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "bc5e6a90-38a7-4948-b9d2-e669f753715b"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 126,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 126,
+                "Hazard": "VCN",
+                "Text": "\u003cp\u003eHintze, L.F., Davis, F.D., Rowley, P.D., Cunningham, C.G., Steven, C.G., Steven, T.A., and Willis, G.C., 2003, Geologic map of the Richfield 30' x 60' quadrangle, Southeast Millard County and parts of Beaver, Piute, and Sevier Counties, Utah: Utah Geological Survey Map 195, scale 1:100,000. \u003ca href=\"https://doi.org/10.34191/m-195\" target=\"_blank\"\u003ehttps://doi.org/10.34191/m-195\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "72b4b622-3e9e-4a5b-8c10-c3827638d7e1"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 127,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 127,
+                "Hazard": "VCN",
+                "Text": "\u003cp\u003eHardwick, C. L., Willis, H. W., and Gwynn, M. L., 2015, A Basin-Scaled Assessment of Co-Produced Waters in Oil and Gas Fields: Uinta Basin, Utah, USA, Geothermal Resource Council Transactions, Vol. 39, p. 661-669.\u003c/p\u003e",
+                "GlobalID": "5f7a5a66-14a1-4e16-9f58-864f35dfa429"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 128,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 128,
+                "Hazard": "VCN",
+                "Text": "\u003cp\u003eHardwick, C.L., Willis, H.W., and Gwynn, M.L., 2015, Geothermal Assessment and Modeling of the Uinta Basin, Utah, in Vanden Berg, M.D., Ressetar, R., and Birgenheier, L.P., editors, Geology of Utah&rsquo;s Uinta Basin and Uinta Mountains: Utah Geological Association Publication 44, p. 337-353. Online, \u003ca href=\"https://ugspub.nr.utah.gov/publications/uga_pubs/44-18.pdf\" target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/uga_pubs/44-18.pdf\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "44b086bb-ea94-4254-9db5-14f7fe67130c"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 129,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 129,
+                "Hazard": "VCN",
+                "Text": "\u003cp\u003eHecker, S., 1993, Quaternary Tectonics of Utah with Emphasis on Earthquake-Hazard Characterization: Utah Geologic Survey Bulletin 127, \u003ca href=\"https://doi.org/10.34191/b-127\" target=\"_blank\"\u003ehttps://doi.org/10.34191/b-127\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "e70d76fb-fba3-44d9-9078-c76c70d1d6d9"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 130,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 130,
+                "Hazard": "VCN",
+                "Text": "\u003cp\u003eKirby, S.M., 2019, Revised mapping of bedrock geology adjoining the Utah FORGE site, in Allis, R., and Moore, J.N., editors, Geothermal characteristics of the Roosevelt Hot Springs system and adjacent FORGE EGS site, Milford, Utah: Utah Geological Survey Miscellaneous Publication 169-A, 6 p., 2 plates, scale 1:24,000, \u003ca href=\"https://doi.org/10.34191/MP-169-A\" target=\"_blank\"\u003ehttps://doi.org/10.34191/MP-169-A\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "807d67af-afda-4314-93f8-5ce778a18562"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 131,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 131,
+                "Hazard": "VCN",
+                "Text": "\u003cp\u003eMachete, M.N., and Steven, T.A., 1983, Geologic map of the northwest-quarter of the Beaver quadrangle, Beaver County, Utah: U.S. Geological Survey I-1445 Gilles Hill Quad, scale 1:24,000. \u003ca href=\"https://doi.org/10.3133/i1445\" target=\"_blank\"\u003ehttps://doi.org/10.3133/i1445\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "b1b5eed0-9b53-4b87-8bd5-29b9cf1739a4"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 132,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 132,
+                "Hazard": "VCN",
+                "Text": "\u003cp\u003ePampeyan, E.H., 2005, Geologic map of the Lynndyl 30' x 60' quadrangle, west-central Utah: Utah Geologic Survey Map 211DM, scale 1:100,000. \u003ca href=\"https://doi.org/10.34191/m-211dm\" target=\"_blank\"\u003ehttps://doi.org/10.34191/m-211dm\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "925c98ae-b8b6-4fed-bf96-cf4ae6072d37"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 133,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 133,
+                "Hazard": "VCN",
+                "Text": "\u003cp\u003eRowley, P.D., Williams, V.S., Vice, G.S., Maxwell, D.J., Hacker, D.B., Snee, L.W., and Mackin, J.H., 2006, Interim geologic map of the Cedar City 30' x 60' quadrangle, Iron and Washington Counties, Utah: Utah Geological Survey Open-File Report 476DM, scale 1:100,000.&nbsp;\u003ca href=\"https://doi.org/10.34191/ofr-476dm\" target=\"_blank\"\u003ehttps://doi.org/10.34191/ofr-476dm\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "bd26b888-0dda-44e0-8935-baa9ec6438c1"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 134,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 134,
+                "Hazard": "VCN",
+                "Text": "\u003cp\u003eSibbett, B.S., and Nielsen, D.L., 2017, Geologic map of the central Mineral Mountains, Beaver County, Utah (GIS reproduction of 1980 map): Utah Geological Survey Map MP-17-2dm, 1:24,000. \u003ca href=\"https://doi.org/10.34191/mp-17-2dm\" target=\"_blank\"\u003ehttps://doi.org/10.34191/mp-17-2dm\u003c/a\u003e.\u003c/p\u003e",
+                "GlobalID": "9a61e0dc-02f3-409a-9543-0151d58e3843"
+            }
+        }
+    ]
+}

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, useRef } from 'react';
-import { Feature } from 'geojson';
+import { Feature, Geometry, GeoJsonProperties } from 'geojson';
 import { LayerOrderConfig } from "@/hooks/use-get-layer-configs";
 import { LayerContentProps } from '@/components/custom/popups/popup-content-with-pagination';
 import { useLayerUrl } from '@/context/layer-url-provider';
@@ -95,17 +95,17 @@ export async function fetchWMSFeatureInfo({
         return data.results[0]?.value;
     } else if (data.features) {
         // Vector response - add namespaces
-        const namespaceMap = layers.reduce((acc, layer) => {
+        const namespaceMap: Record<string, string> = layers.reduce((acc: Record<string, string>, layer) => {
             const [namespace, layerName] = layer.split(':');
             if (namespace && layerName) {
                 acc[layerName] = namespace;
             }
             return acc;
-        }, {} as Record<string, string>);
+        }, {});
 
-        const featuresWithNamespace = data.features.map((feature: any) => {
-            const layerName = feature.id?.split('.')[0];
-            const namespace = namespaceMap[layerName] || null;
+        const featuresWithNamespace = data.features.map((feature: Feature<Geometry, GeoJsonProperties>) => {
+            const layerName = feature.id?.toString().split('.')[0];
+            const namespace = layerName ? namespaceMap[layerName] || null : null;
             return {
                 ...feature,
                 namespace,
@@ -305,8 +305,8 @@ export function useFeatureInfoQuery({
 
         const layerInfoPromises = Object.entries(visibleLayersMap)
             .filter(([_, value]) => value.visible)
-            .map(async ([key, value]) => {
-                const baseLayerInfo = {
+            .map(async ([key, value]): Promise<LayerContentProps> => {
+                const baseLayerInfo: LayerContentProps = {
                     customLayerParameters: value.customLayerParameters,
                     visible: value.visible,
                     layerTitle: value.layerTitle,
@@ -352,7 +352,7 @@ export function useFeatureInfoQuery({
                     baseLayerInfo.rasterSource = { ...value.rasterSource, data: rasterFeatureInfo };
                 }
 
-                return baseLayerInfo as LayerContentProps;
+                return baseLayerInfo;
             });
 
         const resolvedLayerInfo = await Promise.all(layerInfoPromises);

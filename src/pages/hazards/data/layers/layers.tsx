@@ -1,6 +1,7 @@
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE, PROD_POSTGREST_URL, GEN_GIS_WORKSPACE } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
-import GeoJSON from "geojson";
+import { generateFaultDescription } from "@/lib/utils";
+import GeoJSON, { GeoJsonProperties } from "geojson";
 
 export const landslideLegacyLayerName = 'landslidelegacy_current';
 const landslideLegacyWMSTitle = 'Legacy Landslide Compilation - Statewide';
@@ -194,7 +195,7 @@ export interface QFaultsFeatureType {
     strandnames: string[];
 
 }
-export const qFaultsLayerName = 'quaternaryfaults_current';
+export const qFaultsLayerName = 'quaternaryfaults_test';
 export const qFaultsWMSTitle = 'Hazardous (Quaternary age) Faults - Statewide';
 const qFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',
@@ -202,7 +203,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
     title: qFaultsWMSTitle,
     visible: true,
     customLayerParameters: {
-        cql_filter: `is_current	= 'Y'`,
+        cql_filter: `is_current = 'Y'`,
     },
     sublayers: [
         {
@@ -210,6 +211,15 @@ const qFaultsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
+                // ADD THE CUSTOM FIELD HERE
+                'Description': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (properties: GeoJsonProperties): string => {
+                        return generateFaultDescription(properties);
+                    }
+                },
+                // --- Keep existing fields for data reference ---
                 'Fault Zone Name': { field: 'faultzone', type: 'string' },
                 'Summary': { field: 'summary', type: 'string' },
                 'Fault Name': { field: 'faultname', type: 'string' },
@@ -222,17 +232,37 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 'Slip Rate': { field: 'sliprate', type: 'string' },
                 'Structure Class': { field: 'faultclass', type: 'string' },
                 'Structure Age': { field: 'faultage', type: 'string' },
-                '': { field: 'usgs_link', type: 'string', transform: (link) => link },
+                // The custom link field is here (using the corrected version from your second paste)
+                '': {
+                    field: 'usgs_link',
+                    type: 'custom',
+                    transform: (value) => {
+                        if (!value) {
+                            return 'No USGS link available';
+                        }
+                        // If the API returns a properties object for the custom field
+                        if (typeof value === 'object' && value !== null && 'usgs_link' in value) {
+                            return value['usgs_link'] || 'No USGS link available';
+                        }
+                        // If the API returns the string value directly
+                        return String(value) || 'No USGS link available';
+                    }
+                },
             },
+            // The linkFields for 'usgs_link' remains the same as it correctly handles the link transformation
             linkFields: {
                 'usgs_link': {
                     transform: (usgsLink) => {
-                        return [
-                            {
-                                label: 'Detailed Report',
-                                href: `${usgsLink}`
-                            }
-                        ];
+                        if (!usgsLink || usgsLink === 'No USGS link available' || usgsLink === '') {
+                            return [{
+                                label: 'No USGS link available',
+                                href: ''
+                            }];
+                        }
+                        return [{
+                            label: 'Detailed Report',
+                            href: `${usgsLink}`
+                        }];
                     }
                 }
             },

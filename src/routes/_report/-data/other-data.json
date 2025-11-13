@@ -1,0 +1,44 @@
+{
+    "type": "FeatureCollection",
+    "features": [
+        {
+            "type": "Feature",
+            "id": 1,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 1,
+                "Data": "Lidar Elevation Data",
+                "Introduction": "Lidar is a technique of transmitting laser pulses and measuring the reflected returns to determine the distance to an object or surface. Lidar data are commonly collected by means of an aerial survey, where a lidar instrument mounted on the floor of an aircraft sends pulses at a rapid rate (typically billions of pulses for a project) to determine ground-surface elevations. Computer processing of the raw lidar data, including digital \"removal\" of vegetation, results in highly accurate, bare-earth digital elevation models (DEMs) of the ground surface. Lidar elevation data have become one of the most valuable tools for geologists studying the Earth's surficial processes and landforms. Landslides, small fault scarps, and other geologic features that are difficult to detect visually in the field or on aerial photographs can often be clearly shown on lidar-based imagery, allowing for very detailed surficial geologic mapping. Most of the available lidar elevation data in Utah was collected by the State of Utah through various partnerships with local, state, and federal agencies and other organizations. The map below shows the footprints of lidar elevation data available for your Area of Interest.",
+                "HowToUse": "Based on the footprint shading color in the map, matching with the corresponding color in the Explanation section, the description will indicate where that particular lidar project data may be found.  Due to multiple, overlapping datasets in portions of Utah, some of the footprint shading may be obscured.",
+                "References_": "Light Detection and Ranging (LiDAR) Background and Application in Guidelines for Investigating Geologic Hazards and Preparing Engineering-Geology Reports with a Suggested Approach to Geologic-Hazard Ordinances in Utah (UGS Circular 122, pages 189-196): \u003ca href=\"https://ugspub.nr.utah.gov/publications/circular/c-122.pdf\"target=\"_blank\"\u003ehttps://ugspub.nr.utah.gov/publications/circular/c-122.pdf\u003c/a\u003e.",
+                "GlobalID": "30d6961c-f106-4df6-8be9-c32b2a91e55a"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 2,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 2,
+                "Data": "Aerial Photography and Imagery",
+                "Introduction": "\u003cp\u003eThe UGS Utah Aerial Imagery Collection (\u003ca href=\"https://geodata.geology.utah.gov/imagery\" target=\"_blank\"\u003ehttps://geodata.geology.utah.gov/imagery\u003c/a\u003e) contains aerial photography (air photos) dating from 1935 to 2005, with about half of the collection dating before 1960. Most of the frames were acquired in stereoscopic mode, such that successive photos overlap, creating stereo pairs that provide a three-dimensional (3D) image when viewed with a stereoscope. A small percentage of the photos are low-sun-angle acquired during the morning or afternoon, when shadows highlight certain topographic features, such as fault scarps, or oblique photographs taken at a non-vertical angle to the ground, similar to a panorama. Various federal government agencies originally acquired most of these frames for agricultural and forest management purposes, and this photography is now integral to many geologic projects, such as geologic mapping and geologic-hazard investigations, along with determining past land use, planning, management, and other uses. Aerial photos within your Area of Interest can be found at \u003ca href=\"https://geodata.geology.utah.gov/imagery\" target=\"_blank\"\u003ehttps://geodata.geology.utah.gov/imagery\u003c/a\u003e.\u003c/p\u003e",
+                "HowToUse": "Based on the colored dots in the map showing the center point location of individual images and matching with the corresponding color and text in the Explanation section, the description will indicate where that particular air photo digital scan may be found.\n",
+                "References_": null,
+                "GlobalID": "0c07d2b4-fdec-4fee-91ed-15089afd80c2"
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 3,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 3,
+                "Data": "OtherGeologicHazardResources",
+                "Introduction": "Utah Geological Survey\u003cbr\u003e\u003cbr/\u003eGuidelines for Investigating Geologic Hazards and Preparing Engineering-Geology Reports with a Suggested Approach to Geologic-Hazard Ordinances in Utah (UGS Circular 128): \u003ca href=\"https://doi.org/10.34191/C-128\"target=\"_blank\"\u003ehttps://doi.org/10.34191/C-128\u003c/a\u003e.\u003cbr\u003e\u003cbr/\u003e\u003ci\u003eThe GeoData Archive System\u003c/i\u003e contains Utah geologic- and wetlands-related scanned documents, consultant geologic and geotechnical reports, photographs, and other digital materials from our files and those gathered from other agencies or organizations (\u003ca href=\"https://geodata.geology.utah.gov\"target=\"_blank\u003ehttps://geodata.geology.utah.gov\u003c/a\u003e).\u003cbr\u003e\u003cbr/\u003eThe \u003ci\u003eUtah Aerial Imagery Collection\u003c/i\u003e contains aerial photography (air photos) dating from 1935 to 2005, with about half of the collection dating before 1960 (\u003ca href=\"https://geodata.geology.utah.gov/imagery\"target=\"_blank\"\u003ehttps://geodata.geology.utah.gov/imagery\u003c/a\u003e).",
+                "HowToUse": null,
+                "References_": null,
+                "GlobalID": "4f6a42fd-1095-4823-9ec6-5a0a11bf4a42"
+            }
+        }
+    ]
+}
