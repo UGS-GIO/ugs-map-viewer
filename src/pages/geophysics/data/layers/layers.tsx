@@ -17,7 +17,7 @@ const roadsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: false,
             popupFields: {
-                'Name': { field: 'fullname', type: 'string', transform: (value) => toTitleCase(value || '') },
+                'Name': { field: 'fullname', type: 'string', transform: (value: unknown) => toTitleCase(value || '') },
             },
         },
     ],
@@ -37,7 +37,7 @@ const railroadsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'railroad', type: 'string', transform: (value) => toTitleCase(value || '') },
+                'Name': { field: 'railroad', type: 'string', transform: (value: unknown) => toTitleCase(value || '') },
             },
         },
     ],
@@ -81,7 +81,7 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
                 'Unit': {
                     field: 'custom',
                     type: 'custom',
-                    transform: (props) => {
+                    transform: (props: unknown) => {
                         const unitName = props?.['unit_name'];
                         const unitSymbol = props?.['unit_symbol'];
                         const value = `${unitName} (${unitSymbol})`;
@@ -141,7 +141,7 @@ const faultsWMSConfig: WMSLayerProps = {
                 'Description': {
                     field: 'custom',
                     type: 'custom',
-                    transform: (props) => {
+                    transform: (props: unknown) => {
                         const subtype = props?.['subtype'];
                         const type = props?.['type'];
                         const modifier = props?.['modifier'];
@@ -152,7 +152,7 @@ const faultsWMSConfig: WMSLayerProps = {
                 'Scale': {
                     field: 'scale',
                     type: 'string',
-                    transform: (value) => {
+                    transform: (value: unknown) => {
                         if (value === 'small') return '1:500,000'
                         return ''
                     }
@@ -204,7 +204,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 '': {
                     field: 'usgs_link',
                     type: 'custom',
-                    transform: (value) => {
+                    transform: (value: unknown) => {
                         if (!value) {
                             return 'No USGS link available';
                         }
@@ -214,7 +214,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
             },
             linkFields: {
                 'usgs_link': {
-                    transform: (usgsLink) => {
+                    transform: (usgsLink: unknown) => {
                         if (!usgsLink || usgsLink === 'No USGS link available') {
                             return [{
                                 label: 'No USGS link available',
@@ -246,7 +246,7 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'plant', type: 'string', transform: (value) => toTitleCase(value || '') },
+                'Name': { field: 'plant', type: 'string', transform: (value: unknown) => toTitleCase(value || '') },
                 'Capacity (MW)': { field: 'capacity_mw', type: 'number' },
                 'Operator': { field: 'operator', type: 'string' },
                 'City': { field: 'city', type: 'string' },

@@ -219,11 +219,11 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 'Slip Rate': { field: 'sliprate', type: 'string' },
                 'Structure Class': { field: 'faultclass', type: 'string' },
                 'Structure Age': { field: 'faultage', type: 'string' },
-                '': { field: 'usgs_link', type: 'string', transform: (link) => link },
+                '': { field: 'usgs_link', type: 'string', transform: (link: unknown) => link },
             },
             linkFields: {
                 'usgs_link': {
-                    transform: (usgsLink) => {
+                    transform: (usgsLink: unknown) => {
                         return [
                             {
                                 label: 'Detailed Report',
