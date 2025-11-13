@@ -53,7 +53,7 @@ export class MapLibreLegend implements LegendProvider {
         legendItems.push({
           type: 'regular-layer-renderer' as const,
           label: layer.id || 'Fill Layer',
-          renderer: this.createColorSwatch(paint['fill-color'], 'fill') as any,
+          renderer: this.createColorSwatch(paint['fill-color'], 'fill'),
           id: layerId,
           url: sourceId,
         });
@@ -63,7 +63,7 @@ export class MapLibreLegend implements LegendProvider {
         legendItems.push({
           type: 'regular-layer-renderer' as const,
           label: layer.id || 'Line Layer',
-          renderer: this.createColorSwatch(paint['line-color'], 'line') as any,
+          renderer: this.createColorSwatch(paint['line-color'], 'line'),
           id: layerId,
           url: sourceId,
         });
@@ -73,7 +73,7 @@ export class MapLibreLegend implements LegendProvider {
         legendItems.push({
           type: 'regular-layer-renderer' as const,
           label: layer.id || 'Circle Layer',
-          renderer: this.createColorSwatch(paint['circle-color'], 'circle') as any,
+          renderer: this.createColorSwatch(paint['circle-color'], 'circle'),
           id: layerId,
           url: sourceId,
         });
@@ -89,7 +89,7 @@ export class MapLibreLegend implements LegendProvider {
         legendItems.push({
           type: 'regular-layer-renderer' as const,
           label: layer.id || 'Symbol Layer',
-          renderer: svg as any,
+          renderer: svg,
           id: layerId,
           url: sourceId,
         });
@@ -171,7 +171,7 @@ export class MapLibreLegend implements LegendProvider {
           previews.push({
             type: 'regular-layer-renderer' as const,
             label: label,
-            renderer: emptySvg as any,
+            renderer: emptySvg,
             id: sourceId,
             url: wmsUrl,
           });
@@ -179,7 +179,7 @@ export class MapLibreLegend implements LegendProvider {
           previews.push({
             type: 'regular-layer-renderer' as const,
             label: label,
-            renderer: createSVGSymbol(rule.symbolizers) as any,
+            renderer: createSVGSymbol(rule.symbolizers),
             id: sourceId,
             url: wmsUrl,
           });

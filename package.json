@@ -14,8 +14,6 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@arcgis/core": "^4.32.8",
-    "@esri/calcite-components-react": "^2.11.0",
     "@google-cloud/secret-manager": "^6.0.1",
     "@hookform/resolvers": "^3.3.4",
     "@maplibre/maplibre-gl-style-spec": "^24.3.1",
@@ -92,7 +90,6 @@
     "@types/cors": "^2.8.17",
     "@types/dompurify": "^3.0.5",
     "@types/geojson": "^7946.0.16",
-    "@types/mapbox__mapbox-gl-draw": "^1.4.9",
     "@types/node": "^20.12.7",
     "@types/node-fetch": "^2.6.1",
     "@types/proj4": "^2.5.5",
@@ -104,6 +101,7 @@
     "@vitejs/plugin-react-swc": "^3.6.0",
     "autoprefixer": "^10.4.19",
     "eslint": "^8.55.0",
+    "eslint-plugin-import": "^2.32.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "husky": "^9.1.7",
