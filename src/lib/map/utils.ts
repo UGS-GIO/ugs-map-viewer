@@ -8,8 +8,9 @@ import type { Geometry } from 'geojson';
 import { buffer } from '@turf/buffer';
 import { point } from '@turf/helpers';
 import { bbox as turfBbox } from '@turf/bbox';
+import type { MapLibreMap } from '@/lib/types/map-types';
 
-export function findLayerByTitle(mapInstance: __esri.Map | any, title: string): __esri.Layer | any | null {
+export function findLayerByTitle(mapInstance: __esri.Map | MapLibreMap, title: string): __esri.Layer | any | null {
     // Check if it's a MapLibre map (has getStyle method)
     if (mapInstance && typeof mapInstance.getStyle === 'function') {
         // Use factory for MapLibre - returns a proxy object with setter hooks
@@ -48,11 +49,11 @@ export function findLayerByTitle(mapInstance: __esri.Map | any, title: string): 
  * like ArcGIS layers, while applying changes to the MapLibre map instance.
  */
 class MapLibreLayerProxy {
-    private map: any;
+    private map: MapLibreMap;
     private layerId: string;
     private _opacity: number = 1;
 
-    constructor(map: any, layerId: string) {
+    constructor(map: MapLibreMap, layerId: string) {
         this.map = map;
         this.layerId = layerId;
     }
@@ -99,7 +100,7 @@ class MapLibreLayerProxy {
  */
 export const zoomToFeature = (
     feature: ExtendedFeature,
-    viewOrMap: __esri.MapView | __esri.SceneView | any,
+    viewOrMap: __esri.MapView | __esri.SceneView | MapLibreMap,
     sourceCRS: string
 ) => {
     if (!viewOrMap) return;

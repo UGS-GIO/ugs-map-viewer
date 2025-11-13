@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { FeatureCollection, Geometry, GeoJsonProperties, Feature } from 'geojson';
 import { featureCollection, point as turfPoint } from '@turf/helpers';
 import { bbox } from "@turf/bbox";
+import type { MapLibreMap } from '@/lib/types/map-types';
 import { useDebounce } from 'use-debounce';
 import { MASQUERADE_GEOCODER_URL } from '@/lib/constants';
 import { useMap } from '@/hooks/use-map';
@@ -82,11 +83,11 @@ interface QueryResultWrapper<TData = QueryData> {
 interface SearchComboboxProps {
     config: SearchSourceConfig[];
     // Called when a PostgREST feature OR a finalized Masquerade candidate is selected
-    onFeatureSelect?: (searchResult: Feature<Geometry, GeoJsonProperties> | null, _sourceUrl: string, sourceIndex: number, searchConfig: SearchSourceConfig[], map: any) => void
+    onFeatureSelect?: (searchResult: Feature<Geometry, GeoJsonProperties> | null, _sourceUrl: string, sourceIndex: number, searchConfig: SearchSourceConfig[], map: MapLibreMap) => void
     // Called when Enter is pressed on PostgREST results
-    onCollectionSelect?: (collection: FeatureCollection<Geometry, GeoJsonProperties> | null, _sourceUrl: string | null, _sourceIndex: number, searchConfig: SearchSourceConfig[], map: any) => void;
+    onCollectionSelect?: (collection: FeatureCollection<Geometry, GeoJsonProperties> | null, _sourceUrl: string | null, _sourceIndex: number, searchConfig: SearchSourceConfig[], map: MapLibreMap) => void;
     // Called when a Masquerade suggestion is clicked
-    onSuggestionSelect?: (suggestion: Suggestion, sourceConfig: MasqueradeConfig, sourceIndex: number, map: any, searchConfig: SearchSourceConfig[]) => void;
+    onSuggestionSelect?: (suggestion: Suggestion, sourceConfig: MasqueradeConfig, sourceIndex: number, map: MapLibreMap, searchConfig: SearchSourceConfig[]) => void;
     className?: string;
 }
 
@@ -578,7 +579,7 @@ const handleSuggestionSelect = async (
     suggestion: Suggestion,
     sourceConfig: SearchSourceConfig,
     sourceIndex: number,
-    map: any,
+    map: MapLibreMap,
     searchConfig: SearchSourceConfig[],
 ) => {
 
@@ -641,7 +642,7 @@ const handleSearchSelect = (
     _sourceUrl: string,
     sourceIndex: number,
     searchConfig: SearchSourceConfig[],
-    map: any,
+    map: MapLibreMap,
 ) => {
     const geom = searchResult?.geometry;
     const sourceConfig = searchConfig[sourceIndex];
@@ -723,7 +724,7 @@ const handleCollectionSelect = (
     _sourceUrl: string | null,
     sourceIndex: number,
     searchConfig: SearchSourceConfig[],
-    map: any,
+    map: MapLibreMap,
 ) => {
     if (!collection?.features?.length || !map) {
         console.warn("No features/map for collection select.");

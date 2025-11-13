@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { TerraDraw, TerraDrawPolygonMode } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
+import type { MapLibreMap } from '@/lib/types/map-types';
 
 interface DrawGeometry {
     type: 'polygon';
@@ -18,7 +19,7 @@ interface GeoJSONFeature {
 }
 
 interface UseTerraDraw {
-    map: any; // maplibre-gl.Map
+    map: MapLibreMap;
     onDrawComplete?: (geometry: DrawGeometry) => void;
 }
 

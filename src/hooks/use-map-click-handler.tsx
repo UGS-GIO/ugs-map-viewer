@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import type { MapPoint, ScreenPoint, CoordinateAdapter } from '@/lib/map/coordinates/types';
+import type { MapLibreMap } from '@/lib/types/map-types';
 
 interface MapClickEvent {
     screenX: number;
@@ -7,7 +8,7 @@ interface MapClickEvent {
 }
 
 interface UseMapClickHandlerProps {
-    map: any; // MapLibre map instance
+    map: MapLibreMap;
     isSketching: boolean;
     onPointClick: (point: MapPoint) => void;
     setVisibleLayersMap: (layers: any) => void;
