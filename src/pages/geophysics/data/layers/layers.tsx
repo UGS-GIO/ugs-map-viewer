@@ -1,6 +1,7 @@
 import { ENERGY_MINERALS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { toTitleCase, toSentenceCase } from "@/lib/utils";
+import { GeoJsonProperties } from "geojson";
 
 
 // Roads WMS Layer
@@ -17,7 +18,7 @@ const roadsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: false,
             popupFields: {
-                'Name': { field: 'fullname', type: 'string', transform: (value: unknown) => toTitleCase(value || '') },
+                'Name': { field: 'fullname', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
             },
         },
     ],
@@ -37,7 +38,7 @@ const railroadsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'railroad', type: 'string', transform: (value: unknown) => toTitleCase(value || '') },
+                'Name': { field: 'railroad', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
             },
         },
     ],
@@ -81,7 +82,7 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
                 'Unit': {
                     field: 'custom',
                     type: 'custom',
-                    transform: (props: unknown) => {
+                    transform: (props: GeoJsonProperties | null | undefined) => {
                         const unitName = props?.['unit_name'];
                         const unitSymbol = props?.['unit_symbol'];
                         const value = `${unitName} (${unitSymbol})`;
@@ -141,7 +142,7 @@ const faultsWMSConfig: WMSLayerProps = {
                 'Description': {
                     field: 'custom',
                     type: 'custom',
-                    transform: (props: unknown) => {
+                    transform: (props: GeoJsonProperties | null | undefined) => {
                         const subtype = props?.['subtype'];
                         const type = props?.['type'];
                         const modifier = props?.['modifier'];
@@ -152,7 +153,7 @@ const faultsWMSConfig: WMSLayerProps = {
                 'Scale': {
                     field: 'scale',
                     type: 'string',
-                    transform: (value: unknown) => {
+                    transform: (value: string | null) => {
                         if (value === 'small') return '1:500,000'
                         return ''
                     }
@@ -204,11 +205,11 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 '': {
                     field: 'usgs_link',
                     type: 'custom',
-                    transform: (value: unknown) => {
-                        if (!value) {
+                    transform: (props: GeoJsonProperties | null | undefined) => {
+                        if (!props) {
                             return 'No USGS link available';
                         }
-                        return value['usgs_link'] || 'No USGS link available';
+                        return props['usgs_link'] || 'No USGS link available';
                     }
                 },
             },
@@ -246,7 +247,7 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'plant', type: 'string', transform: (value: unknown) => toTitleCase(value || '') },
+                'Name': { field: 'plant', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
                 'Capacity (MW)': { field: 'capacity_mw', type: 'number' },
                 'Operator': { field: 'operator', type: 'string' },
                 'City': { field: 'city', type: 'string' },

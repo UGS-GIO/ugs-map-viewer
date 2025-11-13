@@ -402,7 +402,7 @@ const miningDistrictsConfig: WMSLayerProps = {
                 'Organized District': { field: 'organized', type: 'string' },
                 'Productive': { field: 'productive', type: 'string' },
                 'Short Tons': {
-                    field: 'short_tons', type: 'string', transform: (value: GeoJsonProperties | null | undefined) => {
+                    field: 'short_tons', type: 'string', transform: (value: string | null) => {
                         if (value === '0' || !value) return null;
                         return addThousandsSeparator(value);
                     },
@@ -410,7 +410,7 @@ const miningDistrictsConfig: WMSLayerProps = {
                 'Total Dollar Value': {
                     field: 'total_dollar_value',
                     type: 'string',
-                    transform: (value: GeoJsonProperties | null | undefined) => {
+                    transform: (value: string | null) => {
                         if (!value || value === '0') return null;
                         const numValue = parseFloat(value);
                         if (isNaN(numValue)) return value;
@@ -486,8 +486,8 @@ const landAssessmentWMSConfig: WMSLayerProps = {
             },
             linkFields: {
                 'url': { // This links based on the 'url' field value
-                    transform: (value: GeoJsonProperties | null | undefined) => {
-                        if (value && typeof value === 'string' && value.startsWith('http')) {
+                    transform: (value: string | null) => {
+                        if (value && value.startsWith('http')) {
                             return [
                                 {
                                     label: 'Download Mineral Land Assessment for Wilderness Study Area',

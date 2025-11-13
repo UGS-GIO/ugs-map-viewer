@@ -481,11 +481,11 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 '': {
                     field: 'usgs_link',
                     type: 'custom',
-                    transform: (value: string | null) => {
-                        if (!value) {
+                    transform: (props: GeoJsonProperties | null | undefined) => {
+                        if (!props) {
                             return 'No USGS link available';
                         }
-                        return value['usgs_link'] || 'No USGS link available';
+                        return props['usgs_link'] || 'No USGS link available';
                     }
                 },
             },

@@ -1,4 +1,3 @@
-import { GeoJsonProperties } from "geojson";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 
 export const PROD_GEOSERVER_URL = 'https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/';
@@ -70,7 +69,7 @@ const wetNonRiverineConfig: WMSLayerProps = {
                 'Wetland Type': { field: 'wetland_type', type: 'string' },
                 'Acres': {
                     field: 'acres', type: 'number',
-                    transform: (value: GeoJsonProperties | null | undefined) => {
+                    transform: (value: number | null) => {
                         if (value === null) {
                             return null;
                         }
@@ -102,7 +101,7 @@ const riverineConfig: WMSLayerProps = {
                 'Wetland Type': { field: 'wetland_type', type: 'string' },
                 'Acres': {
                     field: 'acres', type: 'number',
-                    transform: (value: GeoJsonProperties | null | undefined) => {
+                    transform: (value: number | null) => {
                         if (value === null) {
                             return null;
                         }
@@ -185,7 +184,7 @@ const
                     'Riparian Type': { field: 'wetland_type', type: 'string' },
                     'Acres': {
                         field: 'acres', type: 'number',
-                        transform: (value: GeoJsonProperties | null | undefined) => {
+                        transform: (value: number | null) => {
                             if (value === null) {
                                 return null;
                             }
