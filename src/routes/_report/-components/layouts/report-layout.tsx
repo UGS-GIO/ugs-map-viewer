@@ -38,7 +38,9 @@ export function ReportLayout({
                 )}
 
                 {/* Banner Section */}
-                {banner}
+                <div className='flex justify-center m-2'>
+                    {banner}
+                </div>
 
                 {/* Main Content */}
                 <div className="container mx-auto py-6">

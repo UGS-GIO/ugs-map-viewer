@@ -302,9 +302,9 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                     </div>
                 }
                 banner={
-                    <Banner className="rounded-sm w-full bg-transparent border border border-primary">
-                        <BannerIcon icon={AlertTriangle} />
-                        <BannerTitle>
+                    <Banner className="rounded-sm w-4/5 bg-transparent border border border-primary">
+                        <BannerIcon className='text-primary' icon={AlertTriangle} />
+                        <BannerTitle className='text-foreground'>
                             <span className="font-semibold">Notice:</span> The absence of data does not imply that no geologic hazard or hazards exist.
                         </BannerTitle>
                     </Banner>
