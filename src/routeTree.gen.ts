@@ -11,7 +11,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ReportRouteImport } from './routes/_report'
 import { Route as MapRouteImport } from './routes/_map'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as SplatRouteImport } from './routes/$'
@@ -32,14 +31,7 @@ const MapGeophysicsIndexLazyRouteImport = createFileRoute('/_map/geophysics/')()
 const MapCarbonstorageIndexLazyRouteImport = createFileRoute(
   '/_map/carbonstorage/',
 )()
-const ReportHazardsReportAoiLazyRouteImport = createFileRoute(
-  '/_report/hazards/report/$aoi',
-)()
 
-const ReportRoute = ReportRouteImport.update({
-  id: '/_report',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const MapRoute = MapRouteImport.update({
   id: '/_map',
   getParentRoute: () => rootRouteImport,
@@ -120,14 +112,6 @@ const MapCarbonstorageIndexLazyRoute =
   } as any).lazy(() =>
     import('./routes/_map/carbonstorage/index.lazy').then((d) => d.Route),
   )
-const ReportHazardsReportAoiLazyRoute =
-  ReportHazardsReportAoiLazyRouteImport.update({
-    id: '/hazards/report/$aoi',
-    path: '/hazards/report/$aoi',
-    getParentRoute: () => ReportRoute,
-  } as any).lazy(() =>
-    import('./routes/_report/hazards.report.$aoi.lazy').then((d) => d.Route),
-  )
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -141,7 +125,6 @@ export interface FileRoutesByFullPath {
   '/minerals': typeof MapMineralsIndexLazyRoute
   '/wetlandplants': typeof MapWetlandplantsIndexLazyRoute
   '/wetlands': typeof MapWetlandsIndexLazyRoute
-  '/hazards/report/$aoi': typeof ReportHazardsReportAoiLazyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -154,7 +137,6 @@ export interface FileRoutesByTo {
   '/minerals': typeof MapMineralsIndexLazyRoute
   '/wetlandplants': typeof MapWetlandplantsIndexLazyRoute
   '/wetlands': typeof MapWetlandsIndexLazyRoute
-  '/hazards/report/$aoi': typeof ReportHazardsReportAoiLazyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -162,7 +144,6 @@ export interface FileRoutesById {
   '/$': typeof SplatRoute
   '/_auth': typeof AuthRouteWithChildren
   '/_map': typeof MapRouteWithChildren
-  '/_report': typeof ReportRouteWithChildren
   '/_map/hazards-review': typeof MapHazardsReviewRouteRouteWithChildren
   '/_auth/login': typeof AuthLoginRoute
   '/_map/carbonstorage/': typeof MapCarbonstorageIndexLazyRoute
@@ -172,7 +153,6 @@ export interface FileRoutesById {
   '/_map/minerals/': typeof MapMineralsIndexLazyRoute
   '/_map/wetlandplants/': typeof MapWetlandplantsIndexLazyRoute
   '/_map/wetlands/': typeof MapWetlandsIndexLazyRoute
-  '/_report/hazards/report/$aoi': typeof ReportHazardsReportAoiLazyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -188,7 +168,6 @@ export interface FileRouteTypes {
     | '/minerals'
     | '/wetlandplants'
     | '/wetlands'
-    | '/hazards/report/$aoi'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -201,14 +180,12 @@ export interface FileRouteTypes {
     | '/minerals'
     | '/wetlandplants'
     | '/wetlands'
-    | '/hazards/report/$aoi'
   id:
     | '__root__'
     | '/'
     | '/$'
     | '/_auth'
     | '/_map'
-    | '/_report'
     | '/_map/hazards-review'
     | '/_auth/login'
     | '/_map/carbonstorage/'
@@ -218,7 +195,6 @@ export interface FileRouteTypes {
     | '/_map/minerals/'
     | '/_map/wetlandplants/'
     | '/_map/wetlands/'
-    | '/_report/hazards/report/$aoi'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -226,18 +202,10 @@ export interface RootRouteChildren {
   SplatRoute: typeof SplatRoute
   AuthRoute: typeof AuthRouteWithChildren
   MapRoute: typeof MapRouteWithChildren
-  ReportRoute: typeof ReportRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_report': {
-      id: '/_report'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof ReportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_map': {
       id: '/_map'
       path: ''
@@ -329,13 +297,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MapCarbonstorageIndexLazyRouteImport
       parentRoute: typeof MapRoute
     }
-    '/_report/hazards/report/$aoi': {
-      id: '/_report/hazards/report/$aoi'
-      path: '/hazards/report/$aoi'
-      fullPath: '/hazards/report/$aoi'
-      preLoaderRoute: typeof ReportHazardsReportAoiLazyRouteImport
-      parentRoute: typeof ReportRoute
-    }
   }
 }
 
@@ -384,23 +345,11 @@ const MapRouteChildren: MapRouteChildren = {
 
 const MapRouteWithChildren = MapRoute._addFileChildren(MapRouteChildren)
 
-interface ReportRouteChildren {
-  ReportHazardsReportAoiLazyRoute: typeof ReportHazardsReportAoiLazyRoute
-}
-
-const ReportRouteChildren: ReportRouteChildren = {
-  ReportHazardsReportAoiLazyRoute: ReportHazardsReportAoiLazyRoute,
-}
-
-const ReportRouteWithChildren =
-  ReportRoute._addFileChildren(ReportRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
   AuthRoute: AuthRouteWithChildren,
   MapRoute: MapRouteWithChildren,
-  ReportRoute: ReportRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
