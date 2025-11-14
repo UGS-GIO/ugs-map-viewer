@@ -61,7 +61,7 @@
     "fast-xml-parser": "^5.2.5",
     "firebase": "^12.3.0",
     "lucide-react": "^0.544.0",
-    "maplibre-gl": "^5.10.0",
+    "maplibre-gl": "^5.12.0",
     "node-fetch": "^2.7.0",
     "proj4": "^2.14.0",
     "query-string": "^9.1.0",
