@@ -1,6 +1,12 @@
 import { LayerFetchConfig, getLayerFetchConfig } from "@/lib/constants";
 import { useQuery } from "@tanstack/react-query";
+import type { PostgRESTRowOf } from '@/lib/types/postgrest-types';
 import { useGetCurrentPage } from "@/hooks/use-get-current-page";
+
+type FeatureAttributes = PostgRESTRowOf<{
+    title: string;
+    content: string;
+}>;
 
 interface CombinedResult {
     data: Record<string, string>;
@@ -32,7 +38,7 @@ const fetchLayerDescriptions = async (configs: LayerFetchConfig[] | null) => {
                 throw new Error(`Failed to fetch layer descriptions from ${tableName}: ${response.status} ${response.statusText}`);
             }
 
-            return await response.json();
+            return await response.json() as FeatureAttributes[];
         })
     );
 
@@ -50,12 +56,6 @@ const useFetchLayerDescriptions = (): CombinedResult => {
         enabled: !!fetchConfigs && fetchConfigs.length > 0,
         staleTime: 1000 * 60 * 60 * 1,
     });
-
-
-    type FeatureAttributes = {
-        title: string;
-        content: string;
-    };
 
     // Combine results for easier consumption
     const combinedResult: CombinedResult = {

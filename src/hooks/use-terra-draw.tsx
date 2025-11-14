@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { TerraDraw, TerraDrawPolygonMode, TerraDrawSelectMode } from 'terra-draw';
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import type { MapLibreMap } from '@/lib/types/map-types';
@@ -25,17 +25,19 @@ interface UseTerraDraw {
 
 export function useTerraDrawPolygon({ map, onDrawComplete }: UseTerraDraw) {
     const drawRef = useRef<TerraDraw | null>(null);
+    const [isReady, setIsReady] = useState(false);
 
     useEffect(() => {
+        console.log('[TerraDraw] useEffect running, map:', map ? 'exists' : 'NULL');
         if (!map) {
             console.log('[TerraDraw] Map not available');
             return;
         }
 
         const initializeDraw = () => {
-            try {
-                console.log('[TerraDraw] Initializing Terra Draw');
+            console.log('[TerraDraw] Initializing Terra Draw');
 
+            try {
                 // Initialize Terra Draw with MapLibre
                 const draw = new TerraDraw({
                     adapter: new TerraDrawMapLibreGLAdapter({ map }),
@@ -56,11 +58,13 @@ export function useTerraDrawPolygon({ map, onDrawComplete }: UseTerraDraw) {
                     ]
                 });
 
+                console.log('[TerraDraw] Starting Terra Draw');
                 // Start the drawing system
                 draw.start();
-                drawRef.current = draw;
 
-                console.log('[TerraDraw] Terra Draw initialized and started');
+                console.log('[TerraDraw] Terra Draw started successfully');
+                drawRef.current = draw;
+                setIsReady(true);
 
                 // Listen to finish events (when user completes drawing)
                 const handleFinish = (id: string | number, context: { action: string; mode: string }) => {
@@ -93,21 +97,33 @@ export function useTerraDrawPolygon({ map, onDrawComplete }: UseTerraDraw) {
                 draw.on('finish', handleFinish);
             } catch (error) {
                 console.error('[TerraDraw] Error initializing Terra Draw:', error);
+                console.error('[TerraDraw] Error details:', error instanceof Error ? error.message : String(error));
+                setIsReady(false);
             }
         };
 
-        // Wait for style to load before initializing Terra Draw
-        // This is critical - Terra Draw needs the style loaded to add its layers
-        if (map.isStyleLoaded()) {
+        // Wait for map to be ready before initializing Terra Draw
+        // Terra Draw needs layers to be present before it can add its own
+        console.log('[TerraDraw] Checking if map is loaded...');
+
+        // Use a small delay to ensure map is fully ready
+        // MapLibre's isStyleLoaded() can be unreliable during initialization
+        const timeoutId = setTimeout(() => {
+            console.log('[TerraDraw] Timeout fired, initializing Terra Draw');
             initializeDraw();
-        } else {
-            map.once('style.load', initializeDraw);
-        }
+        }, 100);
 
         return () => {
             console.log('[TerraDraw] Cleaning up Terra Draw');
+            clearTimeout(timeoutId);
             if (drawRef.current) {
-                drawRef.current.stop();
+                try {
+                    drawRef.current.stop();
+                } catch (e) {
+                    console.error('[TerraDraw] Error stopping draw:', e);
+                }
+                drawRef.current = null;
+                setIsReady(false);
             }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -147,6 +163,7 @@ export function useTerraDrawPolygon({ map, onDrawComplete }: UseTerraDraw) {
         startPolygonDraw,
         clearDrawings,
         cancelDraw,
-        draw: drawRef.current
+        draw: drawRef.current,
+        isReady
     };
 }

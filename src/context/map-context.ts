@@ -27,6 +27,10 @@ export type MapContextProps = {
     }) => Promise<void>,
     isSketching: boolean
     setIsSketching?: (isSketching: boolean) => void
+    getIsSketching?: () => boolean // Synchronous check for sketching state
+    shouldIgnoreNextClick?: () => boolean // Check if next click should be ignored (e.g., finishing draw)
+    setIgnoreNextClick?: (ignore: boolean) => void // Set the ignore flag (e.g., when finishing a draw)
+    consumeIgnoreClick?: () => void // Clear the ignore flag after consuming it
 }
 
 /**
@@ -40,7 +44,11 @@ export const MapContext = createContext<MapContextProps>({
     map: undefined,
     loadMap: async () => { },
     isSketching: false,
-    setIsSketching: () => { }
+    setIsSketching: () => { },
+    getIsSketching: () => false,
+    shouldIgnoreNextClick: () => false,
+    setIgnoreNextClick: () => { },
+    consumeIgnoreClick: () => { }
 });
 
 MapContext.displayName = 'MapContext';

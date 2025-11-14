@@ -31,8 +31,15 @@ export function MapLibreMapProvider({ children }: { children: React.ReactNode })
     // Use refs to access the latest map without causing loadMap to recreate
     const mapRef = useRef<maplibregl.Map>();
 
-    // Keep ref in sync with state
+    // Use ref for synchronous sketching state access
+    const isSketchingRef = useRef<boolean>(false);
+
+    // Track when we should ignore the next click (e.g., finishing a draw)
+    const ignoreNextClickRef = useRef<boolean>(false);
+
+    // Keep refs in sync with state
     mapRef.current = map;
+    isSketchingRef.current = isSketching;
 
     // Sync map position with URL parameters
     useMapPositionUrlParams(map || null);
@@ -103,11 +110,35 @@ export function MapLibreMapProvider({ children }: { children: React.ReactNode })
         }
     }, [isMobile]);
 
+    // Function to get sketching state synchronously (avoids React async state issues)
+    const getIsSketching = useCallback(() => {
+        return isSketchingRef.current;
+    }, []);
+
+    // Check if next click should be ignored (e.g., from finishing a draw)
+    const shouldIgnoreNextClick = useCallback(() => {
+        return ignoreNextClickRef.current;
+    }, []);
+
+    // Set the ignore flag (e.g., when finishing a draw)
+    const setIgnoreNextClick = useCallback((ignore: boolean) => {
+        ignoreNextClickRef.current = ignore;
+    }, []);
+
+    // Consume and clear the ignore flag
+    const consumeIgnoreClick = useCallback(() => {
+        ignoreNextClickRef.current = false;
+    }, []);
+
     const value: MapContextProps = {
         map,
         loadMap,
         isSketching,
-        setIsSketching
+        setIsSketching,
+        getIsSketching,
+        shouldIgnoreNextClick,
+        setIgnoreNextClick,
+        consumeIgnoreClick
     };
 
     return (

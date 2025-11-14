@@ -36,7 +36,7 @@ export function useMapContainer({
     layersConfig
 }: UseMapContainerProps) {
     const mapRef = useRef<HTMLDivElement>(null);
-    const { loadMap, map, isSketching } = useMap();
+    const { loadMap, map, isSketching, getIsSketching, shouldIgnoreNextClick, consumeIgnoreClick } = useMap();
     const { coordinates, setCoordinates } = useMapCoordinates();
     const { handleOnContextMenu } = useMapInteractions();
     const [popupContainer, setPopupContainer] = useState<HTMLDivElement | null>(null);
@@ -78,9 +78,12 @@ export function useMapContainer({
     });
 
     // Handle map clicks with coordinate adapter
+    // Use getIsSketching function for synchronous state check if available
     const { handleMapClick } = useMapClickHandler({
         map,
-        isSketching,
+        isSketching: getIsSketching || isSketching,
+        shouldIgnoreNextClick,
+        consumeIgnoreClick,
         onPointClick: (mapPoint) => {
             featureInfoQuery.fetchForPoint(mapPoint);
         },

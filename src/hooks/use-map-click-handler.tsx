@@ -9,7 +9,9 @@ interface MapClickEvent {
 
 interface UseMapClickHandlerProps {
     map: MapLibreMap;
-    isSketching: boolean;
+    isSketching: boolean | (() => boolean);
+    shouldIgnoreNextClick?: (() => boolean) | undefined;
+    consumeIgnoreClick?: (() => void) | undefined;
     onPointClick: (point: MapPoint) => void;
     setVisibleLayersMap: (layers: any) => void;
     coordinateAdapter: CoordinateAdapter;
@@ -24,6 +26,8 @@ interface UseMapClickHandlerProps {
 export function useMapClickHandler({
     map,
     isSketching,
+    shouldIgnoreNextClick,
+    consumeIgnoreClick,
     onPointClick,
     setVisibleLayersMap,
     coordinateAdapter,
@@ -31,7 +35,17 @@ export function useMapClickHandler({
 }: UseMapClickHandlerProps) {
 
     const handleMapClick = useCallback((event: MapClickEvent) => {
-        if (isSketching) {
+        // Check if we should ignore this click (e.g., finishing a draw)
+        if (shouldIgnoreNextClick?.()) {
+            console.log('[MapClickHandler] Ignoring click - just finished drawing');
+            consumeIgnoreClick?.();
+            return;
+        }
+
+        const sketching = typeof isSketching === 'function' ? isSketching() : isSketching;
+        console.log('[MapClickHandler] Click detected, isSketching:', sketching);
+        if (sketching) {
+            console.log('[MapClickHandler] Ignoring click - sketching in progress');
             return;
         }
 
@@ -98,7 +112,7 @@ export function useMapClickHandler({
 
         // Trigger the callback with the abstracted map point
         onPointClick(mapPoint);
-    }, [map, isSketching, onPointClick, setVisibleLayersMap, coordinateAdapter, layersConfig]);
+    }, [map, isSketching, shouldIgnoreNextClick, consumeIgnoreClick, onPointClick, setVisibleLayersMap, coordinateAdapter, layersConfig]);
 
     return { handleMapClick };
 }

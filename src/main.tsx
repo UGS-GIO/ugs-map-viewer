@@ -2,7 +2,7 @@ import '@/index.css'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { Toaster } from '@/components/ui/toaster'
+import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from '@/context/theme-provider'
 import { AuthProvider } from '@/context/auth-provider'
 import { RouterProvider, createRouter } from '@tanstack/react-router'

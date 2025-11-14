@@ -1,19 +1,18 @@
 import { RelatedTable } from "@/lib/types/mapping-types";
+import type { PostgRESTRow } from '@/lib/types/postgrest-types';
 import { useQueries, UseQueryResult } from "@tanstack/react-query";
 import { Feature, Geometry, GeoJsonProperties } from "geojson";
 
-type RelatedData = {
-    [key: string]: any;
-};
+type RelatedData = PostgRESTRow;
 
 interface LabelValuePair {
-    label: string;
-    value: any;
+    label: string | undefined;
+    value: string | number | boolean | null;
 }
 
-export interface ProcessedRelatedData extends RelatedData {
+export type ProcessedRelatedData = RelatedData & {
     labelValuePairs?: LabelValuePair[];
-}
+};
 
 type CombinedResult = {
     data: ProcessedRelatedData[][];
