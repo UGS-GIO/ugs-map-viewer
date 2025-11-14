@@ -12,10 +12,10 @@ export class MapLibreCoordinateAdapter implements CoordinateAdapter {
         try {
             if (!map?.unproject) throw new Error('Invalid MapLibre map instance');
             const lngLat = map.unproject([screenPoint.x, screenPoint.y]);
-            return { x: lngLat.lng, y: lngLat.lat, spatialReference: { wkid: 4326 } };
+            return { x: lngLat.lng, y: lngLat.lat, crs: WGS84 };
         } catch (error) {
             console.error('MapLibre screenToMap conversion failed:', error);
-            return { x: 0, y: 0, spatialReference: { wkid: 4326 } };
+            return { x: 0, y: 0, crs: WGS84 };
         }
     }
 
@@ -35,7 +35,7 @@ export class MapLibreCoordinateAdapter implements CoordinateAdapter {
     }
 
     toJSON(point: MapPoint | null): any {
-        return point ? { x: point.x, y: point.y, spatialReference: point.spatialReference } : null;
+        return point ? { x: point.x, y: point.y, crs: point.crs } : null;
     }
 
     mapToScreen(mapPoint: MapPoint, map: MapLibreMap): ScreenPoint {

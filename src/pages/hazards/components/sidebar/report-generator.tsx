@@ -10,17 +10,10 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, Di
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "@/components/custom/link";
 import proj4 from 'proj4';
-import { serializePolygonForUrl } from '@/lib/map/conversion-utils';
+import { serializePolygonForUrl, PolygonGeometry } from '@/lib/map/conversion-utils';
 
 type ActiveButtonOptions = 'currentMapExtent' | 'customArea' | 'reset';
 type DialogType = 'areaTooLarge' | 'confirmation' | null;
-
-// Polygon format for serialization (Web Mercator coordinates)
-interface PolygonGeometry {
-    type: 'polygon';
-    rings: number[][][];
-    spatialReference: { wkid: number };
-}
 
 // Terra Draw geometry format (WGS84)
 interface DrawGeometry {
@@ -91,9 +84,8 @@ function ReportGenerator() {
             // Check if area is within limits (12000m x 18000m)
             if (areaHeight < 12000 && areaWidth < 18000) {
                 const aoi: PolygonGeometry = {
-                    type: 'polygon',
                     rings: mercatorRings,
-                    spatialReference: { wkid: 102100 } // Web Mercator
+                    crs: 'EPSG:3857' // Web Mercator
                 };
                 setPendingAoi(aoi);
                 setAoiForScreenshot(JSON.stringify(aoi));
@@ -207,9 +199,8 @@ function ReportGenerator() {
             ]];
 
             const aoi: PolygonGeometry = {
-                type: 'polygon',
                 rings: [rings[0]],
-                spatialReference: { wkid: 102100 }
+                crs: 'EPSG:3857' // Web Mercator
             };
             handleNavigate(aoi);
         } else {

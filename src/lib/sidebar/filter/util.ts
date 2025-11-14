@@ -52,7 +52,8 @@ export const zoomToExtent = (
     }
 
     // If scale is provided, convert it to zoom level and use it as a target
-    // ArcGIS scale to zoom level conversion: zoom ≈ log2(591657550.5 / scale)
+    // Web Mercator scale to zoom level conversion: zoom ≈ log2(591657550.5 / scale)
+    // 591657550.5 is the scale denominator at zoom level 0 for Web Mercator (EPSG:3857)
     if (scale) {
         const targetZoom = Math.log2(591657550.5 / scale);
 

@@ -9,7 +9,7 @@ import { createCustomLegend } from '@/routes/_report/-utils/hazard-legend-factor
 
 /**
  * Generate custom legend items for Quaternary Faults
- * @param polygon - ESRI polygon JSON string
+ * @param polygon - Polygon JSON string
  * @returns Array of custom legend items for QFF layer
  */
 export async function generateQFFLegendItems(polygon: string): Promise<CustomLegendItem[]> {

@@ -1,7 +1,7 @@
 export interface MapPoint {
     x: number;
     y: number;
-    spatialReference?: { wkid: number };
+    crs?: string; // e.g., "EPSG:4326", "EPSG:3857"
 }
 
 export interface ScreenPoint {
@@ -16,7 +16,7 @@ export interface BoundingBox {
     maxY: number;
 }
 
-/** Coordinate transformation interface for ArcGIS or MapLibre */
+/** Coordinate transformation interface for MapLibre */
 export interface CoordinateAdapter {
     screenToMap(screenPoint: ScreenPoint, view: any): MapPoint;
     mapToScreen(mapPoint: MapPoint, view: any): ScreenPoint;

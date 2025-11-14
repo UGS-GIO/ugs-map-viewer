@@ -8,7 +8,7 @@ export type RendererData = (MapImageLayerRenderer | RegularLayerRenderer)[] | un
 
 /**
  * Base interface for legend providers
- * Both ArcGIS and MapLibre implementations must conform to this interface
+ * MapLibre implementation provides renderer/legend data for layers
  */
 export interface LegendProvider {
   /**
