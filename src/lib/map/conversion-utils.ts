@@ -168,3 +168,81 @@ export function convertGeometryToWGS84<G extends Geometry>(
     return clonedGeometry;
 }
 
+/**
+ * Convert ArcGIS Polygon rings to WGS84 (EPSG:4326)
+ * Handles multiple EPSG codes including Web Mercator variants
+ */
+export function convertArcGISPolygonToWGS84(polygon: string): number[][] | null {
+    try {
+        const parsed = JSON.parse(polygon);
+
+        if (!parsed.rings || !Array.isArray(parsed.rings[0])) {
+            return null;
+        }
+
+        const coords = parsed.rings[0];
+        const wkid = parsed.spatialReference?.wkid || parsed.spatialReference?.latestWkid;
+
+        // If already in WGS84, return as-is
+        if (!wkid || wkid === 4326) {
+            return coords;
+        }
+
+        // Map ArcGIS WKIDs to EPSG codes
+        let sourceCRS = `EPSG:${wkid}`;
+        if (wkid === 102100 || wkid === 102113) {
+            sourceCRS = 'EPSG:3857'; // Web Mercator
+        }
+
+        // Use standard conversion utility for all coordinate systems
+        return coords.map(([x, y]: number[]) => {
+            const converted = convertCoordinate([x, y], sourceCRS, 'EPSG:4326');
+            return converted;
+        });
+    } catch (e) {
+        console.error('Error converting polygon:', e);
+        return null;
+    }
+}
+
+/**
+ * Calculate bounding box from coordinates
+ * Returns [[minLng, minLat], [maxLng, maxLat]] format
+ */
+export function calculateBounds(coordinates: number[][]): [[number, number], [number, number]] | null {
+    if (!coordinates || !Array.isArray(coordinates) || coordinates.length === 0) {
+        return null;
+    }
+
+    const lngs = coordinates.map(coord => coord[0]).filter(v => typeof v === 'number');
+    const lats = coordinates.map(coord => coord[1]).filter(v => typeof v === 'number');
+
+    if (lngs.length === 0 || lats.length === 0) {
+        return null;
+    }
+
+    return [
+        [Math.min(...lngs), Math.min(...lats)],
+        [Math.max(...lngs), Math.max(...lats)]
+    ];
+}
+
+/**
+ * Calculate zoom level from bounds
+ * Used for MapLibre map sizing
+ */
+export function calculateZoomFromBounds(bounds: [[number, number], [number, number]] | null): number {
+    if (!bounds) return 10;
+    const [[minLng, minLat], [maxLng, maxLat]] = bounds;
+    const lngDiff = maxLng - minLng;
+    const latDiff = maxLat - minLat;
+    const maxDiff = Math.max(lngDiff, latDiff);
+
+    if (maxDiff > 1) return 7;
+    else if (maxDiff > 0.5) return 8;
+    else if (maxDiff > 0.2) return 9;
+    else if (maxDiff > 0.1) return 10;
+    else if (maxDiff > 0.05) return 11;
+    else if (maxDiff > 0.02) return 12;
+    else return 13;
+}
