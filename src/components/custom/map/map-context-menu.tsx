@@ -14,7 +14,7 @@ interface Props {
 
 const MapContextMenu = ({ hiddenTriggerRef, coordinates }: Props) => {
     const { isDecimalDegrees } = useMapCoordinates();
-    const { view } = useMap();
+    const { map } = useMap();
 
     // Function to convert coordinates based on current setting
     const formattedCoordinates = useMemo(() => {
@@ -32,10 +32,10 @@ const MapContextMenu = ({ hiddenTriggerRef, coordinates }: Props) => {
 
     // Remove graphics from the map
     const handleRemoveGraphics = useCallback(() => {
-        if (view) {
-            clearGraphics(view);
+        if (map) {
+            clearGraphics(map);
         }
-    }, [view]);
+    }, [map]);
 
     return (
         <ContextMenu>

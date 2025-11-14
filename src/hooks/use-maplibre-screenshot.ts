@@ -2,10 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import maplibregl from 'maplibre-gl';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { convertArcGISPolygonToWGS84, calculateBounds, calculateZoomFromBounds } from '@/lib/map/conversion-utils';
+import { convertPolygonToWGS84, calculateBounds, calculateZoomFromBounds } from '@/lib/map/conversion-utils';
 
 interface UseMapLibreScreenshotProps {
-    polygon?: string | null; // ArcGIS Polygon JSON string (optional - screenshot only generates when provided)
+    polygon?: string | null; // Polygon JSON string with rings (optional - screenshot only generates when provided)
     width?: string; // CSS width value (e.g., "50vw", "800px")
     height?: string; // CSS height value (e.g., "50vh", "600px")
 }
@@ -19,8 +19,8 @@ async function generateMapLibreScreenshot(
     width: string,
     height: string
 ): Promise<string> {
-    // Convert ArcGIS polygon to WGS84
-    const coordinates = convertArcGISPolygonToWGS84(polygon);
+    // Convert polygon to WGS84
+    const coordinates = convertPolygonToWGS84(polygon);
     if (!coordinates) {
         throw new Error('Failed to convert polygon coordinates');
     }

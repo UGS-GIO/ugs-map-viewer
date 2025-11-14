@@ -35,7 +35,7 @@ Each application shares a common mapping infrastructure with independent layer c
 |-------|-----------|
 | **UI Framework** | [React 18](https://react.dev) |
 | **UI Components** | [Shadcn/ui](https://ui.shadcn.com) (TailwindCSS + Radix UI) |
-| **Mapping** | [ArcGIS JS SDK](https://developers.arcgis.com/javascript/latest/) |
+| **Mapping** | [MapLibre GL JS](https://maplibre.org/) |
 | **Routing** | [TanStack Router](https://tanstack.com/router) |
 | **Data Fetching** | [TanStack Query](https://tanstack.com/query) |
 | **Build Tool** | [Vite](https://vitejs.dev/) |

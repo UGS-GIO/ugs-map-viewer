@@ -1,3 +1,4 @@
+import { GeoJsonProperties } from "geojson";
 import { PROD_GEOSERVER_URL, ENERGY_MINERALS_WORKSPACE } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator } from "@/lib/utils";
@@ -22,12 +23,12 @@ const aluniteWMSConfig: WMSLayerProps = {
                 '': {
                     field: 'info_link',
                     type: 'custom',
-                    transform: () => 'Alunite Information'
+                    transform: (() => 'Alunite Information') as (value: unknown) => string
                 },
             },
             linkFields: {
                 'info_link': {
-                    transform: (value) => {
+                    transform: (value: unknown) => {
                         return [
                             {
                                 label: `${value}`,
@@ -60,12 +61,12 @@ const bentoniteWMSConfig: WMSLayerProps = {
                 '': {
                     field: 'info_link',
                     type: 'custom',
-                    transform: () => 'Bentonite Information'
+                    transform: (() => 'Bentonite Information') as (value: unknown) => string
                 },
             },
             linkFields: {
                 'info_link': {
-                    transform: (value) => {
+                    transform: (value: unknown) => {
                         return [
                             {
                                 label: `${value}`,
@@ -98,12 +99,12 @@ const dolomiteWMSConfig: WMSLayerProps = {
                 '': {
                     field: 'info_link',
                     type: 'custom',
-                    transform: () => 'Dolomite Information'
+                    transform: (() => 'Dolomite Information') as (value: unknown) => string
                 },
             },
             linkFields: {
                 'info_link': {
-                    transform: (value) => {
+                    transform: (value: unknown) => {
                         return [
                             {
                                 label: `${value}`,
@@ -136,12 +137,12 @@ const gypsumWMSConfig: WMSLayerProps = {
                 '': {
                     field: 'info_link',
                     type: 'custom',
-                    transform: () => 'Gypsum Information'
+                    transform: (() => 'Gypsum Information') as (value: unknown) => string
                 },
             },
             linkFields: {
                 'info_link': {
-                    transform: (value) => {
+                    transform: (value: unknown) => {
                         return [
                             {
                                 label: `${value}`,
@@ -174,12 +175,12 @@ const limestoneWMSConfig: WMSLayerProps = {
                 '': {
                     field: 'info_link',
                     type: 'custom',
-                    transform: () => 'Limestone Information'
+                    transform: (() => 'Limestone Information') as (value: unknown) => string
                 },
             },
             linkFields: {
                 'info_link': {
-                    transform: (value) => {
+                    transform: (value: unknown) => {
                         return [
                             {
                                 label: `${value}`,
@@ -212,12 +213,12 @@ const phosphateWMSConfig: WMSLayerProps = {
                 '': {
                     field: 'info_link',
                     type: 'custom',
-                    transform: () => 'Phosphate Information'
+                    transform: (() => 'Phosphate Information') as (value: unknown) => string
                 },
             },
             linkFields: {
                 'info_link': {
-                    transform: (value) => {
+                    transform: (value: unknown) => {
                         return [
                             {
                                 label: `${value}`,
@@ -250,12 +251,12 @@ const potashWMSConfig: WMSLayerProps = {
                 '': {
                     field: 'info_link',
                     type: 'custom',
-                    transform: () => 'Potash Information'
+                    transform: (() => 'Potash Information') as (value: unknown) => string
                 },
             },
             linkFields: {
                 'info_link': {
-                    transform: (value) => {
+                    transform: (value: GeoJsonProperties | null | undefined) => {
                         return [
                             {
                                 label: `${value}`,
@@ -293,7 +294,7 @@ const silicaWMSConfig: WMSLayerProps = {
             },
             linkFields: {
                 'info_link': {
-                    transform: (value) => {
+                    transform: (value: GeoJsonProperties | null | undefined) => {
                         return [
                             {
                                 label: `${value}`,
@@ -401,7 +402,7 @@ const miningDistrictsConfig: WMSLayerProps = {
                 'Organized District': { field: 'organized', type: 'string' },
                 'Productive': { field: 'productive', type: 'string' },
                 'Short Tons': {
-                    field: 'short_tons', type: 'string', transform: (value) => {
+                    field: 'short_tons', type: 'string', transform: (value: string | null) => {
                         if (value === '0' || !value) return null;
                         return addThousandsSeparator(value);
                     },
@@ -409,7 +410,7 @@ const miningDistrictsConfig: WMSLayerProps = {
                 'Total Dollar Value': {
                     field: 'total_dollar_value',
                     type: 'string',
-                    transform: (value) => {
+                    transform: (value: string | null) => {
                         if (!value || value === '0') return null;
                         const numValue = parseFloat(value);
                         if (isNaN(numValue)) return value;
@@ -453,7 +454,7 @@ const umosWMSConfig: WMSLayerProps = {
             },
             linkFields: {
                 'info_link': {
-                    transform: (value) => {
+                    transform: (value: GeoJsonProperties | null | undefined) => {
                         return [
                             {
                                 label: `${value}`,
@@ -485,8 +486,8 @@ const landAssessmentWMSConfig: WMSLayerProps = {
             },
             linkFields: {
                 'url': { // This links based on the 'url' field value
-                    transform: (value) => {
-                        if (value && typeof value === 'string' && value.startsWith('http')) {
+                    transform: (value: string | null) => {
+                        if (value && value.startsWith('http')) {
                             return [
                                 {
                                     label: 'Download Mineral Land Assessment for Wilderness Study Area',

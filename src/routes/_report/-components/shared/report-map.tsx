@@ -24,26 +24,24 @@ function parsePolygonCoordinates(polygon: string | undefined): number[][] | null
     try {
         const parsed = JSON.parse(polygon);
 
-        // Handle Esri/ArcGIS format: { spatialReference: {...}, rings: [[[x, y], ...]] }
+        // Handle polygon format with CRS: { crs: "EPSG:...", rings: [[[x, y], ...]] }
         if (parsed.rings && Array.isArray(parsed.rings[0])) {
             const coords = parsed.rings[0];
-            const wkid = parsed.spatialReference?.wkid || parsed.spatialReference?.latestWkid;
+            const sourceCRS = parsed.crs || 'EPSG:4326'; // Default to WGS84
 
-            // Check if coordinate system needs conversion to WGS84 (EPSG:4326)
-            // EPSG:3857 and EPSG:102100 are both Web Mercator (same coordinate system)
-            if (wkid && wkid !== 4326) {
-                // Web Mercator (3857 or 102100) to WGS84 (4326) conversion
-                if (wkid === 3857 || wkid === 102100 || wkid === 102113) {
+            // Convert to WGS84 if not already
+            if (sourceCRS !== 'EPSG:4326') {
+                // Web Mercator to WGS84 conversion
+                if (sourceCRS === 'EPSG:3857') {
                     return coords.map(([x, y]: number[]) => {
-                        // Convert Web Mercator to WGS84
                         const lng = (x / 20037508.34) * 180;
                         const lat = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) * 360) / Math.PI - 90;
                         return [lng, lat];
                     });
                 }
 
-                // If it's a different projection, log a warning but try to use coordinates as-is
-                console.warn(`Polygon is in EPSG:${wkid}. Automatic conversion only supported for Web Mercator (3857/102100).`);
+                // If it's a different projection, log a warning
+                console.warn(`Polygon is in ${sourceCRS}. Automatic conversion only supported for Web Mercator (EPSG:3857).`);
             }
 
             return coords;

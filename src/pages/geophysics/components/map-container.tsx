@@ -1,11 +1,11 @@
-import { MapWidgets } from '@/pages/wetlands/components/map-widgets';
+import { MapControls } from '@/pages/geophysics/components/sidebar/map-configurations/map-controls';
 import { MapContextMenu } from "@/components/custom/map/map-context-menu";
 import { PopupDrawer } from "@/components/custom/popups/popup-drawer";
 import { useMapContainer } from "@/hooks/use-map-container";
 import { PROD_GEOSERVER_URL } from '@/lib/constants';
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs';
 
-export default function ArcGISMap() {
+export default function MapContainer() {
     const layersConfig = useGetLayerConfigsData('layers');
     const {
         mapRef,
@@ -14,7 +14,6 @@ export default function ArcGISMap() {
         popupContainer,
         setPopupContainer,
         popupContent,
-        clickOrDragHandlers,
         handleOnContextMenu,
         coordinates,
         setCoordinates,
@@ -30,9 +29,8 @@ export default function ArcGISMap() {
                 className="relative w-full h-full"
                 ref={mapRef}
                 onContextMenu={e => handleOnContextMenu(e, contextMenuTriggerRef, setCoordinates)}
-                {...clickOrDragHandlers}
             >
-                <MapWidgets />
+                <MapControls />
             </div>
             <PopupDrawer
                 container={popupContainer}

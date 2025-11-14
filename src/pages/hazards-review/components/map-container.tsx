@@ -1,4 +1,4 @@
-import { MapWidgets } from '@/pages/hazards-review/components/map-widgets';
+import { MapControls } from '@/pages/hazards-review/components/map-controls';
 import { MapContextMenu } from "@/components/custom/map/map-context-menu";
 import { PopupDrawer } from "@/components/custom/popups/popup-drawer";
 import { useMapContainer } from "@/hooks/use-map-container";
@@ -28,7 +28,6 @@ export default function MapContainer({ }: MapContainerProps) {
         popupContainer,
         setPopupContainer,
         popupContent,
-        clickOrDragHandlers,
         handleOnContextMenu,
         coordinates,
         setCoordinates,
@@ -44,9 +43,8 @@ export default function MapContainer({ }: MapContainerProps) {
                 className="relative w-full h-full"
                 ref={mapRef}
                 onContextMenu={e => handleOnContextMenu(e, contextMenuTriggerRef, setCoordinates)}
-                {...clickOrDragHandlers}
             >
-                <MapWidgets />
+                <MapControls />
                 <MapLoadingSpinner />
             </div>
             <PopupDrawer
