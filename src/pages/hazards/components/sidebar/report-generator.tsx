@@ -10,6 +10,7 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, Di
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "@/components/custom/link";
 import proj4 from 'proj4';
+import { serializePolygonForUrl } from '@/lib/map/conversion-utils';
 
 type ActiveButtonOptions = 'currentMapExtent' | 'customArea' | 'reset';
 type DialogType = 'areaTooLarge' | 'confirmation' | null;
@@ -114,19 +115,6 @@ function ReportGenerator() {
             setIsSketching?.(false);
         }
     });
-
-    const serializePolygonForUrl = (geometry: PolygonGeometry): string | null => {
-        try {
-            // Convert to the format expected by the report page
-            return JSON.stringify({
-                rings: geometry.rings,
-                spatialReference: geometry.spatialReference
-            });
-        } catch (error) {
-            console.error('[ReportGenerator] Error serializing polygon:', error);
-            return null;
-        }
-    };
 
     const handleNavigate = (aoi: PolygonGeometry) => {
         setPendingAoi(aoi);

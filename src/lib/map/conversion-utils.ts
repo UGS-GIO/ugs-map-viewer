@@ -3,6 +3,17 @@ import { clone } from "@turf/clone";
 import { Geometry, Position } from "geojson";
 import proj4 from "proj4";
 
+/**
+ * Polygon geometry with spatial reference
+ * Used for both ArcGIS and custom polygon representations
+ */
+export interface PolygonGeometry {
+    rings: number[][][];
+    spatialReference?: {
+        wkid: number;
+    };
+}
+
 export function convertDDToDMS(dd: number, isLongitude: boolean = false) {
     const dir = dd < 0
         ? isLongitude ? 'W' : 'S'
@@ -271,18 +282,18 @@ export function reduceCoordinatePrecision(coordinates: number[][], decimals: num
  *
  * Example URL: /hazards/report?aoi=%7B%22rings%22%3A%5B%5B%5B-111.8%2C40.76%5D...%5D%5D%7D
  */
-export function serializePolygonForUrl(polygon: any | null): string | null {
+export function serializePolygonForUrl(polygon: PolygonGeometry | null): string | null {
     if (!polygon) return null;
 
     try {
         // Type check - ensure it's a polygon with rings
-        if (!('rings' in polygon)) {
+        if (!polygon.rings) {
             console.error('Invalid geometry type for serialization');
             return null;
         }
 
-        const rings = (polygon as any).rings ?? [];
-        const wkid = (polygon as any).spatialReference?.wkid || 102100;
+        const rings = polygon.rings;
+        const wkid = polygon.spatialReference?.wkid || 102100;
 
         // Convert to WGS84 if needed for human-readable coordinates in URL
         let wgs84Rings = rings;
