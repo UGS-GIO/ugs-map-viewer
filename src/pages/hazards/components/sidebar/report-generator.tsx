@@ -42,9 +42,9 @@ function ReportGenerator() {
         height: '50vh'
     });
 
-    // Setup Terra Draw for custom area drawing - only when customArea button is active
-    const { startPolygonDraw, clearDrawings, cancelDraw, isReady: isTerraDrawReady } = useTerraDrawPolygon({
-        map: activeButton === 'customArea' ? map : null,
+    // Setup Terra Draw for custom area drawing
+    const { startPolygonDraw, clearDrawings, cancelDraw } = useTerraDrawPolygon({
+        map,
         onDrawComplete: (geometry: DrawGeometry) => {
             console.log('[ReportGenerator] Draw complete:', geometry);
 
@@ -263,7 +263,7 @@ function ReportGenerator() {
                         <Button onClick={handleCurrentMapExtentButton} variant="default" className="w-full md:w-auto flex-grow mb-2 md:mb-0">
                             {buttonText('currentMapExtent', 'Current Map Extent')}
                         </Button>
-                        <Button onClick={handleCustomAreaButton} variant="default" className="w-full md:w-auto flex-grow mb-2 md:mb-0" disabled={!isTerraDrawReady}>
+                        <Button onClick={handleCustomAreaButton} variant="default" className="w-full md:w-auto flex-grow mb-2 md:mb-0">
                             {buttonText('customArea', 'Draw Custom Area')}
                         </Button>
                     </div>

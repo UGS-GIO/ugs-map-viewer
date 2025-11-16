@@ -1,10 +1,10 @@
-import { useRef, useMemo, useCallback, useState } from 'react';
-import Map, { Source, Layer, MapRef } from 'react-map-gl/maplibre';
+import { useMemo } from 'react';
 import 'maplibre-gl/dist/maplibre-gl.css';
 
 // Import the existing hazard layer map
 import { hazardLayerNameMap as importedHazardLayerNameMap } from '@/routes/_report/-data/hazard-unit-map';
 import { PROD_GEOSERVER_URL } from '@/lib/constants';
+import { useReportMap } from '@/routes/_report/-hooks/use-report-map';
 // Type it properly for indexing
 const hazardLayerNameMap: Record<string, string> = importedHazardLayerNameMap as Record<string, string>;
 
@@ -115,43 +115,20 @@ export function ReportMap({
     showControls = false,
     geoserverUrl
 }: ReportMapProps) {
-    const mapRef = useRef<MapRef>(null);
-    const [isMapLoaded, setIsMapLoaded] = useState(false);
-
-    // Parse polygon coordinates with useMemo
+    // Parse polygon coordinates
     const polygonCoords = useMemo(() => parsePolygonCoordinates(polygon), [polygon]);
 
-    // Calculate bounds with useMemo
+    // Calculate bounds
     const bounds = useMemo(() => {
         if (!polygonCoords) return null;
         return calculateBounds(polygonCoords);
     }, [polygonCoords]);
 
-    // Create GeoJSON feature with useMemo
+    // Create GeoJSON feature
     const polygonFeature = useMemo(() => {
         if (!polygonCoords) return null;
         return createPolygonFeature(polygonCoords);
     }, [polygonCoords]);
-
-    // Fit bounds when map loads - only if needed for fine-tuning
-    const onMapLoad = useCallback(() => {
-        // Optional: Remove this if initialViewState is sufficient
-        // Keeping it for fine-tuning with padding
-        if (bounds && mapRef.current) {
-            setTimeout(() => {
-                mapRef.current?.fitBounds(bounds, { padding: 50, duration: 0 });
-                // Add a slight delay to ensure all tiles are loaded
-                setTimeout(() => {
-                    setIsMapLoaded(true);
-                }, 500);
-            }, 100);
-        } else {
-            // No bounds, just mark as loaded
-            setTimeout(() => {
-                setIsMapLoaded(true);
-            }, 500);
-        }
-    }, [bounds]);
 
     // Filter valid hazard layers
     const validHazardLayers = useMemo(() => {
@@ -164,22 +141,24 @@ export function ReportMap({
     }, [hazardCodes]);
 
     // Generate WMS URL for a layer
-    const getWmsUrl = useCallback((layerName: string) => {
-        const baseUrl = geoserverUrl || PROD_GEOSERVER_URL;
-        return `${baseUrl}/wms?` +
-            `SERVICE=WMS&` +
-            `VERSION=1.1.0&` +
-            `REQUEST=GetMap&` +
-            `FORMAT=image/png&` +
-            `TRANSPARENT=true&` +
-            `LAYERS=${layerName}&` +
-            `SRS=EPSG:3857&` +
-            `WIDTH=256&` +
-            `HEIGHT=256&` +
-            `BBOX={bbox-epsg-3857}`;
+    const getWmsUrl = useMemo(() => {
+        return (layerName: string) => {
+            const baseUrl = geoserverUrl || PROD_GEOSERVER_URL;
+            return `${baseUrl}/wms?` +
+                `SERVICE=WMS&` +
+                `VERSION=1.1.0&` +
+                `REQUEST=GetMap&` +
+                `FORMAT=image/png&` +
+                `TRANSPARENT=true&` +
+                `LAYERS=${layerName}&` +
+                `SRS=EPSG:3857&` +
+                `WIDTH=256&` +
+                `HEIGHT=256&` +
+                `BBOX={bbox-epsg-3857}`;
+        };
     }, [geoserverUrl]);
 
-    // Calculate initial view state based on bounds
+    // Calculate initial view state
     const initialViewState = useMemo(() => {
         if (bounds) {
             const [[minLng, minLat], [maxLng, maxLat]] = bounds;
@@ -191,7 +170,6 @@ export function ReportMap({
             const latDiff = maxLat - minLat;
             const maxDiff = Math.max(lngDiff, latDiff);
 
-            // Approximate zoom level (adjust multiplier as needed)
             let zoom = 10;
             if (maxDiff > 1) zoom = 7;
             else if (maxDiff > 0.5) zoom = 8;
@@ -202,17 +180,25 @@ export function ReportMap({
             else zoom = 13;
 
             return {
-                longitude: centerLng,
-                latitude: centerLat,
+                center: [centerLng, centerLat] as [number, number],
                 zoom
             };
         }
         return {
-            longitude: -111.8910,
-            latitude: 40.7608,
+            center: [-111.8910, 40.7608] as [number, number],
             zoom: 7
         };
     }, [bounds]);
+
+    // Use the custom hook to initialize the map
+    const { mapContainerRef, isMapLoaded } = useReportMap({
+        center: initialViewState.center,
+        zoom: initialViewState.zoom,
+        bounds,
+        polygonFeature,
+        hazardLayers: validHazardLayers,
+        getWmsUrl
+    });
 
     return (
         <div className="border rounded-lg overflow-hidden shadow-sm">
@@ -232,70 +218,19 @@ export function ReportMap({
                     </div>
                 )}
 
-                <Map
-                    ref={mapRef}
-                    initialViewState={initialViewState}
-                    onLoad={onMapLoad}
-                    mapStyle="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json"
-                    attributionControl={false}
-                    scrollZoom={false}
-                    dragPan={false}
-                    dragRotate={false}
-                    doubleClickZoom={false}
-                    touchZoomRotate={false}
-                    keyboard={false}
-                    style={{ opacity: isMapLoaded ? 1 : 0, transition: 'opacity 0.3s ease-in' }}
-                >
-                    {/* Hazard Layers - WMS (render first, so they're below) */}
-                    {validHazardLayers.map(({ code, layerName }) => (
-                        <Source
-                            key={code}
-                            id={`hazard-${code}`}
-                            type="raster"
-                            tiles={[getWmsUrl(layerName)]}
-                            tileSize={256}
-                        >
-                            <Layer
-                                id={`hazard-layer-${code}`}
-                                type="raster"
-                                paint={{
-                                    'raster-opacity': 0.7
-                                }}
-                            />
-                        </Source>
-                    ))}
-
-                    {/* AOI Polygon (render last, so it's on top) */}
-                    {polygonFeature && (
-                        <Source
-                            id="aoi-polygon"
-                            type="geojson"
-                            data={polygonFeature}
-                        >
-                            <Layer
-                                id="aoi-fill"
-                                type="fill"
-                                paint={{
-                                    'fill-color': '#3b82f6',
-                                    'fill-opacity': 0.1
-                                }}
-                            />
-                            <Layer
-                                id="aoi-outline"
-                                type="line"
-                                paint={{
-                                    'line-color': '#3b82f6',
-                                    'line-width': 2.5,
-                                    'line-dasharray': [2, 2]
-                                }}
-                            />
-                        </Source>
-                    )}
-                </Map>
+                <div
+                    ref={mapContainerRef}
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        opacity: isMapLoaded ? 1 : 0,
+                        transition: 'opacity 0.3s ease-in'
+                    }}
+                />
             </div>
             {showControls && (
                 <div className="bg-muted px-4 py-2 text-xs text-muted-foreground flex justify-between">
-                    <span>Use mouse to pan and zoom</span>
+                    <span>Static map view</span>
                     {bounds && (
                         <span>
                             Bounds: [{bounds[0][0].toFixed(4)}, {bounds[0][1].toFixed(4)}] -
