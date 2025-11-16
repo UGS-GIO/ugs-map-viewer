@@ -2,11 +2,14 @@ import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { HomeControl } from '@/lib/map/controls/home-control';
 import { MultiSelectControl } from '@/lib/map/controls/multi-select-control';
+import { MaplibreExportControl } from '@watergis/maplibre-gl-export';
+import '@watergis/maplibre-gl-export/dist/maplibre-gl-export.css';
+import '@/lib/map/controls/export-control-overrides.css';
 
 type ControlPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 
 export interface MapControlConfig {
-    type: 'home' | 'navigation' | 'geolocate' | 'scale' | 'fullscreen' | 'multi-select';
+    type: 'home' | 'navigation' | 'geolocate' | 'scale' | 'fullscreen' | 'multi-select' | 'export';
     position?: ControlPosition;
     options?: Record<string, any>;
 }
@@ -51,6 +54,9 @@ export function useMapControls(map: maplibregl.Map | undefined, controls: readon
                     break;
                 case 'multi-select':
                     control = new MultiSelectControl(options);
+                    break;
+                case 'export':
+                    control = new MaplibreExportControl(options);
                     break;
                 default:
                     console.warn(`Unknown control type: ${type}`);
