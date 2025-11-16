@@ -145,7 +145,7 @@ const LayerCard = ({
     return (
         <Card
             id={`section-${layer.layerTitle !== '' ? layer.layerTitle : layer.groupLayerTitle}`}
-            className="w-full"
+            className="w-full bg-background/40 backdrop-blur-sm border-border/50"
         >
             <CardHeader className="p-4">
                 <CardTitle>
@@ -167,12 +167,13 @@ const LayerCard = ({
                     <div
                         key={idx}
                         className={`
-                                space-y-4 
-                                p-4 
-                                rounded-lg 
-                                bg-border/50
-                                border 
-                                border-secondary/20
+                                space-y-4
+                                p-4
+                                rounded-lg
+                                bg-background/30
+                                backdrop-blur-sm
+                                border
+                                border-border/30
                             `}
                     >
                         <PopupButtons feature={feature} />

@@ -1,18 +1,18 @@
 import * as React from "react";
 import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerTrigger } from "@/components/ui/drawer";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 import { LayerContentProps, PopupContentWithPagination } from "@/components/custom/popups/popup-content-with-pagination";
 import useScreenSize from "@/hooks/use-screen-size";
-import { XIcon } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { clearGraphics } from "@/lib/map/highlight-utils";
 import { useMap } from "@/hooks/use-map";
+import { XIcon } from "lucide-react";
 
 interface CombinedSidebarDrawerProps {
-    container: HTMLDivElement | null;
+    container?: HTMLDivElement | null;
     popupContent: LayerContentProps[];
     drawerTriggerRef: React.RefObject<HTMLButtonElement>;
     popupTitle: string;
@@ -20,7 +20,6 @@ interface CombinedSidebarDrawerProps {
 }
 
 function PopupDrawer({
-    container,
     popupContent,
     drawerTriggerRef,
     popupTitle,
@@ -29,6 +28,7 @@ function PopupDrawer({
     const carouselRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const [activeLayerTitle, setActiveLayerTitle] = useState<string>("");
+    const [open, setOpen] = useState(false);
     const screenSize = useScreenSize();
     const isMobile = useIsMobile();
     const { map } = useMap();
@@ -95,47 +95,58 @@ function PopupDrawer({
                 console.error('Error clearing highlights:', error);
             }
         }
+        setOpen(false);
         // Call external onClose callback if provided
         onClose?.();
     }, [map, onClose]);
 
     return (
-        <Drawer
-            container={container}
-            modal={false}
-            onOpenChange={(open) => {
-                if (!open) handleClose();
+        <Sheet
+            open={open}
+            onOpenChange={(isOpen) => {
+                if (!isOpen) {
+                    handleClose();
+                } else {
+                    setOpen(true);
+                }
             }}
+            modal={false}
         >
-            <DrawerTrigger asChild>
-                <Button ref={drawerTriggerRef} size="sm" className="hidden">
-                    Open Drawer
+            <SheetTrigger asChild>
+                <Button
+                    ref={drawerTriggerRef}
+                    size="sm"
+                    className="hidden"
+                    onClick={() => setOpen(true)}
+                >
+                    Open Sheet
                 </Button>
-            </DrawerTrigger>
+            </SheetTrigger>
 
-            <DrawerContent className="z-60 max-h-[50vh] md:max-h-[85vh] overflow-hidden md:absolute md:right-4 md:max-w-[30vw] md:mb-10 left-auto w-full">
-                <DrawerHeader className="flex justify-between items-center py-2 md:py-4 relative">
-                    <DrawerTitle className="flex-1 pr-10">{popupTitle}</DrawerTitle>
-                    {!isMobile && (
-                        <DrawerClose asChild>
-                            <Button
-                                variant="outline"
-                                className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center p-0"
-                            >
-                                <XIcon className="w-4 h-4" />
-                            </Button>
-                        </DrawerClose>
-                    )}
-                </DrawerHeader>
+            <SheetContent
+                side={isMobile ? "bottom" : "right"}
+                className={cn(
+                    "z-[100] overflow-hidden p-0",
+                    "bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80",
+                    "dark:bg-background/80",
+                    // Mobile: full height, no border, full screen takeover
+                    isMobile ? "h-full border-0 rounded-none inset-0" :
+                    // Desktop: inset panel with border and glass effect
+                    "w-full sm:max-w-xl md:max-w-2xl border-l border-border dark:border-border"
+                )}
+            >
+                <SheetHeader className="flex justify-between items-center py-2 md:py-4 px-6 relative border-b border-border/30 bg-background/30 backdrop-blur-sm">
+                    <SheetTitle className="flex-1 pr-10">{popupTitle}</SheetTitle>
+                </SheetHeader>
 
-                <DrawerDescription className="sr-only">
+                <SheetDescription className="sr-only">
                     Popup content for {popupTitle}
-                </DrawerDescription>
+                </SheetDescription>
 
-                <div className="grid grid-rows-[auto_1fr] h-full overflow-hidden mb-6">
+                <div className="grid grid-rows-[auto_1fr] h-full overflow-hidden bg-gradient-to-b from-transparent to-background/20">
                     {screenSize.height > 1080 && layerTitles.length > 1 && (
-                        <header className="border-b overflow-hidden h-12">
-                            <Carousel className="w-full h-full relative px-8">
+                        <header className="border-b border-border/50 overflow-hidden h-12 px-6 bg-background/30 backdrop-blur-sm">
+                            <Carousel className="w-full h-full relative px-2">
                                 <CarouselContent className="-ml-2 px-4" ref={carouselRef}>
                                     {Object.entries(groupedLayers).map(([groupTitle, layerTitles], groupIdx) => (
                                         <React.Fragment key={`group-${groupIdx}`}>
@@ -189,10 +200,10 @@ function PopupDrawer({
                         </header>
                     )}
 
-                    <div className="flex overflow-hidden pt-2">
+                    <div className="flex overflow-hidden pt-2 px-6 bg-background/20">
                         <div
                             ref={setContainerRef}
-                            className="flex flex-1 flex-col gap-4 p-1 overflow-y-auto select-text"
+                            className="flex flex-1 flex-col gap-4 p-1 overflow-y-auto select-text pb-16 bg-background/10 rounded-t-lg"
                         >
                             <PopupContentWithPagination
                                 key={contentKey}
@@ -202,8 +213,21 @@ function PopupDrawer({
                         </div>
                     </div>
                 </div>
-            </DrawerContent>
-        </Drawer>
+
+                {/* Floating close button */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+                    <Button
+                        onClick={handleClose}
+                        variant="default"
+                        size="lg"
+                        className="shadow-lg gap-2"
+                    >
+                        <XIcon className="h-4 w-4" />
+                        Close
+                    </Button>
+                </div>
+            </SheetContent>
+        </Sheet>
     );
 }
 
