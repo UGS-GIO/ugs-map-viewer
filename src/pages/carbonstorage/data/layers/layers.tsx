@@ -12,7 +12,8 @@ const basinNamesWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: basinNamesWMSTitle,
     visible: true,
-    opacity: 0.5,
+    opacity: 0.3,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${basinNamesLayerName}`,
@@ -88,7 +89,7 @@ const oilGasFieldsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: oilGasFieldsWMSTitle,
     visible: false,
-    opacity: 0.5,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${oilGasFieldsLayerName}`,
@@ -113,6 +114,7 @@ const pipelinesWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: pipelinesWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${pipelinesLayerName}`,
@@ -136,6 +138,7 @@ const sco2WMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: sco2WMSTitle,
     visible: true,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${sco2LayerName}`,
@@ -201,6 +204,7 @@ const riversWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: riversWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${GEN_GIS_WORKSPACE}:${riversLayerName}`,
@@ -222,6 +226,7 @@ const roadsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: roadsWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${roadsLayerName}`,
@@ -242,6 +247,7 @@ const railroadsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: railroadsWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${railroadsLayerName}`,
@@ -262,6 +268,7 @@ const transmissionLinesWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: transmissionLinesWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${transmissionLinesLayerName}`,
@@ -275,14 +282,14 @@ const transmissionLinesWMSConfig: WMSLayerProps = {
 }
 
 // Seamless Geological Units WMS Layer
-const seamlessGeolunitsLayerName = 'seamlessgeolunits';
+const seamlessGeolunitsLayerName = 'mapping_geolunits_500k';
 const seamlessGeolunitsWMSTitle = 'Geologic Units (500k)';
 const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: seamlessGeolunitsWMSTitle,
     opacity: 0.5,
-    visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${MAPPING_WORKSPACE}:${seamlessGeolunitsLayerName}`,
@@ -326,6 +333,7 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: wellWithTopsWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${wellWithTopsLayerName}`,
@@ -333,7 +341,12 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
             queryable: true,
             popupFields: {
                 'API': { field: 'api', type: 'string' },
-                'Well Name': { field: 'wellname', type: 'string' }
+                'Well Name': { field: 'wellname', type: 'string' },
+                'Disclaimer': {
+                    field: 'Formation Tops Disclaimer',
+                    type: 'custom',
+                    transform: () => 'Formation top information and LAS file availability is provided as-is and may not be fully complete or accurate.'
+                }
             },
             relatedTables: [
                 {
@@ -377,7 +390,7 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
                                 }
                                 return value !== '' ? value : 'No Data';
                             }
-                        },
+                        }
                     ]
                 }
             ]
@@ -398,6 +411,7 @@ const SITLAConfig: LayerProps = {
         sublayers: [{
             id: 0,
             visible: true,
+    crs: 'EPSG:26912',
         }],
     },
 };
@@ -409,6 +423,7 @@ const faultsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: faultsWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${MAPPING_WORKSPACE}:${faultsLayerName}`,
@@ -460,6 +475,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: qFaultsWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${qFaultsLayerName}`,
@@ -516,6 +532,7 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: coresAndCuttingsWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${coresAndCuttingsLayerName}`,
@@ -575,25 +592,6 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
                     transform: (() => 'Utah Core Research Center Inventory')
                 },
             },
-            relatedTables: [
-                {
-                    fieldLabel: 'Formation Tops',
-                    matchingField: 'api',
-                    targetField: 'apishort',
-                    url: PROD_POSTGREST_URL + '/view_wellswithtops_hascore',
-                    headers: {
-                        "Accept-Profile": 'emp',
-                        "Accept": "application/json",
-                        "Cache-Control": "no-cache",
-                    },
-                    displayFields: [
-                        { field: 'formation_alias', label: 'Formation Name' },
-                        { field: 'formation_depth', label: 'Formation Depth (ft)' },
-                    ],
-                    sortBy: 'formation_depth',
-                    sortDirection: 'asc'
-                },
-            ],
             linkFields: {
                 'inventory_link': {
                     transform: (value: string | null) => {
@@ -617,6 +615,7 @@ const co2SourcesWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: co2SourcesWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${co2SourcesLayerName}`,
@@ -665,7 +664,7 @@ const wildernessStudyAreasWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: wildernessStudyAreasWMSTitle,
     visible: false,
-    opacity: 0.5,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${wildernessStudyAreasLayerName}`,
@@ -688,7 +687,7 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: sitlaReportsWMSTitle,
     visible: false,
-    opacity: 0.5,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${sitlaReportsLayerName}`,
@@ -739,6 +738,7 @@ const ccsExclusionAreasWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: ccsExclusionAreasWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${ccsExclusionAreasLayerName}`,
@@ -760,6 +760,7 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalPowerplantsWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalPowerplantsLayerName}`,

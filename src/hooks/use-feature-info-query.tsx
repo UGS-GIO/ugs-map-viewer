@@ -207,8 +207,8 @@ export async function fetchWFSFeature({
     }
 
     // Create a small buffer around the point for spatial intersection
-    // Using a small buffer (100m) to catch nearby features
-    const buffer = 100;
+    // Using a small buffer (10m) to catch nearby features
+    const buffer = 10;
     const bbox = {
         minX: queryX - buffer,
         minY: queryY - buffer,
@@ -277,6 +277,210 @@ export async function fetchWFSFeature({
         return data;
     } catch (error) {
         console.error('[FetchWFSFeature] Error:', error);
+        throw error;
+    }
+}
+
+/**
+ * WFS GetFeature query using polygon geometry
+ * Uses WKT (Well-Known Text) in CQL filter for spatial intersection
+ */
+interface WFSPolygonQueryProps {
+    polygonRings: number[][][];
+    layers: string[];
+    url: string;
+    cql_filter?: string | null;
+    crs?: string;
+    featureCount?: number;
+}
+
+// Cache for geometry field names per layer
+const geometryFieldCache = new Map<string, string | null>();
+
+async function getGeometryFieldName(layer: string, wfsUrl: string): Promise<string | null> {
+    // Check cache first
+    if (geometryFieldCache.has(layer)) {
+        return geometryFieldCache.get(layer)!;
+    }
+
+    // Try to get from DescribeFeatureType
+    try {
+        const params = new URLSearchParams();
+        params.set('service', 'WFS');
+        params.set('version', '2.0.0');
+        params.set('request', 'DescribeFeatureType');
+        params.set('typeName', layer);
+        params.set('outputFormat', 'application/json');
+
+        const response = await fetch(`${wfsUrl}?${params.toString()}`);
+        if (response.ok) {
+            const data = await response.json();
+            console.log(`[GetGeometryFieldName] DescribeFeatureType response for ${layer}:`, data);
+
+            // Look for geometry type properties
+            // GeoServer returns types like "gml:MultiPolygon", "gml:LineString", etc.
+            const geometryLocalTypes = ['MultiPolygon', 'Polygon', 'MultiLineString', 'LineString', 'Point', 'MultiPoint', 'Geometry', 'GeometryCollection'];
+
+            if (data.featureTypes && data.featureTypes[0] && data.featureTypes[0].properties) {
+                console.log(`[GetGeometryFieldName] Properties:`, data.featureTypes[0].properties);
+                for (const prop of data.featureTypes[0].properties) {
+                    console.log(`[GetGeometryFieldName] Checking prop:`, prop.name, 'type:', prop.type, 'localType:', prop.localType);
+                    // Check if the type starts with "gml:" and localType is a known geometry type
+                    if (prop.type?.startsWith('gml:') && geometryLocalTypes.includes(prop.localType)) {
+                        const fieldName = prop.name;
+                        console.log(`[GetGeometryFieldName] Found geometry field '${fieldName}' for layer ${layer}`);
+                        geometryFieldCache.set(layer, fieldName);
+                        return fieldName;
+                    }
+                }
+            }
+        } else {
+            console.warn(`[GetGeometryFieldName] DescribeFeatureType request failed with status ${response.status}`);
+        }
+    } catch (error) {
+        console.warn('[GetGeometryFieldName] Could not get geometry field from DescribeFeatureType:', error);
+    }
+
+    // Could not determine geometry field name - return null to signal bbox fallback
+    console.log(`[GetGeometryFieldName] Could not determine geometry field for layer ${layer}, will use bbox`);
+    geometryFieldCache.set(layer, null);
+    return null;
+}
+
+export async function fetchWFSFeatureByPolygon({
+    polygonRings,
+    layers,
+    url,
+    cql_filter = null,
+    crs = 'EPSG:4326',
+    featureCount = 200
+}: WFSPolygonQueryProps): Promise<any> {
+    if (layers.length === 0) {
+        console.warn('No layers specified for WFS polygon query.');
+        return null;
+    }
+
+    if (!polygonRings || polygonRings.length === 0 || !polygonRings[0]) {
+        console.warn('No polygon geometry provided for WFS query.');
+        return null;
+    }
+
+    // Get the geometry field name for this layer
+    const geometryField = await getGeometryFieldName(layers[0], url);
+
+    // Convert polygon to target CRS
+    const ring = polygonRings[0]; // Use first ring (exterior ring)
+
+    console.log('[FetchWFSFeatureByPolygon] Original ring (WGS84):', ring);
+    console.log('[FetchWFSFeatureByPolygon] Target CRS:', crs);
+
+    // Convert coordinates from WGS84 to target CRS if needed
+    let coordinates = ring;
+    if (crs !== 'EPSG:4326') {
+        coordinates = ring.map(([lng, lat]) => {
+            const [x, y] = proj4('EPSG:4326', crs, [lng, lat]);
+            console.log(`[FetchWFSFeatureByPolygon] Converted [${lng}, ${lat}] -> [${x}, ${y}]`);
+            return [x, y];
+        });
+    }
+    console.log('[FetchWFSFeatureByPolygon] Converted coordinates:', coordinates);
+
+    const params = new URLSearchParams();
+    params.set('service', 'WFS');
+    params.set('version', '2.0.0');
+    params.set('request', 'GetFeature');
+    params.set('typeNames', layers.join(','));
+    params.set('outputFormat', 'application/json');
+    params.set('count', featureCount.toString());
+
+    let usedBbox = false;
+
+    if (geometryField) {
+        // We know the geometry field name, use INTERSECTS for precise polygon query
+        const coordString = coordinates.map(([x, y]) => `${x} ${y}`).join(', ');
+        const wkt = `POLYGON((${coordString}))`;
+        const spatialFilter = `INTERSECTS(${geometryField}, ${wkt})`;
+
+        const combinedFilter = cql_filter
+            ? `${spatialFilter} AND ${cql_filter.trim()}`
+            : spatialFilter;
+
+        params.set('cql_filter', combinedFilter);
+        console.log('[FetchWFSFeatureByPolygon] Using INTERSECTS with geometry field:', geometryField);
+        console.log('[FetchWFSFeatureByPolygon] WKT:', wkt.substring(0, 200) + '...');
+        console.log('[FetchWFSFeatureByPolygon] Full CQL filter:', combinedFilter.substring(0, 300) + '...');
+    } else {
+        // Fall back to bbox (bounding box of polygon)
+        // This is less precise but works without knowing the geometry field name
+        const xs = coordinates.map(([x]) => x);
+        const ys = coordinates.map(([, y]) => y);
+        const bbox = {
+            minX: Math.min(...xs),
+            minY: Math.min(...ys),
+            maxX: Math.max(...xs),
+            maxY: Math.max(...ys)
+        };
+
+        params.set('bbox', `${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY},${crs}`);
+
+        // Add attribute filter separately if present
+        if (cql_filter) {
+            const normalizedAttributeFilter = cql_filter.trim().replace(/\s*=\s*/g, '=');
+            params.set('cql_filter', normalizedAttributeFilter);
+        }
+
+        usedBbox = true;
+        console.log('[FetchWFSFeatureByPolygon] Using bbox fallback:', bbox);
+    }
+
+    const fullUrl = `${url}?${params.toString()}`;
+    console.log('[FetchWFSFeatureByPolygon] Querying layers:', {
+        layers,
+        crs,
+        method: usedBbox ? 'bbox' : 'INTERSECTS',
+        attributeFilter: cql_filter || 'none'
+    });
+
+    try {
+        const response = await fetch(fullUrl);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[FetchWFSFeatureByPolygon] Request failed with status:', response.status);
+            console.error('[FetchWFSFeatureByPolygon] Error response:', errorText);
+            throw new Error(`WFS polygon query failed with status ${response.status}: ${errorText}`);
+        }
+
+        const data = await response.json();
+
+        if (data.features && data.features.length > 0) {
+            console.log('[FetchWFSFeatureByPolygon] Features returned:', data.features.length);
+
+            // Add namespace to features for consistency
+            const namespaceMap = layers.reduce((acc, layer) => {
+                const [namespace, layerName] = layer.split(':');
+                if (namespace && layerName) {
+                    acc[layerName] = namespace;
+                }
+                return acc;
+            }, {} as Record<string, string>);
+
+            const featuresWithNamespace = data.features.map((feature: any) => {
+                const layerName = feature.id?.split('.')[0];
+                const namespace = namespaceMap[layerName] || null;
+                return {
+                    ...feature,
+                    namespace,
+                };
+            });
+
+            return { ...data, features: featuresWithNamespace };
+        }
+
+        console.log('[FetchWFSFeatureByPolygon] No features found');
+        return data;
+    } catch (error) {
+        console.error('[FetchWFSFeatureByPolygon] Error:', error);
         throw error;
     }
 }
@@ -380,6 +584,7 @@ export function useFeatureInfoQuery({
     coordinateAdapter
 }: UseFeatureInfoQueryProps) {
     const [mapPoint, setMapPoint] = useState<MapPoint | null>(null);
+    const [polygonRings, setPolygonRings] = useState<number[][][] | null>(null);
     const { activeFilters } = useLayerUrl();
 
     // Track unique click IDs - increment on each new click
@@ -387,8 +592,17 @@ export function useFeatureInfoQuery({
     const [currentClickId, setCurrentClickId] = useState<number | null>(null);
 
     const queryFn = async (): Promise<LayerContentProps[]> => {
-        if (!map || !mapPoint) {
-            console.log('[FeatureInfoQuery] Early return - no map or mapPoint');
+        if (!map) {
+            console.log('[FeatureInfoQuery] Early return - no map');
+            return [];
+        }
+
+        // Determine query type
+        const isPolygonQuery = polygonRings !== null;
+        const isPointQuery = mapPoint !== null;
+
+        if (!isPolygonQuery && !isPointQuery) {
+            console.log('[FeatureInfoQuery] Early return - no query geometry');
             return [];
         }
 
@@ -426,14 +640,29 @@ export function useFeatureInfoQuery({
 
             // Use WFS instead of WMS for more reliable geometry-based queries
             const wfsUrl = wmsUrl.replace('/wms', '/wfs');
-            const featureInfo = await fetchWFSFeature({
-                mapPoint,
-                layers: [layerKey],
-                url: wfsUrl,
-                cql_filter: layerCqlFilter,
-                crs: layerCrs,
-                featureCount: 50
-            });
+
+            let featureInfo;
+            if (isPolygonQuery && polygonRings) {
+                // Polygon-based query
+                featureInfo = await fetchWFSFeatureByPolygon({
+                    polygonRings,
+                    layers: [layerKey],
+                    url: wfsUrl,
+                    cql_filter: layerCqlFilter,
+                    crs: layerCrs,
+                    featureCount: 200
+                });
+            } else if (isPointQuery && mapPoint) {
+                // Point-based query
+                featureInfo = await fetchWFSFeature({
+                    mapPoint,
+                    layers: [layerKey],
+                    url: wfsUrl,
+                    cql_filter: layerCqlFilter,
+                    crs: layerCrs,
+                    featureCount: 50
+                });
+            }
 
             if (featureInfo && featureInfo.features && featureInfo.features.length > 0) {
                 // console.log(`[FeatureInfoQuery] Layer ${layerKey}: ${featureInfo.features.length} features returned`);
@@ -498,7 +727,8 @@ export function useFeatureInfoQuery({
                     rasterSource: value.rasterSource
                 };
 
-                if (value.rasterSource) {
+                // Raster queries only supported for point queries
+                if (value.rasterSource && isPointQuery && mapPoint) {
                     const rasterFeatureInfo = await fetchWMSFeatureInfo({
                         mapPoint,
                         map,
@@ -524,32 +754,49 @@ export function useFeatureInfoQuery({
 
     // Remove activeFilters from queryKey - we don't want filter changes to invalidate the query
     const { data, isFetching, isSuccess, refetch } = useQuery({
-        queryKey: ['wmsFeatureInfo', coordinateAdapter.toJSON(mapPoint), currentClickId],
+        queryKey: ['wmsFeatureInfo', coordinateAdapter.toJSON(mapPoint), polygonRings, currentClickId],
         queryFn,
         enabled: false,
         refetchOnWindowFocus: false,
     });
 
     const fetchForPoint = (point: MapPoint) => {
+        // Clear polygon state when doing point query
+        setPolygonRings(null);
         // Generate new click ID for each map click
         clickIdRef.current += 1;
         setCurrentClickId(clickIdRef.current);
         setMapPoint(point);
     };
 
-    // trigger refetch when mapPoint changes (which means new click happened)
+    const fetchForPolygon = (rings: number[][][]) => {
+        console.log('[FeatureInfoQuery] fetchForPolygon called with rings:', rings);
+        // Clear point state when doing polygon query
+        setMapPoint(null);
+        // Generate new query ID
+        clickIdRef.current += 1;
+        const newClickId = clickIdRef.current;
+        console.log('[FeatureInfoQuery] Setting clickId:', newClickId);
+        setCurrentClickId(newClickId);
+        setPolygonRings(rings);
+        console.log('[FeatureInfoQuery] State updated, refetch should trigger');
+    };
+
+    // trigger refetch when query geometry changes
     useEffect(() => {
-        if (mapPoint && currentClickId !== null) {
+        if ((mapPoint || polygonRings) && currentClickId !== null) {
             refetch();
         }
-    }, [mapPoint, currentClickId, refetch]);
+    }, [mapPoint, polygonRings, currentClickId, refetch]);
 
     return {
         fetchForPoint,
+        fetchForPolygon,
         data: isSuccess ? data : [],
         isFetching,
         isSuccess,
-        lastClickedPoint: mapPoint,
+        lastClickedPoint: mapPoint || undefined,
+        isPolygonQuery: polygonRings !== null,
         clickId: currentClickId,
     };
 }

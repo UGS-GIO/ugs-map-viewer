@@ -1,6 +1,7 @@
 import { LayerUrlProvider } from '@/context/layer-url-provider';
 import { MapProvider } from '@/context/map-provider';
 import { SidebarProvider } from '@/context/sidebar-provider';
+import { MultiSelectProvider } from '@/context/multi-select-context';
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { z } from 'zod'
 import { RouteErrorBoundary } from '@/components/route-error-boundary'
@@ -36,7 +37,9 @@ export const Route = createFileRoute('/_map')({
         <LayerUrlProvider>
             <SidebarProvider>
                 <MapProvider>
-                    <Outlet />
+                    <MultiSelectProvider>
+                        <Outlet />
+                    </MultiSelectProvider>
                 </MapProvider>
             </SidebarProvider>
         </LayerUrlProvider>

@@ -18,6 +18,7 @@ export default function MapContainer() {
         handleOnContextMenu,
         coordinates,
         setCoordinates,
+        onDrawerClose,
     } = useMapContainer({
         wmsUrl: `${PROD_GEOSERVER_URL}wms`,
         layersConfig: defaultLayersConfig
@@ -38,6 +39,7 @@ export default function MapContainer() {
                 drawerTriggerRef={drawerTriggerRef}
                 popupContent={popupContent}
                 popupTitle="Hazards in your area"
+                onClose={onDrawerClose}
             />
             <div ref={setPopupContainer} />
         </>
