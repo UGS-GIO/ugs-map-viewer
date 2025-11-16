@@ -83,7 +83,7 @@ export function useMapContainer({
     });
 
     // Multi-select tool integration
-    const { isMultiSelectMode } = useMultiSelect();
+    const { isMultiSelectMode, setMultiSelectMode } = useMultiSelect();
 
     // Add multi-select control to map
     useMultiSelectControl(map);
@@ -216,6 +216,18 @@ export function useMapContainer({
         }
     }, [loadMap, zoom, center, layersConfig, processedLayers]);
 
+    // Handler for when the popup/drawer is closed
+    const handleDrawerClose = () => {
+        // Clear the Terra Draw polygons
+        clearSelection();
+
+        // If the popup was opened from a polygon query, turn off multi-select mode
+        if (featureInfoQuery.isPolygonQuery) {
+            console.log('[MapContainer] Closing popup from polygon query, disabling multi-select mode');
+            setMultiSelectMode(false);
+        }
+    };
+
     return {
         mapRef,
         contextMenuTriggerRef,
@@ -227,6 +239,6 @@ export function useMapContainer({
         coordinates,
         setCoordinates,
         layersConfig: processedLayers,
-        onDrawerClose: clearSelection,
+        onDrawerClose: handleDrawerClose,
     };
 }
