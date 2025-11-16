@@ -10,6 +10,7 @@ const landslideLegacyWMSConfig: WMSLayerProps = {
     title: landslideLegacyWMSTitle,
     visible: false,
     opacity: 0.75,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${landslideLegacyLayerName}`,
@@ -42,6 +43,7 @@ const landslideInventoryWMSConfig: WMSLayerProps = {
     title: landslideInventoryWMSTitle,
     visible: false,
     opacity: 0.75,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${landslideInventoryLayerName}`,
@@ -86,6 +88,7 @@ const landslideSusceptibilityWMSConfig: WMSLayerProps = {
     title: landslideSusceptibilityWMSTitle,
     visible: false,
     opacity: 0.75,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${landslideSusceptibilityLayerName}`,
@@ -124,6 +127,7 @@ const liquefactionWMSConfig: WMSLayerProps = {
     title: liquefactionWMSTitle,
     visible: false,
     opacity: 0.75,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${liquefactionLayerName}`,
@@ -162,6 +166,7 @@ const groundshakingWMSConfig: WMSLayerProps = {
     title: groundshakingWMSTitle,
     visible: false,
     opacity: 0.5,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${groundshakingLayerName}`,
@@ -248,6 +253,7 @@ const surfaceFaultRuptureWMSConfig: WMSLayerProps = {
     title: surfaceFaultRuptureWMSTitle,
     visible: false,
     opacity: 0.75,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${surfaceFaultRuptureLayerName}`,
@@ -284,6 +290,7 @@ const windBlownSandWMSConfig: WMSLayerProps = {
     title: windBlownSandWMSTitle,
     opacity: 0.75,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${windBlownSandLayerName}`,
@@ -318,6 +325,7 @@ const saltTectonicsDeformationWMSConfig: WMSLayerProps = {
     title: saltTectonicsDeformationWMSTitle,
     opacity: 0.75,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${saltTectonicsDeformationLayerName}`,
@@ -354,6 +362,7 @@ const shallowBedrockWMSConfig: WMSLayerProps = {
     title: shallowBedrockWMSTitle,
     opacity: 0.75,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${shallowBedrockLayerName}`,
@@ -389,6 +398,7 @@ const rockfallHazardWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: rockfallHazardWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     opacity: 0.75,
     sublayers: [
         {
@@ -426,6 +436,7 @@ const pipingAndErosionWMSConfig: WMSLayerProps = {
     title: pipingAndErosionWMSTitle,
     opacity: 0.75,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${pipingAndErosionLayerName}`,
@@ -462,6 +473,7 @@ const expansiveSoilRockWMSConfig: WMSLayerProps = {
     title: expansiveSoilRockWMSTitle,
     opacity: 0.75,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${expansiveSoilRockLayerName}`,
@@ -497,6 +509,7 @@ const shallowGroundwaterWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: shallowGroundwaterWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     opacity: 0.75,
     sublayers: [
         {
@@ -535,6 +548,7 @@ const radonSusceptibilityWMSConfig: WMSLayerProps = {
     title: radonSusceptibilityWMSTitle,
     opacity: 0.75,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${radonSusceptibilityLayerName}`,
@@ -571,6 +585,7 @@ const corrosiveSoilRockWMSConfig: WMSLayerProps = {
     title: corrosiveSoilRockWMSTitle,
     opacity: 0.75,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${corrosiveSoilRockLayerName}`,
@@ -607,6 +622,7 @@ const collapsibleSoilWMSConfig: WMSLayerProps = {
     title: collapsibleSoilWMSTitle,
     opacity: 0.75,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${collapsibleSoilLayerName}`,
@@ -643,6 +659,7 @@ const solubleSoilAndRockWMSConfig: WMSLayerProps = {
     title: solubleSoilAndRockWMSTitle,
     opacity: 0.75,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${solubleSoilAndRockLayerName}`,
@@ -678,6 +695,7 @@ const alluvialFanWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: alluvialFanWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     opacity: 0.75,
     sublayers: [
         {
@@ -715,6 +733,7 @@ const floodAndDebrisWMSConfig: WMSLayerProps = {
     title: floodAndDebrisWMSTitle,
     opacity: 0.75,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${floodAndDebrisLayerName}`,
@@ -750,6 +769,7 @@ const earthFissureWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: earthFissureWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${earthFissureLayerName}`,
@@ -786,6 +806,7 @@ const erosionHazardZoneWMSConfig: WMSLayerProps = {
     title: erosionHazardZoneWMSTitle,
     opacity: 0.75,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${erosionHazardZoneLayerName}`,
@@ -821,6 +842,7 @@ const karstFeaturesWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: karstFeaturesWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${karstFeaturesLayerName}`,
@@ -856,6 +878,7 @@ const quads24kWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: quads24kWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${GEN_GIS_WORKSPACE}:${quads24kLayerName}`,

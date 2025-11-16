@@ -19,7 +19,7 @@ interface GeoJSONFeature {
 }
 
 interface UseTerraDraw {
-    map: MapLibreMap;
+    map: MapLibreMap | null;
     onDrawComplete?: (geometry: DrawGeometry) => void;
 }
 

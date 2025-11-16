@@ -12,6 +12,7 @@ const aluniteWMSConfig: WMSLayerProps = {
     title: aluniteWMSTitle,
     opacity: .5,
     visible: true,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${aluniteLayerName}`,
@@ -50,6 +51,7 @@ const bentoniteWMSConfig: WMSLayerProps = {
     title: bentoniteWMSTitle,
     opacity: .5,
     visible: true,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${bentoniteLayerName}`,
@@ -88,6 +90,7 @@ const dolomiteWMSConfig: WMSLayerProps = {
     title: dolomiteWMSTitle,
     opacity: .5,
     visible: true,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${dolomiteLayerName}`,
@@ -126,6 +129,7 @@ const gypsumWMSConfig: WMSLayerProps = {
     title: gypsumWMSTitle,
     opacity: .5,
     visible: true,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${gypsumLayerName}`,
@@ -164,6 +168,7 @@ const limestoneWMSConfig: WMSLayerProps = {
     title: limestoneWMSTitle,
     opacity: .5,
     visible: true,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${limestoneLayerName}`,
@@ -202,6 +207,7 @@ const phosphateWMSConfig: WMSLayerProps = {
     title: phosphateWMSTitle,
     opacity: .5,
     visible: true,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${phosphateLayerName}`,
@@ -240,6 +246,7 @@ const potashWMSConfig: WMSLayerProps = {
     title: potashWMSTitle,
     opacity: .5,
     visible: true,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${potashLayerName}`,
@@ -278,6 +285,7 @@ const silicaWMSConfig: WMSLayerProps = {
     title: silicaWMSTitle,
     opacity: .5,
     visible: true,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${silicaLayerName}`,
@@ -333,6 +341,7 @@ const criticalMineralOccurrencesWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: criticalMineralOccurrencesWMSTitle,
     visible: true,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${criticalMineralOccurrencesWMSLayerName}`,
@@ -356,6 +365,7 @@ const criticalMineralsAreasWMSConfig: WMSLayerProps = {
     title: criticalMineralsAreasWMSTitle,
     opacity: 0.5,
     visible: true,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${criticalMineralsAreasWMSLayerName}`,
@@ -392,6 +402,7 @@ const miningDistrictsConfig: WMSLayerProps = {
     title: miningDistrictsTitle,
     opacity: 0.5,
     visible: true,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${miningDistrictsLayerName}`,
@@ -432,6 +443,7 @@ const umosWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: umosWMSTitle,
     visible: true,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${umosLayerName}`,
@@ -475,6 +487,7 @@ const landAssessmentWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: landAssessmentWMSTitle,
     visible: true,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${landAssessmentLayerName}`,

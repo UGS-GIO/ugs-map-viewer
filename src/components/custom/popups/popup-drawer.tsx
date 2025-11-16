@@ -16,6 +16,7 @@ interface CombinedSidebarDrawerProps {
     popupContent: LayerContentProps[];
     drawerTriggerRef: React.RefObject<HTMLButtonElement>;
     popupTitle: string;
+    onClose?: () => void;
 }
 
 function PopupDrawer({
@@ -23,6 +24,7 @@ function PopupDrawer({
     popupContent,
     drawerTriggerRef,
     popupTitle,
+    onClose,
 }: CombinedSidebarDrawerProps) {
     const carouselRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -93,7 +95,9 @@ function PopupDrawer({
                 console.error('Error clearing highlights:', error);
             }
         }
-    }, [map]);
+        // Call external onClose callback if provided
+        onClose?.();
+    }, [map, onClose]);
 
     return (
         <Drawer

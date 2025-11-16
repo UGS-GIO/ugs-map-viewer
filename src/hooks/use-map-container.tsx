@@ -12,6 +12,10 @@ import { useMapUrlSync } from '@/hooks/use-map-url-sync';
 import { createCoordinateAdapter } from '@/lib/map/coordinates/factory';
 import type { CoordinateAdapter } from '@/lib/map/coordinates/types';
 import { clearGraphics } from '@/lib/map/highlight-utils';
+import { useMultiSelectTool } from '@/hooks/use-multi-select';
+import { useMultiSelect } from '@/context/multi-select-context';
+import { useMultiSelectControl } from '@/hooks/use-multi-select-control';
+import type { LayerProps, WMSLayerProps, GroupLayerProps } from '@/lib/types/mapping-types';
 
 interface UseMapContainerProps {
     wmsUrl: string;
@@ -74,7 +78,88 @@ export function useMapContainer({
         isSuccess: featureInfoQuery.isSuccess,
         featureData: featureInfoQuery.data || [],
         drawerTriggerRef,
-        clickId: featureInfoQuery.clickId
+        clickId: featureInfoQuery.clickId,
+        isPolygonQuery: featureInfoQuery.isPolygonQuery
+    });
+
+    // Multi-select tool integration
+    const { isMultiSelectMode } = useMultiSelect();
+
+    // Add multi-select control to map
+    useMultiSelectControl(map);
+
+    const { clearSelection } = useMultiSelectTool({
+        map,
+        onPolygonComplete: (geometry) => {
+            console.log('[MapContainer] ====== POLYGON COMPLETE ======');
+            console.log('[MapContainer] Polygon geometry:', geometry);
+            console.log('[MapContainer] Rings:', geometry.rings);
+            console.log('[MapContainer] Ring count:', geometry.rings?.length);
+            console.log('[MapContainer] First ring point count:', geometry.rings?.[0]?.length);
+
+            // Build visibleLayersMap before querying (same logic as click handler)
+            if (layersConfig) {
+                const visibleLayersMap: Record<string, any> = {};
+
+                const buildLayerMap = (layers: LayerProps[]) => {
+                    for (const layer of layers) {
+                        if (layer.type === 'wms') {
+                            const wmsLayer = layer as WMSLayerProps;
+                            if (wmsLayer.sublayers) {
+                                for (const sublayer of wmsLayer.sublayers) {
+                                    if (sublayer.name) {
+                                        // Check if the layer is actually visible on the map
+                                        let isVisible = wmsLayer.visible ?? true;
+
+                                        // Generate the same layer ID that was used when adding the layer
+                                        const sourceId = `wms-${wmsLayer.title || 'layer'}`.replace(/\s+/g, '-').toLowerCase();
+                                        const mapLayerId = `wms-layer-${sourceId}`;
+
+                                        if (map) {
+                                            const mapLayer = map.getLayer(mapLayerId);
+                                            if (mapLayer) {
+                                                const visibility = map.getLayoutProperty(mapLayerId, 'visibility');
+                                                isVisible = visibility !== 'none';
+                                            }
+                                        }
+
+                                        visibleLayersMap[sublayer.name] = {
+                                            visible: isVisible,
+                                            groupLayerTitle: wmsLayer.title || '',
+                                            layerTitle: wmsLayer.title || sublayer.name,
+                                            popupFields: sublayer.popupFields,
+                                            relatedTables: sublayer.relatedTables,
+                                            queryable: sublayer.queryable ?? true,
+                                            linkFields: sublayer.linkFields,
+                                            customLayerParameters: wmsLayer.customLayerParameters,
+                                            rasterSource: sublayer.rasterSource,
+                                            schema: sublayer.schema,
+                                            layerCrs: wmsLayer.crs || 'EPSG:3857',
+                                        };
+                                    }
+                                }
+                            }
+                        } else if (layer.type === 'group') {
+                            const groupLayer = layer as GroupLayerProps;
+                            if (groupLayer.layers) {
+                                buildLayerMap(groupLayer.layers);
+                            }
+                        }
+                    }
+                };
+
+                if (Array.isArray(layersConfig)) {
+                    buildLayerMap(layersConfig);
+                }
+                console.log('[MapContainer] Built visibleLayersMap with keys:', Object.keys(visibleLayersMap));
+                setVisibleLayersMap(visibleLayersMap);
+            }
+
+            console.log('[MapContainer] Calling fetchForPolygon...');
+            // Convert GeoJSON rings to WGS84 (they're already in WGS84 from Terra Draw)
+            featureInfoQuery.fetchForPolygon(geometry.rings);
+            console.log('[MapContainer] fetchForPolygon called');
+        }
     });
 
     // Handle map clicks with coordinate adapter
@@ -94,7 +179,8 @@ export function useMapContainer({
 
     // Attach MapLibre click handler to the map instance
     useEffect(() => {
-        if (!map || isSketching) {
+        // Disable clicks when sketching or in multi-select mode
+        if (!map || isSketching || isMultiSelectMode) {
             return;
         }
 
@@ -116,7 +202,7 @@ export function useMapContainer({
         return () => {
             map?.off?.('click', handleMapLibreClick);
         };
-    }, [map, isSketching, handleMapClick]);
+    }, [map, isSketching, isMultiSelectMode, handleMapClick]);
 
     // Initialize the map when the container is ready
     useEffect(() => {
@@ -141,5 +227,6 @@ export function useMapContainer({
         coordinates,
         setCoordinates,
         layersConfig: processedLayers,
+        onDrawerClose: clearSelection,
     };
 }

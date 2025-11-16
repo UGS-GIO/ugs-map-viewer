@@ -42,9 +42,9 @@ function ReportGenerator() {
         height: '50vh'
     });
 
-    // Setup Terra Draw for custom area drawing
+    // Setup Terra Draw for custom area drawing - only when customArea button is active
     const { startPolygonDraw, clearDrawings, cancelDraw, isReady: isTerraDrawReady } = useTerraDrawPolygon({
-        map: map as any,
+        map: activeButton === 'customArea' ? map : null,
         onDrawComplete: (geometry: DrawGeometry) => {
             console.log('[ReportGenerator] Draw complete:', geometry);
 

@@ -36,6 +36,7 @@ export default function MapContainer({ searchParams, updateLayerSelection }: Map
         handleOnContextMenu,
         coordinates,
         setCoordinates,
+        onDrawerClose,
     } = useMapContainer({
         wmsUrl: `${PROD_GEOSERVER_URL}wms`,
         layersConfig: defaultLayersConfig,
@@ -65,6 +66,7 @@ export default function MapContainer({ searchParams, updateLayerSelection }: Map
                 drawerTriggerRef={drawerTriggerRef}
                 popupContent={popupContent}
                 popupTitle="CCS Information"
+                onClose={onDrawerClose}
             />
             <div ref={setPopupContainer} />
         </>
