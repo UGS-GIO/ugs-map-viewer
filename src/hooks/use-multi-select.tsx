@@ -1,8 +1,9 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { TerraDraw, TerraDrawPolygonMode, TerraDrawSelectMode } from 'terra-draw';
-import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter';
 import type { MapLibreMap } from '@/lib/types/map-types';
 import { useMultiSelect } from '@/context/multi-select-context';
+
+// Type imports don't add to bundle
+import type { TerraDraw } from 'terra-draw';
 
 interface DrawGeometry {
     type: 'polygon';
@@ -57,8 +58,14 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
 
         console.log('[MultiSelect] Initializing Terra Draw for multi-select');
 
-        const initializeDraw = () => {
+        const initializeDraw = async () => {
             try {
+                // Lazy load Terra Draw only when multi-select mode is activated
+                const [{ TerraDraw, TerraDrawPolygonMode, TerraDrawSelectMode }, { TerraDrawMapLibreGLAdapter }] = await Promise.all([
+                    import('terra-draw'),
+                    import('terra-draw-maplibre-gl-adapter')
+                ]);
+
                 const draw = new TerraDraw({
                     adapter: new TerraDrawMapLibreGLAdapter({ map }),
                     modes: [
@@ -139,8 +146,10 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
             }
         };
 
-        // Small delay to ensure map is ready
-        const timeoutId = setTimeout(initializeDraw, 100);
+        // Small delay to ensure map is ready, then load Terra Draw
+        const timeoutId = setTimeout(() => {
+            initializeDraw();
+        }, 100);
 
         return () => {
             clearTimeout(timeoutId);

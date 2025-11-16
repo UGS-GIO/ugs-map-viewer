@@ -2,8 +2,6 @@ import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { HomeControl } from '@/lib/map/controls/home-control';
 import { MultiSelectControl } from '@/lib/map/controls/multi-select-control';
-import { MaplibreExportControl } from '@watergis/maplibre-gl-export';
-import '@watergis/maplibre-gl-export/dist/maplibre-gl-export.css';
 import '@/lib/map/controls/export-control-overrides.css';
 
 type ControlPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
@@ -33,40 +31,49 @@ export function useMapControls(map: maplibregl.Map | undefined, controls: readon
         controlRefsRef.current = [];
 
         // Add controls from configuration
-        controls.forEach(({ type, position = 'top-left', options = {} }) => {
-            let control: maplibregl.IControl | null = null;
+        const addControls = async () => {
+            for (const { type, position = 'top-left', options = {} } of controls) {
+                let control: maplibregl.IControl | null = null;
 
-            switch (type) {
-                case 'navigation':
-                    control = new maplibregl.NavigationControl(options);
-                    break;
-                case 'fullscreen':
-                    control = new maplibregl.FullscreenControl(options);
-                    break;
-                case 'scale':
-                    control = new maplibregl.ScaleControl(options);
-                    break;
-                case 'geolocate':
-                    control = new maplibregl.GeolocateControl(options);
-                    break;
-                case 'home':
-                    control = new HomeControl(options);
-                    break;
-                case 'multi-select':
-                    control = new MultiSelectControl(options);
-                    break;
-                case 'export':
-                    control = new MaplibreExportControl(options);
-                    break;
-                default:
-                    console.warn(`Unknown control type: ${type}`);
-            }
+                switch (type) {
+                    case 'navigation':
+                        control = new maplibregl.NavigationControl(options);
+                        break;
+                    case 'fullscreen':
+                        control = new maplibregl.FullscreenControl(options);
+                        break;
+                    case 'scale':
+                        control = new maplibregl.ScaleControl(options);
+                        break;
+                    case 'geolocate':
+                        control = new maplibregl.GeolocateControl(options);
+                        break;
+                    case 'home':
+                        control = new HomeControl(options);
+                        break;
+                    case 'multi-select':
+                        control = new MultiSelectControl(options);
+                        break;
+                    case 'export':
+                        // Lazy load export control to avoid bundling it on initial load
+                        const [{ MaplibreExportControl }] = await Promise.all([
+                            import('@watergis/maplibre-gl-export'),
+                            import('@watergis/maplibre-gl-export/dist/maplibre-gl-export.css')
+                        ]);
+                        control = new MaplibreExportControl(options);
+                        break;
+                    default:
+                        console.warn(`Unknown control type: ${type}`);
+                }
 
-            if (control) {
-                map.addControl(control, position);
-                controlRefsRef.current.push(control);
+                if (control) {
+                    map.addControl(control, position);
+                    controlRefsRef.current.push(control);
+                }
             }
-        });
+        };
+
+        addControls();
 
         // Remove controls on cleanup
         return () => {
