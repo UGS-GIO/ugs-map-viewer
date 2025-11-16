@@ -53,7 +53,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
     const layerName = useMemo(() => {
         if (isWMSLayer(layerConfig)) {
             const wmsLayer = layerConfig as WMSLayerProps;
-            const sublayers = wmsLayer.sublayers as any[];
+            const sublayers = wmsLayer.sublayers;
             if (Array.isArray(sublayers) && sublayers.length > 0 && sublayers[0].name) {
                 return sublayers[0].name;
             }

@@ -16,12 +16,14 @@ export interface BoundingBox {
     maxY: number;
 }
 
+import type { MapLibreMap } from '@/lib/types/map-types';
+
 /** Coordinate transformation interface for MapLibre */
 export interface CoordinateAdapter {
-    screenToMap(screenPoint: ScreenPoint, view: any): MapPoint;
-    mapToScreen(mapPoint: MapPoint, view: any): ScreenPoint;
+    screenToMap(screenPoint: ScreenPoint, map: MapLibreMap): MapPoint;
+    mapToScreen(mapPoint: MapPoint, map: MapLibreMap): ScreenPoint;
     createBoundingBox(params: { mapPoint: MapPoint; resolution: number; buffer: number }): BoundingBox;
-    toJSON(point: MapPoint | null): any;
-    getViewBounds(view: any): BoundingBox;
-    getResolution(view: any): number;
+    toJSON(point: MapPoint | null): Record<string, unknown> | null;
+    getViewBounds(map: MapLibreMap): BoundingBox;
+    getResolution(map: MapLibreMap): number;
 }

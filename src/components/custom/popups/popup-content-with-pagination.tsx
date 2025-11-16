@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, memo } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Feature, Geometry, GeoJsonProperties } from "geojson"
 import { Button } from "@/components/ui/button"
@@ -30,6 +30,7 @@ export interface LayerContentProps {
     visible: boolean
     queryable?: boolean
     schema?: string
+    layerCrs?: string; // CRS of the layer itself (e.g., "EPSG:3857")
 }
 
 interface SidebarInsetWithPaginationProps {
@@ -88,7 +89,7 @@ const PopupPagination = ({ currentPage, totalPages, handlePageChange, itemsPerPa
     )
 }
 
-const LayerCard = ({
+const LayerCardInner = ({
     layer,
     buttons,
     handleZoomToFeature
@@ -191,7 +192,10 @@ const LayerCard = ({
     )
 }
 
-const PopupContentWithPagination = ({ layerContent, onSectionChange }: SidebarInsetWithPaginationProps) => {
+const LayerCard = memo(LayerCardInner);
+LayerCard.displayName = 'LayerCard';
+
+const PopupContentWithPaginationInner = ({ layerContent, onSectionChange }: SidebarInsetWithPaginationProps) => {
     const { map } = useMap()
     const buttons = useGetPopupButtons()
 
@@ -267,10 +271,10 @@ const PopupContentWithPagination = ({ layerContent, onSectionChange }: SidebarIn
         zoomToFeature(feature, map, sourceCRS)
     }
 
+    const contentKey = useMemo(() => Date.now(), [layerContent])
+
     // If no layers, return null
     if (layerContent.length === 0) return null;
-
-    const contentKey = useMemo(() => Date.now(), [layerContent])
 
     return (
         <div className="flex flex-1 flex-col gap-4 px-2 overflow-y-auto select-text h-full scrollable-container">
@@ -285,5 +289,8 @@ const PopupContentWithPagination = ({ layerContent, onSectionChange }: SidebarIn
         </div>
     )
 }
+
+const PopupContentWithPagination = memo(PopupContentWithPaginationInner);
+PopupContentWithPagination.displayName = 'PopupContentWithPagination';
 
 export { PopupContentWithPagination };

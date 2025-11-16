@@ -2,6 +2,7 @@ import { LayerFetchConfig, getLayerFetchConfig } from "@/lib/constants";
 import { useQuery } from "@tanstack/react-query";
 import type { PostgRESTRowOf } from '@/lib/types/postgrest-types';
 import { useGetCurrentPage } from "@/hooks/use-get-current-page";
+import { queryKeys } from '@/lib/query-keys';
 
 type FeatureAttributes = PostgRESTRowOf<{
     title: string;
@@ -51,7 +52,7 @@ const useFetchLayerDescriptions = (): CombinedResult => {
     const fetchConfigs = getLayerFetchConfig(currentPage);
 
     const { data = [], isLoading, error } = useQuery<FeatureAttributes[], Error>({
-        queryKey: ['layerDescriptions', currentPage, fetchConfigs?.map(c => c.tableName).join(',')],
+        queryKey: queryKeys.layers.description(currentPage, fetchConfigs?.map(c => c.tableName).join(',')),
         queryFn: () => fetchLayerDescriptions(fetchConfigs),
         enabled: !!fetchConfigs && fetchConfigs.length > 0,
         staleTime: 1000 * 60 * 60 * 1,

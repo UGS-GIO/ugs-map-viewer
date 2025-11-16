@@ -8,6 +8,7 @@ import type { MapPoint, CoordinateAdapter } from '@/lib/map/coordinates/types';
 import { GeoServerGeoJSON } from '@/lib/types/geoserver-types';
 import type { MapLibreMap } from '@/lib/types/map-types';
 import proj4 from 'proj4';
+import { queryKeys } from '@/lib/query-keys';
 
 interface WMSQueryProps {
     mapPoint: MapPoint;
@@ -36,7 +37,7 @@ export async function fetchWMSFeatureInfo({
     cql_filter = null,
     coordinateAdapter,
     crs = 'EPSG:3857'
-}: WMSQueryProps & { crs?: string }): Promise<any> {
+}: WMSQueryProps & { crs?: string }): Promise<GeoServerGeoJSON | null> {
     if (layers.length === 0) {
         console.warn('No layers specified to query.');
         return null;
@@ -155,8 +156,8 @@ export async function fetchWMSFeatureInfo({
             return acc;
         }, {} as Record<string, string>);
 
-        const featuresWithNamespace = data.features.map((feature: any) => {
-            const layerName = feature.id?.split('.')[0];
+        const featuresWithNamespace = data.features.map((feature: Feature) => {
+            const layerName = feature.id ? String(feature.id).split('.')[0] : '';
             const namespace = namespaceMap[layerName] || null;
             return {
                 ...feature,
@@ -190,7 +191,7 @@ export async function fetchWFSFeature({
     cql_filter = null,
     crs = 'EPSG:4326',
     featureCount = 50
-}: WFSQueryProps): Promise<any> {
+}: WFSQueryProps): Promise<GeoServerGeoJSON | null> {
     if (layers.length === 0) {
         console.warn('No layers specified for WFS query.');
         return null;
@@ -261,8 +262,8 @@ export async function fetchWFSFeature({
                 return acc;
             }, {} as Record<string, string>);
 
-            const featuresWithNamespace = data.features.map((feature: any) => {
-                const layerName = feature.id?.split('.')[0];
+            const featuresWithNamespace = data.features.map((feature: Feature) => {
+                const layerName = feature.id ? String(feature.id).split('.')[0] : '';
                 const namespace = namespaceMap[layerName] || null;
                 return {
                     ...feature,
@@ -354,7 +355,7 @@ export async function fetchWFSFeatureByPolygon({
     cql_filter = null,
     crs = 'EPSG:4326',
     featureCount = 200
-}: WFSPolygonQueryProps): Promise<any> {
+}: WFSPolygonQueryProps): Promise<GeoServerGeoJSON | null> {
     if (layers.length === 0) {
         console.warn('No layers specified for WFS polygon query.');
         return null;
@@ -465,8 +466,8 @@ export async function fetchWFSFeatureByPolygon({
                 return acc;
             }, {} as Record<string, string>);
 
-            const featuresWithNamespace = data.features.map((feature: any) => {
-                const layerName = feature.id?.split('.')[0];
+            const featuresWithNamespace = data.features.map((feature: Feature) => {
+                const layerName = feature.id ? String(feature.id).split('.')[0] : '';
                 const namespace = namespaceMap[layerName] || null;
                 return {
                     ...feature,
@@ -624,7 +625,10 @@ export function useFeatureInfoQuery({
 
         for (const layerKey of queryableLayers) {
             const layerConfig = visibleLayersMap[layerKey];
-            const layerCrs = (layerConfig as any)?.layerCrs || 'EPSG:3857';
+
+            console.log();
+            
+            const layerCrs = layerConfig?.layerCrs || 'EPSG:3857';
 
             // Get the CQL filter for this specific layer
             const layerTitle = getLayerTitle(layerConfig);
@@ -664,7 +668,7 @@ export function useFeatureInfoQuery({
                 });
             }
 
-            if (featureInfo && featureInfo.features && featureInfo.features.length > 0) {
+            if (featureInfo && 'features' in featureInfo && featureInfo.features && featureInfo.features.length > 0) {
                 // console.log(`[FeatureInfoQuery] Layer ${layerKey}: ${featureInfo.features.length} features returned`);
                 allFeatures.push(...featureInfo.features);
                 sourceCRS = getSourceCRSFromGeoJSON(featureInfo);
@@ -736,7 +740,9 @@ export function useFeatureInfoQuery({
                         url: value.rasterSource.url,
                         coordinateAdapter
                     });
-                    baseLayerInfo.rasterSource = { ...value.rasterSource, data: rasterFeatureInfo };
+                    // WMS feature info always returns a FeatureCollection or null
+                    const rasterData = (rasterFeatureInfo && 'features' in rasterFeatureInfo) ? rasterFeatureInfo : null;
+                    baseLayerInfo.rasterSource = { ...value.rasterSource, data: rasterData };
                 }
 
                 return baseLayerInfo as LayerContentProps;
@@ -754,7 +760,7 @@ export function useFeatureInfoQuery({
 
     // Remove activeFilters from queryKey - we don't want filter changes to invalidate the query
     const { data, isFetching, isSuccess, refetch } = useQuery({
-        queryKey: ['wmsFeatureInfo', coordinateAdapter.toJSON(mapPoint), polygonRings, currentClickId],
+        queryKey: queryKeys.features.wmsInfo(coordinateAdapter.toJSON(mapPoint), polygonRings, currentClickId),
         queryFn,
         enabled: false,
         refetchOnWindowFocus: false,

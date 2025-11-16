@@ -1,7 +1,28 @@
 import { useQuery } from "@tanstack/react-query";
 import { XMLParser } from "fast-xml-parser";
+import { queryKeys } from '@/lib/query-keys';
 
 export type BoundingBox = [number, number, number, number]; // [minLng, minLat, maxLng, maxLat]
+
+interface WMSLayer {
+    Name?: string;
+    Layer?: WMSLayer | WMSLayer[];
+    BoundingBox?: WMSBoundingBox | WMSBoundingBox[];
+    EX_GeographicBoundingBox?: {
+        westBoundLongitude: string;
+        southBoundLatitude: string;
+        eastBoundLongitude: string;
+        northBoundLatitude: string;
+    };
+}
+
+interface WMSBoundingBox {
+    '@_CRS'?: string;
+    '@_minx': string;
+    '@_miny': string;
+    '@_maxx': string;
+    '@_maxy': string;
+}
 
 const parseCapabilitiesExtent = (xml: string, targetLayerName: string): BoundingBox | null => {
     const parser = new XMLParser({
@@ -17,7 +38,7 @@ const parseCapabilitiesExtent = (xml: string, targetLayerName: string): Bounding
         if (!capability?.Layer) return null;
 
         // Helper function to find layer by name
-        const findLayerByName = (layer: any, name: string): any => {
+        const findLayerByName = (layer: WMSLayer, name: string): WMSLayer | null => {
             if (layer.Name === name) return layer;
             if (layer.Layer) {
                 if (Array.isArray(layer.Layer)) {
@@ -107,7 +128,7 @@ const fetchLayerExtent = async (wmsUrl: string, layerName: string): Promise<Boun
 
 const useLayerExtent = (wmsUrl: string | null, layerName: string | null) => {
     return useQuery({
-        queryKey: ['layerExtent', wmsUrl, layerName],
+        queryKey: queryKeys.layers.extent(wmsUrl || '', layerName || ''),
         queryFn: () => fetchLayerExtent(wmsUrl || '', layerName || ''),
         enabled: false, // Only fetch when explicitly called via refetch()
         staleTime: Infinity, // Keeps the data fresh forever (never marks as stale)

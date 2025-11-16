@@ -206,7 +206,7 @@ function createPatternMarkElement(
 
     switch (mark.toLowerCase()) {
         case 'shape://slash':
-        case 'slash':
+        case 'slash': {
             const slashLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
             slashLine.setAttribute("x1", "0");
             slashLine.setAttribute("y1", tileSize.toString());
@@ -215,9 +215,10 @@ function createPatternMarkElement(
             slashLine.setAttribute("stroke", strokeColor);
             slashLine.setAttribute("stroke-width", strokeWidth);
             return slashLine;
+        }
 
         case 'shape://backslash':
-        case 'backslash':
+        case 'backslash': {
             const backslashLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
             backslashLine.setAttribute("x1", "0");
             backslashLine.setAttribute("y1", "0");
@@ -226,9 +227,10 @@ function createPatternMarkElement(
             backslashLine.setAttribute("stroke", strokeColor);
             backslashLine.setAttribute("stroke-width", strokeWidth);
             return backslashLine;
+        }
 
         case 'shape://plus':
-        case 'plus':
+        case 'plus': {
             const plusGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
             const centerX = tileSize / 2;
             const centerY = tileSize / 2;
@@ -252,10 +254,11 @@ function createPatternMarkElement(
             plusGroup.appendChild(hLine);
             plusGroup.appendChild(vLine);
             return plusGroup;
+        }
 
         case 'shape://times':
         case 'times':
-        case 'x':
+        case 'x': {
             const timesGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
 
             const diag1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
@@ -277,18 +280,20 @@ function createPatternMarkElement(
             timesGroup.appendChild(diag1);
             timesGroup.appendChild(diag2);
             return timesGroup;
+        }
 
         case 'shape://dot':
-        case 'dot':
+        case 'dot': {
             const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
             dot.setAttribute("cx", (tileSize / 2).toString());
             dot.setAttribute("cy", (tileSize / 2).toString());
             dot.setAttribute("r", "1");
             dot.setAttribute("fill", fillColor !== "none" ? fillColor : strokeColor);
             return dot;
+        }
 
         case 'shape://circle':
-        case 'circle':
+        case 'circle': {
             const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
             circle.setAttribute("cx", (tileSize / 2).toString());
             circle.setAttribute("cy", (tileSize / 2).toString());
@@ -297,9 +302,10 @@ function createPatternMarkElement(
             circle.setAttribute("stroke", strokeColor);
             circle.setAttribute("stroke-width", strokeWidth);
             return circle;
+        }
 
         case 'shape://square':
-        case 'square':
+        case 'square': {
             const square = document.createElementNS("http://www.w3.org/2000/svg", "rect");
             const squareSize = 4;
             square.setAttribute("x", ((tileSize - squareSize) / 2).toString());
@@ -310,9 +316,10 @@ function createPatternMarkElement(
             square.setAttribute("stroke", strokeColor);
             square.setAttribute("stroke-width", strokeWidth);
             return square;
+        }
 
         case 'shape://triangle':
-        case 'triangle':
+        case 'triangle': {
             const triangle = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
             const triCenterX = tileSize / 2;
             const triCenterY = tileSize / 2;
@@ -327,10 +334,11 @@ function createPatternMarkElement(
             triangle.setAttribute("stroke", strokeColor);
             triangle.setAttribute("stroke-width", strokeWidth);
             return triangle;
+        }
 
         case 'shape://vertline':
         case 'vertline':
-        case 'vertical':
+        case 'vertical': {
             const vertLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
             vertLine.setAttribute("x1", (tileSize / 2).toString());
             vertLine.setAttribute("y1", "0");
@@ -339,10 +347,11 @@ function createPatternMarkElement(
             vertLine.setAttribute("stroke", strokeColor);
             vertLine.setAttribute("stroke-width", strokeWidth);
             return vertLine;
+        }
 
         case 'shape://horline':
         case 'horline':
-        case 'horizontal':
+        case 'horizontal': {
             const horLine = document.createElementNS("http://www.w3.org/2000/svg", "line");
             horLine.setAttribute("x1", "0");
             horLine.setAttribute("y1", (tileSize / 2).toString());
@@ -351,6 +360,7 @@ function createPatternMarkElement(
             horLine.setAttribute("stroke", strokeColor);
             horLine.setAttribute("stroke-width", strokeWidth);
             return horLine;
+        }
 
         default:
             console.warn(`Unsupported graphic fill mark type: ${mark}`);

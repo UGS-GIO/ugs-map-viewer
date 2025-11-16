@@ -58,7 +58,7 @@ export interface NumberPopupFieldConfig extends BaseFieldConfig {
 // Custom-specific field configuration
 export interface CustomPopupFieldConfig extends BaseFieldConfig {
     type: 'custom';
-    transform?: (properties: GeoJsonProperties | any | null | undefined) => string;
+    transform?: (properties: GeoJsonProperties | null | undefined) => string;
 }
 
 // Your main FieldConfig is a discriminated union of these specific types
