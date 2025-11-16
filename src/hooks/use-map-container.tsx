@@ -91,12 +91,6 @@ export function useMapContainer({
     const { clearSelection } = useMultiSelectTool({
         map,
         onPolygonComplete: (geometry) => {
-            console.log('[MapContainer] ====== POLYGON COMPLETE ======');
-            console.log('[MapContainer] Polygon geometry:', geometry);
-            console.log('[MapContainer] Rings:', geometry.rings);
-            console.log('[MapContainer] Ring count:', geometry.rings?.length);
-            console.log('[MapContainer] First ring point count:', geometry.rings?.[0]?.length);
-
             // Build visibleLayersMap before querying (same logic as click handler)
             if (layersConfig) {
                 const visibleLayersMap: Record<string, any> = {};
@@ -151,14 +145,11 @@ export function useMapContainer({
                 if (Array.isArray(layersConfig)) {
                     buildLayerMap(layersConfig);
                 }
-                console.log('[MapContainer] Built visibleLayersMap with keys:', Object.keys(visibleLayersMap));
                 setVisibleLayersMap(visibleLayersMap);
             }
 
-            console.log('[MapContainer] Calling fetchForPolygon...');
             // Convert GeoJSON rings to WGS84 (they're already in WGS84 from Terra Draw)
             featureInfoQuery.fetchForPolygon(geometry.rings);
-            console.log('[MapContainer] fetchForPolygon called');
         }
     });
 
@@ -223,7 +214,6 @@ export function useMapContainer({
 
         // If the popup was opened from a polygon query, turn off multi-select mode
         if (featureInfoQuery.isPolygonQuery) {
-            console.log('[MapContainer] Closing popup from polygon query, disabling multi-select mode');
             setMultiSelectMode(false);
         }
     };
