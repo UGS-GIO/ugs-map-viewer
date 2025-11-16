@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { RendererFactory } from '@/lib/legend/renderer-factory';
 import { createLegendProvider } from '@/lib/map/legend/factory';
 import { useMap } from '@/hooks/use-map';
+import { queryKeys } from '@/lib/query-keys';
 
 const useLegendPreview = (layerId: string, url: string) => {
     const { map } = useMap();
@@ -45,7 +46,7 @@ const useLegendPreview = (layerId: string, url: string) => {
 
     // Query with dependencies: map, layerId, and url (for caching and refetch logic)
     const { data: preview = [], isLoading, error } = useQuery({
-        queryKey: ['legendPreview', layerId, url],
+        queryKey: queryKeys.layers.legend(layerId, url),
         queryFn: fetchLegendData,
         enabled: !!map, // Only run the query when map is available
         staleTime: 1000 * 60 * 60 * 1, // Cache for 1 hour

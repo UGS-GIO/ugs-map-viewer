@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/query-keys';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandItem, CommandGroup, CommandEmpty, CommandSeparator } from '@/components/ui/command';
@@ -180,7 +181,7 @@ function SearchCombobox({
     const queryResults: QueryResultWrapper[] = config.map((sourceConfigWrapper, index) => {
         const source = sourceConfigWrapper;
         const query = useQuery<QueryData, Error>({
-            queryKey: ['search', source.url, source.type, debouncedSearch, index],
+            queryKey: queryKeys.sidebar.search(source.url, source.type, debouncedSearch, index),
             queryFn: async (): Promise<QueryData> => {
                 if (source.type === 'masquerade') {
 

@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { XMLParser } from "fast-xml-parser";
+import { queryKeys } from '@/lib/query-keys';
 
 export type BoundingBox = [number, number, number, number]; // [minLng, minLat, maxLng, maxLat]
 
@@ -107,7 +108,7 @@ const fetchLayerExtent = async (wmsUrl: string, layerName: string): Promise<Boun
 
 const useLayerExtent = (wmsUrl: string | null, layerName: string | null) => {
     return useQuery({
-        queryKey: ['layerExtent', wmsUrl, layerName],
+        queryKey: queryKeys.layers.extent(wmsUrl || '', layerName || ''),
         queryFn: () => fetchLayerExtent(wmsUrl || '', layerName || ''),
         enabled: false, // Only fetch when explicitly called via refetch()
         staleTime: Infinity, // Keeps the data fresh forever (never marks as stale)

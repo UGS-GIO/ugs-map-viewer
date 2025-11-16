@@ -2,6 +2,7 @@ import React from 'react';
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/query-keys';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -253,7 +254,7 @@ const MapConfigurations = () => {
         isLoading: isFormationLoading,
         error: formationError
     } = useQuery({
-        queryKey: ['formationMappings'],
+        queryKey: queryKeys.carbonStorage.formations(),
         queryFn: fetchFormationData,
         staleTime: 1000 * 60 * 60,
     });

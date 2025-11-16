@@ -3,6 +3,7 @@ import maplibregl from 'maplibre-gl';
 import type { Map as MapLibreMap } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { convertPolygonToWGS84, calculateBounds, calculateZoomFromBounds } from '@/lib/map/conversion-utils';
+import { queryKeys } from '@/lib/query-keys';
 
 interface UseMapLibreScreenshotProps {
     polygon?: string | null; // Polygon JSON string with rings (optional - screenshot only generates when provided)
@@ -190,7 +191,7 @@ async function generateMapLibreScreenshot(
  */
 export function useMapLibreScreenshot({ polygon, width = '50vw', height = '50vh' }: UseMapLibreScreenshotProps) {
     const { data: screenshot, isPending, error } = useQuery({
-        queryKey: ['maplibre-screenshot', polygon, width, height],
+        queryKey: queryKeys.map.screenshot(polygon || '', width, height),
         queryFn: async () => {
             if (!polygon) {
                 throw new Error('Polygon is required');

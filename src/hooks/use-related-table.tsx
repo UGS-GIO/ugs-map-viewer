@@ -2,6 +2,7 @@ import { RelatedTable } from "@/lib/types/mapping-types";
 import type { PostgRESTRow } from '@/lib/types/postgrest-types';
 import { useQueries, UseQueryResult } from "@tanstack/react-query";
 import { Feature, Geometry, GeoJsonProperties } from "geojson";
+import { queryKeys } from '@/lib/query-keys';
 
 type RelatedData = PostgRESTRow;
 
@@ -35,7 +36,7 @@ const useRelatedTable = (
 
     const queryResults: UseQueryResult<ProcessedRelatedData[]>[] = useQueries({
         queries: configs.map((config, index) => ({
-            queryKey: ["relatedTable", config.targetField, feature?.properties?.[config.targetField], config.url, index],
+            queryKey: queryKeys.features.relatedTable(config.url, feature?.properties?.[config.targetField] || '', config.targetField),
             queryFn: async (): Promise<ProcessedRelatedData[]> => {
                 try {
                     const targetValue = feature?.properties?.[config.targetField];

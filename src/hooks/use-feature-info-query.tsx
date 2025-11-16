@@ -8,6 +8,7 @@ import type { MapPoint, CoordinateAdapter } from '@/lib/map/coordinates/types';
 import { GeoServerGeoJSON } from '@/lib/types/geoserver-types';
 import type { MapLibreMap } from '@/lib/types/map-types';
 import proj4 from 'proj4';
+import { queryKeys } from '@/lib/query-keys';
 
 interface WMSQueryProps {
     mapPoint: MapPoint;
@@ -754,7 +755,7 @@ export function useFeatureInfoQuery({
 
     // Remove activeFilters from queryKey - we don't want filter changes to invalidate the query
     const { data, isFetching, isSuccess, refetch } = useQuery({
-        queryKey: ['wmsFeatureInfo', coordinateAdapter.toJSON(mapPoint), polygonRings, currentClickId],
+        queryKey: queryKeys.features.wmsInfo(coordinateAdapter.toJSON(mapPoint), polygonRings, currentClickId),
         queryFn,
         enabled: false,
         refetchOnWindowFocus: false,
