@@ -7,7 +7,8 @@ import { cn } from '@/lib/utils';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { Link } from '@/components/custom/link';
 import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links';
-import { useGetPageInfo } from '@/hooks/use-get-page-info';
+import { useGetCurrentPage } from '@/hooks/use-get-current-page';
+import { getAppTitle } from '@/lib/app-titles';
 import { NavSkeleton } from './sidebar/sidebar-skeleton';
 
 interface SidebarProps extends React.HTMLAttributes<HTMLElement> { }
@@ -15,7 +16,8 @@ interface SidebarProps extends React.HTMLAttributes<HTMLElement> { }
 export default function Sidebar({ className }: SidebarProps) {
   const { navOpened, setNavOpened, isCollapsed, setIsCollapsed } = useSidebar();
   const { data: sidebarLinks, isLoading: areLinksLoading } = useGetSidebarLinks();
-  const { data: pageInfo } = useGetPageInfo();
+  const currentPage = useGetCurrentPage();
+  const appTitle = getAppTitle(currentPage);
 
   /* Make body not scrollable when navBar is opened */
   useEffect(() => {
@@ -65,7 +67,7 @@ export default function Sidebar({ className }: SidebarProps) {
             </Link>
             {!isCollapsed && (
               <div className="flex flex-col justify-end truncate transition-all duration-300">
-                <span className='font-medium text-wrap'>{pageInfo?.appTitle}</span>
+                <span className='font-medium text-wrap'>{appTitle}</span>
                 <span className='text-sm'>Utah Geological Survey</span>
               </div>
             )}
