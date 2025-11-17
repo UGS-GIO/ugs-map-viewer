@@ -157,7 +157,7 @@ export async function fetchWMSFeatureInfo({
         }, {} as Record<string, string>);
 
         const featuresWithNamespace = data.features.map((feature: Feature) => {
-            const layerName = String(feature.id)?.split('.')[0];
+            const layerName = feature.id ? String(feature.id).split('.')[0] : '';
             const namespace = namespaceMap[layerName] || null;
             return {
                 ...feature,
@@ -263,7 +263,7 @@ export async function fetchWFSFeature({
             }, {} as Record<string, string>);
 
             const featuresWithNamespace = data.features.map((feature: Feature) => {
-                const layerName = feature.id?.split('.')[0];
+                const layerName = feature.id ? String(feature.id).split('.')[0] : '';
                 const namespace = namespaceMap[layerName] || null;
                 return {
                     ...feature,
@@ -467,7 +467,7 @@ export async function fetchWFSFeatureByPolygon({
             }, {} as Record<string, string>);
 
             const featuresWithNamespace = data.features.map((feature: Feature) => {
-                const layerName = feature.id?.split('.')[0];
+                const layerName = feature.id ? String(feature.id).split('.')[0] : '';
                 const namespace = namespaceMap[layerName] || null;
                 return {
                     ...feature,
@@ -668,7 +668,7 @@ export function useFeatureInfoQuery({
                 });
             }
 
-            if (featureInfo && featureInfo.features && featureInfo.features.length > 0) {
+            if (featureInfo && 'features' in featureInfo && featureInfo.features && featureInfo.features.length > 0) {
                 // console.log(`[FeatureInfoQuery] Layer ${layerKey}: ${featureInfo.features.length} features returned`);
                 allFeatures.push(...featureInfo.features);
                 sourceCRS = getSourceCRSFromGeoJSON(featureInfo);
@@ -740,7 +740,9 @@ export function useFeatureInfoQuery({
                         url: value.rasterSource.url,
                         coordinateAdapter
                     });
-                    baseLayerInfo.rasterSource = { ...value.rasterSource, data: rasterFeatureInfo };
+                    // WMS feature info always returns a FeatureCollection or null
+                    const rasterData = (rasterFeatureInfo && 'features' in rasterFeatureInfo) ? rasterFeatureInfo : null;
+                    baseLayerInfo.rasterSource = { ...value.rasterSource, data: rasterData };
                 }
 
                 return baseLayerInfo as LayerContentProps;
