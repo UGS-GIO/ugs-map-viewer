@@ -88,7 +88,7 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
 
                 let isCompleting = false;
 
-                const handleFinish = (id: string | number, context: { action: string; mode: string }) => {
+                const handleFinish = (_id: string | number, context: { action: string; mode: string }) => {
                     if (context.mode === 'polygon' && context.action === 'draw') {
                         const features = draw.getSnapshot();
 

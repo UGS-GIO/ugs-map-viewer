@@ -27,7 +27,7 @@ const basinNamesWMSConfig: WMSLayerProps = {
                 'Rank': {
                     type: 'custom',
                     field: 'ranknumber',
-                    transform: (properties: GeoJsonProperties): string => {
+                    transform: (properties: GeoJsonProperties | null | undefined): string => {
                         if (!properties) {
                             return '';
                         }
