@@ -8,8 +8,7 @@ const QUERY_BBOX_LAYER_ID = 'query-bbox-debug-layer';
 export function useQueryBboxVisualizer(map: MapLibreMap | null) {
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    const showQueryBbox = useCallback((bbox: { minX: number; minY: number; maxX: number; maxY: number }, crs: string) => {
-        console.log('[QueryBboxVisualizer] showQueryBbox called', { bbox, crs, hasMap: !!map });
+    const showQueryBbox = useCallback((bbox: { minX: number; minY: number; maxX: number; maxY: number }, crs: string, persist = false) => {
         if (!map) return;
 
         // Clear any existing timeout
@@ -74,15 +73,17 @@ export function useQueryBboxVisualizer(map: MapLibreMap | null) {
             }
         });
 
-        // Auto-remove after 2 seconds
-        timeoutRef.current = setTimeout(() => {
-            if (map.getLayer(QUERY_BBOX_LAYER_ID)) {
-                map.removeLayer(QUERY_BBOX_LAYER_ID);
-            }
-            if (map.getSource(QUERY_BBOX_SOURCE_ID)) {
-                map.removeSource(QUERY_BBOX_SOURCE_ID);
-            }
-        }, 2000);
+        // Auto-remove after 2 seconds only if not persisting
+        if (!persist) {
+            timeoutRef.current = setTimeout(() => {
+                if (map.getLayer(QUERY_BBOX_LAYER_ID)) {
+                    map.removeLayer(QUERY_BBOX_LAYER_ID);
+                }
+                if (map.getSource(QUERY_BBOX_SOURCE_ID)) {
+                    map.removeSource(QUERY_BBOX_SOURCE_ID);
+                }
+            }, 2000);
+        }
     }, [map]);
 
     const hideQueryBbox = useCallback(() => {

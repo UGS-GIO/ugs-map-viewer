@@ -569,7 +569,7 @@ export function useFeatureInfoQuery({
     const [currentClickId, setCurrentClickId] = useState<number | null>(null);
 
     // Query bbox visualizer for debugging
-    const { showQueryBbox } = useQueryBboxVisualizer(map);
+    const { showQueryBbox, hideQueryBbox } = useQueryBboxVisualizer(map);
 
     const queryFn = async (): Promise<LayerContentProps[]> => {
         if (!map) {
@@ -655,7 +655,7 @@ export function useFeatureInfoQuery({
                     featureCount: 50,
                     bufferMeters,
                     onBboxCalculated: shouldShowBbox ? (bbox, crs) => {
-                        showQueryBbox(bbox, crs);
+                        showQueryBbox(bbox, crs, true); // persist=true to keep visible
                     } : undefined
                 });
             }
@@ -793,5 +793,6 @@ export function useFeatureInfoQuery({
         lastClickedPoint: mapPoint || undefined,
         isPolygonQuery: polygonRings !== null,
         clickId: currentClickId,
+        hideQueryBbox,
     };
 }
