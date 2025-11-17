@@ -5,6 +5,8 @@
  * @see https://tkdodo.eu/blog/effective-react-query-keys
  */
 
+import type { QueryClient } from '@tanstack/react-query';
+
 export const queryKeys = {
   // Layer-related queries
   layers: {
@@ -79,7 +81,7 @@ export const queryKeys = {
 /**
  * Helper to invalidate all queries for a specific layer
  */
-export const invalidateLayer = (queryClient: any, layerId: string) => {
+export const invalidateLayer = (queryClient: QueryClient, layerId: string) => {
   return queryClient.invalidateQueries({
     queryKey: queryKeys.layers.detail(layerId)
   });
@@ -88,7 +90,7 @@ export const invalidateLayer = (queryClient: any, layerId: string) => {
 /**
  * Helper to invalidate all layer-related queries
  */
-export const invalidateAllLayers = (queryClient: any) => {
+export const invalidateAllLayers = (queryClient: QueryClient) => {
   return queryClient.invalidateQueries({
     queryKey: queryKeys.layers.all
   });
