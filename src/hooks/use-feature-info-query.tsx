@@ -37,7 +37,7 @@ export async function fetchWMSFeatureInfo({
     cql_filter = null,
     coordinateAdapter,
     crs = 'EPSG:3857'
-}: WMSQueryProps & { crs?: string }): Promise<any> {
+}: WMSQueryProps & { crs?: string }): Promise<GeoServerGeoJSON | null> {
     if (layers.length === 0) {
         console.warn('No layers specified to query.');
         return null;
@@ -156,8 +156,8 @@ export async function fetchWMSFeatureInfo({
             return acc;
         }, {} as Record<string, string>);
 
-        const featuresWithNamespace = data.features.map((feature: any) => {
-            const layerName = feature.id?.split('.')[0];
+        const featuresWithNamespace = data.features.map((feature: Feature) => {
+            const layerName = String(feature.id)?.split('.')[0];
             const namespace = namespaceMap[layerName] || null;
             return {
                 ...feature,
@@ -191,7 +191,7 @@ export async function fetchWFSFeature({
     cql_filter = null,
     crs = 'EPSG:4326',
     featureCount = 50
-}: WFSQueryProps): Promise<any> {
+}: WFSQueryProps): Promise<GeoServerGeoJSON | null> {
     if (layers.length === 0) {
         console.warn('No layers specified for WFS query.');
         return null;
@@ -262,7 +262,7 @@ export async function fetchWFSFeature({
                 return acc;
             }, {} as Record<string, string>);
 
-            const featuresWithNamespace = data.features.map((feature: any) => {
+            const featuresWithNamespace = data.features.map((feature: Feature) => {
                 const layerName = feature.id?.split('.')[0];
                 const namespace = namespaceMap[layerName] || null;
                 return {
@@ -355,7 +355,7 @@ export async function fetchWFSFeatureByPolygon({
     cql_filter = null,
     crs = 'EPSG:4326',
     featureCount = 200
-}: WFSPolygonQueryProps): Promise<any> {
+}: WFSPolygonQueryProps): Promise<GeoServerGeoJSON | null> {
     if (layers.length === 0) {
         console.warn('No layers specified for WFS polygon query.');
         return null;
@@ -466,7 +466,7 @@ export async function fetchWFSFeatureByPolygon({
                 return acc;
             }, {} as Record<string, string>);
 
-            const featuresWithNamespace = data.features.map((feature: any) => {
+            const featuresWithNamespace = data.features.map((feature: Feature) => {
                 const layerName = feature.id?.split('.')[0];
                 const namespace = namespaceMap[layerName] || null;
                 return {

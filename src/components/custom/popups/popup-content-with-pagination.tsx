@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, memo } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Feature, Geometry, GeoJsonProperties } from "geojson"
 import { Button } from "@/components/ui/button"
@@ -89,7 +89,7 @@ const PopupPagination = ({ currentPage, totalPages, handlePageChange, itemsPerPa
     )
 }
 
-const LayerCard = ({
+const LayerCardInner = ({
     layer,
     buttons,
     handleZoomToFeature
@@ -192,7 +192,10 @@ const LayerCard = ({
     )
 }
 
-const PopupContentWithPagination = ({ layerContent, onSectionChange }: SidebarInsetWithPaginationProps) => {
+const LayerCard = memo(LayerCardInner);
+LayerCard.displayName = 'LayerCard';
+
+const PopupContentWithPaginationInner = ({ layerContent, onSectionChange }: SidebarInsetWithPaginationProps) => {
     const { map } = useMap()
     const buttons = useGetPopupButtons()
 
@@ -286,5 +289,8 @@ const PopupContentWithPagination = ({ layerContent, onSectionChange }: SidebarIn
         </div>
     )
 }
+
+const PopupContentWithPagination = memo(PopupContentWithPaginationInner);
+PopupContentWithPagination.displayName = 'PopupContentWithPagination';
 
 export { PopupContentWithPagination };

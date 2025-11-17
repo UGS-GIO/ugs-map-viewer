@@ -4,6 +4,7 @@ import { Feature, Geometry, GeoJsonProperties } from "geojson";
 import { ExternalLink } from "lucide-react";
 import { LayerContentProps } from "@/components/custom/popups/popup-content-with-pagination";
 import { Link } from "@/components/custom/link";
+import { memo } from "react";
 import {
     FieldConfig,
     StringPopupFieldConfig,
@@ -184,7 +185,7 @@ const renderFieldContent = (
 };
 
 // --- Main Component ---
-const PopupContentDisplay = ({ feature, layout, layer }: PopupContentDisplayProps) => {
+const PopupContentDisplayInner = ({ feature, layout, layer }: PopupContentDisplayProps) => {
     const { relatedTables, popupFields, linkFields, colorCodingMap, rasterSource } = layer;
     const { data, isLoading, error } = useRelatedTable(relatedTables || [], feature || null);
 
@@ -313,5 +314,16 @@ const PopupContentDisplay = ({ feature, layout, layer }: PopupContentDisplayProp
         </div>
     );
 };
+
+const PopupContentDisplay = memo(PopupContentDisplayInner, (prevProps, nextProps) => {
+    return (
+        prevProps.feature?.id === nextProps.feature?.id &&
+        prevProps.layout === nextProps.layout &&
+        prevProps.layer.sourceCRS === nextProps.layer.sourceCRS &&
+        prevProps.layer.layerTitle === nextProps.layer.layerTitle
+    );
+});
+
+PopupContentDisplay.displayName = 'PopupContentDisplay';
 
 export { PopupContentDisplay };
