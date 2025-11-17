@@ -13,7 +13,7 @@ const basinNamesWMSConfig: WMSLayerProps = {
     title: basinNamesWMSTitle,
     visible: true,
     opacity: 0.3,
-    crs: 'EPSG:26912',
+    crs: 'EPSG:3857',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${basinNamesLayerName}`,
@@ -89,7 +89,7 @@ const oilGasFieldsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: oilGasFieldsWMSTitle,
     visible: false,
-    crs: 'EPSG:26912',
+    crs: 'EPSG:3857',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${oilGasFieldsLayerName}`,
@@ -114,7 +114,7 @@ const pipelinesWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: pipelinesWMSTitle,
     visible: false,
-    crs: 'EPSG:26912',
+    crs: 'EPSG:3857',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${pipelinesLayerName}`,
@@ -138,7 +138,7 @@ const sco2WMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: sco2WMSTitle,
     visible: true,
-    crs: 'EPSG:26912',
+    crs: 'EPSG:4326',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${sco2LayerName}`,
@@ -204,7 +204,7 @@ const riversWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: riversWMSTitle,
     visible: false,
-    crs: 'EPSG:26912',
+    crs: 'EPSG:3857',
     sublayers: [
         {
             name: `${GEN_GIS_WORKSPACE}:${riversLayerName}`,
@@ -226,7 +226,7 @@ const roadsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: roadsWMSTitle,
     visible: false,
-    crs: 'EPSG:26912',
+    crs: 'EPSG:3857',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${roadsLayerName}`,
