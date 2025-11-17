@@ -114,7 +114,8 @@ function TopNav({ className, ...props }: TopNavProps) {
           ...wmsLayers
         ]
       };
-      map.setStyle(rasterStyle);
+      // Force complete style replacement
+      map.setStyle(rasterStyle, { diff: false });
     } else {
       // It's a style JSON URL - restore layers after style loads
       const restoreLayers = () => {
@@ -135,10 +136,9 @@ function TopNav({ className, ...props }: TopNavProps) {
       };
 
       map.once('styledata', restoreLayers);
-      map.setStyle(basemap.url);
+      // Force complete style replacement to avoid old basemap showing through
+      map.setStyle(basemap.url, { diff: false });
     }
-
-    console.log(`[TopNav] Basemap loaded: ${basemap.title}`);
   }, [map, activeBasemap]);
 
   const handleBasemapChange = (basemapId: string) => {
@@ -158,8 +158,6 @@ function TopNav({ className, ...props }: TopNavProps) {
       to: ".",
       search: (prev) => ({ ...prev, basemap: basemapId }),
     });
-
-    console.log(`[TopNav] Basemap changed to: ${basemap.title}`);
   };
 
   // Check if any long-type basemap is active

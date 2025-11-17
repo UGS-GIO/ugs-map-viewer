@@ -212,6 +212,7 @@ export async function fetchWFSFeature({
     };
 
     // Call the callback to visualize bbox (only called once per query)
+    console.log('[FetchWFSFeature] onBboxCalculated callback:', { hasCallback: !!onBboxCalculated, bbox, crs });
     if (onBboxCalculated) {
         onBboxCalculated(bbox, crs);
     }
@@ -604,8 +605,11 @@ export function useFeatureInfoQuery({
         const allFeatures: Feature[] = [];
         let sourceCRS = 'EPSG:4326'; // Default, will be updated from responses
 
-        // Track if we've shown bbox visualization (only show once for first layer)
-        let bboxVisualized = false;
+        // Find first layer with good CRS for bbox visualization (avoid tiny WGS84 degree boxes)
+        const firstGoodCrsLayer = queryableLayers.find(key => {
+            const layerCrs = visibleLayersMap[key]?.layerCrs || 'EPSG:3857';
+            return layerCrs !== 'EPSG:4326';
+        });
 
         for (const layerKey of queryableLayers) {
             const layerConfig = visibleLayersMap[layerKey];
@@ -626,6 +630,9 @@ export function useFeatureInfoQuery({
             // Use WFS instead of WMS for more reliable geometry-based queries
             const wfsUrl = wmsUrl.replace('/wms', '/wfs');
 
+            // Show bbox only for the first layer with non-WGS84 CRS
+            const shouldShowBbox = isPointQuery && layerKey === firstGoodCrsLayer;
+
             let featureInfo;
             if (isPolygonQuery && polygonRings) {
                 // Polygon-based query
@@ -638,8 +645,8 @@ export function useFeatureInfoQuery({
                     featureCount: 200
                 });
             } else if (isPointQuery && mapPoint) {
-                // Point-based query
-                const result = await fetchWFSFeature({
+                // Point-based query - show bbox visualization for first non-WGS84 layer
+                featureInfo = await fetchWFSFeature({
                     mapPoint,
                     layers: [layerKey],
                     url: wfsUrl,
@@ -647,12 +654,10 @@ export function useFeatureInfoQuery({
                     crs: layerCrs,
                     featureCount: 50,
                     bufferMeters,
-                    onBboxCalculated: !bboxVisualized ? (bbox, crs) => {
+                    onBboxCalculated: shouldShowBbox ? (bbox, crs) => {
                         showQueryBbox(bbox, crs);
-                        bboxVisualized = true;
                     } : undefined
                 });
-                featureInfo = result;
             }
 
             if (featureInfo && 'features' in featureInfo && featureInfo.features && featureInfo.features.length > 0) {

@@ -42,13 +42,6 @@ export function useDomainFilters({
     }, [selectedLayers]);
 
     useEffect(() => {
-        console.log('[useDomainFilters] Effect triggered:', {
-            hasMap: !!map,
-            filters,
-            selectedLayers,
-            filterMapping: Object.keys(filterMapping)
-        });
-
         if (!map) return;
 
         const filtersFromUrl = filters ?? {};
@@ -58,20 +51,10 @@ export function useDomainFilters({
             const filterValue = filtersFromUrl[filterKey] || null;
             const { layerTitle, autoSelectLayer = true } = config;
 
-            console.log('[useDomainFilters] Processing filter:', {
-                filterKey,
-                layerTitle,
-                filterValue,
-                autoSelectLayer,
-                isLayerAlreadySelected: selectedLayersRef.current.has(layerTitle),
-                willAutoSelect: !!(filterValue && autoSelectLayer && !selectedLayersRef.current.has(layerTitle))
-            });
-
             findAndApplyMapLibreWMSFilter(map, layerTitle, filterValue);
 
             // Only auto-select the layer if it has a filter AND is not already selected
             if (filterValue && autoSelectLayer && !selectedLayersRef.current.has(layerTitle)) {
-                console.log('[useDomainFilters] Auto-selecting layer (not already selected):', layerTitle);
                 updateLayerSelection(layerTitle, true);
             }
         });

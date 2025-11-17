@@ -9,6 +9,7 @@ export function useQueryBboxVisualizer(map: MapLibreMap | null) {
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const showQueryBbox = useCallback((bbox: { minX: number; minY: number; maxX: number; maxY: number }, crs: string) => {
+        console.log('[QueryBboxVisualizer] showQueryBbox called', { bbox, crs, hasMap: !!map });
         if (!map) return;
 
         // Clear any existing timeout

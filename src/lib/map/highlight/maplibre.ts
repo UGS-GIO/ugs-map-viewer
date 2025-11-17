@@ -10,6 +10,7 @@ import { HighlightProvider, HighlightOptions } from './types';
 export class MapLibreHighlight implements HighlightProvider {
   private highlightSources: Set<string> = new Set();
   private sourceToTitle: Map<string, string> = new Map();
+  private sourceCounter: number = 0;
 
   constructor(private map: maplibregl.Map) {}
 
@@ -42,7 +43,8 @@ export class MapLibreHighlight implements HighlightProvider {
     };
     const finalOptions = { ...defaultHighlightOptions, ...options };
 
-    const sourceId = `highlight-${title}-${Date.now()}`;
+    // Use counter to ensure unique source IDs even when Date.now() is the same
+    const sourceId = `highlight-${title}-${Date.now()}-${this.sourceCounter++}`;
     const layerId = `highlight-layer-${sourceId}`;
     const outlineLayerId = `highlight-outline-${sourceId}`;
 
