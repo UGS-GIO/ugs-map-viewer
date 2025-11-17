@@ -54,7 +54,7 @@ export function useMapControls(map: maplibregl.Map | undefined, controls: readon
                     case 'multi-select':
                         control = new MultiSelectControl(options);
                         break;
-                    case 'export':
+                    case 'export': {
                         // Lazy load export control to avoid bundling it on initial load
                         const [{ MaplibreExportControl }] = await Promise.all([
                             import('@watergis/maplibre-gl-export'),
@@ -62,6 +62,7 @@ export function useMapControls(map: maplibregl.Map | undefined, controls: readon
                         ]);
                         control = new MaplibreExportControl(options);
                         break;
+                    }
                     default:
                         console.warn(`Unknown control type: ${type}`);
                 }

@@ -22,7 +22,7 @@ export const queryKeys = {
       [...queryKeys.layers.all, 'wms-legend', layerName, wmsUrl] as const,
     extent: (url: string, layerName: string) =>
       [...queryKeys.layers.all, 'extent', url, layerName] as const,
-    reviewable: (config: any) => [...queryKeys.layers.all, 'reviewable', config] as const,
+    reviewable: (config: unknown) => [...queryKeys.layers.all, 'reviewable', config] as const,
   },
 
   // Map-related queries
@@ -52,7 +52,7 @@ export const queryKeys = {
     all: ['features'] as const,
     relatedTable: (url: string, featureId: string, tableName: string) =>
       [...queryKeys.features.all, 'related', url, featureId, tableName] as const,
-    wmsInfo: (mapPoint: string, polygonRings: number[][][] | null, clickId: number | null) =>
+    wmsInfo: (mapPoint: Record<string, unknown> | null, polygonRings: number[][][] | null, clickId: number | null) =>
       [...queryKeys.features.all, 'wms-info', mapPoint, polygonRings, clickId] as const,
   },
 

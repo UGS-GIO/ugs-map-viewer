@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
@@ -178,9 +178,8 @@ function SearchCombobox({
         return config[0]?.placeholder || `Search...`;
     };
 
-    const queryResults: QueryResultWrapper[] = config.map((sourceConfigWrapper, index) => {
-        const source = sourceConfigWrapper;
-        const query = useQuery<QueryData, Error>({
+    const queries = useQueries({
+        queries: config.map((source, index) => ({
             queryKey: queryKeys.sidebar.search(source.url, source.type, debouncedSearch, index),
             queryFn: async (): Promise<QueryData> => {
                 if (source.type === 'masquerade') {
@@ -282,16 +281,16 @@ function SearchCombobox({
             retry: 1,
             staleTime: 300000, // 5 minutes
             gcTime: 600000, // 10 minutes
-        });
-
-        return {
-            data: query.data,
-            error: query.error,
-            isLoading: query.isLoading,
-            isError: query.isError,
-            type: source.type
-        } as QueryResultWrapper;
+        }))
     });
+
+    const queryResults: QueryResultWrapper[] = queries.map((query, index) => ({
+        data: query.data,
+        error: query.error,
+        isLoading: query.isLoading,
+        isError: query.isError,
+        type: config[index].type
+    }));
 
     const handleSourceFilterSelect = (sourceIndex: number) => {
         setActiveSourceIndex(sourceIndex === activeSourceIndex ? null : sourceIndex);
@@ -396,7 +395,7 @@ function SearchCombobox({
             setTimeout(() => {
                 setIsShaking(false);
             }, shakingDuration);
-        };
+        }
 
     }
 

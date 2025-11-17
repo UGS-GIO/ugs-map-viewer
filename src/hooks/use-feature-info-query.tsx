@@ -625,7 +625,10 @@ export function useFeatureInfoQuery({
 
         for (const layerKey of queryableLayers) {
             const layerConfig = visibleLayersMap[layerKey];
-            const layerCrs = (layerConfig as any)?.layerCrs || 'EPSG:3857';
+
+            console.log();
+            
+            const layerCrs = layerConfig?.layerCrs || 'EPSG:3857';
 
             // Get the CQL filter for this specific layer
             const layerTitle = getLayerTitle(layerConfig);

@@ -18,7 +18,7 @@ interface MapContainerProps {
     updateLayerSelection?: (layerTitle: string, selected: boolean) => void;
 }
 
-export default function MapContainer({ }: MapContainerProps) {
+export default function MapContainer(_props: MapContainerProps) {
     const layersConfig = useGetLayerConfigsData();
 
     const {

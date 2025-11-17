@@ -25,15 +25,6 @@ const useRelatedTable = (
     configs: RelatedTable[],
     feature: Feature<Geometry, GeoJsonProperties> | null
 ): CombinedResult => {
-    // Early return if no configs or feature is null
-    if (configs.length === 0) {
-        return {
-            data: [],
-            isLoading: false,
-            error: null
-        };
-    }
-
     const queryResults: UseQueryResult<ProcessedRelatedData[]>[] = useQueries({
         queries: configs.map((config, index) => ({
             queryKey: queryKeys.features.relatedTable(config.url, feature?.properties?.[config.targetField] || '', config.targetField),

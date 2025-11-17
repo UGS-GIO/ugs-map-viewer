@@ -30,6 +30,7 @@ export interface LayerContentProps {
     visible: boolean
     queryable?: boolean
     schema?: string
+    layerCrs?: string; // CRS of the layer itself (e.g., "EPSG:3857")
 }
 
 interface SidebarInsetWithPaginationProps {
@@ -267,10 +268,10 @@ const PopupContentWithPagination = ({ layerContent, onSectionChange }: SidebarIn
         zoomToFeature(feature, map, sourceCRS)
     }
 
+    const contentKey = useMemo(() => Date.now(), [layerContent])
+
     // If no layers, return null
     if (layerContent.length === 0) return null;
-
-    const contentKey = useMemo(() => Date.now(), [layerContent])
 
     return (
         <div className="flex flex-1 flex-col gap-4 px-2 overflow-y-auto select-text h-full scrollable-container">

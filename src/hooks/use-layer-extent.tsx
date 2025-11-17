@@ -4,6 +4,26 @@ import { queryKeys } from '@/lib/query-keys';
 
 export type BoundingBox = [number, number, number, number]; // [minLng, minLat, maxLng, maxLat]
 
+interface WMSLayer {
+    Name?: string;
+    Layer?: WMSLayer | WMSLayer[];
+    BoundingBox?: WMSBoundingBox | WMSBoundingBox[];
+    EX_GeographicBoundingBox?: {
+        westBoundLongitude: string;
+        southBoundLatitude: string;
+        eastBoundLongitude: string;
+        northBoundLatitude: string;
+    };
+}
+
+interface WMSBoundingBox {
+    '@_CRS'?: string;
+    '@_minx': string;
+    '@_miny': string;
+    '@_maxx': string;
+    '@_maxy': string;
+}
+
 const parseCapabilitiesExtent = (xml: string, targetLayerName: string): BoundingBox | null => {
     const parser = new XMLParser({
         ignoreAttributes: false,
@@ -18,7 +38,7 @@ const parseCapabilitiesExtent = (xml: string, targetLayerName: string): Bounding
         if (!capability?.Layer) return null;
 
         // Helper function to find layer by name
-        const findLayerByName = (layer: any, name: string): any => {
+        const findLayerByName = (layer: WMSLayer, name: string): WMSLayer | null => {
             if (layer.Name === name) return layer;
             if (layer.Layer) {
                 if (Array.isArray(layer.Layer)) {

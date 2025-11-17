@@ -1,10 +1,25 @@
 import { useCallback } from 'react';
 import type { MapPoint, ScreenPoint, CoordinateAdapter } from '@/lib/map/coordinates/types';
 import type { MapLibreMap } from '@/lib/types/map-types';
+import type { LayerProps } from '@/lib/types/mapping-types';
 
 interface MapClickEvent {
     screenX: number;
     screenY: number;
+}
+
+interface VisibleLayerInfo {
+    visible: boolean;
+    groupLayerTitle: string;
+    layerTitle: string;
+    popupFields?: unknown;
+    relatedTables?: unknown;
+    queryable?: boolean;
+    linkFields?: unknown;
+    customLayerParameters?: unknown;
+    rasterSource?: unknown;
+    schema?: string;
+    layerCrs: string;
 }
 
 interface UseMapClickHandlerProps {
@@ -13,9 +28,9 @@ interface UseMapClickHandlerProps {
     shouldIgnoreNextClick?: (() => boolean) | undefined;
     consumeIgnoreClick?: (() => void) | undefined;
     onPointClick: (point: MapPoint) => void;
-    setVisibleLayersMap: (layers: any) => void;
+    setVisibleLayersMap: (layers: Record<string, VisibleLayerInfo>) => void;
     coordinateAdapter: CoordinateAdapter;
-    layersConfig?: any; // MapLibre layer config to build visibleLayersMap
+    layersConfig?: LayerProps[] | null;
 }
 
 /**
@@ -55,11 +70,11 @@ export function useMapClickHandler({
 
         // Build visibleLayersMap from layersConfig
         if (layersConfig) {
-            const visibleLayersMap: Record<string, any> = {};
+            const visibleLayersMap: Record<string, VisibleLayerInfo> = {};
 
-            const buildLayerMap = (layers: any[]) => {
+            const buildLayerMap = (layers: LayerProps[]): void => {
                 for (const layer of layers) {
-                    if (layer.type === 'wms' && layer.sublayers) {
+                    if (layer.type === 'wms' && 'sublayers' in layer && layer.sublayers) {
                         for (const sublayer of layer.sublayers) {
                             if (sublayer.name) {
                                 // Check if the layer is actually visible on the map
@@ -83,14 +98,14 @@ export function useMapClickHandler({
                                     relatedTables: sublayer.relatedTables,
                                     queryable: sublayer.queryable ?? true,
                                     linkFields: sublayer.linkFields,
-                                    customLayerParameters: layer.customLayerParameters,
+                                    customLayerParameters: ('customLayerParameters' in layer ? layer.customLayerParameters : undefined) as Record<string, unknown> | null | undefined,
                                     rasterSource: sublayer.rasterSource,
                                     schema: sublayer.schema,
-                                    layerCrs: (layer as any).crs || 'EPSG:3857',
+                                    layerCrs: ('crs' in layer ? layer.crs : undefined) || 'EPSG:3857',
                                 };
                             }
                         }
-                    } else if (layer.type === 'group' && layer.layers) {
+                    } else if (layer.type === 'group' && 'layers' in layer && layer.layers) {
                         buildLayerMap(layer.layers);
                     }
                 }

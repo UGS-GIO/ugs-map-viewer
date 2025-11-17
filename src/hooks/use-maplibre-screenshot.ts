@@ -55,7 +55,7 @@ async function generateMapLibreScreenshot(
             style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
             center: [centerLng, centerLat],
             zoom,
-            // @ts-ignore - preserveDrawingBuffer is valid
+            // @ts-expect-error - preserveDrawingBuffer is valid
             preserveDrawingBuffer: true,
             attributionControl: false,
             interactive: false,

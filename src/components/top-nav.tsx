@@ -11,6 +11,7 @@ import { useMap } from '@/hooks/use-map';
 import { BasemapIcon } from '@/assets/basemap-icons';
 import { BASEMAP_STYLES, DEFAULT_BASEMAP, BasemapStyle } from '@/lib/basemaps';
 import { useNavigate, useSearch } from '@tanstack/react-router';
+import type { MapSearchParams } from '@/routes/_map';
 
 interface TopNavProps extends React.HTMLAttributes<HTMLElement> { }
 
@@ -49,7 +50,7 @@ const BasemapDropdown = ({ links, trigger, onBasemapChange, activeBasemap }: Bas
 function TopNav({ className, ...props }: TopNavProps) {
   const { map } = useMap();
   const navigate = useNavigate();
-  const searchParams = useSearch({ strict: false }) as { basemap?: string };
+  const searchParams = useSearch({ strict: false }) as MapSearchParams;
 
   const activeBasemap = searchParams.basemap || DEFAULT_BASEMAP.id;
 
@@ -71,8 +72,8 @@ function TopNav({ className, ...props }: TopNavProps) {
 
     // Preserve WMS layers before changing basemap
     const style = map.getStyle();
-    const wmsLayers: any[] = [];
-    const wmsSources: Record<string, any> = {};
+    const wmsLayers: unknown[] = [];
+    const wmsSources: Record<string, unknown> = {};
 
     if (style) {
       // Save WMS sources
@@ -94,10 +95,10 @@ function TopNav({ className, ...props }: TopNavProps) {
     if (basemap.url.includes('{x}') && basemap.url.includes('{y}') && basemap.url.includes('{z}')) {
       // It's a raster tile source, need to create a custom style
       const rasterStyle = {
-        version: 8 as const,
+        version: 8,
         sources: {
           'raster-tiles': {
-            type: 'raster' as const,
+            type: 'raster',
             tiles: [basemap.url],
             tileSize: 256,
             attribution: '© Sentinel-2 cloudless by EOX IT Services GmbH'
@@ -107,7 +108,7 @@ function TopNav({ className, ...props }: TopNavProps) {
         layers: [
           {
             id: 'raster-layer',
-            type: 'raster' as const,
+            type: 'raster',
             source: 'raster-tiles'
           },
           ...wmsLayers
@@ -120,14 +121,15 @@ function TopNav({ className, ...props }: TopNavProps) {
         // Re-add sources
         for (const [sourceId, source] of Object.entries(wmsSources)) {
           if (!map.getSource(sourceId)) {
-            map.addSource(sourceId, source);
+            map.addSource(sourceId, source as Parameters<typeof map.addSource>[1]);
           }
         }
 
         // Re-add layers
         for (const layer of wmsLayers) {
-          if (!map.getLayer(layer.id)) {
-            map.addLayer(layer);
+          const layerObj = layer as { id: string };
+          if (!map.getLayer(layerObj.id)) {
+            map.addLayer(layer as Parameters<typeof map.addLayer>[0]);
           }
         }
       };
@@ -153,8 +155,9 @@ function TopNav({ className, ...props }: TopNavProps) {
 
     // Update URL with new basemap
     navigate({
-      search: (prev: Record<string, unknown>) => ({ ...prev, basemap: basemapId }),
-    } as any);
+      to: ".",
+      search: (prev) => ({ ...prev, basemap: basemapId }),
+    });
 
     console.log(`[TopNav] Basemap changed to: ${basemap.title}`);
   };

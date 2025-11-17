@@ -32,8 +32,8 @@ const getAllValidTitles = (layers: LayerProps[], groupsOnly = false): Set<string
 };
 
 const getDefaultVisible = (layers: LayerProps[]): { selected: string[], hidden: string[] } => {
-    let selected: string[] = [];
-    let hidden: string[] = [];
+    const selected: string[] = [];
+    const hidden: string[] = [];
     layers.forEach(layer => {
         if (layer.type === 'group' && 'layers' in layer && layer.layers) {
             if (layer.visible === false && layer.title) hidden.push(layer.title);

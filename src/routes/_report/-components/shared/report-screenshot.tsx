@@ -207,7 +207,7 @@ export function ReportScreenshot({
             style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
             center: initialViewState.center,
             zoom: initialViewState.zoom,
-            // @ts-ignore - preserveDrawingBuffer is a valid option
+            // @ts-expect-error - preserveDrawingBuffer is a valid option
             preserveDrawingBuffer: true,
             attributionControl: false,
             interactive: false
