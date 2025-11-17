@@ -176,6 +176,12 @@ export function useMapContainer({
         }
 
         const handleMapLibreClick = (e: any) => {
+            // Check if drawer is open - if so, ignore map clicks (user is closing drawer)
+            const drawerState = drawerTriggerRef.current?.getAttribute('data-state');
+            if (drawerState === 'open') {
+                return;
+            }
+
             // Clear any previous graphics immediately
             clearGraphics(map);
 
@@ -212,6 +218,9 @@ export function useMapContainer({
         // Clear the Terra Draw polygons
         clearSelection();
 
+        // Hide the query bbox visualization
+        featureInfoQuery.hideQueryBbox();
+
         // If the popup was opened from a polygon query, turn off multi-select mode
         if (featureInfoQuery.isPolygonQuery) {
             setMultiSelectMode(false);
@@ -230,5 +239,6 @@ export function useMapContainer({
         setCoordinates,
         layersConfig: processedLayers,
         onDrawerClose: handleDrawerClose,
+        isQueryLoading: featureInfoQuery.isFetching,
     };
 }
