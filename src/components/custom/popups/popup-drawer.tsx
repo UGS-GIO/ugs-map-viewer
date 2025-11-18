@@ -27,6 +27,7 @@ function PopupDrawer({
 }: CombinedSidebarDrawerProps) {
     const carouselRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
+    const sheetContentRef = useRef<HTMLDivElement>(null);
     const [activeLayerTitle, setActiveLayerTitle] = useState<string>("");
     const [open, setOpen] = useState(false);
     const screenSize = useScreenSize();
@@ -87,6 +88,11 @@ function PopupDrawer({
         }
     }, []);
 
+    const handleCloseClick = useCallback(() => {
+        // Set open to false
+        setOpen(false);
+    }, []);
+
     const handleClose = useCallback(() => {
         if (map) {
             try {
@@ -95,10 +101,10 @@ function PopupDrawer({
                 console.error('Error clearing highlights:', error);
             }
         }
-        setOpen(false);
         // Call external onClose callback if provided
         onClose?.();
     }, [map, onClose]);
+
 
     return (
         <Sheet
@@ -117,14 +123,18 @@ function PopupDrawer({
                     ref={drawerTriggerRef}
                     size="sm"
                     className="hidden"
-                    onClick={() => setOpen(true)}
                 >
                     Open Sheet
                 </Button>
             </SheetTrigger>
 
             <SheetContent
+                ref={sheetContentRef}
                 side={isMobile ? "bottom" : "right"}
+                onInteractOutside={(e) => {
+                    // Prevent closing when interacting with the map
+                    e.preventDefault();
+                }}
                 className={cn(
                     "z-[100] overflow-hidden p-0",
                     "bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80",
@@ -217,7 +227,7 @@ function PopupDrawer({
                 {/* Floating close button */}
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
                     <Button
-                        onClick={handleClose}
+                        onClick={handleCloseClick}
                         variant="default"
                         size="lg"
                         className="shadow-lg gap-2"
