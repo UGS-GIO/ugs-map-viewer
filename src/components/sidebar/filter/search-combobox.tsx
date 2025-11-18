@@ -16,7 +16,7 @@ import { useMap } from '@/hooks/use-map';
 import { convertBbox } from '@/lib/map/conversion-utils';
 import { zoomToExtent } from '@/lib/sidebar/filter/util';
 import { highlightFeature, clearGraphics } from '@/lib/map/highlight-utils';
-import { Tooltip, TooltipArrow, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from "@/hooks/use-toast";
 import { findLayerByTitle } from '@/lib/map/utils';
 import { ExtendedFeature } from '@/components/custom/popups/popup-content-with-pagination';
@@ -431,7 +431,6 @@ function SearchCombobox({
                             </TooltipTrigger>
                             <TooltipContent side='bottom' className="z-60 max-w-[--radix-popover-trigger-width] bg-secondary text-base text-secondary-foreground">
                                 <p>{inputValue || getPlaceholderText()}</p>
-                                <TooltipArrow className="fill-secondary" />
                             </TooltipContent>
                         </Tooltip>
                         <span className='ml-2 flex-shrink-0'>
