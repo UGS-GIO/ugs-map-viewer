@@ -13,6 +13,7 @@ const mapSearchSchema = z.object({
     filters: z.record(z.string()).optional(),
     tab: z.string().optional().default('info'),
     sidebar_collapsed: z.coerce.boolean().optional().default(false),
+    sidebar_width: z.enum(['icon', 'medium', 'wide']).optional().default('wide'),
     coordinate_format: z.enum(['dd', 'dms']).optional(),
     basemap: z.string().optional(),
     layers: z.preprocess((val) => {
