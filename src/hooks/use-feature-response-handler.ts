@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { highlightFeature } from '@/lib/map/highlight-utils';
+import { highlightFeature, clearGraphics } from '@/lib/map/highlight-utils';
 import { LayerContentProps } from '@/components/custom/popups/popup-content-with-pagination';
 import { useMap } from '@/hooks/use-map';
 
@@ -52,22 +52,31 @@ export function useFeatureResponseHandler({
             if (isPolygonQuery) {
                 // Multi-select: highlight ALL features
                 let featureCount = 0;
+                const processedLayers = new Set<string>();
+
                 for (const layer of popupContent) {
                     if (layer.features && layer.features.length > 0) {
                         const title = layer.layerTitle || layer.groupLayerTitle;
+
+                        // Clear existing highlights for this layer before adding new ones
+                        if (!processedLayers.has(title)) {
+                            clearGraphics(map, title);
+                            processedLayers.add(title);
+                        }
+
                         for (const feature of layer.features) {
                             highlightFeature(feature, map, layer.sourceCRS, title);
                             featureCount++;
                         }
                     }
                 }
-                console.log(`[FeatureResponseHandler] Highlighted ${featureCount} features for multi-select`);
             } else {
                 // Point query: highlight only first feature
                 const firstLayer = popupContent[0];
                 const firstFeature = firstLayer?.features[0];
                 if (firstFeature && firstLayer) {
                     const title = firstLayer.layerTitle || firstLayer.groupLayerTitle;
+                    clearGraphics(map, title);
                     highlightFeature(firstFeature, map, firstLayer.sourceCRS, title);
                 }
             }

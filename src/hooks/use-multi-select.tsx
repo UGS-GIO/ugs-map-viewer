@@ -38,7 +38,6 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
     useEffect(() => {
         if (!map || !isMultiSelectMode) {
             if (drawRef.current) {
-                console.log('[MultiSelect] Stopping Terra Draw');
                 try {
                     drawRef.current.stop();
                 } catch (e) {
@@ -55,8 +54,6 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
         if (drawRef.current) {
             return;
         }
-
-        console.log('[MultiSelect] Initializing Terra Draw for multi-select');
 
         const initializeDraw = async () => {
             try {
@@ -91,16 +88,12 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
 
                 let isCompleting = false;
 
-                const handleFinish = (id: string | number, context: { action: string; mode: string }) => {
-                    console.log('[MultiSelect] Finish event - id:', id, 'context:', context);
-
+                const handleFinish = (_id: string | number, context: { action: string; mode: string }) => {
                     if (context.mode === 'polygon' && context.action === 'draw') {
                         const features = draw.getSnapshot();
-                        console.log('[MultiSelect] Features snapshot:', features);
 
                         if (features.length > 0) {
                             const feature = features[features.length - 1] as GeoJSONFeature;
-                            console.log('[MultiSelect] Last feature:', feature);
 
                             if (feature.geometry.type === 'Polygon') {
                                 const rings = feature.geometry.coordinates as number[][][];
@@ -109,7 +102,6 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
                                     rings: rings
                                 };
 
-                                console.log('[MultiSelect] Calling onPolygonComplete with geometry:', geometry);
                                 isCompleting = true;
                                 setIsDrawing(false);
                                 setHasCompletedPolygon(true);
@@ -139,8 +131,6 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
 
                 draw.on('finish', handleFinish);
                 draw.on('change', handleChange);
-
-                console.log('[MultiSelect] Terra Draw started in polygon mode');
             } catch (error) {
                 console.error('[MultiSelect] Error initializing Terra Draw:', error);
             }
@@ -153,7 +143,6 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
 
         return () => {
             clearTimeout(timeoutId);
-            console.log('[MultiSelect] Cleaning up Terra Draw');
             if (drawRef.current) {
                 try {
                     drawRef.current.stop();
@@ -170,7 +159,6 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
     const clearSelection = useCallback(() => {
         if (!drawRef.current) return;
 
-        console.log('[MultiSelect] Clearing selection polygon');
         const features = drawRef.current.getSnapshot();
         features.forEach(feature => {
             if (feature.id) {
@@ -184,7 +172,6 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
     const cancelSelection = useCallback(() => {
         if (!drawRef.current) return;
 
-        console.log('[MultiSelect] Canceling selection');
         clearSelection();
         drawRef.current.setMode('select');
     }, [clearSelection]);
@@ -192,7 +179,6 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
     const startNewSelection = useCallback(() => {
         if (!drawRef.current) return;
 
-        console.log('[MultiSelect] Starting new selection');
         clearSelection();
         drawRef.current.setMode('polygon');
     }, [clearSelection]);

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { findAndApplyMapLibreWMSFilter } from '@/lib/sidebar/filter/util';
 import maplibregl from 'maplibre-gl';
 
@@ -12,6 +12,7 @@ interface FilterMapping {
 interface UseDomainFiltersProps {
     map?: maplibregl.Map | undefined;
     filters: Record<string, string> | undefined;
+    selectedLayers: string[];
     updateLayerSelection: (title: string, selected: boolean) => void;
     filterMapping: FilterMapping;
 }
@@ -23,15 +24,23 @@ interface UseDomainFiltersProps {
  *
  * @param map - MapLibre map instance
  * @param filters - Filter values from URL parameters
+ * @param selectedLayers - Currently selected layer titles
  * @param updateLayerSelection - Function to update layer selection state
  * @param filterMapping - Mapping of filter keys to layer configurations
  */
 export function useDomainFilters({
     map,
     filters,
+    selectedLayers,
     updateLayerSelection,
     filterMapping
 }: UseDomainFiltersProps) {
+    const selectedLayersRef = useRef<Set<string>>(new Set());
+
+    useEffect(() => {
+        selectedLayersRef.current = new Set(selectedLayers);
+    }, [selectedLayers]);
+
     useEffect(() => {
         if (!map) return;
 
@@ -44,7 +53,8 @@ export function useDomainFilters({
 
             findAndApplyMapLibreWMSFilter(map, layerTitle, filterValue);
 
-            if (filterValue && autoSelectLayer) {
+            // Only auto-select the layer if it has a filter AND is not already selected
+            if (filterValue && autoSelectLayer && !selectedLayersRef.current.has(layerTitle)) {
                 updateLayerSelection(layerTitle, true);
             }
         });

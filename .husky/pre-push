@@ -1,0 +1,2 @@
+. "$(dirname -- "$0")/../.huskyrc"  # Source our custom PATH configuration
+npm run build

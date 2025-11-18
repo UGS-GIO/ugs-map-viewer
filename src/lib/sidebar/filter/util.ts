@@ -92,8 +92,6 @@ export const findAndApplyMapLibreWMSFilter = (
     layerTitle: string,
     cqlFilter: string | null
 ) => {
-    console.log(`[MapLibreWMSFilter] Called with:`, { layerTitle, cqlFilter, hasMap: !!map });
-
     if (!map) {
         console.warn(`[MapLibreWMSFilter] No map instance provided`);
         return;
@@ -104,8 +102,6 @@ export const findAndApplyMapLibreWMSFilter = (
         console.warn(`[MapLibreWMSFilter] No style layers or sources found`);
         return;
     }
-
-    console.log(`[MapLibreWMSFilter] Searching for layer "${layerTitle}" in ${style.layers.length} layers`);
 
     // Find layer with matching title
     for (const layer of style.layers) {
@@ -118,7 +114,6 @@ export const findAndApplyMapLibreWMSFilter = (
         if (typeof title !== 'string') continue;
 
         if (title === layerTitle) {
-            console.log(`[MapLibreWMSFilter] Found matching layer:`, { id: layer.id, title });
 
             if (!hasStringSource(layer)) continue;
             const sourceId = layer.source;
@@ -142,7 +137,6 @@ export const findAndApplyMapLibreWMSFilter = (
                 const separator = newUrl.includes('?') ? '&' : '?';
                 newUrl = `${newUrl}${separator}_t=${Date.now()}`;
 
-                console.log(`[MapLibreWMSFilter] Updated tile URL:`, newUrl);
                 return newUrl;
             });
 
@@ -175,8 +169,6 @@ export const findAndApplyMapLibreWMSFilter = (
                 map.removeSource(sourceId);
                 map.addSource(sourceId, sourceConfig);
                 map.addLayer(layerConfig);
-
-                console.log(`[MapLibreWMSFilter] Applied filter to layer "${layerTitle}":`, cqlFilter || '(none)');
             } catch (error) {
                 console.error(`[MapLibreWMSFilter] Error applying filter to layer "${layerTitle}":`, error);
             }

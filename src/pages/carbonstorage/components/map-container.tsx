@@ -1,5 +1,6 @@
 import { MapControls } from '@/pages/carbonstorage/components/map-controls';
 import { MapContextMenu } from "@/components/custom/map/map-context-menu";
+import { MapWrapper } from "@/components/custom/map/map-wrapper";
 import { PopupDrawer } from "@/components/custom/popups/popup-drawer";
 import { useMapContainer } from "@/hooks/use-map-container";
 import { useDomainFilters } from "@/hooks/use-domain-filters";
@@ -37,6 +38,7 @@ export default function MapContainer({ searchParams, updateLayerSelection }: Map
         coordinates,
         setCoordinates,
         onDrawerClose,
+        isQueryLoading,
     } = useMapContainer({
         wmsUrl: `${PROD_GEOSERVER_URL}wms`,
         layersConfig: defaultLayersConfig,
@@ -46,6 +48,7 @@ export default function MapContainer({ searchParams, updateLayerSelection }: Map
     useDomainFilters({
         map,
         filters: searchParams.filters,
+        selectedLayers: searchParams.layers?.selected || [],
         updateLayerSelection,
         filterMapping: CCS_FILTER_MAPPING
     });
@@ -53,13 +56,13 @@ export default function MapContainer({ searchParams, updateLayerSelection }: Map
     return (
         <>
             <MapContextMenu coordinates={coordinates} hiddenTriggerRef={contextMenuTriggerRef} />
-            <div
-                className="relative w-full h-full"
-                ref={mapRef}
+            <MapWrapper
+                mapRef={mapRef}
+                isLoading={isQueryLoading}
                 onContextMenu={e => handleOnContextMenu(e, contextMenuTriggerRef, setCoordinates)}
             >
                 <MapControls />
-            </div>
+            </MapWrapper>
             <PopupDrawer
                 container={popupContainer}
                 drawerTriggerRef={drawerTriggerRef}

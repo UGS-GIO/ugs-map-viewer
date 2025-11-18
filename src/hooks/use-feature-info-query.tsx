@@ -9,6 +9,7 @@ import { GeoServerGeoJSON } from '@/lib/types/geoserver-types';
 import type { MapLibreMap } from '@/lib/types/map-types';
 import proj4 from 'proj4';
 import { queryKeys } from '@/lib/query-keys';
+import { useQueryBboxVisualizer } from '@/hooks/use-query-bbox-visualizer';
 
 interface WMSQueryProps {
     mapPoint: MapPoint;
@@ -32,7 +33,7 @@ export async function fetchWMSFeatureInfo({
     version = '1.3.0',
     headers = {},
     infoFormat = 'application/json',
-    buffer = 10,
+    buffer = 25,
     featureCount = 50,
     cql_filter = null,
     coordinateAdapter,
@@ -48,41 +49,29 @@ export async function fetchWMSFeatureInfo({
     const width = map.getCanvas().width;
     const height = map.getCanvas().height;
 
-    // Create bbox in Web Mercator (coordinateAdapter uses this)
-    const bboxWebMercator = coordinateAdapter.createBoundingBox({
-        mapPoint,
-        resolution,
-        buffer
-    });
+    // Calculate buffer in meters
+    const bufferInMeters = buffer * resolution;
 
-    // If requesting a different CRS, transform the bbox
-    let minX = bboxWebMercator.minX;
-    let minY = bboxWebMercator.minY;
-    let maxX = bboxWebMercator.maxX;
-    let maxY = bboxWebMercator.maxY;
-
-    // console.log('[FetchWMSFeatureInfo] Initial bbox (Web Mercator):', { minX, minY, maxX, maxY, crs });
-
-    if (crs !== 'EPSG:3857') {
-        // Transform bbox from Web Mercator (3857) to target CRS
-        // Transform the four corners
-        const [minX_transformed, minY_transformed] = proj4('EPSG:3857', crs, [minX, minY]);
-        const [maxX_transformed, maxY_transformed] = proj4('EPSG:3857', crs, [maxX, maxY]);
-
-        // console.log('[FetchWMSFeatureInfo] Transformed bbox corners:', {
-        //     min: [minX_transformed, minY_transformed],
-        //     max: [maxX_transformed, maxY_transformed],
-        //     targetCrs: crs
-        // });
-
-        // Get the min/max values (in case projection reverses axes)
-        minX = Math.min(minX_transformed, maxX_transformed);
-        minY = Math.min(minY_transformed, maxY_transformed);
-        maxX = Math.max(minX_transformed, maxX_transformed);
-        maxY = Math.max(minY_transformed, maxY_transformed);
-
-        // console.log('[FetchWMSFeatureInfo] Final transformed bbox:', { minX, minY, maxX, maxY });
+    // Transform click point to target CRS first
+    let centerX, centerY;
+    if (crs !== 'EPSG:4326') {
+        [centerX, centerY] = proj4('EPSG:4326', crs, [mapPoint.x, mapPoint.y]);
+    } else {
+        centerX = mapPoint.x;
+        centerY = mapPoint.y;
     }
+
+    // Apply buffer in the target CRS units
+    // EPSG:26912 uses US Survey Feet, so convert meters to feet
+    let bufferInTargetUnits = bufferInMeters;
+    if (crs === 'EPSG:26912') {
+        bufferInTargetUnits = bufferInMeters * 3.28084; // meters to feet
+    }
+
+    const minX = centerX - bufferInTargetUnits;
+    const minY = centerY - bufferInTargetUnits;
+    const maxX = centerX + bufferInTargetUnits;
+    const maxY = centerY + bufferInTargetUnits;
 
     // Different versions handle coordinates differently
     const bboxString = version === '1.1.1'
@@ -99,7 +88,13 @@ export async function fetchWMSFeatureInfo({
     params.set('query_layers', layers.join(','));
     params.set('info_format', infoFormat);
     params.set('bbox', bboxString);
-    params.set('crs', crs);
+
+    // WMS 1.3.0 uses CRS, 1.1.1 uses SRS
+    if (version === '1.3.0') {
+        params.set('CRS', crs);
+    } else {
+        params.set('SRS', crs);
+    }
     params.set('width', width.toString());
     params.set('height', height.toString());
     params.set('feature_count', featureCount.toString());
@@ -124,14 +119,6 @@ export async function fetchWMSFeatureInfo({
     }
 
     const fullUrl = `${url}?${params.toString()}`;
-    // console.log('[FetchWMSFeatureInfo] Sending request:', {
-    //     layers: params.get('layers'),
-    //     query_layers: params.get('query_layers'),
-    //     cql_filter: params.get('cql_filter'),
-    //     i: params.get('i'),
-    //     j: params.get('j'),
-    //     bbox: params.get('bbox')
-    // });
 
     const response = await fetch(fullUrl, { headers });
 
@@ -182,6 +169,7 @@ interface WFSQueryProps {
     cql_filter?: string | null;
     crs?: string;
     featureCount?: number;
+    bufferMeters?: number;
 }
 
 export async function fetchWFSFeature({
@@ -190,32 +178,49 @@ export async function fetchWFSFeature({
     url,
     cql_filter = null,
     crs = 'EPSG:4326',
-    featureCount = 50
-}: WFSQueryProps): Promise<GeoServerGeoJSON | null> {
+    featureCount = 50,
+    bufferMeters = 50,
+    onBboxCalculated
+}: WFSQueryProps & { onBboxCalculated?: (bbox: { minX: number; minY: number; maxX: number; maxY: number }, crs: string) => void }): Promise<GeoServerGeoJSON | null> {
     if (layers.length === 0) {
         console.warn('No layers specified for WFS query.');
         return null;
     }
 
-    // Build CQL filter with spatial intersection using BBOX
-    // Convert mapPoint to target CRS if needed
-    let queryX = mapPoint.x;
-    let queryY = mapPoint.y;
-
-    if (crs !== 'EPSG:4326') {
-        // mapPoint is in WGS84 (4326), transform to target CRS
-        [queryX, queryY] = proj4('EPSG:4326', crs, [mapPoint.x, mapPoint.y]);
+    // Get the geometry field name for this layer
+    let geometryField = await getGeometryFieldName(layers[0], url);
+    if (!geometryField) {
+        geometryField = 'shape'; // Common default
     }
 
-    // Create a small buffer around the point for spatial intersection
-    // Using a small buffer (10m) to catch nearby features
-    const buffer = 10;
+    // Convert mapPoint to target CRS if needed
+    let centerX, centerY;
+    if (crs !== 'EPSG:4326') {
+        // mapPoint is in WGS84 (4326), transform to target CRS
+        [centerX, centerY] = proj4('EPSG:4326', crs, [mapPoint.x, mapPoint.y]);
+    } else {
+        centerX = mapPoint.x;
+        centerY = mapPoint.y;
+    }
+
+    // Apply buffer in the target CRS units
+    // EPSG:26912 uses US Survey Feet, so convert meters to feet
+    let bufferInTargetUnits = bufferMeters;
+    if (crs === 'EPSG:26912') {
+        bufferInTargetUnits = bufferMeters * 3.28084; // meters to feet
+    }
+
     const bbox = {
-        minX: queryX - buffer,
-        minY: queryY - buffer,
-        maxX: queryX + buffer,
-        maxY: queryY + buffer
+        minX: centerX - bufferInTargetUnits,
+        minY: centerY - bufferInTargetUnits,
+        maxX: centerX + bufferInTargetUnits,
+        maxY: centerY + bufferInTargetUnits
     };
+
+    // Call the callback to visualize bbox (only called once per query)
+    if (onBboxCalculated) {
+        onBboxCalculated(bbox, crs);
+    }
 
     const params = new URLSearchParams();
     params.set('service', 'WFS');
@@ -223,22 +228,23 @@ export async function fetchWFSFeature({
     params.set('request', 'GetFeature');
     params.set('typeNames', layers.join(','));
     params.set('outputFormat', 'application/json');
-    // GeoServer limitation: bbox and cql_filter are mutually exclusive
-    // If we have an attribute filter, use only bbox (no cql_filter needed for most cases)
+    params.set('count', featureCount.toString());
+
+    // Use INTERSECTS with bbox polygon for precise geometry-based filtering
+    // This checks if the actual feature geometry intersects the query bbox, not just the feature's bounding box
+    const bboxWKT = `POLYGON((${bbox.minX} ${bbox.minY}, ${bbox.maxX} ${bbox.minY}, ${bbox.maxX} ${bbox.maxY}, ${bbox.minX} ${bbox.maxY}, ${bbox.minX} ${bbox.minY}))`;
+    const spatialFilter = `INTERSECTS(${geometryField}, ${bboxWKT})`;
+
     if (cql_filter) {
-        // When we have attribute filters, just use them - skip spatial filter
-        // This returns more results but is filtered by the layer's native filter
+        // Combine spatial filter with attribute filter
         const normalizedAttributeFilter = cql_filter.trim().replace(/\s*=\s*/g, '=');
-        params.set('cql_filter', normalizedAttributeFilter);
-        params.set('count', featureCount.toString());
+        params.set('cql_filter', `${spatialFilter} AND ${normalizedAttributeFilter}`);
     } else {
-        // No attribute filter, use bbox for spatial filtering
-        params.set('bbox', `${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY},${crs}`);
-        params.set('count', featureCount.toString());
+        // Just spatial filter
+        params.set('cql_filter', spatialFilter);
     }
 
     const fullUrl = `${url}?${params.toString()}`;
-    // console.log('[FetchWFSFeature] Querying layers:', { layers, crs, geometryField: geometryFieldName, spatialFilter });
 
     try {
         const response = await fetch(fullUrl);
@@ -316,20 +322,18 @@ async function getGeometryFieldName(layer: string, wfsUrl: string): Promise<stri
         const response = await fetch(`${wfsUrl}?${params.toString()}`);
         if (response.ok) {
             const data = await response.json();
-            console.log(`[GetGeometryFieldName] DescribeFeatureType response for ${layer}:`, data);
+            // console.log(`[GetGeometryFieldName] DescribeFeatureType response for ${layer}:`, data);
 
             // Look for geometry type properties
             // GeoServer returns types like "gml:MultiPolygon", "gml:LineString", etc.
             const geometryLocalTypes = ['MultiPolygon', 'Polygon', 'MultiLineString', 'LineString', 'Point', 'MultiPoint', 'Geometry', 'GeometryCollection'];
 
             if (data.featureTypes && data.featureTypes[0] && data.featureTypes[0].properties) {
-                console.log(`[GetGeometryFieldName] Properties:`, data.featureTypes[0].properties);
+                // console.log(`[GetGeometryFieldName] Properties:`, data.featureTypes[0].properties);
                 for (const prop of data.featureTypes[0].properties) {
-                    console.log(`[GetGeometryFieldName] Checking prop:`, prop.name, 'type:', prop.type, 'localType:', prop.localType);
                     // Check if the type starts with "gml:" and localType is a known geometry type
                     if (prop.type?.startsWith('gml:') && geometryLocalTypes.includes(prop.localType)) {
                         const fieldName = prop.name;
-                        console.log(`[GetGeometryFieldName] Found geometry field '${fieldName}' for layer ${layer}`);
                         geometryFieldCache.set(layer, fieldName);
                         return fieldName;
                     }
@@ -343,7 +347,6 @@ async function getGeometryFieldName(layer: string, wfsUrl: string): Promise<stri
     }
 
     // Could not determine geometry field name - return null to signal bbox fallback
-    console.log(`[GetGeometryFieldName] Could not determine geometry field for layer ${layer}, will use bbox`);
     geometryFieldCache.set(layer, null);
     return null;
 }
@@ -367,24 +370,25 @@ export async function fetchWFSFeatureByPolygon({
     }
 
     // Get the geometry field name for this layer
-    const geometryField = await getGeometryFieldName(layers[0], url);
+    let geometryField = await getGeometryFieldName(layers[0], url);
+
+    // If we couldn't detect it, try common default names
+    if (!geometryField) {
+        // GeoServer commonly uses these field names
+        geometryField = 'geom'; // Most common default in GeoServer
+    }
 
     // Convert polygon to target CRS
     const ring = polygonRings[0]; // Use first ring (exterior ring)
-
-    console.log('[FetchWFSFeatureByPolygon] Original ring (WGS84):', ring);
-    console.log('[FetchWFSFeatureByPolygon] Target CRS:', crs);
 
     // Convert coordinates from WGS84 to target CRS if needed
     let coordinates = ring;
     if (crs !== 'EPSG:4326') {
         coordinates = ring.map(([lng, lat]) => {
             const [x, y] = proj4('EPSG:4326', crs, [lng, lat]);
-            console.log(`[FetchWFSFeatureByPolygon] Converted [${lng}, ${lat}] -> [${x}, ${y}]`);
             return [x, y];
         });
     }
-    console.log('[FetchWFSFeatureByPolygon] Converted coordinates:', coordinates);
 
     const params = new URLSearchParams();
     params.set('service', 'WFS');
@@ -394,53 +398,18 @@ export async function fetchWFSFeatureByPolygon({
     params.set('outputFormat', 'application/json');
     params.set('count', featureCount.toString());
 
-    let usedBbox = false;
+    // Use INTERSECTS for features that touch or overlap the polygon
+    const coordString = coordinates.map(([x, y]) => `${x} ${y}`).join(', ');
+    const wkt = `POLYGON((${coordString}))`;
+    const spatialFilter = `INTERSECTS(${geometryField}, ${wkt})`;
 
-    if (geometryField) {
-        // We know the geometry field name, use INTERSECTS for precise polygon query
-        const coordString = coordinates.map(([x, y]) => `${x} ${y}`).join(', ');
-        const wkt = `POLYGON((${coordString}))`;
-        const spatialFilter = `INTERSECTS(${geometryField}, ${wkt})`;
+    const combinedFilter = cql_filter
+        ? `${spatialFilter} AND ${cql_filter.trim()}`
+        : spatialFilter;
 
-        const combinedFilter = cql_filter
-            ? `${spatialFilter} AND ${cql_filter.trim()}`
-            : spatialFilter;
-
-        params.set('cql_filter', combinedFilter);
-        console.log('[FetchWFSFeatureByPolygon] Using INTERSECTS with geometry field:', geometryField);
-        console.log('[FetchWFSFeatureByPolygon] WKT:', wkt.substring(0, 200) + '...');
-        console.log('[FetchWFSFeatureByPolygon] Full CQL filter:', combinedFilter.substring(0, 300) + '...');
-    } else {
-        // Fall back to bbox (bounding box of polygon)
-        // This is less precise but works without knowing the geometry field name
-        const xs = coordinates.map(([x]) => x);
-        const ys = coordinates.map(([, y]) => y);
-        const bbox = {
-            minX: Math.min(...xs),
-            minY: Math.min(...ys),
-            maxX: Math.max(...xs),
-            maxY: Math.max(...ys)
-        };
-
-        params.set('bbox', `${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY},${crs}`);
-
-        // Add attribute filter separately if present
-        if (cql_filter) {
-            const normalizedAttributeFilter = cql_filter.trim().replace(/\s*=\s*/g, '=');
-            params.set('cql_filter', normalizedAttributeFilter);
-        }
-
-        usedBbox = true;
-        console.log('[FetchWFSFeatureByPolygon] Using bbox fallback:', bbox);
-    }
+    params.set('cql_filter', combinedFilter);
 
     const fullUrl = `${url}?${params.toString()}`;
-    console.log('[FetchWFSFeatureByPolygon] Querying layers:', {
-        layers,
-        crs,
-        method: usedBbox ? 'bbox' : 'INTERSECTS',
-        attributeFilter: cql_filter || 'none'
-    });
 
     try {
         const response = await fetch(fullUrl);
@@ -455,7 +424,6 @@ export async function fetchWFSFeatureByPolygon({
         const data = await response.json();
 
         if (data.features && data.features.length > 0) {
-            console.log('[FetchWFSFeatureByPolygon] Features returned:', data.features.length);
 
             // Add namespace to features for consistency
             const namespaceMap = layers.reduce((acc, layer) => {
@@ -478,7 +446,6 @@ export async function fetchWFSFeatureByPolygon({
             return { ...data, features: featuresWithNamespace };
         }
 
-        console.log('[FetchWFSFeatureByPolygon] No features found');
         return data;
     } catch (error) {
         console.error('[FetchWFSFeatureByPolygon] Error:', error);
@@ -592,9 +559,11 @@ export function useFeatureInfoQuery({
     const clickIdRef = useRef(0);
     const [currentClickId, setCurrentClickId] = useState<number | null>(null);
 
+    // Query bbox visualizer for debugging
+    const { showQueryBbox, hideQueryBbox } = useQueryBboxVisualizer(map);
+
     const queryFn = async (): Promise<LayerContentProps[]> => {
         if (!map) {
-            console.log('[FeatureInfoQuery] Early return - no map');
             return [];
         }
 
@@ -603,7 +572,6 @@ export function useFeatureInfoQuery({
         const isPointQuery = mapPoint !== null;
 
         if (!isPolygonQuery && !isPointQuery) {
-            console.log('[FeatureInfoQuery] Early return - no query geometry');
             return [];
         }
 
@@ -611,23 +579,30 @@ export function useFeatureInfoQuery({
             .filter(([_, layerInfo]) => layerInfo.visible && layerInfo.queryable)
             .map(([key]) => key);
 
-        console.log('[FeatureInfoQuery] Queryable layers (filtered):', queryableLayers);
 
         if (queryableLayers.length === 0) {
             // console.log('[FeatureInfoQuery] No queryable layers');
             return [];
         }
 
+        // Calculate buffer with moderate scaling based on zoom level
+        // Use sqrt of resolution to scale more gradually than linear
+        // This provides better click tolerance at higher zooms without massive buffers at low zooms
+        const resolution = coordinateAdapter.getResolution(map);
+        const bufferMeters = Math.sqrt(resolution) * 50; // Increased multiplier for better click tolerance on lines
+
         // Query each layer separately to avoid rendering occlusion issues
         // When multiple layers are rendered together, only the top layer is returned at a given pixel
         const allFeatures: Feature[] = [];
         let sourceCRS = 'EPSG:4326'; // Default, will be updated from responses
 
+        // Track if we've shown bbox yet (only show once per query)
+        let bboxShown = false;
+
         for (const layerKey of queryableLayers) {
             const layerConfig = visibleLayersMap[layerKey];
 
-            console.log();
-            
+
             const layerCrs = layerConfig?.layerCrs || 'EPSG:3857';
 
             // Get the CQL filter for this specific layer
@@ -640,10 +615,11 @@ export function useFeatureInfoQuery({
             if (dynamicFilter) layerFilters.push(dynamicFilter);
             const layerCqlFilter = layerFilters.length > 0 ? layerFilters.join(' AND ') : null;
 
-            // console.log(`[FeatureInfoQuery] Querying layer separately: ${layerKey} with CRS ${layerCrs}`);
-
             // Use WFS instead of WMS for more reliable geometry-based queries
             const wfsUrl = wmsUrl.replace('/wms', '/wfs');
+
+            // Show bbox for the first layer queried (point queries only)
+            const shouldShowBbox = isPointQuery && !bboxShown;
 
             let featureInfo;
             if (isPolygonQuery && polygonRings) {
@@ -657,23 +633,25 @@ export function useFeatureInfoQuery({
                     featureCount: 200
                 });
             } else if (isPointQuery && mapPoint) {
-                // Point-based query
+                // Point-based query - show bbox visualization for first layer
                 featureInfo = await fetchWFSFeature({
                     mapPoint,
                     layers: [layerKey],
                     url: wfsUrl,
                     cql_filter: layerCqlFilter,
                     crs: layerCrs,
-                    featureCount: 50
+                    featureCount: 50,
+                    bufferMeters,
+                    onBboxCalculated: shouldShowBbox ? (bbox, crs) => {
+                        bboxShown = true;
+                        showQueryBbox(bbox, crs, true); // persist=true to keep visible
+                    } : undefined
                 });
             }
 
             if (featureInfo && 'features' in featureInfo && featureInfo.features && featureInfo.features.length > 0) {
-                // console.log(`[FeatureInfoQuery] Layer ${layerKey}: ${featureInfo.features.length} features returned`);
                 allFeatures.push(...featureInfo.features);
                 sourceCRS = getSourceCRSFromGeoJSON(featureInfo);
-            } else {
-                // console.log(`[FeatureInfoQuery] Layer ${layerKey}: 0 features returned`);
             }
         }
 
@@ -776,16 +754,13 @@ export function useFeatureInfoQuery({
     };
 
     const fetchForPolygon = (rings: number[][][]) => {
-        console.log('[FeatureInfoQuery] fetchForPolygon called with rings:', rings);
         // Clear point state when doing polygon query
         setMapPoint(null);
         // Generate new query ID
         clickIdRef.current += 1;
         const newClickId = clickIdRef.current;
-        console.log('[FeatureInfoQuery] Setting clickId:', newClickId);
         setCurrentClickId(newClickId);
         setPolygonRings(rings);
-        console.log('[FeatureInfoQuery] State updated, refetch should trigger');
     };
 
     // trigger refetch when query geometry changes
@@ -804,5 +779,6 @@ export function useFeatureInfoQuery({
         lastClickedPoint: mapPoint || undefined,
         isPolygonQuery: polygonRings !== null,
         clickId: currentClickId,
+        hideQueryBbox,
     };
 }

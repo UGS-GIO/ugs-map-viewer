@@ -54,21 +54,23 @@ function TopNav({ className, ...props }: TopNavProps) {
 
   const activeBasemap = searchParams.basemap || DEFAULT_BASEMAP.id;
 
-  // Track if this is the initial mount to skip basemap loading on first render
+  // Track if this is the initial mount to only load basemap if it differs from default
   const isInitialMount = useRef(true);
 
   // Load basemap from URL on mount or when URL changes
   useEffect(() => {
     if (!map) return;
 
-    // Skip on initial mount - map is already loaded with default basemap
-    if (isInitialMount.current) {
-      isInitialMount.current = false;
-      return;
-    }
-
     const basemap = BASEMAP_STYLES.find(b => b.id === activeBasemap);
     if (!basemap) return;
+
+    // On initial mount, only load if basemap from URL differs from default
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      if (activeBasemap === DEFAULT_BASEMAP.id) {
+        return; // Skip - map already loaded with correct default basemap
+      }
+    }
 
     // Preserve WMS layers before changing basemap
     const style = map.getStyle();
@@ -114,7 +116,8 @@ function TopNav({ className, ...props }: TopNavProps) {
           ...wmsLayers
         ]
       };
-      map.setStyle(rasterStyle);
+      // Force complete style replacement
+      map.setStyle(rasterStyle, { diff: false });
     } else {
       // It's a style JSON URL - restore layers after style loads
       const restoreLayers = () => {
@@ -135,10 +138,9 @@ function TopNav({ className, ...props }: TopNavProps) {
       };
 
       map.once('styledata', restoreLayers);
-      map.setStyle(basemap.url);
+      // Force complete style replacement to avoid old basemap showing through
+      map.setStyle(basemap.url, { diff: false });
     }
-
-    console.log(`[TopNav] Basemap loaded: ${basemap.title}`);
   }, [map, activeBasemap]);
 
   const handleBasemapChange = (basemapId: string) => {
@@ -158,8 +160,6 @@ function TopNav({ className, ...props }: TopNavProps) {
       to: ".",
       search: (prev) => ({ ...prev, basemap: basemapId }),
     });
-
-    console.log(`[TopNav] Basemap changed to: ${basemap.title}`);
   };
 
   // Check if any long-type basemap is active

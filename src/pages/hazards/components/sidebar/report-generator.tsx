@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useMap } from '@/hooks/use-map';
 import { useTerraDrawPolygon } from '@/hooks/use-terra-draw';
 import { useMapLibreScreenshot } from '@/hooks/use-maplibre-screenshot';
@@ -10,17 +10,10 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, Di
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "@/components/custom/link";
 import proj4 from 'proj4';
-import { serializePolygonForUrl } from '@/lib/map/conversion-utils';
+import { serializePolygonForUrl, PolygonGeometry } from '@/lib/map/conversion-utils';
 
 type ActiveButtonOptions = 'currentMapExtent' | 'customArea' | 'reset';
 type DialogType = 'areaTooLarge' | 'confirmation' | null;
-
-// Polygon format for serialization (Web Mercator coordinates)
-interface PolygonGeometry {
-    type: 'polygon';
-    rings: number[][][];
-    spatialReference: { wkid: number };
-}
 
 // Terra Draw geometry format (WGS84)
 interface DrawGeometry {
@@ -29,7 +22,7 @@ interface DrawGeometry {
 }
 
 function ReportGenerator() {
-    const { map, setIsSketching } = useMap();
+    const { map, setIsSketching, setIgnoreNextClick } = useMap();
     const [activeButton, setActiveButton] = useState<ActiveButtonOptions>();
     const { setNavOpened } = useSidebar();
     const isMobile = useIsMobile();
@@ -37,6 +30,10 @@ function ReportGenerator() {
     const [pendingAoi, setPendingAoi] = useState<PolygonGeometry | null>(null);
     const [aoiForScreenshot, setAoiForScreenshot] = useState<string | null>(null);
     const { toast } = useToast();
+
+    // Use ref to track sketching state synchronously to prevent race conditions
+    // The ref is checked immediately in click handlers before React re-renders
+    const isSketchingRef = useRef(false);
 
     // Use the MapLibre screenshot hook
     const { screenshot, isLoading: isCapturing } = useMapLibreScreenshot({
@@ -47,7 +44,7 @@ function ReportGenerator() {
 
     // Setup Terra Draw for custom area drawing
     const { startPolygonDraw, clearDrawings, cancelDraw } = useTerraDrawPolygon({
-        map: map as any,
+        map,
         onDrawComplete: (geometry: DrawGeometry) => {
             console.log('[ReportGenerator] Draw complete:', geometry);
 
@@ -87,9 +84,8 @@ function ReportGenerator() {
             // Check if area is within limits (12000m x 18000m)
             if (areaHeight < 12000 && areaWidth < 18000) {
                 const aoi: PolygonGeometry = {
-                    type: 'polygon',
                     rings: mercatorRings,
-                    spatialReference: { wkid: 102100 } // Web Mercator
+                    crs: 'EPSG:3857' // Web Mercator
                 };
                 setPendingAoi(aoi);
                 setAoiForScreenshot(JSON.stringify(aoi));
@@ -101,6 +97,13 @@ function ReportGenerator() {
             }
 
             clearDrawings();
+
+            // Set flag to ignore the next click (the finishing double-click)
+            // This will be checked and cleared by the click handler
+            setIgnoreNextClick?.(true);
+
+            // Now safe to clear sketching state
+            isSketchingRef.current = false;
             setIsSketching?.(false);
         }
     });
@@ -196,9 +199,8 @@ function ReportGenerator() {
             ]];
 
             const aoi: PolygonGeometry = {
-                type: 'polygon',
                 rings: [rings[0]],
-                spatialReference: { wkid: 102100 }
+                crs: 'EPSG:3857' // Web Mercator
             };
             handleNavigate(aoi);
         } else {
@@ -207,10 +209,14 @@ function ReportGenerator() {
     };
 
     const handleCustomAreaButton = () => {
-        handleReset();
-        handleActiveButton('customArea');
+        // Clear any existing drawings but don't reset sketching state
+        cancelDraw();
+        clearDrawings();
+        setActiveButton('customArea');
         if (isMobile) setNavOpened(false);
 
+        // Set sketching state synchronously with ref
+        isSketchingRef.current = true;
         setIsSketching?.(true);
         startPolygonDraw();
     };
@@ -219,10 +225,10 @@ function ReportGenerator() {
         cancelDraw();
         clearDrawings();
         setActiveButton(undefined);
-        requestAnimationFrame(() => {
-            setIsSketching?.(false);
-        });
         setActiveDialog(null);
+        isSketchingRef.current = false;
+        setIsSketching?.(false);
+        setIgnoreNextClick?.(false);
     };
 
     const buttonText = (buttonName: ActiveButtonOptions, defaultText: string) => {
