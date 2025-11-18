@@ -3,13 +3,20 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BackToMenuButton } from '@/components/custom/back-to-menu-button';
 import { useMapCoordinates } from '@/hooks/use-map-coordinates';
+import { usePopupView } from '@/context/popup-view-context';
 
 function MapConfigurations() {
     const { setIsDecimalDegrees, locationCoordinateFormat } = useMapCoordinates();
+    const { defaultViewMode, setDefaultViewMode } = usePopupView();
+
     const handleCoordFormatChange = (value: string) => {
         if (value && setIsDecimalDegrees) {
             setIsDecimalDegrees(value === "Decimal Degrees");
         }
+    };
+
+    const handlePopupViewChange = (value: string) => {
+        setDefaultViewMode(value as 'card' | 'table');
     };
 
     return (
@@ -48,6 +55,40 @@ function MapConfigurations() {
                                     className="flex flex-1 items-center justify-center rounded-sm bg-popover p-3 text-center hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary [&:has([data-state=checked])]:text-primary-foreground"
                                 >
                                     Degrees, Minutes, Seconds
+                                </Label>
+                            </div>
+                        </RadioGroup>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle>
+                            Default Popup View
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <RadioGroup
+                            value={defaultViewMode}
+                            onValueChange={handlePopupViewChange}
+                            className="grid grid-cols-1 sm:grid-cols-2 gap-2"
+                        >
+                            <div className="flex">
+                                <RadioGroupItem value="card" id="card-view" className="peer sr-only" />
+                                <Label
+                                    htmlFor="card-view"
+                                    className="flex flex-1 items-center justify-center rounded-sm bg-popover p-3 text-center hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary [&:has([data-state=checked])]:text-primary-foreground"
+                                >
+                                    Card View
+                                </Label>
+                            </div>
+                            <div className="flex">
+                                <RadioGroupItem value="table" id="table-view" className="peer sr-only" />
+                                <Label
+                                    htmlFor="table-view"
+                                    className="flex flex-1 items-center justify-center rounded-sm bg-popover p-3 text-center hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary [&:has([data-state=checked])]:text-primary-foreground"
+                                >
+                                    Attribute Table
                                 </Label>
                             </div>
                         </RadioGroup>

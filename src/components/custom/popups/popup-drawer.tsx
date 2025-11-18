@@ -5,11 +5,13 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 import { LayerContentProps, PopupContentWithPagination } from "@/components/custom/popups/popup-content-with-pagination";
+import { AttributeTableDrawer } from "@/components/custom/popups/attribute-table-drawer";
 import useScreenSize from "@/hooks/use-screen-size";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { clearGraphics } from "@/lib/map/highlight-utils";
 import { useMap } from "@/hooks/use-map";
-import { XIcon } from "lucide-react";
+import { usePopupView } from "@/context/popup-view-context";
+import { XIcon, Table2 } from "lucide-react";
 
 interface CombinedSidebarDrawerProps {
     container?: HTMLDivElement | null;
@@ -28,11 +30,44 @@ function PopupDrawer({
     const carouselRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const sheetContentRef = useRef<HTMLDivElement>(null);
+    const attributeTableTriggerRef = useRef<HTMLButtonElement>(null);
     const [activeLayerTitle, setActiveLayerTitle] = useState<string>("");
     const [open, setOpen] = useState(false);
+    const [showAttributeTable, setShowAttributeTable] = useState(false);
     const screenSize = useScreenSize();
     const isMobile = useIsMobile();
     const { map } = useMap();
+    const { defaultViewMode } = usePopupView();
+
+    // Track when popup content loads and which view should open
+    const prevPopupContentLengthRef = useRef(0);
+    const hasOpenedViewRef = useRef(false);
+
+    useEffect(() => {
+        // Detect when new popup content arrives (user clicked on map)
+        const hasNewContent = popupContent.length > 0 &&
+            popupContent.length !== prevPopupContentLengthRef.current;
+
+        if (hasNewContent && !hasOpenedViewRef.current) {
+            prevPopupContentLengthRef.current = popupContent.length;
+            hasOpenedViewRef.current = true;
+
+            // Open the appropriate view based on preference
+            if (defaultViewMode === 'table') {
+                setShowAttributeTable(true);
+                setOpen(false);
+            } else {
+                setOpen(true);
+                setShowAttributeTable(false);
+            }
+        }
+
+        // Reset the flag when content is cleared
+        if (popupContent.length === 0) {
+            hasOpenedViewRef.current = false;
+            prevPopupContentLengthRef.current = 0;
+        }
+    }, [popupContent, defaultViewMode]);
 
     // Group layers and extract titles - NO side effects
     const { groupedLayers, layerTitles } = useMemo(() => {
@@ -112,8 +147,7 @@ function PopupDrawer({
             onOpenChange={(isOpen) => {
                 if (!isOpen) {
                     handleClose();
-                } else {
-                    setOpen(true);
+                    // Don't set open to true here - let the useEffect handle it
                 }
             }}
             modal={false}
@@ -145,8 +179,22 @@ function PopupDrawer({
                     "w-full sm:max-w-xl md:max-w-2xl border-l border-border dark:border-border"
                 )}
             >
-                <SheetHeader className="flex justify-between items-center py-2 md:py-4 px-3 relative border-b border-border/30 bg-background/30 backdrop-blur-sm">
+                <SheetHeader className="flex flex-row justify-between items-center py-2 md:py-4 px-3 relative border-b border-border/30 bg-background/30 backdrop-blur-sm">
                     <SheetTitle className="flex-1 pr-10">{popupTitle}</SheetTitle>
+                    <div className="flex gap-1">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                                setShowAttributeTable(true);
+                                setOpen(false); // Close popup drawer
+                            }}
+                            className="flex gap-2"
+                        >
+                            <Table2 className="h-4 w-4" />
+                            <span className="hidden md:inline">Attribute Table</span>
+                        </Button>
+                    </div>
                 </SheetHeader>
 
                 <SheetDescription className="sr-only">
@@ -224,6 +272,7 @@ function PopupDrawer({
                     </div>
                 </div>
 
+
                 {/* Floating close button */}
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
                     <Button
@@ -237,6 +286,18 @@ function PopupDrawer({
                     </Button>
                 </div>
             </SheetContent>
+
+            {/* Attribute Table Bottom Drawer - rendered outside main sheet */}
+            <AttributeTableDrawer
+                layerContent={popupContent}
+                triggerRef={attributeTableTriggerRef}
+                isOpen={showAttributeTable}
+                onOpenChange={setShowAttributeTable}
+                onSwitchToCards={() => {
+                    setShowAttributeTable(false);
+                    setOpen(true); // Re-open popup drawer
+                }}
+            />
         </Sheet>
     );
 }

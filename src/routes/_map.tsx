@@ -2,6 +2,7 @@ import { LayerUrlProvider } from '@/context/layer-url-provider';
 import { MapProvider } from '@/context/map-provider';
 import { SidebarProvider } from '@/context/sidebar-provider';
 import { MultiSelectProvider } from '@/context/multi-select-context';
+import { PopupViewProvider } from '@/context/popup-view-context';
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { z } from 'zod'
 import { RouteErrorBoundary } from '@/components/route-error-boundary'
@@ -15,6 +16,7 @@ const mapSearchSchema = z.object({
     sidebar_collapsed: z.coerce.boolean().optional().default(false),
     coordinate_format: z.enum(['dd', 'dms']).optional(),
     basemap: z.string().optional(),
+    popup_view: z.enum(['card', 'table']).optional().default('card'),
     layers: z.preprocess((val) => {
         if (typeof val === 'string') {
             try { return JSON.parse(val); } catch (e) { return undefined; }
@@ -38,7 +40,9 @@ export const Route = createFileRoute('/_map')({
             <SidebarProvider>
                 <MapProvider>
                     <MultiSelectProvider>
-                        <Outlet />
+                        <PopupViewProvider>
+                            <Outlet />
+                        </PopupViewProvider>
                     </MultiSelectProvider>
                 </MapProvider>
             </SidebarProvider>
