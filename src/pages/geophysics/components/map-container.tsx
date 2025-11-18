@@ -1,44 +1,15 @@
 import { MapControls } from '@/pages/geophysics/components/sidebar/map-configurations/map-controls';
-import { MapContextMenu } from "@/components/custom/map/map-context-menu";
-import { PopupDrawer } from "@/components/custom/popups/popup-drawer";
-import { useMapContainer } from "@/hooks/use-map-container";
+import { BaseMapContainer } from "@/components/custom/map/base-map-container";
 import { PROD_GEOSERVER_URL } from '@/lib/constants';
-import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs';
 
 export default function MapContainer() {
-    const layersConfig = useGetLayerConfigsData('layers');
-    const {
-        mapRef,
-        contextMenuTriggerRef,
-        drawerTriggerRef,
-        popupContainer,
-        setPopupContainer,
-        popupContent,
-        handleOnContextMenu,
-        coordinates,
-        setCoordinates,
-    } = useMapContainer({
-        layersConfig: layersConfig,
-        wmsUrl: `${PROD_GEOSERVER_URL}wms`
-    });
-
     return (
-        <>
-            <MapContextMenu coordinates={coordinates} hiddenTriggerRef={contextMenuTriggerRef} />
-            <div
-                className="relative w-full h-full"
-                ref={mapRef}
-                onContextMenu={e => handleOnContextMenu(e, contextMenuTriggerRef, setCoordinates)}
-            >
-                <MapControls />
-            </div>
-            <PopupDrawer
-                container={popupContainer}
-                drawerTriggerRef={drawerTriggerRef}
-                popupContent={popupContent}
-                popupTitle="Feature Information"
-            />
-            <div ref={setPopupContainer} />
-        </>
+        <BaseMapContainer
+            wmsUrl={`${PROD_GEOSERVER_URL}wms`}
+            layerConfigKey="layers"
+            popupTitle="Geophysical Features"
+        >
+            <MapControls />
+        </BaseMapContainer>
     );
 }

@@ -176,12 +176,6 @@ export function useMapContainer({
         }
 
         const handleMapLibreClick = (e: any) => {
-            // Check if drawer is open - if so, ignore map clicks (user is closing drawer)
-            const drawerState = drawerTriggerRef.current?.getAttribute('data-state');
-            if (drawerState === 'open') {
-                return;
-            }
-
             // Clear any previous graphics immediately
             clearGraphics(map);
 
