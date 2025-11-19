@@ -142,7 +142,9 @@ function PopupDrawer({
                     // Mobile: full height, no border, full screen takeover
                     isMobile ? "h-full border-0 rounded-none inset-0" :
                     // Desktop: inset panel with border and glass effect
-                    "w-full sm:max-w-xl md:max-w-2xl border-l border-border dark:border-border"
+                    "w-full sm:max-w-xl md:max-w-2xl border-l border-border dark:border-border",
+                    // Hide the default close button since we have a floating one
+                    "[&>button]:hidden"
                 )}
             >
                 <SheetHeader className="flex justify-between items-center py-2 md:py-4 px-3 relative border-b border-border/30 bg-background/30 backdrop-blur-sm">
@@ -225,7 +227,7 @@ function PopupDrawer({
                 </div>
 
                 {/* Floating close button */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[110]">
                     <Button
                         onClick={handleCloseClick}
                         variant="default"

@@ -81,14 +81,14 @@ export default function Sidebar({ className }: SidebarProps) {
         {/* Header */}
         <Layout.Header
           sticky
-          className={`z-50 flex justify-between py-2 shadow-sm px-4 md:px-1 ${isCollapsed ? 'md:mt-3' : ''}`}
+          className={`z-50 flex justify-between py-2 shadow-sm px-4 md:px-1`}
         >
           <div className={`flex items-center ${!isCollapsed ? 'gap-4' : 'w-full'}`}>
             <Link to="https://geology.utah.gov/" className="cursor-pointer flex items-center justify-center w-10">
               <img
                 src='/logo_main.png'
                 alt='Utah Geological Survey Logo'
-                className={`transition-all duration-300 ${isCollapsed ? 'h-8 w-8' : 'h-8 w-[1.75rem]'}`}
+                className={`transition-all duration-300 ${isCollapsed ? 'h-8 w-7' : 'h-8 w-[1.75rem]'}`}
               />
             </Link>
             {!isCollapsed && (
