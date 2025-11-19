@@ -114,7 +114,7 @@ const Footer = React.forwardRef<HTMLDivElement, FooterProps>(
         ref={ref}
         data-layout="footer"
         className={cn(
-          "flex items-center justify-between p-2 border-t bg-background", // Footer style
+          "flex items-center justify-between px-2 py-1 md:py-2 border-t bg-background", // Footer style
           contextVal.fixed && 'flex-none',
           className
         )}
