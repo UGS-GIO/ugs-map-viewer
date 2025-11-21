@@ -25,9 +25,7 @@ export function ReportCover({ polygon }: ReportCoverProps) {
                         polygon={polygon}
                         height={400}
                     />
-                    <p className="text-xs text-muted-foreground italic leading-relaxed">
-                        {HAZARDS_REPORT_CONTENT.disclaimer}
-                    </p>
+                    <p className="text-xs text-muted-foreground italic leading-relaxed" dangerouslySetInnerHTML={{ __html: HAZARDS_REPORT_CONTENT.disclaimer }} />
                 </div>
             </div>
         </section>
