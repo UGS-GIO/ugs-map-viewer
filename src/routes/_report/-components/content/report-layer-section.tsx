@@ -6,7 +6,7 @@ import {
     TooltipContent,
     TooltipProvider,
     TooltipTrigger,
-} from '@/components/ui/tooltip'
+} from '@/components/custom/tooltip'
 import { Info } from 'lucide-react'
 import { HazardUnit } from '@/routes/_report/-utils/static-hazards-service'
 import { AnchorLinkIcon } from '@/routes/_report/-components/shared/anchor-link-icon'
@@ -36,9 +36,9 @@ export function ReportLayerSection({ layer, groupName, groupId, polygon }: Repor
         return null
     }
 
-    // Tooltip component
+    // Tooltip component (desktop only)
     const tooltip = layerContent.howToUse ? (
-        <div className="print:hidden">
+        <div className="hidden lg:block print:hidden">
             <TooltipProvider>
                 <Tooltip delayDuration={0}>
                     <TooltipTrigger asChild>
@@ -49,7 +49,7 @@ export function ReportLayerSection({ layer, groupName, groupId, polygon }: Repor
                     </TooltipTrigger>
                     <TooltipContent
                         side="left"
-                        className="max-w-md max-h-96 overflow-y-auto bg-secondary text-secondary-foreground border-border"
+                        className="max-w-md max-h-96 overflow-y-auto border-border"
                     >
                         <div
                             className="prose prose-sm max-w-none prose-invert"
@@ -87,9 +87,9 @@ export function ReportLayerSection({ layer, groupName, groupId, polygon }: Repor
                 tooltip={tooltip}
             />
 
-            {/* How to Use (Print Only) */}
+            {/* How to Use (Mobile & Print) */}
             {layerContent.howToUse && (
-                <div className="hidden print:block space-y-2">
+                <div className="lg:hidden print:block space-y-2">
                     <h5 className="font-semibold">How to Use This Map</h5>
                     <div className="prose max-w-none text-sm">
                         <div dangerouslySetInnerHTML={{ __html: layerContent.howToUse }} />

@@ -8,7 +8,7 @@ import { SectionTabs, Section } from '@/routes/_report/-components/layouts/secti
 import { FileText, AlertTriangle, Printer, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Image } from '@/components/ui/image'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/custom/tooltip'
 import { queryGeoServerForHazardUnits } from '@/routes/_report/-utils/geoserver-wfs-service'
 import {
     HazardUnit,
@@ -296,7 +296,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                                             <span className="hidden xl:inline">Share Report</span>
                                         </Button>
                                     </TooltipTrigger>
-                                    <TooltipContent>
+                                    <TooltipContent className="hidden xl:block">
                                         <p>Share Report</p>
                                     </TooltipContent>
                                 </Tooltip>
@@ -311,7 +311,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                                             <span className="hidden xl:inline">Print / Save as PDF</span>
                                         </Button>
                                     </TooltipTrigger>
-                                    <TooltipContent>
+                                    <TooltipContent className="hidden xl:block">
                                         <p>Print / Save as PDF</p>
                                     </TooltipContent>
                                 </Tooltip>
