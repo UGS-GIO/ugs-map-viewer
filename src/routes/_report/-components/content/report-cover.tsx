@@ -17,7 +17,9 @@ export function ReportCover({ polygon }: ReportCoverProps) {
                         Cover
                         <AnchorLinkIcon sectionId="cover" title="Cover" size="md" />
                     </h2>
-                    <p className="text-sm leading-relaxed">{HAZARDS_REPORT_CONTENT.coverPageIntro}</p>
+                    <div className="prose max-w-none text-sm">
+                        <p dangerouslySetInnerHTML={{ __html: HAZARDS_REPORT_CONTENT.coverPageIntro }} />
+                    </div>
                     <ReportScreenshot
                         title={title}
                         polygon={polygon}
