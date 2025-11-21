@@ -8,6 +8,7 @@ import { SectionTabs, Section } from '@/routes/_report/-components/layouts/secti
 import { FileText, AlertTriangle, Printer, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Image } from '@/components/ui/image'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { queryGeoServerForHazardUnits } from '@/routes/_report/-utils/geoserver-wfs-service'
 import {
     HazardUnit,
@@ -268,38 +269,54 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                             activeSection={activeSection}
                             onSectionChange={scrollToSection}
                         />
-                        <div>
-                            <Button
-                                onClick={() => {
-                                    const reportUrl = window.location.href; // Use the current URL
+                        <TooltipProvider>
+                            <div className="flex flex-wrap gap-2 items-center mx-4 my-2">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            onClick={() => {
+                                                const reportUrl = window.location.href; // Use the current URL
 
-                                    // Directly copy the URL to the clipboard and show toast notification
-                                    navigator.clipboard.writeText(reportUrl)
-                                        .then(() => {
-                                            // Success toast
-                                            toast('Report link copied to clipboard!');
-                                        })
-                                        .catch((err) => {
-                                            // Failure toast
-                                            toast.warning('Failed to copy report link.');
-                                            console.error('Could not copy text: ', err);
-                                        });
-                                }}
-                                variant="default"
-                                className='inline-flex gap-1.5 p-2 mx-4 my-2 items-center'
-                            >
-                                <Upload className="h-4 w-4 mr-2" />
-                                Share Report
-                            </Button>
-                            <Button
-                                onClick={handlePrint}
-                                variant="default"
-                                className='inline-flex gap-1.5 p-2 mx-4 my-2 items-center'
-                            >
-                                <Printer className="h-4 w-4 mr-2" />
-                                Print / Save as PDF
-                            </Button>
-                        </div>
+                                                // Directly copy the URL to the clipboard and show toast notification
+                                                navigator.clipboard.writeText(reportUrl)
+                                                    .then(() => {
+                                                        // Success toast
+                                                        toast('Report link copied to clipboard!');
+                                                    })
+                                                    .catch((err) => {
+                                                        // Failure toast
+                                                        toast.warning('Failed to copy report link.');
+                                                        console.error('Could not copy text: ', err);
+                                                    });
+                                            }}
+                                            variant="default"
+                                            className='inline-flex gap-1.5 p-2 items-center'
+                                        >
+                                            <Upload className="h-4 w-4 xl:mr-2" />
+                                            <span className="hidden xl:inline">Share Report</span>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Share Report</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            onClick={handlePrint}
+                                            variant="default"
+                                            className='inline-flex gap-1.5 p-2 items-center'
+                                        >
+                                            <Printer className="h-4 w-4 xl:mr-2" />
+                                            <span className="hidden xl:inline">Print / Save as PDF</span>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Print / Save as PDF</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </div>
+                        </TooltipProvider>
                     </div>
                 }
                 banner={
