@@ -12,7 +12,7 @@ export function HeroSection({ image, overlayText }: HeroSectionProps) {
 
         {/* Overlay Text */}
         <div className="absolute inset-0 flex items-end justify-start p-4">
-          <h1 className="text-white text-7xl md:text-6xl font-medium">
+          <h1 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-medium">
             {overlayText}
           </h1>
         </div>
