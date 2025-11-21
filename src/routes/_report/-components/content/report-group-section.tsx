@@ -22,6 +22,7 @@ function parseHazardIntro(htmlText: string) {
 
     doc.body.querySelectorAll('p').forEach(p => {
         const text = p.textContent?.trim() || ''
+        const html = p.innerHTML?.trim() || ''
 
         // Check if this paragraph starts the hazards list
         if (text.match(/hazards include:/i)) {
@@ -43,11 +44,11 @@ function parseHazardIntro(htmlText: string) {
             } else if (text && !text.match(/^&nbsp;$/)) {
                 // End of hazards section - remaining text is closing paragraph
                 inHazardSection = false
-                paragraphs.push(text)
+                paragraphs.push(html)
             }
         } else if (text && !text.match(/^&nbsp;$/)) {
             // Regular paragraph before or after hazards
-            paragraphs.push(text)
+            paragraphs.push(html)
         }
     })
 
@@ -88,11 +89,9 @@ export function ReportGroupSection({ group, polygon }: ReportGroupSectionProps) 
                 </h2>
 
                 {/* Group intro text - Introduction paragraphs */}
-                <div className="space-y-4">
+                <div className="prose max-w-none text-sm space-y-4">
                     {parsed.paragraphs.slice(0, -1).map((para, idx) => (
-                        <p key={idx} className="text-sm leading-relaxed">
-                            {para}
-                        </p>
+                        <p key={idx} dangerouslySetInnerHTML={{ __html: para }} />
                     ))}
                 </div>
 
@@ -120,9 +119,9 @@ export function ReportGroupSection({ group, polygon }: ReportGroupSectionProps) 
 
                 {/* Closing paragraph */}
                 {parsed.paragraphs.length > 0 && (
-                    <p className="text-sm leading-relaxed text-muted-foreground">
-                        {parsed.paragraphs[parsed.paragraphs.length - 1]}
-                    </p>
+                    <div className="prose max-w-none text-sm">
+                        <p className="text-muted-foreground" dangerouslySetInnerHTML={{ __html: parsed.paragraphs[parsed.paragraphs.length - 1] }} />
+                    </div>
                 )}
             </div>
 

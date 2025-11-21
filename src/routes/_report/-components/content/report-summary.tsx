@@ -26,7 +26,7 @@ export function ReportSummary({ hazardGroups }: ReportSummaryProps) {
 
             <div className="space-y-4">
                 <div className="prose max-w-none text-sm">
-                    <p>{HAZARDS_REPORT_CONTENT.summary.intro}</p>
+                    <p dangerouslySetInnerHTML={{ __html: HAZARDS_REPORT_CONTENT.summary.intro }} />
                 </div>
 
                 <div className="border rounded-lg p-4">
@@ -58,7 +58,7 @@ export function ReportSummary({ hazardGroups }: ReportSummaryProps) {
             </div>
 
             <div className="prose max-w-none text-sm">
-                <p>{HAZARDS_REPORT_CONTENT.summary.closing}</p>
+                <p dangerouslySetInnerHTML={{ __html: HAZARDS_REPORT_CONTENT.summary.closing }} />
             </div>
         </section>
     )
