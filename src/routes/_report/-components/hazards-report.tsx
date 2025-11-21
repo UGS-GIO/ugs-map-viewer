@@ -204,19 +204,20 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
         setActiveSection(bestSection)
     }, [sectionIds])
 
-    const scrollToSection = (sectionId: string) => {
+    const scrollToSection = useCallback((sectionId: string) => {
         const element = sectionRefs.current[sectionId]
         if (element) {
             element.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
-    }
+    }, [])
 
     // Handle anchor link navigation from URL hash on page load and hash changes
     useEffect(() => {
         const handleHashChange = () => {
             const hash = window.location.hash.slice(1) // Remove '#' prefix
             if (hash && sectionRefs.current[hash]) {
-                scrollToSection(hash)
+                // Small delay to ensure content is rendered
+                setTimeout(() => scrollToSection(hash), 100)
             }
         }
 
@@ -226,7 +227,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
         // Listen for hash changes (e.g., when clicking anchor link icons)
         window.addEventListener('hashchange', handleHashChange)
         return () => window.removeEventListener('hashchange', handleHashChange)
-    }, [])
+    }, [sections, scrollToSection])
 
     const handlePrint = useReactToPrint({
         contentRef: printRef,
@@ -334,7 +335,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                     </div>
                 }
             >
-                <div ref={printRef} className="report-content space-y-12 max-w-7xl mx-auto">
+                <div ref={printRef} className="report-content space-y-6 md:space-y-12 max-w-7xl mx-auto">
                     {/* Print-only header */}
                     <div className="hidden print:block mb-8">
                         <div className="flex items-center justify-between border-b-2 border-secondary pb-4">
@@ -427,7 +428,7 @@ function SectionWithObserver({
     }, [ref, setRef])
 
     return (
-        <div ref={setRefs} id={id} className="scroll-mt-20">
+        <div ref={setRefs} id={id} className="scroll-mt-16 md:scroll-mt-20">
             {children}
         </div>
     )

@@ -130,7 +130,7 @@ export function ReportGroupSection({ group, polygon }: ReportGroupSectionProps) 
                 <div
                     key={layer.code}
                     id={`${group.id}-${layer.code.toLowerCase()}`}
-                    className="scroll-mt-20"
+                    className="scroll-mt-16 md:scroll-mt-20"
                 >
                     <ReportLayerSection
                         layer={layer}
