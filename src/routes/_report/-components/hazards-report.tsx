@@ -5,10 +5,9 @@ import { useReactToPrint } from 'react-to-print'
 import { queryKeys } from '@/lib/query-keys'
 import { ReportLayout } from '@/routes/_report/-components/layouts/report-layout'
 import { SectionTabs, Section } from '@/routes/_report/-components/layouts/section-tabs'
-import { FileText, AlertTriangle, Printer, Upload } from 'lucide-react'
+import { FileText, AlertTriangle, Printer, Share2, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Image } from '@/components/ui/image'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/custom/tooltip'
 import { queryGeoServerForHazardUnits } from '@/routes/_report/-utils/geoserver-wfs-service'
 import {
     HazardUnit,
@@ -56,6 +55,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
     const printRef = useRef<HTMLDivElement>(null)
     const [activeSection, setActiveSection] = useState<string>('cover')
     const visibleSectionsRef = useRef<Map<string, IntersectionObserverEntry>>(new Map())
+    const [fabExpanded, setFabExpanded] = useState(false)
 
     // Query for hazard data
     const { data: hazardGroups = [], isLoading } = useQuery({
@@ -244,10 +244,54 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
         )
     }
 
+    const handleShare = () => {
+        navigator.clipboard.writeText(window.location.href)
+            .then(() => {
+                toast('Report link copied to clipboard!');
+            })
+            .catch((err) => {
+                toast.warning('Failed to copy report link.');
+                console.error('Could not copy text: ', err);
+            });
+    };
+
     return (
         <>
+            {/* Floating Action Buttons */}
+            <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50 print:hidden sm:hidden">
+                {fabExpanded && (
+                    <>
+                        <Button
+                            onClick={handleShare}
+                            size="icon"
+                            className="h-12 w-12 rounded-full shadow-lg"
+                            title="Share Report"
+                        >
+                            <Share2 className="h-5 w-5" />
+                        </Button>
+                        <Button
+                            onClick={handlePrint}
+                            size="icon"
+                            className="h-12 w-12 rounded-full shadow-lg"
+                            title="Print / Save as PDF"
+                        >
+                            <Printer className="h-5 w-5" />
+                        </Button>
+                    </>
+                )}
+                <Button
+                    onClick={() => setFabExpanded(!fabExpanded)}
+                    size="icon"
+                    variant={fabExpanded ? "secondary" : "default"}
+                    className="h-12 w-12 rounded-full shadow-lg"
+                    title={fabExpanded ? "Minimize" : "Expand"}
+                >
+                    {fabExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
+                </Button>
+            </div>
+
             <ReportLayout
-                header={<ReportHeader />}
+                header={<ReportHeader onPrint={handlePrint} />}
                 hero={
                     <div className="print:hidden">
                         <HeroSection
@@ -255,7 +299,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                                 <Image
                                     src={heroImage}
                                     alt="Hero"
-                                    className="w-full h-48 object-cover"
+                                    className="w-full h-32 md:h-48 object-cover"
                                     loading="eager"
                                 />
                             }
@@ -264,60 +308,12 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                     </div>
                 }
                 tabs={
-                    <div className="print:hidden flex justify-between">
+                    <div className="print:hidden">
                         <SectionTabs
                             sections={sections}
                             activeSection={activeSection}
                             onSectionChange={scrollToSection}
                         />
-                        <TooltipProvider>
-                            <div className="flex flex-wrap gap-2 items-center mx-4 my-2">
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            onClick={() => {
-                                                const reportUrl = window.location.href; // Use the current URL
-
-                                                // Directly copy the URL to the clipboard and show toast notification
-                                                navigator.clipboard.writeText(reportUrl)
-                                                    .then(() => {
-                                                        // Success toast
-                                                        toast('Report link copied to clipboard!');
-                                                    })
-                                                    .catch((err) => {
-                                                        // Failure toast
-                                                        toast.warning('Failed to copy report link.');
-                                                        console.error('Could not copy text: ', err);
-                                                    });
-                                            }}
-                                            variant="default"
-                                            className='inline-flex gap-1.5 p-2 items-center'
-                                        >
-                                            <Upload className="h-4 w-4 xl:mr-2" />
-                                            <span className="hidden xl:inline">Share Report</span>
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="hidden xl:block">
-                                        <p>Share Report</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            onClick={handlePrint}
-                                            variant="default"
-                                            className='inline-flex gap-1.5 p-2 items-center'
-                                        >
-                                            <Printer className="h-4 w-4 xl:mr-2" />
-                                            <span className="hidden xl:inline">Print / Save as PDF</span>
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent className="hidden xl:block">
-                                        <p>Print / Save as PDF</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </div>
-                        </TooltipProvider>
                     </div>
                 }
                 banner={
