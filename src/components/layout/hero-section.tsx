@@ -6,7 +6,7 @@ interface HeroSectionProps {
 export function HeroSection({ image, overlayText }: HeroSectionProps) {
   return (
     <section className="w-full">
-      <div className="relative w-full h-48 md:h-48">
+      <div className="relative w-full h-32 md:h-48">
         {/* Background Image */}
         {image}
 
