@@ -161,9 +161,9 @@ function LayerLegend({ url, layerName, showUnitDescriptions, units }: LayerLegen
                 <Table>
                     <TableHeader className="bg-muted">
                         <TableRow>
-                            <TableHead className="text-left p-4 font-semibold w-20">Symbol</TableHead>
-                            <TableHead className="text-left p-4 font-semibold w-20">Unit</TableHead>
-                            {showUnitDescriptions && <TableHead className="text-left p-4 font-semibold">Description</TableHead>}
+                            <TableHead className="text-left p-2 md:p-4 font-semibold w-16 md:w-20">Symbol</TableHead>
+                            <TableHead className="text-left p-2 md:p-4 font-semibold">Unit</TableHead>
+                            {showUnitDescriptions && <TableHead className="text-left p-2 md:p-4 font-semibold hidden md:table-cell">Description</TableHead>}
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -175,26 +175,36 @@ function LayerLegend({ url, layerName, showUnitDescriptions, units }: LayerLegen
 
                             return (
                                 <TableRow key={index}>
-                                    <TableCell className="p-4 align-center">
+                                    <TableCell className="p-2 md:p-4 align-top">
                                         {symbolHtmlString && (
                                             <span
-                                                className="flex items-center justify-center w-8"
+                                                className="flex items-center justify-center w-6 md:w-8"
                                                 dangerouslySetInnerHTML={{ __html: symbolHtmlString }}
                                             />
                                         )}
                                     </TableCell>
-                                    <TableCell className="p-4 text-sm align-center">
+                                    <TableCell className="p-2 md:p-4 text-sm align-top">
                                         <div>
-                                            {wmsLabel}
+                                            <div className="font-medium">{wmsLabel}</div>
                                             {literalValue && (
                                                 <div className="text-xs text-muted-foreground mt-1">
                                                     ID: {literalValue}
                                                 </div>
                                             )}
+                                            {/* Show description on mobile below the unit */}
+                                            {showUnitDescriptions && matchingUnit?.Description && (
+                                                <div className="md:hidden mt-2 text-xs text-muted-foreground">
+                                                    {matchingUnit.Description.replace(/<[^>]*>/g, '') !== wmsLabel ? (
+                                                        matchingUnit.Description.replace(/<[^>]*>/g, '')
+                                                    ) : (
+                                                        'Detailed description not available for this unit'
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </TableCell>
                                     {showUnitDescriptions && (
-                                        <TableCell className="p-4 text-sm align-center">
+                                        <TableCell className="p-2 md:p-4 text-sm align-top hidden md:table-cell">
                                             <div>
                                                 {matchingUnit?.Description && matchingUnit.Description.replace(/<[^>]*>/g, '') !== wmsLabel ? (
                                                     <div>{matchingUnit.Description.replace(/<[^>]*>/g, '')}</div>
@@ -242,9 +252,9 @@ function CustomLegendRenderer({ items, layerName }: CustomLegendRendererProps) {
                 <Table>
                     <TableHeader className="bg-muted">
                         <TableRow>
-                            <TableHead className="text-left p-4 font-semibold w-20">Symbol</TableHead>
-                            <TableHead className="text-left p-4 font-semibold w-20">Unit</TableHead>
-                            <TableHead className="text-left p-4 font-semibold">Description</TableHead>
+                            <TableHead className="text-left p-2 md:p-4 font-semibold w-16 md:w-20">Symbol</TableHead>
+                            <TableHead className="text-left p-2 md:p-4 font-semibold">Unit</TableHead>
+                            <TableHead className="text-left p-2 md:p-4 font-semibold hidden md:table-cell">Description</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -253,25 +263,35 @@ function CustomLegendRenderer({ items, layerName }: CustomLegendRendererProps) {
 
                             return (
                                 <TableRow key={index}>
-                                    <TableCell className="p-4 align-top">
+                                    <TableCell className="p-2 md:p-4 align-top">
                                         {symbolHtmlString && (
                                             <span
-                                                className="flex items-center justify-center w-8"
+                                                className="flex items-center justify-center w-6 md:w-8"
                                                 dangerouslySetInnerHTML={{ __html: symbolHtmlString }}
                                             />
                                         )}
                                     </TableCell>
-                                    <TableCell className="p-4 text-sm align-top">
+                                    <TableCell className="p-2 md:p-4 text-sm align-top">
                                         <div>
-                                            {item.label}
+                                            <div className="font-medium">{item.label}</div>
                                             {item.literalValue && (
                                                 <div className="text-xs text-muted-foreground mt-1">
                                                     ID: {item.literalValue}
                                                 </div>
                                             )}
+                                            {/* Show description on mobile below the unit */}
+                                            {item.description && (
+                                                <div className="md:hidden mt-2 text-xs text-muted-foreground">
+                                                    {typeof item.description === 'string' ? (
+                                                        <p>{item.description}</p>
+                                                    ) : (
+                                                        item.description
+                                                    )}
+                                                </div>
+                                            )}
                                         </div>
                                     </TableCell>
-                                    <TableCell className="p-4 text-sm align-top">
+                                    <TableCell className="p-2 md:p-4 text-sm align-top hidden md:table-cell">
                                         {item.description && (
                                             <div>
                                                 {typeof item.description === 'string' ? (
