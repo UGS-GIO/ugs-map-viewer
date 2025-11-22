@@ -32,7 +32,7 @@ export function ReportLayout({
 
                 {/* Tabs/Section Selectors */}
                 {tabs && (
-                    <div className="sticky top-0 z-20 bg-background border-b">
+                    <div className="sticky top-0 z-20 bg-background border-b pt-1">
                         {tabs}
                     </div>
                 )}

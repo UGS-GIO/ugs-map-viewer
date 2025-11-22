@@ -24,7 +24,7 @@ export function SectionTabs({
     return (
         <>
             {/* Mobile dropdown */}
-            <div className="lg:hidden mx-2 my-2 flex-1">
+            <div className="lg:hidden my-2 px-4 w-full">
                 <Select value={activeSection} onValueChange={onSectionChange}>
                     <SelectTrigger className="w-full bg-muted">
                         <SelectValue placeholder={activeLabel} />
@@ -43,8 +43,8 @@ export function SectionTabs({
             </div>
 
             {/* Desktop tabs */}
-            <div className="hidden lg:block overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground scrollbar-track-transparent max-w-full">
-                <div className="inline-flex gap-1.5 p-2 bg-muted rounded-lg mx-4 my-2 items-center min-w-min">
+            <div className="hidden lg:block overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground scrollbar-track-transparent w-full px-4">
+                <div className="inline-flex gap-1.5 p-2 bg-muted rounded-lg my-2 items-center min-w-min w-full">
                     {sections.map((section) => (
                         <Button
                             key={section.id}
