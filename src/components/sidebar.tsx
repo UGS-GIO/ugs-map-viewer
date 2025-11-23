@@ -81,7 +81,7 @@ export default function Sidebar({ className }: SidebarProps) {
         {/* Header */}
         <Layout.Header
           sticky
-          className={`z-50 flex justify-between py-2 shadow-sm px-4 md:px-1`}
+          className={`z-50 flex justify-between shadow-sm px-4 md:px-1`}
         >
           <div className={`flex items-center ${!isCollapsed ? 'gap-4' : 'w-full'}`}>
             <Link to="https://geology.utah.gov/" className="cursor-pointer flex items-center justify-center w-10">
