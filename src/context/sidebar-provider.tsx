@@ -5,7 +5,7 @@ import { InfoIcon } from 'lucide-react';
 import React, { createContext, useState, ReactNode, Dispatch, SetStateAction, useCallback, useMemo } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 
-export type SidebarWidth = 'icon' | 'medium' | 'wide';
+export type SidebarWidth = 'icon' | 'original' | 'wide';
 
 interface SidebarContextProps {
     currentContent: SideLink | null;

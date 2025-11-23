@@ -34,11 +34,11 @@ export default function Sidebar({ className }: SidebarProps) {
 
     // Normal click: cycle through all three states
     if (isCollapsed) {
-      // From collapsed, go to medium
+      // From collapsed, go to original
       setIsCollapsed(false);
-      setSidebarWidth('medium');
-    } else if (sidebarWidth === 'medium') {
-      // From medium, go to wide
+      setSidebarWidth('original');
+    } else if (sidebarWidth === 'original') {
+      // From original, go to wide
       setSidebarWidth('wide');
     } else {
       // From wide, go to collapsed
@@ -134,11 +134,11 @@ export default function Sidebar({ className }: SidebarProps) {
           size='icon'
           variant='outline'
           className='absolute -right-5 top-1/2 z-[60] hidden rounded-none md:inline-flex w-6 h-12 -translate-y-1/2'
-          title={isCollapsed ? 'Expand to medium (Shift+click to toggle)' : sidebarWidth === 'medium' ? 'Expand to wide (Shift+click to collapse)' : 'Collapse sidebar (Shift+click to toggle)'}
+          title={isCollapsed ? 'Expand to original (Shift+click to toggle)' : sidebarWidth === 'original' ? 'Expand to wide (Shift+click to collapse)' : 'Collapse sidebar (Shift+click to toggle)'}
         >
           {isCollapsed ? (
             <ChevronLeft strokeWidth={1.5} className="h-5 w-5 rotate-180" />
-          ) : sidebarWidth === 'medium' ? (
+          ) : sidebarWidth === 'original' ? (
             <ChevronLeft strokeWidth={1.5} className="h-5 w-5 rotate-180" />
           ) : (
             <ChevronsLeft strokeWidth={1.5} className="h-5 w-5" />
