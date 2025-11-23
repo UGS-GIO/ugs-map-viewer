@@ -1,5 +1,4 @@
 import { Info, Shrink, TableOfContents } from 'lucide-react';
-import DOMPurify from 'dompurify';
 import { Button } from '@/components/custom/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -30,6 +29,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     openLegend,
 }) => {
     const [openAccordion, setOpenAccordion] = useState<string | null>(null);
+    const [cleanDescription, setCleanDescription] = useState<string>('');
 
     useEffect(() => {
         if (openLegend) {
@@ -37,6 +37,19 @@ const LayerControls: React.FC<LayerControlsProps> = ({
         }
     }, [openLegend]);
 
+    // Lazy load DOMPurify only when description is needed
+    useEffect(() => {
+        if (description) {
+            import('dompurify').then(({ default: DOMPurify }) => {
+                const sanitized = DOMPurify.sanitize(description, {
+                    USE_PROFILES: { html: true },
+                    ALLOWED_ATTR: ['target', 'href'],
+                    ADD_ATTR: ['target']
+                });
+                setCleanDescription(sanitized);
+            });
+        }
+    }, [description]);
 
     const infoPressed = openAccordion === 'info';
     const legendPressed = openAccordion === 'legend';
@@ -44,12 +57,6 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     const handleToggle = (type: 'info' | 'legend') => {
         setOpenAccordion(current => (current === type ? null : type));
     };
-
-    const cleanDescription = DOMPurify.sanitize(description, {
-        USE_PROFILES: { html: true },
-        ALLOWED_ATTR: ['target', 'href'],
-        ADD_ATTR: ['target']
-    });
 
     return (
         <div className="flex flex-col gap-y-4 pt-2">

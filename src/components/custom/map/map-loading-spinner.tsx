@@ -1,11 +1,11 @@
 import { LoadingSpinner } from "@/components/custom/loading-spinner";
-import { useIsMapLoading } from "@/hooks/use-is-map-loading";
+import { useMapLoading } from "@/hooks/use-map-loading";
 import { useMap } from "@/hooks/use-map";
 
 const MapLoadingSpinner = () => {
-    const { view } = useMap();
-    const isMapLoading = useIsMapLoading({
-        view: view,
+    const { map } = useMap();
+    const isMapLoading = useMapLoading({
+        map,
     });
 
     return (

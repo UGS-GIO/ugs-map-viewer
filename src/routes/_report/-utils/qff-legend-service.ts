@@ -3,13 +3,13 @@
  * Uses the generic legend factory with QFF-specific configuration
  */
 
-import { generateFaultDescription } from '@/lib/utils'
+import { generateFaultDescription } from '@/routes/_report/-utils/fault-description'
 import type { CustomLegendItem } from '@/routes/_report/-components/content/report-legend'
 import { createCustomLegend } from '@/routes/_report/-utils/hazard-legend-factory'
 
 /**
  * Generate custom legend items for Quaternary Faults
- * @param polygon - ESRI polygon JSON string
+ * @param polygon - Polygon JSON string
  * @returns Array of custom legend items for QFF layer
  */
 export async function generateQFFLegendItems(polygon: string): Promise<CustomLegendItem[]> {

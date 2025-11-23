@@ -224,7 +224,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
             },
             linkFields: {
                 'usgs_link': {
-                    transform: (usgsLink) => {
+                    transform: (usgsLink: unknown) => {
                         if (!usgsLink) return [];
                         return [{ label: 'Detailed Report', href: `${usgsLink}` }];
                     }
@@ -879,9 +879,9 @@ const studyAreasWMSConfig: WMSLayerProps = {
             linkFields: {
                 'repor_id': {
                     baseUrl: '',
-                    transform: (value: string | null) => {
+                    transform: (value: unknown) => {
                         if (!value) return [];
-                        const values = value.split(',');
+                        const values = (value as string).split(',');
                         return values.map(val => {
                             const trimmedVal = val.trim();
                             const href = /^\d+$/.test(trimmedVal)

@@ -1,5 +1,6 @@
-import { MapWidgets } from '@/pages/hazards-review/components/map-widgets';
+import { MapControls } from '@/pages/hazards-review/components/map-controls';
 import { MapContextMenu } from "@/components/custom/map/map-context-menu";
+import { MapWrapper } from "@/components/custom/map/map-wrapper";
 import { PopupDrawer } from "@/components/custom/popups/popup-drawer";
 import { useMapContainer } from "@/hooks/use-map-container";
 import { PROD_GEOSERVER_URL } from '@/lib/constants';
@@ -18,7 +19,7 @@ interface MapContainerProps {
     updateLayerSelection?: (layerTitle: string, selected: boolean) => void;
 }
 
-export default function MapContainer({ }: MapContainerProps) {
+export default function MapContainer(_props: MapContainerProps) {
     const layersConfig = useGetLayerConfigsData();
 
     const {
@@ -28,10 +29,10 @@ export default function MapContainer({ }: MapContainerProps) {
         popupContainer,
         setPopupContainer,
         popupContent,
-        clickOrDragHandlers,
         handleOnContextMenu,
         coordinates,
         setCoordinates,
+        isQueryLoading,
     } = useMapContainer({
         wmsUrl: `${PROD_GEOSERVER_URL}wms`,
         layersConfig: layersConfig
@@ -40,15 +41,14 @@ export default function MapContainer({ }: MapContainerProps) {
     return (
         <>
             <MapContextMenu coordinates={coordinates} hiddenTriggerRef={contextMenuTriggerRef} />
-            <div
-                className="relative w-full h-full"
-                ref={mapRef}
+            <MapWrapper
+                mapRef={mapRef}
+                isLoading={isQueryLoading}
                 onContextMenu={e => handleOnContextMenu(e, contextMenuTriggerRef, setCoordinates)}
-                {...clickOrDragHandlers}
             >
-                <MapWidgets />
+                <MapControls />
                 <MapLoadingSpinner />
-            </div>
+            </MapWrapper>
             <PopupDrawer
                 container={popupContainer}
                 drawerTriggerRef={drawerTriggerRef}
