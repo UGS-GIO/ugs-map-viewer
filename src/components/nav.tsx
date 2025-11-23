@@ -126,10 +126,6 @@ export default function Nav({
           ) : (
             <nav className='grid gap-4 group-[[data-collapsed=true]]:justify-center group-[[data-collapsed=true]]:px-2'>
               {links.map(renderLink)}
-              {/* Theme switch at bottom - styled like a nav item */}
-              <div className="mt-auto px-6">
-                <ThemeSwitch />
-              </div>
             </nav>
           )}
         </TooltipProvider>
