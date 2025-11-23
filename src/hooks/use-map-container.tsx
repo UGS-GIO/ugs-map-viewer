@@ -16,11 +16,13 @@ import { useMultiSelectTool } from '@/hooks/use-multi-select';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { useMultiSelectControl } from '@/hooks/use-multi-select-control';
 import type { LayerProps, WMSLayerProps, GroupLayerProps } from '@/lib/types/mapping-types';
+import type { PopupDrawerRef } from '@/components/custom/popups/popup-drawer';
 
 interface UseMapContainerProps {
     wmsUrl: string;
     layerOrderConfigs?: LayerOrderConfig[];
     layersConfig: ReturnType<typeof useGetLayerConfigsData>;
+    popupDrawerRef?: React.RefObject<PopupDrawerRef>;
 }
 
 /**
@@ -37,7 +39,8 @@ interface UseMapContainerProps {
 export function useMapContainer({
     wmsUrl,
     layerOrderConfigs = [],
-    layersConfig
+    layersConfig,
+    popupDrawerRef
 }: UseMapContainerProps) {
     const mapRef = useRef<HTMLDivElement>(null);
     const { loadMap, map, isSketching, getIsSketching, shouldIgnoreNextClick, consumeIgnoreClick } = useMap();
@@ -79,7 +82,8 @@ export function useMapContainer({
         featureData: featureInfoQuery.data || [],
         drawerTriggerRef,
         clickId: featureInfoQuery.clickId,
-        isPolygonQuery: featureInfoQuery.isPolygonQuery
+        isPolygonQuery: featureInfoQuery.isPolygonQuery,
+        popupDrawerRef
     });
 
     // Multi-select tool integration

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useCallback, useMemo, useRef, useState, useEffect } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -19,12 +19,17 @@ interface CombinedSidebarDrawerProps {
     onClose?: () => void;
 }
 
-function PopupDrawer({
+export interface PopupDrawerRef {
+    close: () => void;
+    open: () => void;
+}
+
+const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
     popupContent,
     drawerTriggerRef,
     popupTitle,
     onClose,
-}: CombinedSidebarDrawerProps) {
+}, ref) => {
     const carouselRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const sheetContentRef = useRef<HTMLDivElement>(null);
@@ -33,6 +38,12 @@ function PopupDrawer({
     const screenSize = useScreenSize();
     const isMobile = useIsMobile();
     const { map } = useMap();
+
+    // Expose close/open methods via ref
+    useImperativeHandle(ref, () => ({
+        close: () => setOpen(false),
+        open: () => setOpen(true),
+    }));
 
     // Group layers and extract titles - NO side effects
     const { groupedLayers, layerTitles } = useMemo(() => {
@@ -123,31 +134,32 @@ function PopupDrawer({
                     ref={drawerTriggerRef}
                     size="sm"
                     className="hidden"
+                    data-state={open ? 'open' : 'closed'}
                 >
                     Open Sheet
                 </Button>
             </SheetTrigger>
 
-            <SheetContent
+            {/* Render without portal to constrain to parent container */}
+            <div
                 ref={sheetContentRef}
-                side={isMobile ? "bottom" : "right"}
-                onInteractOutside={(e) => {
-                    // Prevent closing when interacting with the map
-                    e.preventDefault();
-                }}
                 className={cn(
-                    "z-[100] overflow-hidden p-0",
+                    "absolute inset-y-0 right-0 z-10 overflow-hidden p-0",
                     "bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80",
                     "dark:bg-background/80",
                     // Mobile: full height, no border, full screen takeover
                     isMobile ? "h-full border-0 rounded-none inset-0" :
                     // Desktop: inset panel with border and glass effect
-                    "w-full sm:max-w-xl md:max-w-2xl border-l border-border dark:border-border",
-                    // Hide the default close button since we have a floating one
-                    "[&>button]:hidden"
+                    "w-full sm:max-w-md md:max-w-lg lg:max-w-xl border-l border-border dark:border-border",
+                    // Slide animation
+                    "transition-transform duration-300 ease-in-out",
+                    open ? "translate-x-0" : "translate-x-full",
+                    // Hide when closed but keep in DOM for animation
+                    !open && "pointer-events-none"
                 )}
+                onClick={(e) => e.stopPropagation()}
             >
-                <SheetHeader className="flex justify-between items-center py-2 md:py-4 px-3 relative border-b border-border/30 bg-background/30 backdrop-blur-sm">
+                <SheetHeader className="flex justify-between items-center py-2 px-3 relative border-b border-border/30 bg-background/30 backdrop-blur-sm">
                     <SheetTitle className="flex-1 pr-10">{popupTitle}</SheetTitle>
                 </SheetHeader>
 
@@ -224,10 +236,11 @@ function PopupDrawer({
                             />
                         </div>
                     </div>
+
                 </div>
 
                 {/* Floating close button */}
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[110]">
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
                     <Button
                         onClick={handleCloseClick}
                         variant="default"
@@ -238,9 +251,11 @@ function PopupDrawer({
                         Close
                     </Button>
                 </div>
-            </SheetContent>
+            </div>
         </Sheet>
     );
-}
+});
+
+PopupDrawer.displayName = 'PopupDrawer';
 
 export { PopupDrawer };

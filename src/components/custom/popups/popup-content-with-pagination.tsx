@@ -286,6 +286,8 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange }: Side
                     handleZoomToFeature={handleZoomToFeature}
                 />
             ))}
+            {/* Extra whitespace at end of content */}
+            <div className="h-8 flex-shrink-0" />
         </div>
     )
 }

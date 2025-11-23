@@ -1,8 +1,9 @@
 import { MapContextMenu } from "@/components/custom/map/map-context-menu";
 import { MapWrapper } from "@/components/custom/map/map-wrapper";
-import { PopupDrawer } from "@/components/custom/popups/popup-drawer";
+import { PopupDrawer, PopupDrawerRef } from "@/components/custom/popups/popup-drawer";
 import { useMapContainer } from "@/hooks/use-map-container";
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs';
+import { useRef } from 'react';
 
 interface GenericMapContainerProps {
     wmsUrl: string;
@@ -13,6 +14,7 @@ interface GenericMapContainerProps {
 
 export function BaseMapContainer({ wmsUrl, layerConfigKey, popupTitle, children }: GenericMapContainerProps) {
     const defaultLayersConfig = useGetLayerConfigsData(layerConfigKey);
+    const popupDrawerRef = useRef<PopupDrawerRef>(null);
 
     const {
         mapRef,
@@ -28,7 +30,8 @@ export function BaseMapContainer({ wmsUrl, layerConfigKey, popupTitle, children 
         isQueryLoading,
     } = useMapContainer({
         wmsUrl,
-        layersConfig: defaultLayersConfig
+        layersConfig: defaultLayersConfig,
+        popupDrawerRef
     });
 
     return (
@@ -40,14 +43,15 @@ export function BaseMapContainer({ wmsUrl, layerConfigKey, popupTitle, children 
                 onContextMenu={e => handleOnContextMenu(e, contextMenuTriggerRef, setCoordinates)}
             >
                 {children}
+                <PopupDrawer
+                    ref={popupDrawerRef}
+                    container={popupContainer}
+                    drawerTriggerRef={drawerTriggerRef}
+                    popupContent={popupContent}
+                    popupTitle={popupTitle}
+                    onClose={onDrawerClose}
+                />
             </MapWrapper>
-            <PopupDrawer
-                container={popupContainer}
-                drawerTriggerRef={drawerTriggerRef}
-                popupContent={popupContent}
-                popupTitle={popupTitle}
-                onClose={onDrawerClose}
-            />
             <div ref={setPopupContainer} />
         </>
     );

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { highlightFeature, clearGraphics } from '@/lib/map/highlight-utils';
 import { LayerContentProps } from '@/components/custom/popups/popup-content-with-pagination';
 import { useMap } from '@/hooks/use-map';
+import type { PopupDrawerRef } from '@/components/custom/popups/popup-drawer';
 
 interface UseFeatureResponseHandlerProps {
     isSuccess: boolean;
@@ -9,6 +10,7 @@ interface UseFeatureResponseHandlerProps {
     drawerTriggerRef: React.RefObject<HTMLButtonElement>;
     clickId?: number | null; // Allow null from initial state
     isPolygonQuery?: boolean; // Whether this is a polygon multi-select query
+    popupDrawerRef?: React.RefObject<PopupDrawerRef>;
 }
 
 /**
@@ -28,7 +30,8 @@ export function useFeatureResponseHandler({
     featureData,
     drawerTriggerRef,
     clickId,
-    isPolygonQuery = false
+    isPolygonQuery = false,
+    popupDrawerRef
 }: UseFeatureResponseHandlerProps) {
     const { map } = useMap();
     // Track the last click we processed to avoid re-processing on filter changes
@@ -83,13 +86,25 @@ export function useFeatureResponseHandler({
         }
 
         // Handle drawer visibility - only for NEW clicks
-        if (!hasFeatures && drawerState === 'open') {
-            // Close drawer if no features found on this click
-            drawerTriggerRef.current?.click();
-        } else if (hasFeatures && drawerState !== 'open') {
-            // Open drawer if features found on this click
-            drawerTriggerRef.current?.click();
+        if (popupDrawerRef?.current) {
+            // Use ref methods if available (simpler and more reliable)
+            if (!hasFeatures) {
+                // Close drawer if no features found on this click
+                popupDrawerRef.current.close();
+            } else {
+                // Open drawer if features found on this click
+                popupDrawerRef.current.open();
+            }
+        } else {
+            // Fall back to clicking trigger for backward compatibility
+            if (!hasFeatures && drawerState === 'open') {
+                // Close drawer if no features found on this click
+                drawerTriggerRef.current?.click();
+            } else if (hasFeatures && drawerState !== 'open') {
+                // Open drawer if features found on this click
+                drawerTriggerRef.current?.click();
+            }
         }
-        // If drawer is already open and we have features, leave it open (don't re-click)
-    }, [isSuccess, featureData, map, drawerTriggerRef, clickId]);
+        // If drawer is already open and we have features, leave it open
+    }, [isSuccess, featureData, map, drawerTriggerRef, clickId, popupDrawerRef]);
 }
