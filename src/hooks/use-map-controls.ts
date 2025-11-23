@@ -45,9 +45,15 @@ export function useMapControls(map: maplibregl.Map | undefined, controls: readon
                     case 'scale':
                         control = new maplibregl.ScaleControl(options);
                         break;
-                    case 'geolocate':
-                        control = new maplibregl.GeolocateControl(options);
+                    case 'geolocate': {
+                        const geoControl = new maplibregl.GeolocateControl(options);
+                        // Re-emit geolocate event on the map for easier listening
+                        geoControl.on('geolocate', (e: any) => {
+                            map.fire('user-geolocate', { coords: e.coords });
+                        });
+                        control = geoControl;
                         break;
+                    }
                     case 'home':
                         control = new HomeControl(options);
                         break;

@@ -179,6 +179,8 @@ export function useMapContainer({
             return;
         }
 
+        let hasQueriedThisGeolocate = false;
+
         const handleMapLibreClick = (e: any) => {
             // Clear any previous graphics immediately
             clearGraphics(map);
@@ -192,12 +194,31 @@ export function useMapContainer({
             }
         };
 
+        const handleUserGeolocate = (e: any) => {
+            // Only query once per geolocate button click (event fires multiple times)
+            if (hasQueriedThisGeolocate) {
+                return;
+            }
+            hasQueriedThisGeolocate = true;
+
+            // Query features at user's location
+            const { longitude, latitude } = e.coords;
+            featureInfoQuery.fetchForPoint({ x: longitude, y: latitude });
+
+            // Reset flag after a delay so button can be clicked again
+            setTimeout(() => {
+                hasQueriedThisGeolocate = false;
+            }, 2000);
+        };
+
         // Use optional chaining to safely add and remove event listener
         map?.on?.('click', handleMapLibreClick);
+        map?.on?.('user-geolocate', handleUserGeolocate);
         return () => {
             map?.off?.('click', handleMapLibreClick);
+            map?.off?.('user-geolocate', handleUserGeolocate);
         };
-    }, [map, isSketching, isMultiSelectMode, handleMapClick]);
+    }, [map, isSketching, isMultiSelectMode, handleMapClick, featureInfoQuery]);
 
     // Initialize the map when the container is ready
     useEffect(() => {

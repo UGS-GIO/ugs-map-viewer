@@ -7,7 +7,15 @@ import { MapControlConfig } from '@/hooks/use-map-controls';
 export const DEFAULT_MAP_CONTROLS: MapControlConfig[] = [
     { type: 'navigation', position: 'top-left' },
     { type: 'home', position: 'top-left' },
-    { type: 'geolocate', position: 'top-left' },
+    {
+        type: 'geolocate',
+        position: 'top-left',
+        options: {
+            showUserLocation: false,
+            showAccuracyCircle: false,
+            fitBoundsOptions: { maxZoom: 18 }
+        }
+    },
     {
         type: 'export',
         position: 'top-right',
