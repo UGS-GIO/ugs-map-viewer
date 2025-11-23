@@ -209,6 +209,9 @@ function ReportGenerator() {
         setActiveButton('customArea');
         if (isMobile) setNavOpened(false);
 
+        // Clear the ignore click flag to ensure drawing works
+        setIgnoreNextClick?.(false);
+
         // Set sketching state synchronously with ref
         isSketchingRef.current = true;
         setIsSketching?.(true);
@@ -238,7 +241,8 @@ function ReportGenerator() {
     }
 
     const handleResetDrawing = () => {
-        setIsSketching?.(true);
+        setActiveDialog(null);
+        setPendingAoi(null);
         handleCustomAreaButton();
     }
 
