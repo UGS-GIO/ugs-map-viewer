@@ -98,7 +98,7 @@ export async function fetchWMSFeatureInfo({
     params.set('width', width.toString());
     params.set('height', height.toString());
     params.set('feature_count', featureCount.toString());
-    params.set('buffer', '50'); // Buffer around query pixel to catch nearby features (especially point symbols)
+    params.set('buffer', buffer.toString()); // Buffer around query pixel to catch nearby features (especially point symbols)
 
     // Add version-specific pixel coordinates
     // For GetFeatureInfo, we query at a specific pixel in the rendered WMS image
@@ -585,14 +585,11 @@ export function useFeatureInfoQuery({
             return [];
         }
 
-        // Calculate buffer with moderate scaling based on zoom level
-        // Use sqrt of resolution to scale more gradually than linear
-        // This provides better click tolerance at higher zooms without massive buffers at low zooms
+        // Click tolerance buffer: sqrt(resolution) * 20 for gradual scaling across zoom levels
         const resolution = coordinateAdapter.getResolution(map);
-        const bufferMeters = Math.sqrt(resolution) * 50; // Increased multiplier for better click tolerance on lines
+        const bufferMeters = Math.sqrt(resolution) * 20;
 
-        // Query each layer separately to avoid rendering occlusion issues
-        // When multiple layers are rendered together, only the top layer is returned at a given pixel
+        // Query each layer separately (WMS renders layers stacked, only returns top layer)
         const allFeatures: Feature[] = [];
         let sourceCRS = 'EPSG:4326'; // Default, will be updated from responses
 
