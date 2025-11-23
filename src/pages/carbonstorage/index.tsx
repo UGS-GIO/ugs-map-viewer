@@ -72,7 +72,7 @@ export default function Map() {
           </Layout.Body>
 
           {/* ===== Footer ===== */}
-          <Layout.Footer className={cn('hidden md:flex z-10')} dynamicContent={<MapFooter />} />
+          <Layout.Footer className={cn('hidden md:flex z-20')} dynamicContent={<MapFooter />} />
         </Layout>
       </main>
     </div>
