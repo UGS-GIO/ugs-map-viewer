@@ -1,6 +1,5 @@
 import { useSearch } from '@tanstack/react-router';
 import { Layout } from '@/components/custom/layout'
-import ThemeSwitch from '@/components/theme-switch'
 import { TopNav } from '@/components/top-nav'
 import { MapFooter } from '@/components/custom/map/map-footer'
 import { cn } from '@/lib/utils'
@@ -60,9 +59,6 @@ export default function Map() {
                   onSuggestionSelect={handleSuggestionSelect}
                   className="w-full"
                 />
-              </div>
-              <div className="flex-shrink-0">
-                <ThemeSwitch />
               </div>
             </div>
           </Layout.Header>

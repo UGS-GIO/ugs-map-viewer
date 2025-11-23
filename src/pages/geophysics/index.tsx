@@ -1,5 +1,4 @@
 import { Layout } from '@/components/custom/layout'
-import ThemeSwitch from '@/components/theme-switch'
 import { TopNav } from '@/components/top-nav'
 import { MapFooter } from '@/components/custom/map/map-footer'
 import { cn } from '@/lib/utils'
@@ -26,7 +25,6 @@ export default function Map() {
                         <TopNav />
                         <div className='ml-auto flex items-center space-x-4'>
                             {/* Search Combobox goes here */}
-                            <ThemeSwitch />
                         </div>
                     </Layout.Header>
 

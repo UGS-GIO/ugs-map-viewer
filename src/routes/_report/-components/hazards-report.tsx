@@ -5,7 +5,7 @@ import { useReactToPrint } from 'react-to-print'
 import { queryKeys } from '@/lib/query-keys'
 import { ReportLayout } from '@/routes/_report/-components/layouts/report-layout'
 import { SectionTabs, Section } from '@/routes/_report/-components/layouts/section-tabs'
-import { FileText, AlertTriangle, Printer, Upload } from 'lucide-react'
+import { FileText, AlertTriangle, Printer, Share2, ChevronDown, ChevronUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Image } from '@/components/ui/image'
 import { queryGeoServerForHazardUnits } from '@/routes/_report/-utils/geoserver-wfs-service'
@@ -55,6 +55,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
     const printRef = useRef<HTMLDivElement>(null)
     const [activeSection, setActiveSection] = useState<string>('cover')
     const visibleSectionsRef = useRef<Map<string, IntersectionObserverEntry>>(new Map())
+    const [fabExpanded, setFabExpanded] = useState(false)
 
     // Query for hazard data
     const { data: hazardGroups = [], isLoading } = useQuery({
@@ -203,19 +204,20 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
         setActiveSection(bestSection)
     }, [sectionIds])
 
-    const scrollToSection = (sectionId: string) => {
+    const scrollToSection = useCallback((sectionId: string) => {
         const element = sectionRefs.current[sectionId]
         if (element) {
             element.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
-    }
+    }, [])
 
     // Handle anchor link navigation from URL hash on page load and hash changes
     useEffect(() => {
         const handleHashChange = () => {
             const hash = window.location.hash.slice(1) // Remove '#' prefix
             if (hash && sectionRefs.current[hash]) {
-                scrollToSection(hash)
+                // Small delay to ensure content is rendered
+                setTimeout(() => scrollToSection(hash), 100)
             }
         }
 
@@ -225,7 +227,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
         // Listen for hash changes (e.g., when clicking anchor link icons)
         window.addEventListener('hashchange', handleHashChange)
         return () => window.removeEventListener('hashchange', handleHashChange)
-    }, [])
+    }, [sections, scrollToSection])
 
     const handlePrint = useReactToPrint({
         contentRef: printRef,
@@ -242,10 +244,54 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
         )
     }
 
+    const handleShare = () => {
+        navigator.clipboard.writeText(window.location.href)
+            .then(() => {
+                toast('Report link copied to clipboard!');
+            })
+            .catch((err) => {
+                toast.warning('Failed to copy report link.');
+                console.error('Could not copy text: ', err);
+            });
+    };
+
     return (
         <>
+            {/* Floating Action Buttons */}
+            <div className="fixed bottom-6 right-6 flex flex-col gap-2 z-50 print:hidden sm:hidden">
+                {fabExpanded && (
+                    <>
+                        <Button
+                            onClick={handleShare}
+                            size="icon"
+                            className="h-12 w-12 rounded-full shadow-lg"
+                            title="Share Report"
+                        >
+                            <Share2 className="h-5 w-5" />
+                        </Button>
+                        <Button
+                            onClick={handlePrint}
+                            size="icon"
+                            className="h-12 w-12 rounded-full shadow-lg"
+                            title="Print / Save as PDF"
+                        >
+                            <Printer className="h-5 w-5" />
+                        </Button>
+                    </>
+                )}
+                <Button
+                    onClick={() => setFabExpanded(!fabExpanded)}
+                    size="icon"
+                    variant={fabExpanded ? "secondary" : "default"}
+                    className="h-12 w-12 rounded-full shadow-lg"
+                    title={fabExpanded ? "Minimize" : "Expand"}
+                >
+                    {fabExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
+                </Button>
+            </div>
+
             <ReportLayout
-                header={<ReportHeader />}
+                header={<ReportHeader onPrint={handlePrint} />}
                 hero={
                     <div className="print:hidden">
                         <HeroSection
@@ -253,7 +299,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                                 <Image
                                     src={heroImage}
                                     alt="Hero"
-                                    className="w-full h-48 object-cover"
+                                    className="w-full h-32 md:h-48 object-cover"
                                     loading="eager"
                                 />
                             }
@@ -262,44 +308,12 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                     </div>
                 }
                 tabs={
-                    <div className="print:hidden flex justify-between">
+                    <div className="print:hidden">
                         <SectionTabs
                             sections={sections}
                             activeSection={activeSection}
                             onSectionChange={scrollToSection}
                         />
-                        <div>
-                            <Button
-                                onClick={() => {
-                                    const reportUrl = window.location.href; // Use the current URL
-
-                                    // Directly copy the URL to the clipboard and show toast notification
-                                    navigator.clipboard.writeText(reportUrl)
-                                        .then(() => {
-                                            // Success toast
-                                            toast('Report link copied to clipboard!');
-                                        })
-                                        .catch((err) => {
-                                            // Failure toast
-                                            toast.warning('Failed to copy report link.');
-                                            console.error('Could not copy text: ', err);
-                                        });
-                                }}
-                                variant="default"
-                                className='inline-flex gap-1.5 p-2 mx-4 my-2 items-center'
-                            >
-                                <Upload className="h-4 w-4 mr-2" />
-                                Share Report
-                            </Button>
-                            <Button
-                                onClick={handlePrint}
-                                variant="default"
-                                className='inline-flex gap-1.5 p-2 mx-4 my-2 items-center'
-                            >
-                                <Printer className="h-4 w-4 mr-2" />
-                                Print / Save as PDF
-                            </Button>
-                        </div>
                     </div>
                 }
                 banner={
@@ -317,7 +331,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                     </div>
                 }
             >
-                <div ref={printRef} className="report-content space-y-12 max-w-7xl mx-auto">
+                <div ref={printRef} className="report-content space-y-6 md:space-y-12 max-w-7xl mx-auto">
                     {/* Print-only header */}
                     <div className="hidden print:block mb-8">
                         <div className="flex items-center justify-between border-b-2 border-secondary pb-4">
@@ -410,7 +424,7 @@ function SectionWithObserver({
     }, [ref, setRef])
 
     return (
-        <div ref={setRefs} id={id} className="scroll-mt-20">
+        <div ref={setRefs} id={id} className="scroll-mt-16 md:scroll-mt-20">
             {children}
         </div>
     )

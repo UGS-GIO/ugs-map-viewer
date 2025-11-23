@@ -12,7 +12,7 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger
-} from './ui/tooltip'
+} from './custom/tooltip'
 import { cn } from '@/lib/utils'
 import useCheckActiveNav from '@/hooks/use-check-active-nav'
 import { Suspense } from 'react'
@@ -20,6 +20,7 @@ import { ChevronLeft } from 'lucide-react'
 import { LoadingSpinner } from './custom/loading-spinner'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { SideLink } from '@/lib/types/sidelink-types'
+import ThemeSwitch from '@/components/theme-switch'
 
 interface NavProps extends React.HTMLAttributes<HTMLDivElement> {
   isCollapsed: boolean
@@ -95,6 +96,10 @@ export default function Nav({
             closeNav={closeNav}
           />
         ))}
+        {/* Theme switch at bottom of icon bar */}
+        <div className="mt-auto pb-2">
+          <ThemeSwitch />
+        </div>
       </div>
       <div
         data-collapsed={isCollapsed}
@@ -121,6 +126,10 @@ export default function Nav({
           ) : (
             <nav className='grid gap-4 group-[[data-collapsed=true]]:justify-center group-[[data-collapsed=true]]:px-2'>
               {links.map(renderLink)}
+              {/* Theme switch at bottom - styled like a nav item */}
+              <div className="mt-auto px-6">
+                <ThemeSwitch />
+              </div>
             </nav>
           )}
         </TooltipProvider>
@@ -339,7 +348,7 @@ export function NavLinkIcon({
           <TooltipTrigger asChild>
             {link.icon}
           </TooltipTrigger>
-          <TooltipContent side='right' className="z-50 bg-secondary text-base text-secondary-foreground">
+          <TooltipContent side='right'>
             <p>{link.title}</p>
           </TooltipContent>
         </Tooltip>
@@ -362,7 +371,7 @@ export function NavLinkIcon({
           <TooltipTrigger asChild>
             {link.icon}
           </TooltipTrigger>
-          <TooltipContent side='right' className="z-50 bg-secondary text-base text-secondary-foreground">
+          <TooltipContent side='right'>
             <p>{link.title}</p>
           </TooltipContent>
         </Tooltip>
