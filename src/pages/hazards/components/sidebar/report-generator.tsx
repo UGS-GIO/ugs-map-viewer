@@ -46,8 +46,6 @@ function ReportGenerator() {
     const { startPolygonDraw, clearDrawings, cancelDraw } = useTerraDrawPolygon({
         map,
         onDrawComplete: (geometry: DrawGeometry) => {
-            console.log('[ReportGenerator] Draw complete:', geometry);
-
             // Convert from WGS84 (Terra Draw GeoJSON) to Web Mercator for area check
             const rings = geometry.rings;
             const mercatorRings = [];
@@ -78,8 +76,6 @@ function ReportGenerator() {
 
             const areaWidth = maxX - minX;
             const areaHeight = maxY - minY;
-
-            console.log('[ReportGenerator] Area size:', { areaWidth, areaHeight });
 
             // Check if area is within limits (12000m x 18000m)
             if (areaHeight < 12000 && areaWidth < 18000) {
@@ -186,8 +182,6 @@ function ReportGenerator() {
         const areaWidth = Math.abs(neX - swX);
         const areaHeight = Math.abs(neY - swY);
 
-        console.log('[ReportGenerator] Current extent size:', { areaWidth, areaHeight });
-
         if (areaHeight < 12000 && areaWidth < 18000) {
             // Create polygon from bounds (in Web Mercator)
             const rings = [[
@@ -214,6 +208,9 @@ function ReportGenerator() {
         clearDrawings();
         setActiveButton('customArea');
         if (isMobile) setNavOpened(false);
+
+        // Clear the ignore click flag to ensure drawing works
+        setIgnoreNextClick?.(false);
 
         // Set sketching state synchronously with ref
         isSketchingRef.current = true;
@@ -244,7 +241,8 @@ function ReportGenerator() {
     }
 
     const handleResetDrawing = () => {
-        setIsSketching?.(true);
+        setActiveDialog(null);
+        setPendingAoi(null);
         handleCustomAreaButton();
     }
 
