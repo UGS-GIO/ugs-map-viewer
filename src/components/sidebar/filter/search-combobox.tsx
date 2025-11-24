@@ -304,6 +304,11 @@ function SearchCombobox({
         itemData: Feature<Geometry, GeoJsonProperties> | Suggestion,
         searchConfig: SearchSourceConfig[]
     ) => {
+        if (!map) {
+            console.error('[SearchCombobox] Map is null - cannot process selection');
+            return;
+        }
+
         const sourceConfig = config[sourceIndex];
 
         // Use type guards or property checks on itemData
