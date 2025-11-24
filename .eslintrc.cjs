@@ -14,5 +14,13 @@ module.exports = {
       'warn',
       { allowConstantExport: true },
     ],
+    // Unused vars - allow underscore prefix for intentionally unused
+    '@typescript-eslint/no-unused-vars': [
+      'error',
+      {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+      }
+    ],
   },
 }

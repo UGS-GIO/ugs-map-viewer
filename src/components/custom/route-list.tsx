@@ -94,7 +94,7 @@ export function RouteList() {
                         <CardHeader>
                             <CardTitle className="text-lg">
                                 <Link
-                                    to={route.fullPath as any}
+                                    to={route.fullPath}
                                     className="text-foreground hover:text-primary transition-colors"
                                 >
                                     {route.title}
@@ -109,7 +109,7 @@ export function RouteList() {
                                 {route.description}
                             </p>
                             <Link
-                                to={route.fullPath as any}
+                                to={route.fullPath}
                                 className="inline-flex items-center text-sm font-medium text-primary hover:underline"
                             >
                                 Visit page →
@@ -158,7 +158,7 @@ export function SimpleRouteList() {
                         <CardHeader>
                             <CardTitle className="text-lg">
                                 <Link
-                                    to={route.fullPath as any}
+                                    to={route.fullPath}
                                     className="text-foreground hover:text-primary transition-colors"
                                 >
                                     {route.title}
@@ -173,7 +173,7 @@ export function SimpleRouteList() {
                                 {route.description}
                             </p>
                             <Link
-                                to={route.fullPath as any}
+                                to={route.fullPath}
                                 className="inline-flex items-center text-sm font-medium text-primary hover:underline"
                             >
                                 Visit page →

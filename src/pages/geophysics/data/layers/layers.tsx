@@ -1,6 +1,7 @@
 import { ENERGY_MINERALS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { toTitleCase, toSentenceCase } from "@/lib/utils";
+import { GeoJsonProperties } from "geojson";
 
 
 // Roads WMS Layer
@@ -11,13 +12,14 @@ const roadsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: roadsWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${roadsLayerName}`,
             popupEnabled: false,
             queryable: false,
             popupFields: {
-                'Name': { field: 'fullname', type: 'string', transform: (value) => toTitleCase(value || '') },
+                'Name': { field: 'fullname', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
             },
         },
     ],
@@ -31,13 +33,14 @@ const railroadsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: railroadsWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${railroadsLayerName}`,
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'railroad', type: 'string', transform: (value) => toTitleCase(value || '') },
+                'Name': { field: 'railroad', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
             },
         },
     ],
@@ -51,6 +54,7 @@ const transmissionLinesWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: transmissionLinesWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${transmissionLinesLayerName}`,
@@ -72,6 +76,7 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     title: seamlessGeolunitsWMSTitle,
     opacity: 0.5,
     visible: true,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${MAPPING_WORKSPACE}:${seamlessGeolunitsLayerName}`,
@@ -81,7 +86,7 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
                 'Unit': {
                     field: 'custom',
                     type: 'custom',
-                    transform: (props) => {
+                    transform: (props: GeoJsonProperties | null | undefined) => {
                         const unitName = props?.['unit_name'];
                         const unitSymbol = props?.['unit_symbol'];
                         const value = `${unitName} (${unitSymbol})`;
@@ -132,6 +137,7 @@ const faultsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: faultsWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${MAPPING_WORKSPACE}:${faultsLayerName}`,
@@ -141,7 +147,7 @@ const faultsWMSConfig: WMSLayerProps = {
                 'Description': {
                     field: 'custom',
                     type: 'custom',
-                    transform: (props) => {
+                    transform: (props: GeoJsonProperties | null | undefined) => {
                         const subtype = props?.['subtype'];
                         const type = props?.['type'];
                         const modifier = props?.['modifier'];
@@ -152,7 +158,7 @@ const faultsWMSConfig: WMSLayerProps = {
                 'Scale': {
                     field: 'scale',
                     type: 'string',
-                    transform: (value) => {
+                    transform: (value: string | null) => {
                         if (value === 'small') return '1:500,000'
                         return ''
                     }
@@ -183,6 +189,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: qFaultsWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${qFaultsLayerName}`,
@@ -204,17 +211,17 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 '': {
                     field: 'usgs_link',
                     type: 'custom',
-                    transform: (value) => {
-                        if (!value) {
+                    transform: (props: GeoJsonProperties | null | undefined) => {
+                        if (!props) {
                             return 'No USGS link available';
                         }
-                        return value['usgs_link'] || 'No USGS link available';
+                        return props['usgs_link'] || 'No USGS link available';
                     }
                 },
             },
             linkFields: {
                 'usgs_link': {
-                    transform: (usgsLink) => {
+                    transform: (usgsLink: unknown) => {
                         if (!usgsLink || usgsLink === 'No USGS link available') {
                             return [{
                                 label: 'No USGS link available',
@@ -240,13 +247,14 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalPowerplantsWMSTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalPowerplantsLayerName}`,
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'plant', type: 'string', transform: (value) => toTitleCase(value || '') },
+                'Name': { field: 'plant', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
                 'Capacity (MW)': { field: 'capacity_mw', type: 'number' },
                 'Operator': { field: 'operator', type: 'string' },
                 'City': { field: 'city', type: 'string' },

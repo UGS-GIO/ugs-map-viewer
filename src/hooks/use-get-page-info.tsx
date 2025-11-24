@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useGetCurrentPage } from "@/hooks/use-get-current-page";
+import { queryKeys } from '@/lib/query-keys';
 
 interface WebsiteInfo {
     references: React.ReactNode;
@@ -20,7 +21,7 @@ export const useGetPageInfo = () => {
     const currentPage = useGetCurrentPage();
 
     return useQuery<WebsiteInfo, Error>({
-        queryKey: ['page-info', currentPage],
+        queryKey: queryKeys.page.info(currentPage),
         queryFn: async () => {
             const module = await import(`@/pages/${currentPage}/data/page-info.tsx`);
             return module
