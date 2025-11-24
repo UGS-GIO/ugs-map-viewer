@@ -76,13 +76,12 @@ function createPolygonFeature(coordinates: number[][]) {
 }
 
 // Helper to calculate distance for scale (simplified)
-function calculateScale(zoom: number, lat: number, canvasWidth: number): { distance: number; unit: string } {
+function calculateScale(zoom: number, lat: number, canvasWidth: number, maxPixelWidth: number = 180): { distance: number; unit: string } {
     // Approximate meters per pixel at current latitude and zoom level
-    // This is a simplified calculation and can be improved for accuracy
     const metersPerPixel = (40075016.686 * Math.cos(lat * Math.PI / 180)) / Math.pow(2, zoom + 8); // 256px tile
 
-    // Let's aim for a scale bar that is roughly 1/5th of the canvas width
-    const targetPixels = canvasWidth / 5;
+    // Start with target pixels, but cap at maxPixelWidth
+    const targetPixels = Math.min(canvasWidth / 5, maxPixelWidth);
     let distanceInMeters = targetPixels * metersPerPixel;
 
     let unit = 'm';
@@ -92,10 +91,10 @@ function calculateScale(zoom: number, lat: number, canvasWidth: number): { dista
     }
 
     // Adjust to a "nice" rounded number
-    const niceNumbers = [1, 2, 5, 10, 20, 50, 100, 200, 500];
+    const niceNumbers = [0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
     let bestDistance = niceNumbers[0];
     for (let i = 0; i < niceNumbers.length; i++) {
-        if (distanceInMeters / niceNumbers[i] >= 0.7) { // Choose the largest nice number that is less than or equal to current distance, or just slightly larger
+        if (distanceInMeters / niceNumbers[i] >= 0.7) {
             bestDistance = niceNumbers[i];
         } else {
             break;
@@ -302,7 +301,9 @@ export function ReportScreenshot({
     const scaleInfo = useMemo(() => {
         if (mapState) {
             const { center, zoom, canvasWidth } = mapState;
-            const { distance, unit } = calculateScale(zoom, center[1], canvasWidth);
+            // Scale bar should be ~40% of container width, with min 80px and max 250px
+            const maxScaleWidth = Math.max(80, Math.min(canvasWidth * 0.4, 250));
+            const { distance, unit } = calculateScale(zoom, center[1], canvasWidth, maxScaleWidth);
 
             // CALCULATE PIXEL LENGTH FOR THE BAR
             const metersPerPixel = (40075016.686 * Math.cos(center[1] * Math.PI / 180)) / Math.pow(2, zoom + 8);
@@ -311,7 +312,7 @@ export function ReportScreenshot({
 
             return {
                 text: `${distance} ${unit}`,
-                pixelWidth: Math.round(pixelWidth)
+                pixelWidth: Math.min(Math.round(pixelWidth), maxScaleWidth) // Ensure it never exceeds max
             };
         }
         return null;
@@ -321,7 +322,7 @@ export function ReportScreenshot({
     // If screenshot is ready, just show the image
     if (screenshot) {
         return (
-            <div className="overflow-hidden shadow-sm print-map-container">
+            <div className="relative overflow-hidden shadow-sm print-map-container">
                 {/* Title Header */}
                 {title && (
                     <div className="bg-muted px-4 py-2 border-t border-x rounded-t-lg flex justify-between items-center">
@@ -335,21 +336,21 @@ export function ReportScreenshot({
                     <img
                         src={screenshot}
                         alt={title}
-                        className="print-map-image w-full h-full object-contain block"
+                        className="print-map-image w-full h-full object-contain block relative"
                     />
                 </div>
 
                 {/* SCALE BAR */}
                 {scaleInfo && (
-                    <div className="px-4 py-2 border-x border-b rounded-b-lg flex justify-start bg-muted">
-                        <div className="text-xs flex items-center gap-2">
-                            <span className="text-foreground">Scale:</span>
+                    <div className="px-4 py-2 border-x border-b rounded-b-lg bg-muted">
+                        <div className="text-xs flex items-center gap-2 flex-wrap">
+                            <span className="text-foreground whitespace-nowrap">Scale:</span>
                             {/* Visual Scale Bar */}
                             <div
                                 style={{ width: `${scaleInfo.pixelWidth}px`, minWidth: '30px' }}
-                                className="h-1 bg-muted-foreground border-t border-b border-muted"
+                                className="h-1 bg-muted-foreground border-t border-b border-muted flex-shrink-0"
                             />
-                            <span className="text-foreground">{scaleInfo.text}</span>
+                            <span className="text-foreground whitespace-nowrap">{scaleInfo.text}</span>
                         </div>
                     </div>
                 )}
@@ -359,8 +360,8 @@ export function ReportScreenshot({
 
     // Otherwise, render the map (hidden) to capture it
     return (
-        <div className="border rounded-lg overflow-hidden shadow-sm">
-            <div className="relative" style={{ height: `${height}px` }}>
+        <div className="relative border rounded-lg overflow-hidden shadow-sm isolate">
+            <div className="relative overflow-hidden" style={{ height: `${height}px` }}>
                 {/* Loading overlay */}
                 {isCapturing && (
                     <div className="absolute inset-0 bg-muted flex items-center justify-center z-10">
@@ -371,7 +372,7 @@ export function ReportScreenshot({
                     </div>
                 )}
 
-                <div ref={mapContainer} className="w-full h-full" />
+                <div ref={mapContainer} className="w-full h-full relative" />
             </div>
         </div>
     );

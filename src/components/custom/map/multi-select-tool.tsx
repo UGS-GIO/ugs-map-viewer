@@ -6,7 +6,7 @@ import {
     TooltipContent,
     TooltipProvider,
     TooltipTrigger
-} from '@/components/ui/tooltip';
+} from '@/components/custom/tooltip';
 
 interface MultiSelectToolProps {
     onComplete?: () => void;
