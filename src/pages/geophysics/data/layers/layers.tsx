@@ -272,17 +272,53 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
             queryable: true,
             popupFields: {
                 'Map Number': { field: 'mapno', type: 'string' },
-                'Region': { field: 'region_loc', type: 'string' },
+                'Region': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const toTitleCase = (str: string) => {
+                            return str
+                                .toLowerCase()
+                                .split(' ')
+                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                .join(' ');
+                        };
+                        
+                        const regionl = props?.['region_loc'];
+                        const countyl = props?.['county'];
+                        
+                        // Convert to title case if they are strings
+                        const formattedStart = typeof regionl === 'string' ? toTitleCase(regionl) : regionl;
+                        const formattedEnd = typeof countyl === 'string' ? toTitleCase(countyl) : countyl;
+                        
+                        return `${formattedStart}, ${formattedEnd}`;
+                    }
+                },
                 'Well/Spring Name': { field: 'source', type: 'string' },
                 'UGS Name': { field: 'idname', type: 'string' },
                 'Type': { field: 'type', type: 'string' },
-                'Temperature': { field: 'temp', type: 'string' },
+                'Temperature': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const bht = props?.['temp'];
+                        return `${bht} °C`;
+                    }
+                },
                 'Class': { field: 'class', type: 'string' },
                 'Depth of Well': { field: 'depth', type: 'string' },
                 'Flow': { field: 'flow', type: 'string' },
                 'Rate': { field: 'rate', type: 'string' },
                 'Location': { field: 'lat', type: 'string' },
-                'UTM (Easting/Northing)': { field: 'utme', type: 'string' },
+                'UTM (Easting/Northing)': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const utmStart = props?.['utme'];
+                        const utmEnd = props?.['utmn'];
+                        return `${utmStart} - ${utmEnd}`;
+                    }
+                },
                 'Date': { field: 'date', type: 'string' },
                 'Reference': { field: 'reference', type: 'string' },
                 'PH': { field: 'ph', type: 'string' },
@@ -319,16 +355,78 @@ const heatflowLayerConfig: WMSLayerProps = {
             queryable: true,
             popupFields: {
                 'UWI': { field: 'uwi', type: 'string' },
-                'Name': { field: 'hole_name', type: 'string' },
-                'Drill Depth': { field: 'depth_start_m', type: 'string' },
-                'Bottom Hole Temperature': { field: 'bht_c', type: 'string' },
-                'Uncorrected Gradient (degrees/m)': { field: 'un_grad_c_km', type: 'string' },
-                'Uncorrected Heatflow': { field: 'un_hf_mw_m2', type: 'string' },
+                'Drill Depth': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const depthStart = props?.['depth_start_m'];
+                        const depthEnd = props?.['depth_end_m'];
+                        return `${depthStart} - ${depthEnd} m`;
+                    }
+                },
+                'Bottom Hole Temperature': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const bht = props?.['bht_c'];
+                        return `${bht} °C`;
+                    }
+                },
+                'Uncorrected Gradient (degrees/m)': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const bht = props?.['un_grad_c_km'];
+                        return `${bht} °C`;
+                    }
+                },
+                'Uncorrected Heatflow': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const bht = props?.['un_hf_mw_m2'];
+                        return `${bht} mW`;
+                    }
+                },
                 'Citation': { field: 'citation', type: 'string' },
             },
         },
     ],
 };
+
+
+// ingqFaults WMS Layer
+const ingqFaultsLayerName = 'mart_geothermal_qfaults_ingenious_current';
+const ingqFaultsWMSTitle = 'Hazardous Faults (Ingenious Data)';
+const ingqFaultsWMSConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: ingqFaultsWMSTitle,
+    visible: false,
+    sublayers: [
+        {
+            name: `${HAZARDS_WORKSPACE}:${ingqFaultsLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Name': { field: 'name', type: 'string' },
+                'Slip Rate': { field: 'sliprate_n', type: 'string' },
+                'Recency N': { field: 'recency_n', type: 'string' },
+                'Recency CI': { field: 'recency_ci', type: 'string' },
+                'Age': { field: 'age', type: 'string' },
+                'Mapped Scale': { field: 'mappedscal', type: 'string' },
+                'CFM URL': { field: 'cfm_url', type: 'string' },
+                'Geometry': { field: 'geometry_c', type: 'string' },
+                'Dip Direction': { field: 'dipdirect', type: 'string' },
+                'FType': { field: 'ftype_', type: 'string' },
+                'Comments': { field: 'comments', type: 'string' },
+                'Notes': { field: 'notes', type: 'string' }
+            },
+        },
+    ],
+};
+
+
 
 const infrastructureAndLandUseConfig: LayerProps = {
     type: 'group',
@@ -349,6 +447,7 @@ const geologicalInformationConfig: LayerProps = {
     visible: false,
     layers: [
         qFaultsWMSConfig,
+        ingqFaultsWMSConfig,
         faultsWMSConfig,
         seamlessGeolunitsWMSConfig
     ]
