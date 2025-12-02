@@ -1,6 +1,7 @@
 import { ENERGY_MINERALS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { toTitleCase, toSentenceCase } from "@/lib/utils";
+import { useReactTable, getCoreRowModel, flexRender, ColumnDef } from '@tanstack/react-table';
 
 
 // Roads WMS Layer
@@ -257,6 +258,90 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
     ],
 };
 
+// Type for the chemistry data rows
+type ChemistryData = {
+  property: string;
+  value: string | number;
+};
+
+// Component to display chemistry data in a table
+export const GeothermalChemistryTable = ({ data }: { data: ChemistryData[] }) => {
+  const columns: ColumnDef<ChemistryData>[] = [
+    {
+      accessorKey: 'property',
+      header: 'Property',
+      cell: info => info.getValue(),
+    },
+    {
+      accessorKey: 'value',
+      header: 'Value',
+      cell: info => info.getValue() || 'N/A',
+    },
+  ];
+
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
+
+  return (
+    <div className="chemistry-table-container">
+      <table className="chemistry-table">
+        <thead>
+          {table.getHeaderGroups().map(headerGroup => (
+            <tr key={headerGroup.id}>
+              {headerGroup.headers.map(header => (
+                <th key={header.id}>
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                </th>
+              ))}
+            </tr>
+          ))}
+        </thead>
+        <tbody>
+          {table.getRowModel().rows.map(row => (
+            <tr key={row.id}>
+              {row.getVisibleCells().map(cell => (
+                <td key={cell.id}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+// Transform function for the popup field
+export const transformChemistryData = (props: any) => {
+  const chemistryData: ChemistryData[] = [
+    { property: 'PH', value: props?.['ph'] },
+    { property: 'Conductivity (microsiemens)', value: props?.['cond'] },
+    { property: 'Sodium', value: props?.['na'] },
+    { property: 'Calcium (mg/l)', value: props?.['ca'] },
+    { property: 'Magnesium (mg/l)', value: props?.['mg'] },
+    { property: 'Silica (mg/l)', value: props?.['sio2'] },
+    { property: 'Boron (mg/l)', value: props?.['b'] },
+    { property: 'Lithium (mg/l)', value: props?.['li'] },
+    { property: 'Bicarbonate (mg/l)', value: props?.['hco3'] },
+    { property: 'Sulfer (mg/l)', value: props?.['so4'] },
+    { property: 'Chlorine (mg/l)', value: props?.['cl'] },
+    { property: 'TDS Measured (mg/l)', value: props?.['tdsm'] },
+    { property: 'TDS Calculated (mg/l)', value: props?.['tdsc'] },
+    { property: 'Cat/Anion Charge Balance', value: props?.['chgbal'] },
+  ];
+
+  return <GeothermalChemistryTable data={chemistryData} />;
+};
+
 // geothermalWells WMS Layer
 const geothermalWellsLayerName = 'mart_geothermal_wellsandsprings_current';
 const geothermalWellsWMSTitle = 'Geothermal Wells & Springs';
@@ -321,6 +406,12 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                 },
                 'Date': { field: 'date', type: 'string' },
                 'Reference': { field: 'reference', type: 'string' },
+                'Water Chemistry': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: transformChemistryData
+                }
+                /*
                 'PH': { field: 'ph', type: 'string' },
                 'Conductivity (microsiemens)': { field: 'cond', type: 'string' },
                 'Sodium': { field: 'na', type: 'string' },
@@ -335,6 +426,7 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                 'TDS Measured (mg/l)': { field: 'tdsm', type: 'string' },
                 'TDS Calculated (mg/l)': { field: 'tdsc', type: 'string' },
                 'Cat/Anion Charge Balance': { field: 'chgbal', type: 'string' },
+                */
             },
         },
     ],
