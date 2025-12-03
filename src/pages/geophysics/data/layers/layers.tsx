@@ -71,7 +71,7 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/mapping/wms`,
     title: seamlessGeolunitsWMSTitle,
     opacity: 0.5,
-    visible: true,
+    visible: false,
     sublayers: [
         {
             name: `${MAPPING_WORKSPACE}:${seamlessGeolunitsLayerName}`,
@@ -342,7 +342,7 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
 
 // heatflow Layer
 const heatflowLayeName = 'mart_geophysics_heatflowedwards_source_current';
-const heatflowLayeTitle = 'Heatflow Measurements';
+const heatflowLayeTitle = 'Heat Flow Measurements';
 const heatflowLayerConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -389,6 +389,15 @@ const heatflowLayerConfig: WMSLayerProps = {
                     }
                 },
                 'Citation': { field: 'citation', type: 'string' },
+                'Location (NAD27)': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const depthStart = props?.['latnad27'];
+                        const depthEnd = props?.['longnad27'];
+                        return `${depthStart} , ${depthEnd}`;
+                    }
+                },
             },
         },
     ],
@@ -397,7 +406,7 @@ const heatflowLayerConfig: WMSLayerProps = {
 
 // ingqFaults WMS Layer
 const ingqFaultsLayerName = 'mart_geothermal_qfaults_ingenious_current';
-const ingqFaultsWMSTitle = 'Hazardous Faults (Ingenious Data)';
+const ingqFaultsWMSTitle = 'Great Basin Faults (INGENIOUS PROJECT)';
 const ingqFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -405,7 +414,7 @@ const ingqFaultsWMSConfig: WMSLayerProps = {
     visible: false,
     sublayers: [
         {
-            name: `${HAZARDS_WORKSPACE}:${ingqFaultsLayerName}`,
+            name: `${ENERGY_MINERALS_WORKSPACE}:${ingqFaultsLayerName}`,
             popupEnabled: false,
             queryable: true,
             popupFields: {
@@ -455,7 +464,7 @@ const geologicalInformationConfig: LayerProps = {
 
 const geothermalWellsandSpringsConfig: LayerProps = {
     type: 'group',
-    title: 'Geothermal Wells and Springs',
+    title: 'Geothermal Resources',
     visible: true,
     layers: [
         geothermalWellsWMSConfig,
@@ -463,10 +472,19 @@ const geothermalWellsandSpringsConfig: LayerProps = {
     ]
 }
 
+const geophysicalDataConfig: LayerProps = {
+    type: 'group',
+    title: 'Geophysical Data',
+    visible: true,
+    layers: [
+    ]
+}
+
 const layersConfig: LayerProps[] = [
+    geothermalWellsandSpringsConfig,
+    geophysicalDataConfig,
     geologicalInformationConfig,
     infrastructureAndLandUseConfig,
-    geothermalWellsandSpringsConfig,
 ];
 
 export default layersConfig;
