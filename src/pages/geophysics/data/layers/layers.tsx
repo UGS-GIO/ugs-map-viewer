@@ -126,58 +126,7 @@ const SITLAConfig: LayerProps = {
     },
 };
 
-const faultsLayerName = 'faults_m-179dm';
-const faultsWMSTitle = 'Utah Faults';
-const faultsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: faultsWMSTitle,
-    visible: false,
-    sublayers: [
-        {
-            name: `${MAPPING_WORKSPACE}:${faultsLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'Description': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: (props) => {
-                        const subtype = props?.['subtype'];
-                        const type = props?.['type'];
-                        const modifier = props?.['modifier'];
-                        const value = `${subtype} ${type}, ${modifier}`
-                        return toSentenceCase(value);
-                    }
-                },
-                'Scale': {
-                    field: 'scale',
-                    type: 'string',
-                    transform: (value) => {
-                        if (value === 'small') return '1:500,000'
-                        return ''
-                    }
-                },
-                'Source': { field: 'series_id', type: 'string' },
-            },
-            linkFields: {
-                'series_id': {
-                    baseUrl: '',
-                    transform: (value: string) => {
-                        // the value is a url that needs to be transformed into href and label for the link
-                        const transformedValues = {
-                            href: `https://doi.org/10.34191/${value}`,
-                            label: `${value}`
-                        };
-                        return [transformedValues];
-                    }
-                }
-            }
-        },
-    ],
-};
-
-
+// Faults WMS Layer
 const qFaultsLayerName = 'quaternaryfaults_current';
 const qFaultsWMSTitle = 'Hazardous (Quaternary age) Faults';
 const qFaultsWMSConfig: WMSLayerProps = {
@@ -230,6 +179,89 @@ const qFaultsWMSConfig: WMSLayerProps = {
                     }
                 }
             },
+        },
+    ],
+};
+
+// Ing Faults WMS Layer - CORRECTED
+const ingqFaultsLayerName = 'mart_geothermal_qfaults_ingenious_current'; // Fixed layer name
+const ingqFaultsWMSTitle = 'Hazardous Faults (Ingenious Data)';
+const ingqFaultsWMSConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: ingqFaultsWMSTitle,
+    visible: false,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${ingqFaultsLayerName}`, // Fixed workspace
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Name': { field: 'name', type: 'string' },
+                'Slip Rate': { field: 'sliprate_n', type: 'string' },
+                'Recency N': { field: 'recency_n', type: 'string' },
+                'Recency CI': { field: 'recency_ci', type: 'string' },
+                'Age': { field: 'age', type: 'string' },
+                'Mapped Scale': { field: 'mappedscal', type: 'string' },
+                'CFM URL': { field: 'cfm_url', type: 'string' },
+                'Geometry': { field: 'geometry_c', type: 'string' },
+                'Dip Direction': { field: 'dipdirect', type: 'string' },
+                'FType': { field: 'ftype_', type: 'string' },
+                'Comments': { field: 'comments', type: 'string' },
+                'Notes': { field: 'notes', type: 'string' }
+            },
+        },
+    ],
+};
+
+// Faults WMS Layer
+const faultsLayerName = 'faults_m-179dm';
+const faultsWMSTitle = 'Utah Faults';
+const faultsWMSConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: faultsWMSTitle,
+    visible: false,
+    sublayers: [
+        {
+            name: `${MAPPING_WORKSPACE}:${faultsLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Description': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const subtype = props?.['subtype'];
+                        const type = props?.['type'];
+                        const modifier = props?.['modifier'];
+                        const value = `${subtype} ${type}, ${modifier}`
+                        return toSentenceCase(value);
+                    }
+                },
+                'Scale': {
+                    field: 'scale',
+                    type: 'string',
+                    transform: (value) => {
+                        if (value === 'small') return '1:500,000'
+                        return ''
+                    }
+                },
+                'Source': { field: 'series_id', type: 'string' },
+            },
+            linkFields: {
+                'series_id': {
+                    baseUrl: '',
+                    transform: (value: string) => {
+                        // the value is a url that needs to be transformed into href and label for the link
+                        const transformedValues = {
+                            href: `https://doi.org/10.34191/${value}`,
+                            label: `${value}`
+                        };
+                        return [transformedValues];
+                    }
+                }
+            }
         },
     ],
 };
@@ -320,8 +352,9 @@ export const GeothermalChemistryTable = ({ data }: { data: ChemistryData[] }) =>
   );
 };
 
-// Transform function for the popup field
-export const transformChemistryData = (props: any) => {
+// Transform function for the popup field - CORRECTED
+export const transformChemistryData = (props: any) => { // Changed from ChemistryDataType to any
+  console.log(props);
   const chemistryData: ChemistryData[] = [
     { property: 'PH', value: props?.['ph'] },
     { property: 'Conductivity (microsiemens)', value: props?.['cond'] },
@@ -485,39 +518,6 @@ const heatflowLayerConfig: WMSLayerProps = {
         },
     ],
 };
-
-
-// ingqFaults WMS Layer
-const ingqFaultsLayerName = 'mart_geothermal_qfaults_ingenious_current';
-const ingqFaultsWMSTitle = 'Hazardous Faults (Ingenious Data)';
-const ingqFaultsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: ingqFaultsWMSTitle,
-    visible: false,
-    sublayers: [
-        {
-            name: `${HAZARDS_WORKSPACE}:${ingqFaultsLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'Name': { field: 'name', type: 'string' },
-                'Slip Rate': { field: 'sliprate_n', type: 'string' },
-                'Recency N': { field: 'recency_n', type: 'string' },
-                'Recency CI': { field: 'recency_ci', type: 'string' },
-                'Age': { field: 'age', type: 'string' },
-                'Mapped Scale': { field: 'mappedscal', type: 'string' },
-                'CFM URL': { field: 'cfm_url', type: 'string' },
-                'Geometry': { field: 'geometry_c', type: 'string' },
-                'Dip Direction': { field: 'dipdirect', type: 'string' },
-                'FType': { field: 'ftype_', type: 'string' },
-                'Comments': { field: 'comments', type: 'string' },
-                'Notes': { field: 'notes', type: 'string' }
-            },
-        },
-    ],
-};
-
 
 
 const infrastructureAndLandUseConfig: LayerProps = {
