@@ -406,7 +406,7 @@ const heatflowLayerConfig: WMSLayerProps = {
 
 // ingqFaults WMS Layer
 const ingqFaultsLayerName = 'mart_geothermal_qfaults_ingenious_current';
-const ingqFaultsWMSTitle = 'Great Basin Faults (INGENIOUS PROJECT)';
+const ingqFaultsWMSTitle = 'Great Basin Faults (INGENIOUS Project)';
 const ingqFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
