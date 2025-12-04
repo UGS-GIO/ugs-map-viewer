@@ -32,8 +32,8 @@ const getAllValidTitles = (layers: LayerProps[], groupsOnly = false): Set<string
 };
 
 const getDefaultVisible = (layers: LayerProps[]): { selected: string[], hidden: string[] } => {
-    let selected: string[] = [];
-    let hidden: string[] = [];
+    const selected: string[] = [];
+    const hidden: string[] = [];
     layers.forEach(layer => {
         if (layer.type === 'group' && 'layers' in layer && layer.layers) {
             if (layer.visible === false && layer.title) hidden.push(layer.title);
@@ -152,6 +152,11 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
     const updateLayerSelection = useCallback((titles: string | string[], shouldBeSelected: boolean) => {
         const titlesToUpdate = Array.isArray(titles) ? titles : [titles];
 
+        console.log('[LayerUrlProvider] updateLayerSelection called:', {
+            titles: titlesToUpdate,
+            shouldBeSelected
+        });
+
         navigate({
             to: '.',
             search: (prev) => {
@@ -159,6 +164,11 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
                 const currentSelected = new Set(prevLayersObj?.selected || []);
                 const currentHidden = new Set(prevLayersObj?.hidden || []);
                 const currentFilters = { ...(prev.filters || {}) };
+
+                console.log('[LayerUrlProvider] Current state before update:', {
+                    currentSelected: Array.from(currentSelected),
+                    currentFilters
+                });
 
                 if (shouldBeSelected) {
                     titlesToUpdate.forEach(title => {
@@ -176,7 +186,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
                     });
                 }
 
-                return {
+                const newState = {
                     ...prev,
                     layers: {
                         ...prevLayersObj,
@@ -185,6 +195,13 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
                     },
                     filters: Object.keys(currentFilters).length > 0 ? currentFilters : undefined,
                 };
+
+                console.log('[LayerUrlProvider] New state after update:', {
+                    selected: newState.layers.selected,
+                    filters: newState.filters
+                });
+
+                return newState;
             },
             replace: true,
         });

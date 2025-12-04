@@ -61,7 +61,7 @@ export interface HazardLegendConfig<T extends Record<string, any>> {
  * Generic legend factory function
  * Creates custom legend items for any hazard type following a consistent pattern
  *
- * @param polygon - ESRI polygon JSON string
+ * @param polygon - Polygon JSON string
  * @param config - Configuration object specific to the hazard type
  * @returns Array of custom legend items
  *

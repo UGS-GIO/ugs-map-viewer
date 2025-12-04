@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useInView } from 'react-intersection-observer'
 import { useReactToPrint } from 'react-to-print'
+import { queryKeys } from '@/lib/query-keys'
 import { ReportLayout } from '@/routes/_report/-components/layouts/report-layout'
 import { SectionTabs, Section } from '@/routes/_report/-components/layouts/section-tabs'
 import { FileText, AlertTriangle, Printer, Upload } from 'lucide-react'
@@ -57,7 +58,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
 
     // Query for hazard data
     const { data: hazardGroups = [], isLoading } = useQuery({
-        queryKey: ['hazard-report', polygon],
+        queryKey: queryKeys.hazards.report(polygon),
         queryFn: async () => {
             const allHazardInfos = await queryGeoServerForHazardUnits(polygon);
 
