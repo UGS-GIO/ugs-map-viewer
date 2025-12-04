@@ -241,21 +241,14 @@ export async function fetchWFSFeature({
     params.set('outputFormat', 'application/json');
     params.set('count', featureCount.toString());
 
-    // Use INTERSECTS with bbox polygon for precise geometry-based filtering
-    // This checks if the actual feature geometry intersects the query bbox, not just the feature's bounding box
-    // Note: GeoServer CQL for EPSG:4326 expects lat/lon (Y X) order, not lon/lat (X Y)
-    const bboxWKT = crs === 'EPSG:4326'
-        ? `POLYGON((${bbox.minY} ${bbox.minX}, ${bbox.minY} ${bbox.maxX}, ${bbox.maxY} ${bbox.maxX}, ${bbox.maxY} ${bbox.minX}, ${bbox.minY} ${bbox.minX}))`
-        : `POLYGON((${bbox.minX} ${bbox.minY}, ${bbox.maxX} ${bbox.minY}, ${bbox.maxX} ${bbox.maxY}, ${bbox.minX} ${bbox.maxY}, ${bbox.minX} ${bbox.minY}))`;
-    const spatialFilter = `INTERSECTS(${geometryField}, ${bboxWKT})`;
+    // Use bbox parameter for spatial filtering - properly handles CRS transformation
+    // Format: minx,miny,maxx,maxy,CRS (GeoServer handles CRS conversion automatically)
+    params.set('bbox', `${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY},${crs}`);
 
+    // Add attribute filter if provided (separate from spatial bbox)
     if (cql_filter) {
-        // Combine spatial filter with attribute filter
         const normalizedAttributeFilter = cql_filter.trim().replace(/\s*=\s*/g, '=');
-        params.set('cql_filter', `${spatialFilter} AND ${normalizedAttributeFilter}`);
-    } else {
-        // Just spatial filter
-        params.set('cql_filter', spatialFilter);
+        params.set('cql_filter', normalizedAttributeFilter);
     }
 
     const fullUrl = `${url}?${params.toString()}`;
@@ -370,7 +363,7 @@ export async function fetchWFSFeatureByPolygon({
     layers,
     url,
     cql_filter = null,
-    crs = 'EPSG:4326',
+    crs: _crs = 'EPSG:4326', // CRS param kept for API compatibility but always queries in 4326
     featureCount = 200
 }: WFSPolygonQueryProps): Promise<GeoServerGeoJSON | null> {
     if (layers.length === 0) {
@@ -383,26 +376,19 @@ export async function fetchWFSFeatureByPolygon({
         return null;
     }
 
-    // Get the geometry field name for this layer
-    let geometryField = await getGeometryFieldName(layers[0], url);
-
-    // If we couldn't detect it, try common default names
-    if (!geometryField) {
-        // GeoServer commonly uses these field names
-        geometryField = 'geom'; // Most common default in GeoServer
-    }
-
-    // Convert polygon to target CRS
+    // Use bbox parameter for reliable CRS handling, then filter client-side for polygon intersection
+    // CQL_FILTER with WKT polygons fails with SRID mismatch errors across different CRS
     const ring = polygonRings[0]; // Use first ring (exterior ring)
 
-    // Convert coordinates from WGS84 to target CRS if needed
-    let coordinates = ring;
-    if (crs !== 'EPSG:4326') {
-        coordinates = ring.map(([lng, lat]) => {
-            const [x, y] = proj4('EPSG:4326', crs, [lng, lat]);
-            return [x, y];
-        });
-    }
+    // Compute bounding box from polygon (in WGS84)
+    const lngs = ring.map(([lng]) => lng);
+    const lats = ring.map(([, lat]) => lat);
+    const bbox = {
+        minX: Math.min(...lngs),
+        minY: Math.min(...lats),
+        maxX: Math.max(...lngs),
+        maxY: Math.max(...lats)
+    };
 
     const params = new URLSearchParams();
     params.set('service', 'WFS');
@@ -412,19 +398,15 @@ export async function fetchWFSFeatureByPolygon({
     params.set('outputFormat', 'application/json');
     params.set('count', featureCount.toString());
 
-    // Use INTERSECTS for features that touch or overlap the polygon
-    // Note: GeoServer CQL for EPSG:4326 expects lat/lon (Y X) order, not lon/lat (X Y)
-    const coordString = crs === 'EPSG:4326'
-        ? coordinates.map(([x, y]) => `${y} ${x}`).join(', ')
-        : coordinates.map(([x, y]) => `${x} ${y}`).join(', ');
-    const wkt = `POLYGON((${coordString}))`;
-    const spatialFilter = `INTERSECTS(${geometryField}, ${wkt})`;
+    // Use bbox parameter - works reliably with any CRS
+    params.set('bbox', `${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY},EPSG:4326`);
+    // Request results in 4326 for client-side polygon filtering
+    params.set('srsName', 'EPSG:4326');
 
-    const combinedFilter = cql_filter
-        ? `${spatialFilter} AND ${cql_filter.trim()}`
-        : spatialFilter;
-
-    params.set('cql_filter', combinedFilter);
+    // Add attribute filter if provided
+    if (cql_filter) {
+        params.set('cql_filter', cql_filter.trim());
+    }
 
     const fullUrl = `${url}?${params.toString()}`;
 
@@ -441,6 +423,22 @@ export async function fetchWFSFeatureByPolygon({
         const data = await response.json();
 
         if (data.features && data.features.length > 0) {
+            // Create turf polygon for intersection testing (close the ring if needed)
+            const closedRing = ring[0][0] === ring[ring.length - 1][0] && ring[0][1] === ring[ring.length - 1][1]
+                ? ring
+                : [...ring, ring[0]];
+            const queryPolygon = turfPolygon([closedRing]);
+
+            // Filter features to only those that actually intersect the query polygon
+            const intersectingFeatures = data.features.filter((feature: Feature) => {
+                if (!feature.geometry) return false;
+                try {
+                    return booleanIntersects(feature, queryPolygon);
+                } catch {
+                    // If intersection test fails, include the feature (conservative)
+                    return true;
+                }
+            });
 
             // Add namespace to features for consistency
             const namespaceMap = layers.reduce((acc, layer) => {
@@ -451,7 +449,7 @@ export async function fetchWFSFeatureByPolygon({
                 return acc;
             }, {} as Record<string, string>);
 
-            const featuresWithNamespace = data.features.map((feature: Feature) => {
+            const featuresWithNamespace = intersectingFeatures.map((feature: Feature) => {
                 const layerName = feature.id ? String(feature.id).split('.')[0] : '';
                 const namespace = namespaceMap[layerName] || null;
                 return {
@@ -460,7 +458,7 @@ export async function fetchWFSFeatureByPolygon({
                 };
             });
 
-            return { ...data, features: featuresWithNamespace };
+            return { ...data, features: featuresWithNamespace, totalFeatures: featuresWithNamespace.length };
         }
 
         return data;
