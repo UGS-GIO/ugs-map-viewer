@@ -4,6 +4,7 @@ import { Feature, Geometry, GeoJsonProperties } from "geojson";
 import { ExternalLink } from "lucide-react";
 import { LayerContentProps } from "@/components/custom/popups/popup-content-with-pagination";
 import { Link } from "@/components/custom/link";
+import { memo } from "react";
 import {
     FieldConfig,
     StringPopupFieldConfig,
@@ -23,7 +24,10 @@ type PopupContentDisplayProps = {
     layout?: "grid" | "stacked";
 };
 
-interface LabelValuePair { label: string; value: string | number; }
+interface LabelValuePair {
+    label: string | undefined;
+    value: string | number | boolean | null;
+}
 
 // --- Type Guards ---
 const isNumberField = (field: FieldConfig | undefined): field is NumberPopupFieldConfig =>
@@ -86,22 +90,32 @@ const applyColor = (colorCodingMap: ColorCodingRecordFunction | undefined, field
     return {};
 };
 
-const getRelatedTableValues = (groupedLayerIndex: number, data: ProcessedRelatedData[][], relatedTables: RelatedTable[] | undefined, properties: { [name: string]: any; }): LabelValuePair[][] => {
+const getRelatedTableValues = (
+    groupedLayerIndex: number,
+    data: ProcessedRelatedData[][],
+    relatedTables: RelatedTable[] | undefined,
+    properties: GeoJsonProperties
+): LabelValuePair[][] => {
     if (!data?.length) return [[{ label: "", value: "No data available" }]];
-    const groupedValues: LabelValuePair[][] = [];
+
     const table = relatedTables?.[groupedLayerIndex];
     if (!table) return [[{ label: "Invalid index", value: "Invalid index" }]];
-    const targetField = properties[table.targetField];
-    if (data[groupedLayerIndex]) {
-        const tableMatches: LabelValuePair[] = [];
-        (data[groupedLayerIndex] as any[]).forEach((item: any) => {
-            if (String(item[table.matchingField]) === String(targetField) && item.labelValuePairs) {
-                tableMatches.push(...item.labelValuePairs);
-            }
-        });
-        if (tableMatches.length > 0) groupedValues.push(tableMatches);
-    }
-    return groupedValues.length ? groupedValues : [[{ label: "", value: "No data available" }]];
+
+    const targetField = properties?.[table.targetField];
+    const tableData = data[groupedLayerIndex];
+
+    if (!tableData) return [[{ label: "", value: "No data available" }]];
+
+    const tableMatches = tableData
+        .filter(item =>
+            String(item[table.matchingField]) === String(targetField) &&
+            item.labelValuePairs
+        )
+        .flatMap(item => item.labelValuePairs!);
+
+    return tableMatches.length > 0
+        ? [tableMatches]
+        : [[{ label: "", value: "No data available" }]];
 };
 
 const shouldDisplayValue = (value: string): boolean => {
@@ -171,7 +185,7 @@ const renderFieldContent = (
 };
 
 // --- Main Component ---
-const PopupContentDisplay = ({ feature, layout, layer }: PopupContentDisplayProps) => {
+const PopupContentDisplayInner = ({ feature, layout, layer }: PopupContentDisplayProps) => {
     const { relatedTables, popupFields, linkFields, colorCodingMap, rasterSource } = layer;
     const { data, isLoading, error } = useRelatedTable(relatedTables || [], feature || null);
 
@@ -201,14 +215,15 @@ const PopupContentDisplay = ({ feature, layout, layer }: PopupContentDisplayProp
     const properties = feature.properties || {};
     const urlPattern = /https?:\/\/[^\s/$.?#].[^\s]*/;
 
-    const sourceEntries: Array<[string, any]> = popupFields
+    type PropertyValue = string | number | boolean | null | undefined;
+
+    const isFieldConfig = (value: FieldConfig | PropertyValue): value is FieldConfig => {
+        return typeof value === 'object' && value !== null && 'type' in value && 'field' in value;
+    };
+
+    const mappedFeatureEntries = popupFields
         ? Object.entries(popupFields)
         : Object.entries(properties);
-
-    // Simplified mapping - No special 'custom' link check here.
-    const mappedFeatureEntries = sourceEntries.map(([label, configOrValue]) => {
-        return [label, configOrValue] as [string, any];
-    });
 
     if (rasterValue !== null && rasterSource?.valueLabel) {
         mappedFeatureEntries.push([rasterSource.valueLabel, rasterValue]);
@@ -219,12 +234,12 @@ const PopupContentDisplay = ({ feature, layout, layer }: PopupContentDisplayProp
     mappedFeatureEntries.forEach(([label, entryData], index) => {
         let currentConfig: FieldConfig | undefined = undefined;
         let isRasterEntry = false;
-        let valueFromPropertiesDirectly: any = undefined;
+        let valueFromPropertiesDirectly: PropertyValue = undefined;
 
         if (label === rasterSource?.valueLabel && entryData === rasterValue) {
             isRasterEntry = true;
-        } else if (popupFields) {
-            currentConfig = entryData as FieldConfig;
+        } else if (isFieldConfig(entryData)) {
+            currentConfig = entryData;
         } else {
             valueFromPropertiesDirectly = entryData;
             currentConfig = { field: label, type: 'string', label } as StringPopupFieldConfig;
@@ -293,11 +308,22 @@ const PopupContentDisplay = ({ feature, layout, layer }: PopupContentDisplayProp
     const useGridLayout = layout === "grid" || regularContent.length > 5;
 
     return (
-        <div className="space-y-4">
-            {longContent.length > 0 && <div className="space-y-4 col-span-full">{longContent}</div>}
-            <div className={useGridLayout ? "grid grid-cols-2 gap-4" : "space-y-4"}>{regularContent}</div>
+        <div className="space-y-2">
+            {longContent.length > 0 && <div className="space-y-2 col-span-full">{longContent}</div>}
+            <div className={useGridLayout ? "grid grid-cols-2 gap-2" : "space-y-2"}>{regularContent}</div>
         </div>
     );
 };
+
+const PopupContentDisplay = memo(PopupContentDisplayInner, (prevProps, nextProps) => {
+    return (
+        prevProps.feature?.id === nextProps.feature?.id &&
+        prevProps.layout === nextProps.layout &&
+        prevProps.layer.sourceCRS === nextProps.layer.sourceCRS &&
+        prevProps.layer.layerTitle === nextProps.layer.layerTitle
+    );
+});
+
+PopupContentDisplay.displayName = 'PopupContentDisplay';
 
 export { PopupContentDisplay };
