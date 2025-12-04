@@ -2,7 +2,7 @@ import React from 'react';
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
-import type { PostgRESTRowOf } from '@/lib/types/postgrest-types';
+import { queryKeys } from '@/lib/query-keys';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,10 +23,7 @@ import { BackToMenuButton } from '@/components/custom/back-to-menu-button';
 import { useMap } from '@/hooks/use-map';
 import { wellWithTopsWMSTitle } from '@/pages/carbonstorage/data/layers/layers';
 import { Badge } from '@/components/ui/badge';
-import { useSidebar } from '@/hooks/use-sidebar';
-import Layers from '@/components/sidebar/layers';
-import { LayersIcon } from '@radix-ui/react-icons';
-import { findAndApplyWMSFilter } from '@/lib/sidebar/filter/util';
+import { applyLayerFilter } from '@/lib/sidebar/filter/util';
 
 type YesNoAll = "yes" | "no" | "all";
 
@@ -65,11 +62,6 @@ const formationNameMappingConfig = {
     acceptProfile: "emp"
 };
 
-type FormationRow = PostgRESTRowOf<{
-    formation_alias: string;
-    formation_name: string;
-}>;
-
 interface FormationMapping {
     value: string; // GeoServer column name (e.g., 'fm_greenriver')
     label: string; // user-friendly alias (e.g., 'Green River')
@@ -80,6 +72,8 @@ const fetchFormationData = async (): Promise<FormationMapping[]> => {
         postgrestUrl,
         tableName,
         fieldsToSelect,
+        displayField,
+        columnNameField,
         acceptProfile
     } = formationNameMappingConfig;
 
@@ -95,16 +89,23 @@ const fetchFormationData = async (): Promise<FormationMapping[]> => {
         throw new Error(`HTTP error fetching formation mappings! status: ${response.status}`);
     }
 
-    const data = await response.json() as FormationRow[];
+    const data: unknown = await response.json();
+    if (!Array.isArray(data)) {
+        throw new Error('Expected array response from formation data endpoint');
+    }
+
     const uniqueMappings = new Map<string, string>();
 
-    data.forEach(item => {
-        const alias = item.formation_alias;
-        const columnName = item.formation_name;
-        if (alias && columnName && !uniqueMappings.has(String(alias))) {
-            uniqueMappings.set(String(alias), String(columnName));
+    for (const item of data) {
+        if (typeof item !== 'object' || item === null) continue;
+
+        const alias = displayField in item ? item[displayField] : undefined;
+        const columnName = columnNameField in item ? item[columnNameField] : undefined;
+
+        if (typeof alias === 'string' && typeof columnName === 'string' && !uniqueMappings.has(alias)) {
+            uniqueMappings.set(alias, columnName);
         }
-    });
+    }
 
     return Array.from(uniqueMappings, ([label, value]) => ({ label, value }))
         .sort((a, b) => a.label.localeCompare(b.label));
@@ -204,7 +205,15 @@ const useWellFilterManager = () => {
             ...newState
         };
 
+        console.log('[useWellFilterManager] updateFilters called:', {
+            newState,
+            currentState: stateRef.current,
+            updatedState
+        });
+
         const combinedWellFilter = generateCQLFilter(updatedState);
+
+        console.log('[useWellFilterManager] Generated CQL filter:', combinedWellFilter);
 
         // Get current filters from the search object directly
         navigate({
@@ -212,12 +221,16 @@ const useWellFilterManager = () => {
                 const currentFilters = prev.filters || {};
                 let newFilters: Record<string, string> | undefined;
 
+                console.log('[useWellFilterManager] Before navigate - current filters:', currentFilters);
+
                 if (combinedWellFilter) {
                     newFilters = { ...currentFilters, [wellWithTopsWMSTitle]: combinedWellFilter };
                 } else {
                     const { [wellWithTopsWMSTitle]: _, ...rest } = currentFilters;
                     newFilters = Object.keys(rest).length > 0 ? rest : undefined;
                 }
+
+                console.log('[useWellFilterManager] After navigate - new filters:', newFilters);
 
                 return { ...prev, filters: newFilters };
             },
@@ -232,7 +245,6 @@ const MapConfigurations = () => {
     const { map } = useMap();
     const navigate = useNavigate({ from: '/carbonstorage' });
     const search = useSearch({ from: '/_map/carbonstorage/' });
-    const { setCurrentContent } = useSidebar();
 
     const { simpleState, updateFilters } = useWellFilterManager();
     const { core, las, formations, formation_operator } = simpleState;
@@ -242,29 +254,27 @@ const MapConfigurations = () => {
         isLoading: isFormationLoading,
         error: formationError
     } = useQuery({
-        queryKey: ['formationMappings'],
+        queryKey: queryKeys.carbonStorage.formations(),
         queryFn: fetchFormationData,
         staleTime: 1000 * 60 * 60,
     });
 
-    const isWellsLayerVisible = useMemo(() => {
-        let layersObj: { selected?: string[]; hidden?: string[] } | undefined;
-        if (typeof search.layers === 'string') {
-            try {
-                layersObj = JSON.parse(search.layers);
-            } catch {
-                return false;
-            }
-        } else {
-            layersObj = search.layers;
-        }
-        return layersObj?.selected?.includes(wellWithTopsWMSTitle) ?? false;
-    }, [search.layers]);
-
     // Apply filter to map when it changes
     useEffect(() => {
+        if (!map) {
+            console.log('[MapConfigurations] Map not ready yet, skipping filter application');
+            return;
+        }
+
         const filterFromUrl = search.filters?.[wellWithTopsWMSTitle] ?? null;
-        findAndApplyWMSFilter(map, wellWithTopsWMSTitle, filterFromUrl);
+
+        console.log('[MapConfigurations] Applying MapLibre WMS filter:', {
+            layerTitle: wellWithTopsWMSTitle,
+            filter: filterFromUrl,
+            searchFilters: search.filters
+        });
+
+        applyLayerFilter(map, wellWithTopsWMSTitle, filterFromUrl);
     }, [map, search.filters]);
 
     const handleCoordFormatChange = useCallback((value: 'dd' | 'dms') => {
@@ -289,15 +299,6 @@ const MapConfigurations = () => {
     const handleFormationOperatorChange = useCallback((useAnd: boolean) => {
         updateFilters({ formation_operator: useAnd ? 'and' : undefined });
     }, [updateFilters]);
-
-    const handleLayersPanelClick = useCallback(() => {
-        setCurrentContent({
-            title: 'Layers',
-            label: '',
-            icon: <LayersIcon />,
-            component: Layers
-        });
-    }, [setCurrentContent]);
 
     return (
         <>
@@ -354,35 +355,20 @@ const MapConfigurations = () => {
                         <CardTitle className="text-base">Filter Wells Database</CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 space-y-4">
-                        {!isWellsLayerVisible && (
-                            <div className="rounded-md border bg-muted p-3 text-sm">
-                                <p className="text-center text-muted-foreground">
-                                    To filter features, turn on the Wells Database layer in the{' '}
-                                    <Button
-                                        variant="link"
-                                        className="h-auto p-1 inline-flex text-sm align-baseline"
-                                        onClick={handleLayersPanelClick}
-                                    >
-                                        layers panel
-                                    </Button>.
-                                </p>
-                            </div>
-                        )}
-
                         <WellCoreFilter
-                            disabled={!isWellsLayerVisible}
+                            disabled={false}
                             value={core}
                             onChange={handleHasCoreChange}
                         />
 
                         <WellLasFilter
-                            disabled={!isWellsLayerVisible}
+                            disabled={false}
                             value={las}
                             onChange={handleHasLasChange}
                         />
 
                         <WellFormationFilter
-                            disabled={!isWellsLayerVisible}
+                            disabled={false}
                             value={formations}
                             onChange={handleFormationChange}
                             mappings={formationMappings}
