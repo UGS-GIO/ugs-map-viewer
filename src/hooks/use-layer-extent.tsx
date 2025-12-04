@@ -1,8 +1,31 @@
-import Extent from "@arcgis/core/geometry/Extent";
 import { useQuery } from "@tanstack/react-query";
 import { XMLParser } from "fast-xml-parser";
+import { PMTiles } from "pmtiles";
+import { queryKeys } from '@/lib/query-keys';
 
-const parseCapabilitiesExtent = (xml: string, targetLayerName: string): Extent | null => {
+export type BoundingBox = [number, number, number, number]; // [minLng, minLat, maxLng, maxLat]
+
+interface WMSLayer {
+    Name?: string;
+    Layer?: WMSLayer | WMSLayer[];
+    BoundingBox?: WMSBoundingBox | WMSBoundingBox[];
+    EX_GeographicBoundingBox?: {
+        westBoundLongitude: string;
+        southBoundLatitude: string;
+        eastBoundLongitude: string;
+        northBoundLatitude: string;
+    };
+}
+
+interface WMSBoundingBox {
+    '@_CRS'?: string;
+    '@_minx': string;
+    '@_miny': string;
+    '@_maxx': string;
+    '@_maxy': string;
+}
+
+const parseCapabilitiesExtent = (xml: string, targetLayerName: string): BoundingBox | null => {
     const parser = new XMLParser({
         ignoreAttributes: false,
         attributeNamePrefix: '@_'
@@ -16,7 +39,7 @@ const parseCapabilitiesExtent = (xml: string, targetLayerName: string): Extent |
         if (!capability?.Layer) return null;
 
         // Helper function to find layer by name
-        const findLayerByName = (layer: any, name: string): any => {
+        const findLayerByName = (layer: WMSLayer, name: string): WMSLayer | null => {
             if (layer.Name === name) return layer;
             if (layer.Layer) {
                 if (Array.isArray(layer.Layer)) {
@@ -43,24 +66,24 @@ const parseCapabilitiesExtent = (xml: string, targetLayerName: string): Extent |
                 : targetLayer.BoundingBox;
 
             if (bbox) {
-                return new Extent({
-                    xmin: parseFloat(bbox['@_minx']),
-                    ymin: parseFloat(bbox['@_miny']),
-                    xmax: parseFloat(bbox['@_maxx']),
-                    ymax: parseFloat(bbox['@_maxy'])
-                });
+                return [
+                    parseFloat(bbox['@_minx']),
+                    parseFloat(bbox['@_miny']),
+                    parseFloat(bbox['@_maxx']),
+                    parseFloat(bbox['@_maxy'])
+                ];
             }
         }
 
         // Try WMS 1.3.0 EX_GeographicBoundingBox
         if (targetLayer.EX_GeographicBoundingBox) {
             const bbox = targetLayer.EX_GeographicBoundingBox;
-            return new Extent({
-                xmin: parseFloat(bbox.westBoundLongitude),
-                ymin: parseFloat(bbox.southBoundLatitude),
-                xmax: parseFloat(bbox.eastBoundLongitude),
-                ymax: parseFloat(bbox.northBoundLatitude)
-            });
+            return [
+                parseFloat(bbox.westBoundLongitude),
+                parseFloat(bbox.southBoundLatitude),
+                parseFloat(bbox.eastBoundLongitude),
+                parseFloat(bbox.northBoundLatitude)
+            ];
         }
 
         return null;
@@ -70,78 +93,100 @@ const parseCapabilitiesExtent = (xml: string, targetLayerName: string): Extent |
     }
 };
 
-const fetchLayerExtent = async (layer: __esri.Layer): Promise<__esri.Extent> => {
-    if (layer.type === 'wms') {
-        const wmsLayer = layer as __esri.WMSLayer;
-        const sublayer = wmsLayer.allSublayers.getItemAt(0);
-
-        if (!sublayer || !wmsLayer.url) {
-            console.warn('No sublayer or URL found for WMS layer:', layer);
-            return wmsLayer.fullExtent || new Extent();
-        }
-
-        // Extract namespace and layer name
-        const layerName = sublayer.name;
-        const [namespace, _name] = layerName.split(':');
-
-        // Construct GetCapabilities URL with version (1.3.0 is most current)
-        const capabilitiesUrl = new URL(wmsLayer.url);
-        capabilitiesUrl.searchParams.set('service', 'WMS');
-        capabilitiesUrl.searchParams.set('version', '1.3.0');
-        capabilitiesUrl.searchParams.set('request', 'GetCapabilities');
-
-        if (namespace) {
-            capabilitiesUrl.searchParams.set('namespace', namespace);
-        }
-
-        try {
-            const response = await fetch(capabilitiesUrl.toString());
-
-            if (!response.ok) {
-                throw new Error(`Failed to fetch capabilities: ${response.statusText}`);
-            }
-
-            const xml = await response.text();
-            const extent = parseCapabilitiesExtent(xml, layerName);
-
-            if (extent) {
-                // Convert to ArcGIS Extent
-                return {
-                    xmin: extent.xmin,
-                    ymin: extent.ymin,
-                    xmax: extent.xmax,
-                    ymax: extent.ymax,
-                    spatialReference: { wkid: 4326 } // WMS typically uses WGS84
-                } as __esri.Extent;
-            }
-        } catch (error) {
-            console.error('Error fetching WMS capabilities:', error);
-        }
-
-        // Fallback to layer's fullExtent if parsing fails
-        return wmsLayer.fullExtent || new Extent();
+const fetchLayerExtent = async (wmsUrl: string, layerName: string): Promise<BoundingBox | null> => {
+    if (!wmsUrl || !layerName) {
+        return null;
     }
 
-    // Handle other layer types
-    if (layer.type === 'map-image') {
-        return (layer as __esri.MapImageLayer).fullExtent || new Extent();
+    // Extract namespace from layerName (format: "namespace:layerName")
+    const [namespace] = layerName.split(':');
+
+    // Construct GetCapabilities URL with version (1.3.0 is most current)
+    const capabilitiesUrl = new URL(wmsUrl);
+    capabilitiesUrl.searchParams.set('service', 'WMS');
+    capabilitiesUrl.searchParams.set('version', '1.3.0');
+    capabilitiesUrl.searchParams.set('request', 'GetCapabilities');
+
+    if (namespace) {
+        capabilitiesUrl.searchParams.set('namespace', namespace);
     }
 
-    if (layer.type === 'feature') {
-        return (layer as __esri.FeatureLayer).fullExtent || new Extent();
-    }
+    try {
+        const response = await fetch(capabilitiesUrl.toString());
 
-    console.warn('Unsupported layer type');
-    return new Extent();
+        if (!response.ok) {
+            throw new Error(`Failed to fetch capabilities: ${response.statusText}`);
+        }
+
+        const xml = await response.text();
+        const extent = parseCapabilitiesExtent(xml, layerName);
+        return extent;
+    } catch (error) {
+        console.error('Error fetching WMS capabilities:', error);
+        return null;
+    }
 };
 
-const useLayerExtent = (layer: __esri.Layer) => {
+/**
+ * Fetch extent from a PMTiles file header
+ * PMTiles files contain bounds metadata written by tippecanoe
+ */
+const fetchPMTilesExtent = async (pmtilesUrl: string): Promise<BoundingBox | null> => {
+    if (!pmtilesUrl) {
+        return null;
+    }
+
+    try {
+        // Convert relative URL to absolute
+        const absoluteUrl = pmtilesUrl.startsWith('http')
+            ? pmtilesUrl
+            : `${window.location.origin}${pmtilesUrl}`;
+
+        const pmtiles = new PMTiles(absoluteUrl);
+        const header = await pmtiles.getHeader();
+
+        // PMTiles header contains bounds in [minLon, minLat, maxLon, maxLat] format
+        if (header.minLon !== undefined && header.minLat !== undefined &&
+            header.maxLon !== undefined && header.maxLat !== undefined) {
+            return [header.minLon, header.minLat, header.maxLon, header.maxLat];
+        }
+
+        return null;
+    } catch (error) {
+        console.error('Error fetching PMTiles extent:', error);
+        return null;
+    }
+};
+
+interface WMSExtentOptions {
+    type: 'wms';
+    wmsUrl: string | null;
+    layerName: string | null;
+}
+
+interface PMTilesExtentOptions {
+    type: 'pmtiles';
+    pmtilesUrl: string;
+}
+
+type UseLayerExtentOptions = WMSExtentOptions | PMTilesExtentOptions;
+
+const useLayerExtent = (options: UseLayerExtentOptions) => {
+    const queryKey = options.type === 'pmtiles'
+        ? queryKeys.layers.extent('pmtiles', options.pmtilesUrl)
+        : queryKeys.layers.extent(options.wmsUrl || '', options.layerName || '');
+
+    const queryFn = options.type === 'pmtiles'
+        ? () => fetchPMTilesExtent(options.pmtilesUrl)
+        : () => fetchLayerExtent(options.wmsUrl || '', options.layerName || '');
+
     return useQuery({
-        queryKey: ['layerExtent', layer.id],
-        queryFn: () => fetchLayerExtent(layer),
-        enabled: false, // Prevents automatic fetching
-        staleTime: Infinity, // Keeps the data fresh forever (never marks as stale)
+        queryKey,
+        queryFn,
+        enabled: false,
+        staleTime: Infinity,
     });
 };
 
 export { useLayerExtent };
+export type { UseLayerExtentOptions };

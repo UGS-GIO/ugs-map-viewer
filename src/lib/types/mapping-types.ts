@@ -1,12 +1,3 @@
-import FeatureLayer from "@arcgis/core/layers/FeatureLayer"
-import GeoJSONLayer from "@arcgis/core/layers/GeoJSONLayer"
-import GroupLayer from "@arcgis/core/layers/GroupLayer"
-import ImageryLayer from "@arcgis/core/layers/ImageryLayer"
-import MapImageLayer from "@arcgis/core/layers/MapImageLayer"
-import TileLayer from "@arcgis/core/layers/TileLayer"
-import MapView from "@arcgis/core/views/MapView"
-import SceneView from "@arcgis/core/views/SceneView"
-import WMSLayer from "@arcgis/core/layers/WMSLayer";
 import { FeatureCollection, GeoJsonProperties } from "geojson"
 
 
@@ -67,7 +58,7 @@ export interface NumberPopupFieldConfig extends BaseFieldConfig {
 // Custom-specific field configuration
 export interface CustomPopupFieldConfig extends BaseFieldConfig {
     type: 'custom';
-    transform?: (properties: GeoJsonProperties | any | null | undefined) => string;
+    transform?: (properties: GeoJsonProperties | null | undefined) => string;
 }
 
 // Your main FieldConfig is a discriminated union of these specific types
@@ -82,15 +73,17 @@ export type CustomSublayerProps = {
     schema?: string; // postgreSQL schema name, used for the accept-profile header in postgrest requests because the schema name does not necessarilly match the workspace name in geoserver
 };
 
-export type ExtendedSublayerProperties =
-    __esri.SublayerProperties &
-    __esri.WMSSublayerProperties &
-    CustomSublayerProps;
+export type ExtendedSublayerProperties = {
+    name?: string;
+    queryable?: boolean;
+    popupEnabled?: boolean;
+    visible?: boolean;
+} & CustomSublayerProps;
 
 
 
 interface BaseLayerProps {
-    type: 'feature' | 'tile' | 'map-image' | 'geojson' | 'imagery' | 'wms' | 'group';
+    type: 'feature' | 'tile' | 'map-image' | 'geojson' | 'imagery' | 'wms' | 'group' | 'pmtiles' | 'wfs';
     title: string;
     url?: string;
     visible?: boolean;
@@ -100,8 +93,66 @@ interface BaseLayerProps {
 
 export interface WMSLayerProps extends BaseLayerProps {
     type: 'wms';
-    sublayers: __esri.CollectionProperties<ExtendedSublayerProperties>;
-    customLayerParameters?: object | null | undefined
+    sublayers: ExtendedSublayerProperties[];
+    customLayerParameters?: object | null | undefined;
+    crs?: string; // EPSG code (e.g., 'EPSG:26912', 'EPSG:3857') for WMS GetFeatureInfo requests
+}
+
+export interface PMTilesLayerProps extends BaseLayerProps {
+    type: 'pmtiles';
+    /** URL to the PMTiles file (can be relative like '/pmtiles/layer.pmtiles' or absolute) */
+    pmtilesUrl: string;
+    /** URL to the style JSON file, or inline style layers */
+    styleUrl?: string;
+    /** Source layer name within the PMTiles file */
+    sourceLayer: string;
+    /** Optional sublayer config for popups/queries */
+    sublayers?: ExtendedSublayerProperties[];
+}
+
+export interface WFSLayerProps extends BaseLayerProps {
+    type: 'wfs';
+    /** WFS service URL (e.g., 'https://example.com/geoserver/wfs') */
+    wfsUrl: string;
+    /** Layer type name for WFS request (e.g., 'workspace:layer_name') */
+    typeName: string;
+    /** CRS for WFS request (default: 'EPSG:4326') */
+    crs?: string;
+    /** Geometry type hint for styling ('point' | 'line' | 'polygon') - auto-detected if not specified */
+    geometryType?: 'point' | 'line' | 'polygon';
+    /** Optional style configuration */
+    style?: {
+        /** Circle radius for point features (default: 6) */
+        circleRadius?: number;
+        /** Data-driven circle radius based on feature property */
+        circleRadiusProperty?: {
+            field: string;
+            /** [minValue, minRadius, maxValue, maxRadius] for interpolation */
+            stops: [number, number, number, number];
+        };
+        /** Circle color for point features (default: '#088') */
+        circleColor?: string;
+        /** Data-driven circle color based on feature property */
+        circleColorProperty?: {
+            field: string;
+            /** Array of [threshold, color] pairs for step function */
+            stops: Array<[number, string]>;
+            /** Default color for values below first threshold */
+            defaultColor: string;
+        };
+        /** Circle stroke color (default: '#fff') */
+        circleStrokeColor?: string;
+        /** Circle stroke width (default: 1) */
+        circleStrokeWidth?: number;
+        /** Fill color for polygon features (default: '#088') */
+        fillColor?: string;
+        /** Line color for line features or polygon outlines (default: '#333') */
+        lineColor?: string;
+        /** Line width (default: 2) */
+        lineWidth?: number;
+    };
+    /** Optional sublayer config for popups/queries */
+    sublayers?: ExtendedSublayerProperties[];
 }
 
 export interface GroupLayerProps extends BaseLayerProps {
@@ -110,21 +161,9 @@ export interface GroupLayerProps extends BaseLayerProps {
 }
 
 
-export type LayerType = 'feature' | 'tile' | 'map-image' | 'imagery' | 'group' | 'geojson' | 'wms'
+export type LayerType = 'feature' | 'tile' | 'map-image' | 'imagery' | 'group' | 'geojson' | 'wms' | 'pmtiles' | 'wfs'
 
-export type LayerProps = WMSLayerProps | GroupLayerProps | BaseLayerProps;
-
-// Define a mapping of layer types to their corresponding classes
-export const layerTypeMapping = {
-    'feature': FeatureLayer,
-    'tile': TileLayer,
-    'map-image': MapImageLayer,
-    'imagery': ImageryLayer,
-    'group': GroupLayer,
-    'geojson': GeoJSONLayer,
-    'wms': WMSLayer
-    // Add other layer types here
-};
+export type LayerProps = WMSLayerProps | PMTilesLayerProps | WFSLayerProps | GroupLayerProps | BaseLayerProps;
 
 export type MapImageLayerRenderer = {
     type: 'map-image-renderer';
@@ -137,18 +176,13 @@ export type MapImageLayerRenderer = {
 
 export type RegularLayerRenderer = {
     type: 'regular-layer-renderer';
-    renderer: __esri.Symbol | CompositeSymbolResult | HTMLElement;
+    renderer: CompositeSymbolResult | HTMLElement | SVGSVGElement;
     id: string;
     label: string;
     url: string;
 };
 
 export type RendererProps = { MapImageLayerRenderer: MapImageLayerRenderer[], RegularLayerRenderer: RegularLayerRenderer[] }
-
-export interface MapApp {
-    view?: SceneView | MapView
-}
-
 
 type MapImageLayerLegendItem = {
     label: string;
@@ -182,11 +216,7 @@ export type MapImageLayerType = {
 
 export type GetRenderer = (layerId: string, url: string | undefined) => Promise<RendererProps | undefined>;
 
-export type LayerConstructor = typeof FeatureLayer | typeof TileLayer | typeof GroupLayer | typeof MapImageLayer | typeof GeoJSONLayer | typeof ImageryLayer | typeof WMSLayer | undefined;
-
 export type UIPositionOptions = "bottom-leading" | "bottom-left" | "bottom-right" | "bottom-trailing" | "top-leading" | "top-left" | "top-right" | "top-trailing" | "manual"
-
-export type GetSuggestionsHandlerType = { exactMatch: boolean, location: __esri.Point, maxResults: number, sourceIndex: number, spatialReference: __esri.SpatialReference, suggestResult: __esri.SuggestResult, view: __esri.MapView | __esri.SceneView }
 
 export interface RelatedTable {
     fieldLabel: string;
@@ -208,9 +238,8 @@ interface DisplayField {
 }
 
 // Interface for composite symbol results
-interface CompositeSymbolResult {
-    symbol?: __esri.Symbol;
+export interface CompositeSymbolResult {
     html?: HTMLElement;
     isComposite: boolean;
-    symbolizers: any[];
+    symbolizers: { type: string; [key: string]: string | number | boolean }[];
 }
