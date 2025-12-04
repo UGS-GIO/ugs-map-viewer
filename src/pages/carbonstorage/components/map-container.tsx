@@ -1,12 +1,15 @@
-import { MapWidgets } from '@/pages/carbonstorage/components/map-widgets';
+import { MapControls } from '@/pages/carbonstorage/components/map-controls';
 import { MapContextMenu } from "@/components/custom/map/map-context-menu";
-import { PopupDrawer } from "@/components/custom/popups/popup-drawer";
+import { MapWrapper } from "@/components/custom/map/map-wrapper";
+import { PopupDrawer, PopupDrawerRef } from "@/components/custom/popups/popup-drawer";
 import { useMapContainer } from "@/hooks/use-map-container";
 import { useDomainFilters } from "@/hooks/use-domain-filters";
+import { useMap } from "@/hooks/use-map";
 import { PROD_GEOSERVER_URL } from '@/lib/constants';
 import { wellWithTopsWMSTitle } from '@/pages/carbonstorage/data/layers/layers';
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs';
 import { MapSearchParams } from '@/routes/_map';
+import { useRef } from 'react';
 
 interface MapContainerProps {
     searchParams: MapSearchParams;
@@ -23,6 +26,8 @@ const CCS_FILTER_MAPPING = {
 
 export default function MapContainer({ searchParams, updateLayerSelection }: MapContainerProps) {
     const defaultLayersConfig = useGetLayerConfigsData('layers');
+    const { map } = useMap();
+    const popupDrawerRef = useRef<PopupDrawerRef>(null);
 
     const {
         mapRef,
@@ -31,20 +36,22 @@ export default function MapContainer({ searchParams, updateLayerSelection }: Map
         popupContainer,
         setPopupContainer,
         popupContent,
-        clickOrDragHandlers,
         handleOnContextMenu,
         coordinates,
         setCoordinates,
-        view,
+        onDrawerClose,
+        isQueryLoading,
     } = useMapContainer({
         wmsUrl: `${PROD_GEOSERVER_URL}wms`,
         layersConfig: defaultLayersConfig,
+        popupDrawerRef
     });
 
     // Use the generalized domain filters hook
     useDomainFilters({
-        view,
+        map,
         filters: searchParams.filters,
+        selectedLayers: searchParams.layers?.selected || [],
         updateLayerSelection,
         filterMapping: CCS_FILTER_MAPPING
     });
@@ -52,19 +59,20 @@ export default function MapContainer({ searchParams, updateLayerSelection }: Map
     return (
         <>
             <MapContextMenu coordinates={coordinates} hiddenTriggerRef={contextMenuTriggerRef} />
-            <div
-                className="relative w-full h-full"
-                ref={mapRef}
+            <MapWrapper
+                mapRef={mapRef}
+                isLoading={isQueryLoading}
                 onContextMenu={e => handleOnContextMenu(e, contextMenuTriggerRef, setCoordinates)}
-                {...clickOrDragHandlers}
             >
-                <MapWidgets />
-            </div>
+                <MapControls />
+            </MapWrapper>
             <PopupDrawer
+                ref={popupDrawerRef}
                 container={popupContainer}
                 drawerTriggerRef={drawerTriggerRef}
                 popupContent={popupContent}
                 popupTitle="CCS Information"
+                onClose={onDrawerClose}
             />
             <div ref={setPopupContainer} />
         </>

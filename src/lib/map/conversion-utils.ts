@@ -3,6 +3,15 @@ import { clone } from "@turf/clone";
 import { Geometry, Position } from "geojson";
 import proj4 from "proj4";
 
+/**
+ * Polygon geometry with coordinate reference system
+ * Uses EPSG codes for open-source compatibility
+ */
+export interface PolygonGeometry {
+    rings: number[][][];
+    crs?: string; // e.g., "EPSG:3857", "EPSG:4326"
+}
+
 export function convertDDToDMS(dd: number, isLongitude: boolean = false) {
     const dir = dd < 0
         ? isLongitude ? 'W' : 'S'
@@ -23,6 +32,12 @@ export function convertDDToDMS(dd: number, isLongitude: boolean = false) {
 
 
 export const convertCoordinate = (point: number[], sourceEPSG: string, targetEPSG: string = "EPSG:4326"): number[] => {
+    // Identity transform - no conversion needed
+    if (sourceEPSG === targetEPSG ||
+        (sourceEPSG.toUpperCase() === 'EPSG:4326' && targetEPSG.toUpperCase() === 'EPSG:4326')) {
+        return point;
+    }
+
     try {
         const converted = proj4(
             sourceEPSG,
@@ -38,63 +53,41 @@ export const convertCoordinate = (point: number[], sourceEPSG: string, targetEPS
 };
 
 export const convertBbox = (bbox: number[], sourceEPSG: string, targetEPSG: string = "EPSG:4326"): number[] => {
+    // Identity transform - no conversion needed
+    if (sourceEPSG === targetEPSG ||
+        (sourceEPSG.toUpperCase() === 'EPSG:4326' && targetEPSG.toUpperCase() === 'EPSG:4326')) {
+        return bbox;
+    }
 
     try {
-        // Convert each corner of the bbox
-        const minXConverted = convertCoordinate([bbox[0], bbox[1]], sourceEPSG, targetEPSG);
-        const maxXConverted = convertCoordinate([bbox[2], bbox[3]], sourceEPSG, targetEPSG);
+        // Convert all four corners of the bbox to handle projection distortions
+        const sw = convertCoordinate([bbox[0], bbox[1]], sourceEPSG, targetEPSG); // southwest
+        const se = convertCoordinate([bbox[2], bbox[1]], sourceEPSG, targetEPSG); // southeast
+        const nw = convertCoordinate([bbox[0], bbox[3]], sourceEPSG, targetEPSG); // northwest
+        const ne = convertCoordinate([bbox[2], bbox[3]], sourceEPSG, targetEPSG); // northeast
+
+        // Find actual min/max after projection (coordinates may flip)
+        const allX = [sw[0], se[0], nw[0], ne[0]];
+        const allY = [sw[1], se[1], nw[1], ne[1]];
+
+        const minX = Math.min(...allX);
+        const minY = Math.min(...allY);
+        const maxX = Math.max(...allX);
+        const maxY = Math.max(...allY);
 
         // Return in [minX, minY, maxX, maxY] format for target coordinate system
-        return [
-            minXConverted[0],
-            minXConverted[1],
-            maxXConverted[0],
-            maxXConverted[1]
-        ];
+        return [minX, minY, maxX, maxY];
     } catch (error) {
         console.error('Bbox conversion error:', error);
         return bbox; // fallback to original bbox
     }
 };
 
-export const convertCoordinates = (coordinates: number[][][], sourceCRS: string): number[][] => {
-    return coordinates.flatMap(linestring =>
-        linestring.map(point => {
-            try {
-                const converted = proj4(sourceCRS, "EPSG:4326", point);
-                return converted;
-            } catch (error) {
-                console.error('Conversion error:', error);
-                return point; // fallback
-            }
-        })
-    );
-};
-
-export const extractCoordinates = (geometry: Geometry): number[][][] => {
-    switch (geometry.type) {
-        case 'Point':
-            return [[geometry.coordinates as number[]]];
-        case 'LineString':
-            return [geometry.coordinates as number[][]];
-        case 'MultiLineString':
-            return geometry.coordinates as number[][][];
-        case 'Polygon':
-            return geometry.coordinates;
-        case 'MultiPolygon':
-            return geometry.coordinates.flatMap(polygon => polygon);
-        default:
-            console.warn('Unsupported geometry type', geometry.type);
-            return [];
-    }
-};
-
-
 /**
- * Convert ArcGIS Polygon rings to WGS84 (EPSG:4326)
+ * Convert Polygon rings to WGS84 (EPSG:4326)
  * Handles multiple EPSG codes including Web Mercator variants
  */
-export function convertArcGISPolygonToWGS84(polygon: string): number[][] | null {
+export function convertPolygonToWGS84(polygon: string): number[][] | null {
     try {
         const parsed = JSON.parse(polygon);
 
@@ -103,20 +96,14 @@ export function convertArcGISPolygonToWGS84(polygon: string): number[][] | null 
         }
 
         const coords = parsed.rings[0];
-        const wkid = parsed.spatialReference?.wkid || parsed.spatialReference?.latestWkid;
+        const sourceCRS = parsed.crs || 'EPSG:4326'; // Default to WGS84
 
         // If already in WGS84, return as-is
-        if (!wkid || wkid === 4326) {
+        if (sourceCRS === 'EPSG:4326') {
             return coords;
         }
 
-        // Map ArcGIS WKIDs to EPSG codes
-        let sourceCRS = `EPSG:${wkid}`;
-        if (wkid === 102100 || wkid === 102113) {
-            sourceCRS = 'EPSG:3857'; // Web Mercator
-        }
-
-        // Use standard conversion utility for all coordinate systems
+        // Convert to WGS84
         return coords.map(([x, y]: number[]) => {
             const converted = convertCoordinate([x, y], sourceCRS, 'EPSG:4326');
             return converted;
@@ -246,32 +233,31 @@ export function reduceCoordinatePrecision(coordinates: number[][], decimals: num
 /**
  * Serialize polygon for URL query parameter
  * Converts coordinates to WGS84 (EPSG:4326) for human-readable URLs
- * Reduces precision and strips unnecessary ArcGIS object structure
- * Returns compact JSON string suitable for URL encoding
+ * Reduces precision for compact URL representation
+ * Returns JSON string suitable for URL encoding
  *
  * Format: { "rings": [[[lng, lat], [lng, lat], ...]] }
- * - rings: Array of coordinate rings in [longitude, latitude] order (MapLibre/GeoJSON standard)
+ * - rings: Array of coordinate rings in [longitude, latitude] order (GeoJSON standard)
  * - Always serialized in WGS84 for readability (coordinates like [-111.8, 40.76] instead of [-12467174, 4973828])
  *
  * Example URL: /hazards/report?aoi=%7B%22rings%22%3A%5B%5B%5B-111.8%2C40.76%5D...%5D%5D%7D
  */
-export function serializePolygonForUrl(polygon: __esri.Geometry | null): string | null {
+export function serializePolygonForUrl(polygon: PolygonGeometry | null): string | null {
     if (!polygon) return null;
 
     try {
         // Type check - ensure it's a polygon with rings
-        if (!('rings' in polygon)) {
+        if (!polygon.rings) {
             console.error('Invalid geometry type for serialization');
             return null;
         }
 
-        const rings = (polygon as any).rings ?? [];
-        const wkid = (polygon as any).spatialReference?.wkid || 102100;
+        const rings = polygon.rings;
+        const sourceCRS = polygon.crs || 'EPSG:3857'; // Default to Web Mercator
 
         // Convert to WGS84 if needed for human-readable coordinates in URL
         let wgs84Rings = rings;
-        if (wkid !== 4326) {
-            const sourceCRS = wkid === 102100 || wkid === 102113 ? 'EPSG:3857' : `EPSG:${wkid}`;
+        if (sourceCRS !== 'EPSG:4326') {
             wgs84Rings = rings.map((ring: number[][]) =>
                 ring.map(([x, y]: number[]) => {
                     const [lng, lat] = convertCoordinate([x, y], sourceCRS, 'EPSG:4326');
@@ -296,15 +282,14 @@ export function serializePolygonForUrl(polygon: __esri.Geometry | null): string 
 }
 
 /**
- * Deserialize polygon from URL query parameter (returns plain object)
- * Used by report routes that don't need ArcGIS Polygon class
+ * Deserialize polygon from URL query parameter
  * Reconstructs polygon from compact WGS84 format
  * Converts coordinates back to Web Mercator (EPSG:3857)
  * Expects format: { "rings": [[[lng, lat], [lng, lat], ...]] }
  * - Coordinates are in WGS84 [longitude, latitude] order (human-readable)
- * - Returns plain JS object in Web Mercator (EPSG:3857) with WKID 102100
+ * - Returns PolygonGeometry in Web Mercator (EPSG:3857)
  */
-export function deserializePolygonFromUrl(serialized: string): { rings: number[][][]; spatialReference: { wkid: number } } | null {
+export function deserializePolygonFromUrl(serialized: string): PolygonGeometry | null {
     try {
         // Decode URL-encoded parameter first
         const decoded = decodeURIComponent(serialized);
@@ -322,16 +307,13 @@ export function deserializePolygonFromUrl(serialized: string): { rings: number[]
             })
         );
 
-        // Return plain polygon object (not ArcGIS Polygon class instance)
+        // Return polygon geometry with EPSG code
         return {
             rings: webMercatorRings, // rings: [[[x, y], [x, y], ...]] in Web Mercator
-            spatialReference: {
-                wkid: 102100 // Web Mercator (EPSG:3857)
-            }
+            crs: 'EPSG:3857' // Web Mercator
         };
     } catch (error) {
         console.error('Error deserializing polygon:', error);
         return null;
     }
 }
-

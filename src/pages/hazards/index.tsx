@@ -1,5 +1,4 @@
 import { Layout } from '@/components/custom/layout';
-import ThemeSwitch from '@/components/theme-switch';
 import { TopNav } from '@/components/top-nav';
 import { MapFooter } from '@/components/custom/map/map-footer';
 import { cn } from '@/lib/utils';
@@ -9,9 +8,11 @@ import { useSidebar } from '@/hooks/use-sidebar';
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, handleSuggestionSelect } from '@/components/sidebar/filter/search-combobox';
 import { PROD_POSTGREST_URL } from '@/lib/constants';
 import { qFaultsWMSTitle } from '@/pages/hazards/data/layers/layers';
+import { SIDEBAR_MARGINS } from '@/lib/sidebar-constants';
 
 export default function Map() {
-  const { isCollapsed } = useSidebar();
+  const { isCollapsed, sidebarWidth } = useSidebar();
+  const marginClass = isCollapsed ? SIDEBAR_MARGINS.icon : SIDEBAR_MARGINS[sidebarWidth];
 
   const searchConfig: SearchSourceConfig[] = [
     defaultMasqueradeConfig,
@@ -36,8 +37,7 @@ export default function Map() {
       <Sidebar />
       <main
         id="content"
-        className={`overflow-x-hidden pt-16 transition-[margin] md:overflow-y-hidden md:pt-0 ${isCollapsed ? 'md:ml-14' : 'md:ml-[32rem]'
-          } h-full`}
+        className={`overflow-x-hidden pt-16 transition-[margin] md:overflow-y-hidden md:pt-0 ${marginClass} h-full`}
       >
         <Layout>
           <Layout.Header className='flex items-center justify-between px-4 md:px-6'>
@@ -52,9 +52,6 @@ export default function Map() {
                   className="w-full"
                 />
               </div>
-              <div className="flex-shrink-0">
-                <ThemeSwitch />
-              </div>
             </div>
           </Layout.Header>
 
@@ -65,7 +62,7 @@ export default function Map() {
 
           {/* ===== Footer ===== */}
           {/* no footer on mobile */}
-          <Layout.Footer className={cn('hidden md:flex z-10')} dynamicContent={<MapFooter />} />
+          <Layout.Footer className={cn('hidden md:flex z-20')} dynamicContent={<MapFooter />} />
         </Layout>
       </main>
     </div>
