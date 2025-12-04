@@ -1,52 +1,191 @@
 import { useCallback } from 'react';
-import { clearGraphics } from '@/lib/map/highlight-utils';
-import { MapPoint, ScreenPoint, CoordinateAdapter } from '@/lib/map/coordinate-adapter';
+import type { MapPoint, ScreenPoint, CoordinateAdapter } from '@/lib/map/coordinates/types';
+import type { MapLibreMap } from '@/lib/types/map-types';
+import type { LayerProps } from '@/lib/types/mapping-types';
 
 interface MapClickEvent {
     screenX: number;
     screenY: number;
 }
 
+interface VisibleLayerInfo {
+    visible: boolean;
+    groupLayerTitle: string;
+    layerTitle: string;
+    popupFields?: unknown;
+    relatedTables?: unknown;
+    queryable?: boolean;
+    linkFields?: unknown;
+    customLayerParameters?: unknown;
+    rasterSource?: unknown;
+    schema?: string;
+    layerCrs: string;
+}
+
 interface UseMapClickHandlerProps {
-    view: __esri.MapView | __esri.SceneView | undefined;
-    isSketching: boolean;
+    map: MapLibreMap;
+    isSketching: boolean | (() => boolean);
+    shouldIgnoreNextClick?: (() => boolean) | undefined;
+    consumeIgnoreClick?: (() => void) | undefined;
     onPointClick: (point: MapPoint) => void;
-    getVisibleLayers: (params: { view: __esri.MapView | __esri.SceneView }) => any;
-    setVisibleLayersMap: (layers: any) => void;
+    setVisibleLayersMap: (layers: Record<string, VisibleLayerInfo>) => void;
     coordinateAdapter: CoordinateAdapter;
+    layersConfig?: LayerProps[] | null;
 }
 
 /**
- * Custom hook to handle map click events.
+ * Custom hook to handle MapLibre map click events.
  * Clears existing graphics, updates visible layers, converts screen coordinates to map coordinates,
  * and triggers a callback with the map point.
- * Now uses abstracted coordinate system for better portability.
- * @param view - The ArcGIS MapView or SceneView instance.
- * @param isSketching - Boolean indicating if sketching mode is active.
- * @param onPointClick - Callback function to be called with the map point on click.
- * @param getVisibleLayers - Function to retrieve currently visible layers from the view.
- * @param setVisibleLayersMap - Function to update the state of visible layers.
- * @param coordinateAdapter - Adapter for coordinate system operations.
- * @returns An object containing the handleMapClick function.
  */
 export function useMapClickHandler({
-    view,
+    map,
     isSketching,
+    shouldIgnoreNextClick,
+    consumeIgnoreClick,
     onPointClick,
-    getVisibleLayers,
     setVisibleLayersMap,
-    coordinateAdapter
+    coordinateAdapter,
+    layersConfig
 }: UseMapClickHandlerProps) {
 
     const handleMapClick = useCallback((event: MapClickEvent) => {
-        if (!view || isSketching) return;
+        // Check if we should ignore this click (e.g., finishing a draw)
+        if (shouldIgnoreNextClick?.()) {
+            console.log('[MapClickHandler] Ignoring click - just finished drawing');
+            consumeIgnoreClick?.();
+            return;
+        }
 
-        // Clear existing graphics
-        clearGraphics(view);
+        const sketching = typeof isSketching === 'function' ? isSketching() : isSketching;
+        console.log('[MapClickHandler] Click detected, isSketching:', sketching);
+        if (sketching) {
+            console.log('[MapClickHandler] Ignoring click - sketching in progress');
+            return;
+        }
 
-        // Update visible layers state
-        const layers = getVisibleLayers({ view });
-        setVisibleLayersMap(layers.layerVisibilityMap);
+        if (!map) {
+            return;
+        }
+
+        // Build visibleLayersMap from layersConfig
+        if (layersConfig) {
+            const visibleLayersMap: Record<string, VisibleLayerInfo> = {};
+
+            const buildLayerMap = (layers: LayerProps[]): void => {
+                for (const layer of layers) {
+                    if (layer.type === 'wms' && 'sublayers' in layer && layer.sublayers) {
+                        for (const sublayer of layer.sublayers) {
+                            if (sublayer.name) {
+                                // Check if the layer is actually visible on the map
+                                let isVisible = layer.visible ?? true;
+
+                                // Generate the same layer ID that was used when adding the layer
+                                const sourceId = `wms-${layer.title || 'layer'}`.replace(/\s+/g, '-').toLowerCase();
+                                const mapLayerId = `wms-layer-${sourceId}`;
+
+                                const mapLayer = map.getLayer(mapLayerId);
+                                if (mapLayer) {
+                                    const visibility = map.getLayoutProperty(mapLayerId, 'visibility');
+                                    isVisible = visibility !== 'none';
+                                }
+
+                                visibleLayersMap[sublayer.name] = {
+                                    visible: isVisible,
+                                    groupLayerTitle: layer.title || '',
+                                    layerTitle: layer.title || sublayer.name,
+                                    popupFields: sublayer.popupFields,
+                                    relatedTables: sublayer.relatedTables,
+                                    queryable: sublayer.queryable ?? true,
+                                    linkFields: sublayer.linkFields,
+                                    customLayerParameters: ('customLayerParameters' in layer ? layer.customLayerParameters : undefined) as Record<string, unknown> | null | undefined,
+                                    rasterSource: sublayer.rasterSource,
+                                    schema: sublayer.schema,
+                                    layerCrs: ('crs' in layer ? layer.crs : undefined) || 'EPSG:3857',
+                                };
+                            }
+                        }
+                    } else if (layer.type === 'pmtiles' && 'sublayers' in layer && layer.sublayers) {
+                        // Handle PMTiles layers
+                        for (const sublayer of layer.sublayers) {
+                            if (sublayer.name) {
+                                // Check if the PMTiles layer is visible
+                                let isVisible = layer.visible ?? true;
+                                const sourceId = `pmtiles-${layer.title || 'layer'}`.replace(/\s+/g, '-').toLowerCase();
+
+                                // Check any PMTiles layer for visibility
+                                const style = map.getStyle();
+                                if (style?.layers) {
+                                    for (const mapLayer of style.layers) {
+                                        if (mapLayer.id.startsWith(sourceId)) {
+                                            const visibility = map.getLayoutProperty(mapLayer.id, 'visibility');
+                                            isVisible = visibility !== 'none';
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                visibleLayersMap[`pmtiles:${sublayer.name}`] = {
+                                    visible: isVisible,
+                                    groupLayerTitle: layer.title || '',
+                                    layerTitle: layer.title || sublayer.name,
+                                    popupFields: sublayer.popupFields,
+                                    relatedTables: sublayer.relatedTables,
+                                    queryable: sublayer.queryable ?? true,
+                                    linkFields: sublayer.linkFields,
+                                    customLayerParameters: undefined,
+                                    rasterSource: sublayer.rasterSource,
+                                    schema: sublayer.schema,
+                                    layerCrs: 'EPSG:4326', // PMTiles are always in WGS84
+                                };
+                            }
+                        }
+                    } else if (layer.type === 'wfs' && 'sublayers' in layer && layer.sublayers) {
+                        // Handle WFS layers
+                        for (const sublayer of layer.sublayers) {
+                            if (sublayer.name) {
+                                // Check if the WFS layer is visible
+                                let isVisible = layer.visible ?? true;
+                                const sourceId = `wfs-${layer.title || 'layer'}`.replace(/\s+/g, '-').toLowerCase();
+
+                                // Check any WFS layer for visibility
+                                const style = map.getStyle();
+                                if (style?.layers) {
+                                    for (const mapLayer of style.layers) {
+                                        if (mapLayer.id.startsWith(sourceId)) {
+                                            const visibility = map.getLayoutProperty(mapLayer.id, 'visibility');
+                                            isVisible = visibility !== 'none';
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                visibleLayersMap[`wfs:${sublayer.name}`] = {
+                                    visible: isVisible,
+                                    groupLayerTitle: layer.title || '',
+                                    layerTitle: layer.title || sublayer.name,
+                                    popupFields: sublayer.popupFields,
+                                    relatedTables: sublayer.relatedTables,
+                                    queryable: sublayer.queryable ?? true,
+                                    linkFields: sublayer.linkFields,
+                                    customLayerParameters: undefined,
+                                    rasterSource: sublayer.rasterSource,
+                                    schema: sublayer.schema,
+                                    layerCrs: ('crs' in layer ? layer.crs : undefined) || 'EPSG:4326',
+                                };
+                            }
+                        }
+                    } else if (layer.type === 'group' && 'layers' in layer && layer.layers) {
+                        buildLayerMap(layer.layers);
+                    }
+                }
+            };
+
+            if (Array.isArray(layersConfig)) {
+                buildLayerMap(layersConfig);
+            }
+            setVisibleLayersMap(visibleLayersMap);
+        }
 
         // Convert screen coordinates to map coordinates using adapter
         const screenPoint: ScreenPoint = {
@@ -54,11 +193,11 @@ export function useMapClickHandler({
             y: event.screenY
         };
 
-        const mapPoint = coordinateAdapter.screenToMap(screenPoint, view);
+        const mapPoint = coordinateAdapter.screenToMap(screenPoint, map);
 
         // Trigger the callback with the abstracted map point
         onPointClick(mapPoint);
-    }, [view, isSketching, onPointClick, getVisibleLayers, setVisibleLayersMap, coordinateAdapter]);
+    }, [map, isSketching, shouldIgnoreNextClick, consumeIgnoreClick, onPointClick, setVisibleLayersMap, coordinateAdapter, layersConfig]);
 
     return { handleMapClick };
 }
