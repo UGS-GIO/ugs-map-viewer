@@ -1,5 +1,4 @@
 import { Info, Shrink, TableOfContents } from 'lucide-react';
-import DOMPurify from 'dompurify';
 import { Button } from '@/components/custom/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -30,6 +29,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     openLegend,
 }) => {
     const [openAccordion, setOpenAccordion] = useState<string | null>(null);
+    const [cleanDescription, setCleanDescription] = useState<string>('');
 
     useEffect(() => {
         if (openLegend) {
@@ -37,6 +37,19 @@ const LayerControls: React.FC<LayerControlsProps> = ({
         }
     }, [openLegend]);
 
+    // Lazy load DOMPurify only when description is needed
+    useEffect(() => {
+        if (description) {
+            import('dompurify').then(({ default: DOMPurify }) => {
+                const sanitized = DOMPurify.sanitize(description, {
+                    USE_PROFILES: { html: true },
+                    ALLOWED_ATTR: ['target', 'href'],
+                    ADD_ATTR: ['target']
+                });
+                setCleanDescription(sanitized);
+            });
+        }
+    }, [description]);
 
     const infoPressed = openAccordion === 'info';
     const legendPressed = openAccordion === 'legend';
@@ -44,12 +57,6 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     const handleToggle = (type: 'info' | 'legend') => {
         setOpenAccordion(current => (current === type ? null : type));
     };
-
-    const cleanDescription = DOMPurify.sanitize(description, {
-        USE_PROFILES: { html: true },
-        ALLOWED_ATTR: ['target', 'href'],
-        ADD_ATTR: ['target']
-    });
 
     return (
         <div className="flex flex-col gap-y-4 pt-2">
@@ -66,37 +73,37 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         />
                     </div>
 
-                    <div className="flex justify-around items-stretch w-full gap-x-4">
+                    <div className="flex flex-wrap justify-center items-stretch w-full gap-2">
                         <Toggle
                             aria-label="Toggle info"
                             size="stacked"
-                            className="flex flex-col items-center p-2 flex-1"
+                            className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
                             pressed={infoPressed}
                             onPressedChange={() => handleToggle('info')}
                         >
                             <Info className="h-5 w-5" />
-                            <span className='mt-1 sm:ml-2 sm:mt-0'>Info</span>
+                            <span className='text-xs'>Info</span>
                         </Toggle>
 
                         <Button
                             variant="ghost"
                             size="stacked"
-                            className="flex flex-col items-center p-2 flex-1"
+                            className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
                             onClick={handleZoomToLayer}
                         >
                             <Shrink className="h-5 w-5" />
-                            <span className='mt-1 sm:ml-2 sm:mt-0'>Zoom to</span>
+                            <span className='text-xs'>Zoom to</span>
                         </Button>
 
                         <Toggle
                             aria-label="Toggle legend"
                             size="stacked"
-                            className="flex flex-col items-center p-2 flex-1"
+                            className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
                             pressed={legendPressed}
                             onPressedChange={() => handleToggle('legend')}
                         >
                             <TableOfContents className="h-5 w-5" />
-                            <span className='mt-1 sm:ml-2 sm:mt-0'>Legend</span>
+                            <span className='text-xs'>Legend</span>
                         </Toggle>
                     </div>
                 </div>

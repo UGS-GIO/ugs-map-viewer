@@ -28,7 +28,7 @@ export const findLayerByName = (layers: LayerProps[], name: string): { layer: La
 const applyLayerOrdering = (layers: LayerProps[], orderConfigs: LayerOrderConfig[]): LayerProps[] => {
     if (!orderConfigs || orderConfigs.length === 0) return layers;
 
-    let processedConfig = [...layers];
+    const processedConfig = [...layers];
     const layersToReorder = new Map<string, { layer: LayerProps; parent: LayerProps[] | null }>();
 
     // First, find and remove all layers that need to be reordered
@@ -97,7 +97,7 @@ const loadAllLayerConfigs = async (currentPage: string): Promise<LayerProps[]> =
             }
         }
 
-        let allConfigs: LayerProps[] = [];
+        const allConfigs: LayerProps[] = [];
 
         // Load all layer config files
         for (const path of Object.keys(filteredLayerConfigPaths)) {

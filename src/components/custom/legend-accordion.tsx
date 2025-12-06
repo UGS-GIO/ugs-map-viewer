@@ -9,7 +9,8 @@ interface LegendAccordionProps {
 
 const LegendAccordion = ({ layerId, url, isOpen }: LegendAccordionProps) => {
     const { preview, isLoading, error } = useLegendPreview(layerId, url);
-    const accordionValue = isOpen ? "legend-accordion" : undefined;
+    // Use empty string instead of undefined to keep accordion controlled
+    const accordionValue = isOpen ? "legend-accordion" : "";
 
     return (
         // 3. CLEAN UP JSX: The hidden trigger button is removed.

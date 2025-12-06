@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, memo, useCallback, useRef } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Feature, Geometry, GeoJsonProperties } from "geojson"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,28 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { zoomToFeature } from "@/lib/map/utils"
 
 const ITEMS_PER_PAGE_OPTIONS = [1, 5, 10, 25, 50]
+
+// Extracted outside to prevent recreation on every render
+interface PopupButtonsProps {
+    feature: ExtendedFeature;
+    sourceCRS: string;
+    title: string;
+    onZoom: (feature: ExtendedFeature, sourceCRS: string, title: string) => Promise<void>;
+    extraButtons: React.ReactNode[] | null;
+}
+
+const PopupButtons = memo(({ feature, sourceCRS, title, onZoom, extraButtons }: PopupButtonsProps) => (
+    <div className="flex justify-start gap-2">
+        <Button variant="ghost" onClick={() => onZoom(feature, sourceCRS, title)} className="flex gap-x-2">
+            <Shrink className="h-5 w-5" />
+            <span className="hidden md:flex">Zoom to Feature</span>
+            <span className="md:hidden">Zoom</span>
+        </Button>
+        {extraButtons && extraButtons.map((button) => button)}
+    </div>
+));
+PopupButtons.displayName = 'PopupButtons';
+
 export interface ExtendedFeature extends Feature<Geometry, GeoJsonProperties> {
     namespace: string;
 }
@@ -30,6 +52,10 @@ export interface LayerContentProps {
     visible: boolean
     queryable?: boolean
     schema?: string
+    layerCrs?: string; // CRS of the layer itself (e.g., "EPSG:3857")
+    // WFS-specific properties for server-side queries
+    wfsUrl?: string
+    typeName?: string
 }
 
 interface SidebarInsetWithPaginationProps {
@@ -88,7 +114,7 @@ const PopupPagination = ({ currentPage, totalPages, handlePageChange, itemsPerPa
     )
 }
 
-const LayerCard = ({
+const LayerCardInner = ({
     layer,
     buttons,
     handleZoomToFeature
@@ -97,7 +123,7 @@ const LayerCard = ({
     buttons: React.ReactNode[] | null,
     handleZoomToFeature: (feature: ExtendedFeature, sourceCRS: string, title: string) => Promise<void>
 }) => {
-    const { view } = useMap();
+    const { map } = useMap();
     const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE_OPTIONS[0])
     const [currentPage, setCurrentPage] = useState(1)
     const title = layer.layerTitle || layer.groupLayerTitle;
@@ -125,32 +151,21 @@ const LayerCard = ({
 
         // Only highlight to the first feature if items per page is 1
         if (itemsPerPage === 1 && newPaginatedFeatures.length > 0) {
-            if (!view) return
-            clearGraphics(view)
-            highlightFeature(newPaginatedFeatures[0], view, layer.sourceCRS, title)
+            if (!map) return
+            clearGraphics(map)
+            highlightFeature(newPaginatedFeatures[0], map, layer.sourceCRS, title)
         }
     }
-
-    const PopupButtons = ({ feature }: { feature: ExtendedFeature }) => (
-        <div className="flex justify-start gap-2">
-            <Button variant="ghost" onClick={() => handleZoomToFeature(feature, layer.sourceCRS, title)} className="flex gap-x-2">
-                <Shrink className="h-5 w-5" />
-                <span className="hidden md:flex">Zoom to Feature</span>
-                <span className="md:hidden">Zoom</span>
-            </Button>
-            {buttons && buttons.map((button) => button)}
-        </div>
-    )
 
     return (
         <Card
             id={`section-${layer.layerTitle !== '' ? layer.layerTitle : layer.groupLayerTitle}`}
-            className="w-full"
+            className="w-full bg-background/40 backdrop-blur-sm border-border/50"
         >
             <CardHeader className="p-4">
                 <CardTitle>
                     {layer.groupLayerTitle}
-                    {layer.layerTitle && ` - ${layer.layerTitle}`}
+                    {layer.layerTitle && layer.layerTitle !== layer.groupLayerTitle && ` - ${layer.layerTitle}`}
                 </CardTitle>
                 {layer.features.length > ITEMS_PER_PAGE_OPTIONS[0] && (
                     <PopupPagination
@@ -162,20 +177,27 @@ const LayerCard = ({
                     />
                 )}
             </CardHeader>
-            <CardContent className="space-y-4 p-2">
+            <CardContent className="space-y-2 p-2 text-sm">
                 {paginatedFeatures.map((feature, idx) => (
                     <div
                         key={idx}
                         className={`
-                                space-y-4 
-                                p-4 
-                                rounded-lg 
-                                bg-border/50
-                                border 
-                                border-secondary/20
+                                space-y-2
+                                p-3
+                                rounded-lg
+                                bg-background/30
+                                backdrop-blur-sm
+                                border
+                                border-border/30
                             `}
                     >
-                        <PopupButtons feature={feature} />
+                        <PopupButtons
+                            feature={feature}
+                            sourceCRS={layer.sourceCRS}
+                            title={title}
+                            onZoom={handleZoomToFeature}
+                            extraButtons={buttons}
+                        />
 
                         <PopupContentDisplay
                             layer={layer}
@@ -190,15 +212,42 @@ const LayerCard = ({
     )
 }
 
-const PopupContentWithPagination = ({ layerContent, onSectionChange }: SidebarInsetWithPaginationProps) => {
-    const { view } = useMap()
+const LayerCard = memo(LayerCardInner);
+LayerCard.displayName = 'LayerCard';
+
+const PopupContentWithPaginationInner = ({ layerContent, onSectionChange }: SidebarInsetWithPaginationProps) => {
+    const { map } = useMap()
     const buttons = useGetPopupButtons()
+
+    // Use ref for callback to avoid recreating observer when callback changes
+    const onSectionChangeRef = useRef(onSectionChange);
+    onSectionChangeRef.current = onSectionChange;
 
     const sectionIds = useMemo(
         () => layerContent.map(layer => `section-${layer.layerTitle !== '' ? layer.layerTitle : layer.groupLayerTitle}`),
         [layerContent]
     )
 
+    // Auto-highlight first feature of first layer when popup opens
+    useEffect(() => {
+        if (layerContent.length > 0 && layerContent[0].features.length > 0) {
+            if (!map) {
+                return
+            }
+
+            const firstLayer = layerContent[0]
+            const firstFeature = firstLayer.features[0]
+            const title = firstLayer.layerTitle || firstLayer.groupLayerTitle
+
+            // Clear ALL previous highlights from all layers when showing new popup
+            clearGraphics(map)
+            highlightFeature(firstFeature, map, firstLayer.sourceCRS, title).catch(error => {
+                console.error('[PopupContent] Error highlighting first feature:', error)
+            })
+        }
+    }, [layerContent.length > 0 ? layerContent[0].groupLayerTitle + layerContent[0].layerTitle : null, map])
+
+    // IntersectionObserver for tracking visible sections - only recreate when sectionIds change
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
@@ -210,13 +259,13 @@ const PopupContentWithPagination = ({ layerContent, onSectionChange }: SidebarIn
                     });
 
                     const sectionTitle = topmostSection.target.id.replace('section-', '');
-                    onSectionChange(sectionTitle);
+                    onSectionChangeRef.current(sectionTitle);
                 }
             },
             {
-                root: null, // Use the viewport as the root
-                rootMargin: '0px 0px -50% 0px', // 50% of the section must be visible
-                threshold: 0 // Trigger as soon as any part of the section enters the viewport
+                root: null,
+                rootMargin: '0px 0px -50% 0px',
+                threshold: 0
             }
         )
 
@@ -228,21 +277,36 @@ const PopupContentWithPagination = ({ layerContent, onSectionChange }: SidebarIn
         })
 
         return () => observer.disconnect()
-    }, [sectionIds, onSectionChange])
-    const handleZoomToFeature = async (feature: ExtendedFeature, sourceCRS: string, title: string) => {
-        if (!view) return
-        clearGraphics(view)
-        highlightFeature(feature, view, sourceCRS, title)
-        zoomToFeature(feature, view, sourceCRS)
-    }
+    }, [sectionIds])
+    const handleZoomToFeature = useCallback(async (feature: ExtendedFeature, sourceCRS: string, title: string) => {
+        if (!map) {
+            console.warn('[PopupContent] No map available for zoom');
+            return;
+        }
+
+        // Clear ALL previous graphics from all layers when zooming to a feature
+        try {
+            clearGraphics(map)  // Clear all graphics, not just this layer
+            await highlightFeature(feature, map, sourceCRS, title)
+        } catch (error) {
+            console.error('[PopupContent] Error highlighting feature:', error);
+        }
+
+        // Zoom to feature
+        zoomToFeature(feature, map, sourceCRS)
+    }, [map])
+
+    // Generate stable key from layer content - only changes when layers actually change
+    const contentKey = useMemo(() =>
+        layerContent.map(l => `${l.groupLayerTitle}|${l.layerTitle}|${l.features.length}`).join(','),
+        [layerContent]
+    )
 
     // If no layers, return null
     if (layerContent.length === 0) return null;
 
-    const contentKey = useMemo(() => Date.now(), [layerContent])
-
     return (
-        <div className="flex flex-1 flex-col gap-4 px-2 overflow-y-auto select-text h-full scrollable-container">
+        <div className="flex flex-1 flex-col gap-4 overflow-y-auto select-text h-full scrollable-container">
             {layerContent.map((layer) => (
                 <LayerCard
                     key={`${contentKey}-${layer.groupLayerTitle}-${layer.layerTitle}`}
@@ -251,8 +315,13 @@ const PopupContentWithPagination = ({ layerContent, onSectionChange }: SidebarIn
                     handleZoomToFeature={handleZoomToFeature}
                 />
             ))}
+            {/* Extra whitespace at end of content */}
+            <div className="h-8 flex-shrink-0" />
         </div>
     )
 }
+
+const PopupContentWithPagination = memo(PopupContentWithPaginationInner);
+PopupContentWithPagination.displayName = 'PopupContentWithPagination';
 
 export { PopupContentWithPagination };

@@ -195,7 +195,7 @@ function createStrokeSymbolElement(
 ): SVGElement | null {
     switch (mark.toLowerCase()) {
         case 'triangle':
-        case 'shape://triangle':
+        case 'shape://triangle': {
             const triangle = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
 
             // Position triangles so their base touches the top edge of the line
@@ -213,9 +213,10 @@ function createStrokeSymbolElement(
             triangle.setAttribute("stroke", stroke);
             triangle.setAttribute("stroke-width", strokeWidth);
             return triangle;
+        }
 
         case 'circle':
-        case 'shape://circle':
+        case 'shape://circle': {
             const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
             circle.setAttribute("cx", centerX.toString());
             circle.setAttribute("cy", (centerY - size / 2).toString());
@@ -224,9 +225,10 @@ function createStrokeSymbolElement(
             circle.setAttribute("stroke", stroke);
             circle.setAttribute("stroke-width", strokeWidth);
             return circle;
+        }
 
         case 'square':
-        case 'shape://square':
+        case 'shape://square': {
             const square = document.createElementNS("http://www.w3.org/2000/svg", "rect");
             const squareSize = size / 2;
             square.setAttribute("x", (centerX - squareSize / 2).toString());
@@ -237,9 +239,10 @@ function createStrokeSymbolElement(
             square.setAttribute("stroke", stroke);
             square.setAttribute("stroke-width", strokeWidth);
             return square;
+        }
 
         case 'diamond':
-        case 'shape://diamond':
+        case 'shape://diamond': {
             const diamond = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
             const halfSize = size / 2;
             const diamondPoints = [
@@ -253,11 +256,12 @@ function createStrokeSymbolElement(
             diamond.setAttribute("stroke", stroke);
             diamond.setAttribute("stroke-width", strokeWidth);
             return diamond;
+        }
 
         case 'cross':
         case 'shape://cross':
         case 'plus':
-        case 'shape://plus':
+        case 'shape://plus': {
             const crossGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
             const crossSize = size / 2;
 
@@ -280,10 +284,11 @@ function createStrokeSymbolElement(
             crossGroup.appendChild(hLine);
             crossGroup.appendChild(vLine);
             return crossGroup;
+        }
 
         case 'x':
         case 'shape://times':
-        case 'times':
+        case 'times': {
             const xGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
             const xSize = size / 2;
 
@@ -306,9 +311,10 @@ function createStrokeSymbolElement(
             xGroup.appendChild(diag1);
             xGroup.appendChild(diag2);
             return xGroup;
+        }
 
         case 'arrow':
-        case 'shape://arrow':
+        case 'shape://arrow': {
             const arrow = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
             const arrowSize = size / 2;
             const arrowPoints = [
@@ -325,6 +331,7 @@ function createStrokeSymbolElement(
             arrow.setAttribute("stroke", stroke);
             arrow.setAttribute("stroke-width", strokeWidth);
             return arrow;
+        }
 
         default:
             console.warn(`Unsupported graphic stroke mark type: ${mark}`);

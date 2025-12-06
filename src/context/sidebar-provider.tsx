@@ -5,11 +5,15 @@ import { InfoIcon } from 'lucide-react';
 import React, { createContext, useState, ReactNode, Dispatch, SetStateAction, useCallback, useMemo } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 
+export type SidebarWidth = 'icon' | 'wide' | 'narrow';
+
 interface SidebarContextProps {
     currentContent: SideLink | null;
     setCurrentContent: (content: SideLink | null) => void;
     isCollapsed: boolean;
     setIsCollapsed: Dispatch<SetStateAction<boolean>>;
+    sidebarWidth: SidebarWidth;
+    setSidebarWidth: (width: SidebarWidth) => void;
     navOpened: boolean;
     setNavOpened: Dispatch<SetStateAction<boolean>>;
 }
@@ -19,6 +23,8 @@ export const SidebarContext = createContext<SidebarContextProps>({
     setCurrentContent: () => null,
     isCollapsed: false,
     setIsCollapsed: () => false,
+    sidebarWidth: 'wide',
+    setSidebarWidth: () => {},
     navOpened: false,
     setNavOpened: () => false,
 });
@@ -45,6 +51,7 @@ export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children })
     // --- Derive State From URL ---
     const currentTab = search.tab;
     const isCollapsed = search.sidebar_collapsed;
+    const sidebarWidth = search.sidebar_width || 'wide';
 
     const currentContent =
         currentTab === 'home'
@@ -78,6 +85,17 @@ export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children })
         });
     }, [navigate, isCollapsed]);
 
+    const handleSetSidebarWidth = useCallback((width: SidebarWidth) => {
+        navigate({
+            to: '.',
+            search: (prev) => ({
+                ...prev,
+                sidebar_width: width,
+            }),
+            replace: true,
+        });
+    }, [navigate]);
+
     return (
         <SidebarContext.Provider
             value={{
@@ -85,6 +103,8 @@ export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children })
                 setCurrentContent: handleSetCurrentContent,
                 isCollapsed,
                 setIsCollapsed: handleSetIsCollapsed,
+                sidebarWidth,
+                setSidebarWidth: handleSetSidebarWidth,
                 navOpened,
                 setNavOpened,
             }}

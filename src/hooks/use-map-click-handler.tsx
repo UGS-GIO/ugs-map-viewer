@@ -1,6 +1,8 @@
 import { useCallback } from 'react';
-import { clearGraphics } from '@/lib/map/highlight-utils';
-import { MapPoint, ScreenPoint, CoordinateAdapter } from '@/lib/map/coordinate-adapter';
+import type { MapPoint, ScreenPoint, CoordinateAdapter } from '@/lib/map/coordinates/types';
+import type { MapLibreMap } from '@/lib/types/map-types';
+import type { LayerProps } from '@/lib/types/mapping-types';
+import { buildVisibleLayersMap, type VisibleLayersMap } from '@/lib/map/layer-info-utils';
 
 interface MapClickEvent {
     screenX: number;
@@ -8,45 +10,54 @@ interface MapClickEvent {
 }
 
 interface UseMapClickHandlerProps {
-    view: __esri.MapView | __esri.SceneView | undefined;
-    isSketching: boolean;
+    map: MapLibreMap;
+    isSketching: boolean | (() => boolean);
+    shouldIgnoreNextClick?: (() => boolean) | undefined;
+    consumeIgnoreClick?: (() => void) | undefined;
     onPointClick: (point: MapPoint) => void;
-    getVisibleLayers: (params: { view: __esri.MapView | __esri.SceneView }) => any;
-    setVisibleLayersMap: (layers: any) => void;
+    setVisibleLayersMap: (layers: VisibleLayersMap) => void;
     coordinateAdapter: CoordinateAdapter;
+    layersConfig?: LayerProps[] | null;
 }
 
 /**
- * Custom hook to handle map click events.
+ * Custom hook to handle MapLibre map click events.
  * Clears existing graphics, updates visible layers, converts screen coordinates to map coordinates,
  * and triggers a callback with the map point.
- * Now uses abstracted coordinate system for better portability.
- * @param view - The ArcGIS MapView or SceneView instance.
- * @param isSketching - Boolean indicating if sketching mode is active.
- * @param onPointClick - Callback function to be called with the map point on click.
- * @param getVisibleLayers - Function to retrieve currently visible layers from the view.
- * @param setVisibleLayersMap - Function to update the state of visible layers.
- * @param coordinateAdapter - Adapter for coordinate system operations.
- * @returns An object containing the handleMapClick function.
  */
 export function useMapClickHandler({
-    view,
+    map,
     isSketching,
+    shouldIgnoreNextClick,
+    consumeIgnoreClick,
     onPointClick,
-    getVisibleLayers,
     setVisibleLayersMap,
-    coordinateAdapter
+    coordinateAdapter,
+    layersConfig
 }: UseMapClickHandlerProps) {
 
     const handleMapClick = useCallback((event: MapClickEvent) => {
-        if (!view || isSketching) return;
+        // Check if we should ignore this click (e.g., finishing a draw)
+        if (shouldIgnoreNextClick?.()) {
+            consumeIgnoreClick?.();
+            return;
+        }
 
-        // Clear existing graphics
-        clearGraphics(view);
+        const sketching = typeof isSketching === 'function' ? isSketching() : isSketching;
+        if (sketching) {
+            return;
+        }
 
-        // Update visible layers state
-        const layers = getVisibleLayers({ view });
-        setVisibleLayersMap(layers.layerVisibilityMap);
+        if (!map) {
+            return;
+        }
+
+        // Build visibleLayersMap from layersConfig using shared utility
+        // Pass map instance to check actual layer visibility on the map
+        if (layersConfig && Array.isArray(layersConfig)) {
+            const visibleLayersMap = buildVisibleLayersMap(layersConfig, map);
+            setVisibleLayersMap(visibleLayersMap);
+        }
 
         // Convert screen coordinates to map coordinates using adapter
         const screenPoint: ScreenPoint = {
@@ -54,11 +65,11 @@ export function useMapClickHandler({
             y: event.screenY
         };
 
-        const mapPoint = coordinateAdapter.screenToMap(screenPoint, view);
+        const mapPoint = coordinateAdapter.screenToMap(screenPoint, map);
 
         // Trigger the callback with the abstracted map point
         onPointClick(mapPoint);
-    }, [view, isSketching, onPointClick, getVisibleLayers, setVisibleLayersMap, coordinateAdapter]);
+    }, [map, isSketching, shouldIgnoreNextClick, consumeIgnoreClick, onPointClick, setVisibleLayersMap, coordinateAdapter, layersConfig]);
 
     return { handleMapClick };
 }

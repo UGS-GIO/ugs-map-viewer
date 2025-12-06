@@ -6,7 +6,8 @@ interface LayerDescriptionAccordionProps {
 }
 
 const LayerDescriptionAccordion = ({ description, isOpen }: LayerDescriptionAccordionProps) => {
-    const accordionValue = isOpen ? "layer-description-accordion" : undefined;
+    // Use empty string instead of undefined to keep accordion controlled
+    const accordionValue = isOpen ? "layer-description-accordion" : "";
 
     return (
         <Accordion

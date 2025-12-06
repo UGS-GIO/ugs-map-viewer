@@ -13,6 +13,7 @@ const wetMetaConfig: WMSLayerProps = {
     title: wetMetaTitle,
     visible: false,
     opacity: 0.75,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${WETLANDS_WORKSPACE}:${wetMetaLayerName}`,
@@ -59,6 +60,7 @@ const wetNonRiverineConfig: WMSLayerProps = {
     title: wetNonRiverineTitle,
     visible: true,
     opacity: 0.75,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${WETLANDS_WORKSPACE}:${wetNonRiverineLayerName}`,
@@ -69,7 +71,7 @@ const wetNonRiverineConfig: WMSLayerProps = {
                 'Wetland Type': { field: 'wetland_type', type: 'string' },
                 'Acres': {
                     field: 'acres', type: 'number',
-                    transform: (value) => {
+                    transform: (value: number | null) => {
                         if (value === null) {
                             return null;
                         }
@@ -91,6 +93,7 @@ const riverineConfig: WMSLayerProps = {
     title: riverineTitle,
     visible: false,
     opacity: 0.75,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${WETLANDS_WORKSPACE}:${riverineLayerName}`,
@@ -101,7 +104,7 @@ const riverineConfig: WMSLayerProps = {
                 'Wetland Type': { field: 'wetland_type', type: 'string' },
                 'Acres': {
                     field: 'acres', type: 'number',
-                    transform: (value) => {
+                    transform: (value: number | null) => {
                         if (value === null) {
                             return null;
                         }
@@ -135,6 +138,7 @@ const ripMetaConfig: WMSLayerProps = {
     title: ripMetaTitle,
     visible: false,
     opacity: 0.75,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${WETLANDS_WORKSPACE}:${ripMetaLayerName}`,
@@ -174,6 +178,7 @@ const
         title: ripDataTitle,
         visible: true,
         opacity: 0.75,
+    crs: 'EPSG:26912',
         sublayers: [
             {
                 name: `${WETLANDS_WORKSPACE}:${ripDataLayerName}`,
@@ -184,7 +189,7 @@ const
                     'Riparian Type': { field: 'wetland_type', type: 'string' },
                     'Acres': {
                         field: 'acres', type: 'number',
-                        transform: (value) => {
+                        transform: (value: number | null) => {
                             if (value === null) {
                                 return null;
                             }
@@ -217,6 +222,7 @@ const llwwMappingConfig: WMSLayerProps = {
     title: llwwMappingTitle,
     visible: true,
     opacity: 0.75,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${WETLANDS_WORKSPACE}:${llwwMappingLayerName}`,
@@ -245,6 +251,7 @@ const cacheProjectsConfig: WMSLayerProps = {
     title: cacheProjectsTitle,
     visible: true,
     opacity: 0.75,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${WETLANDS_WORKSPACE}:${cacheProjectsLayerName}`,
@@ -304,6 +311,7 @@ const assessmentConfig: WMSLayerProps = {
     visible: true,
     opacity: 0.6,
     title: assessmentTitle,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${WETLANDS_WORKSPACE}:${assessmentLayerName}`,
@@ -380,6 +388,7 @@ const stressorsConfig: WMSLayerProps = {
     title: stressorsTitle,
     visible: false,
     opacity: 0.6,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${WETLANDS_WORKSPACE}:${stressorsLayerName}`,
@@ -422,6 +431,7 @@ const huc12ecoConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: huc12ecoTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${WETLANDS_WORKSPACE}:${huc12ecoLayerName}`,
@@ -458,6 +468,7 @@ const huc12Config: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: huc12Title,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${WETLANDS_WORKSPACE}:${huc12LayerName}`,
@@ -492,6 +503,7 @@ const huc8ecoConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: huc8ecoTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${WETLANDS_WORKSPACE}:${huc8ecoLayerName}`,
@@ -528,6 +540,7 @@ const huc8Config: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: huc8Title,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${WETLANDS_WORKSPACE}:${huc8LayerName}`,
@@ -562,6 +575,7 @@ const ecoregionConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: ecoregionTitle,
     visible: false,
+    crs: 'EPSG:26912',
     sublayers: [
         {
             name: `${WETLANDS_WORKSPACE}:${ecoregionLayerName}`,

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { ChevronsLeft, Menu, X } from 'lucide-react';
+import { ChevronsLeft, ChevronLeft, Menu, X } from 'lucide-react';
 import { Layout } from './custom/layout';
 import { Button } from './custom/button';
 import Nav from './nav';
@@ -7,15 +7,39 @@ import { cn } from '@/lib/utils';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { Link } from '@/components/custom/link';
 import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links';
-import { useGetPageInfo } from '@/hooks/use-get-page-info';
+import { useGetCurrentPage } from '@/hooks/use-get-current-page';
+import { getAppTitle } from '@/lib/app-titles';
 import { NavSkeleton } from './sidebar/sidebar-skeleton';
+import { SIDEBAR_WIDTHS } from '@/lib/sidebar-constants';
 
 interface SidebarProps extends React.HTMLAttributes<HTMLElement> { }
 
 export default function Sidebar({ className }: SidebarProps) {
-  const { navOpened, setNavOpened, isCollapsed, setIsCollapsed } = useSidebar();
+  const { navOpened, setNavOpened, isCollapsed, setIsCollapsed, sidebarWidth, setSidebarWidth } = useSidebar();
   const { data: sidebarLinks, isLoading: areLinksLoading } = useGetSidebarLinks();
-  const { data: pageInfo } = useGetPageInfo();
+  const currentPage = useGetCurrentPage();
+  const appTitle = getAppTitle(currentPage);
+
+  const widthClass = isCollapsed ? SIDEBAR_WIDTHS.icon : SIDEBAR_WIDTHS[sidebarWidth];
+
+  const handleSidebarCycle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    // Shift+click: toggle between wide and narrow
+    if (e.shiftKey && !isCollapsed) {
+      setSidebarWidth(sidebarWidth === 'wide' ? 'narrow' : 'wide');
+      return;
+    }
+
+    // Normal click: toggle between collapsed and wide
+    if (isCollapsed) {
+      setIsCollapsed(false);
+      setSidebarWidth('wide');
+    } else {
+      setIsCollapsed(true);
+    }
+  };
 
   /* Make body not scrollable when navBar is opened */
   useEffect(() => {
@@ -38,8 +62,7 @@ export default function Sidebar({ className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        `fixed left-0 right-0 top-0 z-50 w-full border-r-2 border-r-muted transition-[width] md:bottom-0 md:right-auto md:h-svh ${isCollapsed ? 'md:w-14' : 'md:w-[32rem]'
-        }`,
+        `fixed left-0 right-0 top-0 z-50 w-full border-r-2 border-r-muted transition-[width] md:bottom-0 md:right-auto md:h-svh ${widthClass}`,
         className
       )}
     >
@@ -53,19 +76,19 @@ export default function Sidebar({ className }: SidebarProps) {
         {/* Header */}
         <Layout.Header
           sticky
-          className={`z-50 flex justify-between px-4 py-3 shadow-sm md:px-4 ${isCollapsed ? 'md:mt-3' : ''}`}
+          className={`z-50 flex justify-between shadow-sm px-4 md:px-1`}
         >
-          <div className={`flex items-center ${!isCollapsed ? 'gap-4' : ''}`}>
-            <Link to="https://geology.utah.gov/" className="cursor-pointer">
+          <div className={`flex items-center ${!isCollapsed ? 'gap-4' : 'w-full'}`}>
+            <Link to="https://geology.utah.gov/" className="cursor-pointer flex items-center justify-center w-10">
               <img
                 src='/logo_main.png'
                 alt='Utah Geological Survey Logo'
-                className={`transition-all duration-300 ${isCollapsed ? 'h-6 w-6' : 'h-8 w-[1.75rem]'}`}
+                className={`transition-all duration-300 ${isCollapsed ? 'h-8 w-7' : 'h-8 w-[1.75rem]'}`}
               />
             </Link>
             {!isCollapsed && (
               <div className="flex flex-col justify-end truncate transition-all duration-300">
-                <span className='font-medium text-wrap'>{pageInfo?.appTitle}</span>
+                <span className='font-medium text-wrap'>{appTitle}</span>
                 <span className='text-sm'>Utah Geological Survey</span>
               </div>
             )}
@@ -102,15 +125,17 @@ export default function Sidebar({ className }: SidebarProps) {
 
         {/* Scrollbar width toggle button */}
         <Button
-          onClick={() => setIsCollapsed((prev) => !prev)}
+          onClick={handleSidebarCycle}
           size='icon'
           variant='outline'
-          className='absolute -right-5 top-1/2 z-40 hidden rounded-none md:inline-flex w-6'
+          className='absolute -right-5 top-1/2 z-[60] hidden rounded-none md:inline-flex w-6 h-12 -translate-y-1/2'
+          title={isCollapsed ? 'Expand sidebar' : `Collapse sidebar (Shift+click for ${sidebarWidth === 'wide' ? 'narrow' : 'wide'})`}
         >
-          <ChevronsLeft
-            strokeWidth={1.5}
-            className={`h-5 w-5 transition-transform ${isCollapsed ? 'rotate-180' : ''}`}
-          />
+          {isCollapsed ? (
+            <ChevronLeft strokeWidth={1.5} className="h-5 w-5 rotate-180" />
+          ) : (
+            <ChevronsLeft strokeWidth={1.5} className="h-5 w-5" />
+          )}
         </Button>
       </Layout>
     </aside>

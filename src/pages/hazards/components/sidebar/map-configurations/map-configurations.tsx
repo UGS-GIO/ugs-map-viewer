@@ -3,9 +3,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BackToMenuButton } from '@/components/custom/back-to-menu-button';
 import { useMapCoordinates } from '@/hooks/use-map-coordinates';
+import { useSidebar } from '@/hooks/use-sidebar';
 
 function MapConfigurations() {
     const { setIsDecimalDegrees, locationCoordinateFormat } = useMapCoordinates();
+    const { sidebarWidth } = useSidebar();
     const handleCoordFormatChange = (value: string) => {
         if (value && setIsDecimalDegrees) {
             setIsDecimalDegrees(value === "Decimal Degrees");
@@ -30,22 +32,22 @@ function MapConfigurations() {
                         <RadioGroup
                             value={locationCoordinateFormat}
                             onValueChange={handleCoordFormatChange}
-                            className="grid grid-cols-1 sm:grid-cols-2 gap-2"
+                            className={`grid gap-2 ${sidebarWidth === 'wide' ? 'grid-cols-2' : 'grid-cols-1'}`}
                         >
-                            <div className="flex">
+                            <div className="flex min-w-0">
                                 <RadioGroupItem value="Decimal Degrees" id="decimal-degrees" className="peer sr-only" />
                                 <Label
                                     htmlFor="decimal-degrees"
-                                    className="flex flex-1 items-center justify-center rounded-sm bg-popover p-3 text-center hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary [&:has([data-state=checked])]:text-primary-foreground"
+                                    className="flex flex-1 items-center justify-center rounded-sm bg-popover p-3 text-center text-sm hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary [&:has([data-state=checked])]:text-primary-foreground"
                                 >
                                     Decimal Degrees
                                 </Label>
                             </div>
-                            <div className="flex">
+                            <div className="flex min-w-0">
                                 <RadioGroupItem value="Degrees, Minutes, Seconds" id="dms" className="peer sr-only" />
                                 <Label
                                     htmlFor="dms"
-                                    className="flex flex-1 items-center justify-center rounded-sm bg-popover p-3 text-center hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary [&:has([data-state=checked])]:text-primary-foreground"
+                                    className="flex flex-1 items-center justify-center rounded-sm bg-popover p-3 text-center text-sm hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:bg-primary [&:has([data-state=checked])]:text-primary-foreground"
                                 >
                                     Degrees, Minutes, Seconds
                                 </Label>
