@@ -27,7 +27,6 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
         isSelected,
         handleToggleSelection,
         isGroupVisible,
-        handleToggleGroupVisibility,
         groupCheckboxState,
         handleSelectAllToggle,
     } = useLayerItemState(layerConfig);
@@ -157,7 +156,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
                         <AccordionHeader>
                             <Switch
                                 checked={isGroupVisible}
-                                onCheckedChange={handleToggleGroupVisibility}
+                                onCheckedChange={handleSelectAllToggle}
                                 className="mx-2"
                             />
                             <AccordionTrigger>

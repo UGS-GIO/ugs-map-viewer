@@ -544,6 +544,8 @@ interface UseFeatureInfoQueryProps {
     visibleLayersMap: Record<string, LayerContentProps>;
     layerOrderConfigs: LayerOrderConfig[];
     coordinateAdapter: CoordinateAdapter;
+    /** Initial popup coords from URL - query runs automatically when present */
+    initialPopupCoords?: { lat: number; lon: number } | null;
 }
 
 export function useFeatureInfoQuery({
@@ -551,15 +553,20 @@ export function useFeatureInfoQuery({
     wmsUrl,
     visibleLayersMap,
     layerOrderConfigs,
-    coordinateAdapter
+    coordinateAdapter,
+    initialPopupCoords
 }: UseFeatureInfoQueryProps) {
-    const [mapPoint, setMapPoint] = useState<MapPoint | null>(null);
+    // Initialize mapPoint from URL coords if present
+    const [mapPoint, setMapPoint] = useState<MapPoint | null>(() =>
+        initialPopupCoords ? { x: initialPopupCoords.lon, y: initialPopupCoords.lat } : null
+    );
     const [polygonRings, setPolygonRings] = useState<number[][][] | null>(null);
     const { activeFilters } = useLayerUrl();
 
     // Track unique click IDs - increment on each new click
-    const clickIdRef = useRef(0);
-    const [currentClickId, setCurrentClickId] = useState<number | null>(null);
+    // Start at 1 if we have initial coords so query runs on mount
+    const clickIdRef = useRef(initialPopupCoords ? 1 : 0);
+    const [currentClickId, setCurrentClickId] = useState<number | null>(initialPopupCoords ? 1 : null);
 
     // Query bbox visualizer for debugging
     const { showQueryBbox, hideQueryBbox } = useQueryBboxVisualizer(map);
@@ -713,98 +720,49 @@ export function useFeatureInfoQuery({
 
             // Check if this is a client-side WFS layer (prefixed with 'wfs:')
             if (layerKey.startsWith('wfs:')) {
-                // WFS vector layer: Use queryRenderedFeatures for client-side query
-                if (isPointQuery && mapPoint) {
-                    const wfsLayerName = layerKey.replace('wfs:', '');
+                // Use server-side WFS query if wfsUrl and typeName are available
+                // This ensures queries work even when the query location is outside the viewport
+                const wfsUrl = layerConfig.wfsUrl;
+                const typeName = layerConfig.typeName;
 
-                    // Convert map point to screen coordinates
-                    const screenPoint = map.project([mapPoint.x, mapPoint.y]);
+                if (wfsUrl && typeName) {
+                    // Show bbox for the first layer queried (point queries only)
+                    const shouldShowBbox = isPointQuery && !bboxShown;
 
-                    // Calculate tolerance in pixels based on the same buffer as WFS
-                    const tolerancePixels = Math.ceil(bufferMeters / resolution);
-
-                    // Calculate query bbox in screen pixels
-                    const queryBbox: [[number, number], [number, number]] = [
-                        [screenPoint.x - tolerancePixels, screenPoint.y - tolerancePixels],
-                        [screenPoint.x + tolerancePixels, screenPoint.y + tolerancePixels]
-                    ];
-
-                    // Calculate geographic bbox for visualization
-                    const sw = map.unproject([screenPoint.x - tolerancePixels, screenPoint.y + tolerancePixels]);
-                    const ne = map.unproject([screenPoint.x + tolerancePixels, screenPoint.y - tolerancePixels]);
-                    const geoBbox = {
-                        minX: sw.lng,
-                        minY: sw.lat,
-                        maxX: ne.lng,
-                        maxY: ne.lat
-                    };
-
-                    // Create turf polygon for intersection testing
-                    const bboxPolygon = turfPolygon([[
-                        [geoBbox.minX, geoBbox.minY],
-                        [geoBbox.maxX, geoBbox.minY],
-                        [geoBbox.maxX, geoBbox.maxY],
-                        [geoBbox.minX, geoBbox.maxY],
-                        [geoBbox.minX, geoBbox.minY]
-                    ]]);
-
-                    // Show bbox visualization for WFS
-                    if (!bboxShown) {
-                        bboxShown = true;
-                        showQueryBbox(geoBbox, 'EPSG:4326', true);
+                    let featureInfo;
+                    if (isPolygonQuery && polygonRings) {
+                        // Polygon-based query
+                        featureInfo = await fetchWFSFeatureByPolygon({
+                            polygonRings,
+                            layers: [typeName],
+                            url: wfsUrl,
+                            cql_filter: layerCqlFilter,
+                            crs: layerCrs,
+                            featureCount: 200
+                        });
+                    } else if (isPointQuery && mapPoint) {
+                        // Point-based query - show bbox visualization for first layer
+                        featureInfo = await fetchWFSFeature({
+                            mapPoint,
+                            layers: [typeName],
+                            url: wfsUrl,
+                            cql_filter: layerCqlFilter,
+                            crs: layerCrs,
+                            featureCount: 50,
+                            bufferMeters,
+                            onBboxCalculated: shouldShowBbox ? (bbox, crs) => {
+                                bboxShown = true;
+                                showQueryBbox(bbox, crs, true);
+                            } : undefined
+                        });
                     }
 
-                    // Find all WFS layers with this name in the map style
-                    const style = map.getStyle();
-                    const sourceId = `wfs-${layerConfig.layerTitle || 'layer'}`.replace(/\s+/g, '-').toLowerCase();
-                    const wfsLayerIds = style?.layers
-                        ?.filter(l => l.id.startsWith(sourceId))
-                        .map(l => l.id) || [];
-
-                    if (wfsLayerIds.length > 0) {
-                        // queryRenderedFeatures handles circle/symbol layers correctly
-                        const candidateFeatures = map.queryRenderedFeatures(queryBbox, { layers: wfsLayerIds });
-
-                        for (const feature of candidateFeatures) {
-                            // For point geometries, skip intersection check
-                            const isPointGeometry = feature.geometry.type === 'Point' || feature.geometry.type === 'MultiPoint';
-
-                            if (isPointGeometry) {
-                                // Include all point features returned by queryRenderedFeatures
-                                const geoJsonFeature: Feature = {
-                                    type: 'Feature',
-                                    id: `${wfsLayerName}.${feature.id || Math.random().toString(36).substr(2, 9)}`,
-                                    geometry: feature.geometry,
-                                    properties: feature.properties,
-                                };
-                                allFeatures.push(geoJsonFeature);
-                            } else {
-                                // For polygon/line geometries, use intersection check
-                                try {
-                                    if (booleanIntersects(feature.geometry, bboxPolygon)) {
-                                        const geoJsonFeature: Feature = {
-                                            type: 'Feature',
-                                            id: `${wfsLayerName}.${feature.id || Math.random().toString(36).substr(2, 9)}`,
-                                            geometry: feature.geometry,
-                                            properties: feature.properties,
-                                        };
-                                        allFeatures.push(geoJsonFeature);
-                                    }
-                                } catch {
-                                    // If intersection check fails, include the feature anyway
-                                    const geoJsonFeature: Feature = {
-                                        type: 'Feature',
-                                        id: `${wfsLayerName}.${feature.id || Math.random().toString(36).substr(2, 9)}`,
-                                        geometry: feature.geometry,
-                                        properties: feature.properties,
-                                    };
-                                    allFeatures.push(geoJsonFeature);
-                                }
-                            }
-                        }
+                    if (featureInfo && 'features' in featureInfo && featureInfo.features && featureInfo.features.length > 0) {
+                        // Features from WFS already have IDs like "layerName.featureId"
+                        // Don't remap - just push them directly
+                        allFeatures.push(...featureInfo.features);
                     }
                 }
-                // Skip server-side WFS query for client-side WFS layers
                 continue;
             }
 
@@ -943,12 +901,19 @@ export function useFeatureInfoQuery({
         setPolygonRings(rings);
     };
 
-    // trigger refetch when query geometry changes
+    // trigger refetch when query geometry changes or map becomes ready
+    // Include visibleLayersMap to handle initial load with URL coords
     useEffect(() => {
-        if ((mapPoint || polygonRings) && currentClickId !== null) {
-            refetch();
+        if (map && (mapPoint || polygonRings) && currentClickId !== null) {
+            // Check if we have queryable layers before running query
+            const hasQueryableLayers = Object.values(visibleLayersMap)
+                .some(layerInfo => layerInfo.visible && layerInfo.queryable);
+
+            if (hasQueryableLayers) {
+                refetch();
+            }
         }
-    }, [mapPoint, polygonRings, currentClickId, refetch]);
+    }, [map, mapPoint, polygonRings, currentClickId, visibleLayersMap, refetch]);
 
     return {
         fetchForPoint,

@@ -31,6 +31,9 @@ export interface LayerContentProps {
     queryable?: boolean
     schema?: string
     layerCrs?: string; // CRS of the layer itself (e.g., "EPSG:3857")
+    // WFS-specific properties for server-side queries
+    wfsUrl?: string
+    typeName?: string
 }
 
 interface SidebarInsetWithPaginationProps {

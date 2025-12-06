@@ -15,8 +15,9 @@ import { clearGraphics } from '@/lib/map/highlight-utils';
 import { useMultiSelectTool } from '@/hooks/use-multi-select';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { useMultiSelectControl } from '@/hooks/use-multi-select-control';
-import type { LayerProps, WMSLayerProps, GroupLayerProps } from '@/lib/types/mapping-types';
+import type { LayerProps } from '@/lib/types/mapping-types';
 import type { PopupDrawerRef } from '@/components/custom/popups/popup-drawer';
+import { buildVisibleLayersMap } from '@/lib/map/layer-info-utils';
 
 interface UseMapContainerProps {
     wmsUrl: string;
@@ -50,7 +51,7 @@ export function useMapContainer({
     const contextMenuTriggerRef = useRef<HTMLDivElement>(null);
     const drawerTriggerRef = useRef<HTMLButtonElement>(null);
     const [visibleLayersMap, setVisibleLayersMap] = useState({});
-    const { selectedLayerTitles, hiddenGroupTitles } = useLayerUrl();
+    const { selectedLayerTitles } = useLayerUrl();
 
     // Create coordinate adapter for MapLibre
     const coordinateAdapter: CoordinateAdapter = useMemo(() => {
@@ -78,22 +79,40 @@ export function useMapContainer({
     }, []);
 
     // Extract URL synchronization
-    const { center, zoom } = useMapUrlSync();
+    const { center, zoom, popupCoords, setPopupCoords } = useMapUrlSync();
 
     // Process layers based on visibility state
     const processedLayers = useLayerVisibility(
         layersConfig || [],
-        selectedLayerTitles,
-        hiddenGroupTitles
+        selectedLayerTitles
     );
 
+    // Build visibleLayersMap on initial load when popup coords are in URL
+    // This ensures the feature query can run before user clicks
+    // Use processedLayers (not layersConfig) to get correct visibility from URL params
+    useEffect(() => {
+        // Wait for selectedLayerTitles to be populated (URL normalization may take a render cycle)
+        if (!map || processedLayers.length === 0 || !popupCoords || selectedLayerTitles.size === 0) return;
+
+        // Only run once when map becomes ready with popup coords
+        if (Object.keys(visibleLayersMap).length > 0) return;
+
+        // Use shared utility - pass null for map to use config visibility (faster initial load)
+        const newVisibleLayersMap = buildVisibleLayersMap(processedLayers, null);
+        if (Object.keys(newVisibleLayersMap).length > 0) {
+            setVisibleLayersMap(newVisibleLayersMap);
+        }
+    }, [map, processedLayers, popupCoords, visibleLayersMap, selectedLayerTitles]);
+
     // Feature info query handling with coordinate adapter
+    // Pass popup coords from URL to enable query on page load
     const featureInfoQuery = useFeatureInfoQuery({
         map,
         wmsUrl,
         visibleLayersMap,
         layerOrderConfigs,
-        coordinateAdapter
+        coordinateAdapter,
+        initialPopupCoords: popupCoords
     });
 
     // Handle side effects of feature query responses
@@ -115,61 +134,10 @@ export function useMapContainer({
     const { clearSelection } = useMultiSelectTool({
         map,
         onPolygonComplete: (geometry) => {
-            // Build visibleLayersMap before querying (same logic as click handler)
-            if (layersConfig) {
-                const visibleLayersMap: Record<string, any> = {};
-
-                const buildLayerMap = (layers: LayerProps[]) => {
-                    for (const layer of layers) {
-                        if (layer.type === 'wms') {
-                            const wmsLayer = layer as WMSLayerProps;
-                            if (wmsLayer.sublayers) {
-                                for (const sublayer of wmsLayer.sublayers) {
-                                    if (sublayer.name) {
-                                        // Check if the layer is actually visible on the map
-                                        let isVisible = wmsLayer.visible ?? true;
-
-                                        // Generate the same layer ID that was used when adding the layer
-                                        const sourceId = `wms-${wmsLayer.title || 'layer'}`.replace(/\s+/g, '-').toLowerCase();
-                                        const mapLayerId = `wms-layer-${sourceId}`;
-
-                                        if (map) {
-                                            const mapLayer = map.getLayer(mapLayerId);
-                                            if (mapLayer) {
-                                                const visibility = map.getLayoutProperty(mapLayerId, 'visibility');
-                                                isVisible = visibility !== 'none';
-                                            }
-                                        }
-
-                                        visibleLayersMap[sublayer.name] = {
-                                            visible: isVisible,
-                                            groupLayerTitle: wmsLayer.title || '',
-                                            layerTitle: wmsLayer.title || sublayer.name,
-                                            popupFields: sublayer.popupFields,
-                                            relatedTables: sublayer.relatedTables,
-                                            queryable: sublayer.queryable ?? true,
-                                            linkFields: sublayer.linkFields,
-                                            customLayerParameters: wmsLayer.customLayerParameters,
-                                            rasterSource: sublayer.rasterSource,
-                                            schema: sublayer.schema,
-                                            layerCrs: wmsLayer.crs || 'EPSG:3857',
-                                        };
-                                    }
-                                }
-                            }
-                        } else if (layer.type === 'group') {
-                            const groupLayer = layer as GroupLayerProps;
-                            if (groupLayer.layers) {
-                                buildLayerMap(groupLayer.layers);
-                            }
-                        }
-                    }
-                };
-
-                if (Array.isArray(layersConfig)) {
-                    buildLayerMap(layersConfig);
-                }
-                setVisibleLayersMap(visibleLayersMap);
+            // Build visibleLayersMap before querying - pass map to check actual visibility
+            if (layersConfig && Array.isArray(layersConfig)) {
+                const newVisibleLayersMap = buildVisibleLayersMap(layersConfig, map);
+                setVisibleLayersMap(newVisibleLayersMap);
             }
 
             // Convert GeoJSON rings to WGS84 (they're already in WGS84 from Terra Draw)
@@ -185,6 +153,8 @@ export function useMapContainer({
         shouldIgnoreNextClick,
         consumeIgnoreClick,
         onPointClick: (mapPoint) => {
+            // Update URL with popup coords
+            setPopupCoords({ lat: mapPoint.y, lon: mapPoint.x });
             featureInfoQuery.fetchForPoint(mapPoint);
         },
         setVisibleLayersMap,
@@ -263,11 +233,19 @@ export function useMapContainer({
 
     // Handler for when the popup/drawer is closed
     const handleDrawerClose = () => {
+        // Clear feature highlight graphics from the map
+        if (map) {
+            clearGraphics(map);
+        }
+
         // Clear the Terra Draw polygons
         clearSelection();
 
         // Hide the query bbox visualization
         featureInfoQuery.hideQueryBbox();
+
+        // Clear popup coords from URL
+        setPopupCoords(null);
 
         // If the popup was opened from a polygon query, turn off multi-select mode
         if (featureInfoQuery.isPolygonQuery) {

@@ -2,38 +2,32 @@ import { useMemo } from 'react';
 import { LayerProps } from '@/lib/types/mapping-types';
 
 /**
- * Processes layer visibility based on selected layers and hidden groups.
- * A layer is visible if it is selected and not part of a hidden group.
+ * Processes layer visibility based on selected layers.
+ * A layer is visible if it is in selectedLayerTitles.
+ * A group is visible if any of its children are visible.
  * @param layers - Array of layer configurations.
  * @param selectedLayerTitles - Set of titles of selected layers.
- * @param hiddenGroupTitles - Set of titles of hidden groups.
  * @return Processed array of layers with updated visibility.
  */
 export function useLayerVisibility(
     layers: LayerProps[],
-    selectedLayerTitles: Set<string>,
-    hiddenGroupTitles: Set<string>
+    selectedLayerTitles: Set<string>
 ) {
     return useMemo(() => {
-        const processLayers = (
-            layerArray: LayerProps[],
-            parentIsHidden: boolean
-        ): LayerProps[] => {
+        const processLayers = (layerArray: LayerProps[]): LayerProps[] => {
             return layerArray.map(layer => {
-                const isHiddenByGroup = parentIsHidden || hiddenGroupTitles.has(layer.title || '');
-
                 if (layer.type === 'group' && 'layers' in layer) {
-                    const newChildLayers = processLayers(layer.layers || [], isHiddenByGroup);
-                    const isGroupEffectivelyVisible = newChildLayers.some(child => child.visible);
-                    return { ...layer, visible: isGroupEffectivelyVisible, layers: newChildLayers };
+                    const newChildLayers = processLayers(layer.layers || []);
+                    const isGroupVisible = newChildLayers.some(child => child.visible);
+                    return { ...layer, visible: isGroupVisible, layers: newChildLayers };
                 }
 
-                // A layer is only visible if it's selected AND its group hierarchy is not hidden.
-                const isVisible = selectedLayerTitles.has(layer.title || '') && !isHiddenByGroup;
+                // A layer is visible if it's in selected
+                const isVisible = selectedLayerTitles.has(layer.title || '');
                 return { ...layer, visible: isVisible };
             });
         };
 
-        return processLayers(layers, false);
-    }, [layers, selectedLayerTitles, hiddenGroupTitles]);
+        return processLayers(layers);
+    }, [layers, selectedLayerTitles]);
 }

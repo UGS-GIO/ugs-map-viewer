@@ -31,8 +31,10 @@ const mapSearchSchema = z.object({
         return val;
     }, z.object({
         selected: z.array(z.string()).optional(),
-        hidden: z.array(z.string()).optional(),
-    }).optional())
+    }).optional()),
+    // Popup query coordinates - allows triggering popup queries via URL
+    popup_lat: z.coerce.number().min(-90).max(90).optional(),
+    popup_lon: z.coerce.number().min(-180).max(180).optional(),
 }).strip()
 
 export type MapSearchParams = z.infer<typeof mapSearchSchema>;

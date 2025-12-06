@@ -99,11 +99,6 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
         }
     }, []);
 
-    const handleCloseClick = useCallback(() => {
-        // Set open to false
-        setOpen(false);
-    }, []);
-
     const handleClose = useCallback(() => {
         if (map) {
             try {
@@ -115,6 +110,13 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
         // Call external onClose callback if provided
         onClose?.();
     }, [map, onClose]);
+
+    const handleCloseClick = useCallback(() => {
+        // Call handleClose to clear graphics and trigger onClose callback
+        handleClose();
+        // Set open to false
+        setOpen(false);
+    }, [handleClose]);
 
 
     return (
