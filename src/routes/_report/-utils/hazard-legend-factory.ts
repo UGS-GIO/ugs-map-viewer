@@ -110,8 +110,6 @@ export async function createCustomLegend<T extends Record<string, any>>(
                         const svg = createSVGSymbol(rule.symbolizers)
                         wmsSymbols.set(literalValue, svg)
                         wmsLabels.set(literalValue, rule.title || rule.name)
-                    } else {
-                        console.log(`[${config.code}] Skipping WMS rule - literalValue: "${literalValue}", hasSymbolizers: ${!!rule.symbolizers}, rule.filter: ${rule.filter}`)
                     }
                 }
             }

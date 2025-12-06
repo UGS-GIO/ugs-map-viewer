@@ -30,10 +30,8 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
     const onPolygonCompleteRef = useRef(onPolygonComplete);
     const { isMultiSelectMode, setIsDrawing, setHasCompletedPolygon } = useMultiSelect();
 
-    // Update ref when callback changes
-    useEffect(() => {
-        onPolygonCompleteRef.current = onPolygonComplete;
-    }, [onPolygonComplete]);
+    // Keep ref in sync with prop
+    onPolygonCompleteRef.current = onPolygonComplete;
 
     useEffect(() => {
         if (!map || !isMultiSelectMode) {
@@ -136,13 +134,22 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
             }
         };
 
-        // Small delay to ensure map is ready, then load Terra Draw
-        const timeoutId = setTimeout(() => {
+        let cleanedUp = false;
+
+        // Check if style is already loaded, otherwise wait for event
+        if (map.isStyleLoaded()) {
             initializeDraw();
-        }, 100);
+        } else {
+            const handleStyleLoad = () => {
+                if (!cleanedUp) {
+                    initializeDraw();
+                }
+            };
+            map.once('style.load', handleStyleLoad);
+        }
 
         return () => {
-            clearTimeout(timeoutId);
+            cleanedUp = true;
             if (drawRef.current) {
                 try {
                     drawRef.current.stop();

@@ -205,15 +205,7 @@ const useWellFilterManager = () => {
             ...newState
         };
 
-        console.log('[useWellFilterManager] updateFilters called:', {
-            newState,
-            currentState: stateRef.current,
-            updatedState
-        });
-
         const combinedWellFilter = generateCQLFilter(updatedState);
-
-        console.log('[useWellFilterManager] Generated CQL filter:', combinedWellFilter);
 
         // Get current filters from the search object directly
         navigate({
@@ -221,16 +213,12 @@ const useWellFilterManager = () => {
                 const currentFilters = prev.filters || {};
                 let newFilters: Record<string, string> | undefined;
 
-                console.log('[useWellFilterManager] Before navigate - current filters:', currentFilters);
-
                 if (combinedWellFilter) {
                     newFilters = { ...currentFilters, [wellWithTopsWMSTitle]: combinedWellFilter };
                 } else {
                     const { [wellWithTopsWMSTitle]: _, ...rest } = currentFilters;
                     newFilters = Object.keys(rest).length > 0 ? rest : undefined;
                 }
-
-                console.log('[useWellFilterManager] After navigate - new filters:', newFilters);
 
                 return { ...prev, filters: newFilters };
             },
@@ -262,17 +250,10 @@ const MapConfigurations = () => {
     // Apply filter to map when it changes
     useEffect(() => {
         if (!map) {
-            console.log('[MapConfigurations] Map not ready yet, skipping filter application');
             return;
         }
 
         const filterFromUrl = search.filters?.[wellWithTopsWMSTitle] ?? null;
-
-        console.log('[MapConfigurations] Applying MapLibre WMS filter:', {
-            layerTitle: wellWithTopsWMSTitle,
-            filter: filterFromUrl,
-            searchFilters: search.filters
-        });
 
         applyLayerFilter(map, wellWithTopsWMSTitle, filterFromUrl);
     }, [map, search.filters]);

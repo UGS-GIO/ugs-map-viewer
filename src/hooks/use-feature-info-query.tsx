@@ -164,17 +164,27 @@ export async function fetchWMSFeatureInfo({
     return data;
 }
 
-// Cache for geometry field names per layer
-const geometryFieldCache = new Map<string, string>();
+// Cache for geometry field names per layer with TTL and max size
+interface CacheEntry {
+    field: string;
+    timestamp: number;
+}
+const geometryFieldCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_CACHE_SIZE = 100;
 
 /**
  * Get the geometry field name for a layer via DescribeFeatureType
  * Returns 'shape' as fallback if detection fails
  */
 async function getGeometryFieldName(layer: string, wfsUrl: string): Promise<string> {
-    // Check cache first
+    const now = Date.now();
+
+    // Check cache first (with TTL validation)
     const cached = geometryFieldCache.get(layer);
-    if (cached) return cached;
+    if (cached && (now - cached.timestamp) < CACHE_TTL_MS) {
+        return cached.field;
+    }
 
     try {
         const params = new URLSearchParams({
@@ -193,7 +203,12 @@ async function getGeometryFieldName(layer: string, wfsUrl: string): Promise<stri
             if (data.featureTypes?.[0]?.properties) {
                 for (const prop of data.featureTypes[0].properties) {
                     if (prop.type?.startsWith('gml:') && geometryTypes.includes(prop.localType)) {
-                        geometryFieldCache.set(layer, prop.name);
+                        // Evict oldest entry if cache is full
+                        if (geometryFieldCache.size >= MAX_CACHE_SIZE) {
+                            const firstKey = geometryFieldCache.keys().next().value;
+                            if (firstKey) geometryFieldCache.delete(firstKey);
+                        }
+                        geometryFieldCache.set(layer, { field: prop.name, timestamp: now });
                         return prop.name;
                     }
                 }
@@ -204,7 +219,11 @@ async function getGeometryFieldName(layer: string, wfsUrl: string): Promise<stri
     }
 
     // Fallback to 'shape' (common default)
-    geometryFieldCache.set(layer, 'shape');
+    if (geometryFieldCache.size >= MAX_CACHE_SIZE) {
+        const firstKey = geometryFieldCache.keys().next().value;
+        if (firstKey) geometryFieldCache.delete(firstKey);
+    }
+    geometryFieldCache.set(layer, { field: 'shape', timestamp: now });
     return 'shape';
 }
 

@@ -42,13 +42,10 @@ export class MapLibreMapFactory implements MapFactory {
     layers: LayerProps[],
     _initialView?: 'map' | 'scene'
   ): Promise<MapInitResult> {
-    console.log('[Factory] init called, container connected:', container.isConnected);
-
     // Set up PMTiles protocol before creating map
     setupPMTilesProtocol();
 
     const map = this.createMap(container, options);
-    console.log('[Factory] Map created');
 
     // Add error handling for tile loading failures and source errors
     map.on('error', (e) => {
@@ -103,7 +100,6 @@ export class MapLibreMapFactory implements MapFactory {
     });
 
     canvas.addEventListener('webglcontextrestored', () => {
-      console.log('[MapLibre] WebGL context restored');
       // Trigger a repaint to recover
       map.triggerRepaint();
     });
@@ -114,10 +110,8 @@ export class MapLibreMapFactory implements MapFactory {
         map.on('style.load', () => resolve());
       });
     }
-    console.log('[Factory] Style loaded');
 
     await this.addLayersToMap(map, layers);
-    console.log('[Factory] Layers added');
 
     return { map };
   }
@@ -219,7 +213,6 @@ export class MapLibreMapFactory implements MapFactory {
         metadata: layer.metadata,
       });
 
-      console.log(`[refreshWMSLayer] ✓ Refreshed layer: ${title}`);
     } catch (error) {
       console.error(`[refreshWMSLayer] Error refreshing layer ${title}:`, error);
     }
@@ -776,7 +769,6 @@ export class MapLibreMapFactory implements MapFactory {
         });
       }
 
-      console.log(`[addWFSLayer] ✓ Added ${geometryType} layer: ${layerConfig.title} (${geojson.features.length} features)`);
     } catch (error) {
       console.error(`[addWFSLayer] Error loading WFS layer ${layerConfig.title}:`, error);
     }

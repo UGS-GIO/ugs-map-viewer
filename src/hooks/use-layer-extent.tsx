@@ -25,14 +25,15 @@ interface WMSBoundingBox {
     '@_maxy': string;
 }
 
-const parseCapabilitiesExtent = (xml: string, targetLayerName: string): BoundingBox | null => {
-    const parser = new XMLParser({
-        ignoreAttributes: false,
-        attributeNamePrefix: '@_'
-    });
+// Create parser once at module level to avoid recreation on every parse
+const xmlParser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '@_'
+});
 
+const parseCapabilitiesExtent = (xml: string, targetLayerName: string): BoundingBox | null => {
     try {
-        const parsed = parser.parse(xml);
+        const parsed = xmlParser.parse(xml);
         const capability = parsed.WMS_Capabilities?.Capability ||
             parsed.WMT_MS_Capabilities?.Capability;
 

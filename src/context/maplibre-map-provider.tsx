@@ -42,8 +42,6 @@ export function MapLibreMapProvider({ children }: { children: React.ReactNode })
 
     // Create stable container on mount, cleanup on unmount
     useEffect(() => {
-        console.log('[MapProvider] useEffect mount');
-
         // Create the stable container element
         if (!stableContainerRef.current) {
             const container = document.createElement('div');
@@ -53,18 +51,15 @@ export function MapLibreMapProvider({ children }: { children: React.ReactNode })
             container.style.top = '0';
             container.style.left = '0';
             stableContainerRef.current = container;
-            console.log('[MapProvider] Created stable container');
         }
 
         // Cleanup on provider unmount
         return () => {
-            console.log('[MapProvider] useEffect cleanup - mapExists:', !!mapInstanceRef.current);
             if (mapInstanceRef.current) {
                 try {
                     mapInstanceRef.current.remove();
-                    console.log('[MapProvider] Map removed');
                 } catch (e) {
-                    console.log('[MapProvider] Error removing map:', e);
+                    console.error('[MapProvider] Error removing map:', e);
                 }
                 mapInstanceRef.current = null;
                 setMap(undefined);
@@ -83,17 +78,13 @@ export function MapLibreMapProvider({ children }: { children: React.ReactNode })
         center?: [number, number],
         layers?: LayerProps[]
     }) => {
-        console.log('[loadMap] called - stableContainer:', !!stableContainerRef.current, 'mapInstance:', !!mapInstanceRef.current, 'isCreating:', isCreatingMapRef.current);
-
         // Ensure we have a stable container
         if (!stableContainerRef.current) {
-            console.log('[loadMap] No stable container, returning');
             return;
         }
 
         // Mount the stable container into the target if not already there
         if (mountTargetRef.current !== container) {
-            console.log('[loadMap] Mounting to new container');
             if (stableContainerRef.current.parentNode) {
                 stableContainerRef.current.parentNode.removeChild(stableContainerRef.current);
             }
@@ -103,7 +94,6 @@ export function MapLibreMapProvider({ children }: { children: React.ReactNode })
 
         // If map already exists, just sync layer visibility
         if (mapInstanceRef.current) {
-            console.log('[loadMap] Map exists, syncing visibility');
             const visibilityMap = new Map<string, boolean>();
 
             const populateVisibilityMap = (layerConfigs: LayerProps[]) => {
@@ -145,22 +135,18 @@ export function MapLibreMapProvider({ children }: { children: React.ReactNode })
 
         // Prevent concurrent map creation
         if (isCreatingMapRef.current) {
-            console.log('[loadMap] Already creating, returning');
             return;
         }
         isCreatingMapRef.current = true;
-        console.log('[loadMap] Starting map creation');
 
         try {
             const factory = createMapFactory();
             const result = await factory.init(stableContainerRef.current, isMobile, { zoom, center }, layers);
-            console.log('[loadMap] Factory init completed');
 
             if (result.map && 'getStyle' in result.map) {
                 const mapInstance = result.map as maplibregl.Map;
                 mapInstanceRef.current = mapInstance;
                 setMap(mapInstance);
-                console.log('[loadMap] Map set successfully');
             }
         } finally {
             isCreatingMapRef.current = false;

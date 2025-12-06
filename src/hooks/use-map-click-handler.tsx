@@ -39,15 +39,12 @@ export function useMapClickHandler({
     const handleMapClick = useCallback((event: MapClickEvent) => {
         // Check if we should ignore this click (e.g., finishing a draw)
         if (shouldIgnoreNextClick?.()) {
-            console.log('[MapClickHandler] Ignoring click - just finished drawing');
             consumeIgnoreClick?.();
             return;
         }
 
         const sketching = typeof isSketching === 'function' ? isSketching() : isSketching;
-        console.log('[MapClickHandler] Click detected, isSketching:', sketching);
         if (sketching) {
-            console.log('[MapClickHandler] Ignoring click - sketching in progress');
             return;
         }
 

@@ -154,8 +154,6 @@ export class MapLibreLegend implements LegendProvider {
   constructor(private map: maplibregl.Map) {}
 
   async getRenderer(layerId: string): Promise<RendererData> {
-    console.log('[MapLibreLegend.getRenderer] Called with layerId:', layerId);
-
     const style = this.map.getStyle();
     if (!style) {
       console.error('[MapLibreLegend] Map style not loaded');
@@ -163,18 +161,12 @@ export class MapLibreLegend implements LegendProvider {
     }
 
     const layers = style.layers?.filter(layer => layer.id === layerId) || [];
-    console.log('[MapLibreLegend] Found layers matching id:', layers.length);
 
     if (layers.length === 0) {
-      console.error(`[MapLibreLegend] Layer with id ${layerId} not found in map style`);
-      // Debug: list some layer IDs
-      const sampleIds = (style.layers || []).slice(0, 10).map(l => l.id);
-      console.log('[MapLibreLegend] Sample layer IDs in style:', sampleIds);
       return;
     }
 
     const layer = layers[0];
-    console.log('[MapLibreLegend] Layer type:', layer.type, 'metadata:', layer.metadata);
 
     // Check if this is a layer with a MapLibre style URL (e.g., PMTiles)
     // Narrow layer.metadata (which is typed as unknown by MapLibre) to our interface
@@ -183,10 +175,6 @@ export class MapLibreLegend implements LegendProvider {
 
       // Check for WFS layer with WMS legend metadata
       if (metadata.wfsLayer && metadata.wmsUrl && metadata.wmsLayerName) {
-        console.log('[MapLibreLegend] Using WMS legend for WFS layer:', {
-          wmsUrl: metadata.wmsUrl,
-          wmsLayerName: metadata.wmsLayerName
-        });
         return await this.getWMSLegendForLayer(
           metadata.wmsUrl as string,
           metadata.wmsLayerName as string
@@ -194,11 +182,6 @@ export class MapLibreLegend implements LegendProvider {
       }
 
       if (hasMaplibreStyleMetadata(metadata)) {
-        console.log('[MapLibreLegend] Using MapLibre style legend:', {
-          styleUrl: metadata.maplibreStyleUrl,
-          sourceId: getStringFromMetadata(metadata, 'maplibreSourceId'),
-          sourceLayer: getStringFromMetadata(metadata, 'maplibreSourceLayer')
-        });
         return await this.getMapLibreStyleLegend(
           metadata.maplibreStyleUrl,
           getStringFromMetadata(metadata, 'maplibreSourceId'),
@@ -348,43 +331,34 @@ export class MapLibreLegend implements LegendProvider {
    * Filters by sourceLayer when using combined PMTiles
    */
   private async getMapLibreStyleLegend(styleUrl: string, sourceId: string, sourceLayer?: string): Promise<RendererData> {
-    console.log('[MapLibreLegend.getMapLibreStyleLegend] Called with:', { styleUrl, sourceId, sourceLayer });
-
     try {
       // Check cache first
       let styleJson = styleJsonCache.get(styleUrl);
 
       if (!styleJson) {
-        console.log('[MapLibreLegend] Fetching style from:', styleUrl);
         const response = await fetch(styleUrl);
         if (!response.ok) {
-          console.warn(`[MapLibreLegend] Failed to fetch MapLibre style: ${response.status}`);
           return undefined;
         }
         const data: object = await response.json();
         if (!isStyleJson(data)) {
-          console.warn('[MapLibreLegend] Invalid style JSON format');
           return undefined;
         }
         styleJson = data;
         styleJsonCache.set(styleUrl, styleJson);
-        console.log('[MapLibreLegend] Style cached, total layers:', styleJson?.layers?.length);
       }
 
       // Filter layers by source-layer if provided (for combined PMTiles)
       let layers = styleJson?.layers || [];
-      console.log('[MapLibreLegend] Total layers in style:', layers.length);
 
       if (sourceLayer) {
         layers = layers.filter(l => {
           const sl = (l as { 'source-layer'?: string })['source-layer'];
           return sl === sourceLayer;
         });
-        console.log('[MapLibreLegend] After filtering by sourceLayer', sourceLayer, ':', layers.length, 'layers');
       }
 
       const geostylerRules = styleJson?.metadata?.['geostyler:ref']?.rules || [];
-      console.log('[MapLibreLegend] Geostyler rules found:', geostylerRules.length);
 
       // If we have geostyler rules, use them for labels
       if (geostylerRules.length > 0) {
@@ -418,13 +392,11 @@ export class MapLibreLegend implements LegendProvider {
       }
 
       // Fallback: create legend items from all layers
-      console.log('[MapLibreLegend] Using fallback legend generation from layers');
       const previews: RegularLayerRenderer[] = [];
       const seenLabels = new Set<string>();
       for (const layer of layers) {
         const item = this.getLegendFromStyleJsonLayer(layer, sourceId, styleUrl);
         if (item) {
-          console.log('[MapLibreLegend] Generated legend item:', item.label, 'svg:', !!item.renderer);
           if (!seenLabels.has(item.label)) {
             seenLabels.add(item.label);
             previews.push(item);
@@ -432,7 +404,6 @@ export class MapLibreLegend implements LegendProvider {
         }
       }
 
-      console.log('[MapLibreLegend] Total previews generated:', previews.length);
       return previews.length > 0 ? previews : undefined;
     } catch (error) {
       console.warn('[MapLibreLegend] Error building MapLibre style legend:', error);

@@ -196,19 +196,16 @@ export const findAndApplyPMTilesFilter = (
     cqlFilter: string | null
 ) => {
     if (!map) {
-        console.warn('[PMTilesFilter] No map instance');
         return;
     }
 
     const style = map.getStyle();
     if (!style?.layers) {
-        console.warn('[PMTilesFilter] No style or layers');
         return;
     }
 
     // Convert CQL filter to MapLibre expression
     const userFilter = convertCQLToMapLibreFilter(cqlFilter);
-    console.log('[PMTilesFilter] CQL filter:', cqlFilter, '-> MapLibre filter:', userFilter);
 
     let matchedLayers = 0;
 
@@ -226,7 +223,6 @@ export const findAndApplyPMTilesFilter = (
             // Store original filter if not already stored
             if (!originalLayerFilters.has(layer.id)) {
                 originalLayerFilters.set(layer.id, layer.filter as FilterSpecification | null ?? null);
-                console.log('[PMTilesFilter] Stored original filter for', layer.id, ':', layer.filter);
             }
 
             const originalFilter = originalLayerFilters.get(layer.id);
@@ -235,34 +231,17 @@ export const findAndApplyPMTilesFilter = (
                 if (originalFilter) {
                     // Combine original filter with user filter using "all"
                     const combinedFilter = ["all", originalFilter, userFilter] as FilterSpecification;
-                    console.log('[PMTilesFilter] Setting combined filter on', layer.id, ':', combinedFilter);
                     map.setFilter(layer.id, combinedFilter);
                 } else {
-                    console.log('[PMTilesFilter] Setting user filter on', layer.id, ':', userFilter);
                     map.setFilter(layer.id, userFilter);
                 }
             } else {
                 // No user filter - restore original filter
-                console.log('[PMTilesFilter] Restoring original filter on', layer.id);
                 map.setFilter(layer.id, originalFilter ?? null);
             }
         }
     }
 
-    console.log('[PMTilesFilter] Matched', matchedLayers, 'layers for title:', layerTitle);
-
-    if (matchedLayers === 0) {
-        // Debug: list all layer titles to help diagnose
-        const titles = new Set<string>();
-        for (const layer of style.layers) {
-            const metadata = layer.metadata;
-            if (metadata && typeof metadata === 'object' && 'title' in metadata) {
-                const t = (metadata as Record<string, unknown>).title;
-                if (typeof t === 'string') titles.add(t);
-            }
-        }
-        console.warn('[PMTilesFilter] Available layer titles:', Array.from(titles));
-    }
 };
 
 /**
@@ -346,16 +325,12 @@ export const applyLayerFilter = (
     layerTitle: string,
     cqlFilter: string | null
 ) => {
-    console.log('[applyLayerFilter] Called with:', { layerTitle, cqlFilter });
-
     if (!map) {
-        console.warn('[applyLayerFilter] No map instance');
         return;
     }
 
     const style = map.getStyle();
     if (!style?.layers) {
-        console.warn('[applyLayerFilter] No style or layers');
         return;
     }
 
@@ -371,16 +346,13 @@ export const applyLayerFilter = (
         // Check if it's a vector layer type
         if (layer.type === 'fill' || layer.type === 'line' || layer.type === 'symbol' || layer.type === 'circle') {
             foundVectorLayer = true;
-            console.log('[applyLayerFilter] Found vector layer:', layer.id, 'type:', layer.type);
             break;
         }
     }
 
     if (foundVectorLayer) {
-        console.log('[applyLayerFilter] Using PMTiles/vector filter path');
         findAndApplyPMTilesFilter(map, layerTitle, cqlFilter);
     } else {
-        console.log('[applyLayerFilter] Using WMS filter path');
         findAndApplyMapLibreWMSFilter(map, layerTitle, cqlFilter);
     }
 };

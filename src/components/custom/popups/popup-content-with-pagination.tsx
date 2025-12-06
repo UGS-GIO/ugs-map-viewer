@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, memo } from "react"
+import { useEffect, useMemo, useState, memo, useCallback, useRef } from "react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Feature, Geometry, GeoJsonProperties } from "geojson"
 import { Button } from "@/components/ui/button"
@@ -12,6 +12,28 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { zoomToFeature } from "@/lib/map/utils"
 
 const ITEMS_PER_PAGE_OPTIONS = [1, 5, 10, 25, 50]
+
+// Extracted outside to prevent recreation on every render
+interface PopupButtonsProps {
+    feature: ExtendedFeature;
+    sourceCRS: string;
+    title: string;
+    onZoom: (feature: ExtendedFeature, sourceCRS: string, title: string) => Promise<void>;
+    extraButtons: React.ReactNode[] | null;
+}
+
+const PopupButtons = memo(({ feature, sourceCRS, title, onZoom, extraButtons }: PopupButtonsProps) => (
+    <div className="flex justify-start gap-2">
+        <Button variant="ghost" onClick={() => onZoom(feature, sourceCRS, title)} className="flex gap-x-2">
+            <Shrink className="h-5 w-5" />
+            <span className="hidden md:flex">Zoom to Feature</span>
+            <span className="md:hidden">Zoom</span>
+        </Button>
+        {extraButtons && extraButtons.map((button) => button)}
+    </div>
+));
+PopupButtons.displayName = 'PopupButtons';
+
 export interface ExtendedFeature extends Feature<Geometry, GeoJsonProperties> {
     namespace: string;
 }
@@ -135,17 +157,6 @@ const LayerCardInner = ({
         }
     }
 
-    const PopupButtons = ({ feature }: { feature: ExtendedFeature }) => (
-        <div className="flex justify-start gap-2">
-            <Button variant="ghost" onClick={() => handleZoomToFeature(feature, layer.sourceCRS, title)} className="flex gap-x-2">
-                <Shrink className="h-5 w-5" />
-                <span className="hidden md:flex">Zoom to Feature</span>
-                <span className="md:hidden">Zoom</span>
-            </Button>
-            {buttons && buttons.map((button) => button)}
-        </div>
-    )
-
     return (
         <Card
             id={`section-${layer.layerTitle !== '' ? layer.layerTitle : layer.groupLayerTitle}`}
@@ -180,7 +191,13 @@ const LayerCardInner = ({
                                 border-border/30
                             `}
                     >
-                        <PopupButtons feature={feature} />
+                        <PopupButtons
+                            feature={feature}
+                            sourceCRS={layer.sourceCRS}
+                            title={title}
+                            onZoom={handleZoomToFeature}
+                            extraButtons={buttons}
+                        />
 
                         <PopupContentDisplay
                             layer={layer}
@@ -201,6 +218,10 @@ LayerCard.displayName = 'LayerCard';
 const PopupContentWithPaginationInner = ({ layerContent, onSectionChange }: SidebarInsetWithPaginationProps) => {
     const { map } = useMap()
     const buttons = useGetPopupButtons()
+
+    // Use ref for callback to avoid recreating observer when callback changes
+    const onSectionChangeRef = useRef(onSectionChange);
+    onSectionChangeRef.current = onSectionChange;
 
     const sectionIds = useMemo(
         () => layerContent.map(layer => `section-${layer.layerTitle !== '' ? layer.layerTitle : layer.groupLayerTitle}`),
@@ -226,6 +247,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange }: Side
         }
     }, [layerContent.length > 0 ? layerContent[0].groupLayerTitle + layerContent[0].layerTitle : null, map])
 
+    // IntersectionObserver for tracking visible sections - only recreate when sectionIds change
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
@@ -237,13 +259,13 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange }: Side
                     });
 
                     const sectionTitle = topmostSection.target.id.replace('section-', '');
-                    onSectionChange(sectionTitle);
+                    onSectionChangeRef.current(sectionTitle);
                 }
             },
             {
-                root: null, // Use the viewport as the root
-                rootMargin: '0px 0px -50% 0px', // 50% of the section must be visible
-                threshold: 0 // Trigger as soon as any part of the section enters the viewport
+                root: null,
+                rootMargin: '0px 0px -50% 0px',
+                threshold: 0
             }
         )
 
@@ -255,8 +277,8 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange }: Side
         })
 
         return () => observer.disconnect()
-    }, [sectionIds, onSectionChange])
-    const handleZoomToFeature = async (feature: ExtendedFeature, sourceCRS: string, title: string) => {
+    }, [sectionIds])
+    const handleZoomToFeature = useCallback(async (feature: ExtendedFeature, sourceCRS: string, title: string) => {
         if (!map) {
             console.warn('[PopupContent] No map available for zoom');
             return;
@@ -272,9 +294,13 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange }: Side
 
         // Zoom to feature
         zoomToFeature(feature, map, sourceCRS)
-    }
+    }, [map])
 
-    const contentKey = useMemo(() => Date.now(), [layerContent])
+    // Generate stable key from layer content - only changes when layers actually change
+    const contentKey = useMemo(() =>
+        layerContent.map(l => `${l.groupLayerTitle}|${l.layerTitle}|${l.features.length}`).join(','),
+        [layerContent]
+    )
 
     // If no layers, return null
     if (layerContent.length === 0) return null;

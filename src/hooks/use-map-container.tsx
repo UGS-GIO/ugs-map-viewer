@@ -61,13 +61,13 @@ export function useMapContainer({
     // Track previous visibility state to prevent unnecessary syncs
     const prevVisibilityRef = useRef<string>('');
 
-    // Helper to extract visibility map from layers
+    // Helper to extract visibility key from layers - builds string directly to avoid JSON.stringify overhead
     const getVisibilityKey = useCallback((layers: LayerProps[]): string => {
-        const visibilityMap: Record<string, boolean> = {};
+        const parts: string[] = [];
         const extractVisibility = (layerList: LayerProps[]) => {
             for (const layer of layerList) {
                 if (layer.title) {
-                    visibilityMap[layer.title] = layer.visible ?? true;
+                    parts.push(`${layer.title}:${layer.visible ?? true ? '1' : '0'}`);
                 }
                 if (layer.type === 'group' && 'layers' in layer && layer.layers) {
                     extractVisibility(layer.layers);
@@ -75,7 +75,7 @@ export function useMapContainer({
             }
         };
         extractVisibility(layers);
-        return JSON.stringify(visibilityMap);
+        return parts.join(',');
     }, []);
 
     // Extract URL synchronization
