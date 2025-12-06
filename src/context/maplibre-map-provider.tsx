@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type maplibregl from "maplibre-gl";
 import { LayerProps } from "@/lib/types/mapping-types";
 import { createMapFactory } from "@/lib/map/factory/factory";
@@ -9,23 +9,24 @@ import { useMapPositionUrlParams } from "@/hooks/use-map-position-url-params";
 /**
  * MapLibre Map Provider
  * Manages MapLibre GL JS map initialization and state
- * Uses the MapFactory for initialization
- *
- * Provides MapContext with:
- * - map: maplibre-gl.Map instance
- * - loadMap: Initialization and layer sync function
- * - isSketching: Sketch mode state
- * - setIsSketching: Sketch mode setter
- * - getIsSketching: Synchronous sketch state check
- * - shouldIgnoreNextClick/setIgnoreNextClick/consumeIgnoreClick: Click ignore flags for drawing tools
+ * Uses a stable container element created outside React's render cycle
  */
 export function MapLibreMapProvider({ children }: { children: React.ReactNode }) {
     const [map, setMap] = useState<maplibregl.Map>();
     const [isSketching, setIsSketching] = useState<boolean>(false);
     const isMobile = useIsMobile();
 
-    // Use refs to access the latest map without causing loadMap to recreate
-    const mapRef = useRef<maplibregl.Map>();
+    // Source of truth for map instance (ref doesn't trigger re-renders)
+    const mapInstanceRef = useRef<maplibregl.Map | null>(null);
+
+    // Stable container - created once, lives outside React's render cycle
+    const stableContainerRef = useRef<HTMLDivElement | null>(null);
+
+    // Track where the container is currently mounted
+    const mountTargetRef = useRef<HTMLDivElement | null>(null);
+
+    // Lock to prevent concurrent map creation
+    const isCreatingMapRef = useRef<boolean>(false);
 
     // Use ref for synchronous sketching state access
     const isSketchingRef = useRef<boolean>(false);
@@ -33,12 +34,43 @@ export function MapLibreMapProvider({ children }: { children: React.ReactNode })
     // Track when we should ignore the next click (e.g., finishing a draw)
     const ignoreNextClickRef = useRef<boolean>(false);
 
-    // Keep refs in sync with state
-    mapRef.current = map;
+    // Keep sketching ref in sync with state
     isSketchingRef.current = isSketching;
 
     // Sync map position with URL parameters
     useMapPositionUrlParams(map || null);
+
+    // Create stable container on mount, cleanup on unmount
+    useEffect(() => {
+        console.log('[MapProvider] useEffect mount');
+
+        // Create the stable container element
+        if (!stableContainerRef.current) {
+            const container = document.createElement('div');
+            container.style.width = '100%';
+            container.style.height = '100%';
+            container.style.position = 'absolute';
+            container.style.top = '0';
+            container.style.left = '0';
+            stableContainerRef.current = container;
+            console.log('[MapProvider] Created stable container');
+        }
+
+        // Cleanup on provider unmount
+        return () => {
+            console.log('[MapProvider] useEffect cleanup - mapExists:', !!mapInstanceRef.current);
+            if (mapInstanceRef.current) {
+                try {
+                    mapInstanceRef.current.remove();
+                    console.log('[MapProvider] Map removed');
+                } catch (e) {
+                    console.log('[MapProvider] Error removing map:', e);
+                }
+                mapInstanceRef.current = null;
+                setMap(undefined);
+            }
+        };
+    }, []);
 
     const loadMap = useCallback(async ({
         container,
@@ -51,12 +83,29 @@ export function MapLibreMapProvider({ children }: { children: React.ReactNode })
         center?: [number, number],
         layers?: LayerProps[]
     }) => {
-        // If the map already exists, we just sync visibility without rebuilding the map.
-        if (mapRef.current) {
-            // Create a simple lookup map of what *should* be visible from the URL state
+        console.log('[loadMap] called - stableContainer:', !!stableContainerRef.current, 'mapInstance:', !!mapInstanceRef.current, 'isCreating:', isCreatingMapRef.current);
+
+        // Ensure we have a stable container
+        if (!stableContainerRef.current) {
+            console.log('[loadMap] No stable container, returning');
+            return;
+        }
+
+        // Mount the stable container into the target if not already there
+        if (mountTargetRef.current !== container) {
+            console.log('[loadMap] Mounting to new container');
+            if (stableContainerRef.current.parentNode) {
+                stableContainerRef.current.parentNode.removeChild(stableContainerRef.current);
+            }
+            container.appendChild(stableContainerRef.current);
+            mountTargetRef.current = container;
+        }
+
+        // If map already exists, just sync layer visibility
+        if (mapInstanceRef.current) {
+            console.log('[loadMap] Map exists, syncing visibility');
             const visibilityMap = new Map<string, boolean>();
 
-            // Helper to recursively get all titles and their visibility
             const populateVisibilityMap = (layerConfigs: LayerProps[]) => {
                 for (const config of layerConfigs) {
                     if (config.title) {
@@ -69,9 +118,8 @@ export function MapLibreMapProvider({ children }: { children: React.ReactNode })
             };
             populateVisibilityMap(layers);
 
-            // Iterate through the LIVE layers on the map and update visibility
-            const style = mapRef.current.getStyle();
-            if (style && style.layers) {
+            const style = mapInstanceRef.current.getStyle();
+            if (style?.layers) {
                 for (const layer of style.layers) {
                     const metadata = layer.metadata as Record<string, unknown> | undefined;
                     const layerTitle = metadata?.title as string | undefined;
@@ -79,10 +127,10 @@ export function MapLibreMapProvider({ children }: { children: React.ReactNode })
                     if (layerTitle) {
                         const shouldBeVisible = visibilityMap.get(layerTitle);
                         if (shouldBeVisible !== undefined) {
-                            const currentVisibility = mapRef.current.getLayoutProperty(layer.id, 'visibility');
+                            const currentVisibility = mapInstanceRef.current.getLayoutProperty(layer.id, 'visibility');
                             const isCurrentlyVisible = currentVisibility !== 'none';
                             if (isCurrentlyVisible !== shouldBeVisible) {
-                                mapRef.current.setLayoutProperty(
+                                mapInstanceRef.current.setLayoutProperty(
                                     layer.id,
                                     'visibility',
                                     shouldBeVisible ? 'visible' : 'none'
@@ -92,17 +140,30 @@ export function MapLibreMapProvider({ children }: { children: React.ReactNode })
                     }
                 }
             }
+            return;
         }
 
-        // If the map does NOT exist, run the initial creation logic.
-        else {
+        // Prevent concurrent map creation
+        if (isCreatingMapRef.current) {
+            console.log('[loadMap] Already creating, returning');
+            return;
+        }
+        isCreatingMapRef.current = true;
+        console.log('[loadMap] Starting map creation');
+
+        try {
             const factory = createMapFactory();
-            const result = await factory.init(container, isMobile, { zoom, center }, layers);
+            const result = await factory.init(stableContainerRef.current, isMobile, { zoom, center }, layers);
+            console.log('[loadMap] Factory init completed');
 
             if (result.map && 'getStyle' in result.map) {
-                await factory.addLayersToMap(result.map, layers);
-                setMap(result.map as maplibregl.Map);
+                const mapInstance = result.map as maplibregl.Map;
+                mapInstanceRef.current = mapInstance;
+                setMap(mapInstance);
+                console.log('[loadMap] Map set successfully');
             }
+        } finally {
+            isCreatingMapRef.current = false;
         }
     }, [isMobile]);
 
@@ -141,5 +202,5 @@ export function MapLibreMapProvider({ children }: { children: React.ReactNode })
         <MapContext.Provider value={value}>
             {children}
         </MapContext.Provider>
-    )
+    );
 }

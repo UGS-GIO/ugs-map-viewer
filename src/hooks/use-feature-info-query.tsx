@@ -164,6 +164,50 @@ export async function fetchWMSFeatureInfo({
     return data;
 }
 
+// Cache for geometry field names per layer
+const geometryFieldCache = new Map<string, string>();
+
+/**
+ * Get the geometry field name for a layer via DescribeFeatureType
+ * Returns 'shape' as fallback if detection fails
+ */
+async function getGeometryFieldName(layer: string, wfsUrl: string): Promise<string> {
+    // Check cache first
+    const cached = geometryFieldCache.get(layer);
+    if (cached) return cached;
+
+    try {
+        const params = new URLSearchParams({
+            service: 'WFS',
+            version: '2.0.0',
+            request: 'DescribeFeatureType',
+            typeName: layer,
+            outputFormat: 'application/json'
+        });
+
+        const response = await fetch(`${wfsUrl}?${params.toString()}`);
+        if (response.ok) {
+            const data = await response.json();
+            const geometryTypes = ['MultiPolygon', 'Polygon', 'MultiLineString', 'LineString', 'Point', 'MultiPoint', 'Geometry'];
+
+            if (data.featureTypes?.[0]?.properties) {
+                for (const prop of data.featureTypes[0].properties) {
+                    if (prop.type?.startsWith('gml:') && geometryTypes.includes(prop.localType)) {
+                        geometryFieldCache.set(layer, prop.name);
+                        return prop.name;
+                    }
+                }
+            }
+        }
+    } catch (error) {
+        console.warn('[GetGeometryFieldName] Failed to detect geometry field:', error);
+    }
+
+    // Fallback to 'shape' (common default)
+    geometryFieldCache.set(layer, 'shape');
+    return 'shape';
+}
+
 /**
  * WFS GetFeature query for geometry-based feature retrieval
  * More reliable than WMS GetFeatureInfo for line and polygon features
@@ -183,7 +227,7 @@ export async function fetchWFSFeature({
     layers,
     url,
     cql_filter = null,
-    crs = 'EPSG:4326',
+    crs: _crs = 'EPSG:4326', // CRS param kept for API compatibility but always queries in 4326
     featureCount = 50,
     bufferMeters = 50,
     onBboxCalculated
@@ -193,45 +237,31 @@ export async function fetchWFSFeature({
         return null;
     }
 
-    // Get the geometry field name for this layer
-    let geometryField = await getGeometryFieldName(layers[0], url);
-    if (!geometryField) {
-        geometryField = 'shape'; // Common default
-    }
+    // Always use EPSG:4326 for bbox queries - works reliably across all layer CRS
+    // mapPoint is already in WGS84
+    const centerX = mapPoint.x;
+    const centerY = mapPoint.y;
 
-    // Convert mapPoint to target CRS if needed
-    let centerX, centerY;
-    if (crs !== 'EPSG:4326') {
-        // mapPoint is in WGS84 (4326), transform to target CRS
-        [centerX, centerY] = proj4('EPSG:4326', crs, [mapPoint.x, mapPoint.y]);
-    } else {
-        centerX = mapPoint.x;
-        centerY = mapPoint.y;
-    }
-
-    // Apply buffer in the target CRS units
-    // EPSG:4326 is in degrees - convert meters to approximate degrees
-    // EPSG:3857 and EPSG:26912 (UTM) are in meters
-    let bufferInTargetUnits = bufferMeters;
-    if (crs === 'EPSG:4326') {
-        // At Utah's latitude (~39°), 1 degree ≈ 85km longitude, 111km latitude
-        // Use 100km as conservative estimate to ensure we get results
-        // 50m buffer -> ~0.0005 degrees, but use minimum of 0.001 (~100m) for reliability
-        const degreesBuffer = bufferMeters / 100000;
-        bufferInTargetUnits = Math.max(degreesBuffer, 0.001);
-    }
+    // Buffer in degrees (WGS84)
+    // At Utah's latitude (~39°), 1 degree ≈ 85km longitude, 111km latitude
+    // Use 100km as conservative estimate
+    const degreesBuffer = bufferMeters / 100000;
+    const bufferInDegrees = Math.max(degreesBuffer, 0.001);
 
     const bbox = {
-        minX: centerX - bufferInTargetUnits,
-        minY: centerY - bufferInTargetUnits,
-        maxX: centerX + bufferInTargetUnits,
-        maxY: centerY + bufferInTargetUnits
+        minX: centerX - bufferInDegrees,
+        minY: centerY - bufferInDegrees,
+        maxX: centerX + bufferInDegrees,
+        maxY: centerY + bufferInDegrees
     };
 
     // Call the callback to visualize bbox (only called once per query)
     if (onBboxCalculated) {
-        onBboxCalculated(bbox, crs);
+        onBboxCalculated(bbox, 'EPSG:4326');
     }
+
+    // Get the geometry field name for this layer (cached after first call)
+    const geometryField = await getGeometryFieldName(layers[0], url);
 
     const params = new URLSearchParams();
     params.set('service', 'WFS');
@@ -240,15 +270,21 @@ export async function fetchWFSFeature({
     params.set('typeNames', layers.join(','));
     params.set('outputFormat', 'application/json');
     params.set('count', featureCount.toString());
+    // Request results in 4326 for consistency
+    params.set('srsName', 'EPSG:4326');
 
-    // Use bbox parameter for spatial filtering - properly handles CRS transformation
-    // Format: minx,miny,maxx,maxy,CRS (GeoServer handles CRS conversion automatically)
-    params.set('bbox', `${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY},${crs}`);
+    // Build CQL_FILTER with BBOX function - allows combining spatial and attribute filters
+    // GeoServer doesn't allow bbox parameter + cql_filter together (mutually exclusive)
+    // Using BBOX() in CQL_FILTER works reliably with EPSG:4326 coordinates
+    const bboxCql = `BBOX(${geometryField},${bbox.minX},${bbox.minY},${bbox.maxX},${bbox.maxY},'EPSG:4326')`;
 
-    // Add attribute filter if provided (separate from spatial bbox)
     if (cql_filter) {
+        // Combine spatial bbox with attribute filter
         const normalizedAttributeFilter = cql_filter.trim().replace(/\s*=\s*/g, '=');
-        params.set('cql_filter', normalizedAttributeFilter);
+        params.set('cql_filter', `${bboxCql} AND ${normalizedAttributeFilter}`);
+    } else {
+        // Just spatial filter
+        params.set('cql_filter', bboxCql);
     }
 
     const fullUrl = `${url}?${params.toString()}`;
@@ -308,55 +344,6 @@ interface WFSPolygonQueryProps {
     featureCount?: number;
 }
 
-// Cache for geometry field names per layer
-const geometryFieldCache = new Map<string, string | null>();
-
-async function getGeometryFieldName(layer: string, wfsUrl: string): Promise<string | null> {
-    // Check cache first
-    if (geometryFieldCache.has(layer)) {
-        return geometryFieldCache.get(layer)!;
-    }
-
-    // Try to get from DescribeFeatureType
-    try {
-        const params = new URLSearchParams();
-        params.set('service', 'WFS');
-        params.set('version', '2.0.0');
-        params.set('request', 'DescribeFeatureType');
-        params.set('typeName', layer);
-        params.set('outputFormat', 'application/json');
-
-        const response = await fetch(`${wfsUrl}?${params.toString()}`);
-        if (response.ok) {
-            const data = await response.json();
-            // console.log(`[GetGeometryFieldName] DescribeFeatureType response for ${layer}:`, data);
-
-            // Look for geometry type properties
-            // GeoServer returns types like "gml:MultiPolygon", "gml:LineString", etc.
-            const geometryLocalTypes = ['MultiPolygon', 'Polygon', 'MultiLineString', 'LineString', 'Point', 'MultiPoint', 'Geometry', 'GeometryCollection'];
-
-            if (data.featureTypes && data.featureTypes[0] && data.featureTypes[0].properties) {
-                // console.log(`[GetGeometryFieldName] Properties:`, data.featureTypes[0].properties);
-                for (const prop of data.featureTypes[0].properties) {
-                    // Check if the type starts with "gml:" and localType is a known geometry type
-                    if (prop.type?.startsWith('gml:') && geometryLocalTypes.includes(prop.localType)) {
-                        const fieldName = prop.name;
-                        geometryFieldCache.set(layer, fieldName);
-                        return fieldName;
-                    }
-                }
-            }
-        } else {
-            console.warn(`[GetGeometryFieldName] DescribeFeatureType request failed with status ${response.status}`);
-        }
-    } catch (error) {
-        console.warn('[GetGeometryFieldName] Could not get geometry field from DescribeFeatureType:', error);
-    }
-
-    // Could not determine geometry field name - return null to signal bbox fallback
-    geometryFieldCache.set(layer, null);
-    return null;
-}
 
 export async function fetchWFSFeatureByPolygon({
     polygonRings,
@@ -887,7 +874,8 @@ export function useFeatureInfoQuery({
                     visible: value.visible,
                     layerTitle: value.layerTitle,
                     groupLayerTitle: value.groupLayerTitle,
-                    sourceCRS: value.layerCrs || 'EPSG:4326',
+                    // WFS queries always return EPSG:4326 (srsName=EPSG:4326)
+                    sourceCRS: 'EPSG:4326',
                     features: matchingFeatures,
                     popupFields: value.popupFields,
                     linkFields: value.linkFields,

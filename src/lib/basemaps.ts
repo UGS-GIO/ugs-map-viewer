@@ -1,8 +1,20 @@
 /**
  * Basemap Styles Configuration
- * - OpenFreeMap: https://openfreemap.org/
- * - Sentinel-2: https://s2maps.eu
+ *
+ * UGRC Discover (Utah): https://gis.utah.gov/products/discover/
+ * - Requires quad-word authentication
+ * - Provides raster WMTS tiles for Utah-specific basemaps
+ *
+ * OpenFreeMap: https://openfreemap.org/
+ * - Open source vector tile basemaps
+ *
+ * Sentinel-2: https://s2maps.eu
+ * - Cloudless satellite imagery
  */
+
+// UGRC Discover quad-word for authenticated access
+const UGRC_QUAD_WORD = 'nebula-east-focus-virgo';
+const UGRC_BASE_URL = `https://discover.agrc.utah.gov/login/path/${UGRC_QUAD_WORD}`;
 
 export interface BasemapStyle {
   id: string;
@@ -15,69 +27,56 @@ export interface BasemapStyle {
 export const BASEMAP_STYLES: BasemapStyle[] = [
   // Main navigation basemaps (short)
   {
-    id: 'outdoor',
-    title: 'Outdoor',
-    url: 'https://tiles.openfreemap.org/styles/liberty',
+    id: 'lite',
+    title: 'Lite',
+    url: `${UGRC_BASE_URL}/tiles/lite_basemap/{z}/{x}/{y}`,
     type: 'short',
   },
   {
-    id: 'none',
-    title: 'None',
-    url: '', // Empty URL for no basemap
+    id: 'terrain',
+    title: 'Terrain',
+    url: `${UGRC_BASE_URL}/tiles/terrain_basemap/{z}/{x}/{y}`,
     type: 'short',
   },
   {
     id: 'satellite',
     title: 'Satellite',
-    // Sentinel-2 cloudless satellite imagery
-    url: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg',
+    url: `${UGRC_BASE_URL}/tiles/utah/{z}/{x}/{y}`,
     type: 'short',
   },
   {
-    id: 'positron',
-    title: 'Light',
-    url: 'https://tiles.openfreemap.org/styles/positron',
+    id: 'topo',
+    title: 'Topo',
+    url: `${UGRC_BASE_URL}/tiles/topo_basemap/{z}/{x}/{y}`,
     type: 'short',
   },
 
   // Dropdown basemaps (long)
   {
-    id: 'bright',
-    title: 'Bright',
-    url: 'https://tiles.openfreemap.org/styles/bright',
+    id: 'hybrid',
+    title: 'Hybrid',
+    url: `${UGRC_BASE_URL}/tiles/hybrid_basemap/{z}/{x}/{y}`,
     type: 'long',
   },
   {
-    id: 'ugrc-terrain',
-    title: 'UGRC Terrain',
-    url: 'https://gis.utah.gov/discover/resources/styles/terrain.json',
+    id: 'sentinel',
+    title: 'Sentinel-2',
+    url: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg',
     type: 'long',
   },
   {
-    id: 'ugrc-lite',
-    title: 'UGRC Lite',
-    url: 'https://gis.utah.gov/discover/resources/styles/lite.json',
+    id: 'liberty',
+    title: 'OpenFreeMap',
+    url: 'https://tiles.openfreemap.org/styles/liberty',
     type: 'long',
   },
   {
-    id: 'ugrc-overlay',
-    title: 'UGRC Overlay',
-    url: 'https://gis.utah.gov/discover/resources/styles/overlay.json',
-    type: 'long',
-  },
-  {
-    id: 'ugrc-topo',
-    title: 'UGRC Topo',
-    url: 'https://gis.utah.gov/discover/resources/styles/topo.json',
-    type: 'long',
-  },
-  {
-    id: 'ugrc-color-ir',
-    title: 'UGRC Color IR',
-    url: 'https://gis.utah.gov/discover/resources/styles/color-ir.json',
+    id: 'none',
+    title: 'None',
+    url: '',
     type: 'long',
   },
 ];
 
 // Default basemap
-export const DEFAULT_BASEMAP = BASEMAP_STYLES[0]; // outdoor
+export const DEFAULT_BASEMAP = BASEMAP_STYLES[0];

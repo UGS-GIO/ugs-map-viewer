@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useMemo } from 'react';
+import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import { useMapCoordinates } from "@/hooks/use-map-coordinates";
 import { useMapInteractions } from "@/hooks/use-map-interactions";
 import { LayerOrderConfig, useGetLayerConfigsData } from "@/hooks/use-get-layer-configs";
@@ -55,6 +55,26 @@ export function useMapContainer({
     // Create coordinate adapter for MapLibre
     const coordinateAdapter: CoordinateAdapter = useMemo(() => {
         return createCoordinateAdapter();
+    }, []);
+
+    // Track previous visibility state to prevent unnecessary syncs
+    const prevVisibilityRef = useRef<string>('');
+
+    // Helper to extract visibility map from layers
+    const getVisibilityKey = useCallback((layers: LayerProps[]): string => {
+        const visibilityMap: Record<string, boolean> = {};
+        const extractVisibility = (layerList: LayerProps[]) => {
+            for (const layer of layerList) {
+                if (layer.title) {
+                    visibilityMap[layer.title] = layer.visible ?? true;
+                }
+                if (layer.type === 'group' && 'layers' in layer && layer.layers) {
+                    extractVisibility(layer.layers);
+                }
+            }
+        };
+        extractVisibility(layers);
+        return JSON.stringify(visibilityMap);
     }, []);
 
     // Extract URL synchronization
@@ -224,6 +244,14 @@ export function useMapContainer({
     // Initialize the map when the container is ready
     useEffect(() => {
         if (mapRef.current && loadMap && layersConfig) {
+            // Check if visibility actually changed before calling loadMap
+            const currentVisibility = getVisibilityKey(processedLayers);
+            if (map && currentVisibility === prevVisibilityRef.current) {
+                // Map exists and visibility hasn't changed - skip
+                return;
+            }
+            prevVisibilityRef.current = currentVisibility;
+
             loadMap({
                 container: mapRef.current,
                 zoom,
@@ -231,7 +259,7 @@ export function useMapContainer({
                 layers: processedLayers,
             });
         }
-    }, [loadMap, zoom, center, layersConfig, processedLayers]);
+    }, [loadMap, zoom, center, layersConfig, processedLayers, map, getVisibilityKey]);
 
     // Handler for when the popup/drawer is closed
     const handleDrawerClose = () => {

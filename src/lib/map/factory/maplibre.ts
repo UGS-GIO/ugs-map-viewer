@@ -33,6 +33,8 @@ interface RasterSourceWithMetadata extends RasterSourceSpecification {
  * Handles map initialization using MapLibre GL JS
  */
 export class MapLibreMapFactory implements MapFactory {
+  private _lastDOMExceptionLog?: number;
+
   async init(
     container: HTMLDivElement,
     _isMobile: boolean,
@@ -40,10 +42,71 @@ export class MapLibreMapFactory implements MapFactory {
     layers: LayerProps[],
     _initialView?: 'map' | 'scene'
   ): Promise<MapInitResult> {
+    console.log('[Factory] init called, container connected:', container.isConnected);
+
     // Set up PMTiles protocol before creating map
     setupPMTilesProtocol();
 
     const map = this.createMap(container, options);
+    console.log('[Factory] Map created');
+
+    // Add error handling for tile loading failures and source errors
+    map.on('error', (e) => {
+      // Log but don't crash on tile loading errors
+      const error = e.error;
+      const message = error?.message || '';
+      const errorName = error?.name || '';
+
+      // DOMException with "not, or is no longer, usable" is typically from:
+      // - ImageBitmap that's been closed
+      // - ArrayBuffer that's been detached
+      // - Worker that's been terminated
+      // This happens during tile decoding - log but don't spam console
+      if (errorName === 'DOMException' && message.includes('no longer')) {
+        // Only log once per second to avoid console spam
+        const now = Date.now();
+        if (!this._lastDOMExceptionLog || now - this._lastDOMExceptionLog > 1000) {
+          this._lastDOMExceptionLog = now;
+          console.warn('[MapLibre] Tile decode error (ImageBitmap closed) - this may indicate a MapLibre/browser compatibility issue');
+        }
+        return;
+      }
+
+      // Categorize other errors for debugging
+      if (message.includes('tile') || message.includes('Tile')) {
+        console.warn('[MapLibre] Tile loading error (non-fatal):', message);
+      } else if (message.includes('source') || message.includes('Source')) {
+        console.warn('[MapLibre] Source error (non-fatal):', message);
+      } else if (message.includes('style') || message.includes('Style')) {
+        console.error('[MapLibre] Style error:', message);
+      } else {
+        console.error('[MapLibre] Map error:', error);
+      }
+    });
+
+    // Handle source-specific data loading events
+    map.on('sourcedata', (e) => {
+      if (e.sourceId && e.isSourceLoaded === false && e.dataType === 'source') {
+        // Source is loading - this is normal
+      }
+    });
+
+    map.on('sourcedataabort', (e) => {
+      console.warn('[MapLibre] Source data loading aborted:', e.sourceId);
+    });
+
+    // Handle WebGL context lost - this is the likely cause of DOMExceptions
+    const canvas = map.getCanvas();
+    canvas.addEventListener('webglcontextlost', (event) => {
+      console.error('[MapLibre] WebGL context lost - map will become unresponsive');
+      event.preventDefault(); // Allows context to be restored
+    });
+
+    canvas.addEventListener('webglcontextrestored', () => {
+      console.log('[MapLibre] WebGL context restored');
+      // Trigger a repaint to recover
+      map.triggerRepaint();
+    });
 
     // Wait for style to load before adding layers
     if (!map.isStyleLoaded()) {
@@ -51,8 +114,10 @@ export class MapLibreMapFactory implements MapFactory {
         map.on('style.load', () => resolve());
       });
     }
+    console.log('[Factory] Style loaded');
 
     await this.addLayersToMap(map, layers);
+    console.log('[Factory] Layers added');
 
     return { map };
   }
@@ -196,9 +261,47 @@ export class MapLibreMapFactory implements MapFactory {
     container: HTMLDivElement,
     options: MapInitOptions
   ): maplibregl.Map {
+    // Determine if basemap URL is a raster tile pattern or vector style JSON
+    const basemapUrl = DEFAULT_BASEMAP.url;
+    const isRasterTiles = basemapUrl.includes('{z}') && basemapUrl.includes('{x}') && basemapUrl.includes('{y}');
+
+    let style: maplibregl.StyleSpecification | string;
+
+    if (!basemapUrl) {
+      // No basemap - empty style
+      style = {
+        version: 8,
+        sources: {},
+        layers: [],
+      };
+    } else if (isRasterTiles) {
+      // Raster tile URL pattern - create a raster style
+      style = {
+        version: 8,
+        sources: {
+          'basemap': {
+            type: 'raster',
+            tiles: [basemapUrl],
+            tileSize: 256,
+            attribution: '© <a href="https://gis.utah.gov">UGRC</a>',
+          },
+        },
+        layers: [
+          {
+            id: 'basemap',
+            type: 'raster',
+            source: 'basemap',
+          },
+        ],
+      };
+    } else {
+      // Vector style JSON URL
+      style = basemapUrl;
+    }
+
     return new maplibregl.Map({
       container,
-      style: DEFAULT_BASEMAP.url,
+      style,
       center: [options.center[0], options.center[1]],
       zoom: options.zoom,
     });
@@ -555,12 +658,14 @@ export class MapLibreMapFactory implements MapFactory {
         if (styleConfig.circleRadiusProperty) {
           const { field, stops } = styleConfig.circleRadiusProperty;
           const [minVal, minRadius, maxVal, maxRadius] = stops;
+          // Use coalesce to provide a fallback value for null/missing properties
+          // This ensures the interpolate expression always receives a valid number
           circleRadius = [
             'min', maxRadius,
             ['max', minRadius,
               ['interpolate',
                 ['linear'],
-                ['coalesce', ['get', field], minVal],
+                ['coalesce', ['get', field], minVal], // fallback to minVal if null
                 minVal, minRadius,
                 maxVal, maxRadius
               ]
@@ -572,16 +677,14 @@ export class MapLibreMapFactory implements MapFactory {
         let circleColor: string | maplibregl.ExpressionSpecification = styleConfig.circleColor || '#088';
         if (styleConfig.circleColorProperty) {
           const { field, stops, defaultColor } = styleConfig.circleColorProperty;
-          // Build step expression: ['step', input, defaultOutput, stop1, output1, stop2, output2, ...]
-          const stepArgs: unknown[] = [
-            'step',
-            ['coalesce', ['get', field], 0],
-            defaultColor
+          // Use coalesce to provide a fallback value for null/missing properties
+          // This ensures the step expression always receives a valid number
+          // Using -Infinity as fallback ensures defaultColor is used (before first stop)
+          circleColor = ['step',
+            ['coalesce', ['get', field], -Infinity],
+            defaultColor,
+            ...stops.flat()
           ];
-          for (const [threshold, color] of stops) {
-            stepArgs.push(threshold, color);
-          }
-          circleColor = stepArgs as maplibregl.ExpressionSpecification;
         }
 
         map.addLayer({

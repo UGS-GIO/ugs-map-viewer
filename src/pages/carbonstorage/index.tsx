@@ -49,7 +49,7 @@ export default function Map() {
         <Layout>
           {/* ===== Top Heading ===== */}
           <Layout.Header className='flex items-center justify-between px-4 md:px-6'>
-            <TopNav className="hidden md:block md:w-auto" />
+            <TopNav />
             <div className='flex items-center flex-1 min-w-0 md:flex-initial md:w-1/3 md:ml-auto space-x-2'>
               <div className="flex-1 min-w-0">
                 <SearchCombobox

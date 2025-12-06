@@ -1,6 +1,6 @@
 import '@/index.css'
 import 'maplibre-gl/dist/maplibre-gl.css'
-import React from 'react'
+import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from '@/context/theme-provider'
@@ -51,12 +51,12 @@ declare module '@tanstack/react-router' {
 const queryClient = new QueryClient()
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
+  <StrictMode>
     <ThemeProvider defaultTheme='dark' storageKey='vite-ui-theme'>
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
         <Toaster />
       </QueryClientProvider>
     </ThemeProvider>
-  </React.StrictMode>
+  </StrictMode>
 )

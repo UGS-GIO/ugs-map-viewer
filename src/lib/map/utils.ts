@@ -139,7 +139,6 @@ export const zoomToFeature = (
     }
 
     if (!bbox) {
-        console.warn('[zoomToFeature] Could not determine bbox for feature');
         return;
     }
 

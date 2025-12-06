@@ -103,9 +103,17 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         }
 
         if (needsUpdate) {
+            // Dedupe arrays to handle StrictMode double-mount
+            const dedupeArray = (arr: string[] | undefined) => arr ? [...new Set(arr)] : undefined;
+            const dedupedLayers = {
+                ...finalLayers,
+                selected: dedupeArray(finalLayers.selected),
+                hidden: dedupeArray(finalLayers.hidden),
+            };
+
             navigate({
                 to: '.',
-                search: (prev) => ({ ...prev, layers: finalLayers, filters: finalFilters }),
+                search: (prev) => ({ ...prev, layers: dedupedLayers, filters: finalFilters }),
                 replace: true
             });
         }
@@ -144,8 +152,17 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         return map;
     }, [layersConfig]);
 
-    const selectedLayerTitles = useMemo(() => new Set<string>(normalizedLayers?.selected || []), [normalizedLayers]);
-    const hiddenGroupTitles = useMemo(() => new Set<string>(normalizedLayers?.hidden || []), [normalizedLayers]);
+    // Memoize based on array contents, not object reference
+    const selectedLayerTitles = useMemo(
+        () => new Set<string>(normalizedLayers?.selected || []),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [JSON.stringify(normalizedLayers?.selected)]
+    );
+    const hiddenGroupTitles = useMemo(
+        () => new Set<string>(normalizedLayers?.hidden || []),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [JSON.stringify(normalizedLayers?.hidden)]
+    );
     const activeFilters: ActiveFilters = useMemo(() => urlFilters || {}, [urlFilters]);
 
     // This function now turns on the parent group when a child is selected

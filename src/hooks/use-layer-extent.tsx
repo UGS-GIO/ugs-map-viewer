@@ -59,18 +59,33 @@ const parseCapabilitiesExtent = (xml: string, targetLayerName: string): Bounding
         if (!targetLayer) return null;
 
         // Try WMS 1.3.0 BoundingBox
+        // IMPORTANT: Prefer CRS:84 over EPSG:4326 because WMS 1.3.0 uses lat/lon axis order
+        // for EPSG:4326, while CRS:84 always uses lon/lat order
         if (targetLayer.BoundingBox) {
-            const bbox = Array.isArray(targetLayer.BoundingBox)
-                ? targetLayer.BoundingBox.find((box: any) =>
-                    box['@_CRS'] === 'EPSG:4326' || box['@_CRS'] === 'CRS:84')
-                : targetLayer.BoundingBox;
+            const boxes = Array.isArray(targetLayer.BoundingBox)
+                ? targetLayer.BoundingBox
+                : [targetLayer.BoundingBox];
 
-            if (bbox) {
+            // First try CRS:84 (always lon/lat order)
+            const crs84Box = boxes.find((box: WMSBoundingBox) => box['@_CRS'] === 'CRS:84');
+            if (crs84Box) {
                 return [
-                    parseFloat(bbox['@_minx']),
-                    parseFloat(bbox['@_miny']),
-                    parseFloat(bbox['@_maxx']),
-                    parseFloat(bbox['@_maxy'])
+                    parseFloat(crs84Box['@_minx']),
+                    parseFloat(crs84Box['@_miny']),
+                    parseFloat(crs84Box['@_maxx']),
+                    parseFloat(crs84Box['@_maxy'])
+                ];
+            }
+
+            // Fall back to EPSG:4326 but swap axes (WMS 1.3.0 uses lat/lon for 4326)
+            const epsg4326Box = boxes.find((box: WMSBoundingBox) => box['@_CRS'] === 'EPSG:4326');
+            if (epsg4326Box) {
+                // minx/maxx are lat, miny/maxy are lon in WMS 1.3.0 EPSG:4326
+                return [
+                    parseFloat(epsg4326Box['@_miny']), // lon
+                    parseFloat(epsg4326Box['@_minx']), // lat
+                    parseFloat(epsg4326Box['@_maxy']), // lon
+                    parseFloat(epsg4326Box['@_maxx'])  // lat
                 ];
             }
         }
