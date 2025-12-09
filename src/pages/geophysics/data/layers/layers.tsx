@@ -403,6 +403,37 @@ const heatflowLayerConfig: WMSLayerProps = {
     ],
 };
 
+// gravity stations
+const gravityStationsLayeName = 'enmin_geophysics_ugsobsgrav_current';
+const gravityStationsLayeTitle = 'Gravity Stations';
+const gravityStationsLayerConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: gravityStationsLayeTitle,
+    visible: true,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${gravityStationsLayeName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'OGC Id': { field: 'ogc_fid', type: 'string' },
+                'Location (WGS84)': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const depthStart = props?.['latitude_wgs84'];
+                        const depthEnd = props?.['longitude_wgs84'];
+                        return `${depthStart} , ${depthEnd}`;
+                    }
+                },
+                'Date': { field: 'date', type: 'string' },
+                'Observed Measurement': { field: 'observed', type: 'string' },
+            },
+        },
+    ],
+};
+
 
 // ingqFaults WMS Layer
 const ingqFaultsLayerName = 'mart_geothermal_qfaults_ingenious_current';
@@ -477,6 +508,7 @@ const geophysicalDataConfig: LayerProps = {
     title: 'Geophysical Data',
     visible: true,
     layers: [
+        gravityStationsLayerConfig
     ]
 }
 
