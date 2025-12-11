@@ -278,15 +278,17 @@ function ReportGenerator() {
                     <DialogHeader>
                         <DialogTitle>Area too large</DialogTitle>
                     </DialogHeader>
-                    <DialogDescription>
-                        The map area is too large. Please draw a smaller custom area or zoom in.
-                        <div className="flex flex-row space-x-2 mt-4 justify-end">
-                            <Button onClick={handleResetDrawing} variant="default">
-                                Create a new area
-                            </Button>
-                            <Button onClick={handleReset} variant="secondary">
-                                Close
-                            </Button>
+                    <DialogDescription asChild>
+                        <div>
+                            <p>The map area is too large. Please draw a smaller custom area or zoom in.</p>
+                            <div className="flex flex-row space-x-2 mt-4 justify-end">
+                                <Button onClick={handleResetDrawing} variant="default">
+                                    Create a new area
+                                </Button>
+                                <Button onClick={handleReset} variant="secondary">
+                                    Close
+                                </Button>
+                            </div>
                         </div>
                     </DialogDescription>
                     <DialogClose />
