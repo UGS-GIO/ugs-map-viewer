@@ -5,7 +5,6 @@ import { Sheet, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 import { LayerContentProps, PopupContentWithPagination } from "@/components/custom/popups/popup-content-with-pagination";
-import useScreenSize from "@/hooks/use-screen-size";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { clearGraphics } from "@/lib/map/highlight-utils";
 import { useMap } from "@/hooks/use-map";
@@ -35,7 +34,6 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
     const sheetContentRef = useRef<HTMLDivElement>(null);
     const [activeLayerTitle, setActiveLayerTitle] = useState<string>("");
     const [open, setOpen] = useState(false);
-    const screenSize = useScreenSize();
     const isMobile = useIsMobile();
     const { map } = useMap();
 
@@ -170,8 +168,8 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
                 </SheetDescription>
 
                 <div className="grid grid-rows-[auto_1fr] h-full overflow-hidden bg-gradient-to-b from-transparent to-background/20">
-                    {screenSize.height > 1080 && layerTitles.length > 1 && (
-                        <header className="border-b border-border/50 overflow-hidden h-12 px-3 bg-background/30 backdrop-blur-sm">
+                    {layerTitles.length > 1 && (
+                        <header className="tall:flex hidden border-b border-border/50 overflow-hidden h-12 px-3 bg-background/30 backdrop-blur-sm">
                             <Carousel className="w-full h-full relative px-2">
                                 <CarouselContent className="-ml-2 px-4" ref={carouselRef}>
                                     {Object.entries(groupedLayers).map(([groupTitle, layerTitles], groupIdx) => (
