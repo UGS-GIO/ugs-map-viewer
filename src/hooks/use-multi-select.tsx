@@ -1,8 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import type { MapLibreMap } from '@/lib/types/map-types';
 import { useMultiSelect } from '@/context/multi-select-context';
-
-// Type imports don't add to bundle
 import type { TerraDraw } from 'terra-draw';
 
 interface DrawGeometry {
