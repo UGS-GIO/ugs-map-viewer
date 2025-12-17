@@ -9,7 +9,7 @@ import { useSidebar } from '@/hooks/use-sidebar'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PROD_POSTGREST_URL } from '@/lib/constants'
 import { wellWithTopsLayerName, wellWithTopsWMSTitle } from '@/pages/carbonstorage/data/layers/layers'
-import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, handleSuggestionSelect } from '@/components/sidebar/filter/search-combobox'
+import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox'
 import { SIDEBAR_MARGINS } from '@/lib/sidebar-constants'
 
 export default function Map() {
@@ -56,7 +56,6 @@ export default function Map() {
                   config={searchConfig}
                   onFeatureSelect={handleSearchSelect}
                   onCollectionSelect={handleCollectionSelect}
-                  onSuggestionSelect={handleSuggestionSelect}
                   className="w-full"
                 />
               </div>

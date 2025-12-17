@@ -2,6 +2,7 @@ import { Feature, Geometry, GeoJsonProperties } from 'geojson';
 import { createHighlightProvider } from './highlight/factory';
 import type { HighlightOptions } from './highlight/types';
 import type { MapLibreMap } from '@/lib/types/map-types';
+import { MapLibreHighlight } from './highlight/maplibre';
 
 export type { HighlightOptions };
 
@@ -17,6 +18,20 @@ export const highlightFeature = async (
 ): Promise<boolean> => {
   const provider = createHighlightProvider(map);
   return await provider.highlightFeature(feature, sourceCRS, title, options);
+};
+
+/**
+ * Highlight multiple features efficiently (single source/layer instead of many)
+ */
+export const highlightFeatureCollection = (
+  features: Feature<Geometry, GeoJsonProperties>[],
+  map: MapLibreMap,
+  sourceCRS: string,
+  title: string,
+  options?: HighlightOptions
+): boolean => {
+  const provider = createHighlightProvider(map) as MapLibreHighlight;
+  return provider.highlightFeatureCollection(features, sourceCRS, title, options);
 };
 
 /**

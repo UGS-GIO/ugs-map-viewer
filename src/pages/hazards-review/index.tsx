@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import MapContainer from './components/map-container';
 import Sidebar from '@/components/sidebar';
 import { useSidebar } from '@/hooks/use-sidebar';
-import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, handleSuggestionSelect } from '@/components/sidebar/filter/search-combobox';
+import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox';
 import { PROD_POSTGREST_URL } from '@/lib/constants';
 import { qFaultsWMSTitle } from './data/layers/layers';
 import { signOut } from '@/lib/auth';
@@ -152,7 +152,6 @@ export default function Map() {
                   config={searchConfig}
                   onFeatureSelect={handleSearchSelect}
                   onCollectionSelect={handleCollectionSelect}
-                  onSuggestionSelect={handleSuggestionSelect}
                   className="w-full"
                 />
               </div>

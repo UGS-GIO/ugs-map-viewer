@@ -16,10 +16,10 @@ module.exports = {
     			'2xl': '1400px'
     		}
     	},
-    	screens: {
-    		tall: { raw: '(min-height: 1080px)' }
-    	},
     	extend: {
+    		screens: {
+    			tall: { raw: '(min-height: 1080px)' }
+    		},
     		zIndex: {
     			tooltip: 'var(--calcite-tooltip-z-index, 9999)'
     		},

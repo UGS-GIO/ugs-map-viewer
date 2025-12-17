@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import MapContainer from './components/map-container';
 import Sidebar from '@/components/sidebar';
 import { useSidebar } from '@/hooks/use-sidebar';
-import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, handleSuggestionSelect } from '@/components/sidebar/filter/search-combobox';
+import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox';
 import { PROD_POSTGREST_URL } from '@/lib/constants';
 import { qFaultsWMSTitle } from '@/pages/hazards/data/layers/layers';
 import { SIDEBAR_MARGINS } from '@/lib/sidebar-constants';
@@ -24,10 +24,10 @@ export default function Map() {
       searchTerm: "search_term",
       sourceName: 'Faults',
       crs: 'EPSG:4326',
-      displayField: "concatnames", // Field in PostgREST result features
+      displayField: "concatnames",
+      params: { select: 'concatnames' }, // Exclude geometry from search for fast response
       headers: {
         'Accept-Profile': 'hazards',
-        'Accept': 'application/geo+json',
       }
     },
   ];
@@ -48,7 +48,6 @@ export default function Map() {
                   config={searchConfig}
                   onFeatureSelect={handleSearchSelect}
                   onCollectionSelect={handleCollectionSelect}
-                  onSuggestionSelect={handleSuggestionSelect}
                   className="w-full"
                 />
               </div>
