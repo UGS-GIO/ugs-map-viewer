@@ -78,21 +78,21 @@
   /* Print header - the one that shows on first page */
   .hidden.print\:block {
     margin-bottom: 1rem !important;
-    
+
     h1 {
       font-size: 14pt !important;
     }
-    
+
     p {
       font-size: 10pt !important;
     }
   }
-  
+
   /* Target the border bottom div specifically */
   .hidden.print\:block .border-b-2 {
     padding-bottom: 0.5rem !important;
   }
-  
+
   /* Logo in print header */
   .print-logo-header {
     height: 80px !important;

@@ -1,4 +1,4 @@
-import { LayerFetchConfig, getLayerFetchConfig } from "@/lib/constants";
+import { LayerFetchConfig, getLayerFetchConfig, PROD_POSTGREST_URL } from "@/lib/constants";
 import { useQuery } from "@tanstack/react-query";
 import type { PostgRESTRowOf } from '@/lib/types/postgrest-types';
 import { useGetCurrentPage } from "@/hooks/use-get-current-page";
@@ -25,7 +25,7 @@ const fetchLayerDescriptions = async (configs: LayerFetchConfig[] | null) => {
     const allResults = await Promise.all(
         configs.map(async ({ tableName, acceptProfile }) => {
             const outfields = 'content,title';
-            const url = `https://postgrest-seamlessgeolmap-734948684426.us-central1.run.app/${tableName}?select=${outfields}`;
+            const url = `${PROD_POSTGREST_URL}/${tableName}?select=${outfields}`;
 
             const response = await fetch(url, {
                 headers: {

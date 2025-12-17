@@ -23,7 +23,7 @@ import { ReportCover } from '@/routes/_report/-components/content/report-cover'
 import { ReportSummary } from '@/routes/_report/-components/content/report-summary'
 import { ReportGroupSection } from '@/routes/_report/-components/content/report-group-section'
 import { ReportResources } from '@/routes/_report/-components/content/report-resources'
-import '@/routes/_report/-components/shared/print-styles.scss'
+import '@/routes/_report/-components/shared/print-styles.css'
 import heroImage from '@/assets/geologic-hazards-banner-alstrom-point-1920px.webp'
 import { Banner, BannerIcon, BannerTitle } from '@/components/ui/banner'
 import { toast } from "sonner"

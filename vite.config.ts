@@ -21,6 +21,17 @@ export default defineConfig({
   },
   build: {
     target: 'es2022',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'maplibre': ['maplibre-gl'],
+          'turf': ['@turf/helpers', '@turf/bbox', '@turf/boolean-point-in-polygon', '@turf/center'],
+          'terra-draw': ['terra-draw', 'terra-draw-maplibre-gl-adapter'],
+          'react-vendor': ['react', 'react-dom'],
+          'tanstack': ['@tanstack/react-query', '@tanstack/react-router'],
+        },
+      },
+    },
   },
   optimizeDeps: {
     esbuildOptions: {
