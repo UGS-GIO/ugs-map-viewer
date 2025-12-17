@@ -403,6 +403,7 @@ const heatflowLayerConfig: WMSLayerProps = {
     ],
 };
 
+
 // gravity stations
 const gravityStationsLayeName = 'enmin_geophysics_ugsobsgrav_current';
 const gravityStationsLayeTitle = 'Gravity Stations';
@@ -434,6 +435,134 @@ const gravityStationsLayerConfig: WMSLayerProps = {
     ],
 };
 
+// geothermal uses
+const geothermalUseLayeName = 'geothermal_utgeothermaluses_current';
+const geothermalUseLayeTitle = 'Utah Geothermal Uses';
+const geothermalUseLayerConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: geothermalUseLayeTitle,
+    visible: true,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalUseLayeName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Name': { field: 'name', type: 'string' },
+                'Temperature': { field: 'temp_c', type: 'string' },
+                'Use': { field: 'use', type: 'string' },
+                'Location': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const depthStart = props?.['locality'];
+                        const depthEnd = props?.['county'];
+                        return `${depthStart}, ${depthEnd}`;
+                    }
+                },
+            },
+        },
+    ],
+};
+
+// deep sedimentary basins
+const deepSedimentaryBasinsLayerName = 'geothermal_deepsedbasin_current';
+const deepSedimentaryBasinsLayerTitle = 'Deep Sedimentary Basins';
+const deepSedimentaryBasinsLayerConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: deepSedimentaryBasinsLayerTitle,
+    visible: true,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${deepSedimentaryBasinsLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Basin Name': { field: 'basin_name', type: 'string' },
+            },
+        },
+    ],
+};
+
+// deep sedimentary basins
+const potentialResourcesLayerName = 'geothermal_potentialresourcearea_current';
+const potentialResourcesLayerTitle = 'Potential Resource Areas';
+const potentialResourcesLayerConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: potentialResourcesLayerTitle,
+    visible: true,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${potentialResourcesLayerName}`,
+            popupEnabled: false,
+            queryable: false,
+            popupFields: {
+                'Name': { field: 'name', type: 'string' },
+            },
+        },
+    ],
+};
+
+// Known Geothermal Resource Areas (KGRA)
+const geothermalKgraLayerName = 'geothermal_kgra_current';
+const geothermalKgraLayerTitle = 'Known Geothermal Resource Areas (KGRA)';
+const geothermalKgraLayerConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: geothermalKgraLayerTitle,
+    visible: true,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalKgraLayerName}`,
+            popupEnabled: false,
+            queryable: false,
+            popupFields: {
+                'Name': { field: 'name', type: 'string' },
+            },
+        },
+    ],
+};
+
+// Known Geothermal Resource Areas (KGRA)
+const nonPetrolWellLayerName = 'nwpd_nonpetroleumwellcatalogwells';
+const nonPetrolWellLayerTitle = 'Non-Petroleum Well Data';
+const nonPetrolWellLayerConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: nonPetrolWellLayerTitle,
+    visible: true,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${nonPetrolWellLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Name': { field: 'well_name', type: 'string' },
+                'API/UWI': { field: 'uwi', type: 'string' },
+                'Operator': { field: 'operator', type: 'string' },
+                'County': { field: 'county', type: 'string' },
+                'Location': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const a = props?.['town_num'];
+                        const b = props?.['town_dir'];
+                        const c = props?.['range_num'];
+                        const d = props?.['range_dir'];
+                        const e = props?.['sect'];
+                        return `${a} ${b} ${c} ${d} Section ${e}`;
+                    }
+                },
+                'Field/Area': { field: 'field_area', type: 'string' },
+                'Purpose': { field: 'purpose', type: 'string' },
+                'Depth:': { field: 'depth', type: 'string' },
+            },
+        },
+    ],
+};
 
 // ingqFaults WMS Layer
 const ingqFaultsLayerName = 'mart_geothermal_qfaults_ingenious_current';
@@ -508,7 +637,12 @@ const geophysicalDataConfig: LayerProps = {
     title: 'Geophysical Data',
     visible: true,
     layers: [
-        gravityStationsLayerConfig
+        gravityStationsLayerConfig,
+        geothermalUseLayerConfig,
+        potentialResourcesLayerConfig,
+        deepSedimentaryBasinsLayerConfig,
+        geothermalKgraLayerConfig,
+        nonPetrolWellLayerConfig
     ]
 }
 
