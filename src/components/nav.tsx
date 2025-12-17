@@ -6,13 +6,12 @@ import {
   CollapsibleTrigger,
 } from './ui/collapsible'
 
-// todo add tooltip functionality back
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger
-} from './ui/tooltip'
+} from './custom/tooltip'
 import { cn } from '@/lib/utils'
 import useCheckActiveNav from '@/hooks/use-check-active-nav'
 import { Suspense } from 'react'
@@ -344,7 +343,7 @@ export function NavLinkIcon({
           <TooltipTrigger asChild>
             {link.icon}
           </TooltipTrigger>
-          <TooltipContent side='right' className="z-50 bg-secondary text-base text-secondary-foreground">
+          <TooltipContent side='right'>
             <p>{link.title}</p>
           </TooltipContent>
         </Tooltip>
@@ -367,7 +366,7 @@ export function NavLinkIcon({
           <TooltipTrigger asChild>
             {link.icon}
           </TooltipTrigger>
-          <TooltipContent side='right' className="z-50 bg-secondary text-base text-secondary-foreground">
+          <TooltipContent side='right'>
             <p>{link.title}</p>
           </TooltipContent>
         </Tooltip>
