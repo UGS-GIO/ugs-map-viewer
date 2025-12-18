@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionHeader } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
@@ -22,11 +22,18 @@ const isWFSLayerConfig = (layer: LayerProps): layer is WFSLayerProps => {
     return layer.type === 'wfs';
 };
 
+// Helper to get all child layer titles from a group
+const getChildLayerTitles = (layer: LayerProps): string[] => {
+    if ('layers' in layer && layer.type === 'group') {
+        return (layer.layers || []).flatMap(child => getChildLayerTitles(child));
+    }
+    return layer.title ? [layer.title] : [];
+};
+
 const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerProps; isTopLevel: boolean }) => {
     const {
         isSelected,
         handleToggleSelection,
-        isGroupVisible,
         groupCheckboxState,
         handleSelectAllToggle,
     } = useLayerItemState(layerConfig);
@@ -44,6 +51,23 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
         // If it's not a group, it's a single layer. ALWAYS start collapsed.
         return false;
     });
+
+    // Track group visibility separately from selection
+    const [isGroupLayerVisible, setIsGroupLayerVisible] = useState(true);
+
+    // Toggle visibility for all child layers in a group without affecting selection
+    const handleGroupVisibilityToggle = useCallback((visible: boolean) => {
+        if (!map || layerConfig.type !== 'group') return;
+
+        const childTitles = getChildLayerTitles(layerConfig);
+        childTitles.forEach(title => {
+            const layer = findLayerByTitle(map, title);
+            if (layer) {
+                layer.visible = visible;
+            }
+        });
+        setIsGroupLayerVisible(visible);
+    }, [map, layerConfig]);
 
     const liveLayer = useMemo(() => {
         if (!map || !layerConfig.title) return null;
@@ -155,8 +179,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
                     <AccordionItem value="item-1">
                         <AccordionHeader>
                             <Switch
-                                checked={isGroupVisible}
-                                onCheckedChange={handleSelectAllToggle}
+                                checked={isGroupLayerVisible}
+                                onCheckedChange={handleGroupVisibilityToggle}
                                 className="mx-2"
                             />
                             <AccordionTrigger>
