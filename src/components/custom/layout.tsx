@@ -88,7 +88,7 @@ const Body = React.forwardRef<
       ref={ref}
       data-layout="body"
       className={cn(
-        'flex-1 h-screen overflow-hidden', // Ensure Body fills available space and controls overflow
+        'flex-1 min-h-0 overflow-hidden relative', // flex-1 fills remaining space, min-h-0 allows shrinking, relative for absolute children
         className
       )}
       {...props}

@@ -287,6 +287,17 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange }: Side
         // Clear ALL previous graphics from all layers when zooming to a feature
         try {
             clearGraphics(map)  // Clear all graphics, not just this layer
+
+            // Also clear query bbox visualization
+            const QUERY_BBOX_LAYER_ID = 'query-bbox-debug-layer';
+            const QUERY_BBOX_SOURCE_ID = 'query-bbox-debug';
+            if (map.getLayer(QUERY_BBOX_LAYER_ID)) {
+                map.removeLayer(QUERY_BBOX_LAYER_ID);
+            }
+            if (map.getSource(QUERY_BBOX_SOURCE_ID)) {
+                map.removeSource(QUERY_BBOX_SOURCE_ID);
+            }
+
             await highlightFeature(feature, map, sourceCRS, title)
         } catch (error) {
             console.error('[PopupContent] Error highlighting feature:', error);
@@ -306,7 +317,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange }: Side
     if (layerContent.length === 0) return null;
 
     return (
-        <div className="flex flex-1 flex-col gap-4 overflow-y-auto select-text h-full scrollable-container">
+        <div className="flex flex-col gap-4 select-text">
             {layerContent.map((layer) => (
                 <LayerCard
                     key={`${contentKey}-${layer.groupLayerTitle}-${layer.layerTitle}`}
@@ -315,8 +326,6 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange }: Side
                     handleZoomToFeature={handleZoomToFeature}
                 />
             ))}
-            {/* Extra whitespace at end of content */}
-            <div className="h-8 flex-shrink-0" />
         </div>
     )
 }

@@ -34,6 +34,8 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
     const sheetContentRef = useRef<HTMLDivElement>(null);
     const [activeLayerTitle, setActiveLayerTitle] = useState<string>("");
     const [open, setOpen] = useState(false);
+    const [showCloseButton, setShowCloseButton] = useState(true);
+    const lastScrollTop = useRef(0);
     const isMobile = useIsMobile();
     const { map } = useMap();
 
@@ -116,6 +118,16 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
         setOpen(false);
     }, [handleClose]);
 
+    // Scroll handler for smart reveal close button
+    const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+        const scrollTop = e.currentTarget.scrollTop;
+        const isScrollingUp = scrollTop < lastScrollTop.current;
+        const isAtTop = scrollTop < 10;
+
+        // Show button when scrolling up or at top
+        setShowCloseButton(isScrollingUp || isAtTop);
+        lastScrollTop.current = scrollTop;
+    }, []);
 
     return (
         <Sheet
@@ -144,13 +156,13 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
             <div
                 ref={sheetContentRef}
                 className={cn(
-                    "absolute inset-y-0 right-0 z-10 overflow-hidden p-0",
+                    "absolute right-0 z-10 overflow-hidden p-0 flex flex-col",
                     "bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80",
                     "dark:bg-background/80",
-                    // Mobile: full height, no border, full screen takeover
-                    isMobile ? "h-full border-0 rounded-none inset-0" :
-                    // Desktop: inset panel with border and glass effect
-                    "w-full sm:max-w-md md:max-w-lg lg:max-w-xl border-l border-border dark:border-border",
+                    // Mobile: full screen takeover
+                    isMobile ? "inset-0 border-0 rounded-none" :
+                    // Desktop: positioned with border
+                    "top-0 bottom-0 w-full sm:max-w-md md:max-w-lg lg:max-w-xl border-l border-border dark:border-border",
                     // Slide animation
                     "transition-transform duration-300 ease-in-out",
                     open ? "translate-x-0" : "translate-x-full",
@@ -159,15 +171,24 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
                 )}
                 onClick={(e) => e.stopPropagation()}
             >
-                <SheetHeader className="flex justify-between items-center py-2 px-3 relative border-b border-border/30 bg-background/30 backdrop-blur-sm">
-                    <SheetTitle className="flex-1 pr-10">{popupTitle}</SheetTitle>
+                <SheetHeader className="flex flex-row justify-between items-center py-2 px-3 relative border-b border-border/30 bg-background/30 backdrop-blur-sm">
+                    <SheetTitle className="flex-1">{popupTitle}</SheetTitle>
+                    <Button
+                        onClick={handleCloseClick}
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        aria-label="Close"
+                    >
+                        <XIcon className="h-4 w-4" />
+                    </Button>
                 </SheetHeader>
 
                 <SheetDescription className="sr-only">
                     Popup content for {popupTitle}
                 </SheetDescription>
 
-                <div className="grid grid-rows-[auto_1fr] h-full overflow-hidden bg-gradient-to-b from-transparent to-background/20">
+                <div className="grid grid-rows-[auto_1fr] flex-1 min-h-0 overflow-hidden bg-gradient-to-b from-transparent to-background/20">
                     {layerTitles.length > 1 && (
                         <header className="tall:flex hidden border-b border-border/50 overflow-hidden h-12 px-3 bg-background/30 backdrop-blur-sm">
                             <Carousel className="w-full h-full relative px-2">
@@ -224,10 +245,11 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
                         </header>
                     )}
 
-                    <div className="flex overflow-hidden pt-2 px-3 bg-background/20">
+                    <div className="flex overflow-hidden bg-background/20">
                         <div
                             ref={setContainerRef}
-                            className="flex flex-1 flex-col gap-4 overflow-y-auto select-text pb-24 bg-background/10 rounded-t-lg"
+                            onScroll={handleScroll}
+                            className="flex flex-1 flex-col gap-4 overflow-y-auto select-text bg-background/10 rounded-t-lg p-3"
                         >
                             <PopupContentWithPagination
                                 key={contentKey}
@@ -239,8 +261,14 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
 
                 </div>
 
-                {/* Floating close button - positioned above footer */}
-                <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-30">
+                {/* Floating close button - smart reveal on scroll up */}
+                <div className={cn(
+                    "absolute bottom-8 left-1/2 -translate-x-1/2 z-30",
+                    "transition-all duration-200 ease-in-out",
+                    showCloseButton
+                        ? "opacity-100 translate-y-0"
+                        : "opacity-0 translate-y-4 pointer-events-none"
+                )}>
                     <Button
                         onClick={handleCloseClick}
                         variant="default"

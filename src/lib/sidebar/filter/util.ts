@@ -44,11 +44,17 @@ export const zoomToExtent = (
     xmax: number,
     ymax: number,
     map: maplibregl.Map,
-    scale?: number
+    scale?: number,
+    onComplete?: () => void
 ) => {
     if (!map) {
         console.warn('No map instance provided to zoomToExtent');
         return;
+    }
+
+    // Set up one-time moveend listener if callback provided
+    if (onComplete) {
+        map.once('moveend', onComplete);
     }
 
     // If scale is provided, convert it to zoom level and use it as a target
