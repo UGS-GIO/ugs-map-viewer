@@ -171,7 +171,7 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
                 )}
                 onClick={(e) => e.stopPropagation()}
             >
-                <SheetHeader className="flex flex-row justify-between items-center py-2 px-3 relative border-b border-border/30 bg-background/30 backdrop-blur-sm">
+                <SheetHeader className="flex flex-row justify-between items-center py-2 px-3 relative border-b border-border/30 bg-background/40 backdrop-blur-sm">
                     <SheetTitle className="flex-1">{popupTitle}</SheetTitle>
                     <Button
                         onClick={handleCloseClick}
@@ -188,9 +188,9 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
                     Popup content for {popupTitle}
                 </SheetDescription>
 
-                <div className="grid grid-rows-[auto_1fr] flex-1 min-h-0 overflow-hidden bg-gradient-to-b from-transparent to-background/20">
+                <div className="grid grid-rows-[auto_1fr] flex-1 min-h-0 overflow-hidden">
                     {layerTitles.length > 1 && (
-                        <header className="tall:flex hidden border-b border-border/50 overflow-hidden h-12 px-3 bg-background/30 backdrop-blur-sm">
+                        <header className="tall:flex hidden border-b border-border/50 overflow-hidden h-12 px-3 bg-background/40 backdrop-blur-sm">
                             <Carousel className="w-full h-full relative px-2">
                                 <CarouselContent className="-ml-2 px-4" ref={carouselRef}>
                                     {Object.entries(groupedLayers).map(([groupTitle, layerTitles], groupIdx) => (
@@ -245,11 +245,11 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
                         </header>
                     )}
 
-                    <div className="flex overflow-hidden bg-background/20">
+                    <div className="flex overflow-hidden">
                         <div
                             ref={setContainerRef}
                             onScroll={handleScroll}
-                            className="flex flex-1 flex-col gap-4 overflow-y-auto select-text bg-background/10 rounded-t-lg p-3"
+                            className="flex flex-1 flex-col gap-4 overflow-y-auto select-text bg-background/20 rounded-t-lg p-3"
                         >
                             <PopupContentWithPagination
                                 key={contentKey}

@@ -181,15 +181,7 @@ const LayerCardInner = ({
                 {paginatedFeatures.map((feature, idx) => (
                     <div
                         key={idx}
-                        className={`
-                                space-y-2
-                                p-3
-                                rounded-lg
-                                bg-background/30
-                                backdrop-blur-sm
-                                border
-                                border-border/30
-                            `}
+                        className="space-y-2 p-3 rounded-lg border border-border/30"
                     >
                         <PopupButtons
                             feature={feature}
