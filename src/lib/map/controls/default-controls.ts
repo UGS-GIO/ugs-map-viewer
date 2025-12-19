@@ -17,6 +17,13 @@ export const DEFAULT_MAP_CONTROLS: MapControlConfig[] = [
         }
     },
     {
+        type: 'dual-scale',
+        position: 'bottom-left',
+        options: {
+            maxWidth: 150
+        }
+    },
+    {
         type: 'export',
         position: 'top-right',
         options: {

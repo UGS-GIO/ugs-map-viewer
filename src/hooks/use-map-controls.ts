@@ -2,12 +2,13 @@ import { useEffect, useRef } from 'react';
 import maplibregl from 'maplibre-gl';
 import { HomeControl } from '@/lib/map/controls/home-control';
 import { MultiSelectControl } from '@/lib/map/controls/multi-select-control';
+import { DualScaleControl } from '@/lib/map/controls/dual-scale-control';
 import '@/lib/map/controls/export-control-overrides.css';
 
 type ControlPosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 
 export interface MapControlConfig {
-    type: 'home' | 'navigation' | 'geolocate' | 'scale' | 'fullscreen' | 'multi-select' | 'export';
+    type: 'home' | 'navigation' | 'geolocate' | 'scale' | 'dual-scale' | 'fullscreen' | 'multi-select' | 'export';
     position?: ControlPosition;
     options?: Record<string, any>;
 }
@@ -44,6 +45,9 @@ export function useMapControls(map: maplibregl.Map | undefined, controls: readon
                         break;
                     case 'scale':
                         control = new maplibregl.ScaleControl(options);
+                        break;
+                    case 'dual-scale':
+                        control = new DualScaleControl(options);
                         break;
                     case 'geolocate': {
                         const geoControl = new maplibregl.GeolocateControl(options);
