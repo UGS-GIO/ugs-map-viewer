@@ -48,7 +48,16 @@ declare module '@tanstack/react-router' {
   }
 }
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,      // 5 minutes - data stays fresh
+      gcTime: 30 * 60 * 1000,        // 30 minutes - cache persists
+      retry: 1,                       // Single retry on failure
+      refetchOnWindowFocus: false,   // Don't refetch when tab regains focus
+    },
+  },
+})
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <StrictMode>

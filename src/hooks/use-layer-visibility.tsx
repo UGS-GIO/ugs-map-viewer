@@ -2,32 +2,32 @@ import { useMemo } from 'react';
 import { LayerProps } from '@/lib/types/mapping-types';
 
 /**
- * Processes layer visibility based on selected layers.
- * A layer is visible if it is in selectedLayerTitles.
- * A group is visible if any of its children are visible.
- * @param layers - Array of layer configurations.
- * @param selectedLayerTitles - Set of titles of selected layers.
- * @return Processed array of layers with updated visibility.
+ * Applies URL-based layer selection to layer configs.
+ *
+ * - If selectedLayerTitles is empty (URL not initialized), returns layers unchanged
+ * - Otherwise, sets visibility based on whether layer title is in the selection
+ * - Groups are visible if any child is visible
  */
 export function useLayerVisibility(
     layers: LayerProps[],
     selectedLayerTitles: Set<string>
-) {
+): LayerProps[] {
     return useMemo(() => {
-        const processLayers = (layerArray: LayerProps[]): LayerProps[] => {
-            return layerArray.map(layer => {
+        // Not initialized yet - return layers with their default visibility
+        if (selectedLayerTitles.size === 0) {
+            return layers;
+        }
+
+        // Apply selection to layers
+        const applySelection = (layerArray: LayerProps[]): LayerProps[] =>
+            layerArray.map(layer => {
                 if (layer.type === 'group' && 'layers' in layer) {
-                    const newChildLayers = processLayers(layer.layers || []);
-                    const isGroupVisible = newChildLayers.some(child => child.visible);
-                    return { ...layer, visible: isGroupVisible, layers: newChildLayers };
+                    const children = applySelection(layer.layers || []);
+                    return { ...layer, layers: children, visible: children.some(c => c.visible) };
                 }
-
-                // A layer is visible if it's in selected
-                const isVisible = selectedLayerTitles.has(layer.title || '');
-                return { ...layer, visible: isVisible };
+                return { ...layer, visible: selectedLayerTitles.has(layer.title || '') };
             });
-        };
 
-        return processLayers(layers);
+        return applySelection(layers);
     }, [layers, selectedLayerTitles]);
 }

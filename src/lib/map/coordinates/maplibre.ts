@@ -1,10 +1,7 @@
 import type { CoordinateAdapter, ScreenPoint, MapPoint, BoundingBox } from './types';
 import type { MapLibreMap } from '@/lib/types/map-types';
-import proj4 from 'proj4';
 
-// Define projections using standard EPSG definitions
 const WGS84 = 'EPSG:4326';
-const WEB_MERCATOR = 'EPSG:3857';
 
 /** MapLibre coordinate transformation (WGS84/4326) */
 export class MapLibreCoordinateAdapter implements CoordinateAdapter {
@@ -19,18 +16,22 @@ export class MapLibreCoordinateAdapter implements CoordinateAdapter {
         }
     }
 
-    createBoundingBox({ mapPoint, resolution, buffer }: { mapPoint: MapPoint; resolution: number; buffer: number }): BoundingBox {
-        // Convert point from geographic (4326) to Web Mercator (3857) using proj4
-        const [mercatorX, mercatorY] = proj4(WGS84, WEB_MERCATOR, [mapPoint.x, mapPoint.y]);
+    createBoundingBox({ mapPoint, buffer, map }: { mapPoint: MapPoint; buffer: number; map: MapLibreMap }): BoundingBox {
+        // Use MapLibre's projection for accurate bbox at any latitude
+        // Convert map point to screen, apply pixel buffer, convert back
+        const screenPoint = this.mapToScreen(mapPoint, map);
 
-        // Calculate buffer in Web Mercator meters (resolution is already in meters/pixel)
-        const metersBuffer = buffer * resolution;
+        // Calculate corners in screen space, then unproject to geographic
+        // SW corner: x - buffer, y + buffer (screen Y is inverted)
+        // NE corner: x + buffer, y - buffer
+        const sw = map.unproject([screenPoint.x - buffer, screenPoint.y + buffer]);
+        const ne = map.unproject([screenPoint.x + buffer, screenPoint.y - buffer]);
 
         return {
-            minX: mercatorX - metersBuffer,
-            minY: mercatorY - metersBuffer,
-            maxX: mercatorX + metersBuffer,
-            maxY: mercatorY + metersBuffer,
+            minX: sw.lng,
+            minY: sw.lat,
+            maxX: ne.lng,
+            maxY: ne.lat,
         };
     }
 
