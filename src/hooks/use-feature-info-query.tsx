@@ -3,9 +3,11 @@ import { useState, useRef } from 'react';
 import { Feature } from 'geojson';
 import { LayerOrderConfig } from "@/hooks/use-get-layer-configs";
 import { LayerContentProps } from '@/components/custom/popups/popup-content-with-pagination';
+import type { VisibleLayersMap, VisibleLayerInfo } from '@/lib/map/layer-info-utils';
 import { useLayerUrl } from '@/context/layer-url-provider';
 import type { MapPoint, CoordinateAdapter } from '@/lib/map/coordinates/types';
 import { GeoServerGeoJSON } from '@/lib/types/geoserver-types';
+import type { ProcessedRasterSource } from '@/lib/types/mapping-types';
 import type { MapLibreMap } from '@/lib/types/map-types';
 import proj4 from 'proj4';
 import { queryKeys } from '@/lib/query-keys';
@@ -27,7 +29,7 @@ interface WMSQueryProps {
     coordinateAdapter: CoordinateAdapter;
 }
 
-export async function fetchWMSFeatureInfo({
+async function fetchWMSFeatureInfo({
     mapPoint,
     map,
     layers,
@@ -240,7 +242,7 @@ interface WFSQueryProps {
     featureCount?: number;
 }
 
-export async function fetchWFSFeature({
+async function fetchWFSFeature({
     bbox,
     layers,
     url,
@@ -336,7 +338,7 @@ interface WFSPolygonQueryProps {
 }
 
 
-export async function fetchWFSFeatureByPolygon({
+async function fetchWFSFeatureByPolygon({
     polygonRings,
     layers,
     url,
@@ -462,62 +464,25 @@ const reorderLayers = (layerInfo: LayerContentProps[], layerOrderConfigs: LayerO
 };
 
 /**
- * Safely parses the CRS from a GeoJSON object from GeoServer.
- * Defaults to WGS 84 ('EPSG:4326') if the crs member is missing, per the GeoJSON spec.
- * @param geoJson - The GeoServer GeoJSON object to extract the CRS from.
- * @returns The CRS in EPSG format (e.g., 'EPSG:4326')
+ * Get layer title from layer info.
  */
-export const getSourceCRSFromGeoJSON = (geoJson: GeoServerGeoJSON): string => {
-    const crsName = geoJson?.crs?.properties?.name;
-    if (typeof crsName === 'string') {
-        // Handle URN format: "urn:ogc:def:crs:EPSG::4326"
-        const urnMatch = crsName.match(/^urn:ogc:def:crs:EPSG::(\d+)$/);
-        if (urnMatch && urnMatch[1]) {
-            return `EPSG:${urnMatch[1]}`;
-        }
-
-        // Handle direct EPSG format: "EPSG:4326"
-        const epsgMatch = crsName.match(/^EPSG:(\d+)$/);
-        if (epsgMatch && epsgMatch[1]) {
-            return `EPSG:${epsgMatch[1]}`;
-        }
-
-        // Handle legacy format with double colon: "EPSG::4326"
-        const legacyMatch = crsName.match(/^EPSG::(\d+)$/);
-        if (legacyMatch && legacyMatch[1]) {
-            return `EPSG:${legacyMatch[1]}`;
-        }
-
-        // If it already starts with EPSG: and looks valid, return as-is
-        if (crsName.startsWith('EPSG:') && /^EPSG:\d+$/.test(crsName)) {
-            return crsName;
-        }
-    }
-    // If no CRS is specified, default to WGS 84
-    return 'EPSG:4326';
-};
-
-/**
- * getLayerTitle
- * Utility function to get the layer title from a LayerContentProps object.
- */
-export function getLayerTitle(layer: LayerContentProps): string {
+function getLayerTitle(layer: VisibleLayerInfo): string {
     return layer.layerTitle?.trim() || layer.groupLayerTitle?.trim() || "Unnamed Layer";
 }
 
 /**
- * getStaticCqlFilter
- * Utility function to get the static CQL filter from a LayerContentProps object.
+ * Get static CQL filter from layer info.
  */
-export function getStaticCqlFilter(layer: LayerContentProps): string | null {
+function getStaticCqlFilter(layer: VisibleLayerInfo): string | null {
     if (!layer) return null;
-    return layer.customLayerParameters?.cql_filter || null;
+    const params = layer.customLayerParameters as { cql_filter?: string } | undefined;
+    return params?.cql_filter || null;
 }
 
 interface UseFeatureInfoQueryProps {
     map: MapLibreMap;
     wmsUrl: string;
-    visibleLayersMap: Record<string, LayerContentProps>;
+    visibleLayersMap: VisibleLayersMap;
     layerOrderConfigs: LayerOrderConfig[];
     coordinateAdapter: CoordinateAdapter;
     /** Initial popup coords from URL - query runs automatically when present */
@@ -789,6 +754,21 @@ export function useFeatureInfoQuery({
                     return featureId.startsWith(`${layerName}.`);
                 });
 
+                // Process raster source if available (point queries only)
+                let processedRasterSource: ProcessedRasterSource | undefined;
+                if (value.rasterSource && isPointQuery && mapPoint) {
+                    const rasterFeatureInfo = await fetchWMSFeatureInfo({
+                        mapPoint,
+                        map,
+                        layers: [value.rasterSource.layerName],
+                        url: value.rasterSource.url,
+                        coordinateAdapter
+                    });
+                    // WMS feature info always returns a FeatureCollection or null
+                    const rasterData = (rasterFeatureInfo && 'features' in rasterFeatureInfo) ? rasterFeatureInfo : null;
+                    processedRasterSource = { ...value.rasterSource, data: rasterData };
+                }
+
                 const baseLayerInfo = {
                     customLayerParameters: value.customLayerParameters,
                     visible: value.visible,
@@ -806,22 +786,8 @@ export function useFeatureInfoQuery({
                         fieldLabel: table.fieldLabel || ""
                     })),
                     schema: value.schema,
-                    rasterSource: value.rasterSource
+                    rasterSource: processedRasterSource,
                 };
-
-                // Raster queries only supported for point queries
-                if (value.rasterSource && isPointQuery && mapPoint) {
-                    const rasterFeatureInfo = await fetchWMSFeatureInfo({
-                        mapPoint,
-                        map,
-                        layers: [value.rasterSource.layerName],
-                        url: value.rasterSource.url,
-                        coordinateAdapter
-                    });
-                    // WMS feature info always returns a FeatureCollection or null
-                    const rasterData = (rasterFeatureInfo && 'features' in rasterFeatureInfo) ? rasterFeatureInfo : null;
-                    baseLayerInfo.rasterSource = { ...value.rasterSource, data: rasterData };
-                }
 
                 return baseLayerInfo as LayerContentProps;
             });

@@ -17,7 +17,12 @@ import { useMultiSelect } from '@/context/multi-select-context';
 import { useMultiSelectControl } from '@/hooks/use-multi-select-control';
 import type { LayerProps } from '@/lib/types/mapping-types';
 import type { PopupDrawerRef } from '@/components/custom/popups/popup-drawer';
-import { buildVisibleLayersMap } from '@/lib/map/layer-info-utils';
+import { buildVisibleLayersMap, type VisibleLayersMap } from '@/lib/map/layer-info-utils';
+import type { MapMouseEvent } from 'maplibre-gl';
+
+interface GeolocateEvent {
+    coords: { longitude: number; latitude: number };
+}
 
 interface UseMapContainerProps {
     wmsUrl: string;
@@ -50,7 +55,6 @@ export function useMapContainer({
     const [popupContainer, setPopupContainer] = useState<HTMLDivElement | null>(null);
     const contextMenuTriggerRef = useRef<HTMLDivElement>(null);
     const drawerTriggerRef = useRef<HTMLButtonElement>(null);
-    const [visibleLayersMap, setVisibleLayersMap] = useState({});
     const { selectedLayerTitles } = useLayerUrl();
 
     // Create coordinate adapter for MapLibre
@@ -87,22 +91,12 @@ export function useMapContainer({
         selectedLayerTitles
     );
 
-    // Build visibleLayersMap on initial load when popup coords are in URL
-    // This ensures the feature query can run before user clicks
-    // Use processedLayers (not layersConfig) to get correct visibility from URL params
-    useEffect(() => {
-        // Wait for selectedLayerTitles to be populated (URL normalization may take a render cycle)
-        if (!map || processedLayers.length === 0 || !popupCoords || selectedLayerTitles.size === 0) return;
-
-        // Only run once when map becomes ready with popup coords
-        if (Object.keys(visibleLayersMap).length > 0) return;
-
-        // Use shared utility - pass null for map to use config visibility (faster initial load)
-        const newVisibleLayersMap = buildVisibleLayersMap(processedLayers, null);
-        if (Object.keys(newVisibleLayersMap).length > 0) {
-            setVisibleLayersMap(newVisibleLayersMap);
-        }
-    }, [map, processedLayers, popupCoords, visibleLayersMap, selectedLayerTitles]);
+    // Derive visibleLayersMap from processedLayers - no state needed
+    // This automatically updates when layer visibility changes
+    const visibleLayersMap: VisibleLayersMap = useMemo(
+        () => buildVisibleLayersMap(processedLayers),
+        [processedLayers]
+    );
 
     // Feature info query handling with coordinate adapter
     // Pass popup coords from URL to enable query on page load
@@ -134,13 +128,7 @@ export function useMapContainer({
     const { clearSelection } = useMultiSelectTool({
         map,
         onPolygonComplete: (geometry) => {
-            // Build visibleLayersMap before querying - pass map to check actual visibility
-            if (layersConfig && Array.isArray(layersConfig)) {
-                const newVisibleLayersMap = buildVisibleLayersMap(layersConfig, map);
-                setVisibleLayersMap(newVisibleLayersMap);
-            }
-
-            // Convert GeoJSON rings to WGS84 (they're already in WGS84 from Terra Draw)
+            // visibleLayersMap is already derived from processedLayers - just query
             featureInfoQuery.fetchForPolygon(geometry.rings);
         }
     });
@@ -157,9 +145,7 @@ export function useMapContainer({
             setPopupCoords({ lat: mapPoint.y, lon: mapPoint.x });
             featureInfoQuery.fetchForPoint(mapPoint);
         },
-        setVisibleLayersMap,
         coordinateAdapter,
-        layersConfig
     });
 
     // Attach MapLibre click handler to the map instance
@@ -171,7 +157,7 @@ export function useMapContainer({
 
         let hasQueriedThisGeolocate = false;
 
-        const handleMapLibreClick = (e: any) => {
+        const handleMapLibreClick = (e: MapMouseEvent) => {
             // Clear any previous graphics and query bbox immediately
             clearGraphics(map);
             featureInfoQuery.hideQueryBbox();
@@ -185,7 +171,7 @@ export function useMapContainer({
             }
         };
 
-        const handleUserGeolocate = (e: any) => {
+        const handleUserGeolocate = (e: GeolocateEvent) => {
             // Only query once per geolocate button click (event fires multiple times)
             if (hasQueriedThisGeolocate) {
                 return;
