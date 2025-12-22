@@ -209,6 +209,9 @@ function ReportGenerator() {
         setActiveButton('customArea');
         if (isMobile) setNavOpened(false);
 
+        // Clear the ignore click flag to ensure drawing works
+        setIgnoreNextClick?.(false);
+
         // Set sketching state synchronously with ref
         isSketchingRef.current = true;
         setIsSketching?.(true);
@@ -238,7 +241,8 @@ function ReportGenerator() {
     }
 
     const handleResetDrawing = () => {
-        setIsSketching?.(true);
+        setActiveDialog(null);
+        setPendingAoi(null);
         handleCustomAreaButton();
     }
 
@@ -253,16 +257,16 @@ function ReportGenerator() {
                     </p>
                 </div>
                 <div className="space-y-2">
-                    <div className="flex flex-wrap justify-start items-center md:space-x-4">
-                        <Button onClick={handleCurrentMapExtentButton} variant="default" className="w-full md:w-auto flex-grow mb-2 md:mb-0">
+                    <div className="flex flex-wrap gap-2 justify-start items-center">
+                        <Button onClick={handleCurrentMapExtentButton} variant="default" className="w-full md:w-auto flex-grow">
                             {buttonText('currentMapExtent', 'Current Map Extent')}
                         </Button>
-                        <Button onClick={handleCustomAreaButton} variant="default" className="w-full md:w-auto flex-grow mb-2 md:mb-0">
+                        <Button onClick={handleCustomAreaButton} variant="default" className="w-full md:w-auto flex-grow">
                             {buttonText('customArea', 'Draw Custom Area')}
                         </Button>
                     </div>
                     <div className="flex w-full">
-                        <Button onClick={handleReset} variant="secondary" className="w-full flex-grow mb-2 md:mb-0">
+                        <Button onClick={handleReset} variant="secondary" className="w-full flex-grow">
                             {buttonText('reset', 'Reset')}
                         </Button>
                     </div>

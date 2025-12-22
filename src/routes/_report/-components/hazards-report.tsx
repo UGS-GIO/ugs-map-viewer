@@ -8,6 +8,7 @@ import { SectionTabs, Section } from '@/routes/_report/-components/layouts/secti
 import { FileText, AlertTriangle, Printer, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Image } from '@/components/ui/image'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { queryGeoServerForHazardUnits } from '@/routes/_report/-utils/geoserver-wfs-service'
 import {
     HazardUnit,
@@ -203,19 +204,20 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
         setActiveSection(bestSection)
     }, [sectionIds])
 
-    const scrollToSection = (sectionId: string) => {
+    const scrollToSection = useCallback((sectionId: string) => {
         const element = sectionRefs.current[sectionId]
         if (element) {
             element.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
-    }
+    }, [])
 
     // Handle anchor link navigation from URL hash on page load and hash changes
     useEffect(() => {
         const handleHashChange = () => {
             const hash = window.location.hash.slice(1) // Remove '#' prefix
             if (hash && sectionRefs.current[hash]) {
-                scrollToSection(hash)
+                // Small delay to ensure content is rendered
+                setTimeout(() => scrollToSection(hash), 100)
             }
         }
 
@@ -225,7 +227,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
         // Listen for hash changes (e.g., when clicking anchor link icons)
         window.addEventListener('hashchange', handleHashChange)
         return () => window.removeEventListener('hashchange', handleHashChange)
-    }, [])
+    }, [sections, scrollToSection])
 
     const handlePrint = useReactToPrint({
         contentRef: printRef,
@@ -268,38 +270,54 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                             activeSection={activeSection}
                             onSectionChange={scrollToSection}
                         />
-                        <div>
-                            <Button
-                                onClick={() => {
-                                    const reportUrl = window.location.href; // Use the current URL
+                        <TooltipProvider>
+                            <div className="flex flex-wrap gap-2 items-center mx-4 my-2">
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            onClick={() => {
+                                                const reportUrl = window.location.href; // Use the current URL
 
-                                    // Directly copy the URL to the clipboard and show toast notification
-                                    navigator.clipboard.writeText(reportUrl)
-                                        .then(() => {
-                                            // Success toast
-                                            toast('Report link copied to clipboard!');
-                                        })
-                                        .catch((err) => {
-                                            // Failure toast
-                                            toast.warning('Failed to copy report link.');
-                                            console.error('Could not copy text: ', err);
-                                        });
-                                }}
-                                variant="default"
-                                className='inline-flex gap-1.5 p-2 mx-4 my-2 items-center'
-                            >
-                                <Upload className="h-4 w-4 mr-2" />
-                                Share Report
-                            </Button>
-                            <Button
-                                onClick={handlePrint}
-                                variant="default"
-                                className='inline-flex gap-1.5 p-2 mx-4 my-2 items-center'
-                            >
-                                <Printer className="h-4 w-4 mr-2" />
-                                Print / Save as PDF
-                            </Button>
-                        </div>
+                                                // Directly copy the URL to the clipboard and show toast notification
+                                                navigator.clipboard.writeText(reportUrl)
+                                                    .then(() => {
+                                                        // Success toast
+                                                        toast('Report link copied to clipboard!');
+                                                    })
+                                                    .catch((err) => {
+                                                        // Failure toast
+                                                        toast.warning('Failed to copy report link.');
+                                                        console.error('Could not copy text: ', err);
+                                                    });
+                                            }}
+                                            variant="default"
+                                            className='inline-flex gap-1.5 p-2 items-center'
+                                        >
+                                            <Upload className="h-4 w-4 xl:mr-2" />
+                                            <span className="hidden xl:inline">Share Report</span>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Share Report</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            onClick={handlePrint}
+                                            variant="default"
+                                            className='inline-flex gap-1.5 p-2 items-center'
+                                        >
+                                            <Printer className="h-4 w-4 xl:mr-2" />
+                                            <span className="hidden xl:inline">Print / Save as PDF</span>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Print / Save as PDF</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </div>
+                        </TooltipProvider>
                     </div>
                 }
                 banner={
@@ -317,7 +335,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                     </div>
                 }
             >
-                <div ref={printRef} className="report-content space-y-12 max-w-7xl mx-auto">
+                <div ref={printRef} className="report-content space-y-6 md:space-y-12 max-w-7xl mx-auto">
                     {/* Print-only header */}
                     <div className="hidden print:block mb-8">
                         <div className="flex items-center justify-between border-b-2 border-secondary pb-4">
@@ -410,7 +428,7 @@ function SectionWithObserver({
     }, [ref, setRef])
 
     return (
-        <div ref={setRefs} id={id} className="scroll-mt-20">
+        <div ref={setRefs} id={id} className="scroll-mt-16 md:scroll-mt-20">
             {children}
         </div>
     )

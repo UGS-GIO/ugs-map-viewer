@@ -16,7 +16,7 @@ export function AnchorLinkIcon({ sectionId, title, size = 'md' }: AnchorLinkIcon
     return (
         <a
             href={`#${sectionId}`}
-            className="inline-block text-muted-foreground hover:text-foreground transition-colors opacity-0 group-hover:opacity-100 print:hidden ml-1"
+            className="inline-block text-muted-foreground hover:text-foreground transition-colors md:opacity-0 md:group-hover:opacity-100 print:hidden ml-1"
             title={`Link to ${title}`}
         >
             <Link2 className={sizeMap[size]} />
