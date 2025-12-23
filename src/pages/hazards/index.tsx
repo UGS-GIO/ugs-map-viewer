@@ -8,11 +8,11 @@ import { useSidebar } from '@/hooks/use-sidebar';
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox';
 import { PROD_POSTGREST_URL } from '@/lib/constants';
 import { qFaultsWMSTitle } from '@/pages/hazards/data/layers/layers';
-import { SIDEBAR_MARGINS } from '@/lib/sidebar-constants';
 
 export default function Map() {
-  const { isCollapsed, sidebarWidth } = useSidebar();
-  const marginClass = isCollapsed ? SIDEBAR_MARGINS.icon : SIDEBAR_MARGINS[sidebarWidth];
+  const { isCollapsed, sidebarWidthPx } = useSidebar();
+  // Use 56px (3.5rem) when collapsed, dynamic pixel width when expanded
+  const sidebarMargin = isCollapsed ? 56 : sidebarWidthPx;
 
   const searchConfig: SearchSourceConfig[] = [
     defaultMasqueradeConfig,
@@ -37,7 +37,8 @@ export default function Map() {
       <Sidebar />
       <main
         id="content"
-        className={`overflow-x-hidden pt-16 transition-[margin] md:overflow-y-hidden md:pt-0 ${marginClass} h-full`}
+        className="overflow-x-hidden pt-16 transition-[margin] duration-200 ease-linear md:overflow-y-hidden md:pt-0 h-full max-md:!ml-0"
+        style={{ marginLeft: `${sidebarMargin}px` }}
       >
         <Layout>
           <Layout.Header className='flex items-center justify-between px-4 md:px-6'>

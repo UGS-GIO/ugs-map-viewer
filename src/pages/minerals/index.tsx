@@ -5,19 +5,18 @@ import { cn } from '@/lib/utils'
 import MapContainer from './components/map-container'
 import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
-import { SIDEBAR_MARGINS } from '@/lib/sidebar-constants'
 
 export default function Map() {
-    const { isCollapsed, sidebarWidth } = useSidebar();
-    const marginClass = isCollapsed ? SIDEBAR_MARGINS.icon : SIDEBAR_MARGINS[sidebarWidth];
+    const { isCollapsed, sidebarWidthPx } = useSidebar();
+    const sidebarMargin = isCollapsed ? 56 : sidebarWidthPx;
 
     return (
         <div className="relative h-full overflow-hidden bg-background">
             <Sidebar />
             <main
                 id="content"
-                className={`overflow-x-hidden pt-16 transition-[margin] md:overflow-y-hidden md:pt-0 ${marginClass}
-                    } h-full`}
+                className="overflow-x-hidden pt-16 transition-[margin] duration-200 ease-linear md:overflow-y-hidden md:pt-0 h-full max-md:!ml-0"
+                style={{ marginLeft: `${sidebarMargin}px` }}
             >
                 <Layout>
 

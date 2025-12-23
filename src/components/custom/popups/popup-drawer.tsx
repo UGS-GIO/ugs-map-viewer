@@ -5,7 +5,6 @@ import { Sheet, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 import { LayerContentProps, PopupContentWithPagination } from "@/components/custom/popups/popup-content-with-pagination";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { clearGraphics } from "@/lib/map/highlight-utils";
 import { useMap } from "@/hooks/use-map";
 import { XIcon } from "lucide-react";
@@ -16,6 +15,7 @@ interface CombinedSidebarDrawerProps {
     drawerTriggerRef: React.RefObject<HTMLButtonElement>;
     popupTitle: string;
     onClose?: () => void;
+    onOpenChange?: (open: boolean) => void;
 }
 
 export interface PopupDrawerRef {
@@ -28,6 +28,7 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
     drawerTriggerRef,
     popupTitle,
     onClose,
+    onOpenChange,
 }, ref) => {
     const carouselRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
@@ -36,7 +37,6 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
     const [open, setOpen] = useState(false);
     const [showCloseButton, setShowCloseButton] = useState(true);
     const lastScrollTop = useRef(0);
-    const isMobile = useIsMobile();
     const { map } = useMap();
 
     // Expose close/open methods via ref
@@ -44,6 +44,11 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
         close: () => setOpen(false),
         open: () => setOpen(true),
     }));
+
+    // Notify parent of open state changes
+    useEffect(() => {
+        onOpenChange?.(open);
+    }, [open, onOpenChange]);
 
     // Group layers and extract titles - NO side effects
     const { groupedLayers, layerTitles } = useMemo(() => {
@@ -152,22 +157,14 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
                 </Button>
             </SheetTrigger>
 
-            {/* Render without portal to constrain to parent container */}
+            {/* Render as a normal child element - parent controls width/visibility */}
             <div
                 ref={sheetContentRef}
                 className={cn(
-                    "absolute right-0 z-10 overflow-hidden p-0 flex flex-col",
-                    "bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/80",
-                    "dark:bg-background/80",
-                    // Mobile: full screen takeover
-                    isMobile ? "inset-0 border-0 rounded-none" :
-                    // Desktop: positioned with border
-                    "top-0 bottom-0 w-full sm:max-w-md md:max-w-lg lg:max-w-xl border-l border-border dark:border-border",
-                    // Slide animation
-                    "transition-transform duration-300 ease-in-out",
-                    open ? "translate-x-0" : "translate-x-full",
-                    // Hide when closed but keep in DOM for animation
-                    !open && "pointer-events-none"
+                    "relative h-full w-full overflow-hidden p-0 flex flex-col",
+                    "bg-background",
+                    // Hide content when closed
+                    !open && "invisible"
                 )}
                 onClick={(e) => e.stopPropagation()}
             >

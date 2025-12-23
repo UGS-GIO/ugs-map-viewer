@@ -4,12 +4,18 @@ import { useMultiSelect } from '@/context/multi-select-context';
 import type { MapLibreMap } from '@/lib/types/map-types';
 
 /**
- * Hook to add and manage the multi-select control
+ * Hook to add and manage the selection tool control
  * Connects the MapLibre control to React context state
  */
 export function useMultiSelectControl(map: MapLibreMap | undefined) {
     const controlRef = useRef<MultiSelectControl | null>(null);
-    const { isMultiSelectMode, setMultiSelectMode } = useMultiSelect();
+    const {
+        isMultiSelectMode,
+        setMultiSelectMode,
+        selectionMode,
+        setSelectionMode,
+        clearSelectedFeatures
+    } = useMultiSelect();
 
     useEffect(() => {
         if (!map) {
@@ -18,11 +24,20 @@ export function useMultiSelectControl(map: MapLibreMap | undefined) {
 
         // Create control with callbacks
         const control = new MultiSelectControl({
+            initialMode: selectionMode,
             onToggle: (enabled) => {
                 setMultiSelectMode(enabled);
+                if (!enabled) {
+                    clearSelectedFeatures();
+                }
             },
             onCancel: () => {
                 setMultiSelectMode(false);
+                clearSelectedFeatures();
+            },
+            onModeChange: (mode) => {
+                setSelectionMode(mode);
+                clearSelectedFeatures();
             }
         });
 
@@ -37,7 +52,8 @@ export function useMultiSelectControl(map: MapLibreMap | undefined) {
                 controlRef.current = null;
             }
         };
-    }, [map, setMultiSelectMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [map]);
 
     // Sync control state with context state
     useEffect(() => {
@@ -45,6 +61,13 @@ export function useMultiSelectControl(map: MapLibreMap | undefined) {
             controlRef.current.setEnabled(isMultiSelectMode);
         }
     }, [isMultiSelectMode]);
+
+    // Sync mode with context
+    useEffect(() => {
+        if (controlRef.current) {
+            controlRef.current.setMode(selectionMode);
+        }
+    }, [selectionMode]);
 
     return controlRef.current;
 }

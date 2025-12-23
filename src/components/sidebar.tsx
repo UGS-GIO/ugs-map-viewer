@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { ChevronsLeft, ChevronLeft, Menu, X } from 'lucide-react';
 import { Layout } from './custom/layout';
 import { Button } from './custom/button';
@@ -10,35 +10,84 @@ import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links';
 import { useGetCurrentPage } from '@/hooks/use-get-current-page';
 import { getAppTitle } from '@/lib/app-titles';
 import { NavSkeleton } from './sidebar/sidebar-skeleton';
-import { SIDEBAR_WIDTHS } from '@/lib/sidebar-constants';
+import { SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_MD, SIDEBAR_WIDTH_XL } from '@/context/sidebar-provider';
 
 interface SidebarProps extends React.HTMLAttributes<HTMLElement> { }
 
 export default function Sidebar({ className }: SidebarProps) {
-  const { navOpened, setNavOpened, isCollapsed, setIsCollapsed, sidebarWidth, setSidebarWidth } = useSidebar();
+  const { navOpened, setNavOpened, isCollapsed, setIsCollapsed, sidebarWidthPx, setSidebarWidthPx } = useSidebar();
   const { data: sidebarLinks, isLoading: areLinksLoading } = useGetSidebarLinks();
   const currentPage = useGetCurrentPage();
   const appTitle = getAppTitle(currentPage);
 
-  const widthClass = isCollapsed ? SIDEBAR_WIDTHS.icon : SIDEBAR_WIDTHS[sidebarWidth];
+  // Use pixel width when expanded, icon width when collapsed
+  const sidebarStyle = isCollapsed ? { width: '3.5rem' } : { width: `${sidebarWidthPx}px` };
 
-  const handleSidebarCycle = (e: React.MouseEvent) => {
+  // Get default width based on screen size
+  const getDefaultWidth = useCallback(() => {
+    return window.innerWidth >= 1280 ? SIDEBAR_WIDTH_XL : SIDEBAR_WIDTH_MD;
+  }, []);
+
+  // Drag to resize handler
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+
+    const startX = e.clientX;
+    const collapseThreshold = SIDEBAR_WIDTH_MIN - 50;
+    let hasDragged = false;
+    let expandedFromCollapsed = false;
+
+    // If collapsed, we'll expand on first drag movement
+    const startWidth = isCollapsed ? SIDEBAR_WIDTH_MIN : sidebarWidthPx;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+
+      // First movement while collapsed - expand to min width
+      if (isCollapsed && !expandedFromCollapsed) {
+        setIsCollapsed(false);
+        setSidebarWidthPx(SIDEBAR_WIDTH_MIN);
+        expandedFromCollapsed = true;
+      }
+
+      hasDragged = true;
+      const rawWidth = startWidth + deltaX;
+
+      // If dragged below collapse threshold, collapse to icons
+      if (rawWidth < collapseThreshold) {
+        setIsCollapsed(true);
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+        return;
+      }
+
+      const newWidth = Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, rawWidth));
+      setSidebarWidthPx(newWidth);
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+
+      // If collapsed and didn't drag, treat as click - expand to default
+      if (isCollapsed && !hasDragged) {
+        setSidebarWidthPx(getDefaultWidth());
+        setIsCollapsed(false);
+      }
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  }, [isCollapsed, setIsCollapsed, sidebarWidthPx, setSidebarWidthPx, getDefaultWidth]);
+
+  const handleSidebarToggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    // Shift+click: toggle between wide and narrow
-    if (e.shiftKey && !isCollapsed) {
-      setSidebarWidth(sidebarWidth === 'wide' ? 'narrow' : 'wide');
-      return;
-    }
-
-    // Normal click: toggle between collapsed and wide
+    // When expanding, reset to default width
     if (isCollapsed) {
-      setIsCollapsed(false);
-      setSidebarWidth('wide');
-    } else {
-      setIsCollapsed(true);
+      setSidebarWidthPx(getDefaultWidth());
     }
+    setIsCollapsed(!isCollapsed);
   };
 
   /* Make body not scrollable when navBar is opened */
@@ -62,9 +111,10 @@ export default function Sidebar({ className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        `fixed left-0 right-0 top-0 z-50 w-full border-r-2 border-r-muted transition-[width] md:bottom-0 md:right-auto md:h-svh ${widthClass}`,
+        "fixed left-0 right-0 top-0 z-50 w-full border-r-2 border-r-muted transition-[width] duration-200 ease-linear md:bottom-0 md:right-auto md:h-svh",
         className
       )}
+      style={sidebarStyle}
     >
       <div
         onClick={() => setNavOpened(false)}
@@ -123,13 +173,13 @@ export default function Sidebar({ className }: SidebarProps) {
             links={sidebarLinks || []}
           />}
 
-        {/* Scrollbar width toggle button */}
+        {/* Toggle button */}
         <Button
-          onClick={handleSidebarCycle}
+          onClick={handleSidebarToggle}
           size='icon'
           variant='outline'
           className='absolute -right-5 top-1/2 z-[60] hidden rounded-none md:inline-flex w-6 h-12 -translate-y-1/2'
-          title={isCollapsed ? 'Expand sidebar' : `Collapse sidebar (Shift+click for ${sidebarWidth === 'wide' ? 'narrow' : 'wide'})`}
+          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {isCollapsed ? (
             <ChevronLeft strokeWidth={1.5} className="h-5 w-5 rotate-180" />
@@ -137,6 +187,19 @@ export default function Sidebar({ className }: SidebarProps) {
             <ChevronsLeft strokeWidth={1.5} className="h-5 w-5" />
           )}
         </Button>
+
+        {/* Drag handle for resizing */}
+        <div
+          onMouseDown={handleResizeMouseDown}
+          className={cn(
+            "absolute top-0 bottom-0 -right-1 w-2 z-[70] hidden md:block",
+            "cursor-col-resize hover:bg-accent/50 active:bg-accent",
+            "transition-colors duration-150"
+          )}
+          title={isCollapsed ? "Click to expand" : "Drag to resize"}
+        >
+          <div className="absolute inset-y-0 left-1/2 w-px bg-border" />
+        </div>
       </Layout>
     </aside>
   );

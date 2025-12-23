@@ -6,12 +6,16 @@ interface PopupCoords {
     lon: number;
 }
 
+export type ViewMode = 'map' | 'split' | 'table';
+
 interface MapUrlState {
     center: [number, number];
     zoom: number;
     filters?: Record<string, string>;
     popupCoords: PopupCoords | null;
     setPopupCoords: (coords: PopupCoords | null) => void;
+    viewMode: ViewMode;
+    setViewMode: (mode: ViewMode) => void;
 }
 
 interface UseMapUrlSyncProps {
@@ -63,11 +67,32 @@ export function useMapUrlSync({ onFiltersChange }: UseMapUrlSyncProps = {}): Map
         });
     }, [navigate]);
 
+    // Extract view mode from URL (default to 'map')
+    const viewMode = useMemo((): ViewMode => {
+        const mode = (search as { view?: string }).view;
+        if (mode === 'split' || mode === 'table') return mode;
+        return 'map';
+    }, [(search as { view?: string }).view]);
+
+    // Update view mode in URL
+    const setViewMode = useCallback((mode: ViewMode) => {
+        navigate({
+            to: ".",
+            search: (prev) => ({
+                ...prev,
+                view: mode === 'map' ? undefined : mode, // Don't store 'map' since it's default
+            }),
+            replace: true,
+        });
+    }, [navigate]);
+
     return {
         center,
         zoom: search.zoom,
         filters: search.filters,
         popupCoords,
         setPopupCoords,
+        viewMode,
+        setViewMode,
     };
 }

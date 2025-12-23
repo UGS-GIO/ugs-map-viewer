@@ -24,7 +24,9 @@ import { ViewVerticalIcon } from "@radix-ui/react-icons"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
-const SIDEBAR_WIDTH = "16rem"
+const SIDEBAR_WIDTH_DEFAULT = 320 // pixels
+const SIDEBAR_WIDTH_MIN = 200
+const SIDEBAR_WIDTH_MAX = 600
 const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
@@ -37,6 +39,8 @@ type SidebarContextProps = {
   setOpenMobile: (open: boolean) => void
   isMobile: boolean
   toggleSidebar: () => void
+  sidebarWidth: number
+  setSidebarWidth: (width: number) => void
 }
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null)
@@ -72,6 +76,7 @@ const SidebarProvider = React.forwardRef<
   ) => {
     const isMobile = useIsMobile()
     const [openMobile, setOpenMobile] = React.useState(false)
+    const [sidebarWidth, setSidebarWidth] = React.useState(SIDEBAR_WIDTH_DEFAULT)
 
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.
@@ -128,8 +133,10 @@ const SidebarProvider = React.forwardRef<
         openMobile,
         setOpenMobile,
         toggleSidebar,
+        sidebarWidth,
+        setSidebarWidth,
       }),
-      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar]
+      [state, open, setOpen, isMobile, openMobile, setOpenMobile, toggleSidebar, sidebarWidth]
     )
 
     return (
@@ -138,7 +145,7 @@ const SidebarProvider = React.forwardRef<
           <div
             style={
               {
-                "--sidebar-width": SIDEBAR_WIDTH,
+                "--sidebar-width": `${sidebarWidth}px`,
                 "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
                 ...style,
               } as React.CSSProperties
@@ -293,30 +300,59 @@ const SidebarTrigger = React.forwardRef<
 SidebarTrigger.displayName = "SidebarTrigger"
 
 const SidebarRail = React.forwardRef<
-  HTMLButtonElement,
-  React.ComponentProps<"button">
+  HTMLDivElement,
+  React.ComponentProps<"div">
 >(({ className, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar()
+  const { sidebarWidth, setSidebarWidth, open, setOpen, state } = useSidebar()
+
+  const handleMouseDown = React.useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+
+    // If collapsed, first expand the sidebar
+    if (!open || state === 'collapsed') {
+      setOpen(true)
+      return
+    }
+
+    const startX = e.clientX
+    const startWidth = sidebarWidth
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX
+      const newWidth = Math.min(
+        SIDEBAR_WIDTH_MAX,
+        Math.max(SIDEBAR_WIDTH_MIN, startWidth + deltaX)
+      )
+      setSidebarWidth(newWidth)
+    }
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+    }
+
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  }, [sidebarWidth, setSidebarWidth, open, setOpen, state])
 
   return (
-    <button
+    <div
       ref={ref}
       data-sidebar="rail"
-      aria-label="Toggle Sidebar"
-      tabIndex={-1}
-      onClick={toggleSidebar}
-      title="Toggle Sidebar"
+      aria-label={state === 'collapsed' ? "Expand Sidebar" : "Resize Sidebar"}
+      onMouseDown={handleMouseDown}
       className={cn(
-        "absolute inset-y-0 z-20 hidden w-4 -translate-x-1/2 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=left]:-right-4 group-data-[side=right]:left-0 sm:flex",
-        "[[data-side=left]_&]:cursor-w-resize [[data-side=right]_&]:cursor-e-resize",
-        "[[data-side=left][data-state=collapsed]_&]:cursor-e-resize [[data-side=right][data-state=collapsed]_&]:cursor-w-resize",
-        "group-data-[collapsible=offcanvas]:translate-x-0 group-data-[collapsible=offcanvas]:after:left-full group-data-[collapsible=offcanvas]:hover:bg-sidebar",
-        "[[data-side=left][data-collapsible=offcanvas]_&]:-right-2",
-        "[[data-side=right][data-collapsible=offcanvas]_&]:-left-2",
+        "absolute inset-y-0 z-20 hidden w-2 sm:flex",
+        "group-data-[side=left]:-right-1 group-data-[side=right]:-left-1",
+        "hover:bg-accent/50 active:bg-accent",
+        "transition-colors duration-150",
+        state === 'collapsed' ? "cursor-e-resize" : "cursor-col-resize",
         className
       )}
       {...props}
-    />
+    >
+      <div className="absolute inset-y-0 left-1/2 w-px bg-border" />
+    </div>
   )
 })
 SidebarRail.displayName = "SidebarRail"

@@ -11,7 +11,7 @@ import { useFeatureResponseHandler } from '@/hooks/use-feature-response-handler'
 import { useMapUrlSync } from '@/hooks/use-map-url-sync';
 import { createCoordinateAdapter } from '@/lib/map/coordinates/factory';
 import type { CoordinateAdapter } from '@/lib/map/coordinates/types';
-import { clearGraphics } from '@/lib/map/highlight-utils';
+import { clearGraphics, highlightFeature } from '@/lib/map/highlight-utils';
 import { useMultiSelectTool } from '@/hooks/use-multi-select';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { useMultiSelectControl } from '@/hooks/use-multi-select-control';
@@ -120,7 +120,16 @@ export function useMapContainer({
     });
 
     // Multi-select tool integration
-    const { isMultiSelectMode, setMultiSelectMode } = useMultiSelect();
+    const {
+        isMultiSelectMode,
+        setMultiSelectMode,
+        selectionMode,
+        addSelectedFeature,
+        clearSelectedFeatures,
+        isFeatureSelected,
+        removeSelectedFeature,
+        suppressNextPopup
+    } = useMultiSelect();
 
     // Add multi-select control to map
     useMultiSelectControl(map);
@@ -150,8 +159,13 @@ export function useMapContainer({
 
     // Attach MapLibre click handler to the map instance
     useEffect(() => {
-        // Disable clicks when sketching or in multi-select mode
-        if (!map || isSketching || isMultiSelectMode) {
+        // Disable clicks when sketching
+        if (!map || isSketching) {
+            return;
+        }
+
+        // In multi-select polygon mode, let terra-draw handle clicks
+        if (isMultiSelectMode && selectionMode === 'polygon') {
             return;
         }
 
@@ -162,7 +176,57 @@ export function useMapContainer({
             clearGraphics(map);
             featureInfoQuery.hideQueryBbox();
 
-            // MapLibre's click event provides point with screen coordinates
+            // Handle click-to-select mode
+            // Note: For WMS layers, queryRenderedFeatures returns nothing since WMS is server-rendered.
+            // We still attempt it for vector layers, but always fall through to WMS query.
+            if (isMultiSelectMode && selectionMode === 'click') {
+                const isShiftClick = e.originalEvent?.shiftKey ?? false;
+
+                // Try to find vector features at click point (works for vector tiles, not WMS)
+                const features = map.queryRenderedFeatures(e.point);
+
+                if (features.length > 0) {
+                    const clickedFeature = features[0];
+                    const featureId = clickedFeature.id;
+
+                    if (featureId !== undefined) {
+                        const geoJsonFeature = clickedFeature as unknown as import('geojson').Feature;
+                        const layerTitle = clickedFeature.layer?.id || 'Selected Feature';
+
+                        if (isFeatureSelected(featureId)) {
+                            // Clicking a selected feature deselects it
+                            removeSelectedFeature(featureId);
+                            clearGraphics(map, layerTitle);
+                            return; // Don't query when deselecting
+                        } else if (isShiftClick) {
+                            // Shift+click adds to selection
+                            addSelectedFeature(geoJsonFeature);
+                            highlightFeature(geoJsonFeature, map, 'EPSG:4326', layerTitle);
+                        } else {
+                            // Normal click: clear previous selection, select this feature
+                            clearSelectedFeatures();
+                            clearGraphics(map);
+                            addSelectedFeature(geoJsonFeature);
+                            highlightFeature(geoJsonFeature, map, 'EPSG:4326', layerTitle);
+                        }
+                    }
+                }
+
+                // Always query WMS for feature info
+                // For shift+click, suppress the popup opening
+                if (isShiftClick) {
+                    suppressNextPopup();
+                }
+                if (e.point) {
+                    handleMapClick({
+                        screenX: e.point.x,
+                        screenY: e.point.y
+                    });
+                }
+                return;
+            }
+
+            // Normal click behavior (selection tool not active)
             if (e.point) {
                 handleMapClick({
                     screenX: e.point.x,
@@ -195,7 +259,7 @@ export function useMapContainer({
             map?.off?.('click', handleMapLibreClick);
             map?.off?.('user-geolocate', handleUserGeolocate);
         };
-    }, [map, isSketching, isMultiSelectMode, handleMapClick, featureInfoQuery]);
+    }, [map, isSketching, isMultiSelectMode, selectionMode, handleMapClick, featureInfoQuery, isFeatureSelected, addSelectedFeature, removeSelectedFeature, clearSelectedFeatures, suppressNextPopup]);
 
     // Initialize the map when the container is ready
     useEffect(() => {

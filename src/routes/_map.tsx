@@ -35,6 +35,8 @@ const mapSearchSchema = z.object({
     // Popup query coordinates - allows triggering popup queries via URL
     popup_lat: z.coerce.number().min(-90).max(90).optional(),
     popup_lon: z.coerce.number().min(-180).max(180).optional(),
+    // View mode for split/table layout
+    view: z.enum(['map', 'split', 'table']).optional(),
 }).strip()
 
 export type MapSearchParams = z.infer<typeof mapSearchSchema>;

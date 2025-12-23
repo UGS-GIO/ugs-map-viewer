@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { highlightFeature, clearGraphics } from '@/lib/map/highlight-utils';
 import { LayerContentProps } from '@/components/custom/popups/popup-content-with-pagination';
 import { useMap } from '@/hooks/use-map';
+import { useMultiSelect } from '@/context/multi-select-context';
 import type { PopupDrawerRef } from '@/components/custom/popups/popup-drawer';
 
 interface UseFeatureResponseHandlerProps {
@@ -34,6 +35,7 @@ export function useFeatureResponseHandler({
     popupDrawerRef
 }: UseFeatureResponseHandlerProps) {
     const { map } = useMap();
+    const { consumeSuppressPopup } = useMultiSelect();
     // Track the last click we processed to avoid re-processing on filter changes
     const lastProcessedClickRef = useRef<number | null | undefined>();
 
@@ -45,6 +47,9 @@ export function useFeatureResponseHandler({
 
         // Mark this click as processed
         lastProcessedClickRef.current = clickId;
+
+        // Check if popup should be suppressed (shift+click behavior)
+        const shouldSuppressPopup = consumeSuppressPopup();
 
         const popupContent = featureData || [];
         const hasFeatures = popupContent.length > 0;
@@ -86,13 +91,14 @@ export function useFeatureResponseHandler({
         }
 
         // Handle drawer visibility - only for NEW clicks
+        // Skip opening drawer if popup was suppressed (shift+click)
         if (popupDrawerRef?.current) {
             // Use ref methods if available (simpler and more reliable)
             if (!hasFeatures) {
                 // Close drawer if no features found on this click
                 popupDrawerRef.current.close();
-            } else {
-                // Open drawer if features found on this click
+            } else if (!shouldSuppressPopup) {
+                // Open drawer if features found on this click (unless suppressed)
                 popupDrawerRef.current.open();
             }
         } else {
@@ -100,11 +106,11 @@ export function useFeatureResponseHandler({
             if (!hasFeatures && drawerState === 'open') {
                 // Close drawer if no features found on this click
                 drawerTriggerRef.current?.click();
-            } else if (hasFeatures && drawerState !== 'open') {
-                // Open drawer if features found on this click
+            } else if (hasFeatures && drawerState !== 'open' && !shouldSuppressPopup) {
+                // Open drawer if features found on this click (unless suppressed)
                 drawerTriggerRef.current?.click();
             }
         }
         // If drawer is already open and we have features, leave it open
-    }, [isSuccess, featureData, map, drawerTriggerRef, clickId, popupDrawerRef]);
+    }, [isSuccess, featureData, map, drawerTriggerRef, clickId, popupDrawerRef, consumeSuppressPopup]);
 }

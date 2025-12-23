@@ -26,13 +26,16 @@ interface UseMultiSelectProps {
 export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectProps) {
     const drawRef = useRef<TerraDraw | null>(null);
     const onPolygonCompleteRef = useRef(onPolygonComplete);
-    const { isMultiSelectMode, setIsDrawing, setHasCompletedPolygon } = useMultiSelect();
+    const { isMultiSelectMode, selectionMode, setIsDrawing, setHasCompletedPolygon } = useMultiSelect();
 
     // Keep ref in sync with prop
     onPolygonCompleteRef.current = onPolygonComplete;
 
     useEffect(() => {
-        if (!map || !isMultiSelectMode) {
+        // Only initialize Terra Draw in polygon mode
+        const shouldDrawBeActive = map && isMultiSelectMode && selectionMode === 'polygon';
+
+        if (!shouldDrawBeActive) {
             if (drawRef.current) {
                 try {
                     drawRef.current.stop();
@@ -159,7 +162,7 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
             }
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [map, isMultiSelectMode]);
+    }, [map, isMultiSelectMode, selectionMode]);
 
     const clearSelection = useCallback(() => {
         if (!drawRef.current) return;

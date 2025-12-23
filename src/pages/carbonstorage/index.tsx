@@ -10,11 +10,10 @@ import { useLayerUrl } from '@/context/layer-url-provider'
 import { PROD_POSTGREST_URL } from '@/lib/constants'
 import { wellWithTopsLayerName, wellWithTopsWMSTitle } from '@/pages/carbonstorage/data/layers/layers'
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox'
-import { SIDEBAR_MARGINS } from '@/lib/sidebar-constants'
 
 export default function Map() {
-  const { isCollapsed, sidebarWidth } = useSidebar();
-  const marginClass = isCollapsed ? SIDEBAR_MARGINS.icon : SIDEBAR_MARGINS[sidebarWidth];
+  const { isCollapsed, sidebarWidthPx } = useSidebar();
+  const sidebarMargin = isCollapsed ? 56 : sidebarWidthPx;
   const search = useSearch({ from: '/_map/carbonstorage/' });
   const { updateLayerSelection } = useLayerUrl();
 
@@ -44,7 +43,8 @@ export default function Map() {
       <Sidebar />
       <main
         id="content"
-        className={`overflow-x-hidden pt-16 transition-[margin] md:overflow-y-hidden md:pt-0 ${marginClass} h-full`}
+        className="overflow-x-hidden pt-16 transition-[margin] duration-200 ease-linear md:overflow-y-hidden md:pt-0 h-full max-md:!ml-0"
+        style={{ marginLeft: `${sidebarMargin}px` }}
       >
         <Layout>
           {/* ===== Top Heading ===== */}

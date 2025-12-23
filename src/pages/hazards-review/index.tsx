@@ -25,11 +25,10 @@ import { useLayerUrl } from '@/context/layer-url-provider';
 import { useSearch } from '@tanstack/react-router';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { useState } from 'react';
-import { SIDEBAR_MARGINS } from '@/lib/sidebar-constants';
 
 export default function Map() {
-  const { isCollapsed, sidebarWidth } = useSidebar();
-  const marginClass = isCollapsed ? SIDEBAR_MARGINS.icon : SIDEBAR_MARGINS[sidebarWidth];
+  const { isCollapsed, sidebarWidthPx } = useSidebar();
+  const sidebarMargin = isCollapsed ? 56 : sidebarWidthPx;
   const search = useSearch({ from: '/_map/hazards-review/' });
   const { updateLayerSelection } = useLayerUrl();
   const { user } = useAuth();
@@ -141,7 +140,8 @@ export default function Map() {
       <Sidebar />
       <main
         id="content"
-        className={`overflow-x-hidden pt-16 transition-[margin] md:overflow-y-hidden md:pt-0 ${marginClass} h-full`}
+        className="overflow-x-hidden pt-16 transition-[margin] duration-200 ease-linear md:overflow-y-hidden md:pt-0 h-full max-md:!ml-0"
+        style={{ marginLeft: `${sidebarMargin}px` }}
       >
         <Layout>
           <Layout.Header className='flex items-center justify-between px-4 md:px-6'>
