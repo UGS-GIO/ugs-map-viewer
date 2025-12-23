@@ -133,10 +133,6 @@ export class ViewModeControl implements maplibregl.IControl {
     public setHasResults(hasResults: boolean): void {
         this.hasResults = hasResults;
         this.updateButtonStates();
-
-        // If we're in split/table but no longer have results, go back to map
-        if (!hasResults && (this.mode === 'split' || this.mode === 'table')) {
-            this.setMode('map');
-        }
+        // Don't auto-reset to map - let URL state persist, just disable buttons
     }
 }

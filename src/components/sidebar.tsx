@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { ChevronsLeft, ChevronLeft, Menu, X } from 'lucide-react';
 import { Layout } from './custom/layout';
 import { Button } from './custom/button';
@@ -19,6 +19,7 @@ export default function Sidebar({ className }: SidebarProps) {
   const { data: sidebarLinks, isLoading: areLinksLoading } = useGetSidebarLinks();
   const currentPage = useGetCurrentPage();
   const appTitle = getAppTitle(currentPage);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Use pixel width when expanded, icon width when collapsed
   const sidebarStyle = isCollapsed ? { width: '3.5rem' } : { width: `${sidebarWidthPx}px` };
@@ -31,6 +32,7 @@ export default function Sidebar({ className }: SidebarProps) {
   // Drag to resize handler
   const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
+    setIsDragging(true);
 
     const startX = e.clientX;
     const collapseThreshold = SIDEBAR_WIDTH_MIN - 50;
@@ -56,6 +58,7 @@ export default function Sidebar({ className }: SidebarProps) {
       // If dragged below collapse threshold, collapse to icons
       if (rawWidth < collapseThreshold) {
         setIsCollapsed(true);
+        setIsDragging(false);
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
         return;
@@ -66,6 +69,7 @@ export default function Sidebar({ className }: SidebarProps) {
     };
 
     const onMouseUp = () => {
+      setIsDragging(false);
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
 
@@ -111,7 +115,8 @@ export default function Sidebar({ className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "fixed left-0 right-0 top-0 z-50 w-full border-r-2 border-r-muted transition-[width] duration-200 ease-linear md:bottom-0 md:right-auto md:h-svh",
+        "fixed left-0 right-0 top-0 z-50 w-full border-r-2 border-r-muted md:bottom-0 md:right-auto md:h-svh",
+        !isDragging && "transition-[width] duration-200 ease-linear",
         className
       )}
       style={sidebarStyle}
