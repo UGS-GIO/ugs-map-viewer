@@ -526,60 +526,6 @@ const geothermalKgraLayerConfig: WMSLayerProps = {
     ],
 };
 
-// Known Geothermal Resource Areas (KGRA)
-const nonPetrolWellLayerName = 'nwpd_nonpetroleumwellcatalogwells';
-const nonPetrolWellLayerTitle = 'Non-Petroleum Well Data';
-const nonPetrolWellLayerConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: nonPetrolWellLayerTitle,
-    visible: true,
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${nonPetrolWellLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'Name': { field: 'well_name', type: 'string' },
-                'API/UWI': { field: 'uwi', type: 'string' },
-                'Operator': { field: 'operator', type: 'string' },
-                'County': { field: 'county', type: 'string' },
-                'Location': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: (props) => {
-                        const a = props?.['town_num'];
-                        const b = props?.['town_dir'];
-                        const c = props?.['range_num'];
-                        const d = props?.['range_dir'];
-                        const e = props?.['sect'];
-                        return `${a} ${b} ${c} ${d} Section ${e}`;
-                    }
-                },
-                'Field/Area': { field: 'field_area', type: 'string' },
-                'Purpose': { field: 'purpose', type: 'string' },
-                'Depth:': { field: 'depth', type: 'string' },
-                'Well Logs:': { field: 'well_logs', type: 'string' },
-                'Reports:': { field: 'reports', type: 'string' },
-/*              'Reports': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: transformReports
-                }, */
-            },
-        },
-    ],
-};
-
-
-// Transform function for reports field
-/* 
-const transformReports = (props: any) => {
-  const reportsString = props?.['reports'];
-  return <ReportsList reportsString={reportsString} />;
-}; */
-
-
 // ingqFaults WMS Layer
 const ingqFaultsLayerName = 'mart_geothermal_qfaults_ingenious_current';
 const ingqFaultsWMSTitle = 'Great Basin Faults (INGENIOUS Project)';
@@ -658,7 +604,6 @@ const geophysicalDataConfig: LayerProps = {
         geothermalKgraLayerConfig,
         deepSedimentaryBasinsLayerConfig,
         potentialResourcesLayerConfig,
-        //nonPetrolWellLayerConfig
     ]
 }
 
