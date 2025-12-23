@@ -559,10 +559,26 @@ const nonPetrolWellLayerConfig: WMSLayerProps = {
                 'Field/Area': { field: 'field_area', type: 'string' },
                 'Purpose': { field: 'purpose', type: 'string' },
                 'Depth:': { field: 'depth', type: 'string' },
+                'Well Logs:': { field: 'well_logs', type: 'string' },
+                'Reports:': { field: 'reports', type: 'string' },
+/*              'Reports': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: transformReports
+                }, */
             },
         },
     ],
 };
+
+
+// Transform function for reports field
+/* 
+const transformReports = (props: any) => {
+  const reportsString = props?.['reports'];
+  return <ReportsList reportsString={reportsString} />;
+}; */
+
 
 // ingqFaults WMS Layer
 const ingqFaultsLayerName = 'mart_geothermal_qfaults_ingenious_current';
