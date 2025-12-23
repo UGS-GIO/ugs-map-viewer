@@ -32,21 +32,30 @@ export default function Sidebar({ className }: SidebarProps) {
     return window.innerWidth >= 1280 ? SIDEBAR_WIDTH_XL : SIDEBAR_WIDTH_MD;
   }, []);
 
-  // Drag to resize handler
-  const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+  // Combined drag-to-resize and click-to-toggle handler
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault();
-    setIsDragging(true);
-
-    const startX = e.clientX;
+    const isTouch = 'touches' in e;
+    const startX = isTouch ? e.touches[0].clientX : e.clientX;
     const collapseThreshold = SIDEBAR_WIDTH_MIN - 50;
+    const dragThreshold = 5; // pixels before considering it a drag
     let hasDragged = false;
     let expandedFromCollapsed = false;
 
     // If collapsed, we'll expand on first drag movement
     const startWidth = isCollapsed ? SIDEBAR_WIDTH_MIN : sidebarWidthPx;
 
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.clientX - startX;
+    const onMove = (moveEvent: MouseEvent | TouchEvent) => {
+      const clientX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
+      const deltaX = clientX - startX;
+
+      // Only start dragging after threshold
+      if (!hasDragged && Math.abs(deltaX) < dragThreshold) return;
+
+      if (!hasDragged) {
+        setIsDragging(true);
+        hasDragged = true;
+      }
 
       // First movement while collapsed - expand to min width
       if (isCollapsed && !expandedFromCollapsed) {
@@ -55,15 +64,16 @@ export default function Sidebar({ className }: SidebarProps) {
         expandedFromCollapsed = true;
       }
 
-      hasDragged = true;
       const rawWidth = startWidth + deltaX;
 
       // If dragged below collapse threshold, collapse to icons
       if (rawWidth < collapseThreshold) {
         setIsCollapsed(true);
         setIsDragging(false);
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', onMouseUp);
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onEnd);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onEnd);
         return;
       }
 
@@ -71,31 +81,29 @@ export default function Sidebar({ className }: SidebarProps) {
       setSidebarWidthPx(newWidth);
     };
 
-    const onMouseUp = () => {
+    const onEnd = () => {
       setIsDragging(false);
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onEnd);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', onEnd);
 
-      // If collapsed and didn't drag, treat as click - expand to default
-      if (isCollapsed && !hasDragged) {
-        setSidebarWidthPx(getDefaultWidth());
-        setIsCollapsed(false);
+      // If didn't drag, treat as click - toggle collapse
+      if (!hasDragged) {
+        if (isCollapsed) {
+          setSidebarWidthPx(getDefaultWidth());
+          setIsCollapsed(false);
+        } else {
+          setIsCollapsed(true);
+        }
       }
     };
 
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onEnd);
+    document.addEventListener('touchmove', onMove, { passive: false });
+    document.addEventListener('touchend', onEnd);
   }, [isCollapsed, setIsCollapsed, sidebarWidthPx, setSidebarWidthPx, getDefaultWidth]);
-
-  const handleSidebarToggle = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // When expanding, reset to default width
-    if (isCollapsed) {
-      setSidebarWidthPx(getDefaultWidth());
-    }
-    setIsCollapsed(!isCollapsed);
-  };
 
   /* Make body not scrollable when navBar is opened */
   useEffect(() => {
@@ -181,32 +189,24 @@ export default function Sidebar({ className }: SidebarProps) {
             links={sidebarLinks || []}
           />}
 
-        {/* Toggle button */}
-        <Button
-          onClick={handleSidebarToggle}
-          size='icon'
-          variant='outline'
-          className='absolute -right-5 top-1/2 z-[60] hidden rounded-none md:inline-flex w-6 h-12 -translate-y-1/2'
-          title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {isCollapsed ? (
-            <ChevronLeft strokeWidth={1.5} className="h-5 w-5 rotate-180" />
-          ) : (
-            <ChevronsLeft strokeWidth={1.5} className="h-5 w-5" />
-          )}
-        </Button>
-
-        {/* Drag handle for resizing */}
+        {/* Combined toggle button + drag handle */}
         <div
           onMouseDown={handleResizeMouseDown}
+          onTouchStart={handleResizeMouseDown}
           className={cn(
-            "absolute top-0 bottom-0 -right-1 w-2 z-[70] hidden md:block",
+            "absolute -right-3 top-1/2 -translate-y-1/2 z-[60] hidden md:flex",
+            "w-6 h-12 items-center justify-center",
+            "bg-background border border-border rounded-sm",
             "cursor-col-resize hover:bg-accent/50 active:bg-accent",
-            "transition-colors duration-150"
+            "transition-colors duration-150 select-none"
           )}
-          title={isCollapsed ? "Click to expand" : "Drag to resize"}
+          title={isCollapsed ? 'Click to expand, drag to resize' : 'Click to collapse, drag to resize'}
         >
-          <div className="absolute inset-y-0 left-1/2 w-px bg-border" />
+          {isCollapsed ? (
+            <ChevronLeft strokeWidth={1.5} className="h-5 w-5 rotate-180 pointer-events-none" />
+          ) : (
+            <ChevronsLeft strokeWidth={1.5} className="h-5 w-5 pointer-events-none" />
+          )}
         </div>
       </Layout>
     </aside>

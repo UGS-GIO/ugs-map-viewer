@@ -42,6 +42,7 @@ import {
     Download,
     Columns3,
     MapPin,
+    Map,
 } from 'lucide-react';
 import type { LayerContentProps, ExtendedFeature } from '@/components/custom/popups/popup-content-with-pagination';
 import { useMap } from '@/hooks/use-map';
@@ -352,9 +353,15 @@ export function QueryResultsTable({ layerContent, onClose }: QueryResultsTablePr
 
     if (totalFeatures === 0) {
         return (
-            <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-muted-foreground gap-2">
+            <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-muted-foreground gap-3">
                 <Table2 className="h-8 w-8 opacity-50" />
                 <p className="text-sm">Click on the map to query features</p>
+                {onClose && (
+                    <Button variant="outline" size="sm" onClick={onClose} className="gap-2">
+                        <Map className="h-4 w-4" />
+                        Go to Map
+                    </Button>
+                )}
             </div>
         );
     }

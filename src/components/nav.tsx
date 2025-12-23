@@ -109,10 +109,10 @@ export default function Nav({
       >
         <TooltipProvider delayDuration={0}>
           {currentContent ? (
-            <div className="px-4 pb-4 h-full">
-              <Suspense fallback={<div><LoadingSpinner /></div>}>
+            <div className="h-full overflow-y-auto">
+              <Suspense fallback={<div className="px-4"><LoadingSpinner /></div>}>
                 {DynamicComponent ? (
-                  <div className='overflow-y-auto h-full'>
+                  <div className="px-4 pb-4">
                     <DynamicComponent />
                   </div>
                 ) : (
