@@ -10,6 +10,7 @@ import {
     type SortingState,
     type VisibilityState,
     type RowSelectionState,
+    type ColumnSizingState,
 } from '@tanstack/react-table';
 import {
     Table,
@@ -91,6 +92,7 @@ export function QueryResultsTable({ layerContent, onClose }: QueryResultsTablePr
     const [searchValue, setSearchValue] = useState('');
     const [filterColumn, setFilterColumn] = useState<string>('all');
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+    const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
     const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
     const [openDropdown, setOpenDropdown] = useState<OpenDropdown>('none');
     const [lastClickedRow, setLastClickedRow] = useState<number | null>(null);
@@ -276,6 +278,7 @@ export function QueryResultsTable({ layerContent, onClose }: QueryResultsTablePr
                 ),
                 enableSorting: false,
                 enableHiding: false,
+                enableResizing: false,
                 size: 28,
             },
         ];
@@ -333,13 +336,17 @@ export function QueryResultsTable({ layerContent, onClose }: QueryResultsTablePr
         getFilteredRowModel: getFilteredRowModel(),
         onSortingChange: setSorting,
         onColumnVisibilityChange: setColumnVisibility,
+        onColumnSizingChange: setColumnSizing,
         onRowSelectionChange: setRowSelection,
         enableRowSelection: true,
+        enableColumnResizing: true,
+        columnResizeMode: 'onChange',
         state: {
             sorting,
             globalFilter,
             columnFilters,
             columnVisibility,
+            columnSizing,
             rowSelection,
         },
         initialState: {
@@ -518,7 +525,7 @@ export function QueryResultsTable({ layerContent, onClose }: QueryResultsTablePr
             {/* Table */}
             <div className="flex-1 min-h-0 overflow-hidden">
                 <div className="h-full overflow-auto">
-                    <Table>
+                    <Table style={{ width: table.getCenterTotalSize() }}>
                         <TableHeader className="sticky top-0 bg-background z-10">
                             {table.getHeaderGroups().map((headerGroup) => (
                                 <TableRow key={headerGroup.id}>
@@ -526,11 +533,23 @@ export function QueryResultsTable({ layerContent, onClose }: QueryResultsTablePr
                                         <TableHead
                                             key={header.id}
                                             style={{ width: header.getSize() }}
-                                            className={cn("whitespace-nowrap", index === 0 && "pl-2")}
+                                            className={cn("whitespace-nowrap relative group", index === 0 && "pl-2")}
                                         >
                                             {header.isPlaceholder
                                                 ? null
                                                 : flexRender(header.column.columnDef.header, header.getContext())}
+                                            {/* Resize handle */}
+                                            {header.column.getCanResize() && (
+                                                <div
+                                                    onMouseDown={header.getResizeHandler()}
+                                                    onTouchStart={header.getResizeHandler()}
+                                                    className={cn(
+                                                        "absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none",
+                                                        "opacity-0 group-hover:opacity-100 hover:bg-primary/50",
+                                                        header.column.getIsResizing() && "bg-primary opacity-100"
+                                                    )}
+                                                />
+                                            )}
                                         </TableHead>
                                     ))}
                                 </TableRow>
@@ -551,6 +570,7 @@ export function QueryResultsTable({ layerContent, onClose }: QueryResultsTablePr
                                         {row.getVisibleCells().map((cell, cellIndex) => (
                                             <TableCell
                                                 key={cell.id}
+                                                style={{ width: cell.column.getSize() }}
                                                 className={cn("py-1.5", cellIndex === 0 && "pl-2")}
                                             >
                                                 {flexRender(cell.column.columnDef.cell, cell.getContext())}
