@@ -655,16 +655,16 @@ const geophysicalDataConfig: LayerProps = {
     layers: [
         gravityStationsLayerConfig,
         geothermalUseLayerConfig,
-        potentialResourcesLayerConfig,
-        deepSedimentaryBasinsLayerConfig,
         geothermalKgraLayerConfig,
-        nonPetrolWellLayerConfig
+        deepSedimentaryBasinsLayerConfig,
+        potentialResourcesLayerConfig,
+        //nonPetrolWellLayerConfig
     ]
 }
 
 const layersConfig: LayerProps[] = [
-    geothermalWellsandSpringsConfig,
     geophysicalDataConfig,
+    geothermalWellsandSpringsConfig,
     geologicalInformationConfig,
     infrastructureAndLandUseConfig,
 ];
