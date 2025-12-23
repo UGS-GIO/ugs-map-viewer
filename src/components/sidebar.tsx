@@ -197,7 +197,7 @@ export default function Sidebar({ className }: SidebarProps) {
             "absolute -right-3 top-1/2 -translate-y-1/2 z-[60] hidden md:flex",
             "w-6 h-12 items-center justify-center",
             "bg-background border border-border rounded-sm",
-            "cursor-col-resize hover:bg-accent/50 active:bg-accent",
+            "cursor-col-resize hover:bg-accent active:bg-accent",
             "transition-colors duration-150 select-none"
           )}
           title={isCollapsed ? 'Click to expand, drag to resize' : 'Click to collapse, drag to resize'}
