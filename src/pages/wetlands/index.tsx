@@ -5,23 +5,25 @@ import { cn } from '@/lib/utils'
 import MapContainer from './components/map-container'
 import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 export default function Map() {
     const { isCollapsed, sidebarWidthPx } = useSidebar();
-    const sidebarMargin = isCollapsed ? 56 : sidebarWidthPx;
+    const isMobile = useIsMobile();
+    const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
 
     return (
-        <div className="relative h-full overflow-hidden bg-background">
+        <div className="relative h-svh overflow-hidden bg-background">
             <Sidebar />
             <main
                 id="content"
-                className="overflow-x-hidden pt-16 transition-[margin] duration-200 ease-linear md:overflow-y-hidden md:pt-0 h-full max-md:!ml-0"
+                className="overflow-x-hidden pt-[var(--header-height)] transition-[margin] duration-200 ease-linear md:overflow-y-hidden md:pt-0 h-full"
                 style={{ marginLeft: `${sidebarMargin}px` }}
             >
                 <Layout>
 
                     {/* ===== Top Heading ===== */}
-                    <Layout.Header>
+                    <Layout.Header className='hidden md:flex'>
                         <TopNav />
                         <div className='ml-auto flex items-center space-x-4'>
                             {/* Search Combobox goes here */}

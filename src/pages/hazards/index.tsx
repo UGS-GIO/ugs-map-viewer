@@ -5,14 +5,17 @@ import { cn } from '@/lib/utils';
 import MapContainer from './components/map-container';
 import Sidebar from '@/components/sidebar';
 import { useSidebar } from '@/hooks/use-sidebar';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox';
 import { PROD_POSTGREST_URL } from '@/lib/constants';
 import { qFaultsWMSTitle } from '@/pages/hazards/data/layers/layers';
 
 export default function Map() {
   const { isCollapsed, sidebarWidthPx } = useSidebar();
+  const isMobile = useIsMobile();
   // Use 56px (3.5rem) when collapsed, dynamic pixel width when expanded
-  const sidebarMargin = isCollapsed ? 56 : sidebarWidthPx;
+  // On mobile, no margin needed (sidebar is top, not left)
+  const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
 
   const searchConfig: SearchSourceConfig[] = [
     defaultMasqueradeConfig,
@@ -33,15 +36,15 @@ export default function Map() {
   ];
 
   return (
-    <div className="relative h-full overflow-hidden bg-background">
+    <div className="relative h-svh overflow-hidden bg-background">
       <Sidebar />
       <main
         id="content"
-        className="overflow-x-hidden pt-16 transition-[margin] duration-200 ease-linear md:overflow-y-hidden md:pt-0 h-full max-md:!ml-0"
+        className="overflow-x-hidden pt-[var(--header-height)] transition-[margin] duration-200 ease-linear md:overflow-y-hidden md:pt-0 h-full"
         style={{ marginLeft: `${sidebarMargin}px` }}
       >
         <Layout>
-          <Layout.Header className='flex items-center justify-between px-4 md:px-6'>
+          <Layout.Header className='hidden md:flex items-center justify-between px-4 md:px-6'>
             <TopNav />
             <div className='flex items-center flex-1 min-w-0 md:flex-initial md:w-1/3 md:ml-auto space-x-2'>
               <div className="flex-1 min-w-0">

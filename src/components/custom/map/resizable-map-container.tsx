@@ -9,7 +9,9 @@ import { useMap } from '@/hooks/use-map';
 import { ViewModeControl } from '@/lib/map/controls/view-mode-control';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useMapUrlSync, type ViewMode } from '@/hooks/use-map-url-sync';
+import { useSidebar } from '@/hooks/use-sidebar';
 import { cn } from '@/lib/utils';
+import { Map, Table2, Layers, SplitSquareVertical } from 'lucide-react';
 
 interface ResizableMapContainerProps {
     wmsUrl: string;
@@ -30,6 +32,7 @@ export function ResizableMapContainer({
     const { map } = useMap();
     const isMobile = useIsMobile();
     const { viewMode, setViewMode } = useMapUrlSync();
+    const { setNavOpened } = useSidebar();
     const defaultLayersConfig = useGetLayerConfigsData(layerConfigKey);
     const popupDrawerRef = useRef<PopupDrawerRef>(null);
     const [tablePanelSize, setTablePanelSize] = useState(50);
@@ -63,14 +66,17 @@ export function ResizableMapContainer({
             // Re-open the popup drawer when switching to map mode with results
             requestAnimationFrame(() => popupDrawerRef.current?.open());
         }
-    }, [hasResults]);
+    }, [setViewMode, hasResults]);
+
+    // Capture initial viewMode in a ref so we don't recreate control on every viewMode change
+    const initialViewModeRef = useRef(viewMode);
 
     // Add/remove ViewModeControl and sync hasResults state
     useEffect(() => {
         if (!map || usePopupMode) return;
 
         const control = new ViewModeControl({
-            initialMode: viewMode,
+            initialMode: initialViewModeRef.current,
             onModeChange: handleViewModeChange,
         });
 
@@ -95,7 +101,7 @@ export function ResizableMapContainer({
         setViewMode('map');
         viewModeControlRef.current?.setMode('map');
         onDrawerClose();
-    }, [onDrawerClose]);
+    }, [setViewMode, onDrawerClose]);
 
     const handleDrawerOpenChange = useCallback((open: boolean) => {
         setIsDrawerOpen(open);
@@ -163,13 +169,33 @@ export function ResizableMapContainer({
                         </MapWrapper>
                     </div>
 
-                    {/* Popup drawer - only in map-only mode, positioned alongside map */}
-                    {viewMode === 'map' && (
+                    {/* Popup drawer - desktop: alongside map, mobile: overlay from bottom */}
+                    {viewMode === 'map' && !isMobile && (
                         <div className={cn(
                             "h-full border-l bg-background overflow-hidden transition-[width] duration-200 ease-linear",
-                            isDrawerOpen && !isMobile ? "w-[480px]" : "w-0",
-                            isDrawerOpen && isMobile && "w-full"
+                            isDrawerOpen ? "w-[480px]" : "w-0"
                         )}>
+                            <PopupDrawer
+                                ref={popupDrawerRef}
+                                container={popupContainer}
+                                drawerTriggerRef={drawerTriggerRef}
+                                popupContent={popupContent}
+                                popupTitle={popupTitle}
+                                onClose={onDrawerClose}
+                                onOpenChange={handleDrawerOpenChange}
+                            />
+                        </div>
+                    )}
+
+                    {/* Mobile drawer - overlay from bottom */}
+                    {viewMode === 'map' && isMobile && (
+                        <div className={cn(
+                            "absolute inset-x-0 bottom-0 z-50 bg-background border-t rounded-t-xl shadow-lg",
+                            "transition-transform duration-200 ease-linear",
+                            isDrawerOpen ? "translate-y-0" : "translate-y-full"
+                        )}
+                        style={{ height: '70%' }}
+                        >
                             <PopupDrawer
                                 ref={popupDrawerRef}
                                 container={popupContainer}
@@ -186,7 +212,7 @@ export function ResizableMapContainer({
                 {/* Resize handle - only in split mode */}
                 {viewMode === 'split' && (
                     <div
-                        className="h-2 bg-border hover:bg-accent cursor-row-resize flex items-center justify-center shrink-0"
+                        className="h-3 bg-border hover:bg-accent active:bg-accent cursor-row-resize flex items-center justify-center shrink-0 touch-none"
                         onMouseDown={(e) => {
                             e.preventDefault();
                             const startY = e.clientY;
@@ -212,6 +238,32 @@ export function ResizableMapContainer({
                             document.addEventListener('mousemove', onMouseMove);
                             document.addEventListener('mouseup', onMouseUp);
                         }}
+                        onTouchStart={(e) => {
+                            const touch = e.touches[0];
+                            const startY = touch.clientY;
+                            const startSize = tablePanelSize;
+                            const container = e.currentTarget.parentElement;
+                            if (!container) return;
+                            const containerHeight = container.clientHeight;
+
+                            const onTouchMove = (moveEvent: TouchEvent) => {
+                                const currentTouch = moveEvent.touches[0];
+                                const deltaY = startY - currentTouch.clientY;
+                                const deltaPercent = (deltaY / containerHeight) * 100;
+                                const newSize = Math.min(80, Math.max(20, startSize + deltaPercent));
+                                setTablePanelSize(newSize);
+                                map?.resize();
+                            };
+
+                            const onTouchEnd = () => {
+                                document.removeEventListener('touchmove', onTouchMove);
+                                document.removeEventListener('touchend', onTouchEnd);
+                                map?.resize();
+                            };
+
+                            document.addEventListener('touchmove', onTouchMove, { passive: true });
+                            document.addEventListener('touchend', onTouchEnd);
+                        }}
                     >
                         <div className="w-12 h-1 bg-muted-foreground/30 rounded-full" />
                     </div>
@@ -233,6 +285,57 @@ export function ResizableMapContainer({
                         />
                     )}
                 </div>
+
+                {/* Mobile bottom navigation bar */}
+                {isMobile && (
+                    <div className="flex-shrink-0 bg-card border-t border-border px-2 py-2 z-40">
+                        <div className="flex justify-around items-center max-w-md mx-auto">
+                            <button
+                                onClick={() => handleViewModeChange('map')}
+                                className={cn(
+                                    "flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors",
+                                    viewMode === 'map'
+                                        ? "text-primary bg-primary/10"
+                                        : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                <Map className="w-5 h-5" />
+                                <span className="text-xs font-medium">Map</span>
+                            </button>
+                            <button
+                                onClick={() => handleViewModeChange('split')}
+                                className={cn(
+                                    "flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors",
+                                    viewMode === 'split'
+                                        ? "text-primary bg-primary/10"
+                                        : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                <SplitSquareVertical className="w-5 h-5" />
+                                <span className="text-xs font-medium">Split</span>
+                            </button>
+                            <button
+                                onClick={() => handleViewModeChange('table')}
+                                className={cn(
+                                    "flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors",
+                                    viewMode === 'table'
+                                        ? "text-primary bg-primary/10"
+                                        : "text-muted-foreground hover:text-foreground"
+                                )}
+                            >
+                                <Table2 className="w-5 h-5" />
+                                <span className="text-xs font-medium">Table</span>
+                            </button>
+                            <button
+                                onClick={() => setNavOpened(true)}
+                                className="flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors text-muted-foreground hover:text-foreground"
+                            >
+                                <Layers className="w-5 h-5" />
+                                <span className="text-xs font-medium">Layers</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <div ref={setPopupContainer} />

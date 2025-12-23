@@ -152,6 +152,59 @@ export const zoomToFeature = (
     });
 }
 
+/**
+ * Zooms the MapLibre map to fit all specified features.
+ *
+ * @param features - The features to zoom to.
+ * @param map - The MapLibre map instance to perform the zoom action on.
+ * @param sourceCRS - The coordinate reference system of the features.
+ */
+export const zoomToFeatures = (
+    features: ExtendedFeature[],
+    map: MapLibreMap,
+    sourceCRS: string
+) => {
+    if (!map || features.length === 0) return;
+
+    // If only one feature, use zoomToFeature
+    if (features.length === 1) {
+        zoomToFeature(features[0], map, sourceCRS);
+        return;
+    }
+
+    // Calculate combined bounds of all features
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+
+    for (const feature of features) {
+        let featureBbox: number[] | null = null;
+
+        if (feature.bbox) {
+            featureBbox = convertBbox(feature.bbox, sourceCRS);
+        } else if (feature.geometry) {
+            featureBbox = calculateGeometryBounds(feature.geometry, sourceCRS);
+        }
+
+        if (featureBbox) {
+            minX = Math.min(minX, featureBbox[0]);
+            minY = Math.min(minY, featureBbox[1]);
+            maxX = Math.max(maxX, featureBbox[2]);
+            maxY = Math.max(maxY, featureBbox[3]);
+        }
+    }
+
+    if (minX === Infinity || minY === Infinity || maxX === -Infinity || maxY === -Infinity) {
+        return;
+    }
+
+    map.fitBounds([
+        [minX, minY], // southwest corner
+        [maxX, maxY]  // northeast corner
+    ], {
+        padding: 50,
+        animate: true
+    });
+}
+
 // Helper function to calculate bounds from geometry
 function calculateGeometryBounds(geometry: Geometry, sourceCRS: string): number[] | null {
     try {

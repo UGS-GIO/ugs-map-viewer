@@ -25,7 +25,7 @@ export const DEFAULT_MAP_CONTROLS: MapControlConfig[] = [
     },
     {
         type: 'export',
-        position: 'top-right',
+        position: 'top-left',
         options: {
             PageSize: 'A4',
             PageOrientation: 'landscape',

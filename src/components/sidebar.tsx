@@ -5,6 +5,7 @@ import { Button } from './custom/button';
 import Nav from './nav';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/hooks/use-sidebar';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Link } from '@/components/custom/link';
 import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links';
 import { useGetCurrentPage } from '@/hooks/use-get-current-page';
@@ -20,9 +21,11 @@ export default function Sidebar({ className }: SidebarProps) {
   const currentPage = useGetCurrentPage();
   const appTitle = getAppTitle(currentPage);
   const [isDragging, setIsDragging] = useState(false);
+  const isMobile = useIsMobile();
 
-  // Use pixel width when expanded, icon width when collapsed
-  const sidebarStyle = isCollapsed ? { width: '3.5rem' } : { width: `${sidebarWidthPx}px` };
+  // Use pixel width when expanded, icon width when collapsed (desktop only)
+  // On mobile, let CSS handle the width (w-full)
+  const sidebarStyle = isMobile ? undefined : (isCollapsed ? { width: '3.5rem' } : { width: `${sidebarWidthPx}px` });
 
   // Get default width based on screen size
   const getDefaultWidth = useCallback(() => {
@@ -115,7 +118,7 @@ export default function Sidebar({ className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "fixed left-0 right-0 top-0 z-50 w-full border-r-2 border-r-muted md:bottom-0 md:right-auto md:h-svh",
+        "fixed left-0 right-0 top-0 z-50 w-full border-b md:border-b-0 md:border-r-2 md:border-r-muted md:bottom-0 md:right-auto md:h-svh",
         !isDragging && "transition-[width] duration-200 ease-linear",
         className
       )}
@@ -127,7 +130,7 @@ export default function Sidebar({ className }: SidebarProps) {
           } w-full bg-black md:hidden`}
       />
 
-      <Layout fixed className={navOpened ? 'h-svh' : ''}>
+      <Layout fixed className={cn('md:h-full', navOpened && 'h-svh')}>
         {/* Header */}
         <Layout.Header
           sticky
