@@ -141,16 +141,17 @@ export function QueryResultsTable({ layerContent, onClose }: QueryResultsTablePr
     }, [selectedLayerIndex]);
 
     // Handle row click with shift+click and ctrl+click
-    const handleRowClick = useCallback((index: number, event: React.MouseEvent) => {
+    // Uses row.id (global index) not page-relative index for proper selection
+    const handleRowClick = (rowId: string, event: React.MouseEvent) => {
         // Don't handle if clicking on checkbox
         if ((event.target as HTMLElement).closest('[role="checkbox"]')) return;
 
-        const currentMap = mapRef.current;
+        const numericId = parseInt(rowId, 10);
 
         if (event.shiftKey && lastClickedRow !== null) {
-            // Shift+click: select range
-            const start = Math.min(lastClickedRow, index);
-            const end = Math.max(lastClickedRow, index);
+            // Shift+click: select range using global indices
+            const start = Math.min(lastClickedRow, numericId);
+            const end = Math.max(lastClickedRow, numericId);
             const newSelection: RowSelectionState = { ...rowSelection };
             for (let i = start; i <= end; i++) {
                 newSelection[i] = true;
@@ -160,23 +161,24 @@ export function QueryResultsTable({ layerContent, onClose }: QueryResultsTablePr
             // Ctrl/Cmd+click: toggle single row (additive)
             setRowSelection(prev => ({
                 ...prev,
-                [index]: !prev[index]
+                [numericId]: !prev[numericId]
             }));
-            setLastClickedRow(index);
+            setLastClickedRow(numericId);
         } else {
             // Regular click: select only this row and zoom
-            setRowSelection({ [index]: true });
-            setLastClickedRow(index);
+            setRowSelection({ [numericId]: true });
+            setLastClickedRow(numericId);
 
-            // Zoom and highlight single feature
-            const row = rowData[index];
+            // Zoom and highlight single feature (use rowIndex for rowData access)
+            const row = rowData[numericId];
+            const currentMap = mapRef.current;
             if (currentMap && row) {
                 clearGraphics(currentMap, row.layerTitle);
                 highlightFeature(row.feature, currentMap, row.sourceCRS, row.layerTitle);
                 zoomToFeature(row.feature, currentMap, row.sourceCRS);
             }
         }
-    }, [lastClickedRow, rowSelection, rowData]);
+    };
 
     // Handle column filter selection change
     const handleFilterColumnChange = useCallback((value: string) => {
@@ -324,6 +326,7 @@ export function QueryResultsTable({ layerContent, onClose }: QueryResultsTablePr
     const table = useReactTable({
         data: rowData,
         columns,
+        getRowId: (_, index) => String(index), // Use array index for row ID, not data.id
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
@@ -539,7 +542,7 @@ export function QueryResultsTable({ layerContent, onClose }: QueryResultsTablePr
                                     <TableRow
                                         key={row.id}
                                         data-row-index={index}
-                                        onClick={(e) => handleRowClick(index, e)}
+                                        onClick={(e) => handleRowClick(row.id, e)}
                                         className={cn(
                                             "cursor-pointer hover:bg-muted/50",
                                             row.getIsSelected() && "bg-primary/10"
