@@ -106,3 +106,101 @@ export function downloadGeoJSON<T extends Record<string, unknown>>(
   a.click()
   URL.revokeObjectURL(url)
 }
+
+/**
+ * Download entire layer via WFS as GeoJSON with pagination
+ * @param wmsUrl - The WMS base URL (will be converted to WFS)
+ * @param layerName - Full layer name including workspace (e.g., "hazards:quaternaryfaults_current")
+ * @param title - Layer title for filename
+ * @param onProgress - Optional callback for progress updates (0-100)
+ * @param maxFeatures - Maximum features to fetch (default 10000, for browser performance)
+ * @returns Promise that resolves when download completes or rejects on error
+ */
+export async function downloadLayerAsGeoJSON(
+  wmsUrl: string,
+  layerName: string,
+  title: string,
+  onProgress?: (percent: number, fetched: number, total: number | null) => void,
+  maxFeatures = 10000
+): Promise<void> {
+  // Convert WMS URL to WFS URL
+  const wfsUrl = wmsUrl.replace(/\/wms\/?$/, '/wfs')
+
+  const pageSize = 5000
+  let startIndex = 0
+  let totalMatched: number | null = null
+  const allFeatures: GeoJSON.Feature[] = []
+
+  // Fetch pages until we have all features or hit the limit
+  while (true) {
+    const params = new URLSearchParams({
+      service: 'WFS',
+      version: '2.0.0',
+      request: 'GetFeature',
+      typeName: layerName,
+      outputFormat: 'application/json',
+      srsName: 'EPSG:4326',
+      startIndex: String(startIndex),
+      count: String(pageSize),
+    })
+
+    const requestUrl = `${wfsUrl}?${params.toString()}`
+    const response = await fetch(requestUrl)
+
+    if (!response.ok) {
+      throw new Error(`WFS request failed: ${response.status} ${response.statusText}`)
+    }
+
+    const batch = await response.json() as GeoJSON.FeatureCollection & {
+      numberMatched?: number
+      numberReturned?: number
+    }
+
+    // Get total count from first response
+    if (totalMatched === null && batch.numberMatched !== undefined) {
+      totalMatched = batch.numberMatched
+    }
+
+    allFeatures.push(...batch.features)
+
+    // Report progress
+    if (onProgress) {
+      const percent = totalMatched
+        ? Math.min(100, Math.round((allFeatures.length / totalMatched) * 100))
+        : null
+      onProgress(percent ?? 0, allFeatures.length, totalMatched)
+    }
+
+    // Check if we're done
+    const returnedCount = batch.numberReturned ?? batch.features.length
+    if (returnedCount < pageSize) {
+      // Last page - no more features
+      break
+    }
+
+    if (allFeatures.length >= maxFeatures) {
+      console.warn(`Layer export capped at ${maxFeatures} features for browser performance`)
+      break
+    }
+
+    startIndex += pageSize
+  }
+
+  // Build final GeoJSON
+  const geojson: GeoJSON.FeatureCollection = {
+    type: 'FeatureCollection',
+    features: allFeatures,
+  }
+
+  // Download the GeoJSON
+  const json = JSON.stringify(geojson, null, 2)
+  const blob = new Blob([json], { type: 'application/geo+json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  // Sanitize title for filename
+  const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase()
+  a.download = `${safeTitle}.geojson`
+  a.click()
+  URL.revokeObjectURL(url)
+}

@@ -256,6 +256,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
                             layerId={liveLayer?.id || ''}
                             url={extentOptions.type === 'wms' ? extentOptions.wmsUrl || '' : ''}
                             openLegend={isUserExpanded}
+                            layerName={extentOptions.type === 'wms' ? extentOptions.layerName : null}
                         />
                     </AccordionContent>
                 </AccordionItem>
