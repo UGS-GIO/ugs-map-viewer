@@ -538,17 +538,19 @@ export function QueryResultsTable({ layerContent, onClose }: QueryResultsTablePr
                                             {header.isPlaceholder
                                                 ? null
                                                 : flexRender(header.column.columnDef.header, header.getContext())}
-                                            {/* Resize handle */}
+                                            {/* Resize handle - wider hit area, thin visible line */}
                                             {header.column.getCanResize() && (
                                                 <div
                                                     onMouseDown={header.getResizeHandler()}
                                                     onTouchStart={header.getResizeHandler()}
-                                                    className={cn(
-                                                        "absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none",
-                                                        "opacity-0 group-hover:opacity-100 hover:bg-primary/50",
-                                                        header.column.getIsResizing() && "bg-primary opacity-100"
-                                                    )}
-                                                />
+                                                    className="absolute -right-1.5 top-0 h-full w-3 cursor-col-resize select-none touch-none group/resize z-10"
+                                                >
+                                                    <div className={cn(
+                                                        "absolute left-1/2 top-0 h-full w-px -translate-x-1/2 pointer-events-none",
+                                                        "bg-border group-hover/resize:bg-primary",
+                                                        header.column.getIsResizing() && "bg-primary"
+                                                    )} />
+                                                </div>
                                             )}
                                         </TableHead>
                                     ))}
