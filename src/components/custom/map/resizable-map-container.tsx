@@ -98,9 +98,10 @@ export function ResizableMapContainer({
     }, [map]);
 
     const handleCloseTable = useCallback(() => {
+        // Clear data first, THEN switch mode to prevent drawer from opening with stale data
+        onDrawerClose();
         setViewMode('map');
         viewModeControlRef.current?.setMode('map');
-        onDrawerClose();
     }, [setViewMode, onDrawerClose]);
 
     const handleDrawerOpenChange = useCallback((open: boolean) => {
@@ -282,6 +283,8 @@ export function ResizableMapContainer({
                         <QueryResultsTable
                             layerContent={popupContent}
                             onClose={handleCloseTable}
+                            viewMode={viewMode}
+                            onViewModeChange={handleViewModeChange}
                         />
                     )}
                 </div>

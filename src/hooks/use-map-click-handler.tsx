@@ -5,6 +5,7 @@ import type { MapLibreMap } from '@/lib/types/map-types';
 interface MapClickEvent {
     screenX: number;
     screenY: number;
+    shiftKey?: boolean;
 }
 
 interface UseMapClickHandlerProps {
@@ -12,7 +13,7 @@ interface UseMapClickHandlerProps {
     isSketching: boolean | (() => boolean);
     shouldIgnoreNextClick?: (() => boolean) | undefined;
     consumeIgnoreClick?: (() => void) | undefined;
-    onPointClick: (point: MapPoint) => void;
+    onPointClick: (point: MapPoint, options?: { additive?: boolean }) => void;
     coordinateAdapter: CoordinateAdapter;
 }
 
@@ -40,7 +41,7 @@ export function useMapClickHandler({
 
         const screenPoint: ScreenPoint = { x: event.screenX, y: event.screenY };
         const mapPoint = coordinateAdapter.screenToMap(screenPoint, map);
-        onPointClick(mapPoint);
+        onPointClick(mapPoint, { additive: event.shiftKey ?? false });
     }, [map, isSketching, shouldIgnoreNextClick, consumeIgnoreClick, onPointClick, coordinateAdapter]);
 
     return { handleMapClick };

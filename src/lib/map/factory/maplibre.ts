@@ -297,6 +297,7 @@ export class MapLibreMapFactory implements MapFactory {
       style,
       center: [options.center[0], options.center[1]],
       zoom: options.zoom,
+      boxZoom: false, // Disable so shift+click works for multi-select
     });
   }
 

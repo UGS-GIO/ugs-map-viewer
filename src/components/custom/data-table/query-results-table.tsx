@@ -44,6 +44,7 @@ import {
     Columns3,
     MapPin,
     Map,
+    SplitSquareVertical,
 } from 'lucide-react';
 import type { LayerContentProps, ExtendedFeature } from '@/components/custom/popups/popup-content-with-pagination';
 import { useMap } from '@/hooks/use-map';
@@ -52,9 +53,13 @@ import { highlightFeature, clearGraphics } from '@/lib/map/highlight-utils';
 import { downloadCSV, downloadGeoJSON } from '@/lib/download-utils';
 import { cn } from '@/lib/utils';
 
+type ViewMode = 'map' | 'split' | 'table';
+
 interface QueryResultsTableProps {
     layerContent: LayerContentProps[];
     onClose?: () => void;
+    viewMode?: ViewMode;
+    onViewModeChange?: (mode: ViewMode) => void;
 }
 
 interface ColumnConfig {
@@ -76,7 +81,7 @@ const EMPTY_COLUMN_FILTERS: { id: string; value: string }[] = [];
 
 type OpenDropdown = 'none' | 'export' | 'columns';
 
-export function QueryResultsTable({ layerContent, onClose }: QueryResultsTableProps) {
+export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeChange }: QueryResultsTableProps) {
     const { map } = useMap();
     const mapRef = useRef(map);
     mapRef.current = map;
@@ -401,8 +406,40 @@ export function QueryResultsTable({ layerContent, onClose }: QueryResultsTablePr
                         {selectedLayer?.layerTitle || selectedLayer?.groupLayerTitle} ({rowData.length})
                     </span>
                 )}
+                {/* View mode buttons */}
+                {onViewModeChange && (
+                    <div className="flex items-center gap-0.5 shrink-0">
+                        <Button
+                            variant={viewMode === 'map' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            onClick={() => onViewModeChange('map')}
+                            className="h-7 w-7 p-0"
+                            title="Map view"
+                        >
+                            <Map className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant={viewMode === 'split' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            onClick={() => onViewModeChange('split')}
+                            className="h-7 w-7 p-0"
+                            title="Split view"
+                        >
+                            <SplitSquareVertical className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant={viewMode === 'table' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            onClick={() => onViewModeChange('table')}
+                            className="h-7 w-7 p-0"
+                            title="Table view"
+                        >
+                            <Table2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
                 {onClose && (
-                    <Button variant="ghost" size="sm" onClick={onClose} className="h-7 w-7 p-0 shrink-0">
+                    <Button variant="ghost" size="sm" onClick={onClose} className="h-7 w-7 p-0 shrink-0" title="Clear results">
                         <X className="h-4 w-4" />
                     </Button>
                 )}

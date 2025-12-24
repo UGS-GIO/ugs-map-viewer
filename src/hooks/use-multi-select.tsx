@@ -1,7 +1,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 import type { MapLibreMap } from '@/lib/types/map-types';
-import { useMultiSelect } from '@/context/multi-select-context';
 import type { TerraDraw } from 'terra-draw';
+
+export type DrawMode = 'off' | 'rectangle' | 'polygon';
 
 interface DrawGeometry {
     type: 'polygon';
@@ -18,49 +19,66 @@ interface GeoJSONFeature {
     properties: Record<string, unknown>;
 }
 
-interface UseMultiSelectProps {
+interface UseDrawSelectProps {
     map: MapLibreMap | null;
-    onPolygonComplete?: (geometry: DrawGeometry) => void;
+    drawMode: DrawMode;
+    onDrawComplete?: (geometry: DrawGeometry) => void;
+    onDrawingChange?: (isDrawing: boolean) => void;
 }
 
-export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectProps) {
+/**
+ * Hook for drawing selections on the map using Terra Draw
+ * Supports rectangle and polygon drawing modes
+ */
+export function useDrawSelect({ map, drawMode, onDrawComplete, onDrawingChange }: UseDrawSelectProps) {
     const drawRef = useRef<TerraDraw | null>(null);
-    const onPolygonCompleteRef = useRef(onPolygonComplete);
-    const { isMultiSelectMode, selectionMode, setIsDrawing, setHasCompletedPolygon } = useMultiSelect();
+    const onDrawCompleteRef = useRef(onDrawComplete);
+    const currentModeRef = useRef<DrawMode>('off');
 
     // Keep ref in sync with prop
-    onPolygonCompleteRef.current = onPolygonComplete;
+    onDrawCompleteRef.current = onDrawComplete;
 
     useEffect(() => {
-        // Only initialize Terra Draw in polygon mode
-        const shouldDrawBeActive = map && isMultiSelectMode && selectionMode === 'polygon';
+        const shouldDrawBeActive = map && drawMode !== 'off';
 
         if (!shouldDrawBeActive) {
             if (drawRef.current) {
                 try {
                     drawRef.current.stop();
                 } catch (e) {
-                    console.error('[MultiSelect] Error stopping draw:', e);
+                    console.error('[DrawSelect] Error stopping draw:', e);
                 }
                 drawRef.current = null;
-                setIsDrawing(false);
-                setHasCompletedPolygon(false);
+                onDrawingChange?.(false);
             }
+            currentModeRef.current = 'off';
             return;
         }
 
-        // Don't reinitialize if already initialized
-        if (drawRef.current) {
+        // If mode changed but draw is already initialized, just switch mode
+        if (drawRef.current && currentModeRef.current !== 'off') {
+            const terraMode = drawMode === 'rectangle' ? 'rectangle' : 'polygon';
+            drawRef.current.setMode(terraMode);
+            currentModeRef.current = drawMode;
             return;
         }
 
         const initializeDraw = async () => {
             try {
-                // Lazy load Terra Draw only when multi-select mode is activated
-                const [{ TerraDraw, TerraDrawPolygonMode, TerraDrawSelectMode }, { TerraDrawMapLibreGLAdapter }] = await Promise.all([
+                const [
+                    { TerraDraw, TerraDrawPolygonMode, TerraDrawRectangleMode, TerraDrawSelectMode },
+                    { TerraDrawMapLibreGLAdapter }
+                ] = await Promise.all([
                     import('terra-draw'),
                     import('terra-draw-maplibre-gl-adapter')
                 ]);
+
+                const sharedStyles = {
+                    fillColor: '#0078A8',
+                    fillOpacity: 0.2,
+                    outlineColor: '#0078A8',
+                    outlineWidth: 2,
+                };
 
                 const draw = new TerraDraw({
                     adapter: new TerraDrawMapLibreGLAdapter({ map }),
@@ -68,27 +86,29 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
                         new TerraDrawSelectMode(),
                         new TerraDrawPolygonMode({
                             styles: {
-                                fillColor: '#f59e0b',
-                                fillOpacity: 0.3,
-                                outlineColor: '#f59e0b',
-                                outlineWidth: 3,
-                                closingPointColor: '#f59e0b',
+                                ...sharedStyles,
+                                closingPointColor: '#0078A8',
                                 closingPointOutlineColor: '#ffffff',
                                 closingPointWidth: 6,
                                 closingPointOutlineWidth: 2
                             }
+                        }),
+                        new TerraDrawRectangleMode({
+                            styles: sharedStyles
                         })
                     ]
                 });
 
                 draw.start();
-                draw.setMode('polygon');
+                const terraMode = drawMode === 'rectangle' ? 'rectangle' : 'polygon';
+                draw.setMode(terraMode);
                 drawRef.current = draw;
+                currentModeRef.current = drawMode;
 
                 let isCompleting = false;
 
                 const handleFinish = (_id: string | number, context: { action: string; mode: string }) => {
-                    if (context.mode === 'polygon' && context.action === 'draw') {
+                    if ((context.mode === 'polygon' || context.mode === 'rectangle') && context.action === 'draw') {
                         const features = draw.getSnapshot();
 
                         if (features.length > 0) {
@@ -102,11 +122,10 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
                                 };
 
                                 isCompleting = true;
-                                setIsDrawing(false);
-                                setHasCompletedPolygon(true);
-                                onPolygonCompleteRef.current?.(geometry);
+                                onDrawingChange?.(false);
+                                onDrawCompleteRef.current?.(geometry);
 
-                                // Keep polygon visible after completion
+                                // Keep shape visible after completion
                                 draw.setMode('select');
                             }
                         }
@@ -114,37 +133,29 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
                 };
 
                 const handleChange = () => {
-                    // Don't update isDrawing if we're in the middle of completing
-                    if (isCompleting) {
-                        return;
-                    }
+                    if (isCompleting) return;
                     const features = draw.getSnapshot();
-                    const hasIncompletePolygon = features.some(f => {
+                    const hasIncomplete = features.some(f => {
                         const geom = (f as GeoJSONFeature).geometry;
-                        // A polygon is incomplete if it has less than 3 points
-                        return geom.type === 'LineString' ||
-                               (geom.type === 'Point');
+                        return geom.type === 'LineString' || geom.type === 'Point';
                     });
-                    setIsDrawing(hasIncompletePolygon);
+                    onDrawingChange?.(hasIncomplete);
                 };
 
                 draw.on('finish', handleFinish);
                 draw.on('change', handleChange);
             } catch (error) {
-                console.error('[MultiSelect] Error initializing Terra Draw:', error);
+                console.error('[DrawSelect] Error initializing Terra Draw:', error);
             }
         };
 
         let cleanedUp = false;
 
-        // Check if style is already loaded, otherwise wait for event
         if (map.isStyleLoaded()) {
             initializeDraw();
         } else {
             const handleStyleLoad = () => {
-                if (!cleanedUp) {
-                    initializeDraw();
-                }
+                if (!cleanedUp) initializeDraw();
             };
             map.once('style.load', handleStyleLoad);
         }
@@ -155,46 +166,27 @@ export function useMultiSelectTool({ map, onPolygonComplete }: UseMultiSelectPro
                 try {
                     drawRef.current.stop();
                 } catch (e) {
-                    console.error('[MultiSelect] Error stopping draw:', e);
+                    console.error('[DrawSelect] Error stopping draw:', e);
                 }
                 drawRef.current = null;
-                setIsDrawing(false);
+                onDrawingChange?.(false);
             }
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [map, isMultiSelectMode, selectionMode]);
+    }, [map, drawMode, onDrawingChange]);
 
-    const clearSelection = useCallback(() => {
+    const clearDrawing = useCallback(() => {
         if (!drawRef.current) return;
-
         const features = drawRef.current.getSnapshot();
         features.forEach(feature => {
             if (feature.id) {
                 drawRef.current?.removeFeatures([feature.id]);
             }
         });
-        setIsDrawing(false);
-        setHasCompletedPolygon(false);
-    }, [setIsDrawing, setHasCompletedPolygon]);
-
-    const cancelSelection = useCallback(() => {
-        if (!drawRef.current) return;
-
-        clearSelection();
-        drawRef.current.setMode('select');
-    }, [clearSelection]);
-
-    const startNewSelection = useCallback(() => {
-        if (!drawRef.current) return;
-
-        clearSelection();
-        drawRef.current.setMode('polygon');
-    }, [clearSelection]);
+        onDrawingChange?.(false);
+    }, [onDrawingChange]);
 
     return {
-        clearSelection,
-        cancelSelection,
-        startNewSelection,
+        clearDrawing,
         draw: drawRef.current
     };
 }

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { Feature } from 'geojson';
 import { LayerOrderConfig } from "@/hooks/use-get-layer-configs";
 import { LayerContentProps } from '@/components/custom/popups/popup-content-with-pagination';
@@ -509,6 +509,11 @@ export function useFeatureInfoQuery({
     const clickIdRef = useRef(initialPopupCoords ? 1 : 0);
     const [currentClickId, setCurrentClickId] = useState<number | null>(initialPopupCoords ? 1 : null);
 
+    // Accumulated data for shift+click - merges features instead of replacing
+    const [accumulatedData, setAccumulatedData] = useState<LayerContentProps[]>([]);
+    const pendingAdditiveRef = useRef(false);
+    const lastProcessedClickIdRef = useRef<number | null>(null);
+
     // Query bbox visualizer for debugging
     const { showQueryBbox, hideQueryBbox } = useQueryBboxVisualizer(map);
 
@@ -807,15 +812,78 @@ export function useFeatureInfoQuery({
         .some(layerInfo => layerInfo.visible && layerInfo.queryable);
 
     // Declarative query - enabled when we have geometry + queryable layers
-    // This allows proper TanStack Query caching and garbage collection
-    const { data, isFetching, isSuccess } = useQuery({
+    const { data: rawData, isFetching, isSuccess } = useQuery({
         queryKey: queryKeys.features.wmsInfo(coordinateAdapter.toJSON(mapPoint), polygonRings, currentClickId),
         queryFn,
         enabled: !!map && !!(mapPoint || polygonRings) && currentClickId !== null && hasQueryableLayers,
         refetchOnWindowFocus: false,
     });
 
-    const fetchForPoint = (point: MapPoint) => {
+    // Process query results - update accumulated data only once per click
+    const data = useMemo(() => {
+        // No raw data yet, return accumulated
+        if (!rawData || !isSuccess) return accumulatedData;
+
+        // Already processed this click, return current accumulated
+        if (lastProcessedClickIdRef.current === currentClickId) {
+            return accumulatedData;
+        }
+
+        // Mark as processed
+        lastProcessedClickIdRef.current = currentClickId;
+
+        if (!pendingAdditiveRef.current) {
+            // Replace mode - update accumulated and return new data
+            // Use queueMicrotask to avoid state update during render
+            queueMicrotask(() => setAccumulatedData(rawData));
+            return rawData;
+        }
+
+        // Additive mode - merge with accumulated data
+        const result: LayerContentProps[] = [];
+
+        for (const newLayer of rawData) {
+            const existingLayerIndex = accumulatedData.findIndex(l => l.layerTitle === newLayer.layerTitle);
+
+            if (existingLayerIndex >= 0) {
+                const existingLayer = accumulatedData[existingLayerIndex];
+                const existingIds = new Set(existingLayer.features.map(f => f.id?.toString()));
+                const newIds = new Set(newLayer.features.map(f => f.id?.toString()));
+
+                // Toggle: keep features not in new, add features not in existing
+                const remainingFeatures = existingLayer.features.filter(f => !newIds.has(f.id?.toString()));
+                const addedFeatures = newLayer.features.filter(f => !existingIds.has(f.id?.toString()));
+
+                const mergedFeatures = [...remainingFeatures, ...addedFeatures];
+                if (mergedFeatures.length > 0) {
+                    result.push({ ...newLayer, features: mergedFeatures });
+                }
+            } else {
+                result.push(newLayer);
+            }
+        }
+
+        // Keep layers from accumulated that aren't in new data
+        for (const prevLayer of accumulatedData) {
+            if (!rawData.some(l => l.layerTitle === prevLayer.layerTitle)) {
+                result.push(prevLayer);
+            }
+        }
+
+        // Update accumulated and return merged
+        queueMicrotask(() => setAccumulatedData(result));
+        return result;
+    }, [rawData, accumulatedData, isSuccess, currentClickId]);
+
+    const fetchForPoint = (point: MapPoint, options?: { additive?: boolean }) => {
+        const additive = options?.additive ?? false;
+        pendingAdditiveRef.current = additive;
+
+        // If not additive, clear accumulated data
+        if (!additive) {
+            setAccumulatedData([]);
+        }
+
         // Clear polygon state when doing point query
         setPolygonRings(null);
         // Generate new click ID for each map click
@@ -834,15 +902,21 @@ export function useFeatureInfoQuery({
         setPolygonRings(rings);
     };
 
+    // Clear accumulated data helper
+    const clearAccumulatedData = () => {
+        setAccumulatedData([]);
+    };
+
     return {
         fetchForPoint,
         fetchForPolygon,
-        data: isSuccess ? data : [],
+        data,
         isFetching,
         isSuccess,
         lastClickedPoint: mapPoint || undefined,
         isPolygonQuery: polygonRings !== null,
         clickId: currentClickId,
         hideQueryBbox,
+        clearAccumulatedData,
     };
 }

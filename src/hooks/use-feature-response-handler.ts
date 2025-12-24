@@ -10,28 +10,23 @@ interface UseFeatureResponseHandlerProps {
     featureData: LayerContentProps[];
     drawerTriggerRef: React.RefObject<HTMLButtonElement>;
     clickId?: number | null; // Allow null from initial state
-    isPolygonQuery?: boolean; // Whether this is a polygon multi-select query
     popupDrawerRef?: React.RefObject<PopupDrawerRef>;
 }
 
 /**
  * Custom hook to handle side effects based on feature query responses.
- * Highlights features on the map and manages the visibility of a drawer
+ * Highlights ALL features on the map and manages the visibility of a drawer
  * based on whether features are found.
- * For point queries: highlights the first feature
- * For polygon queries: highlights all features
  * @param isSuccess - Indicates if the feature query was successful.
  * @param featureData - The data returned from the feature query.
  * @param drawerTriggerRef - Ref to the button that toggles the drawer visibility.
  * @param clickId - Unique identifier for each map click to prevent filter changes from closing drawer.
- * @param isPolygonQuery - Whether this is a polygon multi-select query.
  */
 export function useFeatureResponseHandler({
     isSuccess,
     featureData,
     drawerTriggerRef,
     clickId,
-    isPolygonQuery = false,
     popupDrawerRef
 }: UseFeatureResponseHandlerProps) {
     const { map } = useMap();
@@ -56,36 +51,20 @@ export function useFeatureResponseHandler({
         const drawerState = drawerTriggerRef.current?.getAttribute('data-state');
 
         // Handle feature highlighting
+        // Always clear ALL graphics first, then re-highlight ALL accumulated features
+        // This prevents memory leaks from orphaned graphics layers
+        if (map) {
+            clearGraphics(map);
+        }
+
         if (hasFeatures && map) {
-            if (isPolygonQuery) {
-                // Multi-select: highlight ALL features
-                let featureCount = 0;
-                const processedLayers = new Set<string>();
-
-                for (const layer of popupContent) {
-                    if (layer.features && layer.features.length > 0) {
-                        const title = layer.layerTitle || layer.groupLayerTitle;
-
-                        // Clear existing highlights for this layer before adding new ones
-                        if (!processedLayers.has(title)) {
-                            clearGraphics(map, title);
-                            processedLayers.add(title);
-                        }
-
-                        for (const feature of layer.features) {
-                            highlightFeature(feature, map, layer.sourceCRS, title);
-                            featureCount++;
-                        }
+            // Highlight ALL features across all layers
+            for (const layer of popupContent) {
+                if (layer.features && layer.features.length > 0) {
+                    const title = layer.layerTitle || layer.groupLayerTitle;
+                    for (const feature of layer.features) {
+                        highlightFeature(feature, map, layer.sourceCRS, title);
                     }
-                }
-            } else {
-                // Point query: highlight only first feature
-                const firstLayer = popupContent[0];
-                const firstFeature = firstLayer?.features[0];
-                if (firstFeature && firstLayer) {
-                    const title = firstLayer.layerTitle || firstLayer.groupLayerTitle;
-                    clearGraphics(map, title);
-                    highlightFeature(firstFeature, map, firstLayer.sourceCRS, title);
                 }
             }
         }

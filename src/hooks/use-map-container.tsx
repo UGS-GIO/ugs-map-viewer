@@ -15,6 +15,7 @@ import { clearGraphics, highlightFeature } from '@/lib/map/highlight-utils';
 import { useMultiSelectTool } from '@/hooks/use-multi-select';
 import { useMultiSelect } from '@/context/multi-select-context';
 import { useMultiSelectControl } from '@/hooks/use-multi-select-control';
+import { AdditiveSelectControl } from '@/lib/map/controls/additive-select-control';
 import type { LayerProps } from '@/lib/types/mapping-types';
 import type { PopupDrawerRef } from '@/components/custom/popups/popup-drawer';
 import { buildVisibleLayersMap, type VisibleLayersMap } from '@/lib/map/layer-info-utils';
@@ -56,6 +57,13 @@ export function useMapContainer({
     const contextMenuTriggerRef = useRef<HTMLDivElement>(null);
     const drawerTriggerRef = useRef<HTMLButtonElement>(null);
     const { selectedLayerTitles } = useLayerUrl();
+
+    // Track shift key and additive mode toggle for multi-select
+    const [isShiftHeld, setIsShiftHeld] = useState(false);
+    const [additiveModeLocked, setAdditiveModeLocked] = useState(false);
+
+    // Additive mode is active when shift is held OR toggle is locked
+    const isAdditiveMode = isShiftHeld || additiveModeLocked;
 
     // Create coordinate adapter for MapLibre
     const coordinateAdapter: CoordinateAdapter = useMemo(() => {
@@ -115,7 +123,6 @@ export function useMapContainer({
         featureData: featureInfoQuery.data || [],
         drawerTriggerRef,
         clickId: featureInfoQuery.clickId,
-        isPolygonQuery: featureInfoQuery.isPolygonQuery,
         popupDrawerRef
     });
 
@@ -134,6 +141,53 @@ export function useMapContainer({
     // Add multi-select control to map
     useMultiSelectControl(map);
 
+    // Track shift key state for cursor feedback
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Shift') setIsShiftHeld(true);
+        };
+        const handleKeyUp = (e: KeyboardEvent) => {
+            if (e.key === 'Shift') setIsShiftHeld(false);
+        };
+        const handleBlur = () => setIsShiftHeld(false);
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        window.addEventListener('blur', handleBlur);
+
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+            window.removeEventListener('keyup', handleKeyUp);
+            window.removeEventListener('blur', handleBlur);
+        };
+    }, []);
+
+    // Change cursor when additive mode is active (shift held OR toggle locked)
+    useEffect(() => {
+        if (!map) return;
+        const canvas = map.getCanvas();
+        if (isAdditiveMode) {
+            canvas.style.cursor = 'copy';
+        } else {
+            canvas.style.cursor = '';
+        }
+    }, [map, isAdditiveMode]);
+
+    // Add additive select control to map
+    useEffect(() => {
+        if (!map) return;
+
+        const control = new AdditiveSelectControl({
+            onToggle: (enabled: boolean) => setAdditiveModeLocked(enabled)
+        });
+
+        map.addControl(control, 'top-left');
+
+        return () => {
+            map.removeControl(control);
+        };
+    }, [map]);
+
     const { clearSelection } = useMultiSelectTool({
         map,
         onPolygonComplete: (geometry) => {
@@ -149,10 +203,12 @@ export function useMapContainer({
         isSketching: getIsSketching || isSketching,
         shouldIgnoreNextClick,
         consumeIgnoreClick,
-        onPointClick: (mapPoint) => {
-            // Update URL with popup coords
-            setPopupCoords({ lat: mapPoint.y, lon: mapPoint.x });
-            featureInfoQuery.fetchForPoint(mapPoint);
+        onPointClick: (mapPoint, options) => {
+            // Update URL with popup coords (only for non-additive clicks)
+            if (!options?.additive) {
+                setPopupCoords({ lat: mapPoint.y, lon: mapPoint.x });
+            }
+            featureInfoQuery.fetchForPoint(mapPoint, options);
         },
         coordinateAdapter,
     });
@@ -172,15 +228,17 @@ export function useMapContainer({
         let hasQueriedThisGeolocate = false;
 
         const handleMapLibreClick = (e: MapMouseEvent) => {
-            // Clear any previous graphics and query bbox immediately
-            clearGraphics(map);
+            // Check if additive mode is active (shift key OR toggle locked)
+            const isAdditive = (e.originalEvent?.shiftKey ?? false) || additiveModeLocked;
+
+            // Note: Graphics are cleared and re-highlighted by the response handler
+            // This ensures accumulated features are properly managed
             featureInfoQuery.hideQueryBbox();
 
             // Handle click-to-select mode
             // Note: For WMS layers, queryRenderedFeatures returns nothing since WMS is server-rendered.
             // We still attempt it for vector layers, but always fall through to WMS query.
             if (isMultiSelectMode && selectionMode === 'click') {
-                const isShiftClick = e.originalEvent?.shiftKey ?? false;
 
                 // Try to find vector features at click point (works for vector tiles, not WMS)
                 const features = map.queryRenderedFeatures(e.point);
@@ -198,8 +256,8 @@ export function useMapContainer({
                             removeSelectedFeature(featureId);
                             clearGraphics(map, layerTitle);
                             return; // Don't query when deselecting
-                        } else if (isShiftClick) {
-                            // Shift+click adds to selection
+                        } else if (isAdditive) {
+                            // Additive mode adds to selection
                             addSelectedFeature(geoJsonFeature);
                             highlightFeature(geoJsonFeature, map, 'EPSG:4326', layerTitle);
                         } else {
@@ -213,8 +271,8 @@ export function useMapContainer({
                 }
 
                 // Always query WMS for feature info
-                // For shift+click, suppress the popup opening
-                if (isShiftClick) {
+                // For additive mode, suppress the popup opening
+                if (isAdditive) {
                     suppressNextPopup();
                 }
                 if (e.point) {
@@ -228,9 +286,14 @@ export function useMapContainer({
 
             // Normal click behavior (selection tool not active)
             if (e.point) {
+                // Suppress popup in additive mode (just add to selection)
+                if (isAdditive) {
+                    suppressNextPopup();
+                }
                 handleMapClick({
                     screenX: e.point.x,
-                    screenY: e.point.y
+                    screenY: e.point.y,
+                    shiftKey: isAdditive
                 });
             }
         };
@@ -259,7 +322,7 @@ export function useMapContainer({
             map?.off?.('click', handleMapLibreClick);
             map?.off?.('user-geolocate', handleUserGeolocate);
         };
-    }, [map, isSketching, isMultiSelectMode, selectionMode, handleMapClick, featureInfoQuery, isFeatureSelected, addSelectedFeature, removeSelectedFeature, clearSelectedFeatures, suppressNextPopup]);
+    }, [map, isSketching, isMultiSelectMode, selectionMode, handleMapClick, featureInfoQuery, isFeatureSelected, addSelectedFeature, removeSelectedFeature, clearSelectedFeatures, suppressNextPopup, additiveModeLocked]);
 
     // Initialize the map when the container is ready
     useEffect(() => {
@@ -293,6 +356,9 @@ export function useMapContainer({
 
         // Hide the query bbox visualization
         featureInfoQuery.hideQueryBbox();
+
+        // Clear accumulated query results (important for shift+click multi-select)
+        featureInfoQuery.clearAccumulatedData();
 
         // Clear popup coords from URL
         setPopupCoords(null);
