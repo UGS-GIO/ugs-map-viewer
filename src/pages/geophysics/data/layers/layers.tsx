@@ -429,7 +429,14 @@ const gravityStationsLayerConfig: WMSLayerProps = {
                     }
                 },
                 'Date': { field: 'date', type: 'string' },
-                'Observed Measurement': { field: 'observed', type: 'string' },
+                'Observed Measurement': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const bht = props?.['observed'];
+                        return `${bht} mGal`;
+                    }
+                },
             },
         },
     ],
@@ -450,7 +457,14 @@ const geothermalUseLayerConfig: WMSLayerProps = {
             queryable: true,
             popupFields: {
                 'Name': { field: 'name', type: 'string' },
-                'Temperature': { field: 'temp_c', type: 'string' },
+                'Temperature': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const bht = props?.['temp_c'];
+                        return `${bht} °C`;
+                    }
+                },
                 'Use': { field: 'use', type: 'string' },
                 'Location': {
                     field: 'custom',
@@ -518,7 +532,7 @@ const geothermalKgraLayerConfig: WMSLayerProps = {
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalKgraLayerName}`,
             popupEnabled: false,
-            queryable: false,
+            queryable: true,
             popupFields: {
                 'Name': { field: 'name', type: 'string' },
             },
@@ -527,7 +541,7 @@ const geothermalKgraLayerConfig: WMSLayerProps = {
 };
 
 // ingqFaults WMS Layer
-const ingqFaultsLayerName = 'mart_geothermal_qfaults_ingenious_current';
+/* const ingqFaultsLayerName = 'mart_geothermal_qfaults_ingenious_current';
 const ingqFaultsWMSTitle = 'Great Basin Faults (INGENIOUS Project)';
 const ingqFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',
@@ -555,9 +569,44 @@ const ingqFaultsWMSConfig: WMSLayerProps = {
             },
         },
     ],
-};
+}; */
 
 
+
+const geophysicalDataConfig: LayerProps = {
+    type: 'group',
+    title: 'Geophysical Data',
+    visible: true,
+    layers: [
+        gravityStationsLayerConfig,
+    ]
+}
+
+const geothermalWellsandSpringsConfig: LayerProps = {
+    type: 'group',
+    title: 'Geothermal Resources',
+    visible: true,
+    layers: [
+        geothermalWellsWMSConfig,
+        heatflowLayerConfig,
+        geothermalUseLayerConfig,
+        geothermalKgraLayerConfig,
+        deepSedimentaryBasinsLayerConfig,
+        potentialResourcesLayerConfig,
+    ]
+}
+
+const geologicalInformationConfig: LayerProps = {
+    type: 'group',
+    title: 'Geological Information',
+    visible: false,
+    layers: [
+        qFaultsWMSConfig,
+        //ingqFaultsWMSConfig,
+        faultsWMSConfig,
+        seamlessGeolunitsWMSConfig
+    ]
+}
 
 const infrastructureAndLandUseConfig: LayerProps = {
     type: 'group',
@@ -569,41 +618,6 @@ const infrastructureAndLandUseConfig: LayerProps = {
         railroadsWMSConfig,
         transmissionLinesWMSConfig,
         SITLAConfig,
-    ]
-}
-
-const geologicalInformationConfig: LayerProps = {
-    type: 'group',
-    title: 'Geological Information',
-    visible: false,
-    layers: [
-        qFaultsWMSConfig,
-        ingqFaultsWMSConfig,
-        faultsWMSConfig,
-        seamlessGeolunitsWMSConfig
-    ]
-}
-
-const geothermalWellsandSpringsConfig: LayerProps = {
-    type: 'group',
-    title: 'Geothermal Resources',
-    visible: true,
-    layers: [
-        geothermalWellsWMSConfig,
-        heatflowLayerConfig
-    ]
-}
-
-const geophysicalDataConfig: LayerProps = {
-    type: 'group',
-    title: 'Geophysical Data',
-    visible: true,
-    layers: [
-        gravityStationsLayerConfig,
-        geothermalUseLayerConfig,
-        geothermalKgraLayerConfig,
-        deepSedimentaryBasinsLayerConfig,
-        potentialResourcesLayerConfig,
     ]
 }
 
