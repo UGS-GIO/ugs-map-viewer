@@ -1,4 +1,4 @@
-import { Button, buttonVariants } from './custom/button'
+import { Button, buttonVariants } from './ui/button'
 import { Link } from '@tanstack/react-router'
 import {
   Collapsible,
@@ -11,12 +11,12 @@ import {
   TooltipContent,
   TooltipProvider,
   TooltipTrigger
-} from './custom/tooltip'
+} from './ui/tooltip'
 import { cn } from '@/lib/utils'
 import useCheckActiveNav from '@/hooks/use-check-active-nav'
 import { Suspense } from 'react'
 import { ChevronLeft } from 'lucide-react'
-import { Spinner } from './custom/loading-spinner'
+import { Spinner } from './ui/loading-spinner'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { SideLink } from '@/lib/types/sidelink-types'
 import ThemeSwitch from '@/components/theme-switch'

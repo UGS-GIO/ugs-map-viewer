@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState, useRef, useMemo } from 'react';
 import { Feature } from 'geojson';
 import { LayerOrderConfig } from "@/hooks/use-get-layer-configs";
-import { LayerContentProps } from '@/components/custom/popups/popup-content-with-pagination';
+import { LayerContentProps } from '@/components/maps/popups/popup-content-with-pagination';
 import type { VisibleLayersMap, VisibleLayerInfo } from '@/lib/map/layer-info-utils';
 import { useLayerUrl } from '@/context/layer-url-provider';
 import type { MapPoint, CoordinateAdapter } from '@/lib/map/coordinates/types';

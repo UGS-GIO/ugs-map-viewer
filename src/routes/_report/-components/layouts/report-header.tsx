@@ -1,4 +1,4 @@
-import { Link } from "@/components/custom/link";
+import { Link } from "@/components/ui/link";
 import ThemeSwitch from "@/components/theme-switch";
 import { useGetCurrentPage } from "@/hooks/use-get-current-page";
 import { getAppTitle } from "@/lib/app-titles";

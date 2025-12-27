@@ -23,7 +23,7 @@ export const useGetPageInfo = () => {
     return useQuery<WebsiteInfo, Error>({
         queryKey: queryKeys.page.info(currentPage),
         queryFn: async () => {
-            const module = await import(`@/pages/${currentPage}/data/page-info.tsx`);
+            const module = await import(`@/routes/_map/${currentPage}/-data/page-info.tsx`);
             return module
         },
         enabled: !!currentPage,

@@ -12,7 +12,7 @@ const useGetPopupButtons = () => {
             try {
                 // Try to import the popup-buttons file dynamically
                 const { popupButtons } = await import(
-                    `@/pages/${currentPage}/data/popup-buttons.tsx`
+                    `@/routes/_map/${currentPage}/-data/popup-buttons.tsx`
                 )
 
                 if (isMounted && popupButtons) {

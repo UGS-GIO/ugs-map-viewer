@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import type { ClickedFeature, HighlightFeature } from '@/components/maps/types'
-import type { PopupSheetRef } from '@/components/custom/popups/popup-sheet'
+import type { PopupSheetRef } from '@/components/maps/popups/popup-sheet'
 import type { ViewMode } from '@/hooks/use-map-url-sync'
 
 interface FeatureRef {

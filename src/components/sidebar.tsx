@@ -1,12 +1,12 @@
 import { useEffect, useCallback, useState } from 'react';
 import { ChevronsLeft, ChevronLeft, Menu, X } from 'lucide-react';
-import { Layout } from './custom/layout';
-import { Button } from './custom/button';
+import { Layout } from './layout/layout';
+import { Button } from './ui/button';
 import Nav from './nav';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { Link } from '@/components/custom/link';
+import { Link } from '@/components/ui/link';
 import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links';
 import { useGetCurrentPage } from '@/hooks/use-get-current-page';
 import { getAppTitle } from '@/lib/app-titles';

@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from '@tanstack/react-router'
 import { RouteErrorBoundary } from '@/components/route-error-boundary'
 import { AuthProvider } from '@/context/auth-provider'
-import Map from '@/pages/hazards-review'
+import Map from './-index'
 
 function HazardsReviewPage() {
     return (

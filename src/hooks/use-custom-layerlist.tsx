@@ -9,7 +9,7 @@ import { findLayerByTitle, isWMSLayer } from '@/lib/map/utils';
 import { useLayerExtent, UseLayerExtentOptions } from '@/hooks/use-layer-extent';
 import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions';
 import { useSidebar } from '@/hooks/use-sidebar';
-import LayerControls from '@/components/custom/layer-controls';
+import LayerControls from '@/components/maps/layer-controls';
 import { useIsMobile } from './use-mobile';
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from '@/lib/constants';
 import { useLayerUrl } from '@/context/layer-url-provider';

@@ -1,6 +1,6 @@
 import { GroupLayerProps, WMSLayerProps } from '@/lib/types/mapping-types'
 import { LayerProps } from "@/lib/types/mapping-types";
-import { ExtendedFeature } from '@/components/custom/popups/popup-content-with-pagination';
+import { ExtendedFeature } from '@/components/maps/popups/popup-content-with-pagination';
 import { convertBbox, convertCoordinate } from '@/lib/map/conversion-utils';
 import { createMapFactory } from '@/lib/map/factory/factory';
 import type { Geometry } from 'geojson';

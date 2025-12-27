@@ -5,7 +5,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/custom/button';
+import { Button } from '@/components/ui/button';
 import { BasemapIcon } from '@/assets/basemap-icons';
 import { BASEMAP_STYLES, DEFAULT_BASEMAP, BasemapStyle } from '@/lib/basemaps';
 import { useNavigate, useSearch } from '@tanstack/react-router';

@@ -17,7 +17,7 @@ import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
 import { useTerraDraw } from '@/hooks/use-terra-draw'
 import { useFeatureQuery } from '@/hooks/use-feature-query'
 import type { DataMapProps } from './types'
-import { LoadingOverlay } from '@/components/custom/loading-spinner'
+import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
 
 // Re-export types for consumers

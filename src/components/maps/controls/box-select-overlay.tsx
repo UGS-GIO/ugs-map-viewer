@@ -1,4 +1,4 @@
-import { Spinner } from '@/components/custom/loading-spinner'
+import { Spinner } from '@/components/ui/loading-spinner'
 import { Button } from '@/components/ui/button'
 import { MousePointerClick } from 'lucide-react'
 

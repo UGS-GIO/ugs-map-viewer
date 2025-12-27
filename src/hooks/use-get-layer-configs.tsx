@@ -73,7 +73,7 @@ const loadSingleLayerConfig = async (currentPage: string, pageName: string): Pro
     }
 
     try {
-        const config = await import(`@/pages/${currentPage}/data/layers/${pageName}.tsx`) as { default: LayerProps[] };
+        const config = await import(`@/routes/_map/${currentPage}/-data/layers/${pageName}.tsx`) as { default: LayerProps[] };
         if (config.default && Array.isArray(config.default)) {
             return config.default;
         } else {
@@ -87,12 +87,12 @@ const loadSingleLayerConfig = async (currentPage: string, pageName: string): Pro
 
 const loadAllLayerConfigs = async (currentPage: string): Promise<LayerProps[]> => {
     try {
-        const layerConfigPaths = import.meta.glob(`@/pages/*/data/layers/*.tsx`);
+        const layerConfigPaths = import.meta.glob(`@/routes/_map/*/-data/layers/*.tsx`);
 
-        // filter for layerconfig paths in the /pages/{currentPage}/data/layers/ directory
+        // filter for layerconfig paths in the /routes/_map/{currentPage}/-data/layers/ directory
         const filteredLayerConfigPaths: Record<string, () => Promise<any>> = {};
         for (const path of Object.keys(layerConfigPaths)) {
-            if (path.includes(`/pages/${currentPage}/data/layers/`)) {
+            if (path.includes(`/_map/${currentPage}/-data/layers/`)) {
                 filteredLayerConfigPaths[path] = layerConfigPaths[path];
             }
         }

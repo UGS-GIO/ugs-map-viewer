@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Spinner } from '../custom/loading-spinner';
+import { Spinner } from '../ui/loading-spinner';
 
 interface NavSkeletonProps {
     className?: string;

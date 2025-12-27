@@ -18,7 +18,7 @@ import {
 } from '@/routes/_report/-utils/static-hazards-service'
 import type { CustomLegendItem } from '@/routes/_report/-components/content/report-legend'
 import { generateQFFLegendItems } from '@/routes/_report/-utils/qff-legend-service'
-import { HeroSection } from '@/components/custom/hero-section'
+import { HeroSection } from '@/components/layout/hero-section'
 import { ReportCover } from '@/routes/_report/-components/content/report-cover'
 import { ReportSummary } from '@/routes/_report/-components/content/report-summary'
 import { ReportGroupSection } from '@/routes/_report/-components/content/report-group-section'

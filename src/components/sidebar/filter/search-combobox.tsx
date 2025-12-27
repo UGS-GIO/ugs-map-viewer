@@ -18,7 +18,7 @@ import { zoomToExtent } from '@/lib/sidebar/filter/util';
 import { highlightFeature, highlightFeatureCollection, clearGraphics } from '@/lib/map/highlight-utils';
 import { useToast } from "@/hooks/use-toast";
 import { findLayerByTitle } from '@/lib/map/utils';
-import { ExtendedFeature } from '@/components/custom/popups/popup-content-with-pagination';
+import { ExtendedFeature } from '@/components/maps/popups/popup-content-with-pagination';
 
 export const defaultMasqueradeConfig: SearchSourceConfig = {
     type: 'masquerade',

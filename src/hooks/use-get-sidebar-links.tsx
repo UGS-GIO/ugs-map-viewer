@@ -15,7 +15,7 @@ export const useGetSidebarLinks = () => {
 
         // The function that performs the async data fetching.
         queryFn: async () => {
-            const module = await import(`@/pages/${currentPage}/data/sidelinks.tsx`);
+            const module = await import(`@/routes/_map/${currentPage}/-data/sidelinks.tsx`);
             return module.sidelinks || [];
         },
         enabled: !!currentPage,

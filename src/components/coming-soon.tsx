@@ -1,5 +1,5 @@
 import { Image } from '@/components/ui/image'
-import { SimpleRouteList } from '@/components/custom/route-list'
+import { SimpleRouteList } from '@/components/ui/route-list'
 
 export default function ComingSoon() {
   return (
