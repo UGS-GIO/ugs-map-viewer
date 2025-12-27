@@ -21,6 +21,10 @@ import {
   Navigation,
 } from 'lucide-react'
 
+// Scale/zoom conversion (Esri tiling scheme)
+const ESRI_SCALE_CONSTANT = 591657527
+const zoomToScale = (zoom: number) => Math.round(ESRI_SCALE_CONSTANT / Math.pow(2, zoom))
+
 export interface ContextMenuCoords {
   lng: number
   lat: number
@@ -89,15 +93,15 @@ export function MapContextMenu({
     if (!coords) return
     const url = new URL(window.location.href)
     url.searchParams.set('lat', coords.lat.toFixed(6))
-    url.searchParams.set('lng', coords.lng.toFixed(6))
-    url.searchParams.set('z', currentZoom.toFixed(1))
+    url.searchParams.set('lon', coords.lng.toFixed(6))
+    url.searchParams.set('scale', zoomToScale(currentZoom).toString())
     navigator.clipboard.writeText(url.toString())
     toast({ description: 'Link copied to clipboard' })
     onOpenChange(false)
   }, [coords, currentZoom, toast, onOpenChange])
 
   // Open in external map services
-  const handleOpenInMaps = useCallback((service: 'google' | 'apple' | 'osm' | 'bing') => {
+  const handleOpenInMaps = useCallback((service: 'google' | 'apple' | 'osm' | 'bing' | 'ugs') => {
     if (!coords) return
     const { lat, lng } = coords
     const urls = {
@@ -105,6 +109,8 @@ export function MapContextMenu({
       apple: `https://maps.apple.com/?ll=${lat},${lng}&q=${lat},${lng}`,
       osm: `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}&zoom=${Math.round(currentZoom)}`,
       bing: `https://www.bing.com/maps?cp=${lat}~${lng}&lvl=${Math.round(currentZoom)}`,
+      // 2D MapView uses scale, not zoom
+      ugs: `https://geomap.geology.utah.gov/?lat=${lat}&lng=${lng}&view=map&scale=${zoomToScale(currentZoom)}`,
     }
     window.open(urls[service], '_blank')
     onOpenChange(false)
@@ -233,6 +239,10 @@ export function MapContextMenu({
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleOpenInMaps('bing')}>
                   Bing Maps
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleOpenInMaps('ugs')}>
+                  UGS Geologic Map
                 </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
