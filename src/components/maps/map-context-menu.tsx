@@ -96,13 +96,19 @@ export function MapContextMenu({
     onOpenChange(false)
   }, [coords, currentZoom, toast, onOpenChange])
 
-  // Open in Google Maps
-  const handleOpenInGoogleMaps = useCallback(() => {
+  // Open in external map services
+  const handleOpenInMaps = useCallback((service: 'google' | 'apple' | 'osm' | 'bing') => {
     if (!coords) return
-    const url = `https://www.google.com/maps?q=${coords.lat},${coords.lng}`
-    window.open(url, '_blank')
+    const { lat, lng } = coords
+    const urls = {
+      google: `https://www.google.com/maps?q=${lat},${lng}`,
+      apple: `https://maps.apple.com/?ll=${lat},${lng}&q=${lat},${lng}`,
+      osm: `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}&zoom=${Math.round(currentZoom)}`,
+      bing: `https://www.bing.com/maps?cp=${lat}~${lng}&lvl=${Math.round(currentZoom)}`,
+    }
+    window.open(urls[service], '_blank')
     onOpenChange(false)
-  }, [coords, onOpenChange])
+  }, [coords, currentZoom, onOpenChange])
 
   // Query features at this location
   const handleQueryHere = useCallback(() => {
@@ -210,10 +216,26 @@ export function MapContextMenu({
               </DropdownMenuItem>
             )}
 
-            <DropdownMenuItem onClick={handleOpenInGoogleMaps}>
-              <Navigation className="mr-2 h-4 w-4" />
-              Open in Google Maps
-            </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Navigation className="mr-2 h-4 w-4" />
+                Open in...
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem onClick={() => handleOpenInMaps('google')}>
+                  Google Maps
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleOpenInMaps('apple')}>
+                  Apple Maps
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleOpenInMaps('osm')}>
+                  OpenStreetMap
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleOpenInMaps('bing')}>
+                  Bing Maps
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
 
             {/* Clear selection */}
             {hasSelection && onClearSelection && (
