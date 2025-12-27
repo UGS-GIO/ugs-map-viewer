@@ -1,5 +1,6 @@
 import { createContext } from "react";
 import type { Polygon } from "geojson";
+import type { Map as MapLibreMap } from "maplibre-gl";
 
 export type DrawMode = 'off' | 'rectangle' | 'polygon'
 
@@ -10,7 +11,7 @@ export type DrawMode = 'off' | 'rectangle' | 'polygon'
  */
 export type MapContextProps = {
     // MapLibre map instance (undefined until map loads)
-    map?: any // maplibre-gl.Map - using any to avoid hard dependency
+    map?: MapLibreMap
 
     // Sketching state for drawing tools (e.g., Terra Draw)
     isSketching: boolean

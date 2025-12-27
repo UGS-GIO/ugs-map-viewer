@@ -512,7 +512,9 @@ function SearchCombobox({
         }
 
         // Call the actual select handler provided by the parent component
-        onCollectionSelect?.(combinedCollection, firstValidSourceUrl, firstValidSourceIndex, searchConfig, map);
+        if (map) {
+            onCollectionSelect?.(combinedCollection, firstValidSourceUrl, firstValidSourceIndex, searchConfig, map);
+        }
 
         if (combinedCollection !== null) {
             setOpen(false);
