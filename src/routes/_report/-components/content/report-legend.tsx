@@ -115,7 +115,7 @@ function getSymbolHtml(symbolData: SVGSVGElement | CompositeSymbolResult | undef
 }
 
 function LayerLegend({ url, layerName, showUnitDescriptions, units }: LayerLegendProps) {
-    const baseWmsUrl = `${PROD_GEOSERVER_URL}wms`
+    const baseWmsUrl = `${PROD_GEOSERVER_URL}/wms`
     const { preview, isLoading, error } = useWMSLegend(url, baseWmsUrl)
 
     if (isLoading) {

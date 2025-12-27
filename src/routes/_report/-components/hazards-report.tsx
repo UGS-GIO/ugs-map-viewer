@@ -2,6 +2,7 @@ import { useMemo, useRef, useState, useCallback, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useInView } from 'react-intersection-observer'
 import { useReactToPrint } from 'react-to-print'
+import { queryKeys } from '@/lib/query-keys'
 import { ReportLayout } from '@/routes/_report/-components/layouts/report-layout'
 import { SectionTabs, Section } from '@/routes/_report/-components/layouts/section-tabs'
 import { FileText, AlertTriangle, Printer, Upload } from 'lucide-react'
@@ -17,12 +18,12 @@ import {
 } from '@/routes/_report/-utils/static-hazards-service'
 import type { CustomLegendItem } from '@/routes/_report/-components/content/report-legend'
 import { generateQFFLegendItems } from '@/routes/_report/-utils/qff-legend-service'
-import { HeroSection } from '@/components/custom/hero-section'
+import { HeroSection } from '@/components/layout/hero-section'
 import { ReportCover } from '@/routes/_report/-components/content/report-cover'
 import { ReportSummary } from '@/routes/_report/-components/content/report-summary'
 import { ReportGroupSection } from '@/routes/_report/-components/content/report-group-section'
 import { ReportResources } from '@/routes/_report/-components/content/report-resources'
-import '@/routes/_report/-components/shared/print-styles.scss'
+import '@/routes/_report/-components/shared/print-styles.css'
 import heroImage from '@/assets/geologic-hazards-banner-alstrom-point-1920px.webp'
 import { Banner, BannerIcon, BannerTitle } from '@/components/ui/banner'
 import { toast } from "sonner"
@@ -57,7 +58,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
 
     // Query for hazard data
     const { data: hazardGroups = [], isLoading } = useQuery({
-        queryKey: ['hazard-report', polygon],
+        queryKey: queryKeys.hazards.report(polygon),
         queryFn: async () => {
             const allHazardInfos = await queryGeoServerForHazardUnits(polygon);
 

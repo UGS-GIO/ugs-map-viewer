@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
+import { Loader2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -25,6 +26,7 @@ const buttonVariants = cva(
         sm: "h-8 rounded-md px-3 text-xs",
         lg: "h-10 rounded-md px-8",
         icon: "h-9 w-9",
+        stacked: "flex-col md:flex-row items-center",
       },
     },
     defaultVariants: {
@@ -38,17 +40,46 @@ export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
   asChild?: boolean
+  loading?: boolean
+  leftSection?: React.ReactNode
+  rightSection?: React.ReactNode
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      asChild = false,
+      children,
+      disabled,
+      loading = false,
+      leftSection,
+      rightSection,
+      ...props
+    },
+    ref
+  ) => {
     const Comp = asChild ? Slot : "button"
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
+        disabled={loading || disabled}
         ref={ref}
         {...props}
-      />
+      >
+        {((leftSection && loading) ||
+          (!leftSection && !rightSection && loading)) && (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        )}
+        {!loading && leftSection && <div className="mr-2">{leftSection}</div>}
+        {children}
+        {!loading && rightSection && <div className="ml-2">{rightSection}</div>}
+        {rightSection && loading && (
+          <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+        )}
+      </Comp>
     )
   }
 )
