@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Layout } from '@/components/layout/layout';
 import { TopNav } from '@/components/top-nav';
 import { MapFooter } from '@/components/maps/map-footer';
@@ -20,7 +21,8 @@ import {
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { LogOut, User } from 'lucide-react';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from '@/components/ui/alert-dialog';
-import { useState } from 'react';
+import { useMapContextState } from '@/hooks/use-map-context-state';
+import { MapContext } from '@/context/map-context';
 
 export default function Map() {
   const { isCollapsed, sidebarWidthPx } = useSidebar();
@@ -28,6 +30,7 @@ export default function Map() {
   const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
   const { user } = useAuth();
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(true);
+  const { handleMapReady, contextValue, setClearSpatialFilterCallback, setLayerTurnedOffCallback } = useMapContextState();
 
   const handleLogout = async () => {
     try {
@@ -43,8 +46,9 @@ export default function Map() {
   };
 
   return (
-    <div className="relative h-svh overflow-hidden bg-background">
-      <AlertDialog open={showWelcomeDialog} onOpenChange={setShowWelcomeDialog}>
+    <MapContext.Provider value={contextValue}>
+      <div className="relative h-svh overflow-hidden bg-background">
+        <AlertDialog open={showWelcomeDialog} onOpenChange={setShowWelcomeDialog}>
         <AlertDialogContent className="max-w-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>How to use this web application:</AlertDialogTitle>
@@ -128,12 +132,19 @@ export default function Map() {
           </Layout.Header>
 
           <Layout.Body>
-            <GenericMapContainer popupTitle="Hazards in your area" />
+            <GenericMapContainer
+              popupTitle="Hazards in your area"
+              onMapReady={handleMapReady}
+              skipContextProvider
+              onRegisterClearSpatialFilter={setClearSpatialFilterCallback}
+              onRegisterLayerTurnedOff={setLayerTurnedOffCallback}
+            />
           </Layout.Body>
 
           <Layout.Footer className={cn('hidden md:flex z-20')} dynamicContent={<MapFooter />} />
         </Layout>
       </main>
     </div>
+    </MapContext.Provider>
   )
 }

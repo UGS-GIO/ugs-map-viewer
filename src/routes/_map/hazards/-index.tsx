@@ -15,7 +15,7 @@ import { MapContext } from '@/context/map-context';
 export default function Map() {
   const { isCollapsed, sidebarWidthPx } = useSidebar();
   const isMobile = useIsMobile();
-  const { handleMapReady, contextValue, drawMode, setDrawMode, handleDrawComplete, setClearSpatialFilterCallback } = useMapContextState();
+  const { handleMapReady, contextValue, drawMode, setDrawMode, handleDrawComplete, setClearSpatialFilterCallback, setLayerTurnedOffCallback } = useMapContextState();
   // Use 56px (3.5rem) when collapsed, dynamic pixel width when expanded
   // On mobile, no margin needed (sidebar is top, not left)
   const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
@@ -72,6 +72,7 @@ export default function Map() {
                 onExternalDrawModeChange={setDrawMode}
                 onExternalDrawComplete={handleDrawComplete}
                 onRegisterClearSpatialFilter={setClearSpatialFilterCallback}
+                onRegisterLayerTurnedOff={setLayerTurnedOffCallback}
               />
             </Layout.Body>
 

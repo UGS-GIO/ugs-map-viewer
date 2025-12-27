@@ -152,8 +152,8 @@ export class DualScaleControl implements maplibregl.IControl {
         const textHeight = 14;
         const gap = 4;
         const totalHeight = padding + textHeight + gap + barHeight + gap + barHeight + gap + textHeight + padding;
-        const maxBarWidth = Math.max(metricWidth, imperialWidth);
-        const totalWidth = padding + maxBarWidth + padding;
+        // Use fixed width based on maxWidth to prevent jittering
+        const totalWidth = padding + this.maxWidth + padding;
 
         // Set canvas size
         this.canvas.width = totalWidth * dpr;

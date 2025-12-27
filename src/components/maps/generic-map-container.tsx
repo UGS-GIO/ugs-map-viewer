@@ -46,6 +46,8 @@ interface GenericMapContainerProps {
   onExternalDrawComplete?: (polygon: import('geojson').Polygon) => void
   /** Register callback to clear spatial filter (called by startDraw) */
   onRegisterClearSpatialFilter?: (callback: () => void) => void
+  /** Register callback for when layer is turned off (clears selection/highlights) */
+  onRegisterLayerTurnedOff?: (callback: (layerTitle: string) => void) => void
 }
 
 export default function GenericMapContainer({
@@ -58,6 +60,7 @@ export default function GenericMapContainer({
   onExternalDrawModeChange,
   onExternalDrawComplete,
   onRegisterClearSpatialFilter,
+  onRegisterLayerTurnedOff,
 }: GenericMapContainerProps) {
   const isMobile = useIsMobile()
   const { viewMode, setViewMode, center, zoom, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs } = useMapUrlSync()
@@ -107,6 +110,11 @@ export default function GenericMapContainer({
     popupSheetRef,
     onHighlightChange: handleHighlightChange,
   })
+
+  // Register layer turned off callback with parent context (safe - callback is stable)
+  if (onRegisterLayerTurnedOff) {
+    onRegisterLayerTurnedOff(handleLayerTurnedOff)
+  }
 
   // Ref for ViewModeControl to sync state
   const viewModeControlRef = useRef<ViewModeControl | null>(null)
@@ -423,6 +431,7 @@ export default function GenericMapContainer({
               onHighlightChange={handleHighlightChange}
               width={panelState.sheetWidth}
               onWidthChange={(width) => setPanelState(prev => ({ ...prev, sheetWidth: width }))}
+              isOpen={panelState.isSheetOpen}
             />
           </div>
         )}
@@ -445,6 +454,7 @@ export default function GenericMapContainer({
               onClose={handleSheetClose}
               onOpenChange={handleSheetOpenChange}
               onHighlightChange={handleHighlightChange}
+              isOpen={panelState.isSheetOpen}
             />
           </div>
         )}

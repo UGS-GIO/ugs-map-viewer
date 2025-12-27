@@ -1,17 +1,16 @@
-import { useEffect, useMemo, useState, memo, useCallback, useRef } from "react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useMemo, useState, memo, useCallback, useRef } from "react"
 import { Feature, Geometry, GeoJsonProperties } from "geojson"
 import { Button } from "@/components/ui/button"
-import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, Shrink } from "lucide-react"
+import { Shrink } from "lucide-react"
 import { PopupContentDisplay } from "@/components/maps/popups/popup-content-display"
 import { ColorCodingRecordFunction, FieldConfig, LinkFields, ProcessedRasterSource, RelatedTable } from "@/lib/types/mapping-types"
 import { useMap } from "@/hooks/use-map"
 import { useGetPopupButtons } from "@/hooks/use-get-popup-buttons"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { zoomToFeature } from "@/lib/map/utils"
 import type { HighlightFeature } from "@/components/maps/types"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 
-const ITEMS_PER_PAGE_OPTIONS = [1, 5, 10, 25, 50]
 
 // Extracted outside to prevent recreation on every render
 interface PopupButtonsProps {
@@ -64,168 +63,58 @@ interface SidebarInsetWithPaginationProps {
     onHighlightChange?: (features: HighlightFeature[]) => void
 }
 
-interface PopupPaginationProps {
-    currentPage: number
-    totalPages: number
-    handlePageChange: (page: number) => void
-    itemsPerPage: number
-    onItemsPerPageChange: (size: number) => void
-}
-
-const PopupPagination = ({ currentPage, totalPages, handlePageChange, itemsPerPage, onItemsPerPageChange }: PopupPaginationProps) => {
-    const handleValueChange = (value: string) => {
-        onItemsPerPageChange(Number(value))
-        handlePageChange(1) // Reset to first page
-    }
-    return (
-        <div className="flex items-center justify-between w-full">
-            <div className="flex-1 text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
-            </div>
-            <div className="flex items-center space-x-2">
-                <Select
-                    value={`${itemsPerPage}`}
-                    onValueChange={(value) => handleValueChange(value)}
-                >
-                    <SelectTrigger>
-                        <SelectValue placeholder={itemsPerPage.toString()} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {ITEMS_PER_PAGE_OPTIONS.map((option) => (
-                            <SelectItem key={option} value={`${option}`}>
-                                {option}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <Button variant="outline" onClick={() => handlePageChange(1)} disabled={currentPage === 1} className="h-8 w-8 p-0">
-                    <ChevronFirst className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="h-8 w-8 p-0">
-                    <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="h-8 w-8 p-0">
-                    <ChevronRight className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" onClick={() => handlePageChange(totalPages)} disabled={currentPage === totalPages} className="h-8 w-8 p-0">
-                    <ChevronLast className="h-4 w-4" />
-                </Button>
-            </div>
-        </div>
-    )
-}
-
-const LayerCardInner = ({
+// Single feature card - no wrapper, just the content
+const FeatureCard = memo(({
     layer,
+    feature,
     buttons,
     handleZoomToFeature,
-    onHighlightChange
 }: {
     layer: LayerContentProps,
+    feature: ExtendedFeature,
     buttons: React.ReactNode[] | null,
     handleZoomToFeature: (feature: ExtendedFeature, sourceCRS: string, title: string) => void,
-    onHighlightChange?: (features: HighlightFeature[]) => void
 }) => {
-    const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE_OPTIONS[0])
-    const [currentPage, setCurrentPage] = useState(1)
     const title = layer.layerTitle || layer.groupLayerTitle;
 
-    // Calculate total pages based on items per page
-    const totalPages = useMemo(() =>
-        Math.ceil(layer.features.length / itemsPerPage),
-        [layer.features, itemsPerPage]
-    )
-
-    // Paginate features for this layer
-    const paginatedFeatures = useMemo(() => {
-        const startIndex = (currentPage - 1) * itemsPerPage
-
-        return layer.features.slice(startIndex, startIndex + itemsPerPage)
-    }, [layer.features, currentPage, itemsPerPage])
-
-    const handlePageChange = (page: number) => {
-        // Calculate the new paginatedFeatures based on the new page
-        const startIndex = (page - 1) * itemsPerPage
-        const newPaginatedFeatures = layer.features.slice(startIndex, startIndex + itemsPerPage)
-
-        // Set the new page
-        setCurrentPage(page)
-
-        // Only highlight to the first feature if items per page is 1
-        if (itemsPerPage === 1 && newPaginatedFeatures.length > 0 && newPaginatedFeatures[0].geometry) {
-            onHighlightChange?.([{
-                id: newPaginatedFeatures[0].id as string | number,
-                geometry: newPaginatedFeatures[0].geometry,
-                properties: newPaginatedFeatures[0].properties || {}
-            }])
-        }
-    }
-
     return (
-        <Card
-            id={`section-${layer.layerTitle !== '' ? layer.layerTitle : layer.groupLayerTitle}`}
-            className="w-full bg-background/40 backdrop-blur-sm border-border/50"
-        >
-            <CardHeader className="p-4">
-                <CardTitle>
-                    {layer.groupLayerTitle}
-                    {layer.layerTitle && layer.layerTitle !== layer.groupLayerTitle && ` - ${layer.layerTitle}`}
-                </CardTitle>
-                {layer.features.length > ITEMS_PER_PAGE_OPTIONS[0] && (
-                    <PopupPagination
-                        currentPage={currentPage}
-                        totalPages={totalPages}
-                        handlePageChange={handlePageChange}
-                        itemsPerPage={itemsPerPage}
-                        onItemsPerPageChange={setItemsPerPage}
-                    />
-                )}
-            </CardHeader>
-            <CardContent className="space-y-2 p-2 text-sm">
-                {paginatedFeatures.map((feature, idx) => (
-                    <div
-                        key={idx}
-                        className="space-y-2 p-3 rounded-lg border border-border/30"
-                    >
-                        <PopupButtons
-                            feature={feature}
-                            sourceCRS={layer.sourceCRS}
-                            title={title}
-                            onZoom={handleZoomToFeature}
-                            extraButtons={buttons}
-                        />
-
-                        <PopupContentDisplay
-                            layer={layer}
-                            feature={feature}
-                            layout={layer.popupFields &&
-                                Object.keys(layer.popupFields).length > 5 ? "grid" : "stacked"}
-                        />
-                    </div>
-                ))}
-            </CardContent>
-        </Card>
+        <div className="space-y-2 p-3 rounded-lg border border-border/30 bg-background/40">
+            <PopupButtons
+                feature={feature}
+                sourceCRS={layer.sourceCRS}
+                title={title}
+                onZoom={handleZoomToFeature}
+                extraButtons={buttons}
+            />
+            <PopupContentDisplay
+                layer={layer}
+                feature={feature}
+                layout={layer.popupFields &&
+                    Object.keys(layer.popupFields).length > 5 ? "grid" : "stacked"}
+            />
+        </div>
     )
-}
-
-const LayerCard = memo(LayerCardInner);
-LayerCard.displayName = 'LayerCard';
+});
+FeatureCard.displayName = 'FeatureCard';
 
 const PopupContentWithPaginationInner = ({ layerContent, onSectionChange, onHighlightChange }: SidebarInsetWithPaginationProps) => {
     const { map } = useMap()
     const buttons = useGetPopupButtons()
+    // -1 = "All", 0+ = specific layer index
+    const [selectedLayerIndex, setSelectedLayerIndex] = useState(-1)
 
-    // Use ref for callback to avoid recreating observer when callback changes
-    const onSectionChangeRef = useRef(onSectionChange);
-    onSectionChangeRef.current = onSectionChange;
-
-    const sectionIds = useMemo(
-        () => layerContent.map(layer => `section-${layer.layerTitle !== '' ? layer.layerTitle : layer.groupLayerTitle}`),
+    // Track content key to reset to "All" when content changes
+    const layerKey = useMemo(
+        () => layerContent.map(l => `${l.groupLayerTitle}|${l.layerTitle}`).join(','),
         [layerContent]
     )
+    const prevLayerKeyRef = useRef(layerKey)
 
-    // Auto-highlight first feature of first layer when popup opens (declarative)
-    useEffect(() => {
+    // Reset to "All" and highlight first feature when content changes
+    if (prevLayerKeyRef.current !== layerKey) {
+        prevLayerKeyRef.current = layerKey
+        setSelectedLayerIndex(-1)
+        // Highlight first feature of new content
         if (layerContent.length > 0 && layerContent[0].features.length > 0) {
             const firstFeature = layerContent[0].features[0]
             if (firstFeature.geometry) {
@@ -236,39 +125,47 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange, onHigh
                 }])
             }
         }
-    }, [layerContent.length > 0 ? layerContent[0].groupLayerTitle + layerContent[0].layerTitle : null, onHighlightChange])
+    }
 
-    // IntersectionObserver for tracking visible sections - only recreate when sectionIds change
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            (entries) => {
-                const visibleSections = entries.filter(entry => entry.isIntersecting)
+    // Total feature count across all layers
+    const totalFeatures = useMemo(
+        () => layerContent.reduce((sum, layer) => sum + (layer.features?.length || 0), 0),
+        [layerContent]
+    )
 
-                if (visibleSections.length > 0) {
-                    const topmostSection = visibleSections.reduce((prev, current) => {
-                        return (prev.boundingClientRect.top < current.boundingClientRect.top) ? prev : current;
-                    });
-
-                    const sectionTitle = topmostSection.target.id.replace('section-', '');
-                    onSectionChangeRef.current(sectionTitle);
+    // Handle layer change via dropdown
+    const handleLayerChange = useCallback((index: number) => {
+        setSelectedLayerIndex(index)
+        if (index === -1) {
+            // "All" selected - highlight first feature of first layer
+            if (layerContent.length > 0 && layerContent[0].features.length > 0) {
+                const firstFeature = layerContent[0].features[0]
+                if (firstFeature.geometry) {
+                    onHighlightChange?.([{
+                        id: firstFeature.id as string | number,
+                        geometry: firstFeature.geometry,
+                        properties: firstFeature.properties || {}
+                    }])
                 }
-            },
-            {
-                root: null,
-                rootMargin: '0px 0px -50% 0px',
-                threshold: 0
             }
-        )
-
-        sectionIds.forEach((id) => {
-            const element = document.getElementById(id)
-            if (element) {
-                observer.observe(element)
+            onSectionChange('All')
+        } else {
+            const layer = layerContent[index]
+            if (layer) {
+                const title = layer.layerTitle || layer.groupLayerTitle
+                onSectionChange(title)
+                // Highlight first feature of selected layer
+                if (layer.features.length > 0 && layer.features[0].geometry) {
+                    onHighlightChange?.([{
+                        id: layer.features[0].id as string | number,
+                        geometry: layer.features[0].geometry,
+                        properties: layer.features[0].properties || {}
+                    }])
+                }
             }
-        })
+        }
+    }, [layerContent, onSectionChange, onHighlightChange])
 
-        return () => observer.disconnect()
-    }, [sectionIds])
     const handleZoomToFeature = useCallback((feature: ExtendedFeature, sourceCRS: string, _title: string) => {
         if (!map) {
             console.warn('[PopupContent] No map available for zoom');
@@ -288,26 +185,92 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange, onHigh
         zoomToFeature(feature, map, sourceCRS)
     }, [map, onHighlightChange])
 
-    // Generate stable key from layer content - only changes when layers actually change
-    const contentKey = useMemo(() =>
-        layerContent.map(l => `${l.groupLayerTitle}|${l.layerTitle}|${l.features.length}`).join(','),
-        [layerContent]
-    )
-
     // If no layers, return null
     if (layerContent.length === 0) return null;
 
+    // Determine what to show
+    const showAll = selectedLayerIndex === -1
+    const selectedLayer = showAll ? null : layerContent[selectedLayerIndex]
+
     return (
-        <div className="flex flex-col gap-4 select-text">
-            {layerContent.map((layer) => (
-                <LayerCard
-                    key={`${contentKey}-${layer.groupLayerTitle}-${layer.layerTitle}`}
-                    layer={layer}
-                    buttons={buttons}
-                    handleZoomToFeature={handleZoomToFeature}
-                    onHighlightChange={onHighlightChange}
-                />
-            ))}
+        <div className="flex flex-col gap-3 select-text">
+            {/* Layer dropdown */}
+            <div className="px-2">
+                <TooltipProvider>
+                    <Select
+                        value={String(selectedLayerIndex)}
+                        onValueChange={(value) => handleLayerChange(Number(value))}
+                    >
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <SelectTrigger className="w-full">
+                                    <SelectValue />
+                                </SelectTrigger>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="max-w-xs">
+                                {selectedLayerIndex === -1
+                                    ? `All (${totalFeatures} feature${totalFeatures !== 1 ? 's' : ''})`
+                                    : `${layerContent[selectedLayerIndex]?.layerTitle || layerContent[selectedLayerIndex]?.groupLayerTitle} (${layerContent[selectedLayerIndex]?.features?.length || 0} feature${(layerContent[selectedLayerIndex]?.features?.length || 0) !== 1 ? 's' : ''})`
+                                }
+                            </TooltipContent>
+                        </Tooltip>
+                        <SelectContent>
+                            <SelectItem value="-1">
+                                All ({totalFeatures} feature{totalFeatures !== 1 ? 's' : ''})
+                            </SelectItem>
+                            {layerContent.map((layer, index) => {
+                                const title = layer.layerTitle || layer.groupLayerTitle
+                                const count = layer.features?.length || 0
+                                return (
+                                    <SelectItem key={`${title}-${index}`} value={String(index)}>
+                                        {title} ({count} feature{count !== 1 ? 's' : ''})
+                                    </SelectItem>
+                                )
+                            })}
+                        </SelectContent>
+                    </Select>
+                </TooltipProvider>
+            </div>
+
+            {/* Features list */}
+            <div className="space-y-3 px-2">
+                {showAll ? (
+                    // Show all features grouped by layer
+                    layerContent.map((layer, layerIdx) => (
+                        <div key={`${layer.groupLayerTitle}-${layer.layerTitle}-${layerIdx}`}>
+                            {/* Layer header */}
+                            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">
+                                {layer.layerTitle || layer.groupLayerTitle}
+                            </div>
+                            {/* Features in this layer */}
+                            <div className="space-y-2">
+                                {layer.features.map((feature, featureIdx) => (
+                                    <FeatureCard
+                                        key={`${feature.id || featureIdx}`}
+                                        layer={layer}
+                                        feature={feature}
+                                        buttons={buttons}
+                                        handleZoomToFeature={handleZoomToFeature}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    ))
+                ) : selectedLayer ? (
+                    // Show features from selected layer only
+                    <div className="space-y-2">
+                        {selectedLayer.features.map((feature, featureIdx) => (
+                            <FeatureCard
+                                key={`${feature.id || featureIdx}`}
+                                layer={selectedLayer}
+                                feature={feature}
+                                buttons={buttons}
+                                handleZoomToFeature={handleZoomToFeature}
+                            />
+                        ))}
+                    </div>
+                ) : null}
+            </div>
         </div>
     )
 }

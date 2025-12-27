@@ -2,7 +2,6 @@ import * as React from "react";
 import { useCallback, useMemo, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 import { LayerContentProps, PopupContentWithPagination } from "@/components/maps/popups/popup-content-with-pagination";
 import { XIcon } from "lucide-react";
@@ -20,6 +19,8 @@ interface PopupSheetProps {
     width?: number;
     /** Callback when width changes via resize handle */
     onWidthChange?: (width: number) => void;
+    /** Controlled open state from parent */
+    isOpen?: boolean;
 }
 
 export interface PopupSheetRef {
@@ -40,17 +41,18 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
     onHighlightChange,
     width = DEFAULT_WIDTH,
     onWidthChange,
+    isOpen: controlledOpen,
 }, ref) => {
-    const carouselRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
     const floatingCloseRef = useRef<HTMLDivElement>(null);
-    const [selectedLayerTitle, setSelectedLayerTitle] = useState<string | null>(null);
-    const [open, setOpen] = useState(false);
+    // Use controlled open state if provided, otherwise internal state
+    const [internalOpen, setInternalOpen] = useState(controlledOpen ?? false);
+    const open = controlledOpen ?? internalOpen;
     const lastScrollTop = useRef(0);
 
     // Helper to update open state and notify parent
     const updateOpen = useCallback((isOpen: boolean) => {
-        setOpen(isOpen);
+        setInternalOpen(isOpen);
         onOpenChange?.(isOpen);
     }, [onOpenChange]);
 
@@ -60,52 +62,18 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
         open: () => updateOpen(true),
     }), [updateOpen]);
 
-    // Group layers and extract titles
-    const { groupedLayers, layerTitles } = useMemo(() => {
-        const layers = popupContent
-            .map((item) => item.layerTitle || item.groupLayerTitle)
-            .filter(title => title !== '');
-
-        const grouped = popupContent.reduce((acc, item) => {
-            const { groupLayerTitle, layerTitle } = item;
-            if (!acc[groupLayerTitle]) acc[groupLayerTitle] = [];
-            if (layerTitle) acc[groupLayerTitle].push(layerTitle);
-            return acc;
-        }, {} as Record<string, string[]>);
-
-        return { groupedLayers: grouped, layerTitles: layers };
-    }, [popupContent]);
-
-    // Derive active layer: use selection if valid, otherwise first layer
-    const activeLayerTitle = selectedLayerTitle && layerTitles.includes(selectedLayerTitle)
-        ? selectedLayerTitle
-        : layerTitles[0] ?? '';
-
     const contentKey = useMemo(() => {
         return popupContent
             .map(item => `${item.groupLayerTitle}-${item.layerTitle}`)
             .join('|');
     }, [popupContent]);
 
-    const handleCarouselClick = useCallback((title: string) => {
-        const element = document.getElementById(`section-${title}`);
-        if (element) {
-            element.scrollIntoView({ behavior: "smooth", block: "start" });
-            setSelectedLayerTitle(title);
-        }
-    }, []);
-
     const setContainerRef = useCallback((node: HTMLDivElement | null) => {
         containerRef.current = node;
     }, []);
 
-    const onSectionChange = useCallback((layerTitle: string) => {
-        setSelectedLayerTitle(layerTitle);
-        const escapedLayerTitle = CSS.escape(`layer-${layerTitle}`);
-        const carouselItem = document.getElementById(escapedLayerTitle);
-        if (carouselItem) {
-            carouselItem.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
-        }
+    const onSectionChange = useCallback((_layerTitle: string) => {
+        // No-op - dropdown in PopupContentWithPagination handles this now
     }, []);
 
     const handleClose = useCallback(() => {
@@ -211,60 +179,8 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
                     Popup content for {popupTitle}
                 </SheetDescription>
 
-                <div className="grid grid-rows-[auto_1fr] flex-1 min-h-0 overflow-hidden">
-                    {layerTitles.length > 1 && (
-                        <header className="tall:flex hidden border-b border-border/50 overflow-hidden h-12 px-3 bg-background/40 backdrop-blur-sm">
-                            <Carousel className="w-full h-full relative px-2">
-                                <CarouselContent className="-ml-2 px-4" ref={carouselRef}>
-                                    {Object.entries(groupedLayers).map(([groupTitle, layerTitles], groupIdx) => (
-                                        <React.Fragment key={`group-${groupIdx}`}>
-                                            {layerTitles.length === 0 ? (
-                                                <CarouselItem
-                                                    key={`group-${groupIdx}`}
-                                                    className="pl-2 basis-auto"
-                                                    id={`layer-${groupTitle}`}
-                                                >
-                                                    <button
-                                                        type="button"
-                                                        className={cn(
-                                                            "px-3 py-2 text-sm font-bold transition-all text-secondary-foreground",
-                                                            { 'underline text-primary': activeLayerTitle === groupTitle }
-                                                        )}
-                                                        onClick={() => handleCarouselClick(groupTitle)}
-                                                    >
-                                                        {groupTitle}
-                                                    </button>
-                                                </CarouselItem>
-                                            ) : (
-                                                layerTitles.map((layerTitle, layerIdx) => (
-                                                    <CarouselItem
-                                                        key={`layer-${layerIdx}`}
-                                                        className="pl-2 basis-auto"
-                                                        id={`layer-${layerTitle}`}
-                                                    >
-                                                        <button
-                                                            type="button"
-                                                            className={cn(
-                                                                "px-3 py-2 text-sm font-bold transition-all text-secondary-foreground",
-                                                                { 'underline text-primary': activeLayerTitle === layerTitle }
-                                                            )}
-                                                            onClick={() => handleCarouselClick(layerTitle)}
-                                                        >
-                                                            {layerTitle}
-                                                        </button>
-                                                    </CarouselItem>
-                                                ))
-                                            )}
-                                        </React.Fragment>
-                                    ))}
-                                </CarouselContent>
-                                <CarouselPrevious className="absolute left-1 top-1/2 -translate-y-1/2" />
-                                <CarouselNext className="absolute right-1 top-1/2 -translate-y-1/2" />
-                            </Carousel>
-                        </header>
-                    )}
-
-                    <div className="flex overflow-hidden">
+                <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="flex h-full overflow-hidden">
                         <div
                             ref={setContainerRef}
                             onScroll={handleScroll}
