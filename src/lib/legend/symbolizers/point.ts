@@ -95,24 +95,22 @@ function createMarkElement(
     strokeWidth: string | undefined
 ): SVGElement {
     switch (mark?.toLowerCase()) {
-        case "circle": {
+        case "circle":
             const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
             circle.setAttribute("cx", centerX.toString());
             circle.setAttribute("cy", centerY.toString());
             circle.setAttribute("r", radius.toString());
             return circle;
-        }
 
-        case "square": {
+        case "square":
             const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
             rect.setAttribute("x", (centerX - radius).toString());
             rect.setAttribute("y", (centerY - radius).toString());
             rect.setAttribute("width", parsedSize.toString());
             rect.setAttribute("height", parsedSize.toString());
             return rect;
-        }
 
-        case "triangle": {
+        case "triangle":
             const triangle = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
             const height = parsedSize * Math.sqrt(3) / 2;
             const trianglePoints = [
@@ -122,9 +120,8 @@ function createMarkElement(
             ].map(point => point.join(',')).join(' ');
             triangle.setAttribute("points", trianglePoints);
             return triangle;
-        }
 
-        case "diamond": {
+        case "diamond":
             const diamond = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
             const diamondPoints = [
                 [centerX, centerY - radius],
@@ -134,7 +131,6 @@ function createMarkElement(
             ].map(point => point.join(',')).join(' ');
             diamond.setAttribute("points", diamondPoints);
             return diamond;
-        }
 
         case "cross":
             return createCrossElement(centerX, centerY, radius, stroke, strokeWidth);
@@ -142,14 +138,13 @@ function createMarkElement(
         case "x":
             return createXElement(centerX, centerY, radius, stroke, strokeWidth);
 
-        default: {
+        default:
             // Default to circle for unknown marks
             const defaultCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
             defaultCircle.setAttribute("cx", centerX.toString());
             defaultCircle.setAttribute("cy", centerY.toString());
             defaultCircle.setAttribute("r", radius.toString());
             return defaultCircle;
-        }
     }
 }
 
