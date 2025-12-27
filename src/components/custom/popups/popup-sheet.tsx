@@ -1,56 +1,66 @@
 import * as React from "react";
-import { useCallback, useMemo, useRef, useState, useEffect, useImperativeHandle, forwardRef } from "react";
+import { useCallback, useMemo, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { cn } from "@/lib/utils";
 import { LayerContentProps, PopupContentWithPagination } from "@/components/custom/popups/popup-content-with-pagination";
-import { clearGraphics } from "@/lib/map/highlight-utils";
-import { useMap } from "@/hooks/use-map";
 import { XIcon } from "lucide-react";
+import type { HighlightFeature } from "@/components/maps/types";
 
-interface CombinedSidebarDrawerProps {
-    container?: HTMLDivElement | null;
+interface PopupSheetProps {
     popupContent: LayerContentProps[];
-    drawerTriggerRef: React.RefObject<HTMLButtonElement>;
+    sheetTriggerRef: React.RefObject<HTMLButtonElement>;
     popupTitle: string;
     onClose?: () => void;
     onOpenChange?: (open: boolean) => void;
+    /** Callback when highlighted features change (declarative highlighting) */
+    onHighlightChange?: (features: HighlightFeature[]) => void;
+    /** Current width in pixels (controlled by parent) */
+    width?: number;
+    /** Callback when width changes via resize handle */
+    onWidthChange?: (width: number) => void;
 }
 
-export interface PopupDrawerRef {
+export interface PopupSheetRef {
     close: () => void;
     open: () => void;
 }
 
-const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
+const MIN_WIDTH = 320;
+const MAX_WIDTH = 800;
+const DEFAULT_WIDTH = 480;
+
+const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
     popupContent,
-    drawerTriggerRef,
+    sheetTriggerRef,
     popupTitle,
     onClose,
     onOpenChange,
+    onHighlightChange,
+    width = DEFAULT_WIDTH,
+    onWidthChange,
 }, ref) => {
     const carouselRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement | null>(null);
-    const sheetContentRef = useRef<HTMLDivElement>(null);
-    const [activeLayerTitle, setActiveLayerTitle] = useState<string>("");
+    const floatingCloseRef = useRef<HTMLDivElement>(null);
+    const [selectedLayerTitle, setSelectedLayerTitle] = useState<string | null>(null);
     const [open, setOpen] = useState(false);
-    const [showCloseButton, setShowCloseButton] = useState(true);
     const lastScrollTop = useRef(0);
-    const { map } = useMap();
+
+    // Helper to update open state and notify parent
+    const updateOpen = useCallback((isOpen: boolean) => {
+        setOpen(isOpen);
+        onOpenChange?.(isOpen);
+    }, [onOpenChange]);
 
     // Expose close/open methods via ref
     useImperativeHandle(ref, () => ({
-        close: () => setOpen(false),
-        open: () => setOpen(true),
-    }));
+        close: () => updateOpen(false),
+        open: () => updateOpen(true),
+    }), [updateOpen]);
 
-    // Notify parent of open state changes
-    useEffect(() => {
-        onOpenChange?.(open);
-    }, [open, onOpenChange]);
-
-    // Group layers and extract titles - NO side effects
+    // Group layers and extract titles
     const { groupedLayers, layerTitles } = useMemo(() => {
         const layers = popupContent
             .map((item) => item.layerTitle || item.groupLayerTitle)
@@ -66,14 +76,11 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
         return { groupedLayers: grouped, layerTitles: layers };
     }, [popupContent]);
 
-    // Initialize active layer separately - runs once per popupContent change
-    useEffect(() => {
-        if (layerTitles.length > 0) {
-            setActiveLayerTitle(layerTitles[0]);
-        }
-    }, [layerTitles]);
+    // Derive active layer: use selection if valid, otherwise first layer
+    const activeLayerTitle = selectedLayerTitle && layerTitles.includes(selectedLayerTitle)
+        ? selectedLayerTitle
+        : layerTitles[0] ?? '';
 
-    // Create a stable key based on actual content
     const contentKey = useMemo(() => {
         return popupContent
             .map(item => `${item.groupLayerTitle}-${item.layerTitle}`)
@@ -84,7 +91,7 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
         const element = document.getElementById(`section-${title}`);
         if (element) {
             element.scrollIntoView({ behavior: "smooth", block: "start" });
-            setActiveLayerTitle(title);
+            setSelectedLayerTitle(title);
         }
     }, []);
 
@@ -93,46 +100,59 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
     }, []);
 
     const onSectionChange = useCallback((layerTitle: string) => {
-        setActiveLayerTitle(layerTitle);
-
-        // Escape layerTitle for querySelector using CSS.escape
+        setSelectedLayerTitle(layerTitle);
         const escapedLayerTitle = CSS.escape(`layer-${layerTitle}`);
         const carouselItem = document.getElementById(escapedLayerTitle);
-
         if (carouselItem) {
             carouselItem.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
         }
     }, []);
 
     const handleClose = useCallback(() => {
-        if (map) {
-            try {
-                clearGraphics(map);
-            } catch (error) {
-                console.error('Error clearing highlights:', error);
-            }
-        }
-        // Call external onClose callback if provided
+        // Clear highlights declaratively
+        onHighlightChange?.([]);
         onClose?.();
-    }, [map, onClose]);
+    }, [onHighlightChange, onClose]);
 
     const handleCloseClick = useCallback(() => {
-        // Call handleClose to clear graphics and trigger onClose callback
         handleClose();
-        // Set open to false
-        setOpen(false);
-    }, [handleClose]);
+        updateOpen(false);
+    }, [handleClose, updateOpen]);
 
-    // Scroll handler for smart reveal close button
     const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
         const scrollTop = e.currentTarget.scrollTop;
         const isScrollingUp = scrollTop < lastScrollTop.current;
         const isAtTop = scrollTop < 10;
-
-        // Show button when scrolling up or at top
-        setShowCloseButton(isScrollingUp || isAtTop);
+        const shouldShow = isScrollingUp || isAtTop;
+        // Single data attribute controls visibility via CSS
+        if (floatingCloseRef.current) {
+            floatingCloseRef.current.dataset.visible = String(shouldShow);
+        }
         lastScrollTop.current = scrollTop;
     }, []);
+
+    // Resize handle mouse down handler
+    const handleResizeMouseDown = useCallback((e: React.MouseEvent) => {
+        if (!onWidthChange) return;
+        e.preventDefault();
+        const startX = e.clientX;
+        const startWidth = width;
+
+        const onMouseMove = (moveEvent: MouseEvent) => {
+            // Dragging left increases width (since sheet is on right side)
+            const deltaX = startX - moveEvent.clientX;
+            const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth + deltaX));
+            onWidthChange(newWidth);
+        };
+
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        };
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
+    }, [width, onWidthChange]);
 
     return (
         <Sheet
@@ -140,15 +160,14 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
             onOpenChange={(isOpen) => {
                 if (!isOpen) {
                     handleClose();
-                } else {
-                    setOpen(true);
                 }
+                updateOpen(isOpen);
             }}
             modal={false}
         >
             <SheetTrigger asChild>
                 <Button
-                    ref={drawerTriggerRef}
+                    ref={sheetTriggerRef}
                     size="sm"
                     className="hidden"
                     data-state={open ? 'open' : 'closed'}
@@ -157,17 +176,24 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
                 </Button>
             </SheetTrigger>
 
-            {/* Render as a normal child element - parent controls width/visibility */}
             <div
-                ref={sheetContentRef}
                 className={cn(
                     "relative h-full w-full overflow-hidden p-0 flex flex-col",
                     "bg-background",
-                    // Hide content when closed
                     !open && "invisible"
                 )}
                 onClick={(e) => e.stopPropagation()}
             >
+                {/* Resize handle */}
+                {onWidthChange && (
+                    <div
+                        className="absolute left-0 top-0 bottom-0 w-2 cursor-col-resize z-50 group"
+                        onMouseDown={handleResizeMouseDown}
+                    >
+                        <div className="absolute left-0 top-0 bottom-0 w-px bg-border group-hover:bg-primary group-hover:w-0.5 transition-all" />
+                    </div>
+                )}
+
                 <SheetHeader className="flex flex-row justify-between items-center py-2 px-3 relative border-b border-border/30 bg-background/40 backdrop-blur-sm">
                     <SheetTitle className="flex-1">{popupTitle}</SheetTitle>
                     <Button
@@ -202,9 +228,7 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
                                                         type="button"
                                                         className={cn(
                                                             "px-3 py-2 text-sm font-bold transition-all text-secondary-foreground",
-                                                            {
-                                                                'underline text-primary': activeLayerTitle === groupTitle,
-                                                            }
+                                                            { 'underline text-primary': activeLayerTitle === groupTitle }
                                                         )}
                                                         onClick={() => handleCarouselClick(groupTitle)}
                                                     >
@@ -222,9 +246,7 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
                                                             type="button"
                                                             className={cn(
                                                                 "px-3 py-2 text-sm font-bold transition-all text-secondary-foreground",
-                                                                {
-                                                                    'underline text-primary': activeLayerTitle === layerTitle,
-                                                                }
+                                                                { 'underline text-primary': activeLayerTitle === layerTitle }
                                                             )}
                                                             onClick={() => handleCarouselClick(layerTitle)}
                                                         >
@@ -252,20 +274,18 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
                                 key={contentKey}
                                 layerContent={popupContent}
                                 onSectionChange={onSectionChange}
+                                onHighlightChange={onHighlightChange}
                             />
                         </div>
                     </div>
-
                 </div>
 
-                {/* Floating close button - smart reveal on scroll up */}
-                <div className={cn(
-                    "absolute bottom-8 left-1/2 -translate-x-1/2 z-30",
-                    "transition-all duration-200 ease-in-out",
-                    showCloseButton
-                        ? "opacity-100 translate-y-0"
-                        : "opacity-0 translate-y-4 pointer-events-none"
-                )}>
+                {/* Floating close button - visibility controlled by data-visible attribute */}
+                <div
+                    ref={floatingCloseRef}
+                    data-visible="true"
+                    className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 transition-all duration-200 ease-in-out data-[visible=true]:opacity-100 data-[visible=true]:translate-y-0 data-[visible=false]:opacity-0 data-[visible=false]:translate-y-4 data-[visible=false]:pointer-events-none"
+                >
                     <Button
                         onClick={handleCloseClick}
                         variant="default"
@@ -281,6 +301,6 @@ const PopupDrawer = forwardRef<PopupDrawerRef, CombinedSidebarDrawerProps>(({
     );
 });
 
-PopupDrawer.displayName = 'PopupDrawer';
+PopupSheet.displayName = 'PopupSheet';
 
-export { PopupDrawer };
+export { PopupSheet };

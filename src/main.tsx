@@ -7,9 +7,13 @@ import { ThemeProvider } from '@/context/theme-provider'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import proj4 from 'proj4'
+import { setupPMTilesProtocol } from '@/lib/map/pmtiles/setup'
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
+
+// Initialize PMTiles protocol (runs once at app start)
+setupPMTilesProtocol()
 
 proj4.defs("EPSG:26912", "+proj=utm +zone=12 +ellps=GRS80 +datum=NAD83 +units=m +no_defs");
 // defs for 3857

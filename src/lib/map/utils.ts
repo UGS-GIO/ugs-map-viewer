@@ -1,4 +1,4 @@
-import { GroupLayerProps, WMSLayerProps, WFSLayerProps } from '@/lib/types/mapping-types'
+import { GroupLayerProps, WMSLayerProps } from '@/lib/types/mapping-types'
 import { LayerProps } from "@/lib/types/mapping-types";
 import { ExtendedFeature } from '@/components/custom/popups/popup-content-with-pagination';
 import { convertBbox, convertCoordinate } from '@/lib/map/conversion-utils';
@@ -250,6 +250,21 @@ function calculateGeometryBounds(geometry: Geometry, sourceCRS: string): number[
                 }
             }
             return [minX, minY, maxX, maxY];
+        } else if (geometry.type === 'MultiPolygon') {
+            const polygons = geometry.coordinates as [number, number][][][];
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (const polygon of polygons) {
+                for (const ring of polygon) {
+                    for (const coord of ring) {
+                        const converted = convertCoordinate(coord, sourceCRS);
+                        minX = Math.min(minX, converted[0]);
+                        minY = Math.min(minY, converted[1]);
+                        maxX = Math.max(maxX, converted[0]);
+                        maxY = Math.max(maxY, converted[1]);
+                    }
+                }
+            }
+            return [minX, minY, maxX, maxY];
         }
         return null;
     } catch (error) {
@@ -268,8 +283,4 @@ export const isGroupLayer = (layer: LayerProps): layer is GroupLayerProps => {
     return layer.type === 'group';
 }
 
-// Type guard to check if the layer is a WFSLayerProps
-export const isWFSLayer = (layer: LayerProps): layer is WFSLayerProps => {
-    return layer.type === 'wfs';
-}
 

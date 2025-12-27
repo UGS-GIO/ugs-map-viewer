@@ -1,6 +1,6 @@
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 
-export const PROD_GEOSERVER_URL = 'https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/';
+export const PROD_GEOSERVER_URL = 'https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver';
 const WETLANDS_WORKSPACE = 'wetlands';
 
 

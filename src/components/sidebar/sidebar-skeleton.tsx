@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
-import { LoadingSpinner } from '../custom/loading-spinner';
+import { Spinner } from '../custom/loading-spinner';
 
 interface NavSkeletonProps {
     className?: string;
@@ -18,7 +18,7 @@ export function NavSkeleton({ className }: NavSkeletonProps) {
 
             {/* Skeleton for the Right Content/Links Area */}
             <div className='w-full p-4 md:py-2 md:px-6'>
-                <LoadingSpinner className='my-20 mx-auto' />
+                <Spinner className='my-20 mx-auto' />
             </div>
         </div>
     );

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useMap } from '@/hooks/use-map';
+import { useMapInstance } from '@/context/map-instance-context';
 import { convertDDToDMS } from '@/lib/map/conversion-utils';
 import type maplibregl from 'maplibre-gl';
 
@@ -24,7 +24,7 @@ const convertToDisplayFormat = (x: string, y: string, isDD: boolean, convertDDTo
 };
 
 export function useMapCoordinates() {
-    const { map } = useMap();
+    const { map } = useMapInstance();
     const navigate = useNavigate();
     const search = useSearch({ from: '/_map' });
     const isDecimalDegrees = search.coordinate_format !== 'dms';

@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useMemo, useCallback } from 'react';
+import { useRef, useState, useMemo, useCallback } from 'react';
 import { useQueries, useMutation } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
 import { Button } from '@/components/ui/button';
@@ -139,7 +139,6 @@ function SearchCombobox({
     const { map } = useMap()
     const commandRef = useRef<HTMLDivElement>(null);
     const { toast } = useToast();
-    const pendingSearchRef = useRef<{ searchTerm: string; config: SearchSourceConfig[] } | null>(null);
 
     // Mutation for fetching collection geometries (Enter key)
     const collectionGeometryMutation = useMutation({
@@ -341,6 +340,8 @@ function SearchCombobox({
             type: config[index].type
         })), [queries, config]);
 
+    const isLoading = queryResults.some(result => result.isLoading);
+
     const handleSourceFilterSelect = (sourceIndex: number) => {
         setActiveSourceIndex(sourceIndex === activeSourceIndex ? null : sourceIndex);
         setInputValue('');
@@ -442,18 +443,6 @@ function SearchCombobox({
             // prevent default selection/submission and run the collection search.
             if (!selectedItem || isSourceFilterSelected) {
                 event.preventDefault(); // Prevent cmdk from acting on Enter
-
-                // If queries are still loading, store pending search and wait
-                if (isLoading && search.trim().length > 3) {
-                    pendingSearchRef.current = { searchTerm: search, config };
-                    toast({
-                        variant: "default",
-                        description: "Waiting for search results...",
-                        duration: 2000,
-                    });
-                    return;
-                }
-
                 executeCollectionSearch(search, config);
             }
         }
@@ -461,6 +450,16 @@ function SearchCombobox({
 
 
     const executeCollectionSearch = async (currentSearchTerm: string, searchConfig: SearchSourceConfig[]) => {
+        // If queries are still loading, show toast and let user wait for dropdown results
+        if (isLoading && currentSearchTerm.trim().length > 3) {
+            toast({
+                variant: "default",
+                description: "Loading results... Press Enter again when ready.",
+                duration: 2000,
+            });
+            return;
+        }
+
         let allVisibleFeatures: Feature<Geometry, GeoJsonProperties>[] = [];
         let firstValidSourceUrl: string | null = null;
         let firstValidSourceIndex: number = -1;
@@ -536,17 +535,6 @@ function SearchCombobox({
         }
 
     }
-
-    const isLoading = queryResults.some(result => result.isLoading);
-
-    // Execute pending search when loading completes
-    useEffect(() => {
-        if (!isLoading && pendingSearchRef.current) {
-            const pending = pendingSearchRef.current;
-            pendingSearchRef.current = null;
-            executeCollectionSearch(pending.searchTerm, pending.config);
-        }
-    }, [isLoading]);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>

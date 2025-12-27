@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils'
 import useCheckActiveNav from '@/hooks/use-check-active-nav'
 import { Suspense } from 'react'
 import { ChevronLeft } from 'lucide-react'
-import { LoadingSpinner } from './custom/loading-spinner'
+import { Spinner } from './custom/loading-spinner'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { SideLink } from '@/lib/types/sidelink-types'
 import ThemeSwitch from '@/components/theme-switch'
@@ -110,14 +110,14 @@ export default function Nav({
         <TooltipProvider delayDuration={0}>
           {currentContent ? (
             <div className="h-full overflow-y-auto">
-              <Suspense fallback={<div className="px-4"><LoadingSpinner /></div>}>
+              <Suspense fallback={<div className="px-4"><Spinner /></div>}>
                 {DynamicComponent ? (
                   <div className="px-4 pb-4">
                     <DynamicComponent />
                   </div>
                 ) : (
                   <div className='w-full flex justify-center'>
-                    <LoadingSpinner />
+                    <Spinner />
                   </div>
                 )}
               </Suspense>

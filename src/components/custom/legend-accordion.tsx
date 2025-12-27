@@ -5,10 +5,11 @@ interface LegendAccordionProps {
     layerId: string;
     url: string;
     isOpen: boolean;
+    layerName?: string | null;
 }
 
-const LegendAccordion = ({ layerId, url, isOpen }: LegendAccordionProps) => {
-    const { preview, isLoading, error } = useLegendPreview(layerId, url);
+const LegendAccordion = ({ layerId, url, isOpen, layerName }: LegendAccordionProps) => {
+    const { preview, isLoading, error } = useLegendPreview(layerId, url, layerName ?? undefined);
     // Use empty string instead of undefined to keep accordion controlled
     const accordionValue = isOpen ? "legend-accordion" : "";
 

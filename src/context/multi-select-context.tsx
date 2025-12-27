@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
-import type { Feature } from 'geojson';
 
 export type DrawMode = 'off' | 'rectangle' | 'polygon';
 

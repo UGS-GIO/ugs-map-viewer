@@ -2,13 +2,10 @@ import { Layout } from '@/components/custom/layout';
 import { TopNav } from '@/components/top-nav';
 import { MapFooter } from '@/components/custom/map/map-footer';
 import { cn } from '@/lib/utils';
-import MapContainer from './components/map-container';
+import GenericMapContainer from '@/components/maps/generic-map-container';
 import Sidebar from '@/components/sidebar';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox';
-import { PROD_POSTGREST_URL } from '@/lib/constants';
-import { qFaultsWMSTitle } from './data/layers/layers';
 import { signOut } from '@/lib/auth';
 import { useAuth } from '@/context/auth-provider';
 import { Button } from '@/components/ui/button';
@@ -31,23 +28,6 @@ export default function Map() {
   const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
   const { user } = useAuth();
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(true);
-  const searchConfig: SearchSourceConfig[] = [
-    defaultMasqueradeConfig,
-    {
-      type: 'postgREST',
-      url: PROD_POSTGREST_URL,
-      functionName: "search_fault_data",
-      layerName: qFaultsWMSTitle,
-      searchTerm: "search_term",
-      sourceName: 'Faults',
-      crs: 'EPSG:3857',
-      displayField: "concatnames",
-      headers: {
-        'Accept-Profile': 'hazards',
-        'Accept': 'application/geo+json',
-      }
-    },
-  ];
 
   const handleLogout = async () => {
     try {
@@ -64,8 +44,6 @@ export default function Map() {
 
   return (
     <div className="relative h-svh overflow-hidden bg-background">
-      {/* User dropdown in top right corner */}
-
       <AlertDialog open={showWelcomeDialog} onOpenChange={setShowWelcomeDialog}>
         <AlertDialogContent className="max-w-2xl">
           <AlertDialogHeader>
@@ -81,7 +59,7 @@ export default function Map() {
                 <li className="flex gap-2">
                   <span className="font-bold shrink-0">•</span>
                   <span>
-                    <strong>Toggle “For Review” and “Published” hazard data</strong> using the dedicated tab buttons within the layer controls window. Each layer's visibility can be controlled independently.
+                    <strong>Toggle "For Review" and "Published" hazard data</strong> using the dedicated tab buttons within the layer controls window. Each layer's visibility can be controlled independently.
                   </span>
                 </li>
                 <li className="flex gap-2">
@@ -145,19 +123,12 @@ export default function Map() {
           <Layout.Header className='hidden md:flex items-center justify-between px-4 md:px-6'>
             <TopNav />
             <div className='flex items-center flex-1 min-w-0 md:flex-initial md:w-1/3 md:ml-auto space-x-2'>
-              <div className="flex-1 min-w-0">
-                <SearchCombobox
-                  config={searchConfig}
-                  onFeatureSelect={handleSearchSelect}
-                  onCollectionSelect={handleCollectionSelect}
-                  className="w-full"
-                />
-              </div>
+              {/* SearchCombobox removed - needs refactoring for new architecture */}
             </div>
           </Layout.Header>
 
           <Layout.Body>
-            <MapContainer />
+            <GenericMapContainer popupTitle="Hazards in your area" />
           </Layout.Body>
 
           <Layout.Footer className={cn('hidden md:flex z-20')} dynamicContent={<MapFooter />} />

@@ -2,7 +2,7 @@ import { Layout } from '@/components/custom/layout'
 import { TopNav } from '@/components/top-nav'
 import { MapFooter } from '@/components/custom/map/map-footer'
 import { cn } from '@/lib/utils'
-import MapContainer from './components/map-container'
+import GenericMapContainer from '@/components/maps/generic-map-container'
 import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -32,7 +32,7 @@ export default function Map() {
 
                     {/* ===== Main ===== */}
                     <Layout.Body>
-                        <MapContainer />
+                        <GenericMapContainer popupTitle="Geophysical Features" />
                     </Layout.Body>
 
                     {/* ===== Footer ===== */}

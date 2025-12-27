@@ -14,8 +14,10 @@ export interface LegendProvider {
   /**
    * Get renderer/legend data for a specific layer
    * @param layerId - The ID of the layer
+   * @param fallbackWmsUrl - Optional fallback WMS URL if layer metadata not available
+   * @param fallbackLayerName - Optional fallback layer name if layer metadata not available
    * @returns Promise resolving to renderer data or undefined
    */
-  getRenderer(layerId: string): Promise<RendererData>;
+  getRenderer(layerId: string, fallbackWmsUrl?: string, fallbackLayerName?: string): Promise<RendererData>;
 }
 

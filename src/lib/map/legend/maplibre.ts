@@ -153,16 +153,19 @@ const styleJsonCache = new Map<string, StyleJson>();
 export class MapLibreLegend implements LegendProvider {
   constructor(private map: maplibregl.Map) {}
 
-  async getRenderer(layerId: string): Promise<RendererData> {
+  async getRenderer(layerId: string, fallbackWmsUrl?: string, fallbackLayerName?: string): Promise<RendererData> {
     const style = this.map.getStyle();
     if (!style) {
-      console.error('[MapLibreLegend] Map style not loaded');
       return;
     }
 
     const layers = style.layers?.filter(layer => layer.id === layerId) || [];
 
     if (layers.length === 0) {
+      // Layer not found in map - try fallback WMS legend if URL and layer name provided
+      if (fallbackWmsUrl && fallbackLayerName) {
+        return await this.getWMSLegendForLayer(fallbackWmsUrl, fallbackLayerName);
+      }
       return;
     }
 
@@ -178,6 +181,14 @@ export class MapLibreLegend implements LegendProvider {
         return await this.getWMSLegendForLayer(
           metadata.wmsUrl as string,
           metadata.wmsLayerName as string
+        );
+      }
+
+      // Check for WMS layer metadata (from react-map-gl layers)
+      if (metadata['wms-url'] && metadata['wms-layer']) {
+        return await this.getWMSLegendForLayer(
+          metadata['wms-url'] as string,
+          metadata['wms-layer'] as string
         );
       }
 

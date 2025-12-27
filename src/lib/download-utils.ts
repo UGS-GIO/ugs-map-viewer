@@ -123,7 +123,7 @@ export async function downloadLayerAsGeoJSON(
   onProgress?: (percent: number, fetched: number, total: number | null) => void,
   maxFeatures = 10000
 ): Promise<void> {
-  // Convert WMS URL to WFS URL
+  // Convert WMS URL to WFS
   const wfsUrl = wmsUrl.replace(/\/wms\/?$/, '/wfs')
 
   const pageSize = 5000
@@ -137,9 +137,10 @@ export async function downloadLayerAsGeoJSON(
       service: 'WFS',
       version: '2.0.0',
       request: 'GetFeature',
-      typeName: layerName,
+      typeNames: layerName,
       outputFormat: 'application/json',
       srsName: 'EPSG:4326',
+      sortBy: 'ogc_fid',
       startIndex: String(startIndex),
       count: String(pageSize),
     })
@@ -179,14 +180,12 @@ export async function downloadLayerAsGeoJSON(
     }
 
     if (allFeatures.length >= maxFeatures) {
-      console.warn(`Layer export capped at ${maxFeatures} features for browser performance`)
       break
     }
 
     startIndex += pageSize
   }
 
-  // Build final GeoJSON
   const geojson: GeoJSON.FeatureCollection = {
     type: 'FeatureCollection',
     features: allFeatures,

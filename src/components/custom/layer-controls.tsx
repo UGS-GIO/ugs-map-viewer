@@ -165,6 +165,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     isOpen={legendPressed}
                     layerId={layerId}
                     url={url}
+                    layerName={layerName}
                 />
             </div>
         </div>

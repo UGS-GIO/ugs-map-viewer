@@ -58,3 +58,40 @@ export function createPinGraphic(
   const provider = createHighlightProvider(map);
   provider.createPinGraphic(lat, long);
 }
+
+/**
+ * Feature-like object with optional geometry (e.g., ClickedFeature)
+ */
+interface FeatureLike {
+  id: string | number
+  geometry?: Geometry
+  properties?: Record<string, unknown>
+  layerTitle?: string
+}
+
+/**
+ * Highlight multiple feature-like objects, filtering out those without geometry
+ * Converts to proper GeoJSON Features and uses efficient batch highlighting
+ */
+export function highlightClickedFeatures(
+  features: FeatureLike[],
+  map: MapLibreMap,
+  sourceCRS: string = 'EPSG:4326'
+): boolean {
+  if (!map || features.length === 0) return false
+
+  const geoJsonFeatures: Feature<Geometry, GeoJsonProperties>[] = features
+    .filter((f): f is FeatureLike & { geometry: Geometry } => !!f.geometry)
+    .map(f => ({
+      type: 'Feature' as const,
+      id: f.id,
+      geometry: f.geometry,
+      properties: f.properties || {},
+    }))
+
+  if (geoJsonFeatures.length === 0) return false
+
+  // Use first feature's layer title or generic title
+  const title = features[0]?.layerTitle || 'highlight'
+  return highlightFeatureCollection(geoJsonFeatures, map, sourceCRS, title)
+}

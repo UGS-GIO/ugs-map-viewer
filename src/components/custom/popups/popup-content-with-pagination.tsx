@@ -6,10 +6,10 @@ import { ChevronFirst, ChevronLast, ChevronLeft, ChevronRight, Shrink } from "lu
 import { PopupContentDisplay } from "@/components/custom/popups/popup-content-display"
 import { ColorCodingRecordFunction, FieldConfig, LinkFields, ProcessedRasterSource, RelatedTable } from "@/lib/types/mapping-types"
 import { useMap } from "@/hooks/use-map"
-import { clearGraphics, highlightFeature } from '@/lib/map/highlight-utils';
 import { useGetPopupButtons } from "@/hooks/use-get-popup-buttons"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { zoomToFeature } from "@/lib/map/utils"
+import type { HighlightFeature } from "@/components/maps/types"
 
 const ITEMS_PER_PAGE_OPTIONS = [1, 5, 10, 25, 50]
 
@@ -18,7 +18,7 @@ interface PopupButtonsProps {
     feature: ExtendedFeature;
     sourceCRS: string;
     title: string;
-    onZoom: (feature: ExtendedFeature, sourceCRS: string, title: string) => Promise<void>;
+    onZoom: (feature: ExtendedFeature, sourceCRS: string, title: string) => void;
     extraButtons: React.ReactNode[] | null;
 }
 
@@ -61,6 +61,7 @@ export interface LayerContentProps {
 interface SidebarInsetWithPaginationProps {
     layerContent: LayerContentProps[]
     onSectionChange: (layerTitle: string) => void
+    onHighlightChange?: (features: HighlightFeature[]) => void
 }
 
 interface PopupPaginationProps {
@@ -117,13 +118,14 @@ const PopupPagination = ({ currentPage, totalPages, handlePageChange, itemsPerPa
 const LayerCardInner = ({
     layer,
     buttons,
-    handleZoomToFeature
+    handleZoomToFeature,
+    onHighlightChange
 }: {
     layer: LayerContentProps,
     buttons: React.ReactNode[] | null,
-    handleZoomToFeature: (feature: ExtendedFeature, sourceCRS: string, title: string) => Promise<void>
+    handleZoomToFeature: (feature: ExtendedFeature, sourceCRS: string, title: string) => void,
+    onHighlightChange?: (features: HighlightFeature[]) => void
 }) => {
-    const { map } = useMap();
     const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE_OPTIONS[0])
     const [currentPage, setCurrentPage] = useState(1)
     const title = layer.layerTitle || layer.groupLayerTitle;
@@ -150,10 +152,12 @@ const LayerCardInner = ({
         setCurrentPage(page)
 
         // Only highlight to the first feature if items per page is 1
-        if (itemsPerPage === 1 && newPaginatedFeatures.length > 0) {
-            if (!map) return
-            clearGraphics(map)
-            highlightFeature(newPaginatedFeatures[0], map, layer.sourceCRS, title)
+        if (itemsPerPage === 1 && newPaginatedFeatures.length > 0 && newPaginatedFeatures[0].geometry) {
+            onHighlightChange?.([{
+                id: newPaginatedFeatures[0].id as string | number,
+                geometry: newPaginatedFeatures[0].geometry,
+                properties: newPaginatedFeatures[0].properties || {}
+            }])
         }
     }
 
@@ -207,7 +211,7 @@ const LayerCardInner = ({
 const LayerCard = memo(LayerCardInner);
 LayerCard.displayName = 'LayerCard';
 
-const PopupContentWithPaginationInner = ({ layerContent, onSectionChange }: SidebarInsetWithPaginationProps) => {
+const PopupContentWithPaginationInner = ({ layerContent, onSectionChange, onHighlightChange }: SidebarInsetWithPaginationProps) => {
     const { map } = useMap()
     const buttons = useGetPopupButtons()
 
@@ -220,24 +224,19 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange }: Side
         [layerContent]
     )
 
-    // Auto-highlight first feature of first layer when popup opens
+    // Auto-highlight first feature of first layer when popup opens (declarative)
     useEffect(() => {
         if (layerContent.length > 0 && layerContent[0].features.length > 0) {
-            if (!map) {
-                return
+            const firstFeature = layerContent[0].features[0]
+            if (firstFeature.geometry) {
+                onHighlightChange?.([{
+                    id: firstFeature.id as string | number,
+                    geometry: firstFeature.geometry,
+                    properties: firstFeature.properties || {}
+                }])
             }
-
-            const firstLayer = layerContent[0]
-            const firstFeature = firstLayer.features[0]
-            const title = firstLayer.layerTitle || firstLayer.groupLayerTitle
-
-            // Clear ALL previous highlights from all layers when showing new popup
-            clearGraphics(map)
-            highlightFeature(firstFeature, map, firstLayer.sourceCRS, title).catch(error => {
-                console.error('[PopupContent] Error highlighting first feature:', error)
-            })
         }
-    }, [layerContent.length > 0 ? layerContent[0].groupLayerTitle + layerContent[0].layerTitle : null, map])
+    }, [layerContent.length > 0 ? layerContent[0].groupLayerTitle + layerContent[0].layerTitle : null, onHighlightChange])
 
     // IntersectionObserver for tracking visible sections - only recreate when sectionIds change
     useEffect(() => {
@@ -270,34 +269,24 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange }: Side
 
         return () => observer.disconnect()
     }, [sectionIds])
-    const handleZoomToFeature = useCallback(async (feature: ExtendedFeature, sourceCRS: string, title: string) => {
+    const handleZoomToFeature = useCallback((feature: ExtendedFeature, sourceCRS: string, _title: string) => {
         if (!map) {
             console.warn('[PopupContent] No map available for zoom');
             return;
         }
 
-        // Clear ALL previous graphics from all layers when zooming to a feature
-        try {
-            clearGraphics(map)  // Clear all graphics, not just this layer
-
-            // Also clear query bbox visualization
-            const QUERY_BBOX_LAYER_ID = 'query-bbox-debug-layer';
-            const QUERY_BBOX_SOURCE_ID = 'query-bbox-debug';
-            if (map.getLayer(QUERY_BBOX_LAYER_ID)) {
-                map.removeLayer(QUERY_BBOX_LAYER_ID);
-            }
-            if (map.getSource(QUERY_BBOX_SOURCE_ID)) {
-                map.removeSource(QUERY_BBOX_SOURCE_ID);
-            }
-
-            await highlightFeature(feature, map, sourceCRS, title)
-        } catch (error) {
-            console.error('[PopupContent] Error highlighting feature:', error);
+        // Highlight feature declaratively
+        if (feature.geometry) {
+            onHighlightChange?.([{
+                id: feature.id as string | number,
+                geometry: feature.geometry,
+                properties: feature.properties || {}
+            }])
         }
 
         // Zoom to feature
         zoomToFeature(feature, map, sourceCRS)
-    }, [map])
+    }, [map, onHighlightChange])
 
     // Generate stable key from layer content - only changes when layers actually change
     const contentKey = useMemo(() =>
@@ -316,6 +305,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange }: Side
                     layer={layer}
                     buttons={buttons}
                     handleZoomToFeature={handleZoomToFeature}
+                    onHighlightChange={onHighlightChange}
                 />
             ))}
         </div>

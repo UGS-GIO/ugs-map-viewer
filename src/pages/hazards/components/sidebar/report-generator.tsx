@@ -1,6 +1,5 @@
 import { useState, useRef } from "react";
 import { useMap } from '@/hooks/use-map';
-import { useTerraDrawPolygon } from '@/hooks/use-terra-draw';
 import { useMapLibreScreenshot } from '@/hooks/use-maplibre-screenshot';
 import { Button } from '@/components/custom/button';
 import { BackToMenuButton } from "@/components/custom/back-to-menu-button";
@@ -11,18 +10,13 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "@/components/custom/link";
 import proj4 from 'proj4';
 import { serializePolygonForUrl, PolygonGeometry } from '@/lib/map/conversion-utils';
+import type { Polygon } from 'geojson';
 
 type ActiveButtonOptions = 'currentMapExtent' | 'customArea' | 'reset';
 type DialogType = 'areaTooLarge' | 'confirmation' | null;
 
-// Terra Draw geometry format (WGS84)
-interface DrawGeometry {
-    type: 'polygon';
-    rings: number[][][];
-}
-
 function ReportGenerator() {
-    const { map, setIsSketching, setIgnoreNextClick } = useMap();
+    const { map, setIsSketching, setIgnoreNextClick, startDraw, cancelDraw } = useMap();
     const [activeButton, setActiveButton] = useState<ActiveButtonOptions>();
     const { setNavOpened } = useSidebar();
     const isMobile = useIsMobile();
@@ -42,67 +36,62 @@ function ReportGenerator() {
         height: '50vh'
     });
 
-    // Setup Terra Draw for custom area drawing
-    const { startPolygonDraw, clearDrawings, cancelDraw } = useTerraDrawPolygon({
-        map,
-        onDrawComplete: (geometry: DrawGeometry) => {
-            // Convert from WGS84 (Terra Draw GeoJSON) to Web Mercator for area check
-            const rings = geometry.rings;
-            const mercatorRings = [];
+    // Handle draw completion from the shared TerraDraw instance
+    const handleDrawComplete = (polygon: Polygon) => {
+        // Convert from WGS84 (GeoJSON) to Web Mercator for area check
+        const rings = polygon.coordinates;
+        const mercatorRings: number[][][] = [];
 
-            for (const ring of rings) {
-                const mercatorRing = [];
-                for (const coord of ring) {
-                    const [x, y] = proj4('EPSG:4326', 'EPSG:3857', [coord[0], coord[1]]);
-                    mercatorRing.push([x, y]);
-                }
-                mercatorRings.push(mercatorRing);
+        for (const ring of rings) {
+            const mercatorRing: number[][] = [];
+            for (const coord of ring) {
+                const [x, y] = proj4('EPSG:4326', 'EPSG:3857', [coord[0], coord[1]]);
+                mercatorRing.push([x, y]);
             }
-
-            // Calculate extent from Web Mercator coordinates
-            const allX = [];
-            const allY = [];
-            for (const ring of mercatorRings) {
-                for (const coord of ring) {
-                    allX.push(coord[0]);
-                    allY.push(coord[1]);
-                }
-            }
-
-            const minX = Math.min(...allX);
-            const maxX = Math.max(...allX);
-            const minY = Math.min(...allY);
-            const maxY = Math.max(...allY);
-
-            const areaWidth = maxX - minX;
-            const areaHeight = maxY - minY;
-
-            // Check if area is within limits (12000m x 18000m)
-            if (areaHeight < 12000 && areaWidth < 18000) {
-                const aoi: PolygonGeometry = {
-                    rings: mercatorRings,
-                    crs: 'EPSG:3857' // Web Mercator
-                };
-                setPendingAoi(aoi);
-                setAoiForScreenshot(JSON.stringify(aoi));
-                setActiveDialog('confirmation');
-                setActiveButton(undefined);
-            } else {
-                setActiveDialog('areaTooLarge');
-                setActiveButton(undefined);
-            }
-
-            clearDrawings();
-
-            // Set flag to ignore the next click (the finishing double-click)
-            // This will be checked and cleared by the click handler
-            setIgnoreNextClick?.(true);
-
-            // Now safe to clear sketching state
-            isSketchingRef.current = false;
-            setIsSketching?.(false);
+            mercatorRings.push(mercatorRing);
         }
-    });
+
+        // Calculate extent from Web Mercator coordinates
+        const allX: number[] = [];
+        const allY: number[] = [];
+        for (const ring of mercatorRings) {
+            for (const coord of ring) {
+                allX.push(coord[0]);
+                allY.push(coord[1]);
+            }
+        }
+
+        const minX = Math.min(...allX);
+        const maxX = Math.max(...allX);
+        const minY = Math.min(...allY);
+        const maxY = Math.max(...allY);
+
+        const areaWidth = maxX - minX;
+        const areaHeight = maxY - minY;
+
+        // Check if area is within limits (12000m x 18000m)
+        if (areaHeight < 12000 && areaWidth < 18000) {
+            const aoi: PolygonGeometry = {
+                rings: mercatorRings,
+                crs: 'EPSG:3857' // Web Mercator
+            };
+            setPendingAoi(aoi);
+            setAoiForScreenshot(JSON.stringify(aoi));
+            setActiveDialog('confirmation');
+            setActiveButton(undefined);
+        } else {
+            setActiveDialog('areaTooLarge');
+            setActiveButton(undefined);
+        }
+
+        // Set flag to ignore the next click (the finishing double-click)
+        // This will be checked and cleared by the click handler
+        setIgnoreNextClick(true);
+
+        // Now safe to clear sketching state
+        isSketchingRef.current = false;
+        setIsSketching(false);
+    };
 
     const handleNavigate = (aoi: PolygonGeometry) => {
         setPendingAoi(aoi);
@@ -169,7 +158,11 @@ function ReportGenerator() {
         handleReset();
         handleActiveButton('currentMapExtent');
 
-        if (!map) return;
+        console.log('[ReportGenerator] Current Map Extent - map:', map)
+        if (!map) {
+            console.warn('[ReportGenerator] Map is null/undefined')
+            return
+        }
 
         const bounds = map.getBounds();
         const sw = bounds.getSouthWest();
@@ -203,26 +196,26 @@ function ReportGenerator() {
     };
 
     const handleCustomAreaButton = () => {
-        // Clear any existing drawings but don't reset sketching state
+        // Cancel any existing drawing first
         cancelDraw();
-        clearDrawings();
         setActiveButton('customArea');
         if (isMobile) setNavOpened(false);
 
         // Set sketching state synchronously with ref
         isSketchingRef.current = true;
-        setIsSketching?.(true);
-        startPolygonDraw();
+        setIsSketching(true);
+
+        // Start drawing via context - pass callback for when drawing completes
+        startDraw('polygon', handleDrawComplete);
     };
 
     const handleReset = () => {
         cancelDraw();
-        clearDrawings();
         setActiveButton(undefined);
         setActiveDialog(null);
         isSketchingRef.current = false;
-        setIsSketching?.(false);
-        setIgnoreNextClick?.(false);
+        setIsSketching(false);
+        setIgnoreNextClick(false);
     };
 
     const buttonText = (buttonName: ActiveButtonOptions, defaultText: string) => {
@@ -238,7 +231,7 @@ function ReportGenerator() {
     }
 
     const handleResetDrawing = () => {
-        setIsSketching?.(true);
+        setIsSketching(true);
         handleCustomAreaButton();
     }
 

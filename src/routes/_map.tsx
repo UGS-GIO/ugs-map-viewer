@@ -1,7 +1,6 @@
 import { LayerUrlProvider } from '@/context/layer-url-provider';
-import { MapProvider } from '@/context/map-provider';
 import { SidebarProvider } from '@/context/sidebar-provider';
-import { MultiSelectProvider } from '@/context/multi-select-context';
+import { MapInstanceProvider } from '@/context/map-instance-context';
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { z } from 'zod'
 import { RouteErrorBoundary } from '@/components/route-error-boundary'
@@ -37,6 +36,12 @@ const mapSearchSchema = z.object({
     popup_lon: z.coerce.number().min(-180).max(180).optional(),
     // View mode for split/table layout
     view: z.enum(['map', 'split', 'table']).optional(),
+    // Click buffer bounds for selection visualization (sw_lng,sw_lat,ne_lng,ne_lat)
+    click_bbox: z.string().optional(),
+    // Feature geometry bounds for zoom (sw_lng,sw_lat,ne_lng,ne_lat)
+    feature_bbox: z.string().optional(),
+    // Selected features for sharing (format: layer:id,layer:id,...)
+    features: z.string().optional(),
 }).strip()
 
 export type MapSearchParams = z.infer<typeof mapSearchSchema>;
@@ -47,14 +52,12 @@ export const Route = createFileRoute('/_map')({
     validateSearch: mapSearchSchema,
     errorComponent: RouteErrorBoundary,
     component: () => (
-        <LayerUrlProvider>
-            <SidebarProvider>
-                <MapProvider>
-                    <MultiSelectProvider>
-                        <Outlet />
-                    </MultiSelectProvider>
-                </MapProvider>
-            </SidebarProvider>
-        </LayerUrlProvider>
+        <MapInstanceProvider>
+            <LayerUrlProvider>
+                <SidebarProvider>
+                    <Outlet />
+                </SidebarProvider>
+            </LayerUrlProvider>
+        </MapInstanceProvider>
     ),
 })

@@ -239,7 +239,8 @@ interface DisplayField {
 
 // Interface for composite symbol results
 export interface CompositeSymbolResult {
-    html?: HTMLElement;
+    symbol?: SVGSVGElement;
+    html?: HTMLElement | SVGSVGElement;
     isComposite: boolean;
-    symbolizers: { type: string; [key: string]: string | number | boolean }[];
+    symbolizers: unknown[];
 }

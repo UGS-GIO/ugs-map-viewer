@@ -181,7 +181,7 @@ const groundshakingWMSConfig: WMSLayerProps = {
                 // empty in favor or using the rasterSource
             },
             rasterSource: {
-                url: `${PROD_GEOSERVER_URL}wms`,
+                url: `${PROD_GEOSERVER_URL}/wms`,
                 headers: {
                     "Accept": "application/json",
                     "Cache-Control": "no-cache",

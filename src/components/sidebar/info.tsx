@@ -3,7 +3,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Accordion, AccordionContent, AccordionHeader, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ExternalLink, Layers as LayersIcon } from 'lucide-react';
 import { Button } from '../custom/button';
-import { LoadingSpinner } from '../custom/loading-spinner';
+import { Spinner } from '../custom/loading-spinner';
 import Layers from '@/components/sidebar/layers';
 import { BackToMenuButton } from '../custom/back-to-menu-button';
 import { useSidebar } from '@/hooks/use-sidebar';
@@ -52,7 +52,7 @@ function Info() {
       <div className="flex flex-col h-full">
         <BackToMenuButton />
         <div className="flex-1 flex items-center justify-center">
-          <LoadingSpinner />
+          <Spinner />
         </div>
       </div>
     );
@@ -99,7 +99,7 @@ function Info() {
               <AccordionContent>
                 {pageInfo?.dataSources || (
                   <div className="flex justify-center py-4">
-                    <LoadingSpinner />
+                    <Spinner />
                   </div>
                 )}
               </AccordionContent>

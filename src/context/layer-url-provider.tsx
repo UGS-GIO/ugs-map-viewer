@@ -10,6 +10,8 @@ interface LayerUrlContextType {
     activeFilters: ActiveFilters;
     updateLayerSelection: (titles: string | string[], shouldBeSelected: boolean) => void;
     updateFilter: (layerTitle: string, filterValue: string | undefined) => void;
+    /** Whether the layer URL has been initialized (defaults applied if needed) */
+    isInitialized: boolean;
 }
 
 const LayerUrlContext = createContext<LayerUrlContextType | undefined>(undefined);
@@ -66,6 +68,10 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
     // Normalize layers: handle both string and object formats
     const normalizedLayers = useMemo(() => normalizeLayersObj(urlLayers), [urlLayers]);
 
+    // isInitialized = URL has a layers key with a selected array (even if empty)
+    // This distinguishes between "user explicitly set layers" vs "no layers param in URL"
+    const isInitialized = normalizedLayers?.selected !== undefined;
+
     useEffect(() => {
         if (!layersConfig || hasInitializedForPath.current === location.pathname) return;
 
@@ -84,11 +90,14 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
             }
         }
 
-        if (!normalizedLayers || !normalizedLayers.selected || normalizedLayers.selected.length === 0) {
+        // Only set defaults if layers param is completely missing from URL
+        // If user explicitly sets layers.selected = [], respect that (empty map)
+        if (!normalizedLayers || normalizedLayers.selected === undefined) {
             finalLayers = { selected: defaultSelected };
             needsUpdate = true;
         } else {
-            const currentSelected = normalizedLayers.selected || [];
+            // Validate existing selection - remove any invalid layer titles
+            const currentSelected = normalizedLayers.selected;
             const validSelected = currentSelected.filter((title: string) => allValidLayerTitles.has(title));
             if (validSelected.length !== currentSelected.length) {
                 finalLayers = { selected: validSelected };
@@ -180,6 +189,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         activeFilters,
         updateLayerSelection,
         updateFilter,
+        isInitialized,
     };
 
     return (

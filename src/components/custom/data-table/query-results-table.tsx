@@ -7,10 +7,8 @@ import {
     getFilteredRowModel,
     flexRender,
     type ColumnDef,
-    type SortingState,
     type VisibilityState,
     type RowSelectionState,
-    type ColumnSizingState,
 } from '@tanstack/react-table';
 import {
     Table,
@@ -47,9 +45,10 @@ import {
     SplitSquareVertical,
 } from 'lucide-react';
 import type { LayerContentProps, ExtendedFeature } from '@/components/custom/popups/popup-content-with-pagination';
+import type { SelectedFeatureRef } from '@/hooks/use-map-url-sync';
+import type { HighlightFeature } from '@/components/maps/types';
 import { useMap } from '@/hooks/use-map';
 import { zoomToFeature, zoomToFeatures } from '@/lib/map/utils';
-import { highlightFeature, clearGraphics } from '@/lib/map/highlight-utils';
 import { downloadCSV, downloadGeoJSON } from '@/lib/download-utils';
 import { cn } from '@/lib/utils';
 
@@ -60,6 +59,12 @@ interface QueryResultsTableProps {
     onClose?: () => void;
     viewMode?: ViewMode;
     onViewModeChange?: (mode: ViewMode) => void;
+    /** Selected feature refs from URL (layer:id pairs) */
+    selectedFeatureRefs?: SelectedFeatureRef[];
+    /** Callback when selected features change */
+    onSelectedFeaturesChange?: (refs: SelectedFeatureRef[]) => void;
+    /** Callback when highlighted features change (declarative highlighting) */
+    onHighlightChange?: (features: HighlightFeature[]) => void;
 }
 
 interface ColumnConfig {
@@ -81,7 +86,7 @@ const EMPTY_COLUMN_FILTERS: { id: string; value: string }[] = [];
 
 type OpenDropdown = 'none' | 'export' | 'columns';
 
-export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeChange }: QueryResultsTableProps) {
+export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeChange, selectedFeatureRefs = [], onSelectedFeaturesChange, onHighlightChange }: QueryResultsTableProps) {
     const { map } = useMap();
     const mapRef = useRef(map);
     mapRef.current = map;
@@ -93,14 +98,10 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
     );
 
     const [selectedLayerIndex, setSelectedLayerIndex] = useState(0);
-    const [sorting, setSorting] = useState<SortingState>([]);
-    const [searchValue, setSearchValue] = useState('');
-    const [filterColumn, setFilterColumn] = useState<string>('all');
+    const [filter, setFilter] = useState({ column: 'all', value: '' });
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-    const [columnSizing, setColumnSizing] = useState<ColumnSizingState>({});
-    const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
     const [openDropdown, setOpenDropdown] = useState<OpenDropdown>('none');
-    const [lastClickedRow, setLastClickedRow] = useState<number | null>(null);
+    const lastClickedRowRef = useRef<number | null>(null);
 
     // Close dropdowns when clicking outside
     useEffect(() => {
@@ -130,78 +131,114 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         }));
     }, [selectedLayer]);
 
+    // Derive rowSelection from URL's selectedFeatureRefs
+    const rowSelection = useMemo((): RowSelectionState => {
+        if (selectedFeatureRefs.length === 0) return {};
+        const selection: RowSelectionState = {};
+        rowData.forEach((row, index) => {
+            const featureId = String(row.feature.id ?? index);
+            const isSelected = selectedFeatureRefs.some(
+                ref => ref.layer === row.layerTitle && ref.id === featureId
+            );
+            if (isSelected) selection[index] = true;
+        });
+        return selection;
+    }, [selectedFeatureRefs, rowData]);
+
+    // Helper to convert row indices to feature refs
+    const rowIndicesToFeatureRefs = useCallback((indices: number[]): SelectedFeatureRef[] => {
+        return indices.map(i => {
+            const row = rowData[i];
+            if (!row) return null;
+            return {
+                layer: row.layerTitle,
+                id: String(row.feature.id ?? i),
+            };
+        }).filter((ref): ref is SelectedFeatureRef => ref !== null);
+    }, [rowData]);
+
     // Get column configs for selected layer only
+    // Falls back to auto-generating columns from feature properties if no popupFields
     const columnConfigs = useMemo((): ColumnConfig[] => {
-        if (!selectedLayer?.popupFields) return [];
+        if (selectedLayer?.popupFields) {
+            return Object.entries(selectedLayer.popupFields).map(([label, fieldConfig]) => ({
+                id: fieldConfig.field,
+                label,
+                field: fieldConfig.field,
+            }));
+        }
 
-        return Object.entries(selectedLayer.popupFields).map(([label, fieldConfig]) => ({
-            id: fieldConfig.field,
-            label,
-            field: fieldConfig.field,
-        }));
+        // Auto-generate columns from first feature's properties
+        const firstFeature = selectedLayer?.features?.[0];
+        if (!firstFeature?.properties) return [];
+
+        return Object.keys(firstFeature.properties)
+            .filter(key => key !== 'geometry' && key !== 'bbox') // Exclude geometry fields
+            .map(key => ({
+                id: key,
+                label: key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), // Format label
+                field: key,
+            }));
     }, [selectedLayer]);
-
-    // Reset selection when layer changes
-    useEffect(() => {
-        setRowSelection({});
-        setLastClickedRow(null);
-    }, [selectedLayerIndex]);
 
     // Handle row click with shift+click and ctrl+click
     // Uses row.id (global index) not page-relative index for proper selection
-    const handleRowClick = (rowId: string, event: React.MouseEvent) => {
+    const handleRowClick = useCallback((rowId: string, event: React.MouseEvent) => {
         // Don't handle if clicking on checkbox
         if ((event.target as HTMLElement).closest('[role="checkbox"]')) return;
 
         const numericId = parseInt(rowId, 10);
 
-        if (event.shiftKey && lastClickedRow !== null) {
+        if (event.shiftKey && lastClickedRowRef.current !== null) {
             // Shift+click: select range using global indices
-            const start = Math.min(lastClickedRow, numericId);
-            const end = Math.max(lastClickedRow, numericId);
-            const newSelection: RowSelectionState = { ...rowSelection };
+            const start = Math.min(lastClickedRowRef.current, numericId);
+            const end = Math.max(lastClickedRowRef.current, numericId);
+            const indices: number[] = [];
+            // Include existing selection + range
+            Object.keys(rowSelection).forEach(k => { if (rowSelection[k]) indices.push(Number(k)); });
             for (let i = start; i <= end; i++) {
-                newSelection[i] = true;
+                if (!indices.includes(i)) indices.push(i);
             }
-            setRowSelection(newSelection);
+            onSelectedFeaturesChange?.(rowIndicesToFeatureRefs(indices));
         } else if (event.ctrlKey || event.metaKey) {
             // Ctrl/Cmd+click: toggle single row (additive)
-            setRowSelection(prev => ({
-                ...prev,
-                [numericId]: !prev[numericId]
-            }));
-            setLastClickedRow(numericId);
+            const currentIndices = Object.keys(rowSelection).filter(k => rowSelection[k]).map(Number);
+            const newIndices = currentIndices.includes(numericId)
+                ? currentIndices.filter(i => i !== numericId)
+                : [...currentIndices, numericId];
+            onSelectedFeaturesChange?.(rowIndicesToFeatureRefs(newIndices));
+            lastClickedRowRef.current = numericId;
         } else {
             // Regular click: select only this row and zoom
-            setRowSelection({ [numericId]: true });
-            setLastClickedRow(numericId);
+            onSelectedFeaturesChange?.(rowIndicesToFeatureRefs([numericId]));
+            lastClickedRowRef.current = numericId;
 
             // Zoom and highlight single feature (use rowIndex for rowData access)
             const row = rowData[numericId];
             const currentMap = mapRef.current;
-            if (currentMap && row) {
-                clearGraphics(currentMap, row.layerTitle);
-                highlightFeature(row.feature, currentMap, row.sourceCRS, row.layerTitle);
+            if (currentMap && row && row.feature.geometry) {
+                onHighlightChange?.([{
+                    id: row.feature.id as string | number,
+                    geometry: row.feature.geometry,
+                    properties: row.feature.properties || {}
+                }]);
                 zoomToFeature(row.feature, currentMap, row.sourceCRS);
             }
         }
-    };
+    }, [rowSelection, rowData, rowIndicesToFeatureRefs, onSelectedFeaturesChange, onHighlightChange]);
 
     // Handle column filter selection change
     const handleFilterColumnChange = useCallback((value: string) => {
-        setFilterColumn(value);
-        setSearchValue('');
+        setFilter({ column: value, value: '' });
     }, []);
 
     // Handle layer tab change
     const handleLayerChange = useCallback((index: number) => {
         setSelectedLayerIndex(index);
-        setFilterColumn('all');
-        setSearchValue('');
-        setRowSelection({});
-        setSorting([]);
-        setLastClickedRow(null);
-    }, []);
+        setFilter({ column: 'all', value: '' });
+        lastClickedRowRef.current = null;
+        onSelectedFeaturesChange?.([]);
+    }, [onSelectedFeaturesChange]);
 
     // Get selected rows
     const selectedRows = useMemo(() => {
@@ -213,33 +250,59 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
 
     const hasSelection = selectedRows.length > 0;
 
+    // Handle row selection change - update URL AND highlight
+    const handleRowSelectionChange = useCallback((updater: RowSelectionState | ((old: RowSelectionState) => RowSelectionState)) => {
+        const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
+        const selectedIndices = Object.keys(newSelection).filter(key => newSelection[key]).map(Number);
+
+        // Update URL with new selection
+        onSelectedFeaturesChange?.(rowIndicesToFeatureRefs(selectedIndices));
+
+        // Highlight based on new selection (declarative)
+        const newSelectedRows = selectedIndices.map(i => rowData[i]).filter(Boolean);
+
+        if (newSelectedRows.length === 0) {
+            onHighlightChange?.([]);
+            return;
+        }
+
+        // Highlight all selected features
+        const highlights: HighlightFeature[] = newSelectedRows
+            .filter(row => row.feature.geometry)
+            .map(row => ({
+                id: row.feature.id as string | number,
+                geometry: row.feature.geometry!,
+                properties: row.feature.properties || {}
+            }));
+        onHighlightChange?.(highlights);
+    }, [rowSelection, rowData, rowIndicesToFeatureRefs, onSelectedFeaturesChange, onHighlightChange]);
+
     // Zoom to all selected features
     const handleZoomToSelected = useCallback(() => {
         const currentMap = mapRef.current;
         if (!currentMap || selectedRows.length === 0) return;
 
-        const firstRow = selectedRows[0];
-        clearGraphics(currentMap, firstRow.layerTitle);
-
-        // Highlight all selected
-        for (const row of selectedRows) {
-            highlightFeature(row.feature, currentMap, row.sourceCRS, row.layerTitle);
-        }
+        // Highlight selected features (declarative)
+        const highlights: HighlightFeature[] = selectedRows
+            .filter(row => row.feature.geometry)
+            .map(row => ({
+                id: row.feature.id as string | number,
+                geometry: row.feature.geometry!,
+                properties: row.feature.properties || {}
+            }));
+        onHighlightChange?.(highlights);
 
         // Zoom to fit all
         const features = selectedRows.map(r => r.feature);
-        zoomToFeatures(features, currentMap, firstRow.sourceCRS);
-    }, [selectedRows]);
+        zoomToFeatures(features, currentMap, selectedRows[0].sourceCRS);
+    }, [selectedRows, onHighlightChange]);
 
     // Clear selection
     const handleClearSelection = useCallback(() => {
-        setRowSelection({});
-        setLastClickedRow(null);
-        const currentMap = mapRef.current;
-        if (currentMap && selectedLayer) {
-            clearGraphics(currentMap, selectedLayer.layerTitle || selectedLayer.groupLayerTitle);
-        }
-    }, [selectedLayer]);
+        onSelectedFeaturesChange?.([]);
+        lastClickedRowRef.current = null;
+        onHighlightChange?.([]);
+    }, [onSelectedFeaturesChange, onHighlightChange]);
 
     // Export handlers
     const handleExport = useCallback((format: 'csv' | 'geojson') => {
@@ -322,14 +385,14 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         return cols;
     }, [columnConfigs]);
 
-    // Derive filters from searchValue based on filterColumn
-    const globalFilter = filterColumn === 'all' ? searchValue : '';
+    // Derive filters from filter state
+    const globalFilter = filter.column === 'all' ? filter.value : '';
     const columnFilters = useMemo(() => {
-        if (filterColumn !== 'all' && searchValue) {
-            return [{ id: filterColumn, value: searchValue }];
+        if (filter.column !== 'all' && filter.value) {
+            return [{ id: filter.column, value: filter.value }];
         }
         return EMPTY_COLUMN_FILTERS;
-    }, [filterColumn, searchValue]);
+    }, [filter]);
 
     const table = useReactTable({
         data: rowData,
@@ -339,19 +402,15 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         getPaginationRowModel: getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
-        onSortingChange: setSorting,
         onColumnVisibilityChange: setColumnVisibility,
-        onColumnSizingChange: setColumnSizing,
-        onRowSelectionChange: setRowSelection,
+        onRowSelectionChange: handleRowSelectionChange,
         enableRowSelection: true,
         enableColumnResizing: true,
         columnResizeMode: 'onChange',
         state: {
-            sorting,
             globalFilter,
             columnFilters,
             columnVisibility,
-            columnSizing,
             rowSelection,
         },
         initialState: {
@@ -475,7 +534,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 ) : (
                     <>
                         <select
-                            value={filterColumn}
+                            value={filter.column}
                             onChange={(e) => handleFilterColumnChange(e.target.value)}
                             className="h-7 px-2 rounded border border-input bg-background text-sm shrink-0"
                         >
@@ -488,8 +547,8 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                         </select>
                         <Input
                             placeholder="Search..."
-                            value={searchValue}
-                            onChange={(e) => setSearchValue(e.target.value)}
+                            value={filter.value}
+                            onChange={(e) => setFilter(prev => ({ ...prev, value: e.target.value }))}
                             className="h-7 flex-1 min-w-0 text-sm"
                         />
                     </>

@@ -1,44 +1,52 @@
-import { useSearch } from '@tanstack/react-router';
+import { useMemo, useEffect } from 'react'
+import { useSearch } from '@tanstack/react-router'
 import { Layout } from '@/components/custom/layout'
 import { TopNav } from '@/components/top-nav'
 import { MapFooter } from '@/components/custom/map/map-footer'
 import { cn } from '@/lib/utils'
-import MapContainer from './components/map-container'
+import GenericMapContainer from '@/components/maps/generic-map-container'
 import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { PROD_POSTGREST_URL } from '@/lib/constants'
-import { wellWithTopsLayerName, wellWithTopsWMSTitle } from '@/pages/carbonstorage/data/layers/layers'
-import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox'
+import { wellWithTopsWMSTitle } from '@/pages/carbonstorage/data/layers/layers'
+
+// Carbon Storage specific filter mapping
+const CCS_FILTER_MAPPING: Record<string, string> = {
+  [wellWithTopsWMSTitle]: wellWithTopsWMSTitle,
+}
 
 export default function Map() {
   const { isCollapsed, sidebarWidthPx } = useSidebar();
   const isMobile = useIsMobile();
   const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
-  const search = useSearch({ from: '/_map/carbonstorage/' });
-  const { updateLayerSelection } = useLayerUrl();
+  const { selectedLayerTitles, updateLayerSelection } = useLayerUrl()
 
-  const searchConfig: SearchSourceConfig[] = [
-    defaultMasqueradeConfig,
-    {
-      type: 'postgREST',
-      url: `${PROD_POSTGREST_URL}/${wellWithTopsLayerName}`,
-      sourceName: 'API #',
-      crs: 'EPSG:26912',
-      displayField: 'api',
-      layerName: wellWithTopsWMSTitle,
-      params: {
-        select: 'shape,api',
-        targetField: 'api',
-      },
-      headers: {
-        'Accept': 'application/geo+json',
-        'Content-Type': 'application/json',
-        'Accept-Profile': 'emp',
-      },
-    },
-  ];
+  // Get URL filters
+  const searchParams = useSearch({ from: '/_map/carbonstorage/' })
+  const filtersFromUrl = searchParams.filters ?? {}
+
+  // Build CQL filters for layers
+  const layerFilters = useMemo(() => {
+    const filters: Record<string, string> = {}
+    for (const [filterKey, layerTitle] of Object.entries(CCS_FILTER_MAPPING)) {
+      const filterValue = filtersFromUrl[filterKey]
+      if (filterValue) {
+        filters[layerTitle] = filterValue
+      }
+    }
+    return filters
+  }, [filtersFromUrl])
+
+  // Auto-select layer when filter is applied
+  useEffect(() => {
+    for (const [filterKey, layerTitle] of Object.entries(CCS_FILTER_MAPPING)) {
+      const filterValue = filtersFromUrl[filterKey]
+      if (filterValue && !selectedLayerTitles.has(layerTitle)) {
+        updateLayerSelection(layerTitle, true)
+      }
+    }
+  }, [filtersFromUrl, selectedLayerTitles, updateLayerSelection])
 
   return (
     <div className="relative h-svh overflow-hidden bg-background">
@@ -53,23 +61,13 @@ export default function Map() {
           <Layout.Header className='hidden md:flex items-center justify-between px-4 md:px-6'>
             <TopNav />
             <div className='flex items-center flex-1 min-w-0 md:flex-initial md:w-1/3 md:ml-auto space-x-2'>
-              <div className="flex-1 min-w-0">
-                <SearchCombobox
-                  config={searchConfig}
-                  onFeatureSelect={handleSearchSelect}
-                  onCollectionSelect={handleCollectionSelect}
-                  className="w-full"
-                />
-              </div>
+              {/* SearchCombobox removed - needs refactoring for new architecture */}
             </div>
           </Layout.Header>
 
           {/* ===== Main ===== */}
           <Layout.Body>
-            <MapContainer
-              searchParams={search}
-              updateLayerSelection={updateLayerSelection}
-            />
+            <GenericMapContainer popupTitle="CCS Information" layerFilters={layerFilters} />
           </Layout.Body>
 
           {/* ===== Footer ===== */}

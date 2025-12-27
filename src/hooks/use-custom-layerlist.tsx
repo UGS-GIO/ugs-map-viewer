@@ -11,8 +11,8 @@ import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions'
 import { useSidebar } from '@/hooks/use-sidebar';
 import LayerControls from '@/components/custom/layer-controls';
 import { useIsMobile } from './use-mobile';
-import { clearGraphics } from '@/lib/map/highlight-utils';
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from '@/lib/constants';
+import { useLayerUrl } from '@/context/layer-url-provider';
 
 const isPMTilesLayer = (layer: LayerProps): layer is PMTilesLayerProps => {
     return layer.type === 'pmtiles';
@@ -39,6 +39,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
     } = useLayerItemState(layerConfig);
 
     const { map } = useMap();
+    const { selectedLayerTitles } = useLayerUrl();
     const { setIsCollapsed, setNavOpened } = useSidebar();
     const { data: layerDescriptions } = useFetchLayerDescriptions();
     const isMobile = useIsMobile();
@@ -55,19 +56,23 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
     // Track group visibility separately from selection
     const [isGroupLayerVisible, setIsGroupLayerVisible] = useState(true);
 
-    // Toggle visibility for all child layers in a group without affecting selection
+    // Toggle visibility for SELECTED child layers in a group
+    // Only affects layers that are selected in the URL - respects URL selection rules
     const handleGroupVisibilityToggle = useCallback((visible: boolean) => {
         if (!map || layerConfig.type !== 'group') return;
 
         const childTitles = getChildLayerTitles(layerConfig);
-        childTitles.forEach(title => {
+        // Only toggle visibility for layers that are selected in URL
+        const selectedChildTitles = childTitles.filter(title => selectedLayerTitles.has(title));
+
+        selectedChildTitles.forEach(title => {
             const layer = findLayerByTitle(map, title);
             if (layer) {
                 layer.visible = visible;
             }
         });
         setIsGroupLayerVisible(visible);
-    }, [map, layerConfig]);
+    }, [map, layerConfig, selectedLayerTitles]);
 
     const liveLayer = useMemo(() => {
         if (!map || !layerConfig.title) return null;
@@ -82,7 +87,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
             if (layerConfig.pmtilesUrl.includes('hazards.pmtiles') && layerConfig.sourceLayer) {
                 return {
                     type: 'wms',
-                    wmsUrl: `${PROD_GEOSERVER_URL}wms`,
+                    wmsUrl: `${PROD_GEOSERVER_URL}/wms`,
                     layerName: `${HAZARDS_WORKSPACE}:${layerConfig.sourceLayer}`,
                 };
             }
@@ -124,11 +129,14 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
         }
     };
 
+    const { onLayerTurnedOff } = useMap();
+
     // This handler now explicitly sets the accordion state.
     const handleLocalToggle = (checked: boolean) => {
-        // Only clear graphics if using MapLibre (has map)
-        if (map) {
-            clearGraphics(map, layerConfig.title || '');
+        // Notify parent to clear features from results when layer is turned off
+        // (handleLayerTurnedOff in useFeatureSelection handles highlight clearing declaratively)
+        if (!checked && layerConfig.title) {
+            onLayerTurnedOff(layerConfig.title);
         }
 
         handleToggleSelection(checked);
@@ -136,7 +144,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
     };
 
     const handleZoomToLayer = async () => {
-        if (!liveLayer || !map) return;
+        if (!map) return;
         try {
             let extent = cachedExtent;
             if (!extent) {
@@ -146,7 +154,6 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
             if (extent && extent.length === 4) {
                 handleToggleSelection(true);
                 setIsUserExpanded(true);
-                // extent is [minLng, minLat, maxLng, maxLat]
                 map.fitBounds(
                     [[extent[0], extent[1]], [extent[2], extent[3]]],
                     { padding: 50, animate: true }

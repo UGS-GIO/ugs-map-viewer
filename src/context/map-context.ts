@@ -1,5 +1,7 @@
 import { createContext } from "react";
-import { LayerProps } from "@/lib/types/mapping-types";
+import type { Polygon } from "geojson";
+
+export type DrawMode = 'off' | 'rectangle' | 'polygon'
 
 /**
  * MapContext interface for MapLibre GL JS
@@ -7,29 +9,24 @@ import { LayerProps } from "@/lib/types/mapping-types";
  * Provides access to map instance and shared functionality
  */
 export type MapContextProps = {
-    // MapLibre map instance
-    map?: any, // maplibre-gl.Map - using any to avoid hard dependency
-
-    // Map initialization and management
-    loadMap?: ({
-        container,
-        zoom,
-        center,
-        layers
-    }: {
-        container: HTMLDivElement,
-        zoom?: number,
-        center?: [number, number],
-        layers?: LayerProps[]
-    }) => Promise<void>,
+    // MapLibre map instance (undefined until map loads)
+    map?: any // maplibre-gl.Map - using any to avoid hard dependency
 
     // Sketching state for drawing tools (e.g., Terra Draw)
     isSketching: boolean
-    setIsSketching?: (isSketching: boolean) => void
-    getIsSketching?: () => boolean // Synchronous check for sketching state
-    shouldIgnoreNextClick?: () => boolean // Check if next click should be ignored (e.g., finishing draw)
-    setIgnoreNextClick?: (ignore: boolean) => void // Set the ignore flag (e.g., when finishing a draw)
-    consumeIgnoreClick?: () => void // Clear the ignore flag after consuming it
+    setIsSketching: (isSketching: boolean) => void
+    getIsSketching: () => boolean
+    shouldIgnoreNextClick: () => boolean
+    setIgnoreNextClick: (ignore: boolean) => void
+    consumeIgnoreClick: () => void
+
+    // Layer toggle callback - called when a layer is turned off to clear its features from results
+    onLayerTurnedOff: (layerTitle: string) => void
+
+    // Drawing controls - shared TerraDraw instance
+    drawMode: DrawMode
+    startDraw: (mode: 'rectangle' | 'polygon', onComplete: (polygon: Polygon) => void) => void
+    cancelDraw: () => void
 }
 
 /**
@@ -41,13 +38,16 @@ export type MapContextProps = {
  */
 export const MapContext = createContext<MapContextProps>({
     map: undefined,
-    loadMap: async () => { },
     isSketching: false,
     setIsSketching: () => { },
     getIsSketching: () => false,
     shouldIgnoreNextClick: () => false,
     setIgnoreNextClick: () => { },
-    consumeIgnoreClick: () => { }
+    consumeIgnoreClick: () => { },
+    onLayerTurnedOff: () => { },
+    drawMode: 'off',
+    startDraw: () => { },
+    cancelDraw: () => { },
 });
 
 MapContext.displayName = 'MapContext';
