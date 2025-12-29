@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback, useRef, useEffect } from 'react';
+import { useMemo, useState, useCallback, useRef, useEffect, Fragment } from 'react';
 import {
     useReactTable,
     getCoreRowModel,
@@ -692,7 +692,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             {/* Table */}
             <div className="flex-1 min-h-0 overflow-hidden">
                 <div className="h-full overflow-auto">
-                    <Table style={{ width: table.getCenterTotalSize() }}>
+                    <Table style={{ minWidth: table.getCenterTotalSize() }}>
                         <TableHeader className="sticky top-0 bg-background z-10">
                             {table.getHeaderGroups().map((headerGroup) => (
                                 <TableRow key={headerGroup.id}>
@@ -727,9 +727,8 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                         <TableBody>
                             {table.getRowModel().rows.length ? (
                                 table.getRowModel().rows.map((row, index) => (
-                                    <>
+                                    <Fragment key={row.id}>
                                         <TableRow
-                                            key={row.id}
                                             data-row-index={index}
                                             onClick={(e) => handleRowClick(row.id, e)}
                                             className={cn(
@@ -796,7 +795,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                                                 </TableRow>
                                             );
                                         })()}
-                                    </>
+                                    </Fragment>
                                 ))
                             ) : (
                                 <TableRow>
