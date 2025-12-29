@@ -220,6 +220,8 @@ export type UIPositionOptions = "bottom-leading" | "bottom-left" | "bottom-right
 
 export interface RelatedTable {
     fieldLabel: string;
+    /** Optional description shown as tooltip on the field label */
+    description?: string;
     matchingField: string;
     targetField: string;
     url: string;
@@ -228,12 +230,16 @@ export interface RelatedTable {
     logicalOperator?: string;
     sortBy?: string;
     sortDirection?: 'asc' | 'desc';
+    /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers */
+    displayAs?: 'list' | 'table';
 }
 
 
 interface DisplayField {
     field: string;
     label?: string;
+    /** Format numeric values: 'number' (thousands), 'currency' (USD), 'percent'. Applied before transform. */
+    format?: 'number' | 'currency' | 'percent';
     transform?: (value: string) => React.ReactNode;
 }
 

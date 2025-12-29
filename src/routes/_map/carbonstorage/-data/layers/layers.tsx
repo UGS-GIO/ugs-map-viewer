@@ -383,10 +383,11 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
                     },
                     displayFields: [
                         { field: 'formation_alias', label: 'Formation Name' },
-                        { field: 'formation_depth', label: 'Formation Depth (ft)' },
+                        { field: 'formation_depth', label: 'Formation Depth (ft)', format: 'number' },
                     ],
                     sortBy: 'formation_depth',
-                    sortDirection: 'asc'
+                    sortDirection: 'asc',
+                    displayAs: 'table'
                 },
                 {
                     fieldLabel: 'LAS File Information',
@@ -413,7 +414,8 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
                                 return value !== '' ? value : 'No Data';
                             }
                         }
-                    ]
+                    ],
+                    displayAs: 'table'
                 }
             ]
         },
