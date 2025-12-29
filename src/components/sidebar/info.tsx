@@ -2,12 +2,12 @@ import { useState, useRef } from 'react';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionHeader, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ExternalLink, Layers as LayersIcon } from 'lucide-react';
-import { Button } from '../custom/button';
-import { LoadingSpinner } from '../custom/loading-spinner';
+import { Button } from '../ui/button';
+import { Spinner } from '../ui/loading-spinner';
 import Layers from '@/components/sidebar/layers';
-import { BackToMenuButton } from '../custom/back-to-menu-button';
+import { BackToMenuButton } from '../ui/back-to-menu-button';
 import { useSidebar } from '@/hooks/use-sidebar';
-import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerTrigger } from '@/components/ui/drawer';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { useGetPageInfo } from '@/hooks/use-get-page-info';
 
 function Info() {
@@ -52,7 +52,7 @@ function Info() {
       <div className="flex flex-col h-full">
         <BackToMenuButton />
         <div className="flex-1 flex items-center justify-center">
-          <LoadingSpinner />
+          <Spinner />
         </div>
       </div>
     );
@@ -99,7 +99,7 @@ function Info() {
               <AccordionContent>
                 {pageInfo?.dataSources || (
                   <div className="flex justify-center py-4">
-                    <LoadingSpinner />
+                    <Spinner />
                   </div>
                 )}
               </AccordionContent>
@@ -140,44 +140,44 @@ function Info() {
           </Button>
         </div>
 
-        {/* Drawer for mobile */}
-        <Drawer>
-          <DrawerTrigger asChild>
+        {/* Sheet for mobile */}
+        <Sheet>
+          <SheetTrigger asChild>
             <button ref={drawerTriggerRef} className="hidden">
               Open Dialog
             </button>
-          </DrawerTrigger>
-          <DrawerContent>
-            <div className="py-2">
-              {modalType === 'disclaimer' && <DrawerHeader><DrawerTitle>Data Disclaimer</DrawerTitle></DrawerHeader>}
-              {modalType === 'references' && <DrawerHeader><DrawerTitle>References</DrawerTitle></DrawerHeader>}
-              {modalType === 'acknowledgments' && <DrawerHeader><DrawerTitle>Acknowledgments</DrawerTitle></DrawerHeader>}
-            </div>
-            <div data-vaul-no-drag className="overflow-y-auto p-4">
+          </SheetTrigger>
+          <SheetContent side="bottom" className="h-[95vh]">
+            <SheetHeader>
+              {modalType === 'disclaimer' && <SheetTitle>Data Disclaimer</SheetTitle>}
+              {modalType === 'references' && <SheetTitle>References</SheetTitle>}
+              {modalType === 'acknowledgments' && <SheetTitle>Acknowledgments</SheetTitle>}
+            </SheetHeader>
+            <div className="overflow-y-auto p-4 h-[calc(100%-4rem)]">
               {modalType === 'disclaimer' && (
-                <DrawerDescription asChild>
+                <SheetDescription asChild>
                   <div>
                     {pageInfo?.dataDisclaimer}
                   </div>
-                </DrawerDescription>
+                </SheetDescription>
               )}
               {modalType === 'references' && (
-                <DrawerDescription asChild>
+                <SheetDescription asChild>
                   <div>
                     {pageInfo?.references}
                   </div>
-                </DrawerDescription>
+                </SheetDescription>
               )}
               {modalType === 'acknowledgments' && (
-                <DrawerDescription asChild>
+                <SheetDescription asChild>
                   <div>
                     {pageInfo?.acknowledgments}
                   </div>
-                </DrawerDescription>
+                </SheetDescription>
               )}
             </div>
-          </DrawerContent>
-        </Drawer>
+          </SheetContent>
+        </Sheet>
 
         {/* Dialog for desktop */}
         <Dialog open={modalOpen} onOpenChange={handleCloseModal}>

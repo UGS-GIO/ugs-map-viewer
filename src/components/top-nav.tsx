@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
@@ -6,47 +5,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/custom/button';
-import { useMap } from '@/hooks/use-map';
+import { Button } from '@/components/ui/button';
 import { BasemapIcon } from '@/assets/basemap-icons';
-import Basemap from "@arcgis/core/Basemap.js";
-
-type BasemapType = {
-  title: string;
-  basemapStyle: string;
-  isActive: boolean;
-  type: 'short' | 'long';
-  customBasemap?: __esri.Basemap;
-};
-
-const topoBasemapOptions = {
-  portalItem: {
-    id: "7378ae8b471940cb9f9d114b67cd09b8"
-  }
-};
-
-const terrainBasemapOptions = {
-  portalItem: {
-    id: "a52ab98763904006aa382d90e906fdd5" // Terrain with Labels
-  }
-};
-
-export const basemapList: BasemapType[] = [
-  { title: 'Relief', basemapStyle: 'topo', isActive: true, type: 'short' },
-  { title: 'Streets', basemapStyle: 'streets', isActive: false, type: 'short' },
-  { title: 'Satellite', basemapStyle: 'satellite', isActive: false, type: 'short' },
-  { title: 'Hybrid', basemapStyle: 'hybrid', isActive: false, type: 'short' },
-  { title: 'Terrain', basemapStyle: 'terrain', isActive: false, type: 'long', customBasemap: new Basemap(terrainBasemapOptions) },
-  { title: 'Topographic', basemapStyle: 'contours', isActive: false, type: 'long', customBasemap: new Basemap(topoBasemapOptions) },
-];
+import { BASEMAP_STYLES, DEFAULT_BASEMAP, BasemapStyle } from '@/lib/basemaps';
+import { useNavigate, useSearch } from '@tanstack/react-router';
+import type { MapSearchParams } from '@/routes/_map';
 
 interface TopNavProps extends React.HTMLAttributes<HTMLElement> { }
 
 interface BasemapProps {
-  links: BasemapType[];
+  links: BasemapStyle[];
   trigger: React.ReactNode | string;
-  onBasemapChange: (basemapStyle: string, customBasemap?: __esri.Basemap) => void;
-  activeBasemap: string | __esri.Basemap;
+  onBasemapChange: (basemapId: string) => void;
+  activeBasemap: string;
 }
 
 const BasemapDropdown = ({ links, trigger, onBasemapChange, activeBasemap }: BasemapProps) => {
@@ -54,22 +25,20 @@ const BasemapDropdown = ({ links, trigger, onBasemapChange, activeBasemap }: Bas
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
       <DropdownMenuContent side="bottom" align="start">
-        {links.map(({ title, basemapStyle, customBasemap }) => {
-          const isActive = customBasemap ?
-            activeBasemap === customBasemap :
-            activeBasemap === basemapStyle;
+        {links.map(({ id, title }) => {
+          const isActive = activeBasemap === id;
 
           return (
-            <DropdownMenuItem key={`${title}-${basemapStyle}`} asChild>
+            <DropdownMenuItem key={id} asChild>
               <Button
                 variant="ghost"
                 className={cn('w-full justify-start', !isActive ? 'text-muted-foreground' : 'underline')}
-                onClick={() => onBasemapChange(basemapStyle, customBasemap)}
+                onClick={() => onBasemapChange(id)}
               >
                 {title}
               </Button>
             </DropdownMenuItem>
-          )
+          );
         })}
       </DropdownMenuContent>
     </DropdownMenu>
@@ -77,37 +46,44 @@ const BasemapDropdown = ({ links, trigger, onBasemapChange, activeBasemap }: Bas
 };
 
 function TopNav({ className, ...props }: TopNavProps) {
-  const { map } = useMap();
-  const [activeBasemap, setActiveBasemap] = useState<string | __esri.Basemap>(
-    basemapList.find(b => b.isActive)!.basemapStyle
-  );
+  const navigate = useNavigate();
+  const searchParams = useSearch({ strict: false }) as MapSearchParams;
 
-  const handleBasemapChange = (basemapStyle: string, customBasemap?: __esri.Basemap) => {
-    if (!map) return;
+  const activeBasemap = searchParams.basemap || DEFAULT_BASEMAP.id;
 
-    if (customBasemap) {
-      map.basemap = customBasemap;
-      setActiveBasemap(customBasemap);
-    } else {
-      map.basemap = basemapStyle as unknown as __esri.Basemap;
-      setActiveBasemap(basemapStyle);
-    }
+  // Just update URL - DataMap handles the actual basemap change
+  const handleBasemapChange = (basemapId: string) => {
+    navigate({
+      to: ".",
+      search: (prev) => ({ ...prev, basemap: basemapId }),
+      replace: true,
+    });
   };
 
   // Check if any long-type basemap is active
-  const isLongActive = basemapList
+  const isLongActive = BASEMAP_STYLES
     .filter(({ type }) => type === 'long')
-    .some(({ customBasemap, basemapStyle }) =>
-      customBasemap ? activeBasemap === customBasemap : activeBasemap === basemapStyle
-    );
+    .some(({ id }) => activeBasemap === id);
 
-  const mobileTrigger = (
+  // Get current basemap title for collapsed view
+  const currentBasemapTitle = BASEMAP_STYLES.find(b => b.id === activeBasemap)?.title || 'Basemap';
+
+  // Collapsed trigger (icon only)
+  const collapsedIconTrigger = (
     <Button size="icon" variant="outline">
       <BasemapIcon />
     </Button>
   );
 
-  const desktopTrigger = (
+  // Collapsed trigger with label (shows current basemap)
+  const collapsedLabelTrigger = (
+    <Button variant="outline" className="gap-2">
+      <BasemapIcon className="h-4 w-4" />
+      <span>{currentBasemapTitle}</span>
+    </Button>
+  );
+
+  const moreTrigger = (
     <Button
       className={cn(
         'text-muted-foreground',
@@ -122,36 +98,44 @@ function TopNav({ className, ...props }: TopNavProps) {
 
   return (
     <>
-      {/* Mobile */}
-      <div className="md:hidden">
+      {/* Collapsed view - icon only (small screens) */}
+      <div className="sm:hidden">
         <BasemapDropdown
-          links={basemapList.filter(({ type }) => type === 'short')}
-          trigger={mobileTrigger}
+          links={BASEMAP_STYLES}
+          trigger={collapsedIconTrigger}
           onBasemapChange={handleBasemapChange}
           activeBasemap={activeBasemap}
         />
       </div>
 
-      {/* Desktop */}
+      {/* Collapsed view - with label (medium screens) */}
+      <div className="hidden sm:block lg:hidden">
+        <BasemapDropdown
+          links={BASEMAP_STYLES}
+          trigger={collapsedLabelTrigger}
+          onBasemapChange={handleBasemapChange}
+          activeBasemap={activeBasemap}
+        />
+      </div>
+
+      {/* Expanded view - individual buttons (large screens) */}
       <nav
         className={cn(
-          'hidden items-center space-x-4 md:flex lg:space-x-6',
+          'hidden items-center space-x-4 lg:flex xl:space-x-6',
           className
         )}
         {...props}
       >
-        {basemapList
+        {BASEMAP_STYLES
           .filter(({ type }) => type === 'short')
-          .map(({ title, basemapStyle, customBasemap }) => {
-            const isActive = customBasemap ?
-              activeBasemap === customBasemap :
-              activeBasemap === basemapStyle;
+          .map(({ id, title }) => {
+            const isActive = activeBasemap === id;
 
             return (
               <Button
                 variant="ghost"
-                key={`${title}-${basemapStyle}`}
-                onClick={() => handleBasemapChange(basemapStyle, customBasemap)}
+                key={id}
+                onClick={() => handleBasemapChange(id)}
                 className={cn(
                   'text-sm font-medium transition-colors hover:text-secondary-foreground',
                   isActive ? 'underline' : 'text-muted-foreground'
@@ -162,8 +146,8 @@ function TopNav({ className, ...props }: TopNavProps) {
             );
           })}
         <BasemapDropdown
-          links={basemapList.filter(({ type }) => type === 'long')}
-          trigger={desktopTrigger}
+          links={BASEMAP_STYLES.filter(({ type}) => type === 'long')}
+          trigger={moreTrigger}
           onBasemapChange={handleBasemapChange}
           activeBasemap={activeBasemap}
         />

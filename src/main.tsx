@@ -1,17 +1,19 @@
 import '@/index.css'
-import React from 'react'
+import 'maplibre-gl/dist/maplibre-gl.css'
+import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from '@/context/theme-provider'
-import { AuthProvider } from '@/context/auth-provider'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { getAnalytics } from 'firebase/analytics'
-import { logEvent } from 'firebase/analytics';
 import proj4 from 'proj4'
+import { setupPMTilesProtocol } from '@/lib/map/pmtiles/setup'
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
+
+// Initialize PMTiles protocol (runs once at app start)
+setupPMTilesProtocol()
 
 proj4.defs("EPSG:26912", "+proj=utm +zone=12 +ellps=GRS80 +datum=NAD83 +units=m +no_defs");
 // defs for 3857
@@ -23,14 +25,25 @@ proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs +type=crs");
 // Create a new router instance
 const router = createRouter({ routeTree })
 
-// Initialize Firebase Analytics
-let analytics;
-try {
-  analytics = getAnalytics();
-  logEvent(analytics, 'app_initialized');
-} catch (error) {
-  console.warn('Analytics not available:', error);
-}
+// Lazy load Firebase Analytics - only initialize when user navigates
+let analyticsInitialized = false;
+const initAnalyticsOnce = async () => {
+  if (analyticsInitialized) return;
+  analyticsInitialized = true;
+
+  try {
+    const { getAnalytics, logEvent } = await import('firebase/analytics');
+    const analytics = getAnalytics();
+    logEvent(analytics, 'app_initialized');
+  } catch (error) {
+    console.warn('Analytics not available:', error);
+  }
+};
+
+// Initialize analytics on first navigation
+router.subscribe('onResolved', () => {
+  initAnalyticsOnce();
+});
 
 // Register the router instance for type safety
 declare module '@tanstack/react-router' {
@@ -39,17 +52,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,      // 5 minutes - data stays fresh
+      gcTime: 30 * 60 * 1000,        // 30 minutes - cache persists
+      retry: 1,                       // Single retry on failure
+      refetchOnWindowFocus: false,   // Don't refetch when tab regains focus
+    },
+  },
+})
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
+  <StrictMode>
     <ThemeProvider defaultTheme='dark' storageKey='vite-ui-theme'>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <RouterProvider router={router} />
-          <Toaster />
-        </AuthProvider>
+        <RouterProvider router={router} />
+        <Toaster />
       </QueryClientProvider>
     </ThemeProvider>
-  </React.StrictMode>
+  </StrictMode>
 )

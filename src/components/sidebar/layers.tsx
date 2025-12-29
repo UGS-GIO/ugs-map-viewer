@@ -1,5 +1,5 @@
 import { useCustomLayerList } from "@/hooks/use-custom-layerlist";
-import { BackToMenuButton } from "../custom/back-to-menu-button";
+import { BackToMenuButton } from "../ui/back-to-menu-button";
 import { useGetLayerConfigs } from "@/hooks/use-get-layer-configs";
 
 function Layers() {

@@ -1,9 +1,11 @@
-import { Link } from "@/components/custom/link";
+import { Link } from "@/components/ui/link";
 import ThemeSwitch from "@/components/theme-switch";
-import { useGetPageInfo } from "@/hooks/use-get-page-info";
+import { useGetCurrentPage } from "@/hooks/use-get-current-page";
+import { getAppTitle } from "@/lib/app-titles";
 
 export const ReportHeader = () => {
-    const { data: pageInfo, isLoading: isInfoLoading } = useGetPageInfo()
+    const currentPage = useGetCurrentPage();
+    const appTitle = getAppTitle(currentPage);
 
     return (
         <div className="flex items-center justify-between w-full py-1 bg-background">
@@ -16,17 +18,8 @@ export const ReportHeader = () => {
                     />
                 </Link>
                 <div className="flex flex-col">
-                    {isInfoLoading ? (
-                        <>
-                            <div className="h-5 w-48 bg-muted animate-pulse rounded mb-1" />
-                            <div className="h-4 w-36 bg-muted animate-pulse rounded" />
-                        </>
-                    ) : (
-                        <>
-                            <span className='font-semibold text-lg text-foreground'>{pageInfo?.appTitle}</span>
-                            <span className='text-sm text-muted-foreground'>Utah Geological Survey</span>
-                        </>
-                    )}
+                    <span className='font-semibold text-lg text-foreground'>{appTitle}</span>
+                    <span className='text-sm text-muted-foreground'>Utah Geological Survey</span>
                 </div>
             </div>
             <ThemeSwitch />

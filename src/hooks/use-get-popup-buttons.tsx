@@ -12,7 +12,7 @@ const useGetPopupButtons = () => {
             try {
                 // Try to import the popup-buttons file dynamically
                 const { popupButtons } = await import(
-                    `@/pages/${currentPage}/data/popup-buttons.tsx`
+                    `@/routes/_map/${currentPage}/-data/popup-buttons.tsx`
                 )
 
                 if (isMounted && popupButtons) {
@@ -22,10 +22,9 @@ const useGetPopupButtons = () => {
                     })
                     setPopupButtons(renderedButtons)
                 }
-            } catch (error) {
-                // Handle cases where the file doesn't exist
+            } catch {
+                // Silently handle missing popup buttons - not all pages have them
                 if (isMounted) {
-                    console.warn("Popup buttons file not found or no buttons available.")
                     setPopupButtons(null)
                 }
             }
