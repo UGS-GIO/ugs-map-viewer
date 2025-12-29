@@ -10,6 +10,7 @@ import { zoomToFeature } from "@/lib/map/utils"
 import type { HighlightFeature } from "@/components/maps/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
+import { useBulkRelatedTable, RelatedDataMap } from "@/hooks/use-bulk-related-table"
 
 
 // Extracted outside to prevent recreation on every render
@@ -69,11 +70,13 @@ const FeatureCard = memo(({
     feature,
     buttons,
     handleZoomToFeature,
+    bulkRelatedData,
 }: {
     layer: LayerContentProps,
     feature: ExtendedFeature,
     buttons: React.ReactNode[] | null,
     handleZoomToFeature: (feature: ExtendedFeature, sourceCRS: string, title: string) => void,
+    bulkRelatedData?: RelatedDataMap[],
 }) => {
     const title = layer.layerTitle || layer.groupLayerTitle;
 
@@ -91,6 +94,7 @@ const FeatureCard = memo(({
                 feature={feature}
                 layout={layer.popupFields &&
                     Object.keys(layer.popupFields).length > 5 ? "grid" : "stacked"}
+                bulkRelatedData={bulkRelatedData}
             />
         </div>
     )
@@ -131,6 +135,39 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange, onHigh
     const totalFeatures = useMemo(
         () => layerContent.reduce((sum, layer) => sum + (layer.features?.length || 0), 0),
         [layerContent]
+    )
+
+    // Collect all relatedTables and target values for bulk fetch
+    // We group by layer since each layer might have different related tables
+    const bulkFetchConfig = useMemo(() => {
+        // Find the first layer with relatedTables (they should all share the same config)
+        const layerWithRelated = layerContent.find(l => l.relatedTables?.length);
+        if (!layerWithRelated?.relatedTables) return { tables: undefined, values: [] };
+
+        // Collect all target values from all features across all layers with these related tables
+        const allTargetValues: string[] = [];
+        for (const layer of layerContent) {
+            if (!layer.relatedTables?.length) continue;
+            for (const feature of layer.features) {
+                for (const table of layer.relatedTables) {
+                    const targetValue = feature.properties?.[table.targetField];
+                    if (targetValue) {
+                        allTargetValues.push(String(targetValue));
+                    }
+                }
+            }
+        }
+
+        return {
+            tables: layerWithRelated.relatedTables,
+            values: allTargetValues
+        };
+    }, [layerContent])
+
+    // Bulk fetch related data for all features at once
+    const { dataByTable: bulkRelatedData } = useBulkRelatedTable(
+        bulkFetchConfig.tables,
+        bulkFetchConfig.values
     )
 
     // Handle layer change via dropdown
@@ -251,6 +288,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange, onHigh
                                         feature={feature}
                                         buttons={buttons}
                                         handleZoomToFeature={handleZoomToFeature}
+                                        bulkRelatedData={layer.relatedTables?.length ? bulkRelatedData : undefined}
                                     />
                                 ))}
                             </div>
@@ -266,6 +304,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange, onHigh
                                 feature={feature}
                                 buttons={buttons}
                                 handleZoomToFeature={handleZoomToFeature}
+                                bulkRelatedData={selectedLayer.relatedTables?.length ? bulkRelatedData : undefined}
                             />
                         ))}
                     </div>

@@ -33,6 +33,7 @@ import {
     ChevronLast,
     ChevronLeft,
     ChevronRight,
+    ChevronDown,
     ArrowUpDown,
     ArrowUp,
     ArrowDown,
@@ -50,7 +51,8 @@ import type { HighlightFeature } from '@/components/maps/types';
 import { useMap } from '@/hooks/use-map';
 import { zoomToFeature, zoomToFeatures } from '@/lib/map/utils';
 import { downloadCSV, downloadGeoJSON } from '@/lib/download-utils';
-import { cn } from '@/lib/utils';
+import { cn, formatNumeric } from '@/lib/utils';
+import { useBulkRelatedTable } from '@/hooks/use-bulk-related-table';
 
 type ViewMode = 'map' | 'split' | 'table';
 
@@ -101,6 +103,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
     const [filter, setFilter] = useState({ column: 'all', value: '' });
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
     const [openDropdown, setOpenDropdown] = useState<OpenDropdown>('none');
+    const [expandedTables, setExpandedTables] = useState<Record<string, number | null>>({});
     const lastClickedRowRef = useRef<number | null>(null);
 
     // Close dropdowns when clicking outside
@@ -180,6 +183,20 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 field: key,
             }));
     }, [selectedLayer]);
+
+    // Get all unique target values for related table bulk fetch
+    const relatedTableTargetValues = useMemo(() => {
+        if (!selectedLayer?.relatedTables?.length) return [];
+        return selectedLayer.relatedTables.flatMap(table =>
+            rowData.map(row => String(row.properties[table.targetField] ?? ''))
+        );
+    }, [selectedLayer?.relatedTables, rowData]);
+
+    // Bulk fetch related table data
+    const { dataByTable: relatedDataMaps, isLoading: relatedLoading } = useBulkRelatedTable(
+        selectedLayer?.relatedTables,
+        relatedTableTargetValues
+    );
 
     // Handle row click with shift+click and ctrl+click
     // Uses row.id (global index) not page-relative index for proper selection
@@ -382,8 +399,57 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             });
         }
 
+        // Add columns for related tables
+        if (selectedLayer?.relatedTables) {
+            selectedLayer.relatedTables.forEach((relatedTable, tableIndex) => {
+                // Use fieldLabel like the popup does, default to 'Description'
+                const label = relatedTable.fieldLabel || 'Description';
+
+                cols.push({
+                    id: `related-${tableIndex}`,
+                    header: label || 'Related',
+                    cell: ({ row }) => {
+                        const targetValue = String(row.original.properties[relatedTable.targetField] ?? '');
+                        if (!targetValue) return '-';
+                        const currentMap = relatedDataMaps[tableIndex];
+                        if (!currentMap || currentMap.size === 0) {
+                            return relatedLoading ? 'Loading...' : '-';
+                        }
+
+                        const rows = currentMap.get(targetValue);
+                        if (!rows || rows.length === 0) return '-';
+
+                        const isExpanded = expandedTables[row.id] === tableIndex;
+                        return (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedTables(prev => ({
+                                        ...prev,
+                                        [row.id]: prev[row.id] === tableIndex ? null : tableIndex
+                                    }));
+                                }}
+                            >
+                                {isExpanded ? (
+                                    <ChevronDown className="h-3 w-3 mr-1" />
+                                ) : (
+                                    <ChevronRight className="h-3 w-3 mr-1" />
+                                )}
+                                {rows.length} {rows.length === 1 ? 'record' : 'records'}
+                            </Button>
+                        );
+                    },
+                    filterFn: 'includesString',
+                    size: 120,
+                });
+            });
+        }
+
         return cols;
-    }, [columnConfigs]);
+    }, [columnConfigs, selectedLayer?.relatedTables, relatedDataMaps, relatedLoading, expandedTables]);
 
     // Derive filters from filter state
     const globalFilter = filter.column === 'all' ? filter.value : '';
@@ -397,7 +463,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
     const table = useReactTable({
         data: rowData,
         columns,
-        getRowId: (_, index) => String(index), // Use array index for row ID, not data.id
+        getRowId: (_, index) => String(index),
         getCoreRowModel: getCoreRowModel(),
         getPaginationRowModel: getPaginationRowModel(),
         getSortedRowModel: getSortedRowModel(),
@@ -544,6 +610,11 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                                     {config.label}
                                 </option>
                             ))}
+                            {selectedLayer?.relatedTables?.map((table, idx) => (
+                                <option key={`related-${idx}`} value={`related-${idx}`}>
+                                    {table.fieldLabel || table.displayFields?.[0]?.label || 'Description'}
+                                </option>
+                            ))}
                         </select>
                         <Input
                             placeholder="Search..."
@@ -656,25 +727,76 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                         <TableBody>
                             {table.getRowModel().rows.length ? (
                                 table.getRowModel().rows.map((row, index) => (
-                                    <TableRow
-                                        key={row.id}
-                                        data-row-index={index}
-                                        onClick={(e) => handleRowClick(row.id, e)}
-                                        className={cn(
-                                            "cursor-pointer hover:bg-muted/50",
-                                            row.getIsSelected() && "bg-primary/10"
-                                        )}
-                                    >
-                                        {row.getVisibleCells().map((cell, cellIndex) => (
-                                            <TableCell
-                                                key={cell.id}
-                                                style={{ width: cell.column.getSize() }}
-                                                className={cn("py-1.5", cellIndex === 0 && "pl-2")}
-                                            >
-                                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                                            </TableCell>
-                                        ))}
-                                    </TableRow>
+                                    <>
+                                        <TableRow
+                                            key={row.id}
+                                            data-row-index={index}
+                                            onClick={(e) => handleRowClick(row.id, e)}
+                                            className={cn(
+                                                "cursor-pointer hover:bg-muted/50",
+                                                row.getIsSelected() && "bg-primary/10"
+                                            )}
+                                        >
+                                            {row.getVisibleCells().map((cell, cellIndex) => (
+                                                <TableCell
+                                                    key={cell.id}
+                                                    style={{ width: cell.column.getSize() }}
+                                                    className={cn("py-1.5", cellIndex === 0 && "pl-2")}
+                                                >
+                                                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                                                </TableCell>
+                                            ))}
+                                        </TableRow>
+                                        {expandedTables[row.id] !== undefined && expandedTables[row.id] !== null && selectedLayer?.relatedTables && (() => {
+                                            const tableIndex = expandedTables[row.id]!;
+                                            const relatedTable = selectedLayer.relatedTables[tableIndex];
+                                            if (!relatedTable) return null;
+
+                                            const targetValue = String(row.original.properties[relatedTable.targetField] ?? '');
+                                            const dataMap = relatedDataMaps[tableIndex];
+                                            const rows = dataMap?.get(targetValue) || [];
+                                            if (rows.length === 0) return null;
+
+                                            const headers = relatedTable.displayFields?.map(df => df.label || df.field) || [];
+
+                                            return (
+                                                <TableRow key={`${row.id}-expanded`} className="bg-muted/30">
+                                                    <TableCell colSpan={columns.length} className="p-4">
+                                                        <div>
+                                                            <h4 className="text-sm font-medium mb-2">{relatedTable.fieldLabel}</h4>
+                                                            <Table>
+                                                                <TableHeader>
+                                                                    <TableRow>
+                                                                        {headers.map((h, i) => (
+                                                                            <TableHead key={i} className="h-8 text-xs">
+                                                                                {h}
+                                                                            </TableHead>
+                                                                        ))}
+                                                                    </TableRow>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {rows.map((r, i) => (
+                                                                        <TableRow key={i}>
+                                                                            {relatedTable.displayFields?.map((df, j) => {
+                                                                                const raw = r[df.field];
+                                                                                const formatted = formatNumeric(raw, df.format);
+                                                                                const value = df.transform ? df.transform(formatted) : formatted;
+                                                                                return (
+                                                                                    <TableCell key={j} className="py-1.5 text-xs">
+                                                                                        {value}
+                                                                                    </TableCell>
+                                                                                );
+                                                                            })}
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        </div>
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })()}
+                                    </>
                                 ))
                             ) : (
                                 <TableRow>

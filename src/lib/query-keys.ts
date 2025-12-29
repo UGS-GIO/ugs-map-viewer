@@ -52,8 +52,8 @@ export const queryKeys = {
   // Feature queries
   features: {
     all: ['features'] as const,
-    relatedTable: (url: string, featureId: string, tableName: string) =>
-      [...queryKeys.features.all, 'related', url, featureId, tableName] as const,
+    bulkRelatedTable: (urlsKey: string, valuesKey: string) =>
+      [...queryKeys.features.all, 'bulk-related', urlsKey, valuesKey] as const,
     wmsInfo: (mapPoint: Record<string, unknown> | null, polygonRings: number[][][] | null, clickId: number | null) =>
       [...queryKeys.features.all, 'wms-info', mapPoint, polygonRings, clickId] as const,
   },

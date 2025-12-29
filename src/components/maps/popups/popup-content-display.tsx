@@ -1,10 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { ProcessedRelatedData, useRelatedTable } from "@/hooks/use-related-table";
+import { RelatedDataMap, EMPTY_RELATED_DATA_MAP } from "@/hooks/use-bulk-related-table";
 import { Feature, Geometry, GeoJsonProperties } from "geojson";
 import { ExternalLink } from "lucide-react";
 import { LayerContentProps } from "@/components/maps/popups/popup-content-with-pagination";
 import { Link } from "@/components/ui/link";
-import { memo } from "react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatNumeric } from "@/lib/utils";
+import { memo, useMemo, ReactNode } from "react";
 import {
     FieldConfig,
     StringPopupFieldConfig,
@@ -18,16 +20,23 @@ import {
     LinkDefinition
 } from "@/lib/types/mapping-types";
 
+interface LabelValuePair {
+    label: string | undefined;
+    value: ReactNode;
+}
+
+interface ProcessedRelatedData {
+    labelValuePairs?: LabelValuePair[];
+    [key: string]: unknown;
+}
+
 type PopupContentDisplayProps = {
     layer: LayerContentProps;
     feature?: Feature<Geometry, GeoJsonProperties>;
     layout?: "grid" | "stacked";
+    /** Pre-fetched bulk related data maps (one per relatedTable) */
+    bulkRelatedData?: RelatedDataMap[];
 };
-
-interface LabelValuePair {
-    label: string | undefined;
-    value: string | number | boolean | null;
-}
 
 // --- Type Guards ---
 const isNumberField = (field: FieldConfig | undefined): field is NumberPopupFieldConfig =>
@@ -106,15 +115,16 @@ const getRelatedTableValues = (
 
     if (!tableData) return [[{ label: "", value: "No data available" }]];
 
+    // Each matching item becomes its own row (array of labelValuePairs)
     const tableMatches = tableData
         .filter(item =>
             String(item[table.matchingField]) === String(targetField) &&
             item.labelValuePairs
         )
-        .flatMap(item => item.labelValuePairs!);
+        .map(item => item.labelValuePairs!);
 
     return tableMatches.length > 0
-        ? [tableMatches]
+        ? tableMatches
         : [[{ label: "", value: "No data available" }]];
 };
 
@@ -185,14 +195,44 @@ const renderFieldContent = (
 };
 
 // --- Main Component ---
-const PopupContentDisplayInner = ({ feature, layout, layer }: PopupContentDisplayProps) => {
+const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: PopupContentDisplayProps) => {
     const { relatedTables, popupFields, linkFields, colorCodingMap, rasterSource } = layer;
-    const { data, isLoading, error } = useRelatedTable(relatedTables || [], feature || null);
+
+    // Convert bulk data to the format expected by getRelatedTableValues
+    const data = useMemo((): ProcessedRelatedData[][] => {
+        if (!bulkRelatedData || !relatedTables) {
+            return [];
+        }
+
+        // Convert bulk RelatedDataMap to ProcessedRelatedData format
+        return relatedTables.map((table, tableIndex) => {
+            const dataMap = bulkRelatedData[tableIndex] || EMPTY_RELATED_DATA_MAP;
+            const targetValue = feature?.properties?.[table.targetField];
+            if (!targetValue) return [];
+
+            const rows = dataMap.get(String(targetValue)) || [];
+
+            // Format like the original hook does - add labelValuePairs
+            return rows.map(row => {
+                if (table.displayFields) {
+                    const labelValuePairs = table.displayFields.map(df => {
+                        const rawValue = row[df.field];
+                        // Apply format first (number/currency), then transform if exists
+                        const formattedValue = formatNumeric(rawValue, df.format);
+                        const finalValue = df.transform ? df.transform(formattedValue) : formattedValue;
+                        return {
+                            label: df.label,
+                            value: finalValue || 'N/A'
+                        };
+                    });
+                    return { ...row, labelValuePairs };
+                }
+                return row;
+            });
+        });
+    }, [bulkRelatedData, relatedTables, feature?.properties]);
 
     const rasterValue = getRasterFeatureValue(rasterSource);
-
-    if (isLoading) return <p>Loading...</p>;
-    if (error) return <p>Error: {String(error)}</p>;
 
     // Handle Raster-Only Display
     if (!feature && rasterValue !== null && rasterSource !== undefined) {
@@ -281,25 +321,70 @@ const PopupContentDisplayInner = ({ feature, layout, layer }: PopupContentDispla
     // Handle Related Tables
     (relatedTables || []).forEach((table, tableIndex) => {
         const groupedValues = getRelatedTableValues(tableIndex, data, relatedTables, properties);
-        const relatedContent = (
-            <div key={`related-${table.fieldLabel}-${tableIndex}`} className="flex flex-col space-y-2">
-                <p className="font-bold underline text-primary">
-                    {properties[table.fieldLabel] || table.fieldLabel}
-                </p>
-                {groupedValues.map((group, groupIdx) => (
-                    <div key={`group-${groupIdx}`} className="flex flex-col">
-                        {group.map((valueItem, valueIdx) => (
-                            <div key={`value-${valueItem.label}-${valueIdx}`} className="flex flex-row gap-x-2">
-                                {valueItem.label && <span className="font-bold">{valueItem.label}: </span>}
-                                <span>{valueItem.value}</span>
-                            </div>
-                        ))}
-                    </div>
-                ))}
-            </div>
-        );
-        const totalWords = groupedValues.flat().map(v => String(v.value)).join(" ").split(/\s+/).length;
-        contentItems.push({ content: relatedContent, isLongContent: totalWords > 20, originalIndex: 1000 + tableIndex });
+        const flatValues = groupedValues.flat();
+
+        // Use explicit displayAs config (defaults to 'list')
+        const useTableFormat = table.displayAs === 'table' && !!table.displayFields && table.displayFields.length > 0;
+
+        let relatedContent: JSX.Element;
+
+        if (useTableFormat) {
+            // Get column headers from displayFields
+            const headers = table.displayFields!.map(df => df.label || df.field);
+
+            relatedContent = (
+                <div key={`related-${table.fieldLabel}-${tableIndex}`} className="flex flex-col space-y-2">
+                    <p className="font-bold underline text-primary">
+                        {properties[table.fieldLabel] || table.fieldLabel}
+                    </p>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                {headers.map((header, idx) => (
+                                    <TableHead key={idx} className="h-8 text-xs">
+                                        {header}
+                                    </TableHead>
+                                ))}
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {groupedValues.map((group, groupIdx) => (
+                                <TableRow key={`row-${groupIdx}`}>
+                                    {group.map((valueItem, cellIdx) => (
+                                        <TableCell key={`cell-${cellIdx}`} className="py-1.5 text-xs">
+                                            {valueItem.value}
+                                        </TableCell>
+                                    ))}
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            );
+        } else {
+            // Original simple format for single values or description-only fields
+            relatedContent = (
+                <div key={`related-${table.fieldLabel}-${tableIndex}`} className="flex flex-col space-y-2">
+                    <p className="font-bold underline text-primary">
+                        {properties[table.fieldLabel] || table.fieldLabel}
+                    </p>
+                    {groupedValues.map((group, groupIdx) => (
+                        <div key={`group-${groupIdx}`} className="flex flex-col">
+                            {group.map((valueItem, valueIdx) => (
+                                <div key={`value-${valueItem.label}-${valueIdx}`} className="flex flex-row gap-x-2">
+                                    {valueItem.label && <span className="font-bold">{valueItem.label}: </span>}
+                                    <span>{valueItem.value}</span>
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        const totalWords = flatValues.map(v => String(v.value)).join(" ").split(/\s+/).length;
+        const isLongContent = !useTableFormat && (totalWords > 20 || flatValues.length > 3);
+        contentItems.push({ content: relatedContent, isLongContent, originalIndex: 1000 + tableIndex });
     });
 
     // --- Layout Rendering ---
@@ -320,7 +405,8 @@ const PopupContentDisplay = memo(PopupContentDisplayInner, (prevProps, nextProps
         prevProps.feature?.id === nextProps.feature?.id &&
         prevProps.layout === nextProps.layout &&
         prevProps.layer.sourceCRS === nextProps.layer.sourceCRS &&
-        prevProps.layer.layerTitle === nextProps.layer.layerTitle
+        prevProps.layer.layerTitle === nextProps.layer.layerTitle &&
+        prevProps.bulkRelatedData === nextProps.bulkRelatedData
     );
 });
 
