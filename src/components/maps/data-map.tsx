@@ -1,4 +1,5 @@
 import { useRef, useMemo, useCallback, useState, useEffect } from 'react'
+import { useWfsLayerData, getWfsSourceId } from '@/hooks/use-wfs-layer-data'
 import Map, { NavigationControl, Source, Layer, MapLayerMouseEvent } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -13,11 +14,8 @@ import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
 import { BoxSelectOverlay, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
 import { flattenWmsLayers, flattenWfsLayers, buildWmsTileUrl, getWmsLayerName } from '@/lib/map/layer-utils'
-import type { FeatureCollection, Geometry } from 'geojson'
 import type maplibregl from 'maplibre-gl'
 
-// Type alias for native Map to avoid conflict with react-map-gl Map component
-type DataMap = globalThis.Map<string, FeatureCollection<Geometry>>
 import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
 import { useTerraDraw } from '@/hooks/use-terra-draw'
 import { useFeatureQuery } from '@/hooks/use-feature-query'
@@ -86,54 +84,8 @@ export default function DataMap({
   // Get visible WFS layers - flatten groups recursively
   const visibleWfsLayers = useMemo(() => flattenWfsLayers(layers), [layers])
 
-  // State for WFS layer GeoJSON data (use type alias to avoid conflict with react-map-gl Map)
-  const [wfsLayerData, setWfsLayerData] = useState<DataMap>(() => new globalThis.Map())
-  const fetchedWfsLayersRef = useRef<Set<string>>(new Set())
-
-  // Fetch WFS layer data when visible layers change
-  useEffect(() => {
-    const fetchWfsData = async () => {
-      const layersToFetch = visibleWfsLayers.filter(layer => {
-        const sourceId = `wfs-${layer.title || 'layer'}`.replace(/\s+/g, '-').toLowerCase()
-        return !fetchedWfsLayersRef.current.has(sourceId)
-      })
-
-      if (layersToFetch.length === 0) return
-
-      for (const layer of layersToFetch) {
-        const sourceId = `wfs-${layer.title || 'layer'}`.replace(/\s+/g, '-').toLowerCase()
-        fetchedWfsLayersRef.current.add(sourceId)
-
-        try {
-          const params = new URLSearchParams({
-            service: 'WFS',
-            version: '2.0.0',
-            request: 'GetFeature',
-            typeNames: layer.typeName,
-            outputFormat: 'application/json',
-            srsName: layer.crs || 'EPSG:4326',
-          })
-          const url = `${layer.wfsUrl}?${params.toString()}`
-          const response = await fetch(url)
-          if (response.ok) {
-            const geojson: FeatureCollection<Geometry> = await response.json()
-            setWfsLayerData(prev => {
-              const updated: DataMap = new globalThis.Map(prev)
-              updated.set(sourceId, geojson)
-              return updated
-            })
-          }
-        } catch (error) {
-          console.warn(`Failed to fetch WFS layer ${layer.title}:`, error)
-          fetchedWfsLayersRef.current.delete(sourceId) // Allow retry on error
-        }
-      }
-    }
-
-    if (visibleWfsLayers.length > 0) {
-      fetchWfsData()
-    }
-  }, [visibleWfsLayers])
+  // Fetch WFS layer data using TanStack Query (automatic caching, retries, deduplication)
+  const { data: wfsLayerData } = useWfsLayerData(visibleWfsLayers)
 
   // Ref for stable access to visibleWmsLayers in callbacks (prevents TerraDraw reinit)
   const visibleWmsLayersRef = useRef(visibleWmsLayers)
@@ -539,7 +491,7 @@ export default function DataMap({
 
         {/* WFS Layers (client-side vector) */}
         {visibleWfsLayers.map((layer) => {
-          const sourceId = `wfs-${layer.title || 'layer'}`.replace(/\s+/g, '-').toLowerCase()
+          const sourceId = getWfsSourceId(layer)
           const geojson = wfsLayerData.get(sourceId)
           if (!geojson) return null
 
