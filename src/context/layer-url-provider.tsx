@@ -1,9 +1,12 @@
-import { createContext, useContext, useCallback, ReactNode, useMemo, useEffect, useRef } from 'react';
+import { createContext, useContext, useCallback, ReactNode, useMemo, useEffect, useRef, useState } from 'react';
 import { useSearch, useNavigate, useLocation } from '@tanstack/react-router';
 import { LayerProps } from '@/lib/types/mapping-types';
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs';
 
 type ActiveFilters = Record<string, string>;
+
+/** Maps group layer titles to their visibility state (default: true) */
+type GroupVisibility = Map<string, boolean>;
 
 interface LayerUrlContextType {
     selectedLayerTitles: Set<string>;
@@ -12,6 +15,10 @@ interface LayerUrlContextType {
     updateFilter: (layerTitle: string, filterValue: string | undefined) => void;
     /** Whether the layer URL has been initialized (defaults applied if needed) */
     isInitialized: boolean;
+    /** Visibility state for group layers (controls child visibility and queryability) */
+    groupVisibility: GroupVisibility;
+    /** Update a group's visibility state */
+    setGroupVisibility: (groupTitle: string, visible: boolean) => void;
 }
 
 const LayerUrlContext = createContext<LayerUrlContextType | undefined>(undefined);
@@ -130,6 +137,17 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
     );
     const activeFilters: ActiveFilters = useMemo(() => urlFilters || {}, [urlFilters]);
 
+    // Group visibility state (default: all groups visible)
+    const [groupVisibility, setGroupVisibilityState] = useState<GroupVisibility>(() => new Map());
+
+    const setGroupVisibility = useCallback((groupTitle: string, visible: boolean) => {
+        setGroupVisibilityState(prev => {
+            const next = new Map(prev);
+            next.set(groupTitle, visible);
+            return next;
+        });
+    }, []);
+
     const updateLayerSelection = useCallback((titles: string | string[], shouldBeSelected: boolean) => {
         const titlesToUpdate = Array.isArray(titles) ? titles : [titles];
 
@@ -190,6 +208,8 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         updateLayerSelection,
         updateFilter,
         isInitialized,
+        groupVisibility,
+        setGroupVisibility,
     };
 
     return (

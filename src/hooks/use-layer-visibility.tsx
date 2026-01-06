@@ -2,17 +2,19 @@ import { useMemo } from 'react';
 import { LayerProps } from '@/lib/types/mapping-types';
 
 /**
- * Applies URL-based layer selection to layer configs.
+ * Applies URL-based layer selection and group visibility to layer configs.
  *
  * - If not initialized yet, returns layers with default visibility
  * - Once initialized, sets visibility based on whether layer title is in the selection
  * - Empty selection = all layers hidden (user turned them all off)
- * - Groups are visible if any child is visible
+ * - Groups are visible if any child is visible AND group toggle is on
+ * - Group visibility toggle affects whether children are queryable
  */
 export function useLayerVisibility(
     layers: LayerProps[],
     selectedLayerTitles: Set<string>,
-    isInitialized: boolean = true
+    isInitialized: boolean = true,
+    groupVisibility?: Map<string, boolean>
 ): LayerProps[] {
     return useMemo(() => {
         // Not initialized yet - return layers with their default visibility
@@ -21,15 +23,26 @@ export function useLayerVisibility(
         }
 
         // Apply selection to layers - empty selection means all layers are hidden
-        const applySelection = (layerArray: LayerProps[]): LayerProps[] =>
+        // Group visibility toggle overrides child visibility when off
+        const applySelection = (layerArray: LayerProps[], parentGroupVisible: boolean = true): LayerProps[] =>
             layerArray.map(layer => {
                 if (layer.type === 'group' && 'layers' in layer) {
-                    const children = applySelection(layer.layers || []);
-                    return { ...layer, layers: children, visible: children.some(c => c.visible) };
+                    // Check if this group's visibility toggle is on (default: true)
+                    const groupToggleVisible = groupVisibility?.get(layer.title || '') ?? true;
+                    const children = applySelection(layer.layers || [], groupToggleVisible);
+                    // Group is visible only if toggle is on AND at least one child is selected
+                    const hasSelectedChildren = children.some(c => selectedLayerTitles.has(c.title || ''));
+                    return {
+                        ...layer,
+                        layers: children,
+                        visible: groupToggleVisible && hasSelectedChildren
+                    };
                 }
-                return { ...layer, visible: selectedLayerTitles.has(layer.title || '') };
+                // Child layer is visible if selected AND parent group toggle is on
+                const isSelected = selectedLayerTitles.has(layer.title || '');
+                return { ...layer, visible: isSelected && parentGroupVisible };
             });
 
         return applySelection(layers);
-    }, [layers, selectedLayerTitles, isInitialized]);
+    }, [layers, selectedLayerTitles, isInitialized, groupVisibility]);
 }
