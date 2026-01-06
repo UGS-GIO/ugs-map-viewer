@@ -1,7 +1,7 @@
 /**
  * Layer traversal and URL parsing utilities
  */
-import type { LayerProps, WMSLayerProps } from '@/lib/types/mapping-types'
+import type { LayerProps, WMSLayerProps, WFSLayerProps } from '@/lib/types/mapping-types'
 
 /**
  * Recursively flatten layer groups into a flat array of visible WMS layers
@@ -13,6 +13,21 @@ export function flattenWmsLayers(layers: LayerProps[]): WMSLayerProps[] {
       result.push(...flattenWmsLayers(layer.layers))
     } else if (layer.type === 'wms' && layer.visible === true) {
       result.push(layer as WMSLayerProps)
+    }
+  }
+  return result
+}
+
+/**
+ * Recursively flatten layer groups into a flat array of visible WFS layers
+ */
+export function flattenWfsLayers(layers: LayerProps[]): WFSLayerProps[] {
+  const result: WFSLayerProps[] = []
+  for (const layer of layers) {
+    if (layer.type === 'group' && 'layers' in layer && layer.layers) {
+      result.push(...flattenWfsLayers(layer.layers))
+    } else if (layer.type === 'wfs' && layer.visible === true) {
+      result.push(layer as WFSLayerProps)
     }
   }
   return result

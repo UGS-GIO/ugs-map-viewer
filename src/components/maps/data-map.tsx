@@ -12,7 +12,12 @@ import {
 import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
 import { BoxSelectOverlay, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
-import { flattenWmsLayers, buildWmsTileUrl, getWmsLayerName } from '@/lib/map/layer-utils'
+import { flattenWmsLayers, flattenWfsLayers, buildWmsTileUrl, getWmsLayerName } from '@/lib/map/layer-utils'
+import type { FeatureCollection, Geometry } from 'geojson'
+import type maplibregl from 'maplibre-gl'
+
+// Type alias for native Map to avoid conflict with react-map-gl Map component
+type DataMap = globalThis.Map<string, FeatureCollection<Geometry>>
 import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
 import { useTerraDraw } from '@/hooks/use-terra-draw'
 import { useFeatureQuery } from '@/hooks/use-feature-query'
@@ -77,6 +82,58 @@ export default function DataMap({
 
   // Get visible WMS layers - flatten groups recursively (defined early for use in callbacks)
   const visibleWmsLayers = useMemo(() => flattenWmsLayers(layers), [layers])
+
+  // Get visible WFS layers - flatten groups recursively
+  const visibleWfsLayers = useMemo(() => flattenWfsLayers(layers), [layers])
+
+  // State for WFS layer GeoJSON data (use type alias to avoid conflict with react-map-gl Map)
+  const [wfsLayerData, setWfsLayerData] = useState<DataMap>(() => new globalThis.Map())
+  const fetchedWfsLayersRef = useRef<Set<string>>(new Set())
+
+  // Fetch WFS layer data when visible layers change
+  useEffect(() => {
+    const fetchWfsData = async () => {
+      const layersToFetch = visibleWfsLayers.filter(layer => {
+        const sourceId = `wfs-${layer.title || 'layer'}`.replace(/\s+/g, '-').toLowerCase()
+        return !fetchedWfsLayersRef.current.has(sourceId)
+      })
+
+      if (layersToFetch.length === 0) return
+
+      for (const layer of layersToFetch) {
+        const sourceId = `wfs-${layer.title || 'layer'}`.replace(/\s+/g, '-').toLowerCase()
+        fetchedWfsLayersRef.current.add(sourceId)
+
+        try {
+          const params = new URLSearchParams({
+            service: 'WFS',
+            version: '2.0.0',
+            request: 'GetFeature',
+            typeNames: layer.typeName,
+            outputFormat: 'application/json',
+            srsName: layer.crs || 'EPSG:4326',
+          })
+          const url = `${layer.wfsUrl}?${params.toString()}`
+          const response = await fetch(url)
+          if (response.ok) {
+            const geojson: FeatureCollection<Geometry> = await response.json()
+            setWfsLayerData(prev => {
+              const updated: DataMap = new globalThis.Map(prev)
+              updated.set(sourceId, geojson)
+              return updated
+            })
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch WFS layer ${layer.title}:`, error)
+          fetchedWfsLayersRef.current.delete(sourceId) // Allow retry on error
+        }
+      }
+    }
+
+    if (visibleWfsLayers.length > 0) {
+      fetchWfsData()
+    }
+  }, [visibleWfsLayers])
 
   // Ref for stable access to visibleWmsLayers in callbacks (prevents TerraDraw reinit)
   const visibleWmsLayersRef = useRef(visibleWmsLayers)
@@ -474,6 +531,65 @@ export default function DataMap({
                   title: layer.title,
                   'wms-url': wmsUrl,
                   'wms-layer': layerName,
+                }}
+              />
+            </Source>
+          )
+        })}
+
+        {/* WFS Layers (client-side vector) */}
+        {visibleWfsLayers.map((layer) => {
+          const sourceId = `wfs-${layer.title || 'layer'}`.replace(/\s+/g, '-').toLowerCase()
+          const geojson = wfsLayerData.get(sourceId)
+          if (!geojson) return null
+
+          const styleConfig = layer.style || {}
+
+          // Build circle-radius expression
+          let circleRadius: number | maplibregl.ExpressionSpecification = styleConfig.circleRadius || 6
+          if (styleConfig.circleRadiusProperty) {
+            const { field, stops } = styleConfig.circleRadiusProperty
+            const [minVal, minRadius, maxVal, maxRadius] = stops
+            circleRadius = [
+              'min', maxRadius,
+              ['max', minRadius,
+                ['interpolate', ['linear'],
+                  ['coalesce', ['get', field], minVal],
+                  minVal, minRadius,
+                  maxVal, maxRadius
+                ]
+              ]
+            ]
+          }
+
+          // Build circle-color expression
+          let circleColor: string | maplibregl.ExpressionSpecification = styleConfig.circleColor || '#088'
+          if (styleConfig.circleColorProperty) {
+            const { field, stops, defaultColor } = styleConfig.circleColorProperty
+            circleColor = ['step',
+              ['coalesce', ['get', field], -Infinity],
+              defaultColor,
+              ...stops.flat()
+            ]
+          }
+
+          return (
+            <Source key={sourceId} id={sourceId} type="geojson" data={geojson}>
+              <Layer
+                id={`${sourceId}-circle`}
+                type="circle"
+                paint={{
+                  'circle-radius': circleRadius,
+                  'circle-color': circleColor,
+                  'circle-stroke-color': styleConfig.circleStrokeColor || '#fff',
+                  'circle-stroke-width': styleConfig.circleStrokeWidth || 1,
+                  'circle-opacity': layer.opacity || 1,
+                }}
+                metadata={{
+                  title: layer.title,
+                  wfsLayer: true,
+                  wfsTypeName: layer.typeName,
+                  wfsSourceId: sourceId,
                 }}
               />
             </Source>
