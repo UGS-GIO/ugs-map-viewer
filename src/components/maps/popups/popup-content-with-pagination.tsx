@@ -81,7 +81,7 @@ const FeatureCard = memo(({
     const title = layer.layerTitle || layer.groupLayerTitle;
 
     return (
-        <div className="space-y-2 p-3 rounded-lg border border-border/30 bg-background/40">
+        <div className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
             <PopupButtons
                 feature={feature}
                 sourceCRS={layer.sourceCRS}

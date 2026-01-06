@@ -162,7 +162,7 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
                     </div>
                 )}
 
-                <SheetHeader className="flex flex-row justify-between items-center py-2 px-3 relative border-b border-border/30 bg-background/40 backdrop-blur-sm">
+                <SheetHeader className="flex flex-row justify-between items-center py-2 px-3 relative border-b border-border bg-card">
                     <SheetTitle className="flex-1">{popupTitle}</SheetTitle>
                     <Button
                         onClick={handleCloseClick}
@@ -184,7 +184,7 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
                         <div
                             ref={setContainerRef}
                             onScroll={handleScroll}
-                            className="flex flex-1 flex-col gap-4 overflow-y-auto select-text bg-background/20 rounded-t-lg p-3"
+                            className="flex flex-1 flex-col gap-4 overflow-y-auto select-text bg-muted/30 p-3"
                         >
                             <PopupContentWithPagination
                                 key={contentKey}
