@@ -35,31 +35,13 @@ jobs:
       - name: Build Project
         run: npm run build
 
-      # === Semantic Release Steps (Only on master branch) ===
-      # These steps create GitHub releases and tags based on commit messages
-      - name: Global Release (if master)
+      # === Semantic Release (Only on master branch) ===
+      # Creates GitHub releases and tags based on commit messages
+      - name: Run Semantic Release
         if: github.ref == 'refs/heads/master'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
-
-      - name: Hazards App Release (if master)
-        if: github.ref == 'refs/heads/master'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release --extends ./release-config-hazards.js
-
-      - name: Minerals App Release (if master)
-        if: github.ref == 'refs/heads/master'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release --extends ./release-config-minerals.js
-
-      - name: CCS App Release (if master)
-        if: github.ref == 'refs/heads/master'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release --extends ./release-config-ccs.js
 
       # === Firebase Deployment ===
       # Set correct Firebase Service Account and Project ID based on the branch
@@ -106,3 +88,15 @@ jobs:
           projectId: '${{ env.PROJECT_ID }}' # ut-dnr-ugs-maps-prod
           channelId: live
           target: hazards-subdomain
+
+      # === Sync master back to develop (Only on master branch) ===
+      # After semantic-release commits CHANGELOG.md and package.json updates,
+      # merge those changes back to develop so it stays in sync
+      - name: Sync master back to develop
+        if: github.ref == 'refs/heads/master'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout develop
+          git merge master --no-edit
+          git push origin develop
