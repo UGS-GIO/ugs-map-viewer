@@ -124,6 +124,8 @@ export interface WFSLayerProps extends BaseLayerProps {
     style?: {
         /** Circle radius for point features (default: 6) */
         circleRadius?: number;
+        /** Max circle radius cap to prevent overlap (default: none) */
+        maxCircleRadius?: number;
         /** Data-driven circle radius based on feature property */
         circleRadiusProperty?: {
             field: string;

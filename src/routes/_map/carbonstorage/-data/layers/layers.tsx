@@ -142,7 +142,7 @@ const sco2WFSConfig: WFSLayerProps = {
     crs: 'EPSG:4326',
     geometryType: 'point',
     style: {
-        // Size by capacity_mtco2: 4.72 Mt → 10px, 5764 Mt → 60px
+        // Size by capacity_mtco2: 4.72 Mt → 10px, 5764 Mt → 60px (capped at 35px default)
         circleRadiusProperty: {
             field: 'capacity_mtco2',
             stops: [4.72, 10, 5764, 60],

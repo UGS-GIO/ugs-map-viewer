@@ -550,13 +550,16 @@ export default function DataMap({
           if (styleConfig.circleRadiusProperty) {
             const { field, stops } = styleConfig.circleRadiusProperty
             const [minVal, minRadius, maxVal, maxRadius] = stops
+            // Default cap at 35px to prevent overlap, override with maxCircleRadius if specified
+            const maxCap = styleConfig.maxCircleRadius ?? 35
+            const cappedMax = Math.min(maxRadius, maxCap)
             circleRadius = [
-              'min', maxRadius,
+              'min', cappedMax,
               ['max', minRadius,
                 ['interpolate', ['linear'],
                   ['coalesce', ['get', field], minVal],
                   minVal, minRadius,
-                  maxVal, maxRadius
+                  maxVal, cappedMax
                 ]
               ]
             ]
