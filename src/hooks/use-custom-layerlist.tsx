@@ -72,7 +72,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
     const liveLayer = useMemo(() => {
         if (!map || !layerConfig.title) return null;
         return findLayerByTitle(map, layerConfig.title);
-    }, [map, layerConfig.title]);
+    }, [map, layerConfig.title, isSelected]);
 
     // Extract extent query options based on layer type
     const extentOptions: UseLayerExtentOptions = useMemo(() => {
@@ -118,11 +118,14 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
 
     const { refetch: fetchExtent, data: cachedExtent } = useLayerExtent(extentOptions);
 
-    const handleOpacityChange = (value: number) => {
-        if (liveLayer) {
-            liveLayer.opacity = value / 100;
+    const handleOpacityChange = useCallback((value: number) => {
+        // Look up layer fresh each time to avoid stale memo issues
+        if (!map || !layerConfig.title) return;
+        const layer = findLayerByTitle(map, layerConfig.title);
+        if (layer) {
+            layer.opacity = value / 100;
         }
-    };
+    }, [map, layerConfig.title]);
 
     const { onLayerTurnedOff } = useMap();
 
@@ -261,7 +264,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
                     <AccordionContent>
                         <LayerControls
                             key={liveLayer?.id ?? 'pending'}
-                            layerOpacity={liveLayer?.opacity ?? null}
+                            layerOpacity={liveLayer?.opacity ?? (isSelected ? (layerConfig.opacity ?? 0.8) : null)}
                             handleOpacityChange={handleOpacityChange}
                             title={layerConfig.title || ''}
                             description={layerDescriptions ? layerDescriptions[layerConfig.title || ''] : ''}
