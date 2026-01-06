@@ -26,6 +26,119 @@ import { HomeControl } from '@/lib/map/controls/home-control'
 import { DualScaleControl } from '@/lib/map/controls/dual-scale-control'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
 import { findWmsLayerByTitle } from '@/lib/map/layer-utils'
+import type { LegendItem } from '@/lib/map/controls/export-control'
+import type { LayerProps, WMSLayerProps } from '@/lib/types/mapping-types'
+import { createSVGSymbol } from '@/lib/legend/symbol-generator'
+import type { Legend } from '@/lib/types/geoserver-types'
+
+interface MapBounds {
+  west: number
+  south: number
+  east: number
+  north: number
+  width: number
+  height: number
+}
+
+// Helper to fetch legend data for visible WMS layers (filtered by map extent)
+async function fetchLegendDataForVisibleLayers(
+  layers: LayerProps[],
+  bounds?: MapBounds
+): Promise<LegendItem[]> {
+  const results: LegendItem[] = []
+
+  // Extract visible WMS layers
+  const getVisibleWmsLayers = (layerArray: LayerProps[]): { title: string; layerName: string; url: string }[] => {
+    const visible: { title: string; layerName: string; url: string }[] = []
+    for (const layer of layerArray) {
+      if (layer.type === 'group' && 'layers' in layer) {
+        visible.push(...getVisibleWmsLayers(layer.layers || []))
+      } else if (layer.type === 'wms' && layer.visible) {
+        const wmsLayer = layer as WMSLayerProps
+        const sublayer = wmsLayer.sublayers?.[0]
+        if (sublayer?.name) {
+          visible.push({
+            title: layer.title || sublayer.name,
+            layerName: sublayer.name,
+            url: wmsLayer.url || `${PROD_GEOSERVER_URL}/wms`
+          })
+        }
+      }
+    }
+    return visible
+  }
+
+  const visibleLayers = getVisibleWmsLayers(layers)
+
+  // Fetch legend for each visible layer
+  for (const layer of visibleLayers) {
+    try {
+      // Build legend URL with optional BBOX filtering
+      const params = new URLSearchParams({
+        service: 'WMS',
+        request: 'GetLegendGraphic',
+        format: 'application/json',
+        layer: layer.layerName,
+        version: '1.3.0'
+      })
+
+      // Add extent parameters for content-dependent legend (GeoServer feature)
+      // Requires hideEmptyRules to actually filter out symbols with no features in view
+      if (bounds) {
+        params.set('BBOX', `${bounds.south},${bounds.west},${bounds.north},${bounds.east}`)
+        params.set('CRS', 'EPSG:4326')
+        params.set('WIDTH', String(Math.round(bounds.width)))
+        params.set('HEIGHT', String(Math.round(bounds.height)))
+        params.set('SRS', 'EPSG:4326')
+        params.set('SRCWIDTH', String(Math.round(bounds.width)))
+        params.set('SRCHEIGHT', String(Math.round(bounds.height)))
+        // GeoServer vendor option to hide legend rules with no matching features
+        params.set('LEGEND_OPTIONS', 'hideEmptyRules:true;countMatched:true')
+      }
+
+      const legendUrl = `${layer.url}?${params.toString()}`
+      const response = await fetch(legendUrl)
+      if (!response.ok) continue
+
+      const contentType = response.headers.get('content-type')
+      if (!contentType?.includes('application/json')) continue
+
+      const legendData: Legend = await response.json()
+      const rules = legendData?.Legend?.[0]?.rules || []
+
+      if (rules.length === 0) continue
+
+      const symbols: LegendItem['symbols'] = []
+      for (const rule of rules) {
+        const label = rule.title || rule.name
+        const result = createSVGSymbol(rule.symbolizers)
+        // Handle both SVGSVGElement and CompositeSymbolResult
+        let svgHtml = ''
+        if ('outerHTML' in result) {
+          svgHtml = result.outerHTML
+        } else if (result.symbol) {
+          svgHtml = result.symbol.outerHTML
+        } else if (result.html && 'outerHTML' in result.html) {
+          svgHtml = result.html.outerHTML
+        }
+        if (svgHtml) {
+          symbols.push({ label, svgHtml })
+        }
+      }
+
+      if (symbols.length > 0) {
+        results.push({
+          layerTitle: layer.title,
+          symbols
+        })
+      }
+    } catch (e) {
+      console.warn(`Failed to fetch legend for ${layer.layerName}:`, e)
+    }
+  }
+
+  return results
+}
 
 interface GenericMapContainerProps {
   /** Title shown in the popup drawer header */
@@ -70,6 +183,10 @@ export default function GenericMapContainer({
   const layersConfig = useLayerVisibility(rawLayersConfig || [], selectedLayerTitles, isInitialized, groupVisibility)
   const popupSheetRef = useRef<PopupSheetRef>(null)
   const sheetTriggerRef = useRef<HTMLButtonElement>(null)
+
+  // Ref to hold current layers config for export control legend callback
+  const layersConfigRef = useRef<LayerProps[]>(layersConfig)
+  layersConfigRef.current = layersConfig
 
   // Map instance state for MapContext
   const [mapInstance, setMapInstance] = useState<maplibregl.Map | undefined>(undefined)
@@ -162,7 +279,8 @@ export default function GenericMapContainer({
         pageOrientation: 'landscape',
         format: 'png',
         dpi: 300,
-        filename: 'ugs-map'
+        filename: 'ugs-map',
+        getLegendData: (bounds) => fetchLegendDataForVisibleLayers(layersConfigRef.current, bounds)
       })
       mapInstance.addControl(exportControl, 'top-left')
       controls.push(exportControl)
