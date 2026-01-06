@@ -66,8 +66,8 @@ export default function GenericMapContainer({
   const { viewMode, setViewMode, center, zoom, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs } = useMapUrlSync()
   const { setNavOpened } = useSidebar()
   const rawLayersConfig = useGetLayerConfigsData(layerConfigKey)
-  const { selectedLayerTitles, isInitialized } = useLayerUrl()
-  const layersConfig = useLayerVisibility(rawLayersConfig || [], selectedLayerTitles, isInitialized)
+  const { selectedLayerTitles, isInitialized, groupVisibility } = useLayerUrl()
+  const layersConfig = useLayerVisibility(rawLayersConfig || [], selectedLayerTitles, isInitialized, groupVisibility)
   const popupSheetRef = useRef<PopupSheetRef>(null)
   const sheetTriggerRef = useRef<HTMLButtonElement>(null)
 
@@ -156,17 +156,13 @@ export default function GenericMapContainer({
     viewModeControlRef.current = viewModeControl
 
     // Lazy load export control
-    import('@watergis/maplibre-gl-export').then(({ MaplibreExportControl, Size, Format, DPI }) => {
-      import('@watergis/maplibre-gl-export/dist/maplibre-gl-export.css')
-      const exportControl = new MaplibreExportControl({
-        PageSize: Size.A4,
-        PageOrientation: 'landscape',
-        Format: Format.PNG,
-        DPI: DPI[300],
-        Crosshair: true,
-        PrintableArea: true,
-        Local: 'en',
-        Filename: 'ugs-map'
+    import('@/lib/map/controls/export-control').then(({ ExportControl }) => {
+      const exportControl = new ExportControl({
+        pageSize: 'A4',
+        pageOrientation: 'landscape',
+        format: 'png',
+        dpi: 300,
+        filename: 'ugs-map'
       })
       mapInstance.addControl(exportControl, 'top-left')
       controls.push(exportControl)

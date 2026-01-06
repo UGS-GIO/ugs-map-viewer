@@ -30,7 +30,13 @@ const getChildLayerTitles = (layer: LayerProps): string[] => {
     return layer.title ? [layer.title] : [];
 };
 
-const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerProps; isTopLevel: boolean }) => {
+interface LayerAccordionItemProps {
+    layerConfig: LayerProps;
+    isTopLevel: boolean;
+    parentGroupTitle?: string;
+}
+
+const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: LayerAccordionItemProps) => {
     const {
         isSelected,
         handleToggleSelection,
@@ -39,7 +45,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
     } = useLayerItemState(layerConfig);
 
     const { map } = useMap();
-    const { selectedLayerTitles } = useLayerUrl();
+    const { groupVisibility, setGroupVisibility } = useLayerUrl();
     const { setIsCollapsed, setNavOpened } = useSidebar();
     const { data: layerDescriptions } = useFetchLayerDescriptions();
     const isMobile = useIsMobile();
@@ -53,26 +59,15 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
         return false;
     });
 
-    // Track group visibility separately from selection
-    const [isGroupLayerVisible, setIsGroupLayerVisible] = useState(true);
+    // Get group visibility from shared context (default: true)
+    const isGroupLayerVisible = groupVisibility.get(layerConfig.title || '') ?? true;
 
-    // Toggle visibility for SELECTED child layers in a group
-    // Only affects layers that are selected in the URL - respects URL selection rules
+    // Toggle visibility for group layers via shared context
+    // This affects both map visibility AND queryability
     const handleGroupVisibilityToggle = useCallback((visible: boolean) => {
-        if (!map || layerConfig.type !== 'group') return;
-
-        const childTitles = getChildLayerTitles(layerConfig);
-        // Only toggle visibility for layers that are selected in URL
-        const selectedChildTitles = childTitles.filter(title => selectedLayerTitles.has(title));
-
-        selectedChildTitles.forEach(title => {
-            const layer = findLayerByTitle(map, title);
-            if (layer) {
-                layer.visible = visible;
-            }
-        });
-        setIsGroupLayerVisible(visible);
-    }, [map, layerConfig, selectedLayerTitles]);
+        if (layerConfig.type !== 'group' || !layerConfig.title) return;
+        setGroupVisibility(layerConfig.title, visible);
+    }, [layerConfig, setGroupVisibility]);
 
     const liveLayer = useMemo(() => {
         if (!map || !layerConfig.title) return null;
@@ -132,11 +127,20 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
     const { onLayerTurnedOff } = useMap();
 
     // This handler now explicitly sets the accordion state.
+    // Also enables parent group visibility when selecting a child layer
     const handleLocalToggle = (checked: boolean) => {
         // Notify parent to clear features from results when layer is turned off
         // (handleLayerTurnedOff in useFeatureSelection handles highlight clearing declaratively)
         if (!checked && layerConfig.title) {
             onLayerTurnedOff(layerConfig.title);
+        }
+
+        // When selecting a child layer, ensure parent group is visible
+        if (checked && parentGroupTitle) {
+            const parentVisible = groupVisibility.get(parentGroupTitle) ?? true;
+            if (!parentVisible) {
+                setGroupVisibility(parentGroupTitle, true);
+            }
         }
 
         handleToggleSelection(checked);
@@ -209,6 +213,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
                                     <LayerAccordionItem
                                         layerConfig={child}
                                         isTopLevel={false}
+                                        parentGroupTitle={layerConfig.title}
                                     />
                                 </div>
                             ))}
@@ -255,7 +260,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel }: { layerConfig: LayerPro
                     </AccordionHeader>
                     <AccordionContent>
                         <LayerControls
-                            layerOpacity={liveLayer?.opacity ?? 1}
+                            key={liveLayer?.id ?? 'pending'}
+                            layerOpacity={liveLayer?.opacity ?? null}
                             handleOpacityChange={handleOpacityChange}
                             title={layerConfig.title || ''}
                             description={layerDescriptions ? layerDescriptions[layerConfig.title || ''] : ''}
