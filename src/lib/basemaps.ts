@@ -25,7 +25,19 @@ export interface BasemapStyle {
 
 // All available basemap styles
 export const BASEMAP_STYLES: BasemapStyle[] = [
-  // Main navigation basemaps (short)
+  // Main navigation basemaps (short) - non-clipped global basemaps first
+  {
+    id: 'liberty',
+    title: 'Streets',
+    url: 'https://tiles.openfreemap.org/styles/liberty',
+    type: 'short',
+  },
+  {
+    id: 'sentinel',
+    title: 'Satellite',
+    url: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg',
+    type: 'short',
+  },
   {
     id: 'lite',
     title: 'Lite',
@@ -38,36 +50,18 @@ export const BASEMAP_STYLES: BasemapStyle[] = [
     url: `${UGRC_BASE_URL}/tiles/terrain_basemap/{z}/{x}/{y}`,
     type: 'short',
   },
-  {
-    id: 'satellite',
-    title: 'Satellite',
-    url: `${UGRC_BASE_URL}/tiles/utah/{z}/{x}/{y}`,
-    type: 'short',
-  },
-  {
-    id: 'topo',
-    title: 'Topo',
-    url: `${UGRC_BASE_URL}/tiles/topo_basemap/{z}/{x}/{y}`,
-    type: 'short',
-  },
 
-  // Dropdown basemaps (long)
+  // Dropdown basemaps (long) - Utah-specific UGRC maps
   {
     id: 'hybrid',
-    title: 'Hybrid',
+    title: 'Utah Hybrid',
     url: `${UGRC_BASE_URL}/tiles/hybrid_basemap/{z}/{x}/{y}`,
     type: 'long',
   },
   {
-    id: 'sentinel',
-    title: 'Sentinel-2',
-    url: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg',
-    type: 'long',
-  },
-  {
-    id: 'liberty',
-    title: 'OpenFreeMap',
-    url: 'https://tiles.openfreemap.org/styles/liberty',
+    id: 'utah-satellite',
+    title: 'Utah Satellite',
+    url: `${UGRC_BASE_URL}/tiles/utah/{z}/{x}/{y}`,
     type: 'long',
   },
   {
