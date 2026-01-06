@@ -8,7 +8,7 @@ const MapFooter = () => {
         <>
             <div className="flex items-center space-x-1 md:space-x-1.5 xl:space-x-2">
                 <Link to="https://geology.utah.gov/" variant='foreground' className="hidden xl:block">
-                    <span className="text-sm font-medium">Utah Geological Survey</span>
+                    <span className="text-xs md:text-sm text-muted-foreground">Utah Geological Survey</span>
                 </Link>
                 <div className="hidden xl:block h-4 w-px bg-border" aria-hidden="true" />
                 <div className="flex items-center space-x-1 md:space-x-1.5">
