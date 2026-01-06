@@ -29,7 +29,7 @@ export function findLayerByTitle(mapInstance: MapLibreMap, title: string): MapLi
 class MapLibreLayerProxy {
     private map: MapLibreMap;
     private layerId: string;
-    private _opacity: number = 1;
+    private _opacity: number;
     private _layerType: string;
 
     constructor(map: MapLibreMap, layerId: string) {
@@ -37,6 +37,19 @@ class MapLibreLayerProxy {
         this.layerId = layerId;
         // Cache the layer type on construction
         this._layerType = this.getLayerType();
+        // Read initial opacity from the map layer
+        this._opacity = this.readCurrentOpacity();
+    }
+
+    private readCurrentOpacity(): number {
+        if (!this.map) return 1;
+        try {
+            const opacityProp = this.getOpacityProperty();
+            const currentOpacity = this.map.getPaintProperty(this.layerId, opacityProp);
+            return typeof currentOpacity === 'number' ? currentOpacity : 1;
+        } catch {
+            return 1;
+        }
     }
 
     private getLayerType(): string {
