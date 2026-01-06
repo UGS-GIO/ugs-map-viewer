@@ -9,12 +9,7 @@ const getChildLayerTitles = (layer: LayerProps): string[] => {
 };
 
 export const useLayerItemState = (layerConfig: LayerProps) => {
-    const {
-        selectedLayerTitles,
-        hiddenGroupTitles,
-        updateLayerSelection,
-        toggleGroupVisibility
-    } = useLayerUrl();
+    const { selectedLayerTitles, updateLayerSelection } = useLayerUrl();
 
     const title = layerConfig.title || '';
 
@@ -32,7 +27,6 @@ export const useLayerItemState = (layerConfig: LayerProps) => {
             isSelected,
             handleToggleSelection,
             isGroupVisible: true,
-            handleToggleGroupVisibility: () => { },
             groupCheckboxState: null,
             handleSelectAllToggle: () => { },
         };
@@ -40,7 +34,7 @@ export const useLayerItemState = (layerConfig: LayerProps) => {
     // GROUP LAYER LOGIC
     else {
         const childTitles = getChildLayerTitles(layerConfig);
-        const selectedChildrenCount = childTitles.filter(title => selectedLayerTitles.has(title)).length;
+        const selectedChildrenCount = childTitles.filter(t => selectedLayerTitles.has(t)).length;
 
         let groupCheckboxState: 'all' | 'some' | 'none' = 'none';
         if (selectedChildrenCount === childTitles.length && childTitles.length > 0) {
@@ -54,17 +48,13 @@ export const useLayerItemState = (layerConfig: LayerProps) => {
             updateLayerSelection(childTitles, shouldSelectAll);
         };
 
-        const isGroupVisible = !hiddenGroupTitles.has(title);
-
-        const handleToggleGroupVisibility = () => {
-            if (title) toggleGroupVisibility(title);
-        };
+        // Group is visible on map if any children are selected
+        const isGroupVisible = selectedChildrenCount > 0;
 
         return {
-            isSelected: false, // isSelected is not applicable to a group container
+            isSelected: false,
             handleToggleSelection: () => { },
             isGroupVisible,
-            handleToggleGroupVisibility,
             groupCheckboxState,
             handleSelectAllToggle,
         };

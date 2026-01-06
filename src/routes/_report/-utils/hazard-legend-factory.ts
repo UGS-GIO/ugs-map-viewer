@@ -61,7 +61,7 @@ export interface HazardLegendConfig<T extends Record<string, any>> {
  * Generic legend factory function
  * Creates custom legend items for any hazard type following a consistent pattern
  *
- * @param polygon - ESRI polygon JSON string
+ * @param polygon - Polygon JSON string
  * @param config - Configuration object specific to the hazard type
  * @returns Array of custom legend items
  *
@@ -110,8 +110,6 @@ export async function createCustomLegend<T extends Record<string, any>>(
                         const svg = createSVGSymbol(rule.symbolizers)
                         wmsSymbols.set(literalValue, svg)
                         wmsLabels.set(literalValue, rule.title || rule.name)
-                    } else {
-                        console.log(`[${config.code}] Skipping WMS rule - literalValue: "${literalValue}", hasSymbolizers: ${!!rule.symbolizers}, rule.filter: ${rule.filter}`)
                     }
                 }
             }

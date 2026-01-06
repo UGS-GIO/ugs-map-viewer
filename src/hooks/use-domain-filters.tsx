@@ -1,5 +1,6 @@
-import { useEffect } from 'react';
-import { findAndApplyWMSFilter } from '@/lib/sidebar/filter/util';
+import { useEffect, useRef } from 'react';
+import { findAndApplyMapLibreWMSFilter } from '@/lib/sidebar/filter/util';
+import maplibregl from 'maplibre-gl';
 
 interface FilterMapping {
     [filterKey: string]: {
@@ -9,8 +10,9 @@ interface FilterMapping {
 }
 
 interface UseDomainFiltersProps {
-    view: __esri.MapView | __esri.SceneView | undefined;
+    map?: maplibregl.Map | undefined;
     filters: Record<string, string> | undefined;
+    selectedLayers: string[];
     updateLayerSelection: (title: string, selected: boolean) => void;
     filterMapping: FilterMapping;
 }
@@ -19,20 +21,28 @@ interface UseDomainFiltersProps {
  * Hook that handles domain-specific filter application for WMS layers.
  * Applies WMS filters from URL parameters to the map and updates layer selection state.
  * This is separated from generic URL sync to keep domain logic isolated.
- * 
- * @param view - ArcGIS map view instance
- * @param filters - Filter values from URL parameters  
+ *
+ * @param map - MapLibre map instance
+ * @param filters - Filter values from URL parameters
+ * @param selectedLayers - Currently selected layer titles
  * @param updateLayerSelection - Function to update layer selection state
  * @param filterMapping - Mapping of filter keys to layer configurations
  */
 export function useDomainFilters({
-    view,
+    map,
     filters,
+    selectedLayers,
     updateLayerSelection,
     filterMapping
 }: UseDomainFiltersProps) {
+    const selectedLayersRef = useRef<Set<string>>(new Set());
+
     useEffect(() => {
-        if (!view || !view.map) return;
+        selectedLayersRef.current = new Set(selectedLayers);
+    }, [selectedLayers]);
+
+    useEffect(() => {
+        if (!map) return;
 
         const filtersFromUrl = filters ?? {};
 
@@ -41,11 +51,12 @@ export function useDomainFilters({
             const filterValue = filtersFromUrl[filterKey] || null;
             const { layerTitle, autoSelectLayer = true } = config;
 
-            findAndApplyWMSFilter(view.map, layerTitle, filterValue);
+            findAndApplyMapLibreWMSFilter(map, layerTitle, filterValue);
 
-            if (filterValue && autoSelectLayer) {
+            // Only auto-select the layer if it has a filter AND is not already selected
+            if (filterValue && autoSelectLayer && !selectedLayersRef.current.has(layerTitle)) {
                 updateLayerSelection(layerTitle, true);
             }
         });
-    }, [view, filters, updateLayerSelection, filterMapping]);
+    }, [map, filters, updateLayerSelection, filterMapping]);
 }

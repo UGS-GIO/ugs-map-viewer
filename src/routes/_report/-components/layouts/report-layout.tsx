@@ -1,4 +1,4 @@
-import { Layout } from '@/components/custom/layout'
+import { Layout } from '@/components/layout/layout'
 import { ReactNode } from 'react'
 
 interface ReportLayoutProps {

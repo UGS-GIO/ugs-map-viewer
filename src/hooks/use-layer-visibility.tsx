@@ -2,38 +2,47 @@ import { useMemo } from 'react';
 import { LayerProps } from '@/lib/types/mapping-types';
 
 /**
- * Processes layer visibility based on selected layers and hidden groups.
- * A layer is visible if it is selected and not part of a hidden group.
- * @param layers - Array of layer configurations.
- * @param selectedLayerTitles - Set of titles of selected layers.
- * @param hiddenGroupTitles - Set of titles of hidden groups.
- * @return Processed array of layers with updated visibility.
+ * Applies URL-based layer selection and group visibility to layer configs.
+ *
+ * - If not initialized yet, returns layers with default visibility
+ * - Once initialized, sets visibility based on whether layer title is in the selection
+ * - Empty selection = all layers hidden (user turned them all off)
+ * - Groups are visible if any child is visible AND group toggle is on
+ * - Group visibility toggle affects whether children are queryable
  */
 export function useLayerVisibility(
     layers: LayerProps[],
     selectedLayerTitles: Set<string>,
-    hiddenGroupTitles: Set<string>
-) {
+    isInitialized: boolean = true,
+    groupVisibility?: Map<string, boolean>
+): LayerProps[] {
     return useMemo(() => {
-        const processLayers = (
-            layerArray: LayerProps[],
-            parentIsHidden: boolean
-        ): LayerProps[] => {
-            return layerArray.map(layer => {
-                const isHiddenByGroup = parentIsHidden || hiddenGroupTitles.has(layer.title || '');
+        // Not initialized yet - return layers with their default visibility
+        if (!isInitialized) {
+            return layers;
+        }
 
+        // Apply selection to layers - empty selection means all layers are hidden
+        // Group visibility toggle overrides child visibility when off
+        const applySelection = (layerArray: LayerProps[], parentGroupVisible: boolean = true): LayerProps[] =>
+            layerArray.map(layer => {
                 if (layer.type === 'group' && 'layers' in layer) {
-                    const newChildLayers = processLayers(layer.layers || [], isHiddenByGroup);
-                    const isGroupEffectivelyVisible = newChildLayers.some(child => child.visible);
-                    return { ...layer, visible: isGroupEffectivelyVisible, layers: newChildLayers };
+                    // Check if this group's visibility toggle is on (default: true)
+                    const groupToggleVisible = groupVisibility?.get(layer.title || '') ?? true;
+                    const children = applySelection(layer.layers || [], groupToggleVisible);
+                    // Group is visible only if toggle is on AND at least one child is selected
+                    const hasSelectedChildren = children.some(c => selectedLayerTitles.has(c.title || ''));
+                    return {
+                        ...layer,
+                        layers: children,
+                        visible: groupToggleVisible && hasSelectedChildren
+                    };
                 }
-
-                // A layer is only visible if it's selected AND its group hierarchy is not hidden.
-                const isVisible = selectedLayerTitles.has(layer.title || '') && !isHiddenByGroup;
-                return { ...layer, visible: isVisible };
+                // Child layer is visible if selected AND parent group toggle is on
+                const isSelected = selectedLayerTitles.has(layer.title || '');
+                return { ...layer, visible: isSelected && parentGroupVisible };
             });
-        };
 
-        return processLayers(layers, false);
-    }, [layers, selectedLayerTitles, hiddenGroupTitles]);
+        return applySelection(layers);
+    }, [layers, selectedLayerTitles, isInitialized, groupVisibility]);
 }
