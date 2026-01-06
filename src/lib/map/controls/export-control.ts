@@ -161,6 +161,8 @@ export class ExportControl implements maplibregl.IControl {
         const closeBtn = document.createElement('button');
         closeBtn.type = 'button';
         closeBtn.className = 'bg-transparent border-none cursor-pointer p-0 flex items-center justify-center text-muted-foreground hover:text-foreground';
+        closeBtn.style.width = '16px';
+        closeBtn.style.height = '16px';
         closeBtn.innerHTML = renderToStaticMarkup(createElement(X, { size: 14 }));
         closeBtn.addEventListener('click', (e) => {
             e.stopPropagation();
