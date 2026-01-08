@@ -447,6 +447,7 @@ export default function GenericMapContainer({
         relatedTables: sublayerConfig?.relatedTables,
         linkFields: sublayerConfig?.linkFields,
         colorCodingMap: sublayerConfig?.colorCodingMap,
+        colorCodingMode: sublayerConfig?.colorCodingMode,
         features: features.map((f) => ({
           type: 'Feature' as const,
           id: f.id,

@@ -3,7 +3,7 @@ import { Feature, Geometry, GeoJsonProperties } from "geojson"
 import { Button } from "@/components/ui/button"
 import { Shrink } from "lucide-react"
 import { PopupContentDisplay } from "@/components/maps/popups/popup-content-display"
-import { ColorCodingRecordFunction, FieldConfig, LinkFields, ProcessedRasterSource, RelatedTable } from "@/lib/types/mapping-types"
+import { ColorCodingMode, ColorCodingRecordFunction, FieldConfig, LinkFields, ProcessedRasterSource, RelatedTable } from "@/lib/types/mapping-types"
 import { useMap } from "@/hooks/use-map"
 import { useGetPopupButtons } from "@/hooks/use-get-popup-buttons"
 import { zoomToFeature } from "@/lib/map/utils"
@@ -47,6 +47,7 @@ export interface LayerContentProps {
     relatedTables?: RelatedTable[]
     linkFields?: LinkFields
     colorCodingMap?: ColorCodingRecordFunction
+    colorCodingMode?: ColorCodingMode
     customLayerParameters?: { cql_filter?: string, [key: string]: any }
     rasterSource?: ProcessedRasterSource
     visible: boolean

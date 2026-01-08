@@ -785,6 +785,7 @@ export function useFeatureInfoQuery({
                     popupFields: value.popupFields,
                     linkFields: value.linkFields,
                     colorCodingMap: value.colorCodingMap,
+                    colorCodingMode: value.colorCodingMode,
                     relatedTables: value.relatedTables?.map(table => ({
                         ...table,
                         matchingField: table.matchingField || "",

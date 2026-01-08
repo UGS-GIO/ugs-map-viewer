@@ -56,7 +56,8 @@ const basinNamesWMSConfig: WMSLayerProps = {
                     if (strValue === "limited") return "#FFA500";
                     return "#808080";
                 }
-            }
+            },
+            colorCodingMode: 'background',
         },
     ],
 };
