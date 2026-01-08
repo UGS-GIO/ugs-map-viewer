@@ -40,7 +40,7 @@ const basinNamesWMSConfig: WMSLayerProps = {
                         }
 
                         if (rankingText) {
-                            return `${rankNumber} - ${rankingText}`;
+                            return rankingText;
                         } else {
                             return String(rankNumber);
                         }
