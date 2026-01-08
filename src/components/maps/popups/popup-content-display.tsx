@@ -20,7 +20,6 @@ import {
     LinkConfig,
     LinkDefinition
 } from "@/lib/types/mapping-types";
-import { cn } from "@/lib/utils";
 
 interface LabelValuePair {
     label: string | undefined;
@@ -323,11 +322,18 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         }
 
         const colorStyle = getColorStyle(colorCodingMap, colorCodingMode, fieldKey, finalDisplayValue);
+        const hasColorStyling = colorStyle.className || Object.keys(colorStyle.style).length > 0;
         const content = (
             <div key={`feature-item-${label}-${index}`} className="flex flex-col">
                 <p className="font-bold underline text-primary">{label}</p>
-                <div className={cn("break-words", colorStyle.className)} style={colorStyle.style}>
-                    {renderFieldContent(finalDisplayValue, fieldKey, properties, linkFields, urlPattern)}
+                <div className="break-words">
+                    {hasColorStyling ? (
+                        <span className={colorStyle.className} style={colorStyle.style}>
+                            {renderFieldContent(finalDisplayValue, fieldKey, properties, linkFields, urlPattern)}
+                        </span>
+                    ) : (
+                        renderFieldContent(finalDisplayValue, fieldKey, properties, linkFields, urlPattern)
+                    )}
                 </div>
             </div>
         );
