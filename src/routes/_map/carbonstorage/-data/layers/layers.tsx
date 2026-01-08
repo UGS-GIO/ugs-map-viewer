@@ -51,9 +51,9 @@ const basinNamesWMSConfig: WMSLayerProps = {
                 'ranknumber': (value: string | number) => {
                     const strValue = String(value).toLowerCase();
                     if (strValue === "coming soon") return "#808080";
-                    if (strValue === "excellent") return "#00FF00";
-                    if (strValue === "moderate") return "#FFFF00";
-                    if (strValue === "limited") return "#FFA500";
+                    if (strValue === "excellent") return "#3DC200";
+                    if (strValue === "moderate") return "#FFE700";
+                    if (strValue === "limited") return "#FF7E00";
                     return "#808080";
                 }
             },
