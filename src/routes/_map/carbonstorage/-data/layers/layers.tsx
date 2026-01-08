@@ -49,32 +49,12 @@ const basinNamesWMSConfig: WMSLayerProps = {
             },
             colorCodingMap: {
                 'ranknumber': (value: string | number) => {
-                    if (value === "Coming Soon") {
-                        return "#808080"; // Gray for "Coming Soon"
-                    }
-
-                    const rank = typeof value === 'number' ? value : parseInt(value, 10);
-                    if (isNaN(rank)) {
-                        return "#808080"; // Default gray for non-numeric values
-                    }
-
-                    // Limited: <3 (Solid Orange)
-                    if (rank < 3) {
-                        return "#FFA500"; // Orange
-                    }
-
-                    // Moderate: 3-6 (Solid Yellow)
-                    if (rank < 6) {
-                        return "#FFFF00"; // Yellow
-                    }
-
-                    // Excellent: >=6 (Solid Green)
-                    if (rank >= 6) {
-                        return "#00FF00"; // Green
-                    }
-
-                    // Default case
-                    return "#808080"; // Gray for any other cases
+                    const strValue = String(value).toLowerCase();
+                    if (strValue === "coming soon") return "#808080";
+                    if (strValue === "excellent") return "#00FF00";
+                    if (strValue === "moderate") return "#FFFF00";
+                    if (strValue === "limited") return "#FFA500";
+                    return "#808080";
                 }
             }
         },
