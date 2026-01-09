@@ -1,4 +1,4 @@
-import { ENERGY_MINERALS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL } from "@/lib/constants";
+import { ENERGY_MINERALS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { toTitleCase, toSentenceCase } from "@/lib/utils";
 
@@ -404,8 +404,275 @@ const heatflowLayerConfig: WMSLayerProps = {
 };
 
 
+// gravity stations
+const gravityStationsLayeName = 'enmin_geophysics_ugsobsgrav_current';
+const gravityStationsLayeTitle = 'Gravity Stations';
+const gravityStationsLayerConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: gravityStationsLayeTitle,
+    visible: true,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${gravityStationsLayeName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'OGC Id': { field: 'ogc_fid', type: 'string' },
+                'Location (WGS84)': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const depthStart = props?.['latitude_wgs84'];
+                        const depthEnd = props?.['longitude_wgs84'];
+                        return `${depthStart} , ${depthEnd}`;
+                    }
+                },
+                'Date': { field: 'date', type: 'string' },
+                'Observed Measurement': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const bht = props?.['observed'];
+                        return `${bht} mGal`;
+                    }
+                },
+            },
+        },
+    ],
+};
+
+// geothermal uses
+const geothermalUseLayeName = 'geothermal_utgeothermaluses_current';
+const geothermalUseLayeTitle = 'Utah Geothermal Uses';
+const geothermalUseLayerConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: geothermalUseLayeTitle,
+    visible: true,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalUseLayeName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Name': { field: 'name', type: 'string' },
+                'Temperature': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const bht = props?.['temp_c'];
+                        return `${bht} °C`;
+                    }
+                },
+                'Use': { field: 'use', type: 'string' },
+                'Location': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const depthStart = props?.['locality'];
+                        const depthEnd = props?.['county'];
+                        return `${depthStart}, ${depthEnd}`;
+                    }
+                },
+            },
+        },
+    ],
+};
+
+// deep sedimentary basins
+const deepSedimentaryBasinsLayerName = 'geothermal_deepsedbasin_current';
+const deepSedimentaryBasinsLayerTitle = 'Deep Sedimentary Basins';
+const deepSedimentaryBasinsLayerConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: deepSedimentaryBasinsLayerTitle,
+    visible: true,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${deepSedimentaryBasinsLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Basin Name': { field: 'basin_name', type: 'string' },
+            },
+        },
+    ],
+};
+
+// deep sedimentary basins
+const potentialResourcesLayerName = 'geothermal_potentialresourcearea_current';
+const potentialResourcesLayerTitle = 'Potential Resource Areas';
+const potentialResourcesLayerConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: potentialResourcesLayerTitle,
+    visible: true,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${potentialResourcesLayerName}`,
+            popupEnabled: false,
+            queryable: false,
+            popupFields: {
+                'Name': { field: 'name', type: 'string' },
+            },
+        },
+    ],
+};
+
+// Known Geothermal Resource Areas (KGRA)
+const geothermalKgraLayerName = 'geothermal_kgra_current';
+const geothermalKgraLayerTitle = 'Known Geothermal Resource Areas (KGRA)';
+const geothermalKgraLayerConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: geothermalKgraLayerTitle,
+    visible: true,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalKgraLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Name': { field: 'name', type: 'string' },
+            },
+        },
+    ],
+};
+
+// TEM data
+const geothermalTEMLayerName = 'enmin_geophysics_tem_current';
+const geothermalTEMLayerTitle = 'TEM Data';
+const geothermalTEMLayerConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: geothermalTEMLayerTitle,
+    visible: true,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalTEMLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'station': { field: 'station', type: 'string' },
+                'date': { field: 'date', type: 'string' },
+                'time': { field: 'time', type: 'string' },
+                'resistor': { field: 'resistor__	', type: 'string' },
+                'project': { field: 'project', type: 'string' },
+                'notes': { field: 'notes', type: 'string' },
+                'archivelink': { field: 'archivelink', type: 'string' }
+            },
+        },
+    ],
+};
+
+
+// Wells and Springs with Joins WMS Layer
+const geothermalWellsJoinsName = 'enmin_geothermal_ingenious_wellfeatures_current';
+const geothermalWellsJoinsTitle = 'Ingenious wells';
+const geothermalWellsJoinsConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: geothermalWellsJoinsTitle,
+    visible: false,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsJoinsName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'wellname': { field: 'wellname', type: 'string' },
+                'sortid': { field: 'sortid', type: 'string' }
+            },
+            relatedTables: [
+                {
+                    fieldLabel: 'Chemistry Data',
+                    matchingField: 'relatedfeatureuri',
+                    targetField: 'featureuri',
+                    url: PROD_POSTGREST_URL + '/enmin_geothermal_ingenious_springchem_current',
+                    headers: {
+                        "Accept-Profile": 'emp',
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    displayFields: [
+                        { field: 'wellname', label: 'Well Name' },
+                        { field: 'welltype', label: 'Well Type' },
+                        { field: 'temp_c', label: 'Temperature (C)', format: 'number' }
+                    ],
+                    //sortBy: 'wellname',
+                    sortDirection: 'asc',
+                    displayAs: 'table'
+                }
+            ],
+        },
+    ],
+};
+
+const geothermalSpringsJoinsName = 'enmin_geothermal_ingenious_springfeatures_current';
+const geothermalSpringsJoinsTitle = 'Ingenious springs';
+const geothermalSpringsJoinsConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: geothermalSpringsJoinsTitle,
+    visible: true,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalSpringsJoinsName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'springname': { field: 'springname', type: 'string' },
+                'sortid': { field: 'sortid', type: 'string' }
+            },
+            relatedTables: [
+                {
+                    fieldLabel: 'Chemistry Data',
+                    matchingField: 'relatedfeatureuri',
+                    targetField: 'featureuri',
+                    url: PROD_POSTGREST_URL + '/enmin_geothermal_ingenious_springchem_current',
+                    headers: {
+                        "Accept-Profile": 'emp',
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    displayFields: [
+                        { field: 'springname', label: 'Spring Name' },
+                        { field: 'citation', label: 'Citation', },
+                        { field: 'temp_c', label: 'Temperature (C)', format: 'number' }
+                    ],
+                    //sortBy: 'formation_depth',
+                    sortDirection: 'asc',
+                    displayAs: 'table'
+                },
+                {
+                    fieldLabel: 'Chemistry Data',
+                    matchingField: 'featureuri',
+                    targetField: 'featureuri',
+                    url: PROD_POSTGREST_URL + '/enmin_geothermal_ingenious_springfeatures_current',
+                    headers: {
+                        "Accept-Profile": 'emp',
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    displayFields: [
+                        { field: 'springname', label: 'Spring Name' },
+                        { field: 'thermalclass', label: 'Thermal Class', },
+                        { field: 'maxmeasuretemp_c', label: 'Max Temp (C)', format: 'number' }
+                    ],
+                    //sortBy: 'formation_depth',
+                    sortDirection: 'asc',
+                    displayAs: 'table'
+                }
+            ],
+        },
+    ],
+};
+
+
+
 // ingqFaults WMS Layer
-const ingqFaultsLayerName = 'mart_geothermal_qfaults_ingenious_current';
+/* const ingqFaultsLayerName = 'mart_geothermal_qfaults_ingenious_current';
 const ingqFaultsWMSTitle = 'Great Basin Faults (INGENIOUS Project)';
 const ingqFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',
@@ -433,9 +700,47 @@ const ingqFaultsWMSConfig: WMSLayerProps = {
             },
         },
     ],
-};
+}; */
 
 
+
+const geophysicalDataConfig: LayerProps = {
+    type: 'group',
+    title: 'Geophysical Data',
+    visible: true,
+    layers: [
+        gravityStationsLayerConfig,
+        geothermalTEMLayerConfig
+    ]
+}
+
+const geothermalWellsandSpringsConfig: LayerProps = {
+    type: 'group',
+    title: 'Geothermal Resources',
+    visible: true,
+    layers: [
+        geothermalWellsWMSConfig,
+        heatflowLayerConfig,
+        geothermalUseLayerConfig,
+        geothermalKgraLayerConfig,
+        deepSedimentaryBasinsLayerConfig,
+        potentialResourcesLayerConfig,
+        geothermalWellsJoinsConfig,
+        geothermalSpringsJoinsConfig
+    ]
+}
+
+const geologicalInformationConfig: LayerProps = {
+    type: 'group',
+    title: 'Geological Information',
+    visible: false,
+    layers: [
+        qFaultsWMSConfig,
+        //ingqFaultsWMSConfig,
+        faultsWMSConfig,
+        seamlessGeolunitsWMSConfig
+    ]
+}
 
 const infrastructureAndLandUseConfig: LayerProps = {
     type: 'group',
@@ -450,39 +755,9 @@ const infrastructureAndLandUseConfig: LayerProps = {
     ]
 }
 
-const geologicalInformationConfig: LayerProps = {
-    type: 'group',
-    title: 'Geological Information',
-    visible: false,
-    layers: [
-        qFaultsWMSConfig,
-        ingqFaultsWMSConfig,
-        faultsWMSConfig,
-        seamlessGeolunitsWMSConfig
-    ]
-}
-
-const geothermalWellsandSpringsConfig: LayerProps = {
-    type: 'group',
-    title: 'Geothermal Resources',
-    visible: true,
-    layers: [
-        geothermalWellsWMSConfig,
-        heatflowLayerConfig
-    ]
-}
-
-const geophysicalDataConfig: LayerProps = {
-    type: 'group',
-    title: 'Geophysical Data',
-    visible: true,
-    layers: [
-    ]
-}
-
 const layersConfig: LayerProps[] = [
-    geothermalWellsandSpringsConfig,
     geophysicalDataConfig,
+    geothermalWellsandSpringsConfig,
     geologicalInformationConfig,
     infrastructureAndLandUseConfig,
 ];
