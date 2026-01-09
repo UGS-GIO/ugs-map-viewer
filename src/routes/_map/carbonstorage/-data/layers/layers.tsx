@@ -50,7 +50,7 @@ const basinNamesWMSConfig: WMSLayerProps = {
             colorCodingMap: {
                 'ranknumber': (value: string | number) => {
                     const strValue = String(value).toLowerCase();
-                    if (strValue === "coming soon") return "#808080";
+                    if (strValue === "coming soon") return "#ABA290";
                     if (strValue === "excellent") return "#3DC200";
                     if (strValue === "moderate") return "#FFE700";
                     if (strValue === "limited") return "#FF7E00";
