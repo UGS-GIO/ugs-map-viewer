@@ -1,6 +1,6 @@
 import { GroupLayerProps, WMSLayerProps } from '@/lib/types/mapping-types'
 import { LayerProps } from "@/lib/types/mapping-types";
-import { ExtendedFeature } from '@/components/maps/popups/popup-content-with-pagination';
+import { ExtendedFeature } from '@/components/maps/popups/types';
 import { convertBbox, convertCoordinate } from '@/lib/map/conversion-utils';
 import { createMapFactory } from '@/lib/map/factory/factory';
 import type { Geometry } from 'geojson';
@@ -8,6 +8,33 @@ import { buffer } from '@turf/buffer';
 import { point } from '@turf/helpers';
 import { bbox as turfBbox } from '@turf/bbox';
 import type { MapLibreMap } from '@/lib/types/map-types';
+
+/**
+ * Create a bounding box around a point with a given radius buffer.
+ * Uses Turf for accurate buffering at any latitude.
+ *
+ * @param coords - [lng, lat] coordinates in WGS84
+ * @param radiusKm - Buffer radius in kilometers (default: 0.1 = 100m)
+ * @returns [minX, minY, maxX, maxY] bbox or null if buffering fails
+ */
+export function createPointBufferBbox(
+    coords: [number, number],
+    radiusKm: number = 0.1
+): [number, number, number, number] | null {
+    try {
+        const pointFeature = point(coords);
+        const bufferedFeature = buffer(pointFeature, radiusKm, { units: 'kilometers' });
+        if (bufferedFeature) {
+            const bboxResult = turfBbox(bufferedFeature);
+            if (bboxResult) {
+                return bboxResult as [number, number, number, number];
+            }
+        }
+    } catch (error) {
+        console.warn('[createPointBufferBbox] Error buffering point:', error);
+    }
+    return null;
+}
 
 export function findLayerByTitle(mapInstance: MapLibreMap, title: string): MapLibreLayerProxy | null {
     // Use factory for MapLibre - returns a proxy object with setter hooks
@@ -131,19 +158,11 @@ export const zoomToFeature = (
     // If no bbox, calculate from geometry
     else if (feature.geometry && feature.geometry.type === 'Point') {
         const coords = feature.geometry.coordinates as [number, number];
-        const converted = convertCoordinate(coords, sourceCRS);
-        // Create a buffer around the point using turf (100 meters)
-        try {
-            const pointFeature = point(converted);
-            const bufferedFeature = buffer(pointFeature, 0.1, { units: 'kilometers' });
-            if (bufferedFeature) {
-                const bboxResult = turfBbox(bufferedFeature);
-                if (bboxResult) {
-                    bbox = bboxResult;
-                }
-            }
-        } catch (error) {
-            console.warn('[zoomToFeature] Error buffering point:', error);
+        const converted = convertCoordinate(coords, sourceCRS) as [number, number];
+        // Create a buffer around the point (100 meters)
+        const bboxResult = createPointBufferBbox(converted, 0.1);
+        if (bboxResult) {
+            bbox = bboxResult;
         }
     }
     // For other geometry types, try to calculate bounds
@@ -223,21 +242,9 @@ function calculateGeometryBounds(geometry: Geometry, sourceCRS: string): number[
     try {
         if (geometry.type === 'Point') {
             const coords = geometry.coordinates as [number, number];
-            const converted = convertCoordinate(coords, sourceCRS);
-            // Create a buffer around the point using turf (100 meters)
-            try {
-                const pointFeature = point(converted);
-                const bufferedFeature = buffer(pointFeature, 0.1, { units: 'kilometers' });
-                if (bufferedFeature) {
-                    const bboxResult = turfBbox(bufferedFeature);
-                    if (bboxResult) {
-                        return bboxResult;
-                    }
-                }
-            } catch (error) {
-                console.warn('[calculateGeometryBounds] Error buffering point:', error);
-            }
-            return null;
+            const converted = convertCoordinate(coords, sourceCRS) as [number, number];
+            // Create a buffer around the point (100 meters)
+            return createPointBufferBbox(converted, 0.1);
         } else if (geometry.type === 'LineString' || geometry.type === 'MultiPoint') {
             const coords = geometry.coordinates as [number, number][];
             if (!coords.length) return null;
