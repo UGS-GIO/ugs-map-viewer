@@ -557,7 +557,7 @@ const geothermalTEMLayerConfig: WMSLayerProps = {
                 'station': { field: 'station', type: 'string' },
                 'date': { field: 'date', type: 'string' },
                 'time': { field: 'time', type: 'string' },
-                'resistor': { field: 'resistor__	', type: 'string' },
+                'resistor': { field: 'resistor__', type: 'string' },
                 'project': { field: 'project', type: 'string' },
                 'notes': { field: 'notes', type: 'string' },
                 'archivelink': { field: 'archivelink', type: 'string' }
@@ -589,7 +589,7 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
                     fieldLabel: 'Chemistry Data',
                     matchingField: 'relatedfeatureuri',
                     targetField: 'featureuri',
-                    url: PROD_POSTGREST_URL + '/enmin_geothermal_ingenious_springchem_current',
+                    url: PROD_POSTGREST_URL + '/enmin_geothermal_ingenious_wellchem_current',
                     headers: {
                         "Accept-Profile": 'emp',
                         "Accept": "application/json",
@@ -598,9 +598,28 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
                     displayFields: [
                         { field: 'wellname', label: 'Well Name' },
                         { field: 'welltype', label: 'Well Type' },
-                        { field: 'temp_c', label: 'Temperature (C)', format: 'number' }
+                        { field: 'temp_c', label: 'Temp (C)', format: 'number' }
                     ],
                     //sortBy: 'wellname',
+                    sortDirection: 'asc',
+                    displayAs: 'table'
+                },
+                {
+                    fieldLabel: 'Temperature Data',
+                    matchingField: 'relatedfeatureuri',
+                    targetField: 'featureuri',
+                    url: PROD_POSTGREST_URL + '/enmin_geothermal_ingenious_welltemps_current',
+                    headers: {
+                        "Accept-Profile": 'emp',
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    displayFields: [
+                        { field: 'wellname', label: 'Well Name' },
+                        { field: 'welltype', label: 'Well Type', },
+                        { field: 'maxmeasuredtemp_c', label: 'Max Temp (C)', format: 'number' }
+                    ],
+                    //sortBy: 'formation_depth',
                     sortDirection: 'asc',
                     displayAs: 'table'
                 }
@@ -646,10 +665,10 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
                     displayAs: 'table'
                 },
                 {
-                    fieldLabel: 'Chemistry Data',
-                    matchingField: 'featureuri',
+                    fieldLabel: 'Temperature Data',
+                    matchingField: 'relatedfeatureuri',
                     targetField: 'featureuri',
-                    url: PROD_POSTGREST_URL + '/enmin_geothermal_ingenious_springfeatures_current',
+                    url: PROD_POSTGREST_URL + '/enmin_geothermal_ingenious_springtemps_current',
                     headers: {
                         "Accept-Profile": 'emp',
                         "Accept": "application/json",
@@ -657,8 +676,8 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
                     },
                     displayFields: [
                         { field: 'springname', label: 'Spring Name' },
-                        { field: 'thermalclass', label: 'Thermal Class', },
-                        { field: 'maxmeasuretemp_c', label: 'Max Temp (C)', format: 'number' }
+                        { field: 'springtype', label: 'Spring Type', },
+                        { field: 'measuredtemp_c', label: 'Max Temp (C)', format: 'number' }
                     ],
                     //sortBy: 'formation_depth',
                     sortDirection: 'asc',
