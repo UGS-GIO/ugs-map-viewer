@@ -713,6 +713,17 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
                 'Description': { field: 'description', type: 'string' },
                 '': { field: 'linktoreport', type: 'string', transform: (value: string | null) => value },
             },
+            colorCodingMap: {
+                'ranking': (value: string | number) => {
+                    const strValue = String(value).toLowerCase();
+                    if (strValue === "not evaluated") return "#ABA290";
+                    if (strValue === "excellent") return "#3DC200";
+                    if (strValue === "moderate") return "#FFE700";
+                    if (strValue === "limited") return "#FF7E00";
+                    return "#808080";
+                }
+            },
+            colorCodingMode: 'background',
             linkFields: {
                 'linktoreport': {
                     transform: (value: string) => {
