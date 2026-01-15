@@ -15,6 +15,7 @@ import {
     ProcessedRasterSource,
     LinkFields,
     ColorCodingRecordFunction,
+    ColorCodingMode,
     RelatedTable,
     LinkConfig,
     LinkDefinition
@@ -91,12 +92,27 @@ const getRasterFeatureValue = (rasterSource: ProcessedRasterSource | undefined):
     return rasterSource.data.features[0]?.properties?.[valueField];
 };
 
-const applyColor = (colorCodingMap: ColorCodingRecordFunction | undefined, fieldKey: string, value: string | number) => {
-    if (colorCodingMap && colorCodingMap[fieldKey]) {
-        const colorFunction = colorCodingMap[fieldKey];
-        return { color: colorFunction(value) };
+const getColorStyle = (
+    colorCodingMap: ColorCodingRecordFunction | undefined,
+    colorCodingMode: ColorCodingMode | undefined,
+    fieldKey: string,
+    value: string | number
+): { style: React.CSSProperties; className: string } => {
+    if (!colorCodingMap || !colorCodingMap[fieldKey]) {
+        return { style: {}, className: '' };
     }
-    return {};
+
+    const color = colorCodingMap[fieldKey](value);
+    const mode = colorCodingMode ?? 'text';
+
+    if (mode === 'background') {
+        return {
+            style: { backgroundColor: color, color: '#1a1a1a' },
+            className: 'px-1.5 py-0.5 rounded inline-block',
+        };
+    }
+
+    return { style: { color }, className: '' };
 };
 
 const getRelatedTableValues = (
@@ -196,7 +212,7 @@ const renderFieldContent = (
 
 // --- Main Component ---
 const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: PopupContentDisplayProps) => {
-    const { relatedTables, popupFields, linkFields, colorCodingMap, rasterSource } = layer;
+    const { relatedTables, popupFields, linkFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
 
     // Convert bulk data to the format expected by getRelatedTableValues
     const data = useMemo((): ProcessedRelatedData[][] => {
@@ -305,11 +321,19 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
             return;
         }
 
+        const colorStyle = getColorStyle(colorCodingMap, colorCodingMode, fieldKey, finalDisplayValue);
+        const hasColorStyling = colorStyle.className || Object.keys(colorStyle.style).length > 0;
         const content = (
-            <div key={`feature-item-${label}-${index}`} className="flex flex-col" style={applyColor(colorCodingMap, fieldKey, finalDisplayValue)}>
+            <div key={`feature-item-${label}-${index}`} className="flex flex-col">
                 <p className="font-bold underline text-primary">{label}</p>
                 <div className="break-words">
-                    {renderFieldContent(finalDisplayValue, fieldKey, properties, linkFields, urlPattern)}
+                    {hasColorStyling ? (
+                        <span className={colorStyle.className} style={colorStyle.style}>
+                            {renderFieldContent(finalDisplayValue, fieldKey, properties, linkFields, urlPattern)}
+                        </span>
+                    ) : (
+                        renderFieldContent(finalDisplayValue, fieldKey, properties, linkFields, urlPattern)
+                    )}
                 </div>
             </div>
         );

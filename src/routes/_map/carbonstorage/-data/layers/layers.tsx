@@ -40,7 +40,7 @@ const basinNamesWMSConfig: WMSLayerProps = {
                         }
 
                         if (rankingText) {
-                            return `${rankNumber} - ${rankingText}`;
+                            return rankingText;
                         } else {
                             return String(rankNumber);
                         }
@@ -49,34 +49,15 @@ const basinNamesWMSConfig: WMSLayerProps = {
             },
             colorCodingMap: {
                 'ranknumber': (value: string | number) => {
-                    if (value === "Coming Soon") {
-                        return "#808080"; // Gray for "Coming Soon"
-                    }
-
-                    const rank = typeof value === 'number' ? value : parseInt(value, 10);
-                    if (isNaN(rank)) {
-                        return "#808080"; // Default gray for non-numeric values
-                    }
-
-                    // Limited: <3 (Solid Orange)
-                    if (rank < 3) {
-                        return "#FFA500"; // Orange
-                    }
-
-                    // Moderate: 3-6 (Solid Yellow)
-                    if (rank < 6) {
-                        return "#FFFF00"; // Yellow
-                    }
-
-                    // Excellent: >=6 (Solid Green)
-                    if (rank >= 6) {
-                        return "#00FF00"; // Green
-                    }
-
-                    // Default case
-                    return "#808080"; // Gray for any other cases
+                    const strValue = String(value).toLowerCase();
+                    if (strValue.includes("coming soon")) return "#ABA290";
+                    if (strValue.includes("excellent")) return "#3DC200";
+                    if (strValue.includes("moderate")) return "#FFE700";
+                    if (strValue.includes("limited")) return "#FF7E00";
+                    return "#808080";
                 }
-            }
+            },
+            colorCodingMode: 'background',
         },
     ],
 };
@@ -723,15 +704,26 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
                     field: 'ranking', type: 'string',
                     transform: (value: string | null) => {
                         if (value === 'None' || value === null) {
-                            return 'Not evaluated';
-                        } else {
-                            return value;
+                            return 'Not Evaluated';
                         }
+                        // Strip leading number (e.g., "4.0 Good Potential" -> "Good Potential")
+                        return value.replace(/^\d+(\.\d+)?\s*/, '');
                     }
                 },
                 'Description': { field: 'description', type: 'string' },
                 '': { field: 'linktoreport', type: 'string', transform: (value: string | null) => value },
             },
+            colorCodingMap: {
+                'ranking': (value: string | number) => {
+                    const strValue = String(value).toLowerCase();
+                    if (strValue.includes("excellent")) return "#3DC200";
+                    if (strValue.includes("good")) return "#CFFF00";
+                    if (strValue.includes("some")) return "#FFE700";
+                    if (strValue.includes("limited")) return "#FF7E00";
+                    return "#CDCDCD"; // Not Evaluated
+                }
+            },
+            colorCodingMode: 'background',
             linkFields: {
                 'linktoreport': {
                     transform: (value: string) => {

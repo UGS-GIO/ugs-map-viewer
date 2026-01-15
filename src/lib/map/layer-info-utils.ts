@@ -10,6 +10,7 @@ import type {
     LinkFields,
     RasterSource,
     ColorCodingRecordFunction,
+    ColorCodingMode,
 } from '@/lib/types/mapping-types';
 
 export interface VisibleLayerInfo {
@@ -25,6 +26,7 @@ export interface VisibleLayerInfo {
     schema?: string;
     layerCrs: string;
     colorCodingMap?: ColorCodingRecordFunction;
+    colorCodingMode?: ColorCodingMode;
     wfsUrl?: string;
     typeName?: string;
 }
@@ -68,6 +70,7 @@ export function buildVisibleLayersMap(layers: LayerProps[]): VisibleLayersMap {
                 schema: sub.schema,
                 layerCrs: layer.type === 'pmtiles' ? 'EPSG:4326' : crs,
                 colorCodingMap: sub.colorCodingMap,
+                colorCodingMode: sub.colorCodingMode,
                 wfsUrl: layer.type === 'wfs' ? (layer as WFSLayerProps).wfsUrl : undefined,
                 typeName: layer.type === 'wfs' ? (layer as WFSLayerProps).typeName : undefined,
             };

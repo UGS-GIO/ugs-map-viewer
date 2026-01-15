@@ -64,11 +64,14 @@ export interface CustomPopupFieldConfig extends BaseFieldConfig {
 // Your main FieldConfig is a discriminated union of these specific types
 export type FieldConfig = StringPopupFieldConfig | NumberPopupFieldConfig | CustomPopupFieldConfig;
 
+export type ColorCodingMode = 'text' | 'background';
+
 export type CustomSublayerProps = {
     popupFields?: Record<string, FieldConfig>; // Maps field labels to attribute names
     relatedTables?: RelatedTable[];
     linkFields?: LinkFields;
     colorCodingMap?: ColorCodingRecordFunction; // Maps field names to color coding functions
+    colorCodingMode?: ColorCodingMode; // How to apply the color: 'text' (default) or 'background'
     rasterSource?: RasterSource;
     schema?: string; // postgreSQL schema name, used for the accept-profile header in postgrest requests because the schema name does not necessarilly match the workspace name in geoserver
 };

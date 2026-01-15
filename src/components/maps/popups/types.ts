@@ -8,6 +8,7 @@ import type {
     RelatedTable,
     LinkFields,
     ColorCodingRecordFunction,
+    ColorCodingMode,
 } from '@/lib/types/mapping-types'
 
 /**
@@ -29,6 +30,7 @@ export interface LayerContentProps {
     relatedTables?: RelatedTable[]
     linkFields?: LinkFields
     colorCodingMap?: ColorCodingRecordFunction
+    colorCodingMode?: ColorCodingMode
     customLayerParameters?: { cql_filter?: string; [key: string]: unknown }
     rasterSource?: ProcessedRasterSource
     visible: boolean
