@@ -549,10 +549,22 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
                 'Well Name': { field: 'well_name', type: 'string' },
                 'Sample Types': {
                     field: 'all_types', type: 'string', transform: (value: string | null) => {
-                        if (value) {
-                            return toTitleCase(value.replace(/,/g, ', '));
-                        }
-                        return 'No Data';
+                        if (!value) return 'No Data';
+                        const lower = value.toLowerCase();
+
+                        // Map raw sample types to simplified categories
+                        const coreTypes = /\b(core|butts?|slabs?|skeletonized core|sidewall)\b/;
+                        const cuttingsTypes = /\b(chips?|core chips?|cuttings?)\b/;
+                        const samplesTypes = /\b(samples?|outcrop samples?)\b/;
+                        const displayTypes = /\bdisplay\b/;
+
+                        const categories: string[] = [];
+                        if (coreTypes.test(lower)) categories.push('Core');
+                        if (cuttingsTypes.test(lower)) categories.push('Cuttings');
+                        if (samplesTypes.test(lower)) categories.push('Samples');
+                        if (displayTypes.test(lower)) categories.push('Display');
+
+                        return categories.length ? categories.join(', ') : toTitleCase(value.replace(/,/g, ', '));
                     }
                 },
                 'Purpose': { field: 'purpose_description', type: 'string' },
