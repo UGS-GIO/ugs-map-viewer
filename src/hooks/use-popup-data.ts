@@ -228,6 +228,7 @@ export function usePopupData({
         relatedTables: sublayerConfig?.relatedTables,
         linkFields: sublayerConfig?.linkFields,
         colorCodingMap: sublayerConfig?.colorCodingMap,
+        colorCodingMode: sublayerConfig?.colorCodingMode,
         rasterSource: processedRasterSource,
         features: features.map((f): ExtendedFeature => ({
           type: 'Feature',
