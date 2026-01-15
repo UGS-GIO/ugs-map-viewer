@@ -62,7 +62,7 @@ const transmissionLinesWMSConfig: WMSLayerProps = {
         },
     ],
 }
- 
+
 // Seamless Geological Units WMS Layer
 const seamlessGeolunitsLayerName = 'mapping_geolunits_500k'
 const seamlessGeolunitsWMSTitle = 'Geologic Units (500k)';
@@ -176,7 +176,7 @@ const faultsWMSConfig: WMSLayerProps = {
     ],
 };
 
-const qFaultsLayerName = 'quaternaryfaults_current';
+const qFaultsLayerName = 'qfaults_current';
 const qFaultsWMSTitle = 'Hazardous (Quaternary age) Faults';
 const qFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',
