@@ -3,6 +3,15 @@ import { useQueries } from '@tanstack/react-query'
 import type { FeatureCollection, Geometry } from 'geojson'
 import type { WFSLayerProps } from '@/lib/types/mapping-types'
 import { queryKeys } from '@/lib/query-keys'
+import type maplibregl from 'maplibre-gl'
+
+/** Feature returned from client-side WFS layer queries */
+export interface WfsLayerFeature {
+  id: string | number
+  properties: Record<string, unknown>
+  geometry?: Geometry
+  layerTitle: string
+}
 
 /**
  * Fetch GeoJSON data from a WFS GetFeature request
@@ -29,6 +38,45 @@ async function fetchWfsGeoJson(layer: WFSLayerProps): Promise<FeatureCollection<
  */
 export function getWfsSourceId(layer: WFSLayerProps): string {
   return `wfs-${layer.title || 'layer'}`.replace(/\s+/g, '-').toLowerCase()
+}
+
+/**
+ * Query WFS layer features within a screen bbox using MapLibre's queryRenderedFeatures
+ */
+export function queryWfsLayersInScreenBbox(
+  map: maplibregl.Map,
+  bbox: [maplibregl.PointLike, maplibregl.PointLike],
+  wfsLayers: WFSLayerProps[]
+): WfsLayerFeature[] {
+  if (wfsLayers.length === 0) return []
+
+  const wfsLayerIds = wfsLayers.map(layer => `${getWfsSourceId(layer)}-circle`)
+  const features = map.queryRenderedFeatures(bbox, { layers: wfsLayerIds })
+
+  return features.map(f => {
+    const mapLayer = map.getLayer(f.layer.id)
+    const metadata = mapLayer?.metadata as { title?: string } | undefined
+    return {
+      id: f.id ?? f.properties?.ogc_fid ?? 0,
+      properties: f.properties as Record<string, unknown>,
+      geometry: f.geometry,
+      layerTitle: metadata?.title || 'Unknown Layer',
+    }
+  })
+}
+
+/** Query WFS layers at a point with tolerance */
+export function queryWfsLayersAtPoint(
+  map: maplibregl.Map,
+  point: { x: number; y: number },
+  tolerance: number,
+  wfsLayers: WFSLayerProps[]
+): WfsLayerFeature[] {
+  return queryWfsLayersInScreenBbox(
+    map,
+    [[point.x - tolerance, point.y - tolerance], [point.x + tolerance, point.y + tolerance]],
+    wfsLayers
+  )
 }
 
 /**

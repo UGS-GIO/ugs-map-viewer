@@ -1,9 +1,7 @@
 import { useMemo, useState, memo, useCallback, useRef } from "react"
-import { Feature, Geometry, GeoJsonProperties } from "geojson"
 import { Button } from "@/components/ui/button"
 import { Shrink } from "lucide-react"
 import { PopupContentDisplay } from "@/components/maps/popups/popup-content-display"
-import { ColorCodingMode, ColorCodingRecordFunction, FieldConfig, LinkFields, ProcessedRasterSource, RelatedTable } from "@/lib/types/mapping-types"
 import { useMap } from "@/hooks/use-map"
 import { useGetPopupButtons } from "@/hooks/use-get-popup-buttons"
 import { zoomToFeature } from "@/lib/map/utils"
@@ -11,6 +9,7 @@ import type { HighlightFeature } from "@/components/maps/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { useBulkRelatedTable, RelatedDataMap } from "@/hooks/use-bulk-related-table"
+import { ExtendedFeature, LayerContentProps, hasRasterData, getLayerCountText } from "./types"
 
 
 // Extracted outside to prevent recreation on every render
@@ -34,34 +33,8 @@ const PopupButtons = memo(({ feature, sourceCRS, title, onZoom, extraButtons }: 
 ));
 PopupButtons.displayName = 'PopupButtons';
 
-export interface ExtendedFeature extends Feature<Geometry, GeoJsonProperties> {
-    namespace: string;
-}
-
-export interface LayerContentProps {
-    groupLayerTitle: string
-    layerTitle: string
-    features: ExtendedFeature[]
-    sourceCRS: string; // (e.g., "EPSG:26912")
-    popupFields?: Record<string, FieldConfig>
-    relatedTables?: RelatedTable[]
-    linkFields?: LinkFields
-    colorCodingMap?: ColorCodingRecordFunction
-    colorCodingMode?: ColorCodingMode
-    customLayerParameters?: { cql_filter?: string, [key: string]: any }
-    rasterSource?: ProcessedRasterSource
-    visible: boolean
-    queryable?: boolean
-    schema?: string
-    layerCrs?: string; // CRS of the layer itself (e.g., "EPSG:3857")
-    // WFS-specific properties for server-side queries
-    wfsUrl?: string
-    typeName?: string
-}
-
-interface SidebarInsetWithPaginationProps {
+interface PopupContentWithPaginationProps {
     layerContent: LayerContentProps[]
-    onSectionChange: (layerTitle: string) => void
     onHighlightChange?: (features: HighlightFeature[]) => void
 }
 
@@ -102,7 +75,21 @@ const FeatureCard = memo(({
 });
 FeatureCard.displayName = 'FeatureCard';
 
-const PopupContentWithPaginationInner = ({ layerContent, onSectionChange, onHighlightChange }: SidebarInsetWithPaginationProps) => {
+// Raster-only card for layers with no vector features but with raster data
+const RasterOnlyCard = memo(({ layer }: { layer: LayerContentProps }) => {
+    return (
+        <div className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
+            <PopupContentDisplay
+                layer={layer}
+                feature={undefined}
+                layout="stacked"
+            />
+        </div>
+    )
+});
+RasterOnlyCard.displayName = 'RasterOnlyCard';
+
+const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange }: PopupContentWithPaginationProps) => {
     const { map } = useMap()
     const buttons = useGetPopupButtons()
     // -1 = "All", 0+ = specific layer index
@@ -132,11 +119,18 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange, onHigh
         }
     }
 
-    // Total feature count across all layers
-    const totalFeatures = useMemo(
-        () => layerContent.reduce((sum, layer) => sum + (layer.features?.length || 0), 0),
-        [layerContent]
-    )
+    // Total count across all layers (includes raster-only as 1)
+    const totalCount = useMemo(() => {
+        let count = 0
+        for (const layer of layerContent) {
+            count += layer.features?.length || 0
+            // Count raster-only layers as 1 result
+            if (layer.features.length === 0 && hasRasterData(layer)) {
+                count += 1
+            }
+        }
+        return count
+    }, [layerContent])
 
     // Collect all relatedTables and target values for bulk fetch
     // We group by layer since each layer might have different related tables
@@ -174,35 +168,16 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange, onHigh
     // Handle layer change via dropdown
     const handleLayerChange = useCallback((index: number) => {
         setSelectedLayerIndex(index)
-        if (index === -1) {
-            // "All" selected - highlight first feature of first layer
-            if (layerContent.length > 0 && layerContent[0].features.length > 0) {
-                const firstFeature = layerContent[0].features[0]
-                if (firstFeature.geometry) {
-                    onHighlightChange?.([{
-                        id: firstFeature.id as string | number,
-                        geometry: firstFeature.geometry,
-                        properties: firstFeature.properties || {}
-                    }])
-                }
-            }
-            onSectionChange('All')
-        } else {
-            const layer = layerContent[index]
-            if (layer) {
-                const title = layer.layerTitle || layer.groupLayerTitle
-                onSectionChange(title)
-                // Highlight first feature of selected layer
-                if (layer.features.length > 0 && layer.features[0].geometry) {
-                    onHighlightChange?.([{
-                        id: layer.features[0].id as string | number,
-                        geometry: layer.features[0].geometry,
-                        properties: layer.features[0].properties || {}
-                    }])
-                }
-            }
+        // Highlight first feature of selected layer (or first layer if "All")
+        const targetLayer = index === -1 ? layerContent[0] : layerContent[index]
+        if (targetLayer?.features.length > 0 && targetLayer.features[0].geometry) {
+            onHighlightChange?.([{
+                id: targetLayer.features[0].id as string | number,
+                geometry: targetLayer.features[0].geometry,
+                properties: targetLayer.features[0].properties || {}
+            }])
         }
-    }, [layerContent, onSectionChange, onHighlightChange])
+    }, [layerContent, onHighlightChange])
 
     const handleZoomToFeature = useCallback((feature: ExtendedFeature, sourceCRS: string, _title: string) => {
         if (!map) {
@@ -247,21 +222,20 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange, onHigh
                             </TooltipTrigger>
                             <TooltipContent side="bottom" className="max-w-xs">
                                 {selectedLayerIndex === -1
-                                    ? `All (${totalFeatures} feature${totalFeatures !== 1 ? 's' : ''})`
-                                    : `${layerContent[selectedLayerIndex]?.layerTitle || layerContent[selectedLayerIndex]?.groupLayerTitle} (${layerContent[selectedLayerIndex]?.features?.length || 0} feature${(layerContent[selectedLayerIndex]?.features?.length || 0) !== 1 ? 's' : ''})`
+                                    ? `All (${totalCount} result${totalCount !== 1 ? 's' : ''})`
+                                    : `${layerContent[selectedLayerIndex]?.layerTitle || layerContent[selectedLayerIndex]?.groupLayerTitle} (${layerContent[selectedLayerIndex] ? getLayerCountText(layerContent[selectedLayerIndex]) : '0 features'})`
                                 }
                             </TooltipContent>
                         </Tooltip>
                         <SelectContent>
                             <SelectItem value="-1">
-                                All ({totalFeatures} feature{totalFeatures !== 1 ? 's' : ''})
+                                All ({totalCount} result{totalCount !== 1 ? 's' : ''})
                             </SelectItem>
                             {layerContent.map((layer, index) => {
                                 const title = layer.layerTitle || layer.groupLayerTitle
-                                const count = layer.features?.length || 0
                                 return (
                                     <SelectItem key={`${title}-${index}`} value={String(index)}>
-                                        {title} ({count} feature{count !== 1 ? 's' : ''})
+                                        {title} ({getLayerCountText(layer)})
                                     </SelectItem>
                                 )
                             })}
@@ -274,40 +248,56 @@ const PopupContentWithPaginationInner = ({ layerContent, onSectionChange, onHigh
             <div className="space-y-3 px-2">
                 {showAll ? (
                     // Show all features grouped by layer
-                    layerContent.map((layer, layerIdx) => (
-                        <div key={`${layer.groupLayerTitle}-${layer.layerTitle}-${layerIdx}`}>
-                            {/* Layer header */}
-                            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">
-                                {layer.layerTitle || layer.groupLayerTitle}
+                    layerContent.map((layer, layerIdx) => {
+                        const hasFeatures = layer.features.length > 0;
+                        const hasRaster = hasRasterData(layer);
+
+                        // Skip layers with neither features nor raster data
+                        if (!hasFeatures && !hasRaster) return null;
+
+                        return (
+                            <div key={`${layer.groupLayerTitle}-${layer.layerTitle}-${layerIdx}`}>
+                                {/* Layer header */}
+                                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">
+                                    {layer.layerTitle || layer.groupLayerTitle}
+                                </div>
+                                {/* Features or raster-only content */}
+                                <div className="space-y-2">
+                                    {hasFeatures ? (
+                                        layer.features.map((feature, featureIdx) => (
+                                            <FeatureCard
+                                                key={`${feature.id || featureIdx}`}
+                                                layer={layer}
+                                                feature={feature}
+                                                buttons={buttons}
+                                                handleZoomToFeature={handleZoomToFeature}
+                                                bulkRelatedData={layer.relatedTables?.length ? bulkRelatedData : undefined}
+                                            />
+                                        ))
+                                    ) : hasRaster ? (
+                                        <RasterOnlyCard layer={layer} />
+                                    ) : null}
+                                </div>
                             </div>
-                            {/* Features in this layer */}
-                            <div className="space-y-2">
-                                {layer.features.map((feature, featureIdx) => (
-                                    <FeatureCard
-                                        key={`${feature.id || featureIdx}`}
-                                        layer={layer}
-                                        feature={feature}
-                                        buttons={buttons}
-                                        handleZoomToFeature={handleZoomToFeature}
-                                        bulkRelatedData={layer.relatedTables?.length ? bulkRelatedData : undefined}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                    ))
+                        );
+                    })
                 ) : selectedLayer ? (
                     // Show features from selected layer only
                     <div className="space-y-2">
-                        {selectedLayer.features.map((feature, featureIdx) => (
-                            <FeatureCard
-                                key={`${feature.id || featureIdx}`}
-                                layer={selectedLayer}
-                                feature={feature}
-                                buttons={buttons}
-                                handleZoomToFeature={handleZoomToFeature}
-                                bulkRelatedData={selectedLayer.relatedTables?.length ? bulkRelatedData : undefined}
-                            />
-                        ))}
+                        {selectedLayer.features.length > 0 ? (
+                            selectedLayer.features.map((feature, featureIdx) => (
+                                <FeatureCard
+                                    key={`${feature.id || featureIdx}`}
+                                    layer={selectedLayer}
+                                    feature={feature}
+                                    buttons={buttons}
+                                    handleZoomToFeature={handleZoomToFeature}
+                                    bulkRelatedData={selectedLayer.relatedTables?.length ? bulkRelatedData : undefined}
+                                />
+                            ))
+                        ) : hasRasterData(selectedLayer) ? (
+                            <RasterOnlyCard layer={selectedLayer} />
+                        ) : null}
                     </div>
                 ) : null}
             </div>

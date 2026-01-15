@@ -6,7 +6,7 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import maplibregl from 'maplibre-gl'
-import DataMap, { ClickedFeature, HighlightFeature, DrawMode, SpatialFilter } from '@/components/maps/data-map'
+import DataMap, { HighlightFeature, DrawMode, SpatialFilter } from '@/components/maps/data-map'
 import { PopupSheet, PopupSheetRef } from '@/components/maps/popups/popup-sheet'
 import { QueryResultsTable } from '@/components/data-table/query-results-table'
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs'
@@ -18,14 +18,14 @@ import { useSidebar } from '@/hooks/use-sidebar'
 import { cn } from '@/lib/utils'
 import { MobileMapNav } from './mobile-map-nav'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
-import type { LayerContentProps } from '@/components/maps/popups/popup-content-with-pagination'
 import { MapContext } from '@/context/map-context'
 import { useMapInstance } from '@/context/map-instance-context'
 import { ViewModeControl } from '@/lib/map/controls/view-mode-control'
 import { HomeControl } from '@/lib/map/controls/home-control'
 import { DualScaleControl } from '@/lib/map/controls/dual-scale-control'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
-import { findWmsLayerByTitle } from '@/lib/map/layer-utils'
+import { usePopupData } from '@/hooks/use-popup-data'
+import { getBboxCenter } from '@/lib/map/conversion-utils'
 import type { LegendItem } from '@/lib/map/controls/export-control'
 import type { LayerProps, WMSLayerProps } from '@/lib/types/mapping-types'
 import { createSVGSymbol } from '@/lib/legend/symbol-generator'
@@ -412,52 +412,28 @@ export default function GenericMapContainer({
     setMapInteraction(prev => ({ ...prev, boxSelectBounds: null }))
   }, [clearAllSelections])
 
-  // Derived: has results
-  const hasResults = useMemo(() => selectedFeatures.length > 0, [selectedFeatures])
+  // Derived: click point for raster queries (center of click buffer)
+  const clickPoint = useMemo(() => {
+    if (!clickBufferBounds) return null
+    return getBboxCenter(clickBufferBounds)
+  }, [clickBufferBounds])
+
+  // Unified popup data: groups features by layer + fetches raster values
+  const { popupData: popupContent } = usePopupData({
+    vectorFeatures: selectedFeatures,
+    clickPoint,
+    clickBbox: clickBufferBounds,
+    layersConfig,
+  })
+
+  // Derived: has results (includes raster-only layers)
+  const hasResults = useMemo(() => popupContent.length > 0, [popupContent])
 
   // Sync ViewModeControl state (mode and hasResults)
   useEffect(() => {
     viewModeControlRef.current?.setHasResults(hasResults)
     viewModeControlRef.current?.setMode(viewMode)
   }, [hasResults, viewMode])
-
-  // Derived: popup content grouped by layer (includes popupFields from layer config)
-  const popupContent: LayerContentProps[] = useMemo(() => {
-    if (selectedFeatures.length === 0) return []
-
-    const byLayer = new Map<string, ClickedFeature[]>()
-    for (const f of selectedFeatures) {
-      const title = f.layerTitle || 'Unknown Layer'
-      if (!byLayer.has(title)) byLayer.set(title, [])
-      byLayer.get(title)!.push(f)
-    }
-
-    return Array.from(byLayer.entries()).map(([title, features]) => {
-      // Look up layer config to get popupFields and CRS
-      const wmsLayer = findWmsLayerByTitle(layersConfig, title)
-      const sublayerConfig = wmsLayer?.sublayers?.[0]
-
-      return {
-        groupLayerTitle: title,
-        layerTitle: title,
-        // WFS queries always return EPSG:4326 (srsName=EPSG:4326 in use-feature-info-query.tsx)
-        sourceCRS: 'EPSG:4326',
-        visible: true,
-        popupFields: sublayerConfig?.popupFields,
-        relatedTables: sublayerConfig?.relatedTables,
-        linkFields: sublayerConfig?.linkFields,
-        colorCodingMap: sublayerConfig?.colorCodingMap,
-        colorCodingMode: sublayerConfig?.colorCodingMode,
-        features: features.map((f) => ({
-          type: 'Feature' as const,
-          id: f.id,
-          geometry: f.geometry || { type: 'Point' as const, coordinates: [0, 0] },
-          properties: f.properties,
-          namespace: title,
-        })),
-      }
-    })
-  }, [selectedFeatures, layersConfig])
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode)

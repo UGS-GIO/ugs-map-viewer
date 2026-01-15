@@ -45,7 +45,7 @@ import {
     Map,
     SplitSquareVertical,
 } from 'lucide-react';
-import type { LayerContentProps, ExtendedFeature } from '@/components/maps/popups/popup-content-with-pagination';
+import { hasRasterData, type LayerContentProps, type ExtendedFeature } from '@/components/maps/popups/types';
 import type { SelectedFeatureRef } from '@/hooks/use-map-url-sync';
 import type { HighlightFeature } from '@/components/maps/types';
 import { useMap } from '@/hooks/use-map';
@@ -93,9 +93,11 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
     const mapRef = useRef(map);
     mapRef.current = map;
 
-    // Filter to only layers with features
-    const layersWithFeatures = useMemo(() =>
-        layerContent.filter(layer => layer.features && layer.features.length > 0),
+    // Filter to layers with features OR raster data
+    const layersWithData = useMemo(() =>
+        layerContent.filter(layer =>
+            (layer.features && layer.features.length > 0) || hasRasterData(layer)
+        ),
         [layerContent]
     );
 
@@ -119,11 +121,37 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
     }, [openDropdown]);
 
     // Get the currently selected layer
-    const selectedLayer = layersWithFeatures[selectedLayerIndex] || null;
+    const selectedLayer = layersWithData[selectedLayerIndex] || null;
 
     // Get rows for selected layer only
     const rowData = useMemo((): RowData[] => {
-        if (!selectedLayer?.features) return [];
+        if (!selectedLayer) return [];
+
+        // Handle raster-only layers
+        if (selectedLayer.features.length === 0 && hasRasterData(selectedLayer)) {
+            const rasterSource = selectedLayer.rasterSource!;
+            const rasterValue = rasterSource.data?.features?.[0]?.properties?.[rasterSource.valueField];
+            const displayValue = rasterSource.transform
+                ? rasterSource.transform(rasterValue)
+                : String(rasterValue ?? 'N/A');
+
+            // Create a synthetic row for raster data
+            const syntheticFeature: ExtendedFeature = {
+                type: 'Feature',
+                id: 'raster-0',
+                geometry: { type: 'Point', coordinates: [0, 0] },
+                properties: { [rasterSource.valueLabel]: displayValue },
+                namespace: selectedLayer.layerTitle || selectedLayer.groupLayerTitle,
+            };
+
+            return [{
+                id: `${selectedLayer.layerTitle}-raster-0`,
+                layerTitle: selectedLayer.layerTitle || selectedLayer.groupLayerTitle,
+                sourceCRS: selectedLayer.sourceCRS,
+                feature: syntheticFeature,
+                properties: syntheticFeature.properties || {},
+            }];
+        }
 
         return selectedLayer.features.map((feature, i) => ({
             id: `${selectedLayer.layerTitle}-${feature.id || i}`,
@@ -163,7 +191,17 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
     // Get column configs for selected layer only
     // Falls back to auto-generating columns from feature properties if no popupFields
     const columnConfigs = useMemo((): ColumnConfig[] => {
-        if (selectedLayer?.popupFields) {
+        // Handle raster-only layers
+        if (selectedLayer?.features.length === 0 && hasRasterData(selectedLayer)) {
+            const rasterSource = selectedLayer.rasterSource!;
+            return [{
+                id: rasterSource.valueLabel,
+                label: rasterSource.valueLabel,
+                field: rasterSource.valueLabel,
+            }];
+        }
+
+        if (selectedLayer?.popupFields && Object.keys(selectedLayer.popupFields).length > 0) {
             return Object.entries(selectedLayer.popupFields).map(([label, fieldConfig]) => ({
                 id: fieldConfig.field,
                 label,
@@ -486,12 +524,15 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         },
     });
 
-    // Total feature count across all layers
-    const totalFeatures = layersWithFeatures.reduce(
-        (sum, layer) => sum + (layer.features?.length || 0), 0
-    );
+    // Total count across all layers (includes raster-only as 1)
+    const totalCount = layersWithData.reduce((sum, layer) => {
+        const featureCount = layer.features?.length || 0;
+        if (featureCount > 0) return sum + featureCount;
+        if (hasRasterData(layer)) return sum + 1;
+        return sum;
+    }, 0);
 
-    if (totalFeatures === 0) {
+    if (totalCount === 0) {
         return (
             <div className="flex flex-col items-center justify-center h-full min-h-[200px] text-muted-foreground gap-3">
                 <Table2 className="h-8 w-8 opacity-50" />
@@ -510,13 +551,13 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         <div className="flex flex-col h-full">
             {/* Header row 1: Layer selector + close */}
             <div className="flex items-center justify-between gap-2 py-1.5 px-2 md:px-4 border-b shrink-0 bg-background">
-                {layersWithFeatures.length > 1 ? (
+                {layersWithData.length > 1 ? (
                     <select
                         value={selectedLayerIndex}
                         onChange={(e) => handleLayerChange(Number(e.target.value))}
                         className="h-7 px-2 rounded border border-input bg-background text-sm font-medium truncate flex-1 min-w-0"
                     >
-                        {layersWithFeatures.map((layer, index) => {
+                        {layersWithData.map((layer, index) => {
                             const title = layer.layerTitle || layer.groupLayerTitle;
                             const count = layer.features?.length || 0;
                             return (

@@ -273,7 +273,6 @@ async function queryVisibleLayers(
     queries.map(async ({ typeName, layerTitle }) => {
       try {
         const geometryField = await getGeometryField(wfsUrl, typeName)
-        console.log(`[WFS] Layer ${typeName} using geometry field: ${geometryField}`)
         const features = await queryWfs({
           wfsUrl,
           typeName,

@@ -3,7 +3,8 @@ import { useCallback, useMemo, useRef, useState, useImperativeHandle, forwardRef
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import { LayerContentProps, PopupContentWithPagination } from "@/components/maps/popups/popup-content-with-pagination";
+import type { LayerContentProps } from "@/components/maps/popups/types";
+import { PopupContentWithPagination } from "@/components/maps/popups/popup-content-with-pagination";
 import { XIcon } from "lucide-react";
 import type { HighlightFeature } from "@/components/maps/types";
 
@@ -70,10 +71,6 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
 
     const setContainerRef = useCallback((node: HTMLDivElement | null) => {
         containerRef.current = node;
-    }, []);
-
-    const onSectionChange = useCallback((_layerTitle: string) => {
-        // No-op - dropdown in PopupContentWithPagination handles this now
     }, []);
 
     const handleClose = useCallback(() => {
@@ -189,7 +186,6 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
                             <PopupContentWithPagination
                                 key={contentKey}
                                 layerContent={popupContent}
-                                onSectionChange={onSectionChange}
                                 onHighlightChange={onHighlightChange}
                             />
                         </div>
