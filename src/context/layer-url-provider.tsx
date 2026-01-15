@@ -50,6 +50,28 @@ const getDefaultSelected = (layers: LayerProps[]): string[] => {
     return selected;
 };
 
+// Check if a group has any visible children by default
+const hasVisibleChildren = (layers: LayerProps[]): boolean =>
+    layers.some(layer => {
+        if (layer.type === 'group' && 'layers' in layer && layer.layers) {
+            return hasVisibleChildren(layer.layers);
+        }
+        return layer.visible === true;
+    });
+
+// Get default group visibility: false if no children are visible
+const getDefaultGroupVisibility = (layers: LayerProps[]): Map<string, boolean> => {
+    const visibility = new Map<string, boolean>();
+    layers.forEach(layer => {
+        if (layer.type === 'group' && layer.title && 'layers' in layer && layer.layers) {
+            visibility.set(layer.title, hasVisibleChildren(layer.layers));
+            // Recurse for nested groups
+            getDefaultGroupVisibility(layer.layers).forEach((v, k) => visibility.set(k, v));
+        }
+    });
+    return visibility;
+};
+
 const normalizeLayersObj = (layers: string | { selected?: string[] } | undefined): { selected?: string[] } => {
     if (typeof layers === 'string') {
         try {
@@ -137,8 +159,13 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
     );
     const activeFilters: ActiveFilters = useMemo(() => urlFilters || {}, [urlFilters]);
 
-    // Group visibility state (default: all groups visible)
+    // Group visibility state
     const [groupVisibility, setGroupVisibilityState] = useState<GroupVisibility>(() => new Map());
+
+    // Compute default group visibility from config (groups with no visible children default to false)
+    const defaultGroupVisibility = useMemo(() =>
+        layersConfig ? getDefaultGroupVisibility(layersConfig) : new Map<string, boolean>()
+    , [layersConfig]);
 
     const setGroupVisibility = useCallback((groupTitle: string, visible: boolean) => {
         setGroupVisibilityState(prev => {
@@ -202,13 +229,20 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         });
     }, [navigate]);
 
+    // Merge user state with defaults (user state takes precedence)
+    const mergedGroupVisibility = useMemo(() => {
+        const merged = new Map(defaultGroupVisibility);
+        groupVisibility.forEach((v, k) => merged.set(k, v));
+        return merged;
+    }, [defaultGroupVisibility, groupVisibility]);
+
     const value = {
         selectedLayerTitles,
         activeFilters,
         updateLayerSelection,
         updateFilter,
         isInitialized,
-        groupVisibility,
+        groupVisibility: mergedGroupVisibility,
         setGroupVisibility,
     };
 
