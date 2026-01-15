@@ -50,10 +50,10 @@ const basinNamesWMSConfig: WMSLayerProps = {
             colorCodingMap: {
                 'ranknumber': (value: string | number) => {
                     const strValue = String(value).toLowerCase();
-                    if (strValue === "coming soon") return "#ABA290";
-                    if (strValue === "excellent") return "#3DC200";
-                    if (strValue === "moderate") return "#FFE700";
-                    if (strValue === "limited") return "#FF7E00";
+                    if (strValue.includes("coming soon")) return "#ABA290";
+                    if (strValue.includes("excellent")) return "#3DC200";
+                    if (strValue.includes("moderate")) return "#FFE700";
+                    if (strValue.includes("limited")) return "#FF7E00";
                     return "#808080";
                 }
             },
@@ -716,11 +716,11 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
             colorCodingMap: {
                 'ranking': (value: string | number) => {
                     const strValue = String(value).toLowerCase();
-                    if (!value || strValue === "none" || strValue === "null") return "#ABA290";
                     if (strValue.includes("excellent")) return "#3DC200";
-                    if (strValue.includes("good")) return "#FFE700";
-                    if (strValue.includes("some")) return "#FF7E00";
-                    return "#808080";
+                    if (strValue.includes("good")) return "#CFFF00";
+                    if (strValue.includes("some")) return "#FFE700";
+                    if (strValue.includes("limited")) return "#FF7E00";
+                    return "#CDCDCD"; // Not Evaluated
                 }
             },
             colorCodingMode: 'background',
