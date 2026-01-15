@@ -48,7 +48,7 @@ const basinNamesWMSConfig: WMSLayerProps = {
                 },
             },
             colorCodingMap: {
-                'ranknumber': (value: string | number) => {
+                'Rank': (value: string | number) => {
                     const strValue = String(value).toLowerCase();
                     if (strValue === "coming soon") return "#ABA290";
                     if (strValue === "excellent") return "#3DC200";
@@ -714,7 +714,7 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
                 '': { field: 'linktoreport', type: 'string', transform: (value: string | null) => value },
             },
             colorCodingMap: {
-                'ranking': (value: string | number) => {
+                'Ranking': (value: string | number) => {
                     const strValue = String(value).toLowerCase();
                     if (!value || strValue === "none" || strValue === "null") return "#ABA290";
                     if (strValue.includes("excellent")) return "#3DC200";
