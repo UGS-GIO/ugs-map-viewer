@@ -201,9 +201,6 @@ const qFaultsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: qFaultsWMSTitle,
     visible: true,
-    customLayerParameters: {
-        cql_filter: `is_current	= 'Y'`,
-    },
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${qFaultsLayerName}`,
