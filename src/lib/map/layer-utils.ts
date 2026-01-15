@@ -52,6 +52,22 @@ export function findWmsLayerByTitle(layers: LayerProps[], title: string): WMSLay
 }
 
 /**
+ * Find any layer by title, searching recursively through groups
+ * Works for WMS, WFS, PMTiles, and other layer types
+ */
+export function findLayerByTitle(layers: LayerProps[], title: string): LayerProps | null {
+  for (const layer of layers) {
+    if (layer.type === 'group' && 'layers' in layer && layer.layers) {
+      const found = findLayerByTitle(layer.layers, title)
+      if (found) return found
+    } else if (layer.title === title) {
+      return layer
+    }
+  }
+  return null
+}
+
+/**
  * Parsed WMS URL components
  */
 export interface ParsedWmsUrl {

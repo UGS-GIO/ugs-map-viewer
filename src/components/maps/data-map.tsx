@@ -1,5 +1,5 @@
 import { useRef, useMemo, useCallback, useState, useEffect } from 'react'
-import { useWfsLayerData, getWfsSourceId } from '@/hooks/use-wfs-layer-data'
+import { useWfsLayerData, getWfsSourceId, queryWfsLayersInScreenBbox, queryWfsLayersAtPoint, type WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
 import Map, { NavigationControl, Source, Layer, MapLayerMouseEvent } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -17,11 +17,13 @@ import { flattenWmsLayers, flattenWfsLayers, buildWmsTileUrl, getWmsLayerName } 
 import type maplibregl from 'maplibre-gl'
 
 import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
+import { getBboxCenter } from '@/lib/map/conversion-utils'
 import { useTerraDraw } from '@/hooks/use-terra-draw'
 import { useFeatureQuery } from '@/hooks/use-feature-query'
 import type { DataMapProps } from './types'
 import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
+import { bbox as turfBbox } from '@turf/bbox'
 
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps } from './types'
@@ -87,15 +89,23 @@ export default function DataMap({
   // Fetch WFS layer data using TanStack Query (automatic caching, retries, deduplication)
   const { data: wfsLayerData } = useWfsLayerData(visibleWfsLayers)
 
-  // Ref for stable access to visibleWmsLayers in callbacks (prevents TerraDraw reinit)
+  // Refs for stable access to layers in callbacks (prevents TerraDraw reinit)
   const visibleWmsLayersRef = useRef(visibleWmsLayers)
   visibleWmsLayersRef.current = visibleWmsLayers
+  const visibleWfsLayersRef = useRef(visibleWfsLayers)
+  visibleWfsLayersRef.current = visibleWfsLayers
+
+  // Ref to store WFS features from polygon query (populated before WMS query completes)
+  const polygonWfsLayerFeaturesRef = useRef<WfsLayerFeature[]>([])
 
   // Feature query mutations
   const { clickQuery, boxSelectQuery, polygonQuery, isLoading: queryLoading } = useFeatureQuery({
-    onPolygonQuerySuccess: (features) => {
-      if (onFeatureClick && features.length > 0) {
-        onFeatureClick(features, { additive: false })
+    onPolygonQuerySuccess: (wmsFeatures) => {
+      // Merge WMS results with pre-queried WFS features
+      const allFeatures = [...wmsFeatures, ...polygonWfsLayerFeaturesRef.current]
+      polygonWfsLayerFeaturesRef.current = [] // Clear for next query
+      if (onFeatureClick && allFeatures.length > 0) {
+        onFeatureClick(allFeatures, { additive: false })
       }
     },
   })
@@ -105,20 +115,44 @@ export default function DataMap({
   polygonQueryRef.current = polygonQuery
 
   // Wrap onSpatialFilterChange to also trigger polygon query
-  // Uses refs for visibleWmsLayers and polygonQuery to keep callback stable (prevents TerraDraw reinit)
+  // Uses refs for visibleWmsLayers/visibleWfsLayers and polygonQuery to keep callback stable (prevents TerraDraw reinit)
   const handleSpatialFilterChange = useCallback((filter: NonNullable<typeof spatialFilter> | null) => {
     onSpatialFilterChange?.(filter)
 
-    // Trigger polygon query if filter has a polygon
-    const layers = visibleWmsLayersRef.current
-    if (filter?.polygon && layers.length > 0) {
-      polygonQueryRef.current.mutate({
-        polygon: filter.polygon,
-        visibleLayers: layers,
-        wmsUrl,
-      })
+    if (!filter?.polygon) return
+
+    const map = mapRef.current?.getMap()
+    const wmsLayers = visibleWmsLayersRef.current
+    const wfsLayers = visibleWfsLayersRef.current
+
+    // Query WFS layers client-side within polygon bbox
+    let wfsFeatures: WfsLayerFeature[] = []
+    if (map && wfsLayers.length > 0) {
+      const [minX, minY, maxX, maxY] = turfBbox(filter.polygon)
+      const sw = map.project([minX, minY])
+      const ne = map.project([maxX, maxY])
+      const screenBbox: [maplibregl.PointLike, maplibregl.PointLike] = [[sw.x, ne.y], [ne.x, sw.y]]
+      wfsFeatures = queryWfsLayersInScreenBbox(map, screenBbox, wfsLayers)
     }
-  }, [onSpatialFilterChange, wmsUrl])
+
+    // If no WMS layers, just use WFS results directly
+    if (wmsLayers.length === 0) {
+      if (wfsFeatures.length > 0 && onFeatureClick) {
+        onFeatureClick(wfsFeatures, { additive: false })
+      }
+      return
+    }
+
+    // Store WFS features for merging when WMS query completes
+    polygonWfsLayerFeaturesRef.current = wfsFeatures
+
+    // Trigger WMS polygon query
+    polygonQueryRef.current.mutate({
+      polygon: filter.polygon,
+      visibleLayers: wmsLayers,
+      wmsUrl,
+    })
+  }, [onSpatialFilterChange, wmsUrl, onFeatureClick])
 
   // Terra Draw hook
   const { justFinishedDrawingRef } = useTerraDraw({
@@ -192,7 +226,8 @@ export default function DataMap({
       justFinishedDrawingRef.current = false
       return
     }
-    if (!onFeatureClick || visibleWmsLayers.length === 0) return
+    // Allow click if there are WMS or WFS layers
+    if (!onFeatureClick || (visibleWmsLayers.length === 0 && visibleWfsLayers.length === 0)) return
 
     const map = mapRef.current?.getMap()
     if (!map) return
@@ -209,6 +244,28 @@ export default function DataMap({
 
     const isAdditive = isAdditiveMode || (e.originalEvent?.shiftKey ?? false)
 
+    // Query WFS layers client-side (already rendered on map)
+    const wfsFeatures = queryWfsLayersAtPoint(map, e.point, clickTolerance, visibleWfsLayers)
+
+    // If no WMS layers, just use WFS results directly
+    if (visibleWmsLayers.length === 0) {
+      if (wfsFeatures.length > 0) {
+        onFeatureClick(wfsFeatures, { additive: isAdditive })
+        const firstFeature = wfsFeatures.find(f => f.geometry)
+        if (firstFeature?.geometry && onFeatureBboxChange) {
+          const bbox = calculateBboxFromGeometry(firstFeature.geometry)
+          if (bbox) {
+            onFeatureBboxChange({ sw: [bbox[0], bbox[1]], ne: [bbox[2], bbox[3]] })
+          }
+        }
+      } else if (!isAdditive) {
+        onFeatureClick([], { additive: false })
+        onFeatureBboxChange?.(null)
+      }
+      return
+    }
+
+    // Query WMS layers via WFS, then merge with client-side WFS results
     clickQuery.mutate(
       {
         point: { x: e.point.x, y: e.point.y },
@@ -218,11 +275,14 @@ export default function DataMap({
         wmsUrl,
       },
       {
-        onSuccess: (features) => {
-          if (features.length > 0) {
-            onFeatureClick(features, { additive: isAdditive })
+        onSuccess: (wmsFeatures) => {
+          // Merge WMS and WFS layer results
+          const allFeatures = [...wmsFeatures, ...wfsFeatures]
 
-            const firstFeature = features.find(f => f.geometry)
+          if (allFeatures.length > 0) {
+            onFeatureClick(allFeatures, { additive: isAdditive })
+
+            const firstFeature = allFeatures.find(f => f.geometry)
             if (firstFeature?.geometry && onFeatureBboxChange) {
               const bbox = calculateBboxFromGeometry(firstFeature.geometry)
               if (bbox) {
@@ -236,7 +296,7 @@ export default function DataMap({
         },
       }
     )
-  }, [onFeatureClick, visibleWmsLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, drawMode, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange])
+  }, [onFeatureClick, visibleWmsLayers, visibleWfsLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, drawMode, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange])
 
   // Handle map move end - track zoom only (box select now uses click-to-confirm)
   const handleMoveEnd = useCallback(() => {
@@ -273,7 +333,22 @@ export default function DataMap({
     // Notify parent to store frozen bounds (for visualization)
     onBoxSelectConfirm?.(bounds)
 
-    // Trigger the query with the frozen bbox
+    // Query WFS layers in the box area client-side
+    const screenBbox: [maplibregl.PointLike, maplibregl.PointLike] = [
+      [centerX - halfBox, centerY - halfBox],
+      [centerX + halfBox, centerY + halfBox]
+    ]
+    const wfsFeatures = queryWfsLayersInScreenBbox(map, screenBbox, visibleWfsLayers)
+
+    // If no WMS layers, just use WFS results directly
+    if (visibleWmsLayers.length === 0 && onFeatureClick) {
+      if (wfsFeatures.length > 0) {
+        onFeatureClick(wfsFeatures, { additive: isAdditiveMode })
+      }
+      return
+    }
+
+    // Trigger the query with the frozen bbox, then merge WFS results
     if (visibleWmsLayers.length > 0 && onFeatureClick) {
       boxSelectQuery.mutate(
         {
@@ -285,16 +360,17 @@ export default function DataMap({
           wmsUrl,
         },
         {
-          onSuccess: (features) => {
-            if (features.length > 0) {
+          onSuccess: (wmsFeatures) => {
+            const allFeatures = [...wmsFeatures, ...wfsFeatures]
+            if (allFeatures.length > 0) {
               // Use current isAdditiveMode value (not stale closure)
-              onFeatureClick(features, { additive: isAdditiveMode })
+              onFeatureClick(allFeatures, { additive: isAdditiveMode })
             }
           },
         }
       )
     }
-  }, [onBoxSelectConfirm, visibleWmsLayers, boxSelectQuery, wmsUrl, onFeatureClick, isAdditiveMode])
+  }, [onBoxSelectConfirm, visibleWmsLayers, visibleWfsLayers, boxSelectQuery, wmsUrl, onFeatureClick, isAdditiveMode])
 
   // Handle map load
   const handleLoad = useCallback(() => {
@@ -304,17 +380,29 @@ export default function DataMap({
       onMapReady?.(map)
 
       // Restore query from URL if clickBufferBounds exists
-      if (!hasRestoredRef.current && clickBufferBounds && onFeatureClick && visibleWmsLayers.length > 0) {
+      const hasLayers = visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0
+      if (!hasRestoredRef.current && clickBufferBounds && onFeatureClick && hasLayers) {
         hasRestoredRef.current = true
 
-        const centerLng = (clickBufferBounds.sw[0] + clickBufferBounds.ne[0]) / 2
-        const centerLat = (clickBufferBounds.sw[1] + clickBufferBounds.ne[1]) / 2
-        const centerPoint = map.project([centerLng, centerLat])
+        const center = getBboxCenter(clickBufferBounds)
+        const centerPoint = map.project([center.lng, center.lat])
 
         const swPoint = map.project([clickBufferBounds.sw[0], clickBufferBounds.sw[1]])
         const nePoint = map.project([clickBufferBounds.ne[0], clickBufferBounds.ne[1]])
         const tolerance = Math.abs(nePoint.x - swPoint.x) / 2
 
+        // Query WFS layers client-side
+        const wfsFeatures = queryWfsLayersAtPoint(map, centerPoint, tolerance || clickTolerance, visibleWfsLayers)
+
+        // If no WMS layers, just use WFS results directly
+        if (visibleWmsLayers.length === 0) {
+          if (wfsFeatures.length > 0) {
+            onFeatureClick(wfsFeatures, { additive: false })
+          }
+          return
+        }
+
+        // Query WMS layers via WFS, then merge
         clickQuery.mutate(
           {
             point: { x: centerPoint.x, y: centerPoint.y },
@@ -324,16 +412,17 @@ export default function DataMap({
             wmsUrl,
           },
           {
-            onSuccess: (features) => {
-              if (features.length > 0) {
-                onFeatureClick(features, { additive: false })
+            onSuccess: (wmsFeatures) => {
+              const allFeatures = [...wmsFeatures, ...wfsFeatures]
+              if (allFeatures.length > 0) {
+                onFeatureClick(allFeatures, { additive: false })
               }
             },
           }
         )
       }
     }
-  }, [onMapReady, clickBufferBounds, onFeatureClick, visibleWmsLayers, clickTolerance, clickQuery, wmsUrl])
+  }, [onMapReady, clickBufferBounds, onFeatureClick, visibleWmsLayers, visibleWfsLayers, clickTolerance, clickQuery, wmsUrl])
 
   // Combine loading states
   const showLoading = isLoading || queryLoading
@@ -371,7 +460,7 @@ export default function DataMap({
 
   const handleQueryHere = useCallback((coords: { lng: number; lat: number }) => {
     const map = mapRef.current?.getMap()
-    if (!map || !onFeatureClick || visibleWmsLayers.length === 0) return
+    if (!map || !onFeatureClick || (visibleWmsLayers.length === 0 && visibleWfsLayers.length === 0)) return
 
     const point = map.project([coords.lng, coords.lat])
 
@@ -380,6 +469,18 @@ export default function DataMap({
     const ne = map.unproject([point.x + clickTolerance, point.y - clickTolerance])
     onClickBufferChange?.({ sw: [sw.lng, sw.lat], ne: [ne.lng, ne.lat] })
 
+    // Query WFS layers client-side
+    const wfsFeatures = queryWfsLayersAtPoint(map, point, clickTolerance, visibleWfsLayers)
+
+    // If no WMS layers, just use WFS results directly
+    if (visibleWmsLayers.length === 0) {
+      if (wfsFeatures.length > 0) {
+        onFeatureClick(wfsFeatures, { additive: false })
+      }
+      return
+    }
+
+    // Query WMS layers via WFS, then merge
     clickQuery.mutate(
       {
         point: { x: point.x, y: point.y },
@@ -389,14 +490,15 @@ export default function DataMap({
         wmsUrl,
       },
       {
-        onSuccess: (features) => {
-          if (features.length > 0) {
-            onFeatureClick(features, { additive: false })
+        onSuccess: (wmsFeatures) => {
+          const allFeatures = [...wmsFeatures, ...wfsFeatures]
+          if (allFeatures.length > 0) {
+            onFeatureClick(allFeatures, { additive: false })
           }
         },
       }
     )
-  }, [visibleWmsLayers, clickTolerance, clickQuery, wmsUrl, onFeatureClick, onClickBufferChange])
+  }, [visibleWmsLayers, visibleWfsLayers, clickTolerance, clickQuery, wmsUrl, onFeatureClick, onClickBufferChange])
 
   const handleZoomIn = useCallback((coords: { lng: number; lat: number }) => {
     const map = mapRef.current?.getMap()

@@ -84,6 +84,19 @@ export const convertBbox = (bbox: number[], sourceEPSG: string, targetEPSG: stri
 };
 
 /**
+ * Get the center point of a bounding box.
+ *
+ * @param bbox - Bounding box with sw (southwest) and ne (northeast) corners
+ * @returns Center point as { lng, lat }
+ */
+export function getBboxCenter(bbox: { sw: [number, number]; ne: [number, number] }): { lng: number; lat: number } {
+    return {
+        lng: (bbox.sw[0] + bbox.ne[0]) / 2,
+        lat: (bbox.sw[1] + bbox.ne[1]) / 2,
+    };
+}
+
+/**
  * Convert Polygon rings to WGS84 (EPSG:4326)
  * Handles multiple EPSG codes including Web Mercator variants
  */

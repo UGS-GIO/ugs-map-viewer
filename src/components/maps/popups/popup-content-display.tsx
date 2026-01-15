@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button";
 import { RelatedDataMap, EMPTY_RELATED_DATA_MAP } from "@/hooks/use-bulk-related-table";
 import { Feature, Geometry, GeoJsonProperties } from "geojson";
 import { ExternalLink } from "lucide-react";
-import { LayerContentProps } from "@/components/maps/popups/popup-content-with-pagination";
+import type { LayerContentProps } from "@/components/maps/popups/types";
 import { Link } from "@/components/ui/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatNumeric } from "@/lib/utils";
