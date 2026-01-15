@@ -704,10 +704,10 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
                     field: 'ranking', type: 'string',
                     transform: (value: string | null) => {
                         if (value === 'None' || value === null) {
-                            return 'Not evaluated';
-                        } else {
-                            return value;
+                            return 'Not Evaluated';
                         }
+                        // Strip leading number (e.g., "4.0 Good Potential" -> "Good Potential")
+                        return value.replace(/^\d+(\.\d+)?\s*/, '');
                     }
                 },
                 'Description': { field: 'description', type: 'string' },
@@ -716,10 +716,10 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
             colorCodingMap: {
                 'ranking': (value: string | number) => {
                     const strValue = String(value).toLowerCase();
-                    if (strValue === "not evaluated") return "#ABA290";
-                    if (strValue === "excellent") return "#3DC200";
-                    if (strValue === "moderate") return "#FFE700";
-                    if (strValue === "limited") return "#FF7E00";
+                    if (!value || strValue === "none" || strValue === "null") return "#ABA290";
+                    if (strValue.includes("excellent")) return "#3DC200";
+                    if (strValue.includes("good")) return "#FFE700";
+                    if (strValue.includes("some")) return "#FF7E00";
                     return "#808080";
                 }
             },
