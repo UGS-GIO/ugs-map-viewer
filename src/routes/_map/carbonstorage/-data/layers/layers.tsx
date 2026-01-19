@@ -781,6 +781,40 @@ const ccsExclusionAreasWMSConfig: WMSLayerProps = {
 };
 
 
+const ccusProjectsLayerName = 'ccus_projects_current';
+const ccusProjectsWMSTitle = 'CCUS Projects';
+const ccusProjectsWMSConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: ccusProjectsWMSTitle,
+    visible: false,
+    crs: 'EPSG:3857',
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${ccusProjectsLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Project Name': { field: 'generalregionname', type: 'string' },
+                'Timeline': { field: 'timeline', type: 'string' },
+                'Project Summary': { field: 'projectsummary', type: 'string' },
+                'Reservoir Investigated': { field: 'reservoirinvestigated', type: 'string' },
+                '': { field: 'link', type: 'string', transform: (value: string | null) => value },
+            },
+            linkFields: {
+                'link': {
+                    transform: (value: string) => {
+                        if (!value) {
+                            return [{ label: 'Not available', href: '' }];
+                        }
+                        return [{ label: 'More Information', href: value }];
+                    }
+                }
+            }
+        }
+    ],
+};
+
 const geothermalPowerplantsLayerName = 'ccus_geothermalpowerplants';
 const geothermalPowerplantsWMSTitle = 'Geothermal Power Plants';
 const geothermalPowerplantsWMSConfig: WMSLayerProps = {
@@ -815,7 +849,8 @@ const ccsResourcesConfig: LayerProps = {
         basinNamesWMSConfig,
         co2SourcesWMSConfig,
         sitlaReportsWMSConfig,
-        ccsExclusionAreasWMSConfig
+        ccsExclusionAreasWMSConfig,
+        ccusProjectsWMSConfig
     ]
 }
 
