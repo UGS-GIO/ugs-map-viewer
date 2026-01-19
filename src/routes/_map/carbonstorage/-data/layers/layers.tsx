@@ -119,7 +119,7 @@ const sco2WFSConfig: WFSLayerProps = {
     wfsUrl: `${PROD_GEOSERVER_URL}/wfs`,
     typeName: `${ENERGY_MINERALS_WORKSPACE}:${sco2LayerName}`,
     title: sco2WFSTitle,
-    visible: true,
+    visible: false,
     crs: 'EPSG:4326',
     geometryType: 'point',
     style: {
@@ -787,7 +787,7 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: ccusProjectsWMSTitle,
-    visible: false,
+    visible: true,
     crs: 'EPSG:3857',
     sublayers: [
         {
