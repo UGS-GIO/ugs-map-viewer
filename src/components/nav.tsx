@@ -338,6 +338,7 @@ export function NavLinkIcon({
 
       )}
       aria-current={checkActiveNav(link.componentPath ?? '') ? 'page' : undefined}
+      data-tour={link.title?.toLowerCase() === 'feedback' ? 'feedback' : undefined}
     >
       {/* {link.icon} */}
       <TooltipProvider>

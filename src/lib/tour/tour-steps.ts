@@ -124,6 +124,33 @@ export const baseMapSteps: DriveStep[] = [
     },
   },
   {
+    element: '[data-tour="theme-switch"]',
+    popover: {
+      title: 'Theme',
+      description: 'Switch between light and dark mode.',
+      side: 'right',
+      align: 'center',
+    },
+  },
+  {
+    element: '[data-tour="feedback"]',
+    popover: {
+      title: 'Feedback',
+      description: 'Have suggestions or found a bug? Send us feedback!',
+      side: 'right',
+      align: 'center',
+    },
+  },
+  {
+    element: '[data-tour="footer-links"]',
+    popover: {
+      title: 'Links & Coordinates',
+      description: 'Find us on social media, visit our website, or check the map coordinates.',
+      side: 'top',
+      align: 'start',
+    },
+  },
+  {
     popover: {
       title: 'Tour Complete!',
       description: 'You can restart this tour anytime by clicking the help button in the sidebar. Happy exploring!',

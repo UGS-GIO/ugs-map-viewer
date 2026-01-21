@@ -11,6 +11,7 @@ export default function ThemeSwitch() {
       variant='ghost'
       className='rounded-full'
       onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+      data-tour="theme-switch"
     >
       {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
     </Button>
