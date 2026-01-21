@@ -3,10 +3,32 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { LegendAccordion } from '@/components/maps/legend-accordion';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Toggle } from '@/components/ui/toggle';
 import { LayerDescriptionAccordion } from '@/components/maps/layer-description-accordion';
 import { downloadLayerAsGeoJSON } from '@/lib/download-utils';
+import { exportParquetToGeoJSON, downloadParquet } from '@/lib/duckdb-export';
+import { useMutation } from '@tanstack/react-query';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+// Bucket URL for pre-built exports (empty = use live WFS)
+const EXPORTS_BUCKET_BASE = import.meta.env.VITE_EXPORTS_BUCKET_URL || '';
+
+// Map GeoServer workspaces to app names
+const WORKSPACE_TO_APP: Record<string, string> = {
+    'hazards': 'hazards',
+    'energy_mineral': 'carbonstorage',
+    'minerals': 'minerals',
+    'wetlands': 'wetlands',
+    'wetlandplants': 'wetlandplants',
+    'geophysics': 'geophysics',
+};
 
 interface LayerControlsProps {
     handleZoomToLayer: () => void;
@@ -21,6 +43,20 @@ interface LayerControlsProps {
     layerName?: string | null;
 }
 
+/** Extract app name from layer workspace (e.g., "hazards:layer" -> "hazards") */
+const getAppFromLayerName = (name: string): string | null => {
+    const workspace = name.split(':')[0];
+    return WORKSPACE_TO_APP[workspace] || null;
+};
+
+/** Get safe filename for bucket path */
+const getSafeFilename = (layerTitle: string): string => {
+    return layerTitle
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+};
+
 const LayerControls: React.FC<LayerControlsProps> = ({
     handleZoomToLayer,
     layerOpacity,
@@ -34,16 +70,73 @@ const LayerControls: React.FC<LayerControlsProps> = ({
 }) => {
     const [openAccordion, setOpenAccordion] = useState<string | null>(null);
     const [cleanDescription, setCleanDescription] = useState<string>('');
-    const [isDownloading, setIsDownloading] = useState(false);
-    const [downloadProgress, setDownloadProgress] = useState<string | null>(null);
+    const [exportStatus, setExportStatus] = useState<string | null>(null);
 
+    // Check if pre-built exports are available
+    const prebuiltAvailable = !!EXPORTS_BUCKET_BASE;
+
+    // Derived values
+    const app = useMemo(() => layerName ? getAppFromLayerName(layerName) : null, [layerName]);
+    const safeName = useMemo(() => getSafeFilename(title), [title]);
+    const parquetUrl = useMemo(
+        () => prebuiltAvailable && app ? `${EXPORTS_BUCKET_BASE}/${app}/${safeName}.parquet` : null,
+        [prebuiltAvailable, app, safeName]
+    );
+
+    // Export GeoJSON mutation
+    const exportGeoJSON = useMutation({
+        mutationFn: async () => {
+            if (parquetUrl) {
+                // Use pre-built Parquet, convert to GeoJSON in browser
+                await exportParquetToGeoJSON({
+                    parquetUrl,
+                    filename: safeName,
+                    onProgress: (p) => setExportStatus(p.message),
+                });
+            } else if (url && layerName) {
+                // Fallback to live WFS
+                await downloadLayerAsGeoJSON(url, layerName, title, (_percent, fetched, total) => {
+                    const totalStr = total ? ` / ${total.toLocaleString()}` : '';
+                    setExportStatus(`${fetched.toLocaleString()}${totalStr} features`);
+                });
+            }
+        },
+        onSettled: () => setExportStatus(null),
+    });
+
+    // Export Parquet mutation
+    const exportParquet = useMutation({
+        mutationFn: async () => {
+            if (!parquetUrl) throw new Error('Pre-built exports not available');
+            setExportStatus('Downloading...');
+            await downloadParquet(parquetUrl, safeName);
+        },
+        onSettled: () => setExportStatus(null),
+    });
+
+    // Live WFS export mutation
+    const exportLiveWFS = useMutation({
+        mutationFn: async () => {
+            if (!url || !layerName) throw new Error('Missing URL or layer name');
+            await downloadLayerAsGeoJSON(url, layerName, title, (_percent, fetched, total) => {
+                const totalStr = total ? ` / ${total.toLocaleString()}` : '';
+                setExportStatus(`${fetched.toLocaleString()}${totalStr} features`);
+            });
+        },
+        onSettled: () => setExportStatus(null),
+    });
+
+    // Combined loading state
+    const isExporting = exportGeoJSON.isPending || exportParquet.isPending || exportLiveWFS.isPending;
+
+    // Sync openLegend prop to accordion state
     useEffect(() => {
         if (openLegend) {
             setOpenAccordion('legend');
         }
     }, [openLegend]);
 
-    // Lazy load DOMPurify only when description is needed
+    // Lazy load DOMPurify only when description changes
     useEffect(() => {
         if (description) {
             import('dompurify').then(({ default: DOMPurify }) => {
@@ -62,26 +155,6 @@ const LayerControls: React.FC<LayerControlsProps> = ({
 
     const handleToggle = (type: 'info' | 'legend') => {
         setOpenAccordion(current => (current === type ? null : type));
-    };
-
-    const handleDownload = async () => {
-        if (!url || !layerName) return;
-        setIsDownloading(true);
-        setDownloadProgress(null);
-        try {
-            await downloadLayerAsGeoJSON(url, layerName, title, (_percent, fetched, total) => {
-                if (total) {
-                    setDownloadProgress(`${fetched.toLocaleString()} / ${total.toLocaleString()}`);
-                } else {
-                    setDownloadProgress(`${fetched.toLocaleString()} features`);
-                }
-            });
-        } catch (error) {
-            console.error('Failed to download layer:', error);
-        } finally {
-            setIsDownloading(false);
-            setDownloadProgress(null);
-        }
     };
 
     const canDownload = !!url && !!layerName;
@@ -143,22 +216,46 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         </Toggle>
 
                         {canDownload && (
-                            <Button
-                                variant="ghost"
-                                size="stacked"
-                                className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
-                                onClick={handleDownload}
-                                disabled={isDownloading}
-                            >
-                                {isDownloading ? (
-                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                ) : (
-                                    <Download className="h-5 w-5" />
-                                )}
-                                <span className='text-xs'>
-                                    {downloadProgress || 'Export'}
-                                </span>
-                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="stacked"
+                                        className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
+                                        disabled={isExporting}
+                                    >
+                                        {isExporting ? (
+                                            <Loader2 className="h-5 w-5 animate-spin" />
+                                        ) : (
+                                            <Download className="h-5 w-5" />
+                                        )}
+                                        <span className='text-xs'>
+                                            {exportStatus || 'Export'}
+                                        </span>
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="center" side="top">
+                                    <DropdownMenuItem onClick={() => exportGeoJSON.mutate()}>
+                                        GeoJSON
+                                        {prebuiltAvailable && (
+                                            <span className="ml-2 text-xs text-muted-foreground">(fast)</span>
+                                        )}
+                                    </DropdownMenuItem>
+                                    {prebuiltAvailable && (
+                                        <DropdownMenuItem onClick={() => exportParquet.mutate()}>
+                                            Parquet
+                                            <span className="ml-2 text-xs text-muted-foreground">(smallest)</span>
+                                        </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        onClick={() => exportLiveWFS.mutate()}
+                                        className="text-muted-foreground"
+                                    >
+                                        Live from server
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         )}
                     </div>
                 </div>

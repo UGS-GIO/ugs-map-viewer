@@ -1,0 +1,94 @@
+name: Deploy Export Function
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'functions/export-layers/**'
+      - '.github/workflows/deploy-export-function.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+
+env:
+  FUNCTION_NAME: export-layers
+  REGION: us-central1
+
+jobs:
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'dev') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: functions/export-layers/package-lock.json
+
+      - name: Install dependencies
+        working-directory: functions/export-layers
+        run: npm ci
+
+      - name: Build
+        working-directory: functions/export-layers
+        run: npm run build
+
+      - name: Determine environment
+        id: env
+        run: |
+          if [ "${{ github.event.inputs.environment }}" != "" ]; then
+            echo "env=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "env=prod" >> $GITHUB_OUTPUT
+          else
+            echo "env=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set project config
+        id: project
+        run: |
+          if [ "${{ steps.env.outputs.env }}" == "prod" ]; then
+            echo "project_id=${{ vars.GCP_PROJECT_PROD }}" >> $GITHUB_OUTPUT
+            echo "bucket=${{ vars.EXPORTS_BUCKET_PROD }}" >> $GITHUB_OUTPUT
+            echo "manifest_url=${{ vars.MANIFEST_URL_PROD }}" >> $GITHUB_OUTPUT
+          else
+            echo "project_id=${{ vars.GCP_PROJECT_DEV }}" >> $GITHUB_OUTPUT
+            echo "bucket=${{ vars.EXPORTS_BUCKET_DEV }}" >> $GITHUB_OUTPUT
+            echo "manifest_url=${{ vars.MANIFEST_URL_DEV }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Deploy Cloud Function
+        uses: google-github-actions/deploy-cloud-functions@v3
+        with:
+          name: ${{ env.FUNCTION_NAME }}-${{ steps.env.outputs.env }}
+          runtime: nodejs20
+          region: ${{ env.REGION }}
+          project_id: ${{ steps.project.outputs.project_id }}
+          source_dir: functions/export-layers
+          entry_point: exportLayers
+          timeout: 540
+          memory: 2Gi
+          max_instances: 1
+          environment_variables: |
+            GCS_BUCKET=${{ steps.project.outputs.bucket }}
+            MANIFEST_URL=${{ steps.project.outputs.manifest_url }}

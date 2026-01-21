@@ -1,0 +1,21 @@
+{
+  "name": "export-layers",
+  "version": "1.0.0",
+  "description": "Cloud Function to export layers as Parquet to GCS",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "deploy": "gcloud functions deploy exportLayers --runtime nodejs20 --trigger-http --allow-unauthenticated --timeout=540 --memory=2GB --region=us-central1"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.3.0",
+    "@google-cloud/storage": "^7.7.0",
+    "duckdb": "^1.0.0",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.0"
+  }
+}

@@ -1,0 +1,534 @@
+[
+  {
+    "app": "hazards",
+    "title": "Hazardous (Quaternary age) Faults - Statewide",
+    "layerName": "hazards:quaternaryfaults_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/hazardous-quaternary-age-faults-statewide.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Surface Fault Rupture Special Study Zones",
+    "layerName": "hazards:surfacefaultrupture_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/surface-fault-rupture-special-study-zones.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Liquefaction Susceptibility",
+    "layerName": "hazards:liquefaction_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/liquefaction-susceptibility.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Earthquake Ground Shaking - Statewide",
+    "layerName": "hazards:groundshaking_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/earthquake-ground-shaking-statewide.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Flood and Debris-Flow Hazard",
+    "layerName": "hazards:floodanddebrisflow_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/flood-and-debris-flow-hazard.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Shallow Groundwater Susceptibility",
+    "layerName": "hazards:shallowgroundwater_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/shallow-groundwater-susceptibility.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Alluvial Fan Flooding Susceptibility (Source: Division of Emergency Management)",
+    "layerName": "hazards:alluvialfan_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/alluvial-fan-flooding-susceptibility-source-division-of-emergency-management.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Rockfall Hazard",
+    "layerName": "hazards:rockfall_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/rockfall-hazard.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Landslides",
+    "layerName": "hazards:landslideinventory_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/landslides.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Landslide Susceptibility",
+    "layerName": "hazards:landslidesusceptibility_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/landslide-susceptibility.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Legacy Landslide Compilation - Statewide",
+    "layerName": "hazards:landslidelegacy_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/legacy-landslide-compilation-statewide.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Collapsible Soil Susceptibility",
+    "layerName": "hazards:collapsiblesoil_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/collapsible-soil-susceptibility.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Corrosive Soil and Rock Susceptibility",
+    "layerName": "hazards:corrosivesoilrock_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/corrosive-soil-and-rock-susceptibility.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Earth Fissure Hazard",
+    "layerName": "hazards:earthfissure_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/earth-fissure-hazard.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Expansive Soil and Rock Susceptibility",
+    "layerName": "hazards:expansivesoilrock_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/expansive-soil-and-rock-susceptibility.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "J.E. Fuller Flood Erosion Hazard Zones",
+    "layerName": "hazards:erosionhazardzone_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/j-e-fuller-flood-erosion-hazard-zones.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Karst Features",
+    "layerName": "hazards:karstfeatures_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/karst-features.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Piping and Erosion Susceptibility",
+    "layerName": "hazards:pipinganderosion_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/piping-and-erosion-susceptibility.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Geologic Radon Susceptibility",
+    "layerName": "hazards:radonsusceptibility_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/geologic-radon-susceptibility.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Salt Tectonics-Related Ground Deformation",
+    "layerName": "hazards:salttectonicsdeformation_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/salt-tectonics-related-ground-deformation.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Shallow Bedrock Potential",
+    "layerName": "hazards:shallowbedrock_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/shallow-bedrock-potential.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Soluble Soil and Rock Susceptibility",
+    "layerName": "hazards:solublesoilandrock_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/soluble-soil-and-rock-susceptibility.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Wind-Blown Sand Susceptibility",
+    "layerName": "hazards:windblownsand_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/wind-blown-sand-susceptibility.geojson"
+  },
+  {
+    "app": "hazards",
+    "title": "Mapped Areas",
+    "layerName": "hazards:studyareas_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "hazards/mapped-areas.geojson"
+  },
+  {
+    "app": "carbonstorage",
+    "title": "Geo-region Carbon Storage Ranking",
+    "layerName": "energy_mineral:basin_names",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "carbonstorage/geo-region-carbon-storage-ranking.geojson"
+  },
+  {
+    "app": "carbonstorage",
+    "title": "CO₂ Sources",
+    "layerName": "energy_mineral:ccus_co2_sources",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "carbonstorage/co-sources.geojson"
+  },
+  {
+    "app": "carbonstorage",
+    "title": "CO₂ Storage Potential on SITLA Blocks",
+    "layerName": "energy_mineral:ccus_sitla_reports",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "carbonstorage/co-storage-potential-on-sitla-blocks.geojson"
+  },
+  {
+    "app": "carbonstorage",
+    "title": "CCS Exclusion Areas",
+    "layerName": "energy_mineral:ccus_noccuszone",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "carbonstorage/ccs-exclusion-areas.geojson"
+  },
+  {
+    "app": "carbonstorage",
+    "title": "Wells Database",
+    "layerName": "energy_mineral:wellswithtops_hascore",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "carbonstorage/wells-database.geojson"
+  },
+  {
+    "app": "carbonstorage",
+    "title": "Cores and Cuttings",
+    "layerName": "energy_mineral:cores",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "carbonstorage/cores-and-cuttings.geojson"
+  },
+  {
+    "app": "carbonstorage",
+    "title": "Oil and Gas Fields",
+    "layerName": "energy_mineral:oilgasfields",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "carbonstorage/oil-and-gas-fields.geojson"
+  },
+  {
+    "app": "carbonstorage",
+    "title": "Hazardous (Quaternary age) Faults",
+    "layerName": "hazards:quaternaryfaults_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "carbonstorage/hazardous-quaternary-age-faults.geojson"
+  },
+  {
+    "app": "carbonstorage",
+    "title": "Utah Faults",
+    "layerName": "mapping:faults_m-179dm",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "carbonstorage/utah-faults.geojson"
+  },
+  {
+    "app": "carbonstorage",
+    "title": "Geologic Units (500k)",
+    "layerName": "mapping:mapping_geolunits_500k",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "carbonstorage/geologic-units-500k.geojson"
+  },
+  {
+    "app": "carbonstorage",
+    "title": "Geothermal Power Plants",
+    "layerName": "energy_mineral:ccus_geothermalpowerplants",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "carbonstorage/geothermal-power-plants.geojson"
+  },
+  {
+    "app": "carbonstorage",
+    "title": "Pipelines",
+    "layerName": "energy_mineral:pipelines",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "carbonstorage/pipelines.geojson"
+  },
+  {
+    "app": "carbonstorage",
+    "title": "Major Rivers",
+    "layerName": "gen_gis:rivers",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "carbonstorage/major-rivers.geojson"
+  },
+  {
+    "app": "carbonstorage",
+    "title": "Railroads",
+    "layerName": "energy_mineral:ccus_railroads",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "carbonstorage/railroads.geojson"
+  },
+  {
+    "app": "carbonstorage",
+    "title": "Wilderness Study Areas",
+    "layerName": "energy_mineral:ccus_wsa",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "carbonstorage/wilderness-study-areas.geojson"
+  },
+  {
+    "app": "minerals",
+    "title": "Utah Mineral Occurrence System",
+    "layerName": "energy_mineral:metalmineralapp_umos",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "minerals/utah-mineral-occurrence-system.geojson"
+  },
+  {
+    "app": "minerals",
+    "title": "Critical Mineral Areas",
+    "layerName": "energy_mineral:metalmineralapp_criticalmineralpolygons",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "minerals/critical-mineral-areas.geojson"
+  },
+  {
+    "app": "minerals",
+    "title": "Critical Mineral Occurrences",
+    "layerName": "energy_mineral:metalmineralapp_criticalmineralpoints",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "minerals/critical-mineral-occurrences.geojson"
+  },
+  {
+    "app": "minerals",
+    "title": "Metalliferous Mining Districts",
+    "layerName": "energy_mineral:metalmineralapp_mining_districts",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "minerals/metalliferous-mining-districts.geojson"
+  },
+  {
+    "app": "minerals",
+    "title": "Alunite",
+    "layerName": "energy_mineral:metalmineralapp_im_alunite",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "minerals/alunite.geojson"
+  },
+  {
+    "app": "minerals",
+    "title": "Bentonite",
+    "layerName": "energy_mineral:metalmineralapp_im_bentonite",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "minerals/bentonite.geojson"
+  },
+  {
+    "app": "minerals",
+    "title": "Dolomite",
+    "layerName": "energy_mineral:metalmineralapp_im_dolomite",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "minerals/dolomite.geojson"
+  },
+  {
+    "app": "minerals",
+    "title": "Gypsum",
+    "layerName": "energy_mineral:metalmineralapp_im_gypsum",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "minerals/gypsum.geojson"
+  },
+  {
+    "app": "minerals",
+    "title": "Limestone",
+    "layerName": "energy_mineral:metalmineralapp_im_limestone",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "minerals/limestone.geojson"
+  },
+  {
+    "app": "minerals",
+    "title": "Phosphate",
+    "layerName": "energy_mineral:metalmineralapp_im_phosphate",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "minerals/phosphate.geojson"
+  },
+  {
+    "app": "minerals",
+    "title": "Potash",
+    "layerName": "energy_mineral:metalmineralapp_im_potash",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "minerals/potash.geojson"
+  },
+  {
+    "app": "minerals",
+    "title": "Silica",
+    "layerName": "energy_mineral:metalmineralapp_im_silica",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "minerals/silica.geojson"
+  },
+  {
+    "app": "minerals",
+    "title": "WSA Mineral Land Assessment",
+    "layerName": "energy_mineral:metalmineralapp_blm_wsa_mineral_land_asssessment",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "minerals/wsa-mineral-land-assessment.geojson"
+  },
+  {
+    "app": "wetlands",
+    "title": "Wetland Project Information",
+    "layerName": "wetlands:wetlandsapp_metadata",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "wetlands/wetland-project-information.geojson"
+  },
+  {
+    "app": "wetlands",
+    "title": "Wetlands (non-riverine)",
+    "layerName": "wetlands:wetlandsapp_non_riverine",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "wetlands/wetlands-non-riverine.geojson"
+  },
+  {
+    "app": "wetlands",
+    "title": "Riverine",
+    "layerName": "wetlands:wetlandsapp_riverine",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "wetlands/riverine.geojson"
+  },
+  {
+    "app": "wetlands",
+    "title": "Riparian Project Information",
+    "layerName": "wetlands:wetlandsapp_riparian_metadata",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "wetlands/riparian-project-information.geojson"
+  },
+  {
+    "app": "wetlands",
+    "title": "Riparian Mapping",
+    "layerName": "wetlands:wetlandsapp_riparian",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "wetlands/riparian-mapping.geojson"
+  },
+  {
+    "app": "wetlands",
+    "title": "LLWW Descriptions",
+    "layerName": "wetlands:wetlandsapp_finalfunction_calculated_projectarea",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "wetlands/llww-descriptions.geojson"
+  },
+  {
+    "app": "wetlands",
+    "title": "LLWW Mapping Areas",
+    "layerName": "wetlands:wetlandsapp_llww_mappingareas",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "wetlands/llww-mapping-areas.geojson"
+  },
+  {
+    "app": "wetlands",
+    "title": "Wetland Assessment Projects",
+    "layerName": "wetlands:wetlandsapp_wetlandassessmentprojects",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "wetlands/wetland-assessment-projects.geojson"
+  },
+  {
+    "app": "wetlands",
+    "title": "Wetland Assessment Study Results",
+    "layerName": "wetlands:wetlandsapp_wetlandassessmentstudyresults",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "wetlands/wetland-assessment-study-results.geojson"
+  },
+  {
+    "app": "wetlands",
+    "title": "Wetland Stressors",
+    "layerName": "wetlands:wetlandsapp_wetlandstressors",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "wetlands/wetland-stressors.geojson"
+  },
+  {
+    "app": "wetlands",
+    "title": "Watershed (HUC12) by Ecoregion",
+    "layerName": "wetlands:wetlandsapp_huc12_ecoregion",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "wetlands/watershed-huc12-by-ecoregion.geojson"
+  },
+  {
+    "app": "wetlands",
+    "title": "Watershed (HUC12)",
+    "layerName": "wetlands:wetlandsapp_huc12",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "wetlands/watershed-huc12.geojson"
+  },
+  {
+    "app": "wetlands",
+    "title": "Sub-Basin (HUC8) by Ecoregion",
+    "layerName": "wetlands:wetlandsapp_huc8_ecoregion",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "wetlands/sub-basin-huc8-by-ecoregion.geojson"
+  },
+  {
+    "app": "wetlands",
+    "title": "Sub-Basin (HUC8)",
+    "layerName": "wetlands:wetlandsapp_huc8",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "wetlands/sub-basin-huc8.geojson"
+  },
+  {
+    "app": "wetlands",
+    "title": "Ecoregion",
+    "layerName": "wetlands:wetlandsapp_ecoregion",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "wetlands/ecoregion.geojson"
+  },
+  {
+    "app": "wetlandplants",
+    "title": "Lorem Ipsum",
+    "layerName": "hazards:studyareas_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "wetlandplants/lorem-ipsum.geojson"
+  },
+  {
+    "app": "geophysics",
+    "title": "Geothermal Wells & Springs",
+    "layerName": "energy_mineral:mart_geothermal_wellsandsprings_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "geophysics/geothermal-wells-springs.geojson"
+  },
+  {
+    "app": "geophysics",
+    "title": "Heat Flow Measurements",
+    "layerName": "energy_mineral:mart_geophysics_heatflowedwards_source_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "geophysics/heat-flow-measurements.geojson"
+  },
+  {
+    "app": "geophysics",
+    "title": "Hazardous (Quaternary age) Faults",
+    "layerName": "hazards:quaternaryfaults_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "geophysics/hazardous-quaternary-age-faults.geojson"
+  },
+  {
+    "app": "geophysics",
+    "title": "Great Basin Faults (INGENIOUS Project)",
+    "layerName": "energy_mineral:mart_geothermal_qfaults_ingenious_current",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "geophysics/great-basin-faults-ingenious-project.geojson"
+  },
+  {
+    "app": "geophysics",
+    "title": "Utah Faults",
+    "layerName": "mapping:faults_m-179dm",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "geophysics/utah-faults.geojson"
+  },
+  {
+    "app": "geophysics",
+    "title": "Geologic Units (500k)",
+    "layerName": "mapping:mapping_geolunits_500k",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "geophysics/geologic-units-500k.geojson"
+  },
+  {
+    "app": "geophysics",
+    "title": "Geothermal Power Plants",
+    "layerName": "energy_mineral:ccus_geothermalpowerplants",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "geophysics/geothermal-power-plants.geojson"
+  },
+  {
+    "app": "geophysics",
+    "title": "Railroads",
+    "layerName": "energy_mineral:ccus_railroads",
+    "wfsUrl": "https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/wfs",
+    "bucketPath": "geophysics/railroads.geojson"
+  }
+]
