@@ -545,6 +545,7 @@ function SearchCombobox({
                         variant="outline"
                         role="combobox"
                         aria-expanded={open}
+                        data-tour="search-box"
                         className={cn(className,
                             'w-full',
                             'justify-between',

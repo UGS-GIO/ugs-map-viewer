@@ -125,6 +125,7 @@ export class ExportControl implements maplibregl.IControl {
         button.type = 'button';
         button.title = 'Export map';
         button.setAttribute('aria-label', 'Export map');
+        button.setAttribute('data-tour', 'print-map');
         button.style.display = 'flex';
         button.style.alignItems = 'center';
         button.style.justifyContent = 'center';

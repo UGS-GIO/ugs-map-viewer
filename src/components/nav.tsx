@@ -20,6 +20,7 @@ import { Spinner } from './ui/loading-spinner'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { SideLink } from '@/lib/types/sidelink-types'
 import ThemeSwitch from '@/components/theme-switch'
+import { TourButton } from '@/components/tour-button'
 
 interface NavProps extends React.HTMLAttributes<HTMLDivElement> {
   isCollapsed: boolean
@@ -83,7 +84,7 @@ export default function Nav({
 
   return (
     <div className="flex flex-1 overflow-hidden" >
-      <div className="hidden md:flex flex-col items-center gap-4 pt-2 border-r px-1" >
+      <div className="hidden md:flex flex-col items-center gap-4 pt-2 border-r px-1" data-tour="sidebar-icons">
         {links.map((link, index) => (
           <NavLinkIcon
             key={index}
@@ -95,8 +96,9 @@ export default function Nav({
             closeNav={closeNav}
           />
         ))}
-        {/* Theme switch at bottom of icon bar */}
-        <div className="mt-auto pb-2">
+        {/* Tour and theme switch at bottom of icon bar */}
+        <div className="mt-auto pb-2 flex flex-col gap-2">
+          <TourButton />
           <ThemeSwitch />
         </div>
       </div>
@@ -336,6 +338,7 @@ export function NavLinkIcon({
 
       )}
       aria-current={checkActiveNav(link.componentPath ?? '') ? 'page' : undefined}
+      data-tour={link.title?.toLowerCase() === 'feedback' ? 'feedback' : undefined}
     >
       {/* {link.icon} */}
       <TooltipProvider>
