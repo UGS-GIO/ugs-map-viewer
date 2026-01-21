@@ -385,7 +385,7 @@ const heatflowLayerConfig: WMSLayerProps = {
                     type: 'custom',
                     transform: (props) => {
                         const bht = props?.['un_hf_mw_m2'];
-                        return `${bht} mW/m^2`;
+                        return `${bht} mW/m²`;
                     }
                 },
                 'Citation': { field: 'citation', type: 'string' },
@@ -534,7 +534,7 @@ const geothermalKgraLayerConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'name', type: 'string' },
+                'Name': { field: 'kgra', type: 'string' },
             },
         },
     ],
@@ -554,8 +554,7 @@ const pacesLegacyLayerConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'name', type: 'string' },
-                'Observed Gravity (mGal)': { field: 'observed_frav_mgal', type: 'string' },
+                'Observed Gravity (mGal)': { field: 'observed_grav_mgal', type: 'string' },
             },
         },
     ],
@@ -600,7 +599,7 @@ const geothermalTEMLayerConfig: WMSLayerProps = {
 
 // Wells and Springs with Joins WMS Layer
 const geothermalWellsJoinsName = 'enmin_geothermal_ingenious_wellfeatures_current';
-const geothermalWellsJoinsTitle = 'Ingenious wells';
+const geothermalWellsJoinsTitle = 'Ingenious Wells';
 const geothermalWellsJoinsConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -656,7 +655,7 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
 
 // Springs with Joins WMS Layer
 const geothermalSpringsJoinsName = 'enmin_geothermal_ingenious_springfeatures_current';
-const geothermalSpringsJoinsTitle = 'Ingenious springs';
+const geothermalSpringsJoinsTitle = 'Ingenious Springs';
 const geothermalSpringsJoinsConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
