@@ -8,6 +8,7 @@ import { useSidebar } from '@/hooks/use-sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
+import { TourAutoStart } from '@/components/tour-auto-start'
 
 export default function Map() {
     const { isCollapsed, sidebarWidthPx } = useSidebar();
@@ -17,6 +18,7 @@ export default function Map() {
 
     return (
         <MapContext.Provider value={contextValue}>
+            <TourAutoStart />
             <div className="relative h-svh overflow-hidden bg-background">
                 <Sidebar />
                 <main

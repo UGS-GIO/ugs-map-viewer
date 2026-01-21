@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { driver, type Driver } from 'driver.js';
-import 'driver.js/dist/driver.css';
+import 'driver.js/dist/driver.css'; // Base styles
+import './tour.css'; // Custom theme overrides
 import { getTourSteps, type TourRoute } from './tour-steps';
 
 const TOUR_STORAGE_KEY = 'ugs-tour-completed';
