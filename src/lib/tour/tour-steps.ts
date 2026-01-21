@@ -124,6 +124,21 @@ export const baseMapSteps: DriveStep[] = [
     },
   },
   {
+    element: '[data-tour="print-map"]',
+    popover: {
+      title: 'Print / Export Map',
+      description: 'Export the current map view as PNG, JPEG, or PDF with customizable size and quality.',
+      side: 'left',
+      align: 'center',
+    },
+  },
+  {
+    popover: {
+      title: 'Right-Click Menu',
+      description: 'Right-click anywhere on the map to copy coordinates, share a link to this location, query features, or open in Google Maps.',
+    },
+  },
+  {
     element: '[data-tour="theme-switch"]',
     popover: {
       title: 'Theme',
