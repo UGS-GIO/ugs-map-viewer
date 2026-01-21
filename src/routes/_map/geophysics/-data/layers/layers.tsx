@@ -1,5 +1,4 @@
-import { Link } from "@/components/ui/link";
-import { ENERGY_MINERALS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
+import { ENERGY_MINERALS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { toTitleCase, toSentenceCase } from "@/lib/utils";
 
@@ -650,48 +649,6 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
                         }
                     }
                 }, 
-           /*
-                relatedTables: [
-                {
-                    fieldLabel: 'Chemistry Data',
-                    matchingField: 'relatedfeatureuri',
-                    targetField: 'featureuri',
-                    url: PROD_POSTGREST_URL + '/enmin_geothermal_ingenious_wellchem_current',
-                    headers: {
-                        "Accept-Profile": 'emp',
-                        "Accept": "application/json",
-                        "Cache-Control": "no-cache",
-                    },
-                    displayFields: [
-                        { field: 'wellname', label: 'Well Name' },
-                        { field: 'welltype', label: 'Well Type' },
-                        { field: 'temp_c', label: 'Temp (C)', format: 'number' }
-                    ],
-                    //sortBy: 'wellname',
-                    sortDirection: 'asc',
-                    displayAs: 'table'
-                },
-                {
-                    fieldLabel: 'Temperature Data',
-                    matchingField: 'relatedfeatureuri',
-                    targetField: 'featureuri',
-                    url: PROD_POSTGREST_URL + '/enmin_geothermal_ingenious_welltemps_current',
-                    headers: {
-                        "Accept-Profile": 'emp',
-                        "Accept": "application/json",
-                        "Cache-Control": "no-cache",
-                    },
-                    displayFields: [
-                        { field: 'wellname', label: 'Well Name' },
-                        { field: 'welltype', label: 'Well Type', },
-                        { field: 'maxmeasuredtemp_c', label: 'Max Temp (C)', format: 'number' }
-                    ],
-                    //sortBy: 'formation_depth',
-                    sortDirection: 'asc',
-                    displayAs: 'table'
-                }
-            ],
-            */
         },
     ],
 };
@@ -745,49 +702,6 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
                     }
                 }, 
             },
-            /*
-            relatedTables: [
-                {
-                    fieldLabel: 'Chemistry Data',
-                    matchingField: 'relatedfeatureuri',
-                    targetField: 'featureuri',
-                    url: PROD_POSTGREST_URL + '/enmin_geothermal_ingenious_springchem_current',
-                    headers: {
-                        "Accept-Profile": 'emp',
-                        "Accept": "application/json",
-                        "Cache-Control": "no-cache",
-                    },
-                    displayFields: [
-                        { field: 'springname', label: 'Spring Name' },
-                        { field: 'citation', label: 'Citation', },
-                        { field: 'temp_c', label: 'Temperature (C)', format: 'number' }
-                    ],
-                    //sortBy: 'formation_depth',
-                    sortDirection: 'asc',
-                    displayAs: 'table'
-                },
-                {
-                    fieldLabel: 'Temperature Data',
-                    matchingField: 'relatedfeatureuri',
-                    targetField: 'featureuri',
-                    url: PROD_POSTGREST_URL + '/enmin_geothermal_ingenious_springtemps_current',
-                    headers: {
-                        "Accept-Profile": 'emp',
-                        "Accept": "application/json",
-                        "Cache-Control": "no-cache",
-                    },
-                    displayFields: [
-                        { field: 'springname', label: 'Spring Name' },
-                        { field: 'springtype', label: 'Spring Type', },
-                        { field: 'measuredtemp_c', label: 'Max Temp (C)', format: 'number' }
-                    ],
-                    //sortBy: 'formation_depth',
-                    sortDirection: 'asc',
-                    displayAs: 'table'
-                }
-            ],
-            */
-        
     ],
 };
 
