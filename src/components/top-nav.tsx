@@ -97,7 +97,7 @@ function TopNav({ className, ...props }: TopNavProps) {
   );
 
   return (
-    <>
+    <div data-tour="basemap-selector">
       {/* Collapsed view - icon only (small screens) */}
       <div className="sm:hidden">
         <BasemapDropdown
@@ -152,7 +152,7 @@ function TopNav({ className, ...props }: TopNavProps) {
           activeBasemap={activeBasemap}
         />
       </nav>
-    </>
+    </div>
   );
 }
 

@@ -61,7 +61,7 @@ export function MapToolsControl({
 
   return container
     ? createPortal(
-        <>
+        <div data-tour="map-tools">
           {/* Draw rectangle */}
           {onDrawModeChange && (
             <button
@@ -126,7 +126,7 @@ export function MapToolsControl({
               <CopyPlus size={18} strokeWidth={1.5} />
             </button>
           )}
-        </>,
+        </div>,
         container
       )
     : null

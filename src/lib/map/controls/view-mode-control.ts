@@ -33,6 +33,7 @@ export class ViewModeControl implements maplibregl.IControl {
         this.container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
         this.container.style.display = 'flex';
         this.container.style.gap = '0';
+        this.container.setAttribute('data-tour', 'view-mode');
 
         // Map button
         this.mapButton = this.createButton('Map view', Map);

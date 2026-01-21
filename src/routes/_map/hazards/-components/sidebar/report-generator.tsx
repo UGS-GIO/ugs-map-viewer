@@ -238,7 +238,7 @@ function ReportGenerator() {
     return (
         <div>
             <BackToMenuButton />
-            <div className="p-4 space-y-4">
+            <div className="p-4 space-y-4" data-tour="report-generator">
                 <div>
                     <h3 className="text-lg font-medium mb-2">Report Generator</h3>
                     <p className="text-sm">
