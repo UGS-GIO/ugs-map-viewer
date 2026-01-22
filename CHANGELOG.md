@@ -1,3 +1,14 @@
+## [1.16.4](https://github.com/UGS-GIO/ugs-map-viewer/compare/v1.16.3...v1.16.4) (2026-01-22)
+
+
+### common
+
+* **♻️ Refactors**(`common`): use new qfaults layer
+
+### hazards
+
+* **🐛 Bug Fixes**(`hazards`): remove is_current filter from qfaults layer* **🐛 Bug Fixes**(`hazards`): update related table to use unitdescriptions_current* **🐛 Bug Fixes**(`hazards`): use unitdescriptions_current table in hazards-review layers
+
 ## [1.16.3](https://github.com/UGS-GIO/ugs-map-viewer/compare/v1.16.2...v1.16.3) (2025-11-13)
 
 
