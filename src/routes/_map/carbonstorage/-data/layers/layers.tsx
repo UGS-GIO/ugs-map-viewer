@@ -5,50 +5,46 @@ import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils"
 import { GeoJsonProperties } from "geojson";
 
 // GeoRegions WMS Layer
-const basinNamesLayerName = 'basin_names';
-const basinNamesWMSTitle = 'Geo-region Carbon Storage Ranking';
-const basinNamesWMSConfig: WMSLayerProps = {
+const georegionsLayerName = 'enmin_ccus_georegions_current';
+const georegionsWMSTitle = 'Geo-region Carbon Storage Ranking';
+const CCUS_IMAGE_BASE_URL = 'https://storage.googleapis.com/ut-dnr-ugs-maps-prod.firebasestorage.app/ccus/png';
+const georegionsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
-    title: basinNamesWMSTitle,
+    title: georegionsWMSTitle,
     visible: true,
     opacity: 0.3,
     crs: 'EPSG:3857',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${basinNamesLayerName}`,
+            name: `${ENERGY_MINERALS_WORKSPACE}:${georegionsLayerName}`,
             popupEnabled: false,
             queryable: true,
             popupFields: {
                 'Name': { field: 'name', type: 'string' },
+                'Ranking': { field: 'ranking', type: 'string' },
+                'Key Reservoirs': { field: 'keyreservoirs', type: 'string' },
+                'Key Caprocks': { field: 'keycaprocks', type: 'string' },
                 'Description': { field: 'description', type: 'string' },
-                'Report Link': { field: 'reportlink', type: 'string' },
-                'Ranked Formation': { field: 'rankedformation', type: 'string' },
-                'Rank': {
-                    type: 'custom',
-                    field: 'ranknumber',
-                    transform: (properties: GeoJsonProperties | null | undefined): string => {
-                        if (!properties) {
-                            return '';
-                        }
-
-                        const rankNumber = properties.ranknumber;
-                        const rankingText = properties.ranking;
-
-                        if (rankNumber === null || rankNumber === undefined || rankNumber === 0) {
-                            return "Coming Soon";
-                        }
-
-                        if (rankingText) {
-                            return rankingText;
-                        } else {
-                            return String(rankNumber);
-                        }
+                'Geo-region Map': { field: 'georegionmap', type: 'string' },
+                'Stratigraphic Column': { field: 'stratcolumn', type: 'string' },
+            },
+            linkFields: {
+                'georegionmap': {
+                    transform: (value: string) => {
+                        if (!value) return [{ label: 'Not available', href: null }];
+                        return [{ label: 'View Image', href: `${CCUS_IMAGE_BASE_URL}/georegionmaps/${value}` }];
+                    }
+                },
+                'stratcolumn': {
+                    transform: (value: string) => {
+                        if (!value) return [{ label: 'Not available', href: null }];
+                        return [{ label: 'View Image', href: `${CCUS_IMAGE_BASE_URL}/stratcolumns/${value}` }];
                     }
                 },
             },
             colorCodingMap: {
-                'ranknumber': (value: string | number) => {
+                'ranking': (value: string | number) => {
                     const strValue = String(value).toLowerCase();
                     if (strValue.includes("coming soon")) return "#ABA290";
                     if (strValue.includes("excellent")) return "#3DC200";
@@ -846,7 +842,7 @@ const ccsResourcesConfig: LayerProps = {
     visible: true,
     layers: [
         sco2WFSConfig,
-        basinNamesWMSConfig,
+        georegionsWMSConfig,
         co2SourcesWMSConfig,
         sitlaReportsWMSConfig,
         ccsExclusionAreasWMSConfig,
