@@ -13,11 +13,30 @@ import { wellWithTopsWMSTitle } from './-data/layers/layers'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
+import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox'
+import { PROD_POSTGREST_URL } from '@/lib/constants'
 
 // Carbon Storage specific filter mapping
 const CCS_FILTER_MAPPING: Record<string, string> = {
   [wellWithTopsWMSTitle]: wellWithTopsWMSTitle,
 }
+
+const searchConfig: SearchSourceConfig[] = [
+  defaultMasqueradeConfig,
+  {
+    type: 'postgREST',
+    url: PROD_POSTGREST_URL,
+    functionName: "search_geologic_units",
+    searchTerm: "search_term",
+    sourceName: 'Geologic Units',
+    crs: 'EPSG:4326',
+    displayField: "unit_label",
+    params: { select: 'unit_label' },
+    headers: {
+      'Accept-Profile': 'mapping',
+    }
+  },
+]
 
 export default function Map() {
   const { isCollapsed, sidebarWidthPx } = useSidebar();
@@ -67,7 +86,14 @@ export default function Map() {
             <Layout.Header className='hidden md:flex items-center justify-between px-4 md:px-6'>
               <TopNav />
               <div className='flex items-center flex-1 min-w-0 md:flex-initial md:w-1/3 md:ml-auto space-x-2'>
-                {/* SearchCombobox removed - needs refactoring for new architecture */}
+                <div className="flex-1 min-w-0">
+                  <SearchCombobox
+                    config={searchConfig}
+                    onFeatureSelect={handleSearchSelect}
+                    onCollectionSelect={handleCollectionSelect}
+                    className="w-full"
+                  />
+                </div>
               </div>
             </Layout.Header>
 
