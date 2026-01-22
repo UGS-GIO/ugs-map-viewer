@@ -73,7 +73,11 @@ export function useBulkRelatedTable(
                         } else {
                             // PostgREST mode (default)
                             const inValues = uniqueValues.join(',');
-                            const queryUrl = `${config.url}?${config.matchingField}=in.(${inValues})`;
+                            let queryUrl = `${config.url}?${config.matchingField}=in.(${inValues})`;
+                            if (config.sortBy) {
+                                const dir = config.sortDirection === 'desc' ? 'desc' : 'asc';
+                                queryUrl += `&order=${config.sortBy}.${dir}`;
+                            }
 
                             const response = await fetch(queryUrl, {
                                 headers: config.headers,

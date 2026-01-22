@@ -319,6 +319,10 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         const groupedValues = getRelatedTableValues(tableIndex, data, relatedTables, properties);
         const flatValues = groupedValues.flat();
 
+        // Skip rendering if no real data (only "No data available" placeholder)
+        const hasRealData = flatValues.some(v => v.value !== "No data available");
+        if (!hasRealData) return;
+
         // Use explicit displayAs config (defaults to 'list')
         const useTableFormat = table.displayAs === 'table' && !!table.displayFields && table.displayFields.length > 0;
 
