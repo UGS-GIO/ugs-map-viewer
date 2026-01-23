@@ -1,22 +1,33 @@
 import { Link } from "@/components/ui/link";
-
 const appTitle = 'Geophysical & Geothermal Data Portal';
 
 const references = (
     <ul className="list-disc ml-5 space-y-4">
-        <li>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-        </li>
+        <li>Auken, E., Christiansen, A.V., Kirkegaard, C., Fiandaca, G., Schamper, C., Behroozmad, A.A., Binley, A., Nielsen, E., Efferso, F., Christensen, N.B., Sorensen, K., Foged, N., and Vignoli, G., 2015, An overview of a highly versatile forward and stable inverse algorithm for airborne, ground-based and borehole electromagnetic and electric data: Exploration Geophysics, v. 46, p. 223–235. </li>
+        <li>Blackett, R.E., and Wakefield, S., 2004, Geothermal resources of Utah: Utah Geological Survey Open File Report OFR-431dm, <Link to="https://doi.org/10.34191/OFR-431dm">https://doi.org/10.34191/OFR-431dm</Link>. </li>
+        <li>Cagniard, L., 1953, Basic theory of the magneto-telluric method of geophysical prospecting: Geophysics, v. 18, p. 605–635. </li>
+        <li>Christiansen A.V., Auken E., Sørensen K., 2006, The transient electromagnetic method, in Kirsch R., editor, Groundwater Geophysics: Springer, Berlin, Heidelberg, <Link to="https://doi.org/10.1007/3-540-29387-6_6">https://doi.org/10.1007/3-540-29387-6_6</Link>. </li>
+        <li>Christiansen, A.V., and Auken, E., 2012, A global measure for depth of investigation: Geophysics, v. 77, no. 4, p. WB171– WB177. </li>
+        <li>Edwards, M., and Chapman, D.S., 2013, A final report: Geothermal Resource Assessment of the Basin and Range Province in Western Utah, 121 p. </li>
+        <li>Gettings, P., D.S. Chapman, and R.G. Allis, 2008, Techniques, analysis, and noise in a Salt Lake Valley 4D gravity experiment: Geophysics, v. 73, p. WA71–WA82. </li>
+        <li>Harmonica v0.7.0, 2024, Forward modeling, inversion, and processing gravity and magnetic data, <Link to="https://zenodo.org/records/13308312">https://zenodo.org/records/13308312</Link>. </li>
+        <li>Hinze, W.J., Aiken, C., Brozena, J., Coakley, B., Dater, D., Flanagan, G., Forsberg, R., Hildenbrand, T., Keller, G.R., Kellogg, J., Kucks, R., Li, X., Mainville, A., Morin, R., Pilkington, M., Plouff, D., Ravat, D., Roman, D., Urrutia-Fucugauchi, J., Veronneau, M., Webring, M., and Winester, D., 2005, New standards for reducing gravity data—The North American gravity database: Geophysics, v. 70, no. 4, p. J25–J32. </li>
+        <li>INGENIOUS - Great Basin Regional Dataset Compilation, 2022, doi:10.15121/1881483. </li>
+        <li>Keller, R., Hildenbrand, T.G., Kucks, R., Webring, M., Briesacher, A., Rujawitz, K. Hittleman, A.M., Roman, D., Winester, D., Aldouri, R., Seeley, J., Rasillo, J., Torres, R., Hinze, W., Gates, A., Kreinovich, V., Salayandia, L., 2006, A community effort to construct a gravity database for the United States and an associated Web portal, doi:10.1130/2006.2397(02). </li>
+        <li>Palacky, G.J., 1988, Resistivity characteristics of geologic targets–chapter 3, in Nabighian, M.N., editor, Electromagnetic methods in applied geophysics—Volume 1, Theory: Tulsa, Oklahoma, Society of Exploration Geophysicists, Investigations in Geophysics Series, p. 52–129. </li>
+        <li>Soler, S.R. and Uieda, L., 2021, Gradient-boosted equivalent sources: Geophysical Journal International, doi:10.1093/gji/ggab297. </li>
+        <li>Spies, B., 1989, Depth of investigation in electromagnetic sounding methods: Geophysics, v. 54, no. 7, p. 872–888. </li>
+        <li>Tikhonov, A.N., 1950, On determining electrical characteristics of the deep layers of the Earth's crust: Dokl. Akad. Nauk SSSR, v. 73, p. 295–297. </li>
+        <li>Uieda, L., Oliveira Jr., V.C., and Barbosa, V.C.F., 2013, Modeling the Earth with Fatiando a Terra: Proceedings of the 12th Python in Science Conference, p. 91–98, doi:10.25080/Majora-8b375195-010l. </li>
+        <li>Wannamaker, P.E., Hohmann, G.W., and Ward, S.H., 1984, Magnetotelluric responses of three-dimensional bodies in layered earths: Geophysics, v. 49, no.9, p. 1517–1533, <Link to="https://doi.org/10.1190/1.1441777">https://doi.org/10.1190/1.1441777</Link>. </li>
+        <li>Vozo, K., 1991, The magnetotelluric method, in Nabighian, M.N., editor, Electromagnetic methods in applied geophysics: Society of Exploration Geophysics, Tulsa, Oklahoma, v. 2B, p. 641–711. </li>
     </ul>
 )
 
 const acknowledgments = (
     <div className="space-y-2">
         <p>
-            Lorem ipsum, dolor sit amet consectetur adipisicing elit. Eius ipsa ipsam adipisci? Amet reprehenderit veritatis sint voluptate repellendus temporibus dolorem debitis placeat earum necessitatibus, quisquam illum facilis assumenda enim quia?
-        </p>
-        <p>
-            Lorem ipsum, dolor sit amet consectetur adipisicing elit. Eius ipsa ipsam adipisci? Amet reprehenderit veritatis sint voluptate repellendus temporibus dolorem debitis placeat earum necessitatibus, quisquam illum facilis assumenda enim quia?
+            This web application was created to visualize the existing geophysical data coverage and geothermal potential of the state of Utah as well as make the associated data available for download by industry professionals, local government agencies, policy makers, and the general public. This project included aggregating existing data related to subsurface exploration and evaluating the potential for new geothermal resources. Funding support was provided by Operation Gigawatt granted during the 2025 Utah State Legislative Session.
         </p>
     </div>
 )
@@ -32,107 +43,89 @@ const dataDisclaimer = (
 const mapDetails = (
     <div className='mx-2 space-y-2'>
         <p>
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Quisquam, quod.
+            This web application is a tool for the public, scientists, and industry professionals interested in geophysical data and geothermal resources in Utah. It provides users with access to spatial data and technical resources to support informed decision making, promote development, and assist in current and future research opportunities.
         </p>
-        <p><strong>Contact</strong></p>
-        <ul>
-            <li>
-                <Link to="mailto:christianhardwick@utah.gov">Christian Hardwick </Link>- 801.537.3130
-            </li>
-        </ul>
-        <p><strong>Links to Related Information</strong></p>
-        <ul className="list-disc ml-5 space-y-4">
-
-        </ul>
+        <p>
+            Explore the data by turning on layers and selecting features from the map to view details. To download data, see the Data Sources section or use the multi-select tool to download selected features. For questions or more information about geophysical data and geothermal resources, please contact Christian Hardwick at <Link to="mailto:christianhardwick@utah.gov">christianhardwick@utah.gov</Link>.
+        </p>
     </div>
 )
 
 const mapDetailsShortened = (
     <p className='text-left text-sm mx-2 font-normal'>
-        Lorem ipsum dolor sit amet consectetur adipisicing elit. Quisquam, quod.
+        This web application is a tool for the public, scientists, and industry professionals interested in geophysical data and geothermal resources in Utah.
     </p>
 
 )
 
 const dataSources = (
     <div className='mx-2 space-y-2'>
-        <p>
-            <strong>WETLAND AND RIPARIAN MAPPING</strong>
-        </p>
-        <p>
-            <strong>Wetland and riparian polygons, wetland outlines, and riverine features</strong>
-        </p>
-        <p>
-            <i>Wetlands and riparian spatial data were produced from a combination of aerial imagery examination and on-the-ground assessment and are not meant to be used as the basis for a jurisdictional wetland delineation. </i>Data are derived from the U.S. Fish and Wildlife Service’s <Link to="https://www.fws.gov/wetlands/">National Wetlands Inventory</Link> (NWI) and are typically updated twice per year. NWI attributes wetlands with codes from the Cowardin Classification System. Polygons mapped as riverine are in a separate layer from other wetland features because of the large size of the data. Riverine features depict predominantly unvegetated habitat contained within a natural or artificial channel. Riparian data depict non-wetland areas along streams, rivers, and lakes that have distinct or distinctly more vigorous vegetation compared to adjacent areas. Mapping follows standards laid out in U.S. Fish and Wildlife Service (2009). Riparian features were mapped in conjuction with wetland features to produce a seamless dataset in the project areas where they were mapped.
-        </p>
-        <p>
-            <strong>Mapping metadata</strong>
-        </p>
-        <p>
-            Metadata are a description of wetland and riparian mapping projects, including the scale at which mapping was conducted and the imagery year used for the mapping. Some mapping projects include supplemental map information that describes the projects in more detail. The riparian metadata also depicts the project boundaries where riparian mapping has occurred. Other wetland mapping projects do not include riparian data.
-        </p>
-        <p>
-            <strong>Additional Attributes and LLWW Data</strong>
-        </p>
-        <p>
-            Wetland mapping was additionally described with Landscape Position, Landform, Water Flow path, and Waterbody Type (LLWW) attributes to provide detail about a wetland’s geomorphic setting, shape and form, and connectivity to stream networks as well as to characterize a greater variety of human impacts, water sources, and unique wetland types through LLWW-specific modifiers. When combined with NWI mapping, LLWW attributes allow for unique visualizations such as the reclassification of wetland mapping according to the Hydrogeomorphic (HGM) system depicted in this app. LLWW attributes can similarly be used to estimate some likely functions (such as nutrient retention or flood control) provided by wetlands and show the distribution of those functions across the landscape. More information about the LLWW classification system, and specific functions and how they are modeled, can be found in the <Link to="https://ugspub.nr.utah.gov/publications/open_file_reports/ofr-744.pdf">Cache Valley Supplemental Mapping Report.</Link> The complete LLWW dataset and results of individual function models are available to <Link to="https://firebasestorage.googleapis.com/v0/b/ut-dnr-wetlands-prod.appspot.com/o/LLWW_datasets.zip?alt=media&amp;token=3e2fbafb-522e-4fe3-8a46-c8692ddf2234">download.</Link>
-        </p>
-        <p>
-            <strong>HYDRIC SOIL CLASSES</strong>
-        </p>
-        <p>
-            The hydric soil classes data were produced by the Natural Resources Consevation Service and depict soils that are saturated for periods of time long enough to create wetland conditions. This data layer is maintained by <Link to="https://www.arcgis.com/home/item.html?id=2be45af986af4624839cedae883faf47">ESRI.</Link>
-        </p>
-        <p>
-            <strong>LANDSCAPE DATA</strong>
-        </p>
-        <p>
-            The landscape dataset summarizes information relevant to Utah’s wetlands at five spatial scales. These data allow us to understand where and what kinds of wetlands are in Utah, who owns those wetlands, how ownership patterns differ from overall land ownership patterns, and locations that have potentially restorable wetlands. These data also summarize trends in groundwater and surface water resources across the state. The data and a more detailed description of how they were developed are available via <Link to="https://firebasestorage.googleapis.com/v0/b/ut-dnr-wetlands-prod.appspot.com/o/Wetlands_Landscape_StudyResults.zip?alt=media&amp;token=fa7d4ff1-ebd3-40b2-b18e-e5bf609f8099">download</Link>.
-        </p>
+    <p> 
+        Data contained in this web application were published in past years and were curated by staff from the Utah Geological Survey (UGS). Sources of this data range from legacy studies to modern data generated by the UGS, student thesis work, private industry donations, state and federal agencies, and other public entities and groups. All data is public domain.
+    </p>
 
-        <p>
-            <strong>WETLAND CONDITION</strong>
-        </p>
-        <p>
-            <strong>Wetland assessment projects</strong>
-        </p>
-        <p>
-            The UGS has conducted field studies to evaluate the condition and potential function of Utah’s wetlands using the Utah Rapid Assessment Procedure. These projects provide baseline information on the types of wetlands, abundance and severity of common stressors, and rare and common wetland plants in each project area. The wetland assessments project layer shows the boundaries where assessment projects have taken place, years when field data were collected, a link to the associated reports when available, and information about project study design.
-        </p>
-        <p>
-            <strong>Wetland assessment results</strong>
-        </p>
-        <p>
-            The wetland assessment results dataset summarizes major findings from UGS wetland surveys. Results are organized by strata, which were based on ecoregions or watersheds, depending on the project. Only results from projects where sites were selected and surveyed using a random design are included in this dataset. The data and a more detailed methodology are available via <Link to="https://firebasestorage.googleapis.com/v0/b/ut-dnr-wetlands-prod.appspot.com/o/Wetlands_Landscape_StudyResults.zip?alt=media&amp;token=fa7d4ff1-ebd3-40b2-b18e-e5bf609f8099">download</Link>.
-        </p>
-        <p>
-            <strong>Wetland stressors</strong>
-        </p>
-        <p>
-            UGS created a landscape stress model for the state of Utah, focused on stressors likely to impact wetlands, including agriculture, development, hydrologic manipulations, and linear disturbances such as roads and pipelines. See <Link to="https://geodata.geology.utah.gov/pages/download.php?direct=1&amp;noattach=true&amp;ref=43843&amp;ext=pdf&amp;k=">Menuz (2015)</Link> for more information on the development of the landscape stress model.
-        </p>
-
-        <p>
-            <strong>WETLAND-DEPENDENT SPECIES</strong>
-        </p>
-        <p>
-            <strong>Sensitive amphibian ranges and habitat</strong>
-        </p>
-        <p>
-            County-level data on species’ ranges were compiled from the Utah Conservation Data Center (2017) and the National Amphibian Atlas (U.S. Geological Survey, 2014). Final presence/absence designations for each county where the two sources disagreed were based on a combination of literature review and best professional judgment. Elevation range and habitat descriptions were developed through consultation with three primary sources (Green and others, 2014; IUCN, 2017; AmphibiaWeb, 2018) and additional literature review.
-        </p>
-        <p>
-            <strong>LAND OWNERSHIP</strong>
-        </p>
-        <p>
-            Land ownership data are maintained by the Bureau of Land Management and the State of Utah School and Institutional Trust Lands Administration and are described in more detail <Link to="https://gis.utah.gov/data/cadastre/land-ownership/">here.</Link>
-        </p>
-    </div>
+<p> 
+    <strong><u>Geophysical Data</u></strong>
+    <ul className="list-disc ml-5 space-y-4">
+        <li>UGS Gravity Stations - Utah Geological Survey</li>
+        <li>Legacy Gravity Stations - Utah Geological Survey</li>
+        <li>TEM Data - Utah Geological Survey</li>
+        <li>MT Data - Utah Geological Survey</li>
+        <li>Gravity Anomalies - Utah Geological Survey</li>
+    </ul>
+</p>     
+<p> 
+    <strong><u>Geothermal Resources</u></strong>
+    <ul className="list-disc ml-5 space-y-4">
+        <li>Utah Geothermal Uses - Utah Geological Survey</li>
+        <li>Geothermal Wells &amp; Springs - Utah Geological Survey</li>
+        <li>Heat-Flow Data - Utah Geological Survey</li>
+        <li>Known Geothermal Resource Areas - Utah Geological Survey</li>
+        <li>Geothermal Deep Sedimentary Basins - Utah Geological Survey</li>
+        <li>Potential Geothermal Resource Areas - Utah Geological Survey</li>
+    </ul>
+</p>     
+<p> 
+    <strong><u>Geological Information</u></strong>
+    <ul className="list-disc ml-5 space-y-4">
+        <li>Hazardous (Quaternary age) Faults - Utah Geological Survey <br />
+            <Link to="https://opendata.gis.utah.gov/datasets/utahDNR::utah-quaternary-faults/Linkbout">Access data</Link>
+        </li>
+        <li>Great Basin Faults (INGENIOUS Project) - Geothermal Data Repository <br />
+            <Link to="https://gdr.openei.org/submissions/1391">Access data</Link>
+        </li>
+        <li>Utah Faults - Utah Geological Survey <br />
+            <Link to="https://geology.utah.gov/publication-details/?pub%3DM-179dm">Access data</Link>
+        </li>
+        <li>Geological Units (500k) - Utah Geological Survey <br />
+            <Link to="https://geology.utah.gov/publication-details/?pub%3DM-179dm">Access data</Link>
+        </li>
+    </ul>
+</p>     
+<p> 
+    <strong><u>Infrastructure and Land Use</u></strong>
+    <ul className="list-disc ml-5 space-y-4">
+        <li>Geothermal Power Plants - Utah Geological Survey</li>
+        <li>Utah Roads - Local data stewards, UDOT, and UGRC <br />
+            <Link to="https://opendata.gis.utah.gov/datasets/utah-roads/Linkbout">Access data</Link>
+        </li>
+        <li>Utah Railroads - UGRC <br />
+            <Link to="https://opendata.gis.utah.gov/datasets/utah-railroads/Linkbout">Access data</Link>
+        </li>
+        <li>Transmission Lines - UGRC <br />
+            <Link to="https://opendata.gis.utah.gov/datasets/utah::utah-transmission-lines/Linkbout">Access data</Link>
+        </li>
+        <li>Utah Land Ownership - School and Institutional Trust Lands Administration (SITLA), BLM, and Partners <br />
+            <Link to="https://opendata.gis.utah.gov/datasets/SITLA::land-ownership/Linkbout">Access data</Link>
+        </li>
+    </ul>
+    </p> 
+</div>
 )
 
 const dataSourcesShortened = (
     <p className='text-left text-sm mx-2 font-normal'>
-        Data sources for this application include wetland and riparian mapping, hydric soils, landscape data, wetland assessments, stressors, species ranges, and land ownership, compiled from state and federal agencies, field studies, and geospatial analyses.
+        Data contained in this web application were published in past years and were curated by staff from the Utah Geological Survey (UGS).
     </p>
 )
 
