@@ -36,17 +36,6 @@
         },
         {
             "type": "Feature",
-            "id": 4,
-            "geometry": null,
-            "properties": {
-                "OBJECTID": 4,
-                "Hazard": "LQS",
-                "Text": "Liquefaction Hazards in Utah (UGS Public Information Series 100): <a href=\"https://ugspub.nr.utah.gov/publications/public_information/pi-100.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/public_information/pi-100.pdf</a>.  ",
-                "GlobalID": "92a03ccc-1da8-4c40-b1d6-112e321bb289"
-            }
-        },
-        {
-            "type": "Feature",
             "id": 5,
             "geometry": null,
             "properties": {
@@ -179,13 +168,22 @@
         },
         {
             "type": "Feature",
+            "id": 4,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 4,
+                "Hazard": "LQS",
+                "Text": "International Building Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IBC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IBC2024V2.0</a>."
+            }
+        },
+        {
+            "type": "Feature",
             "id": 17,
             "geometry": null,
             "properties": {
                 "OBJECTID": 17,
                 "Hazard": "LQS",
-                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin to Springdale, Washington County, Utah (UGS Special Study 148) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf</a> and Map, Plate 9— Liquefaction Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl2.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl9.pdf</a>.",
-                "GlobalID": "ea0b339b-320a-4732-a737-a469333eea96"
+                "Text": "International Residential Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IRC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IRC2024V2.0</a>."
             }
         },
         {
@@ -195,8 +193,7 @@
             "properties": {
                 "OBJECTID": 18,
                 "Hazard": "LQS",
-                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (UGS Special Study 133) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf</a>  and Map, Plate 5— Liquefaction Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl5.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl5.pdf</a>. ",
-                "GlobalID": "c0a55ad3-5981-4ad6-af82-fe2bdc4cc29f"
+                "Text": "Guidelines for Conducting Engineering-Geology Investigations and Preparing Engineering-Geology Reports in Utah (2020, UGS Circular 128, Chapter 2): <a href=\"https://doi.org/10.34191/C-128\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/C-128</a>."
             }
         },
         {
@@ -206,8 +203,7 @@
             "properties": {
                 "OBJECTID": 19,
                 "Hazard": "LQS",
-                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf</a> and Map, Plate 2— Liquefaction Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl2.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl2.pdf</a>.",
-                "GlobalID": "f3c448a2-7949-4af3-835a-16a141363087"
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (2020, UGS Special Study 166): <a href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-166</a>."
             }
         },
         {
@@ -217,8 +213,7 @@
             "properties": {
                 "OBJECTID": 20,
                 "Hazard": "LQS",
-                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (UGS Special Study 163) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf</a> and Map, Plate 2— Liquefaction Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-2.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-2.pdf</a>.",
-                "GlobalID": "8b82f2b2-3a21-4789-9e4d-02b58f7d67d3"
+                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (2018, UGS Special Study 163): <a href=\"https://doi.org/10.34191/SS-163\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-163</a>, Plate 2— Liquefaction Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-2.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-2.pdf</a>."
             }
         },
         {
@@ -228,8 +223,7 @@
             "properties": {
                 "OBJECTID": 21,
                 "Hazard": "LQS",
-                "Text": "<p>Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (UGS Special Study 137) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf</a> and Map, Plate 1&mdash; Liquefaction Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate1.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate1.pdf</a>.</p>",
-                "GlobalID": "720804e5-cce7-49c0-b943-61d16d36005e"
+                "Text": "Liquefaction Hazards in Utah (2016, UGS Public Information Series 100): <a href=\"https://doi.org/10.34191/PI-100\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/PI-100</a>."
             }
         },
         {
@@ -239,8 +233,7 @@
             "properties": {
                 "OBJECTID": 22,
                 "Hazard": "LQS",
-                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (UGS Special Study 152) Report and Maps: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf</a>.",
-                "GlobalID": "dfc2c98d-cc3a-48d2-870c-d5775cc6f826"
+                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (2014, UGS Special Study 152): <a href=\"https://doi.org/10.34191/SS-152\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-152</a>."
             }
         },
         {
@@ -250,8 +243,37 @@
             "properties": {
                 "OBJECTID": 23,
                 "Hazard": "LQS",
-                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Special Study 166) Report and Maps: <a href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\">https://doi.org/10.34191/SS-166</a>.",
-                "GlobalID": "5f1f43f0-575f-4f51-be86-1c93b15a4e05"
+                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin City to Town of Springdale, Washington County, Utah (2013, UGS Special Study 148): <a href=\"https://doi.org/10.34191/SS-148\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-148</a>, Plate 9— Liquefaction Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl9.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl9.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 135,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 135,
+                "Hazard": "LQS",
+                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (2011, UGS Special Study 137): <a href=\"https://doi.org/10.34191/SS-137\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-137</a>, Plate 1— Liquefaction Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate1.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate1.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 136,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 136,
+                "Hazard": "LQS",
+                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (2010, UGS Special Study 133): <a href=\"https://doi.org/10.34191/SS-133\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-133</a>, Plate 5— Liquefaction Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl5.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl5.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 137,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 137,
+                "Hazard": "LQS",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (2008, UGS Special Study 127): <a href=\"https://doi.org/10.34191/SS-127\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-127</a>, Plate 2— Liquefaction Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl2.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl2.pdf</a>."
             }
         },
         {
