@@ -1281,8 +1281,7 @@
             "properties": {
                 "OBJECTID": 75,
                 "Hazard": "PES",
-                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin to Springdale, Washington County, Utah (UGS Special Study 148) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf</a> and Map, Plate 7— Piping, Erosion, and Wind-Blown Sand Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl7.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl7.pdf</a>.",
-                "GlobalID": "0238c968-2086-435a-a3a8-7c514324c4dd"
+                "Text": "International Building Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IBC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IBC2024V2.0</a>."
             }
         },
         {
@@ -1292,8 +1291,7 @@
             "properties": {
                 "OBJECTID": 76,
                 "Hazard": "PES",
-                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (UGS Special Study 133) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf</a> and Map, Plate 9— Piping and Erosion Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl9.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl9.pdf</a>.",
-                "GlobalID": "46fd0134-236c-4e23-a88a-9e3c76dce6d1"
+                "Text": "International Residential Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IRC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IRC2024V2.0</a>."
             }
         },
         {
@@ -1303,8 +1301,7 @@
             "properties": {
                 "OBJECTID": 77,
                 "Hazard": "PES",
-                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf</a> and Map, Plate 13— Piping and Erosion Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl13.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl13.pdf</a>.",
-                "GlobalID": "e2f0b967-dae9-432b-abec-16cba23d7e8e"
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (2020, UGS Special Study 166): <a href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-166</a>."
             }
         },
         {
@@ -1314,8 +1311,7 @@
             "properties": {
                 "OBJECTID": 78,
                 "Hazard": "PES",
-                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf</a> and Map, Plate 11— Piping and Erosion Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl11.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl11.pdf</a>.",
-                "GlobalID": "83454574-cdb3-4444-890b-a435f647e6c3"
+                "Text": "Guidelines for Conducting Engineering-Geology Investigations and Preparing Engineering-Geology Reports in Utah (2020, UGS Circular 128, Chapter 2): <a href=\"https://doi.org/10.34191/C-128\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/C-128</a>."
             }
         },
         {
@@ -1325,8 +1321,37 @@
             "properties": {
                 "OBJECTID": 79,
                 "Hazard": "PES",
-                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Special Study 166) Report and Maps: <a href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\">https://doi.org/10.34191/SS-166</a>. ",
-                "GlobalID": "ad348506-a454-4d35-b6df-13dd4db087cb"
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (2018, UGS Special Study 162): <a href=\"https://doi.org/10.34191/SS-162\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-162</a>, Plate 11— Piping and Erosion Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl11.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl11.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 201,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 201,
+                "Hazard": "PES",
+                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin City to Town of Springdale, Washington County, Utah (2013, UGS Special Study 148): <a href=\"https://doi.org/10.34191/SS-148\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-148</a>, Plate 7— Piping, Erosion, and Wind-Blown Sand Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl7.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl7.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 202,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 202,
+                "Hazard": "PES",
+                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (2010, UGS Special Study 133): <a href=\"https://doi.org/10.34191/SS-133\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-133</a>, Plate 9— Piping and Erosion Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl9.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl9.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 203,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 203,
+                "Hazard": "PES",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (2008, UGS Special Study 127): <a href=\"https://doi.org/10.34191/SS-127\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-127</a>, Plate 13— Piping and Erosion Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl13.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl13.pdf</a>."
             }
         },
         {
