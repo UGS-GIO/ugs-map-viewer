@@ -128,8 +128,57 @@
             "properties": {
                 "OBJECTID": 2,
                 "Hazard": "QFF",
-                "Text": "Utah Earthquakes (1850–2016) and Quaternary Faults Map (UGS M-277): <a href=\"https://ugspub.nr.utah.gov/publications/maps/m-277.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/maps/m-277.pdf</a>. ",
-                "GlobalID": "14d17559-8bb9-464d-b913-b47d4bc8fa53"
+                "Text": "Fault Trace Mapping and Surface-Fault-Rupture Special Study Zone Delineation of Quaternary-Active Faults in Central Utah, Garfield, Juab, Millard, Piute, Sanpete, and Sevier Counties, Utah (2025, UGS Report of Investigation 293): <a href=\"https://doi.org/10.34191/RI-293\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/RI-293</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 145,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 145,
+                "Hazard": "QFF",
+                "Text": "International Building Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IBC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IBC2024V2.0</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 146,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 146,
+                "Hazard": "QFF",
+                "Text": "Fault Trace Mapping and Surface-Fault-Rupture Special Study Zone Delineation of the East and West Cache Fault Zones and Other Regional Faults, Utah (2024, UGS Report of Investigation 286): <a href=\"https://doi.org/10.34191/RI-286\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/RI-286</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 147,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 147,
+                "Hazard": "QFF",
+                "Text": "Fault Trace Mapping and Surface-Fault-Rupture Special Study Zone Delineation of the Wasatch Fault Zone, Utah and Idaho (2020, UGS Report of Investigation 280): <a href=\"https://doi.org/10.34191/RI-280\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/RI-280</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 148,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 148,
+                "Hazard": "QFF",
+                "Text": "Guidelines for Evaluating Surface Fault-Rupture Hazards in Utah (2020, UGS Circular 128, Chapter 3): <a href=\"https://doi.org/10.34191/C-128\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/C-128</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 149,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 149,
+                "Hazard": "QFF",
+                "Text": "Utah Earthquakes (1850–2016) and Quaternary Faults (2017, UGS Map 277): <a href=\"https://doi.org/10.34191/M-277\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/M-277</a>."
             }
         },
         {
@@ -139,8 +188,37 @@
             "properties": {
                 "OBJECTID": 3,
                 "Hazard": "EGS",
-                "Text": "Seismic Hazard Maps and Site-Specific Data (U.S. Geological Survey): <a href=\"https://earthquake.usgs.gov/hazards/hazmaps/\" target=\"_blank\">https://earthquake.usgs.gov/hazards/hazmaps</a>.",
-                "GlobalID": "f4b83372-c88c-4f48-af2e-2446b79fbbd5"
+                "Text": "2023 50-State Long-term National Seismic Hazard Model (2024, NSHM; U.S. Geological Survey): <a href=\"https://www.usgs.gov/programs/earthquake-hazards/science/2023-50-state-long-term-national-seismic-hazard-model-0\" target=\"_blank\" rel=\"noopener noreferrer\">https://www.usgs.gov/programs/earthquake-hazards/science/2023-50-state-long-term-national-seismic-hazard-model-0</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 142,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 142,
+                "Hazard": "EGS",
+                "Text": "International Building Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IBC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IBC2024V2.0</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 143,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 143,
+                "Hazard": "EGS",
+                "Text": "International Residential Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IRC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IRC2024V2.0</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 144,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 144,
+                "Hazard": "EGS",
+                "Text": "Uniform-Hazard Ground Motion Maps for the Conterminous U.S., Alaska, and Hawaii (2023, U.S. Geological Survey): <a href=\"https://www.sciencebase.gov/catalog/item/64ff886dd34ed30c2057b4d9\" target=\"_blank\" rel=\"noopener noreferrer\">https://www.sciencebase.gov/catalog/item/64ff886dd34ed30c2057b4d9</a>."
             }
         },
         {
@@ -183,8 +261,97 @@
             "properties": {
                 "OBJECTID": 8,
                 "Hazard": "FLH",
-                "Text": "Debris-Flow Hazards in Utah (UGS Public Information Series 70: <a href=\"https://ugspub.nr.utah.gov/publications/public_information/pi-70.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/public_information/pi-70.pdf</a>.<br>Wildfires and Debris Flows in Northern Utah (UGS Public Information Series 90): <a href=\"https://ugspub.nr.utah.gov/publications/public_information/pi-90.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/public_information/pi-90.pdf</a>.",
-                "GlobalID": "c74063bd-94ac-4466-b196-9f690390f776"
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (2018, UGS Special Study 166): <a href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-166</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 40,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 40,
+                "Hazard": "FLH",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (2018, UGS Special Study 162): <a href=\"https://doi.org/10.34191/SS-162\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-162</a>, Plate 3— Flood and Debris-Flow Hazard: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl3.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl3.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 41,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 41,
+                "Hazard": "FLH",
+                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (2018, UGS Special Study 163): <a href=\"https://doi.org/10.34191/SS-163\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-163</a>, Plate 4— Flood and Debris-Flow Hazard: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-4.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-4.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 42,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 42,
+                "Hazard": "FLH",
+                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (2014, UGS Special Study 152): <a href=\"https://doi.org/10.34191/SS-152\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-152</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 43,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 43,
+                "Hazard": "FLH",
+                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin City to Town of Springdale, Washington County, Utah (2013, UGS Special Study 148): <a href=\"https://doi.org/10.34191/SS-148\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-148</a>, Plate 1— Flood and Debris-Flow Hazards: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl1.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl1.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 44,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 44,
+                "Hazard": "FLH",
+                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (2011, UGS Special Study 137): <a href=\"https://doi.org/10.34191/SS-137\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-137</a>, Plate 3— Flood and Debris-Flow Hazard: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate3.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate3.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 45,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 45,
+                "Hazard": "FLH",
+                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (2010, UGS Special Study 133): <a href=\"https://doi.org/10.34191/SS-133\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-133</a>, Plate 1— Flood and Debris-Flow Hazard: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl1.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl1.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 46,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 46,
+                "Hazard": "FLH",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (2008, UGS Special Study 127): <a href=\"https://doi.org/10.34191/SS-127\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-127</a>, Plate 3— Flood and Debris-Flow Hazard: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl3.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl3.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 47,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 47,
+                "Hazard": "FLH",
+                "Text": "Wildfires and Debris Flows in Northern Utah (2007, UGS Public Information Series 90): <a href=\"https://doi.org/10.34191/PI-90\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/PI-90</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 150,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 150,
+                "Hazard": "FLH",
+                "Text": "Debris-Flow Hazards (2000, UGS Public Information Series 70): <a href=\"https://doi.org/10.34191/PI-70\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/PI-70</a>."
             }
         },
         {
@@ -482,94 +649,6 @@
                 "Hazard": "RFH",
                 "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Special Study 166) Report and Maps: <a href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\">https://doi.org/10.34191/SS-166</a>.",
                 "GlobalID": "9ef4f349-3f3a-433a-8322-f3c73be79944"
-            }
-        },
-        {
-            "type": "Feature",
-            "id": 40,
-            "geometry": null,
-            "properties": {
-                "OBJECTID": 40,
-                "Hazard": "FLH",
-                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin to Springdale, Washington County, Utah (UGS Special Study 148) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf</a> and Map, Plate 1— Flood and Debris-Flow Hazards: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl1.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl1.pdf</a>.",
-                "GlobalID": "3a5745e9-fde6-4048-9419-1a5ebad4ec73"
-            }
-        },
-        {
-            "type": "Feature",
-            "id": 41,
-            "geometry": null,
-            "properties": {
-                "OBJECTID": 41,
-                "Hazard": "FLH",
-                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (UGS Special Study 133) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf</a> and Map, Plate 1— Flood and Debris-Flow Hazard: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl1.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl1.pdf</a>.",
-                "GlobalID": "f444f4f6-bf3f-407f-9f75-c43809013e2f"
-            }
-        },
-        {
-            "type": "Feature",
-            "id": 42,
-            "geometry": null,
-            "properties": {
-                "OBJECTID": 42,
-                "Hazard": "FLH",
-                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf</a> and Map, Plate 3— Flood and Debris-Flow Hazard: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl3.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl3.pdf</a>.",
-                "GlobalID": "2986d555-a261-42f5-b487-0e4e7c329d87"
-            }
-        },
-        {
-            "type": "Feature",
-            "id": 43,
-            "geometry": null,
-            "properties": {
-                "OBJECTID": 43,
-                "Hazard": "FLH",
-                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (UGS Special Study 163) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf</a> and Map, Plate 4— Flood and Debris-Flow Hazard: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-4.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-4.pdf</a>.",
-                "GlobalID": "4e86c9ab-e04c-4d9e-b15e-9931fe676fd6"
-            }
-        },
-        {
-            "type": "Feature",
-            "id": 44,
-            "geometry": null,
-            "properties": {
-                "OBJECTID": 44,
-                "Hazard": "FLH",
-                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (UGS Special Study 137) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf</a> and Map, Plate 3— Flood and Debris-Flow Hazard: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate3.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate3.pdf</a>.",
-                "GlobalID": "cf0b03b3-c333-4198-a9e7-7d459dcc4e08"
-            }
-        },
-        {
-            "type": "Feature",
-            "id": 45,
-            "geometry": null,
-            "properties": {
-                "OBJECTID": 45,
-                "Hazard": "FLH",
-                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (UGS Special Study 152) Report and Maps: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf</a>.",
-                "GlobalID": "60941009-e73c-4e47-b5a0-6f86b78c1eaf"
-            }
-        },
-        {
-            "type": "Feature",
-            "id": 46,
-            "geometry": null,
-            "properties": {
-                "OBJECTID": 46,
-                "Hazard": "FLH",
-                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf</a> and Map, Plate 3— Flood and Debris-Flow Hazard: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl3.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl3.pdf</a>.",
-                "GlobalID": "9c920e11-6f9d-484c-8dc8-441bbd4a3e5a"
-            }
-        },
-        {
-            "type": "Feature",
-            "id": 47,
-            "geometry": null,
-            "properties": {
-                "OBJECTID": 47,
-                "Hazard": "FLH",
-                "Text": "Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Contract Deliverable) Report and Maps: <a href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\">https://doi.org/10.34191/SS-166</a>.",
-                "GlobalID": "1f534aba-7299-4ace-b56f-7988e3cf17f0"
             }
         },
         {
@@ -1153,17 +1232,6 @@
                 "Hazard": "LSC",
                 "Text": "Landslide Hazards in Utah (UGS Public Information Series 98): <a href=\"https://ugspub.nr.utah.gov/publications/public_information/pi-98.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/public_information/pi-98.pdf</a>.<br>Utah Landslide Database (UGS digital product): <a href=\"https://gis.utah.gov/data/geoscience/landslides/\" target=\"_blank\">https://gis.utah.gov/data/geoscience/landslides/</a>.",
                 "GlobalID": "4e177ad9-eeb5-4bc4-8b72-d9a40c19b472"
-            }
-        },
-        {
-            "type": "Feature",
-            "id": 101,
-            "geometry": null,
-            "properties": {
-                "OBJECTID": 101,
-                "Hazard": "QFF",
-                "Text": "The <i>Utah Geological Survey Quaternary Fault and Fold Database and Map of Utah</i> is a compilation of existing information on faults and fault-related folds considered to be potential earthquake sources (i.e., “active” faults and folds). The faults and folds contained in the database are those considered to have been sources of large earthquakes (about magnitude 6.5 or greater) during the Quaternary Period (past 2.6 million years); these geologic structures are the most likely sources of large earthquakes in the future. The database is intended to be a comprehensive source of the most current information available for characterizing active faults and folds in Utah for seismic-hazard analysis. This version of the database incorporates fault data from geologic maps and other documents formally published through 2013, along with several additional faults.<br><br/>The database was compiled and attributed using ESRI ArcGIS geographic information system software. In general, the database attribute conventions follow those of the <i>Quaternary Fault and Fold Database of the United States</i> maintained by the U.S. Geological Survey (USGS).",
-                "GlobalID": "009ac404-bcfa-43c5-a793-b59205aa2b9c"
             }
         },
         {
