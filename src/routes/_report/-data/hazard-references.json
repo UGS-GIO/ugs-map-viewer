@@ -1341,8 +1341,7 @@
             "properties": {
                 "OBJECTID": 86,
                 "Hazard": "SBP",
-                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf</a> and Map, Plate 10— Shallow Bedrock Potential: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl10.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl10.pdf</a>.",
-                "GlobalID": "ff4b27e4-17a5-434c-a7ae-b990e25b1856"
+                "Text": "International Building Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IBC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IBC2024V2.0</a>."
             }
         },
         {
@@ -1352,8 +1351,7 @@
             "properties": {
                 "OBJECTID": 87,
                 "Hazard": "SBP",
-                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (UGS Special Study 163) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf</a> and Map, Plate 10— Shallow Bedrock Potential: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-10.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-10.pdf</a>.",
-                "GlobalID": "38080b64-399b-4072-866c-52177c5be5b0"
+                "Text": "International Residential Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IRC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IRC2024V2.0</a>."
             }
         },
         {
@@ -1363,8 +1361,7 @@
             "properties": {
                 "OBJECTID": 88,
                 "Hazard": "SBP",
-                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (UGS Special Study 137) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf</a> and Map, Plate 9— Shallow Bedrock Potential: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate9.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate9.pdf</a>.",
-                "GlobalID": "404bab5e-c0d8-4a61-9080-25735ef0c727"
+                "Text": "Guidelines for Conducting Engineering-Geology Investigations and Preparing Engineering-Geology Reports in Utah (2020, UGS Circular 128, Chapter 2): <a href=\"https://doi.org/10.34191/C-128\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/C-128</a>."
             }
         },
         {
@@ -1374,8 +1371,7 @@
             "properties": {
                 "OBJECTID": 89,
                 "Hazard": "SBP",
-                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (UGS Special Study 152) Report and Maps: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf</a>.",
-                "GlobalID": "ed1a2526-1747-4561-bb72-d6f8fb170dc9"
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (2018, UGS Special Study 162): <a href=\"https://doi.org/10.34191/SS-162\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-162</a>, Plate 13— Shallow Bedrock Potential: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl13.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl13.pdf</a>."
             }
         },
         {
@@ -1385,8 +1381,37 @@
             "properties": {
                 "OBJECTID": 90,
                 "Hazard": "SBP",
-                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf</a> and Map, Plate 13— Shallow Bedrock Potential: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl13.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl13.pdf</a>.",
-                "GlobalID": "de565a61-771a-4730-a05b-c536e90396fc"
+                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (2018, UGS Special Study 163): <a href=\"https://doi.org/10.34191/SS-163\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-163</a>, Plate 10— Shallow Bedrock Potential: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-10.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-10.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 189,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 189,
+                "Hazard": "SBP",
+                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (2014, UGS Special Study 152): <a href=\"https://doi.org/10.34191/SS-152\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-152</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 190,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 190,
+                "Hazard": "SBP",
+                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (2011, UGS Special Study 137): <a href=\"https://doi.org/10.34191/SS-137\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-137</a>, Plate 9— Shallow Bedrock Potential: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate9.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate9.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 191,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 191,
+                "Hazard": "SBP",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (2008, UGS Special Study 127): <a href=\"https://doi.org/10.34191/SS-127\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-127</a>, Plate 10— Shallow Bedrock Potential: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl10.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl10.pdf</a>."
             }
         },
         {
