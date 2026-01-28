@@ -708,8 +708,37 @@
             "properties": {
                 "OBJECTID": 9,
                 "Hazard": "EFH",
-                "Text": "Investigation of Land Subsidence and Earth Fissures in Cedar Valley, Iron County, Utah (UGS Special Study 150): <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-150.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-150.pdf</a>. This report contains an in-depth description of land subsidence and earth fissures and is useful to more fully understand why and how earth fissures form, along with the resulting hazard.",
-                "GlobalID": "766cbfd6-3247-48f5-a744-660a8a02f424"
+                "Text": "International Building Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IBC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IBC2024V2.0</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 195,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 195,
+                "Hazard": "EFH",
+                "Text": "International Residential Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IRC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IRC2024V2.0</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 196,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 196,
+                "Hazard": "EFH",
+                "Text": "Guidelines for Evaluating Land-Subsidence and Earth-Fissure Hazards in Utah (2020, UGS Circular 128, Chapter 6): <a href=\"https://doi.org/10.34191/C-128\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/C-128</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 197,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 197,
+                "Hazard": "EFH",
+                "Text": "Investigation of Land Subsidence and Earth Fissures in Cedar Valley, Iron County, Utah (2014, UGS Special Study 150): <a href=\"https://doi.org/10.34191/SS-150\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-150</a>."
             }
         },
         {
