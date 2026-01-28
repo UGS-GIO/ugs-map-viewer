@@ -16,6 +16,7 @@ import {
     queryHazardUnitsStatic,
     queryAllUnitsForHazardCodes,
     queryReferencesStatic,
+    getAllHazardCodes,
 } from '@/routes/_report/-utils/static-hazards-service'
 import type { CustomLegendItem } from '@/routes/_report/-components/content/report-legend'
 import { generateQFFLegendItems } from '@/routes/_report/-utils/qff-legend-service'
@@ -34,6 +35,7 @@ import { ReportFooter } from './layouts/report-footer'
 
 interface HazardsReportProps {
     polygon: string
+    testAllHazards?: boolean
 }
 
 interface HazardLayer {
@@ -52,7 +54,7 @@ interface HazardGroup {
     layers: HazardLayer[]
 }
 
-export function HazardsReport({ polygon }: HazardsReportProps) {
+export function HazardsReport({ polygon, testAllHazards = false }: HazardsReportProps) {
     const sectionRefs = useRef<{ [key: string]: HTMLElement | null }>({})
     const printRef = useRef<HTMLDivElement>(null)
     const [activeSection, setActiveSection] = useState<string>('cover')
@@ -60,29 +62,34 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
 
     // Query for hazard data
     const { data: hazardGroups = [], isLoading } = useQuery({
-        queryKey: queryKeys.hazards.report(polygon),
+        queryKey: [...queryKeys.hazards.report(polygon), testAllHazards],
         queryFn: async () => {
-            const allHazardInfos = await queryGeoServerForHazardUnits(polygon);
+            // In test mode, use all hazard codes; otherwise query by polygon
+            const allHazardInfos = testAllHazards ? [] : await queryGeoServerForHazardUnits(polygon);
 
             const hazardInfos = allHazardInfos.filter(
                 ({ units }) => units && units.length > 0
             )
 
-            const flatUnitCodes = Array.from(
-                new Set(
-                    hazardInfos.reduce(
-                        (prev: string[], { units }) => prev.concat(units),
-                        []
+            const flatUnitCodes = testAllHazards
+                ? getAllHazardCodes().map(code => `test${code.toLowerCase()}`)
+                : Array.from(
+                    new Set(
+                        hazardInfos.reduce(
+                            (prev: string[], { units }) => prev.concat(units),
+                            []
+                        )
                     )
                 )
-            )
 
-            // Extract unique hazard codes from the polygon results
-            const hazardCodes = Array.from(
-                new Set(
-                    hazardInfos.map(h => h.hazard)
+            // Extract unique hazard codes - in test mode use all codes
+            const hazardCodes = testAllHazards
+                ? getAllHazardCodes()
+                : Array.from(
+                    new Set(
+                        hazardInfos.map(h => h.hazard)
+                    )
                 )
-            )
 
             const [
                 groupings,
@@ -248,7 +255,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
     return (
         <>
             <ReportLayout
-                header={<ReportHeader />}
+                header={<ReportHeader testAllHazards={testAllHazards} />}
                 hero={
                     <div className="print:hidden">
                         <HeroSection

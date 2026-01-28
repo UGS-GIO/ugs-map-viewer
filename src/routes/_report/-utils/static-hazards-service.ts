@@ -224,6 +224,14 @@ export function getAllHazardGroups(): string[] {
 }
 
 /**
+ * Get all hazard codes
+ */
+export function getAllHazardCodes(): string[] {
+    const features = extractFeatures<HazardGrouping>(groupingsData);
+    return features.map(f => f.HazardCode);
+}
+
+/**
  * Get all hazard codes for a specific group
  */
 export function getHazardCodesForGroup(groupName: string): string[] {

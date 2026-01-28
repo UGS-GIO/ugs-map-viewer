@@ -8,7 +8,8 @@ const HazardsSearchSchema = z.object({
   aoi: z.union([
     z.string(),
     z.object({}).passthrough()
-  ]).optional()
+  ]).optional(),
+  testAll: z.union([z.boolean(), z.string().transform(v => v === 'true')]).optional(),
 })
 
 type HazardsSearch = z.infer<typeof HazardsSearchSchema>
@@ -43,5 +44,8 @@ function HazardsReportRoute() {
     }
   }
 
-  return <HazardsReport polygon={aoiString} />
+  // testAll is dev-only: shows all hazards regardless of polygon
+  const testAll = import.meta.env.DEV && search.testAll === true
+
+  return <HazardsReport polygon={aoiString} testAllHazards={testAll} />
 }

@@ -3,14 +3,16 @@ import ThemeSwitch from "@/components/theme-switch";
 import { useGetCurrentPage } from "@/hooks/use-get-current-page";
 import { getAppTitle } from "@/lib/app-titles";
 import { Button } from "@/components/ui/button";
-import { Share2, Printer } from "lucide-react";
+import { Share2, Printer, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ReportHeaderProps {
     onPrint?: () => void;
+    testAllHazards?: boolean;
 }
 
-export const ReportHeader = ({ onPrint }: ReportHeaderProps) => {
+export const ReportHeader = ({ onPrint, testAllHazards = false }: ReportHeaderProps) => {
     const currentPage = useGetCurrentPage();
     const appTitle = getAppTitle(currentPage);
 
@@ -61,6 +63,33 @@ export const ReportHeader = ({ onPrint }: ReportHeaderProps) => {
                             <span className="hidden lg:inline">Print</span>
                         </Button>
                     </div>
+                )}
+                {import.meta.env.DEV && (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Button
+                                    onClick={() => {
+                                        const url = new URL(window.location.href)
+                                        if (testAllHazards) {
+                                            url.searchParams.delete('testAll')
+                                        } else {
+                                            url.searchParams.set('testAll', 'true')
+                                        }
+                                        window.location.href = url.toString()
+                                    }}
+                                    variant={testAllHazards ? "destructive" : "ghost"}
+                                    size="icon"
+                                    className="h-8 w-8"
+                                >
+                                    <FlaskConical className="h-4 w-4" />
+                                </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>{testAllHazards ? "Exit test mode" : "Test all hazards"}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                 )}
                 <ThemeSwitch />
             </div>
