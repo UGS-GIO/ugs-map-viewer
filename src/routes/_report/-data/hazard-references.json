@@ -239,8 +239,157 @@
             "properties": {
                 "OBJECTID": 6,
                 "Hazard": "LSF",
-                "Text": "Utah Landslide Database (UGS digital product): <a href=\"https://gis.utah.gov/data/geoscience/landslides/\" target=\"_blank\">https://gis.utah.gov/data/geoscience/landslides/</a>. \nLandslide Hazards in Utah (UGS Public Information Series 98): <a href=\"https://ugspub.nr.utah.gov/publications/public_information/pi-98.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/public_information/pi-98.pdf</a>.",
-                "GlobalID": "3ff962c0-5ca9-4cb9-9596-aaacc11cc2bd"
+                "Text": "Utah Landslide Database (UGS digital product): <a href=\"https://gis.utah.gov/data/geoscience/landslides/\" target=\"_blank\" rel=\"noopener noreferrer\">https://gis.utah.gov/data/geoscience/landslides/</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 156,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 156,
+                "Hazard": "LSF",
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (2020, UGS Special Study 166): <a href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-166</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 157,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 157,
+                "Hazard": "LSF",
+                "Text": "Guidelines for Evaluating Landslide Hazards in Utah (2020, UGS Circular 128, Chapter 4): <a href=\"https://doi.org/10.34191/C-128\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/C-128</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 158,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 158,
+                "Hazard": "LSF",
+                "Text": "Landslide Inventory Map of Seely Creek and Big Bear Creek Drainages, Sanpete and Emery Counties, Utah (2019, UGS Special Study 164): <a href=\"https://doi.org/10.34191/SS-164\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-164</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 159,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 159,
+                "Hazard": "LSF",
+                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (2018, UGS Special Study 163): <a href=\"https://doi.org/10.34191/SS-163\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-163</a>, Plate 5— Landslide Map: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-5.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-5.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 160,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 160,
+                "Hazard": "LSF",
+                "Text": "Landslide Inventory Map of the Ferron Creek Area, Sanpete and Emery Counties, Utah (2017, UGS Special Study 161): <a href=\"https://doi.org/10.34191/SS-161\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-161</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 161,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 161,
+                "Hazard": "LSF",
+                "Text": "Landslide Inventory Map of the Sixmile Canyon and North Hollow Area, Sanpete County, Utah (2015, UGS Map 273DM): <a href=\"https://doi.org/10.34191/M-273dm\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/M-273dm</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 162,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 162,
+                "Hazard": "LSF",
+                "Text": "Landslide Inventory Map for the Upper Muddy Creek Area, Sanpete and Sevier Counties, Utah (2015, UGS Special Study 155): <a href=\"https://doi.org/10.34191/SS-155\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-155</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 163,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 163,
+                "Hazard": "LSF",
+                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (2014, UGS Special Study 152): <a href=\"https://doi.org/10.34191/SS-152\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-152</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 164,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 164,
+                "Hazard": "LSF",
+                "Text": "Landslide Inventory Map of 2012 Seeley Fire Area, Carbon and Emery Counties, Utah (2014, UGS Special Study 153): <a href=\"https://doi.org/10.34191/SS-153\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-153</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 165,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 165,
+                "Hazard": "LSF",
+                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin City to Town of Springdale, Washington County, Utah (2013, UGS Special Study 148): <a href=\"https://doi.org/10.34191/SS-148\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-148</a>, Plate 2— Landslide Map: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/plate2.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-148/plate2.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 166,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 166,
+                "Hazard": "LSF",
+                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (2011, UGS Special Study 137): <a href=\"https://doi.org/10.34191/SS-137\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-137</a>, Plate 4— Landslide Map: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/SS-137/SS-137_Plate4.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/SS-137/SS-137_Plate4.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 167,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 167,
+                "Hazard": "LSF",
+                "Text": "Landslide Hazards in Utah (2011, UGS Public Information Series 98): <a href=\"https://doi.org/10.34191/PI-98\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/PI-98</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 168,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 168,
+                "Hazard": "LSF",
+                "Text": "Landslide Inventory Map of Twelvemile Canyon, Sanpete County, Utah (2011, UGS Map 247DM): <a href=\"https://doi.org/10.34191/M-247dm\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/M-247dm</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 169,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 169,
+                "Hazard": "LSF",
+                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (2010, UGS Special Study 133): <a href=\"https://doi.org/10.34191/SS-133\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-133</a>, Plate 3— Landslides Map: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl3.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl3.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 170,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 170,
+                "Hazard": "LSF",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County Utah (2008, UGS Special Study 127): <a href=\"https://doi.org/10.34191/SS-127\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-127</a>, Plate 4— Landslide Map: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl4.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl4.pdf</a>."
             }
         },
         {
