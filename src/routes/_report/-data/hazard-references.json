@@ -1426,8 +1426,57 @@
             "properties": {
                 "OBJECTID": 100,
                 "Hazard": "LSC",
-                "Text": "Landslide Hazards in Utah (UGS Public Information Series 98): <a href=\"https://ugspub.nr.utah.gov/publications/public_information/pi-98.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/public_information/pi-98.pdf</a>.<br>Utah Landslide Database (UGS digital product): <a href=\"https://gis.utah.gov/data/geoscience/landslides/\" target=\"_blank\">https://gis.utah.gov/data/geoscience/landslides/</a>.",
-                "GlobalID": "4e177ad9-eeb5-4bc4-8b72-d9a40c19b472"
+                "Text": "Utah Landslide Database (UGS digital product): <a href=\"https://gis.utah.gov/data/geoscience/landslides/\" target=\"_blank\" rel=\"noopener noreferrer\">https://gis.utah.gov/data/geoscience/landslides/</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 175,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 175,
+                "Hazard": "LSC",
+                "Text": "International Building Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IBC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IBC2024V2.0</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 176,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 176,
+                "Hazard": "LSC",
+                "Text": "International Residential Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IRC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IRC2024V2.0</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 177,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 177,
+                "Hazard": "LSC",
+                "Text": "Guidelines for Evaluating Landslide Hazards in Utah (2020, UGS Circular 128, Chapter 4): <a href=\"https://doi.org/10.34191/C-128\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/C-128</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 178,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 178,
+                "Hazard": "LSC",
+                "Text": "Landslide Hazards in Utah (2011, UGS Public Information Series 98): <a href=\"https://doi.org/10.34191/PI-98\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/PI-98</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 179,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 179,
+                "Hazard": "LSC",
+                "Text": "Landslide Maps of Utah (2010, UGS Map 246DM): <a href=\"https://doi.org/10.34191/M-246dm\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/M-246dm</a>."
             }
         },
         {
