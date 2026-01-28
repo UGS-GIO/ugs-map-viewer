@@ -29,6 +29,7 @@ import heroImage from '@/assets/geologic-hazards-banner-alstrom-point-1920px.web
 import { Banner, BannerIcon, BannerTitle } from '@/components/ui/banner'
 import { toast } from "sonner"
 import { ReportHeader } from './layouts/report-header'
+import { ReportFooter } from './layouts/report-footer'
 
 
 interface HazardsReportProps {
@@ -264,37 +265,30 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                     </div>
                 }
                 tabs={
-                    <div className="print:hidden flex justify-between">
+                    <div className="print:hidden flex flex-col lg:flex-row lg:justify-between lg:items-center">
                         <SectionTabs
                             sections={sections}
                             activeSection={activeSection}
                             onSectionChange={scrollToSection}
                         />
-                        <TooltipProvider>
-                            <div className="flex flex-wrap gap-2 items-center mx-4 my-2">
+                        <div className="flex justify-center lg:justify-end gap-2 px-4 py-2 lg:py-0">
+                            <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <Button
                                             onClick={() => {
-                                                const reportUrl = window.location.href; // Use the current URL
-
-                                                // Directly copy the URL to the clipboard and show toast notification
-                                                navigator.clipboard.writeText(reportUrl)
-                                                    .then(() => {
-                                                        // Success toast
-                                                        toast('Report link copied to clipboard!');
-                                                    })
+                                                navigator.clipboard.writeText(window.location.href)
+                                                    .then(() => toast('Report link copied to clipboard!'))
                                                     .catch((err) => {
-                                                        // Failure toast
                                                         toast.warning('Failed to copy report link.');
                                                         console.error('Could not copy text: ', err);
                                                     });
                                             }}
                                             variant="default"
-                                            className='inline-flex gap-1.5 p-2 items-center'
+                                            size="sm"
                                         >
-                                            <Upload className="h-4 w-4 xl:mr-2" />
-                                            <span className="hidden xl:inline">Share Report</span>
+                                            <Upload className="h-4 w-4" />
+                                            <span className="hidden sm:inline ml-1.5">Share</span>
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
@@ -306,18 +300,18 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                                         <Button
                                             onClick={handlePrint}
                                             variant="default"
-                                            className='inline-flex gap-1.5 p-2 items-center'
+                                            size="sm"
                                         >
-                                            <Printer className="h-4 w-4 xl:mr-2" />
-                                            <span className="hidden xl:inline">Print / Save as PDF</span>
+                                            <Printer className="h-4 w-4" />
+                                            <span className="hidden sm:inline ml-1.5">Print</span>
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                         <p>Print / Save as PDF</p>
                                     </TooltipContent>
                                 </Tooltip>
-                            </div>
-                        </TooltipProvider>
+                            </TooltipProvider>
+                        </div>
                     </div>
                 }
                 banner={
@@ -328,12 +322,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                         </BannerTitle>
                     </Banner>
                 }
-                footer={
-                    <div className="flex items-center justify-between w-full text-sm text-muted-foreground print:hidden">
-                        <span>Utah Geological Survey</span>
-                        <span>Generated: {new Date().toLocaleString()}</span>
-                    </div>
-                }
+                footer={<ReportFooter />}
             >
                 <div ref={printRef} className="report-content space-y-6 md:space-y-12 max-w-7xl mx-auto">
                     {/* Print-only header */}

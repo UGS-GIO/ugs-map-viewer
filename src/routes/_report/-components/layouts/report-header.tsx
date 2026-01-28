@@ -26,28 +26,28 @@ export const ReportHeader = ({ onPrint }: ReportHeaderProps) => {
     };
 
     return (
-        <div className="flex items-center justify-between w-full py-1 px-2 md:px-4 bg-background">
-            <div className="flex items-center gap-4">
-                <Link to="https://geology.utah.gov/" className="cursor-pointer">
+        <div className="flex items-center justify-between w-full py-2 px-2 md:px-4 bg-background">
+            <div className="flex items-center gap-3">
+                <Link to="https://geology.utah.gov/" className="cursor-pointer flex-shrink-0">
                     <img
                         src='/logo_main.png'
                         alt='Utah Geological Survey Logo'
-                        className="h-10 w-auto"
+                        className="h-9 w-auto"
                     />
                 </Link>
-                <div className="flex flex-col">
-                    <span className='font-semibold text-lg text-foreground'>{appTitle}</span>
-                    <span className='text-sm text-muted-foreground'>Utah Geological Survey</span>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+                    <span className='font-semibold text-base sm:text-lg text-foreground'>{appTitle}</span>
+                    <span className='hidden sm:inline text-muted-foreground'>|</span>
+                    <span className='text-xs sm:text-sm text-muted-foreground'>Utah Geological Survey</span>
                 </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
                 {onPrint && (
-                    <div className="hidden sm:flex gap-2 print:hidden">
+                    <div className="hidden sm:inline-flex flex-row gap-2 print:hidden">
                         <Button
                             onClick={handleShare}
                             variant="outline"
                             size="sm"
-                            className='inline-flex gap-1.5 items-center'
                         >
                             <Share2 className="h-4 w-4" />
                             <span className="hidden lg:inline">Share</span>
@@ -56,7 +56,6 @@ export const ReportHeader = ({ onPrint }: ReportHeaderProps) => {
                             onClick={onPrint}
                             variant="outline"
                             size="sm"
-                            className='inline-flex gap-1.5 items-center'
                         >
                             <Printer className="h-4 w-4" />
                             <span className="hidden lg:inline">Print</span>

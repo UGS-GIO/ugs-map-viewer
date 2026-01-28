@@ -49,9 +49,7 @@ export function ReportLayout({
             </Layout.Body>
 
             {footer && (
-                <Layout.Footer>
-                    {footer}
-                </Layout.Footer>
+                <Layout.Footer dynamicContent={footer} />
             )}
         </>
     )
