@@ -1219,8 +1219,37 @@
             "properties": {
                 "OBJECTID": 72,
                 "Hazard": "MKF",
-                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf</a> and Map, Plate 9— Breccia Pipe and Paleokarst: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl9.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl9.pdf</a>.",
-                "GlobalID": "d05ee277-d625-41ac-943a-bf31c122914b"
+                "Text": "International Building Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IBC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IBC2024V2.0</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 198,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 198,
+                "Hazard": "MKF",
+                "Text": "International Residential Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IRC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IRC2024V2.0</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 199,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 199,
+                "Hazard": "MKF",
+                "Text": "Guidelines for Conducting Engineering-Geology Investigations and Preparing Engineering-Geology Reports in Utah (2020, UGS Circular 128, Chapter 2): <a href=\"https://doi.org/10.34191/C-128\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/C-128</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 200,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 200,
+                "Hazard": "MKF",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (2008, UGS Special Study 127): <a href=\"https://doi.org/10.34191/SS-127\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-127</a>, Plate 9— Breccia Pipe and Paleokarst: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl9.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl9.pdf</a>."
             }
         },
         {
