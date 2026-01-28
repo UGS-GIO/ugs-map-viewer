@@ -1030,8 +1030,7 @@
             "properties": {
                 "OBJECTID": 62,
                 "Hazard": "CRS",
-                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf</a> and Map, Plate 10— Corrosive Soil and Rock Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl10.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl10.pdf</a>.",
-                "GlobalID": "a0bbb290-6ee2-4b31-8d67-29a253df43e3"
+                "Text": "International Building Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IBC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IBC2024V2.0</a>."
             }
         },
         {
@@ -1041,8 +1040,37 @@
             "properties": {
                 "OBJECTID": 63,
                 "Hazard": "CRS",
-                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Special Study 166) Report and Maps: <a href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\">https://doi.org/10.34191/SS-166</a>.",
-                "GlobalID": "aba09232-e93d-4a53-9e22-282d246cb38b"
+                "Text": "International Residential Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IRC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IRC2024V2.0</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 192,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 192,
+                "Hazard": "CRS",
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (2020, UGS Special Study 166): <a href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-166</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 193,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 193,
+                "Hazard": "CRS",
+                "Text": "Guidelines for Conducting Engineering-Geology Investigations and Preparing Engineering-Geology Reports in Utah (2020, UGS Circular 128, Chapter 2): <a href=\"https://doi.org/10.34191/C-128\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/C-128</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 194,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 194,
+                "Hazard": "CRS",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (2018, UGS Special Study 162): <a href=\"https://doi.org/10.34191/SS-162\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-162</a>, Plate 10— Corrosive Soil and Rock Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl10.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl10.pdf</a>."
             }
         },
         {
