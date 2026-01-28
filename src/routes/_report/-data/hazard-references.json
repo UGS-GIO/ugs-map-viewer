@@ -1266,8 +1266,27 @@
             "properties": {
                 "OBJECTID": 102,
                 "Hazard": "ERZ",
-                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf</a> and Map, Plate 3— Flood-Hazard Map: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl3.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl3.pdf</a>.",
-                "GlobalID": "89312fbd-8bb9-4848-be54-ca518a074e98"
+                "Text": "Guidelines for Conducting Engineering-Geology Investigations and Preparing Engineering-Geology Reports in Utah (2020, UGS Circular 128, Chapter 2): <a href=\"https://doi.org/10.34191/C-128\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/C-128</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 154,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 154,
+                "Hazard": "ERZ",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (2008, UGS Special Study 127): <a href=\"https://doi.org/10.34191/SS-127\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-127</a>, Plate 3— Flood-Hazard Map: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl3.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl3.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 155,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 155,
+                "Hazard": "ERZ",
+                "Text": "Virgin River Master Plan—A Road Map for Reconstruction, Management, and Long-Term Maintenance: Unpublished Consultant’s Report Prepared for the Washington County Water Conservancy District (2007, Natural Channel Design): <a href=\"https://washingtonutah.gov/publicworks/WebFinalVirginMasterPlan.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://washingtonutah.gov/publicworks/WebFinalVirginMasterPlan.pdf</a>."
             }
         },
         {
