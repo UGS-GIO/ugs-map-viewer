@@ -1440,9 +1440,128 @@
             "geometry": null,
             "properties": {
                 "OBJECTID": 85,
+                "Hazard": "SLS",
+                "Text": "International Building Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IBC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IBC2024V2.0</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 204,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 204,
+                "Hazard": "SLS",
+                "Text": "International Residential Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IRC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IRC2024V2.0</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 205,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 205,
+                "Hazard": "SLS",
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (2020, UGS Special Study 166): <a href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-166</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 206,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 206,
+                "Hazard": "SLS",
+                "Text": "Guidelines for Conducting Engineering-Geology Investigations and Preparing Engineering-Geology Reports in Utah (2020, UGS Circular 128, Chapter 2): <a href=\"https://doi.org/10.34191/C-128\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/C-128</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 207,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 207,
+                "Hazard": "SLS",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (2018, UGS Special Study 162): <a href=\"https://doi.org/10.34191/SS-162\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-162</a>, Plate 9— Soluble Soil and Rock Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl9.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl9.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 208,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 208,
+                "Hazard": "SLS",
+                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin City to Town of Springdale, Washington County, Utah (2013, UGS Special Study 148): <a href=\"https://doi.org/10.34191/SS-148\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-148</a>, Plate 6— Gypsiferous Soil and Rock Hazard: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl6.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl6.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 209,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 209,
+                "Hazard": "SLS",
+                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (2010, UGS Special Study 133): <a href=\"https://doi.org/10.34191/SS-133\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-133</a>, Plate 8— Gypsiferous Soil and Rock: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl8.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl8.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 210,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 210,
+                "Hazard": "SLS",
+                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (2008, UGS Special Study 127): <a href=\"https://doi.org/10.34191/SS-127\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-127</a>, Plate 8— Gypsiferous Soil and Rock: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl8.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl8.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 211,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 211,
                 "Hazard": "SDH",
-                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: ,<a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf</a> and Map, Plate 2— Salt Tectonics-Related Ground Deformation Hazard: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl2.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl2.pdf</a>.",
-                "GlobalID": "52fe2baf-5fe7-48e8-a6b0-3fab49e8efa0"
+                "Text": "International Building Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IBC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IBC2024V2.0</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 212,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 212,
+                "Hazard": "SDH",
+                "Text": "International Residential Code (2024, International Code Council): <a href=\"https://codes.iccsafe.org/content/IRC2024V2.0\" target=\"_blank\" rel=\"noopener noreferrer\">https://codes.iccsafe.org/content/IRC2024V2.0</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 213,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 213,
+                "Hazard": "SDH",
+                "Text": "Guidelines for Conducting Engineering-Geology Investigations and Preparing Engineering-Geology Reports in Utah (2020, UGS Circular 128, Chapter 2): <a href=\"https://doi.org/10.34191/C-128\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/C-128</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 214,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 214,
+                "Hazard": "SDH",
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (2018, UGS Special Study 162): <a href=\"https://doi.org/10.34191/SS-162\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-162</a>, Plate 2— Salt Tectonics-Related Ground Deformation Hazard: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl2.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl2.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 215,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 215,
+                "Hazard": "SDH",
+                "Text": "Salt-Dissolution Faults Versus Tectonic Faults from the Case Study of Salt Collapse in Spanish Valley, SE Utah (USA) by J. Guerrero et al. (2015, Lithosphere, vol. 7, no. 1, p. 46–58): <a href=\"https://doi.org/10.1130/L385.1\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.1130/L385.1</a>."
             }
         },
         {
@@ -1523,61 +1642,6 @@
                 "OBJECTID": 191,
                 "Hazard": "SBP",
                 "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (2008, UGS Special Study 127): <a href=\"https://doi.org/10.34191/SS-127\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-127</a>, Plate 10— Shallow Bedrock Potential: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl10.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl10.pdf</a>."
-            }
-        },
-        {
-            "type": "Feature",
-            "id": 91,
-            "geometry": null,
-            "properties": {
-                "OBJECTID": 91,
-                "Hazard": "SLS",
-                "Text": "Geologic Hazards of the State Route 9 Corridor, La Verkin to Springdale, Washington County, Utah (UGS Special Study 148) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148.pdf</a> and Map, Plate 6— Gypsiferous Soil and Rock Hazard: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl6.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-148/ss-148pl6.pdf</a>.",
-                "GlobalID": "71f60136-4efa-41bf-ba25-1d7748177178"
-            }
-        },
-        {
-            "type": "Feature",
-            "id": 92,
-            "geometry": null,
-            "properties": {
-                "OBJECTID": 92,
-                "Hazard": "SLS",
-                "Text": "Geologic Hazards of the Zion National Park Geologic-Hazard Study Area, Washington and Kane Counties, Utah (UGS Special Study 133) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133.pdf</a> and Map, Plate 8— Gypsiferous Soil and Rock: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl8.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-133/ss-133pl8.pdf</a>.",
-                "GlobalID": "5424f80c-0f39-4ddf-935e-95b71d2a04c7"
-            }
-        },
-        {
-            "type": "Feature",
-            "id": 93,
-            "geometry": null,
-            "properties": {
-                "OBJECTID": 93,
-                "Hazard": "SLS",
-                "Text": "Geologic Hazards and Adverse Construction Conditions, St. George-Hurricane Metropolitan Area, Washington County, Utah (UGS Special Study 127) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127.pdf</a> and Map, Plate 8— Gypsiferous Soil and Rock: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl8.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-127/ss-127pl8.pdf</a>.",
-                "GlobalID": "26b0131d-1da1-4fe3-9236-2c18fcf6f329"
-            }
-        },
-        {
-            "type": "Feature",
-            "id": 94,
-            "geometry": null,
-            "properties": {
-                "OBJECTID": 94,
-                "Hazard": "SLS",
-                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf</a> and Map, Plate 9— Soluble Soil and Rock Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl9.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl9.pdf</a>.",
-                "GlobalID": "72f5f6eb-021f-4808-afd9-95ae5e8580dd"
-            }
-        },
-        {
-            "type": "Feature",
-            "id": 95,
-            "geometry": null,
-            "properties": {
-                "OBJECTID": 95,
-                "Hazard": "SLS",
-                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (UGS Special Study 166) Report and Maps: <a href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\">https://doi.org/10.34191/SS-166</a>.",
-                "GlobalID": "63d40ec7-2ff8-482c-9ba4-b52098bc3a0d"
             }
         },
         {
