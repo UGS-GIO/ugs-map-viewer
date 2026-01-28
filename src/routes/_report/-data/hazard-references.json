@@ -2135,6 +2135,26 @@
                 "Text": "<p>Sibbett, B.S., and Nielsen, D.L., 2017, Geologic map of the central Mineral Mountains, Beaver County, Utah (GIS reproduction of 1980 map): Utah Geological Survey Map MP-17-2dm, 1:24,000. <a href=\"https://doi.org/10.34191/mp-17-2dm\" target=\"_blank\">https://doi.org/10.34191/mp-17-2dm</a>.</p>",
                 "GlobalID": "9a61e0dc-02f3-409a-9543-0151d58e3843"
             }
+        },
+        {
+            "type": "Feature",
+            "id": 217,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 217,
+                "Hazard": "AAF",
+                "Text": "Statewide Active Alluvial Fan Landform Inventory Utah (2023, Utah Division of Emergency Management): <a href=\"https://ugspub.nr.utah.gov/publications/non_lib_pubs/alluvial-fans-dem/report.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/non_lib_pubs/alluvial-fans-dem/report.pdf</a>, Appendix: <a href=\"https://ugspub.nr.utah.gov/publications/non_lib_pubs/alluvial-fans-dem/appendix.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/non_lib_pubs/alluvial-fans-dem/appendix.pdf</a>, GIS Data: <a href=\"https://ugspub.nr.utah.gov/publications/non_lib_pubs/alluvial-fans-dem/gisdata.zip\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/non_lib_pubs/alluvial-fans-dem/gisdata.zip</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 218,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 218,
+                "Hazard": "AAF",
+                "Text": "Guidelines for the Geologic Investigation of Debris-Flow Hazards on Alluvial Fans in Utah (2020, UGS Circular 128, Chapter 5): <a href=\"https://doi.org/10.34191/C-128\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/C-128</a>."
+            }
         }
     ]
 }
