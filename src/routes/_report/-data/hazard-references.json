@@ -1206,8 +1206,7 @@
             "properties": {
                 "OBJECTID": 80,
                 "Hazard": "GRS",
-                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (UGS Special Study 163) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163.pdf</a> and Map, Plate 7— Geologic Radon Hazard Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-7.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-7.pdf</a>.",
-                "GlobalID": "e47a2770-af49-4924-b011-22cc129b9501"
+                "Text": "Geologic Hazards of the Bullfrog and Wahweap High-Use Areas of Glen Canyon National Recreation Area, San Juan, Kane, and Garfield Counties, Utah, and Coconino County, Arizona (2020, UGS Special Study 166): <a href=\"https://doi.org/10.34191/SS-166\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-166</a>."
             }
         },
         {
@@ -1217,8 +1216,7 @@
             "properties": {
                 "OBJECTID": 81,
                 "Hazard": "GRS",
-                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (UGS Special Study 137) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137.pdf</a> and Map, Plate 6— Geologic Radon Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate6.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate6.pdf</a>.",
-                "GlobalID": "7caf5061-21f7-4a44-bc94-6ac09d752cea"
+                "Text": "Guidelines for Site-Specific Evaluation of Geologic Radon Hazard in Utah (2020, UGS Circular 128, Chapter 8): <a href=\"https://doi.org/10.34191/C-128\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/C-128</a>."
             }
         },
         {
@@ -1228,8 +1226,7 @@
             "properties": {
                 "OBJECTID": 82,
                 "Hazard": "GRS",
-                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (UGS Special Study 152) Report and Maps: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-152/ss-152.pdf</a>.",
-                "GlobalID": "3364d752-5608-45ae-a0e7-2801cf5cf002"
+                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (2018, UGS Special Study 162): <a href=\"https://doi.org/10.34191/SS-162\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-162</a>, Plate 6— Geologic Radon Susceptibilty: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl6.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl6.pdf</a>."
             }
         },
         {
@@ -1239,8 +1236,7 @@
             "properties": {
                 "OBJECTID": 83,
                 "Hazard": "GRS",
-                "Text": "Geologic Hazards of the Moab Quadrangle, Grand County, Utah (UGS Special Study 162) Report: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162txt.pdf</a> and Map, Plate 6— Geologic Radon Susceptibilty: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl6.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/special_studies/ss-162/ss-162pl6.pdf</a>.",
-                "GlobalID": "4aeb3fce-0d68-4449-af80-f66d057a77d0"
+                "Text": "Geologic Hazards of the Tickville Spring Quadrangle, Salt Lake and Utah Counties, Utah (2018, UGS Special Study 163): <a href=\"https://doi.org/10.34191/SS-163\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-163</a>, Plate 7— Geologic Radon Hazard Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-7.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-163/ss-163-7.pdf</a>."
             }
         },
         {
@@ -1250,8 +1246,37 @@
             "properties": {
                 "OBJECTID": 84,
                 "Hazard": "GRS",
-                "Text": "Radon Hazard Potential of Davis County, Utah (UGS Open-File Report 655): <a href=\"https://ugspub.nr.utah.gov/publications/open_file_reports/ofr-655.pdf\" target=\"_blank\">https://ugspub.nr.utah.gov/publications/open_file_reports/ofr-655.pdf</a>.",
-                "GlobalID": "64587f44-17ab-442c-9b17-31d27ae51372"
+                "Text": "Radon Hazard Potential Map of Southern Davis County, Utah (2018, UGS Open-File Report 655): <a href=\"https://doi.org/10.34191/OFR-655\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/OFR-655</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 180,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 180,
+                "Hazard": "GRS",
+                "Text": "Geologic Hazards of the Copperton Quadrangle, Salt Lake County, Utah (2014, UGS Special Study 152): <a href=\"https://doi.org/10.34191/SS-152\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-152</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 181,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 181,
+                "Hazard": "GRS",
+                "Text": "Geologic Hazards of the Magna Quadrangle, Salt Lake County, Utah (2011, UGS Special Study 137): <a href=\"https://doi.org/10.34191/SS-137\" target=\"_blank\" rel=\"noopener noreferrer\">https://doi.org/10.34191/SS-137</a>, Plate 6— Geologic Radon Susceptibility: <a href=\"https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate6.pdf\" target=\"_blank\" rel=\"noopener noreferrer\">https://ugspub.nr.utah.gov/publications/special_studies/ss-137/ss-137_Plate6.pdf</a>."
+            }
+        },
+        {
+            "type": "Feature",
+            "id": 182,
+            "geometry": null,
+            "properties": {
+                "OBJECTID": 182,
+                "Hazard": "GRS",
+                "Text": "WHO handbook on indoor radon: a public health perspective by the World Health Organization (2009, 94 p., ISBN 978-92-4-154767-3)."
             }
         },
         {
