@@ -64,7 +64,7 @@ export const ReportHeader = ({ onPrint, testAllHazards = false }: ReportHeaderPr
                         </Button>
                     </div>
                 )}
-                {import.meta.env.DEV && (
+                {import.meta.env.MODE !== 'production' && (
                     <TooltipProvider>
                         <Tooltip>
                             <TooltipTrigger asChild>

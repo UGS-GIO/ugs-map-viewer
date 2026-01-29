@@ -44,8 +44,8 @@ function HazardsReportRoute() {
     }
   }
 
-  // testAll is dev-only: shows all hazards regardless of polygon
-  const testAll = import.meta.env.DEV && search.testAll === true
+  // testAll shows all hazards regardless of polygon (not available in production)
+  const testAll = import.meta.env.MODE !== 'production' && search.testAll === true
 
   return <HazardsReport polygon={aoiString} testAllHazards={testAll} />
 }
