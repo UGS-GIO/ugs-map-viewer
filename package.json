@@ -58,6 +58,7 @@
     "cors": "^2.8.5",
     "dayjs": "^1.11.10",
     "dompurify": "^3.1.6",
+    "driver.js": "^1.4.0",
     "embla-carousel-react": "^8.3.0",
     "fast-xml-parser": "^5.2.5",
     "firebase": "^12.3.0",

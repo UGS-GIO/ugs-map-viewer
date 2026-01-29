@@ -13,7 +13,7 @@ function Layers() {
   return (
     <>
       <BackToMenuButton />
-      <div key='layer-list' className='overflow-y-visible max-h-[calc(100vh)]'>
+      <div key='layer-list' className='overflow-y-visible max-h-[calc(100vh)]' data-tour="layer-panel">
         {layerList}
       </div>
     </>

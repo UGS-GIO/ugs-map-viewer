@@ -90,7 +90,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
         <div className="flex flex-col gap-y-4 pt-2">
             <div className="flex flex-col gap-y-4 mx-8">
                 <div className="flex flex-col justify-between items-center w-full gap-y-4">
-                    <div className="flex flex-row items-center justify-around gap-x-2 w-full mx-auto">
+                    <div className="flex flex-row items-center justify-around gap-x-2 w-full mx-auto" data-tour="layer-opacity">
                         <Label htmlFor={`${title}-opacity`} className={layerOpacity === null ? 'text-muted-foreground' : ''}>
                             Opacity
                         </Label>
@@ -137,6 +137,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                             className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
                             pressed={legendPressed}
                             onPressedChange={() => handleToggle('legend')}
+                            data-tour="layer-legend"
                         >
                             <TableOfContents className="h-5 w-5" />
                             <span className='text-xs'>Legend</span>
@@ -149,6 +150,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                                 className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
                                 onClick={handleDownload}
                                 disabled={isDownloading}
+                                data-tour="layer-export"
                             >
                                 {isDownloading ? (
                                     <Loader2 className="h-5 w-5 animate-spin" />
