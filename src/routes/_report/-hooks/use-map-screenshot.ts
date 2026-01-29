@@ -147,7 +147,15 @@ async function captureMapScreenshot(
     container.style.top = '-9999px'
     document.body.appendChild(container)
 
+    // Guard against accessing map after cleanup (handles React StrictMode double-mount)
+    let isCleanedUp = false
+
     return new Promise((resolve, reject) => {
+        const cleanup = () => {
+            if (isCleanedUp) return
+            isCleanedUp = true
+        }
+
         try {
             const map = new maplibregl.Map({
                 container,
@@ -161,6 +169,8 @@ async function captureMapScreenshot(
             })
 
             map.on('load', () => {
+                if (isCleanedUp) return
+
                 if (bounds) {
                     map.fitBounds(bounds, { padding: 50, duration: 0 })
                 }
@@ -214,8 +224,11 @@ async function captureMapScreenshot(
 
                 // Wait for tiles to load then capture
                 const attemptCapture = () => {
+                    if (isCleanedUp) return
+
                     if (map.loaded() && map.areTilesLoaded()) {
                         map.once('render', () => {
+                            if (isCleanedUp) return
                             try {
                                 const canvas = map.getCanvas()
                                 const dataUrl = canvas.toDataURL('image/png', 1.0)
@@ -232,6 +245,7 @@ async function captureMapScreenshot(
                                 const pixelWidth = Math.min(Math.round(distanceInMeters / metersPerPixel), maxScaleWidth)
 
                                 // Cleanup
+                                cleanup()
                                 map.remove()
                                 document.body.removeChild(container)
 
@@ -243,6 +257,7 @@ async function captureMapScreenshot(
                                     }
                                 })
                             } catch (error) {
+                                cleanup()
                                 map.remove()
                                 document.body.removeChild(container)
                                 reject(error)
@@ -258,11 +273,13 @@ async function captureMapScreenshot(
             })
 
             map.on('error', (e) => {
+                cleanup()
                 map.remove()
                 document.body.removeChild(container)
                 reject(e.error)
             })
         } catch (error) {
+            cleanup()
             document.body.removeChild(container)
             reject(error)
         }
