@@ -97,6 +97,16 @@ export function ReportLayerSection({ layer, groupName, groupId, polygon }: Repor
                 </div>
             )}
 
+            {/* More Information */}
+            {layerContent.moreInfo && (
+                <div className="space-y-2">
+                    <h5 className="font-semibold">More Information</h5>
+                    <div className="prose max-w-none text-sm">
+                        <div dangerouslySetInnerHTML={{ __html: layerContent.moreInfo }} />
+                    </div>
+                </div>
+            )}
+
             {/* Legend */}
             {layer.customLegendItems ? (
                 <ReportLegend
