@@ -1,6 +1,6 @@
 import type { FeatureCollection, Geometry } from 'geojson';
 import { PROD_GEOSERVER_URL } from '@/lib/constants';
-import { hazardLayerNameMap } from '../-data/hazard-unit-map';
+import { hazardLayerNameMap, getGeometryField, getLayerCRS } from '../-data/hazard-unit-map';
 import { convertCoordinate } from '@/lib/map/conversion-utils';
 
 /**
@@ -13,11 +13,12 @@ type WFSProperties = Record<string, string | number | boolean | null>;
 type WFSResponse = FeatureCollection<Geometry, WFSProperties>;
 
 /**
- * Convert polygon JSON to WKT format in UTM Zone 12N (EPSG:26912)
+ * Convert polygon JSON to WKT format in the specified CRS
  * @param polygonString - Polygon JSON string
- * @returns WKT polygon string in EPSG:26912
+ * @param targetCRS - Target CRS (defaults to EPSG:26912)
+ * @returns WKT polygon string in target CRS
  */
-function convertPolygonToWKT(polygonString: string): string {
+function convertPolygonToWKT(polygonString: string, targetCRS: string = 'EPSG:26912'): string {
     try {
         const polygon = JSON.parse(polygonString);
 
@@ -35,13 +36,13 @@ function convertPolygonToWKT(polygonString: string): string {
                 });
             }
 
-            // Now convert WGS84 to UTM Zone 12N (EPSG:26912)
-            const utmCoords = wgs84Coords.map(([lng, lat]: number[]) => {
-                return convertCoordinate([lng, lat], 'EPSG:4326', 'EPSG:26912');
+            // Now convert WGS84 to target CRS
+            const targetCoords = wgs84Coords.map(([lng, lat]: number[]) => {
+                return convertCoordinate([lng, lat], 'EPSG:4326', targetCRS);
             });
 
-            // Create WKT POLYGON in UTM coordinates
-            const wktCoords = utmCoords.map(([x, y]: number[]) => `${x} ${y}`).join(', ');
+            // Create WKT POLYGON in target coordinates
+            const wktCoords = targetCoords.map(([x, y]: number[]) => `${x} ${y}`).join(', ');
             return `POLYGON((${wktCoords}))`;
         }
 
@@ -66,9 +67,12 @@ function getHazardUnitField(hazardCode: string): string {
 async function queryLayerForUnits(
     layerName: string,
     hazardCode: string,
-    polygonWKT: string
+    polygon: string
 ): Promise<string[]> {
     const hazardUnitField = getHazardUnitField(hazardCode);
+    const geometryField = getGeometryField(hazardCode);
+    const layerCRS = getLayerCRS(hazardCode);
+    const polygonWKT = convertPolygonToWKT(polygon, layerCRS);
 
     const params = new URLSearchParams({
         service: 'WFS',
@@ -77,8 +81,8 @@ async function queryLayerForUnits(
         typeName: layerName,
         outputFormat: 'application/json',
         propertyName: hazardUnitField,
-        srsName: 'EPSG:26912',
-        CQL_FILTER: `INTERSECTS(shape, ${polygonWKT})`
+        srsName: layerCRS,
+        CQL_FILTER: `INTERSECTS(${geometryField}, ${polygonWKT})`
     });
 
     const url = `${PROD_GEOSERVER_URL}/wfs?${params.toString()}`;
@@ -107,19 +111,23 @@ async function queryLayerForUnits(
 
 /**
  * Generic WFS feature query - fetch raw features from a layer with custom CQL filter
- * @param layerName - Full layer name (e.g., "hazards:quaternaryfaults_test")
- * @param polygonWKT - WKT polygon string
+ * @param layerName - Full layer name (e.g., "hazards:qfaults_current")
+ * @param polygonWKT - WKT polygon string (must be in the same CRS as specified)
  * @param propertyNames - Comma-separated property names to fetch (optional - fetches all if not specified)
  * @param cqlFilterAddition - Additional CQL filter conditions (optional)
+ * @param geometryField - Geometry field name (defaults to 'shape')
+ * @param crs - Coordinate reference system (defaults to 'EPSG:26912')
  * @returns Array of features with their properties
  */
 export async function queryWFSFeatures<T extends WFSProperties = WFSProperties>(
     layerName: string,
     polygonWKT: string,
     propertyNames?: string,
-    cqlFilterAddition?: string
+    cqlFilterAddition?: string,
+    geometryField: string = 'shape',
+    crs: string = 'EPSG:26912'
 ): Promise<Array<{ properties: T; geometry: Geometry }>> {
-    const baseCQLFilter = `INTERSECTS(shape, ${polygonWKT})`;
+    const baseCQLFilter = `INTERSECTS(${geometryField}, ${polygonWKT})`;
     const cqlFilter = cqlFilterAddition
         ? `${baseCQLFilter} AND ${cqlFilterAddition}`
         : baseCQLFilter;
@@ -130,7 +138,7 @@ export async function queryWFSFeatures<T extends WFSProperties = WFSProperties>(
         request: 'GetFeature',
         typeName: layerName,
         outputFormat: 'application/json',
-        srsName: 'EPSG:26912',
+        srsName: crs,
         CQL_FILTER: cqlFilter
     });
 
@@ -164,12 +172,11 @@ export async function queryWFSFeatures<T extends WFSProperties = WFSProperties>(
  * Query all GeoServer hazard layers for units that intersect the polygon
  */
 export async function queryGeoServerForHazardUnits(polygon: string) {
-    const polygonWKT = convertPolygonToWKT(polygon);
     const hazardEntries = Object.entries(hazardLayerNameMap);
 
     const results = await Promise.all(
         hazardEntries.map(async ([hazardCode, layerName]) => {
-            const units = await queryLayerForUnits(layerName, hazardCode, polygonWKT);
+            const units = await queryLayerForUnits(layerName, hazardCode, polygon);
 
             return {
                 units,
@@ -184,7 +191,9 @@ export async function queryGeoServerForHazardUnits(polygon: string) {
 
 /**
  * Convert polygon string to WKT (exported for external use)
+ * @param polygonString - Polygon JSON string
+ * @param targetCRS - Target CRS (defaults to EPSG:26912)
  */
-export function convertPolygonStringToWKT(polygonString: string): string {
-    return convertPolygonToWKT(polygonString);
+export function convertPolygonStringToWKT(polygonString: string, targetCRS: string = 'EPSG:26912'): string {
+    return convertPolygonToWKT(polygonString, targetCRS);
 }

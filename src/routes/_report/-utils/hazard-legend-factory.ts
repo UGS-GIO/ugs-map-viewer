@@ -36,6 +36,16 @@ export interface HazardLegendConfig<T extends Record<string, any>> {
     filterCondition?: string
 
     /**
+     * Geometry field name (defaults to 'shape')
+     */
+    geometryField?: string
+
+    /**
+     * Coordinate reference system (defaults to 'EPSG:26912')
+     */
+    crs?: string
+
+    /**
      * Field name that contains the unit/category code
      * (e.g., 'qffhazardunit', 'lssunit')
      */
@@ -81,12 +91,15 @@ export async function createCustomLegend<T extends Record<string, any>>(
 ): Promise<CustomLegendItem[]> {
     try {
         // Step 1: Fetch features from WFS
-        const polygonWKT = convertPolygonStringToWKT(polygon)
+        const crs = config.crs || 'EPSG:26912'
+        const polygonWKT = convertPolygonStringToWKT(polygon, crs)
         const features = await queryWFSFeatures<T>(
             config.wfsLayer,
             polygonWKT,
             config.properties,
-            config.filterCondition
+            config.filterCondition,
+            config.geometryField,
+            crs
         )
 
 

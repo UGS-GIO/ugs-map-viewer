@@ -98,19 +98,19 @@ function getSymbolHtml(symbolData: SVGSVGElement | CompositeSymbolResult | undef
         return '';
     }
 
-    // Check if it's the CompositeSymbolResult object (check for a unique property like isComposite)
-    if (typeof symbolData === 'object' && 'isComposite' in symbolData && symbolData.html instanceof SVGSVGElement) {
-        // Access the SVG element inside the composite object
-        return symbolData.html.outerHTML;
+    // Check if it's the CompositeSymbolResult object (has isComposite property)
+    if (typeof symbolData === 'object' && 'isComposite' in symbolData) {
+        const composite = symbolData as CompositeSymbolResult;
+        if (composite.html && 'outerHTML' in composite.html) {
+            return composite.html.outerHTML;
+        }
     }
 
-    // Check if it's a direct SVGSVGElement (for points/polygons)
-    if (symbolData instanceof SVGSVGElement) {
+    // Check if it's a direct SVGSVGElement (has outerHTML property)
+    if (typeof symbolData === 'object' && 'outerHTML' in symbolData) {
         return symbolData.outerHTML;
     }
 
-    // Fallback if it's neither
-    console.warn("Unexpected symbol type in legend:", symbolData);
     return '';
 }
 
@@ -175,10 +175,10 @@ function LayerLegend({ url, layerName, showUnitDescriptions, units }: LayerLegen
 
                             return (
                                 <TableRow key={index}>
-                                    <TableCell className="p-2 md:p-4 align-top">
+                                    <TableCell className="p-2 md:p-4 align-middle text-center">
                                         {symbolHtmlString && (
                                             <span
-                                                className="flex items-center justify-center w-6 md:w-8"
+                                                className="inline-flex items-center justify-center"
                                                 dangerouslySetInnerHTML={{ __html: symbolHtmlString }}
                                             />
                                         )}
@@ -263,10 +263,10 @@ function CustomLegendRenderer({ items, layerName }: CustomLegendRendererProps) {
 
                             return (
                                 <TableRow key={index}>
-                                    <TableCell className="p-2 md:p-4 align-top">
+                                    <TableCell className="p-2 md:p-4 align-middle text-center">
                                         {symbolHtmlString && (
                                             <span
-                                                className="flex items-center justify-center w-6 md:w-8"
+                                                className="inline-flex items-center justify-center"
                                                 dangerouslySetInnerHTML={{ __html: symbolHtmlString }}
                                             />
                                         )}
