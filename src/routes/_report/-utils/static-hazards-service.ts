@@ -3,6 +3,7 @@ import referencesData from '../-data/hazard-references.json';
 import groupTextData from '../-data/hazard-group-text.json';
 import introTextData from '../-data/hazard-intro-text.json';
 import { PROD_POSTGREST_URL } from '@/lib/constants';
+import { hazardLayerNameMap } from '../-data/hazard-unit-map';
 import type { PostgRESTRowOf } from '@/lib/types/postgrest-types';
 
 export interface HazardUnit {
@@ -224,17 +225,18 @@ export function getAllHazardGroups(): string[] {
 }
 
 /**
- * Get all hazard codes that have complete data (grouping + intro text)
+ * Get all hazard codes that have complete data (grouping + intro text + layer mapping)
  */
 export function getAllHazardCodes(): string[] {
     const groupings = extractFeatures<HazardGrouping>(groupingsData);
     const introTexts = extractFeatures<IntroText>(introTextData);
     const introHazards = new Set(introTexts.map(t => t.Hazard));
+    const layerCodes = new Set(Object.keys(hazardLayerNameMap));
 
-    // Only return codes that have both grouping and intro text
+    // Only return codes that have grouping, intro text, and a layer mapping
     return groupings
         .map(f => f.HazardCode)
-        .filter(code => introHazards.has(code));
+        .filter(code => introHazards.has(code) && layerCodes.has(code));
 }
 
 /**
