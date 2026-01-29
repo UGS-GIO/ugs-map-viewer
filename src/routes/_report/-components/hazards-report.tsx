@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react'
-import { useQuery, useIsFetching } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useInView } from 'react-intersection-observer'
 import { useReactToPrint } from 'react-to-print'
 import { queryKeys } from '@/lib/query-keys'
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Image } from '@/components/ui/image'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { queryGeoServerForHazardUnits } from '@/routes/_report/-utils/geoserver-wfs-service'
+import { ScreenshotLoadingProvider, useIsAllScreenshotsLoaded } from '@/routes/_report/-context/screenshot-loading-context'
 import {
     HazardUnit,
     queryGroupingStatic,
@@ -237,9 +238,6 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
         return () => window.removeEventListener('hashchange', handleHashChange)
     }, [sections, scrollToSection])
 
-    const isFetching = useIsFetching()
-    const isContentReady = isFetching === 0
-
     const handlePrint = useReactToPrint({
         contentRef: printRef,
         documentTitle: 'Geologic Hazards Report',
@@ -257,6 +255,7 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
     }
 
     return (
+        <ScreenshotLoadingProvider>
         <ReportLayout
                 header={<ReportHeader testAllHazards={testAllHazards} />}
                 hero={
@@ -305,24 +304,7 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                                         <p>Share Report</p>
                                     </TooltipContent>
                                 </Tooltip>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Button
-                                            onClick={handlePrint}
-                                            variant="default"
-                                            size="sm"
-                                            disabled={!isContentReady}
-                                        >
-                                            <Printer className="h-4 w-4" />
-                                            <span className="hidden sm:inline ml-1.5">
-                                                {isContentReady ? 'Print' : 'Loading...'}
-                                            </span>
-                                        </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>{isContentReady ? 'Print / Save as PDF' : 'Waiting for maps to load...'}</p>
-                                    </TooltipContent>
-                                </Tooltip>
+                                <PrintButton onPrint={handlePrint} />
                             </TooltipProvider>
                         </div>
                     </div>
@@ -395,6 +377,7 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                     </SectionWithObserver>
                 </div>
         </ReportLayout>
+        </ScreenshotLoadingProvider>
     )
 }
 
@@ -432,5 +415,31 @@ function SectionWithObserver({
         <div ref={setRefs} id={id} className="scroll-mt-16 md:scroll-mt-20">
             {children}
         </div>
+    )
+}
+
+// Print button that tracks screenshot loading state
+function PrintButton({ onPrint }: { onPrint: () => void }) {
+    const isAllLoaded = useIsAllScreenshotsLoaded()
+
+    return (
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <Button
+                    onClick={onPrint}
+                    variant="default"
+                    size="sm"
+                    disabled={!isAllLoaded}
+                >
+                    <Printer className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1.5">
+                        {isAllLoaded ? 'Print' : 'Loading...'}
+                    </span>
+                </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+                <p>{isAllLoaded ? 'Print / Save as PDF' : 'Waiting for maps to load...'}</p>
+            </TooltipContent>
+        </Tooltip>
     )
 }
