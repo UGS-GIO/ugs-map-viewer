@@ -143,7 +143,7 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                 if (groupMap[g.HazardGroup]) {
                     groupMap[g.HazardGroup].layers.push({
                         code: g.HazardCode,
-                        name: units[0]?.HazardName || g.HazardCode,
+                        name: allUnitsForLayer[0]?.HazardName || units[0]?.HazardName || g.HazardCode,
                         category: g.HazardGroup,
                         url: hazardInfo?.url || '',
                         units: allUnitsForLayer.map(u => ({

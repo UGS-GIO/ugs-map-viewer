@@ -224,11 +224,17 @@ export function getAllHazardGroups(): string[] {
 }
 
 /**
- * Get all hazard codes
+ * Get all hazard codes that have complete data (grouping + intro text)
  */
 export function getAllHazardCodes(): string[] {
-    const features = extractFeatures<HazardGrouping>(groupingsData);
-    return features.map(f => f.HazardCode);
+    const groupings = extractFeatures<HazardGrouping>(groupingsData);
+    const introTexts = extractFeatures<IntroText>(introTextData);
+    const introHazards = new Set(introTexts.map(t => t.Hazard));
+
+    // Only return codes that have both grouping and intro text
+    return groupings
+        .map(f => f.HazardCode)
+        .filter(code => introHazards.has(code));
 }
 
 /**
