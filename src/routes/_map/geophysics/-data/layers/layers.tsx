@@ -125,6 +125,7 @@ const SITLAConfig: LayerProps = {
     },
 };
 
+
 const faultsLayerName = 'faults_m-179dm';
 const faultsWMSTitle = 'Utah Faults';
 const faultsWMSConfig: WMSLayerProps = {
@@ -405,8 +406,8 @@ const heatflowLayerConfig: WMSLayerProps = {
 
 
 // gravity stations
-const gravityStationsLayeName = 'enmin_geophysics_ugsobsgrav_current';
-const gravityStationsLayeTitle = 'Gravity Stations';
+const gravityStationsLayeName = 'enmin_geophysics_ugsgravity_current';
+const gravityStationsLayeTitle = 'Modern Gravity Stations';
 const gravityStationsLayerConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -514,7 +515,7 @@ const potentialResourcesLayerConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: false,
             popupFields: {
-                'Name': { field: 'name', type: 'string' },
+                'ID': { field: 'id', type: 'string' },
             },
         },
     ],
@@ -540,9 +541,10 @@ const geothermalKgraLayerConfig: WMSLayerProps = {
     ],
 };
 
+
 // Known Geothermal Resource Areas (KGRA)
 const pacesLegacyLayerName = 'enmin_geophysics_pacesgravity_current';
-const pacesLegacyLayerTitle = 'PACES Legacy Gravity Stations';
+const pacesLegacyLayerTitle = 'Legacy Gravity Stations';
 const pacesLegacyLayerConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -576,21 +578,7 @@ const geothermalTEMLayerConfig: WMSLayerProps = {
             popupFields: {
                 'Station': { field: 'station', type: 'string' },
                 'Date': { field: 'date', type: 'string' },
-                'Time': { field: 'time', type: 'string' },
-                'Configuration': { field: 'configuration', type: 'string' },
-                'Resistor': { field: 'resistor__', type: 'string' },
-                'Elevation': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: (props) => {
-                        const vars = props?.['elev_geoid_navd88_m'];
-                        return `${vars} Meters`;
-                    }
-                },
-                'Data Quality': { field: 'dataquality', type: 'string' },
-                'Project': { field: 'project', type: 'string' },
-                'Notes': { field: 'notes', type: 'string' },
-                'Archive Link': { field: 'archivelink', type: 'string' }
+                'Archive Link': { field: 'archivelink', type: 'string' },
             },
         },
     ],
@@ -704,40 +692,39 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
     ],
 };
 
-
-
-// ingqFaults WMS Layer
-/* const ingqFaultsLayerName = 'mart_geothermal_qfaults_ingenious_current';
-const ingqFaultsWMSTitle = 'Great Basin Faults (INGENIOUS Project)';
-const ingqFaultsWMSConfig: WMSLayerProps = {
+// CGBA Gravity Anomalies Raster WMS Layer  (following hazards ground shaking raster example)
+const CGBARasterLayerName = 'enmin_geophysics_gravanomalyraster_current';
+const GBARasterWMSTitle = 'CGBA Gravity Anomalies Raster Layer';
+const gGBARasterWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
-    title: ingqFaultsWMSTitle,
+    title: GBARasterWMSTitle,
     visible: false,
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${ingqFaultsLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'Name': { field: 'name', type: 'string' },
-                'Slip Rate': { field: 'sliprate_n', type: 'string' },
-                'Recency N': { field: 'recency_n', type: 'string' },
-                'Recency CI': { field: 'recency_ci', type: 'string' },
-                'Age': { field: 'age', type: 'string' },
-                'Mapped Scale': { field: 'mappedscal', type: 'string' },
-                'CFM URL': { field: 'cfm_url', type: 'string' },
-                'Geometry': { field: 'geometry_c', type: 'string' },
-                'Dip Direction': { field: 'dipdirect', type: 'string' },
-                'FType': { field: 'ftype_', type: 'string' },
-                'Comments': { field: 'comments', type: 'string' },
-                'Notes': { field: 'notes', type: 'string' }
+    opacity: 0.9,
+    crs: 'EPSG:26912',
+        sublayers: [
+            {
+                name: `${ENERGY_MINERALS_WORKSPACE}:${CGBARasterLayerName}`,
+                popupEnabled: false,
+                queryable: true,
+                popupFields: {
+                    // empty in favor or using the rasterSource
+                },
+                rasterSource: {
+                    url: `${PROD_GEOSERVER_URL}/wms`,
+                    headers: {
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    layerName: `${HAZARDS_WORKSPACE}:earthquake_groundshaking`,
+                    valueField: "GRAY_INDEX",
+                    valueLabel: "Peak Ground Acceleration",
+                    transform: (value: number) => `${value} g`,
+                }
+    
             },
-        },
-    ],
-}; */
-
-
+        ],
+};
 
 const geophysicalDataConfig: LayerProps = {
     type: 'group',
@@ -746,7 +733,8 @@ const geophysicalDataConfig: LayerProps = {
     layers: [
         gravityStationsLayerConfig,
         geothermalTEMLayerConfig,
-        pacesLegacyLayerConfig
+        pacesLegacyLayerConfig,
+        gGBARasterWMSConfig
     ]
 }
 
@@ -774,7 +762,7 @@ const geologicalInformationConfig: LayerProps = {
         qFaultsWMSConfig,
         //ingqFaultsWMSConfig,
         faultsWMSConfig,
-        seamlessGeolunitsWMSConfig
+        seamlessGeolunitsWMSConfig,
     ]
 }
 
@@ -787,7 +775,7 @@ const infrastructureAndLandUseConfig: LayerProps = {
         roadsWMSConfig,
         railroadsWMSConfig,
         transmissionLinesWMSConfig,
-        SITLAConfig,
+        SITLAConfig
     ]
 }
 
