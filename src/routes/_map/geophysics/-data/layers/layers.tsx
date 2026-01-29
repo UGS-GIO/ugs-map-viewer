@@ -499,7 +499,7 @@ const deepSedimentaryBasinsLayerConfig: WMSLayerProps = {
             },
         },
     ],
-}; */
+};
 
 // deep sedimentary basins
 const potentialResourcesLayerName = 'geothermal_potentialresourcearea_current';
