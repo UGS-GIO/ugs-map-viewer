@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useIsFetching } from '@tanstack/react-query'
 import { useInView } from 'react-intersection-observer'
 import { useReactToPrint } from 'react-to-print'
 import { queryKeys } from '@/lib/query-keys'
@@ -161,7 +161,7 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
 
             return Object.values(groupMap).filter(g => g.layers.length > 0)
         },
-        enabled: !!polygon,
+        enabled: !!polygon || testAllHazards,
     })
 
     const sections: Section[] = useMemo(() => [
@@ -237,8 +237,12 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
         return () => window.removeEventListener('hashchange', handleHashChange)
     }, [sections, scrollToSection])
 
+    const isFetching = useIsFetching()
+    const isContentReady = isFetching === 0
+
     const handlePrint = useReactToPrint({
         contentRef: printRef,
+        documentTitle: 'Geologic Hazards Report',
     })
 
     if (isLoading) {
@@ -253,8 +257,7 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
     }
 
     return (
-        <>
-            <ReportLayout
+        <ReportLayout
                 header={<ReportHeader testAllHazards={testAllHazards} />}
                 hero={
                     <div className="print:hidden">
@@ -308,13 +311,16 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                                             onClick={handlePrint}
                                             variant="default"
                                             size="sm"
+                                            disabled={!isContentReady}
                                         >
                                             <Printer className="h-4 w-4" />
-                                            <span className="hidden sm:inline ml-1.5">Print</span>
+                                            <span className="hidden sm:inline ml-1.5">
+                                                {isContentReady ? 'Print' : 'Loading...'}
+                                            </span>
                                         </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                        <p>Print / Save as PDF</p>
+                                        <p>{isContentReady ? 'Print / Save as PDF' : 'Waiting for maps to load...'}</p>
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
@@ -388,8 +394,7 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                         <ReportResources />
                     </SectionWithObserver>
                 </div>
-            </ReportLayout>
-        </>
+        </ReportLayout>
     )
 }
 

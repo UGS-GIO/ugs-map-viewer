@@ -1,4 +1,4 @@
-import { getHazardTextSections } from '@/routes/_report/-utils/static-hazards-service'
+import { getHazardTextSections, HazardUnit } from '@/routes/_report/-utils/static-hazards-service'
 import { ReportScreenshot } from '@/routes/_report/-components/shared/report-screenshot'
 import { ReportLegend, type CustomLegendItem } from '@/routes/_report/-components/content/report-legend'
 import {
@@ -8,8 +8,9 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { Info } from 'lucide-react'
-import { HazardUnit } from '@/routes/_report/-utils/static-hazards-service'
 import { AnchorLinkIcon } from '@/routes/_report/-components/shared/anchor-link-icon'
+
+const MAP_HEIGHT = 400
 
 interface HazardLayer {
     code: string
@@ -78,11 +79,10 @@ export function ReportLayerSection({ layer, groupName, groupId, polygon }: Repor
                 </div>
             )}
 
-            {/* Map with title and tooltip */}
             <ReportScreenshot
                 polygon={polygon}
                 hazardCodes={[layer.code]}
-                height={400}
+                height={MAP_HEIGHT}
                 title={mapTitle}
                 tooltip={tooltip}
             />
@@ -107,7 +107,6 @@ export function ReportLayerSection({ layer, groupName, groupId, polygon }: Repor
                 </div>
             )}
 
-            {/* Legend */}
             {layer.customLegendItems ? (
                 <ReportLegend
                     customItems={layer.customLegendItems}

@@ -89,6 +89,11 @@ export async function createCustomLegend<T extends Record<string, any>>(
     polygon: string,
     config: HazardLegendConfig<T>
 ): Promise<CustomLegendItem[]> {
+    // Early return if no polygon provided (e.g., in test mode)
+    if (!polygon || polygon.trim() === '') {
+        return []
+    }
+
     try {
         // Step 1: Fetch features from WFS
         const crs = config.crs || 'EPSG:26912'

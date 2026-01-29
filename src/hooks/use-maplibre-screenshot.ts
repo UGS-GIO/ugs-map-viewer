@@ -191,7 +191,7 @@ async function generateMapLibreScreenshot(
  */
 export function useMapLibreScreenshot({ polygon, width = '50vw', height = '50vh' }: UseMapLibreScreenshotProps) {
     const { data: screenshot, isPending, error } = useQuery({
-        queryKey: queryKeys.map.screenshot(polygon || '', width, height),
+        queryKey: queryKeys.map.simpleScreenshot(polygon || '', width, height),
         queryFn: async () => {
             if (!polygon) {
                 throw new Error('Polygon is required');
