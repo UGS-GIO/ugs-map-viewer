@@ -57,8 +57,9 @@ function InfoPopover({ content }: { content: string }) {
                     </button>
                 </PopoverTrigger>
                 <PopoverContent
-                    side="left"
-                    align="start"
+                    side="bottom"
+                    align="end"
+                    collisionPadding={16}
                     className="max-w-md max-h-96 overflow-y-auto bg-secondary text-secondary-foreground border-border"
                     onMouseEnter={handleMouseEnter}
                     onMouseLeave={handleMouseLeave}
