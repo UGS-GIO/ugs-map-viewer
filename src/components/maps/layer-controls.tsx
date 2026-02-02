@@ -112,8 +112,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     <div className="flex flex-wrap justify-center items-stretch w-full gap-2">
                         <Toggle
                             aria-label="Toggle info"
-                            size="stacked"
-                            className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
+                            className="flex flex-col md:flex-row items-center p-2 min-w-[70px] flex-1 gap-1 h-auto"
                             pressed={infoPressed}
                             onPressedChange={() => handleToggle('info')}
                         >
@@ -123,8 +122,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
 
                         <Button
                             variant="ghost"
-                            size="stacked"
-                            className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
+                            className="flex flex-col md:flex-row items-center p-2 min-w-[70px] flex-1 gap-1 h-auto"
                             onClick={handleZoomToLayer}
                         >
                             <Shrink className="h-5 w-5" />
@@ -133,8 +131,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
 
                         <Toggle
                             aria-label="Toggle legend"
-                            size="stacked"
-                            className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
+                            className="flex flex-col md:flex-row items-center p-2 min-w-[70px] flex-1 gap-1 h-auto"
                             pressed={legendPressed}
                             onPressedChange={() => handleToggle('legend')}
                             data-tour="layer-legend"
@@ -146,8 +143,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         {canDownload && (
                             <Button
                                 variant="ghost"
-                                size="stacked"
-                                className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
+                                className="flex flex-col md:flex-row items-center p-2 min-w-[70px] flex-1 gap-1 h-auto"
                                 onClick={handleDownload}
                                 disabled={isDownloading}
                                 data-tour="layer-export"

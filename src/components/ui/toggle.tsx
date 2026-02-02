@@ -17,7 +17,6 @@ const toggleVariants = cva(
         default: "h-9 px-3",
         sm: "h-8 px-2",
         lg: "h-10 px-3",
-        stacked: "flex-col md:flex-row items-center",
       },
     },
     defaultVariants: {
