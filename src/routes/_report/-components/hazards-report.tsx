@@ -21,6 +21,7 @@ import {
 } from '@/routes/_report/-utils/static-hazards-service'
 import type { CustomLegendItem } from '@/routes/_report/-components/content/report-legend'
 import { generateQFFLegendItems } from '@/routes/_report/-utils/qff-legend-service'
+import { hazardLayerNameMap } from '@/routes/_report/-data/hazard-unit-map'
 import { HeroSection } from '@/components/layout/hero-section'
 import { ReportCover } from '@/routes/_report/-components/content/report-cover'
 import { ReportSummary } from '@/routes/_report/-components/content/report-summary'
@@ -146,7 +147,9 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                         code: g.HazardCode,
                         name: allUnitsForLayer[0]?.HazardName || units[0]?.HazardName || g.HazardCode,
                         category: g.HazardGroup,
-                        url: hazardInfo?.url || '',
+                        url: testAllHazards
+                            ? hazardLayerNameMap[g.HazardCode as keyof typeof hazardLayerNameMap] || ''
+                            : hazardInfo?.url || '',
                         units: allUnitsForLayer.map(u => ({
                             HazardName: u.HazardName,
                             HazardUnit: u.HazardUnit,
