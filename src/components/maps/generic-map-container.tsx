@@ -344,20 +344,32 @@ export default function GenericMapContainer({
     onRegisterClearSpatialFilter(clearSpatialFilter)
   }
 
-  // Memoized callbacks for map interactions (prevents useTerraDraw from reinitializing)
-  const handleDrawModeChange = useCallback((mode: DrawMode) => {
+  // Centralized mode setter - handles mutual exclusivity between draw and box select
+  const setActiveMode = useCallback((
+    mode: 'draw' | 'boxSelect' | 'none',
+    drawType?: 'rectangle' | 'polygon'
+  ) => {
+    setMapInteraction(prev => ({
+      ...prev,
+      internalDrawMode: mode === 'draw' ? drawType! : 'off',
+      boxSelectMode: mode === 'boxSelect',
+      boxSelectBounds: mode === 'boxSelect' ? prev.boxSelectBounds : null,
+    }))
+
+    // Sync external draw mode if provided
     if (onExternalDrawModeChange) {
-      onExternalDrawModeChange(mode)
-    } else {
-      // Turn off box select when entering draw mode (mutually exclusive)
-      setMapInteraction(prev => ({
-        ...prev,
-        internalDrawMode: mode,
-        boxSelectMode: mode !== 'off' ? false : prev.boxSelectMode,
-        boxSelectBounds: mode !== 'off' ? null : prev.boxSelectBounds,
-      }))
+      onExternalDrawModeChange(mode === 'draw' ? drawType! : 'off')
     }
   }, [onExternalDrawModeChange])
+
+  // Handler for draw mode toggle from toolbar
+  const handleDrawModeChange = useCallback((mode: DrawMode) => {
+    if (mode === 'off') {
+      setActiveMode('none')
+    } else {
+      setActiveMode('draw', mode)
+    }
+  }, [setActiveMode])
 
   const handleSpatialFilterChange = useCallback((filter: SpatialFilter) => {
     setMapInteraction(prev => ({ ...prev, spatialFilter: filter }))
@@ -372,16 +384,10 @@ export default function GenericMapContainer({
     }
   }, [onExternalDrawComplete, clearAllSelections])
 
+  // Handler for box select toggle from toolbar
   const handleBoxSelectModeChange = useCallback((active: boolean) => {
-    // Turn off draw mode when entering box select (mutually exclusive)
-    // Clear frozen bounds when toggling box select mode
-    setMapInteraction(prev => ({
-      ...prev,
-      boxSelectMode: active,
-      boxSelectBounds: active ? prev.boxSelectBounds : null,
-      internalDrawMode: active ? 'off' : prev.internalDrawMode,
-    }))
-  }, [])
+    setActiveMode(active ? 'boxSelect' : 'none')
+  }, [setActiveMode])
 
   const handleBoxSelectConfirm = useCallback((bounds: { sw: [number, number]; ne: [number, number] }) => {
     // Store frozen bounds for visualization
