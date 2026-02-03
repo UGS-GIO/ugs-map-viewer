@@ -476,9 +476,9 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 ),
                 cell: ({ row, getValue }) => {
                     const rawValue = getValue();
-                    if (rawValue === null || rawValue === undefined) return '-';
-                    // Use field formatting if config exists
+                    // Use field formatting - handles custom fields that compute from properties
                     const formatted = formatFieldValue(config.fieldConfig, rawValue, row.original.properties);
+                    // Return formatted value or '-' for empty/null values
                     return formatted || '-';
                 },
                 filterFn: 'includesString',
