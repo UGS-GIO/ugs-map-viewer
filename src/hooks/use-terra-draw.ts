@@ -4,6 +4,12 @@ import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter'
 import type { Polygon } from 'geojson'
 import type { DrawMode, SpatialFilter } from '@/components/maps/types'
 
+// Standardized drawing colors - matches spatial filter layer (orange)
+const DRAW_FILL_COLOR = '#f59e0b'
+const DRAW_FILL_OPACITY = 0.15
+const DRAW_OUTLINE_COLOR = '#f59e0b'
+const DRAW_OUTLINE_WIDTH = 2
+
 interface UseTerraDrawOptions {
   map: maplibregl.Map | null
   styleLoaded: boolean
@@ -28,36 +34,72 @@ export function useTerraDraw({
   const terraDrawRef = useRef<TerraDraw | null>(null)
   const justFinishedDrawingRef = useRef(false)
 
-  // Initialize Terra Draw ONCE when map style is ready
-  useEffect(() => {
-    if (!map || terraDrawRef.current || !onSpatialFilterChange || !styleLoaded) return
-
-    // Check if TerraDraw sources already exist (from previous mount)
-    // Clean up any sources/layers with terra-draw prefixes
-    const style = map.getStyle()
+  // Helper to clean up existing Terra Draw sources/layers
+  const cleanupTerraDrawLayers = (mapInstance: maplibregl.Map) => {
+    const style = mapInstance.getStyle()
     if (style?.layers) {
       for (const layer of [...style.layers]) {
         if (layer.id.startsWith('td-') || layer.id.startsWith('terra-draw')) {
-          try { map.removeLayer(layer.id) } catch { /* ignore */ }
+          try { mapInstance.removeLayer(layer.id) } catch { /* ignore */ }
         }
       }
     }
     if (style?.sources) {
       for (const sourceId of Object.keys(style.sources)) {
         if (sourceId.startsWith('td-') || sourceId.startsWith('terra-draw')) {
-          try { map.removeSource(sourceId) } catch { /* ignore */ }
+          try { mapInstance.removeSource(sourceId) } catch { /* ignore */ }
         }
       }
     }
+  }
+
+  // Helper to create and start Terra Draw
+  const createTerraDraw = (mapInstance: maplibregl.Map) => {
+    cleanupTerraDrawLayers(mapInstance)
+
     const terraDraw = new TerraDraw({
-      adapter: new TerraDrawMapLibreGLAdapter({ map }),
+      adapter: new TerraDrawMapLibreGLAdapter({ map: mapInstance }),
       modes: [
-        new TerraDrawRectangleMode(),
-        new TerraDrawPolygonMode(),
+        new TerraDrawRectangleMode({
+          styles: {
+            fillColor: DRAW_FILL_COLOR,
+            fillOpacity: DRAW_FILL_OPACITY,
+            outlineColor: DRAW_OUTLINE_COLOR,
+            outlineWidth: DRAW_OUTLINE_WIDTH,
+          },
+          cursors: { start: 'crosshair' },
+        }),
+        new TerraDrawPolygonMode({
+          styles: {
+            fillColor: DRAW_FILL_COLOR,
+            fillOpacity: DRAW_FILL_OPACITY,
+            outlineColor: DRAW_OUTLINE_COLOR,
+            outlineWidth: DRAW_OUTLINE_WIDTH,
+            closingPointColor: DRAW_OUTLINE_COLOR,
+            closingPointWidth: 6,
+            closingPointOutlineColor: '#ffffff',
+            closingPointOutlineWidth: 2,
+          },
+          cursors: { start: 'crosshair', close: 'pointer' },
+        }),
       ],
     })
 
     terraDraw.start()
+    return terraDraw
+  }
+
+  // Initialize Terra Draw when map style is ready
+  useEffect(() => {
+    if (!map || !onSpatialFilterChange || !styleLoaded) return
+
+    // Stop existing Terra Draw if present (handles style reloads)
+    if (terraDrawRef.current) {
+      try { terraDrawRef.current.stop() } catch { /* ignore */ }
+      terraDrawRef.current = null
+    }
+
+    const terraDraw = createTerraDraw(map)
     terraDrawRef.current = terraDraw
 
     // Sync to current draw mode immediately after initialization
@@ -97,7 +139,28 @@ export function useTerraDraw({
       onDrawFinished?.()
     })
 
+    // Handle map style changes (basemap switches) - reinitialize Terra Draw
+    const handleStyleData = () => {
+      // Check if our Terra Draw layers still exist
+      const style = map.getStyle()
+      const hasTdLayers = style?.layers?.some(l => l.id.startsWith('td-'))
+
+      // If style changed and we lost our layers, reinitialize
+      if (!hasTdLayers && terraDrawRef.current) {
+        try { terraDrawRef.current.stop() } catch { /* ignore */ }
+        const newTerraDraw = createTerraDraw(map)
+        terraDrawRef.current = newTerraDraw
+
+        // Restore current mode
+        if (drawMode !== 'off') {
+          newTerraDraw.setMode(drawMode)
+        }
+      }
+    }
+    map.on('styledata', handleStyleData)
+
     return () => {
+      map.off('styledata', handleStyleData)
       try {
         terraDraw.stop()
       } catch {

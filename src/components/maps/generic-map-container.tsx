@@ -355,11 +355,16 @@ export default function GenericMapContainer({
 
   const handleSpatialFilterChange = useCallback((filter: SpatialFilter) => {
     setMapInteraction(prev => ({ ...prev, spatialFilter: filter }))
+    // Clear previous selections when a new area is drawn
+    if (filter) {
+      setHighlightedFeatures([])
+      clearAllSelections()
+    }
     // If there's an external callback waiting for the polygon, call it
     if (filter?.polygon && onExternalDrawComplete) {
       onExternalDrawComplete(filter.polygon)
     }
-  }, [onExternalDrawComplete])
+  }, [onExternalDrawComplete, clearAllSelections])
 
   const handleBoxSelectModeChange = useCallback((active: boolean) => {
     // Clear frozen bounds when toggling box select mode
