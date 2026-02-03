@@ -1064,17 +1064,7 @@ const nonPetroleumCatLayerConfig: WMSLayerProps = {
                 },
                 'Field/Area': { field: 'field_area', type: 'string' },
                 'Purpose': { field: 'purpose', type: 'string' },
-                'Depth': { field: 'depth', type: 'string' },
-                'Well Logs': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: transformWellLogs
-                },
-                'Reports': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: transformReports
-                },
+                'Depth': { field: 'depth', type: 'string' }
             },
         },
     ],
