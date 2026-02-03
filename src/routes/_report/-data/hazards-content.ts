@@ -8,7 +8,7 @@ export const HAZARDS_REPORT_CONTENT = {
 
     otherResources: `
         <div class="space-y-4">
-            <div>
+            <div class="space-y-4">
                 <h3 class="text-xl font-semibold">Utah Geological Survey</h3>
                 <p>For information on geologic hazards, contact the UGS online at <a href="https://geology.utah.gov/about-us/ask-a-geologist/" target="_blank" rel="noopener noreferrer">https://geology.utah.gov/about-us/ask-a-geologist/</a> or by telephone at (801) 537-3300 and for southern Utah at (435) 865-9036.</p>
                 <p><em>The Guidelines for Investigating Geologic Hazards and Preparing Engineering-Geology Reports with a Suggested Approach to Geologic-Hazard Ordinances in Utah</em> (UGS Circular 128, <a href="https://doi.org/10.34191/C-128" target="_blank" rel="noopener noreferrer">https://doi.org/10.34191/C-128</a>) provides geologic and geotechnical consultants, local government officials, and land owners with comprehensive information on how to conduct appropriate and effective investigations of various geologic hazards before building and infrastructure design and construction. These guidelines were developed to reduce the life safety risk and overall cost of geologic hazards to Utahns and have been adopted by numerous cities and counties in Utah. The UGS strongly recommends that for certain development (subject to local permitting) these guidelines are incorporated in their planning, design, and construction.</p>
