@@ -625,6 +625,7 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
     ],
 };
 
+// CO2 Sources WMS Layer
 const co2SourcesLayerName = 'ccus_co2_sources';
 const co2SourcesWMSTitle = 'CO₂ Sources';
 const co2SourcesWMSConfig: WMSLayerProps = {
