@@ -368,7 +368,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 });
             });
 
-            const allHeaders = ['geometry', ...mainHeaders, ...relatedHeaders];
+            const allHeaders = [...mainHeaders, ...relatedHeaders, 'geometry'];
 
             downloadCSV(dataToExport, filename, allHeaders, (row, header) => {
                 // Handle geometry column (WKT format)
