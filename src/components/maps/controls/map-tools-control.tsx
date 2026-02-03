@@ -71,10 +71,10 @@ export function MapToolsControl({
 
   const indicatorStyle: React.CSSProperties = {
     position: 'absolute',
-    top: '100%',
-    left: '50%',
-    transform: 'translateX(-50%)',
-    marginTop: 4,
+    top: '50%',
+    right: '100%',
+    transform: 'translateY(-50%)',
+    marginRight: 6,
     padding: '2px 8px',
     backgroundColor: '#f59e0b',
     color: '#fff',
