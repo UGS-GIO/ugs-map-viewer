@@ -50,7 +50,7 @@ import type { SelectedFeatureRef } from '@/hooks/use-map-url-sync';
 import type { HighlightFeature } from '@/components/maps/types';
 import { formatFieldValue } from '@/lib/field-formatting';
 import { useZoomToFeature } from '@/hooks/use-zoom-to-feature';
-import { downloadCSV, downloadGeoJSON } from '@/lib/download-utils';
+import { downloadCSV, downloadGeoJSON, geojsonToWKT } from '@/lib/download-utils';
 import { cn, formatNumeric } from '@/lib/utils';
 import { useBulkRelatedTable } from '@/hooks/use-bulk-related-table';
 
@@ -355,7 +355,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         const filename = `${layerName}-${timestamp}`;
 
         if (format === 'csv') {
-            // Build headers: main columns + related table columns
+            // Build headers: geometry + main columns + related table columns
             const mainHeaders = columnConfigs.map(c => c.label);
             const relatedHeaders: string[] = [];
             const relatedTables = selectedLayer?.relatedTables || [];
@@ -368,9 +368,15 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 });
             });
 
-            const allHeaders = [...mainHeaders, ...relatedHeaders];
+            const allHeaders = ['geometry', ...mainHeaders, ...relatedHeaders];
 
             downloadCSV(dataToExport, filename, allHeaders, (row, header) => {
+                // Handle geometry column (WKT format)
+                if (header === 'geometry') {
+                    // Cast to satisfy wellknown's GeoJSON types
+                    return geojsonToWKT(row.feature.geometry as Parameters<typeof geojsonToWKT>[0]) || '';
+                }
+
                 // Check if it's a main column
                 const config = columnConfigs.find(c => c.label === header);
                 if (config) {

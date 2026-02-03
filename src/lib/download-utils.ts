@@ -1,3 +1,7 @@
+import { stringify as geojsonToWKT } from 'wellknown'
+
+export { geojsonToWKT }
+
 /**
  * Download data as CSV file
  */
