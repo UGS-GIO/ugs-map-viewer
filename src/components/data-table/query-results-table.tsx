@@ -355,15 +355,57 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         const filename = `${layerName}-${timestamp}`;
 
         if (format === 'csv') {
-            // Use labels as headers (not field names) for better readability
-            const headers = columnConfigs.map(c => c.label);
-            downloadCSV(dataToExport, filename, headers, (row, header) => {
-                // Find config by label to get the field and fieldConfig
+            // Build headers: main columns + related table columns
+            const mainHeaders = columnConfigs.map(c => c.label);
+            const relatedHeaders: string[] = [];
+            const relatedTables = selectedLayer?.relatedTables || [];
+
+            // Add headers for each related table's display fields
+            relatedTables.forEach((table) => {
+                const prefix = table.fieldLabel ? `${table.fieldLabel}: ` : '';
+                table.displayFields?.forEach(df => {
+                    relatedHeaders.push(`${prefix}${df.label || df.field}`);
+                });
+            });
+
+            const allHeaders = [...mainHeaders, ...relatedHeaders];
+
+            downloadCSV(dataToExport, filename, allHeaders, (row, header) => {
+                // Check if it's a main column
                 const config = columnConfigs.find(c => c.label === header);
-                if (!config) return '';
-                const rawValue = row.properties[config.field];
-                // Apply formatting (units, decimal places, transforms)
-                return formatFieldValue(config.fieldConfig, rawValue, row.properties);
+                if (config) {
+                    const rawValue = row.properties[config.field];
+                    return formatFieldValue(config.fieldConfig, rawValue, row.properties);
+                }
+
+                // Check related tables
+                for (let tableIndex = 0; tableIndex < relatedTables.length; tableIndex++) {
+                    const table = relatedTables[tableIndex];
+                    const prefix = table.fieldLabel ? `${table.fieldLabel}: ` : '';
+
+                    const displayField = table.displayFields?.find(
+                        df => `${prefix}${df.label || df.field}` === header
+                    );
+
+                    if (displayField) {
+                        const targetValue = String(row.properties[table.targetField] ?? '');
+                        const dataMap = relatedDataMaps[tableIndex];
+                        const relatedRows = dataMap?.get(targetValue) || [];
+
+                        if (relatedRows.length === 0) return '';
+
+                        // Join multiple values with semicolon
+                        const values = relatedRows.map(r => {
+                            const raw = r[displayField.field];
+                            const formatted = formatNumeric(raw, displayField.format);
+                            return displayField.transform ? displayField.transform(formatted) : formatted;
+                        });
+
+                        return values.filter(v => v !== null && v !== undefined && v !== '').join('; ');
+                    }
+                }
+
+                return '';
             });
         } else {
             // Convert to format expected by downloadGeoJSON
@@ -373,59 +415,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             }));
             downloadGeoJSON(geoData, filename, { geometryKey: 'geometry' });
         }
-    }, [hasSelection, selectedRows, rowData, selectedLayer, columnConfigs]);
-
-    // Export related table data as separate CSV
-    const handleExportRelated = useCallback((tableIndex: number) => {
-        setOpenDropdown('none');
-        const relatedTable = selectedLayer?.relatedTables?.[tableIndex];
-        if (!relatedTable) return;
-
-        const dataMap = relatedDataMaps[tableIndex];
-        if (!dataMap || dataMap.size === 0) return;
-
-        // Get target values to export (selected rows or all rows)
-        const dataToExport = hasSelection ? selectedRows : rowData;
-        const targetValues = new Set(
-            dataToExport.map(row => String(row.properties[relatedTable.targetField] ?? ''))
-        );
-
-        // Collect related data rows only for selected/visible features
-        const relatedRows: Record<string, unknown>[] = [];
-        dataMap.forEach((rows, key) => {
-            if (targetValues.has(key)) {
-                relatedRows.push(...rows);
-            }
-        });
-
-        if (relatedRows.length === 0) return;
-
-        const timestamp = new Date().toISOString().split('T')[0];
-        const tableName = (relatedTable.fieldLabel || `related-${tableIndex}`).replace(/\s+/g, '-').toLowerCase();
-        const layerName = (selectedLayer?.layerTitle || 'export').replace(/\s+/g, '-').toLowerCase();
-        const filename = `${layerName}-${tableName}-${timestamp}`;
-
-        // Include matching field first (for joining), then displayFields
-        const matchingField = relatedTable.matchingField;
-        const displayFields = relatedTable.displayFields || [];
-
-        // Build headers: matching field first, then display fields
-        const headers = [matchingField, ...displayFields.map(df => df.label || df.field)];
-        const fieldKeys = [matchingField, ...displayFields.map(df => df.field)];
-
-        downloadCSV(relatedRows, filename, headers, (row, header) => {
-            const idx = headers.indexOf(header);
-            const field = fieldKeys[idx];
-            if (!field) return '';
-            const rawValue = row[field];
-            // Apply formatting if displayFields has format config
-            const displayField = displayFields.find(df => (df.label || df.field) === header);
-            if (displayField?.format) {
-                return formatNumeric(rawValue, displayField.format);
-            }
-            return rawValue === null || rawValue === undefined ? '' : String(rawValue);
-        });
-    }, [selectedLayer, relatedDataMaps, hasSelection, selectedRows, rowData]);
+    }, [hasSelection, selectedRows, rowData, selectedLayer, columnConfigs, relatedDataMaps]);
 
     // Build columns dynamically for selected layer
     const columns = useMemo((): ColumnDef<RowData>[] => {
@@ -739,22 +729,6 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             >
                                 GeoJSON
                             </button>
-                            {selectedLayer?.relatedTables && selectedLayer.relatedTables.length > 0 && (
-                                <>
-                                    <div className="border-t border-border my-1" />
-                                    <div className="px-3 py-1 text-xs text-muted-foreground">Related Data</div>
-                                    {selectedLayer.relatedTables.map((table, idx) => (
-                                        <button
-                                            key={idx}
-                                            onClick={() => handleExportRelated(idx)}
-                                            className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted"
-                                            disabled={!relatedDataMaps[idx] || relatedDataMaps[idx].size === 0}
-                                        >
-                                            {table.fieldLabel || `Related ${idx + 1}`} (CSV)
-                                        </button>
-                                    ))}
-                                </>
-                            )}
                         </div>
                     )}
                 </div>
