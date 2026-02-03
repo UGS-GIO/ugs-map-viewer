@@ -48,8 +48,7 @@ import {
 import { hasRasterData, type LayerContentProps, type ExtendedFeature } from '@/components/maps/popups/types';
 import type { SelectedFeatureRef } from '@/hooks/use-map-url-sync';
 import type { HighlightFeature } from '@/components/maps/types';
-import { useMap } from '@/hooks/use-map';
-import { zoomToFeature, zoomToFeatures } from '@/lib/map/utils';
+import { useZoomToFeature } from '@/hooks/use-zoom-to-feature';
 import { downloadCSV, downloadGeoJSON } from '@/lib/download-utils';
 import { cn, formatNumeric } from '@/lib/utils';
 import { useBulkRelatedTable } from '@/hooks/use-bulk-related-table';
@@ -81,6 +80,7 @@ interface RowData {
     layerTitle: string;
     feature: ExtendedFeature;
     properties: Record<string, unknown>;
+    maxZoomLevel?: number;
 }
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
@@ -89,7 +89,7 @@ const EMPTY_COLUMN_FILTERS: { id: string; value: string }[] = [];
 type OpenDropdown = 'none' | 'export' | 'columns';
 
 export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeChange, selectedFeatureRefs = [], onSelectedFeaturesChange, onHighlightChange }: QueryResultsTableProps) {
-    const { map } = useMap();
+    const { zoomTo, zoomToAll, map } = useZoomToFeature({ onHighlightChange });
     const mapRef = useRef(map);
     mapRef.current = map;
 
@@ -150,6 +150,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 sourceCRS: selectedLayer.sourceCRS,
                 feature: syntheticFeature,
                 properties: syntheticFeature.properties || {},
+                maxZoomLevel: selectedLayer.maxZoomLevel,
             }];
         }
 
@@ -159,6 +160,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             sourceCRS: selectedLayer.sourceCRS,
             feature,
             properties: feature.properties || {},
+            maxZoomLevel: selectedLayer.maxZoomLevel,
         }));
     }, [selectedLayer]);
 
@@ -268,16 +270,10 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             onSelectedFeaturesChange?.(rowIndicesToFeatureRefs([numericId]));
             lastClickedRowRef.current = numericId;
 
-            // Zoom and highlight single feature (use rowIndex for rowData access)
+            // Zoom and highlight single feature
             const row = rowData[numericId];
-            const currentMap = mapRef.current;
-            if (currentMap && row && row.feature.geometry) {
-                onHighlightChange?.([{
-                    id: row.feature.id as string | number,
-                    geometry: row.feature.geometry,
-                    properties: row.feature.properties || {}
-                }]);
-                zoomToFeature(row.feature, currentMap, row.sourceCRS);
+            if (row?.feature.geometry) {
+                zoomTo(row.feature, row.sourceCRS, { maxZoom: row.maxZoomLevel });
             }
         }
     }, [rowSelection, rowData, rowIndicesToFeatureRefs, onSelectedFeaturesChange, onHighlightChange]);
@@ -334,23 +330,10 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
 
     // Zoom to all selected features
     const handleZoomToSelected = useCallback(() => {
-        const currentMap = mapRef.current;
-        if (!currentMap || selectedRows.length === 0) return;
-
-        // Highlight selected features (declarative)
-        const highlights: HighlightFeature[] = selectedRows
-            .filter(row => row.feature.geometry)
-            .map(row => ({
-                id: row.feature.id as string | number,
-                geometry: row.feature.geometry!,
-                properties: row.feature.properties || {}
-            }));
-        onHighlightChange?.(highlights);
-
-        // Zoom to fit all
+        if (selectedRows.length === 0) return;
         const features = selectedRows.map(r => r.feature);
-        zoomToFeatures(features, currentMap, selectedRows[0].sourceCRS);
-    }, [selectedRows, onHighlightChange]);
+        zoomToAll(features, selectedRows[0].sourceCRS, { maxZoom: selectedRows[0].maxZoomLevel });
+    }, [selectedRows, zoomToAll]);
 
     // Clear selection
     const handleClearSelection = useCallback(() => {

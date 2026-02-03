@@ -230,6 +230,7 @@ export function usePopupData({
         colorCodingMap: sublayerConfig?.colorCodingMap,
         colorCodingMode: sublayerConfig?.colorCodingMode,
         rasterSource: processedRasterSource,
+        maxZoomLevel: layer?.maxZoomLevel,
         features: features.map((f): ExtendedFeature => ({
           type: 'Feature',
           id: f.id,

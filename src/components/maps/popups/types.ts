@@ -39,6 +39,7 @@ export interface LayerContentProps {
     layerCrs?: string
     wfsUrl?: string
     typeName?: string
+    maxZoomLevel?: number
 }
 
 /**
