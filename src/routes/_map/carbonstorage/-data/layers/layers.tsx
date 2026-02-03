@@ -1032,6 +1032,54 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
     ],
 };
 
+// Non-Petroleum Well Catalogue Data
+const nonPetroleumCatLayerName = 'nwpd_nonpetroleumwellcatalogwells';
+const nonPetroleumCatLayerTitle = 'Non-Petroleum Well Catalogue Data';
+const nonPetroleumCatLayerConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: nonPetroleumCatLayerTitle,
+    visible: false,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${nonPetroleumCatLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Name': { field: 'well_name', type: 'string' },
+                'API/UWI': { field: 'uwi', type: 'string' },
+                'Operator': { field: 'operator', type: 'string' },
+                'County': { field: 'county', type: 'string' },
+                'Location': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const townNum = props?.['town_num'];
+                        const townDir = props?.['town_dir'];
+                        const rangeNum = props?.['range_num'];
+                        const rangeDir = props?.['range_dir'];
+                        const sect = props?.['sect'];
+                        return `${townNum}${townDir} ${rangeNum}${rangeDir} Section ${sect}`;
+                    }
+                },
+                'Field/Area': { field: 'field_area', type: 'string' },
+                'Purpose': { field: 'purpose', type: 'string' },
+                'Depth': { field: 'depth', type: 'string' },
+                'Well Logs': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: transformWellLogs
+                },
+                'Reports': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: transformReports
+                },
+            },
+        },
+    ],
+};
+
 
 
 
@@ -1086,7 +1134,8 @@ const subsurfaceDataConfig: LayerProps = {
         oilGasFieldsWMSConfig,
         geothermalWellsWMSConfig,
         geothermalSpringsJoinsConfig,
-        geothermalWellsJoinsConfig
+        geothermalWellsJoinsConfig,
+        nonPetroleumCatLayerConfig
     ]
 }
 
