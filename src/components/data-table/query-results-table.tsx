@@ -48,6 +48,7 @@ import {
 import { hasRasterData, type LayerContentProps, type ExtendedFeature } from '@/components/maps/popups/types';
 import type { SelectedFeatureRef } from '@/hooks/use-map-url-sync';
 import type { HighlightFeature } from '@/components/maps/types';
+import { formatFieldValue } from '@/lib/field-formatting';
 import { useZoomToFeature } from '@/hooks/use-zoom-to-feature';
 import { downloadCSV, downloadGeoJSON } from '@/lib/download-utils';
 import { cn, formatNumeric } from '@/lib/utils';
@@ -72,6 +73,8 @@ interface ColumnConfig {
     id: string;
     label: string;
     field: string;
+    /** Original field config for formatting (unit, decimalPlaces, transform) */
+    fieldConfig?: import('@/lib/types/mapping-types').FieldConfig;
 }
 
 interface RowData {
@@ -208,6 +211,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 id: fieldConfig.field,
                 label,
                 field: fieldConfig.field,
+                fieldConfig, // Preserve full config for formatting
             }));
         }
 
@@ -351,8 +355,16 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         const filename = `${layerName}-${timestamp}`;
 
         if (format === 'csv') {
-            const headers = columnConfigs.map(c => c.field);
-            downloadCSV(dataToExport, filename, headers, (row, key) => row.properties[key]);
+            // Use labels as headers (not field names) for better readability
+            const headers = columnConfigs.map(c => c.label);
+            downloadCSV(dataToExport, filename, headers, (row, header) => {
+                // Find config by label to get the field and fieldConfig
+                const config = columnConfigs.find(c => c.label === header);
+                if (!config) return '';
+                const rawValue = row.properties[config.field];
+                // Apply formatting (units, decimal places, transforms)
+                return formatFieldValue(config.fieldConfig, rawValue, row.properties);
+            });
         } else {
             // Convert to format expected by downloadGeoJSON
             const geoData = dataToExport.map(row => ({
@@ -410,11 +422,12 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                         )}
                     </Button>
                 ),
-                cell: ({ getValue }) => {
-                    const value = getValue();
-                    if (value === null || value === undefined) return '-';
-                    if (typeof value === 'object') return JSON.stringify(value);
-                    return String(value);
+                cell: ({ row, getValue }) => {
+                    const rawValue = getValue();
+                    if (rawValue === null || rawValue === undefined) return '-';
+                    // Use field formatting if config exists
+                    const formatted = formatFieldValue(config.fieldConfig, rawValue, row.original.properties);
+                    return formatted || '-';
                 },
                 filterFn: 'includesString',
             });
