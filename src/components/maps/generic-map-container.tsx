@@ -349,7 +349,13 @@ export default function GenericMapContainer({
     if (onExternalDrawModeChange) {
       onExternalDrawModeChange(mode)
     } else {
-      setMapInteraction(prev => ({ ...prev, internalDrawMode: mode }))
+      // Turn off box select when entering draw mode (mutually exclusive)
+      setMapInteraction(prev => ({
+        ...prev,
+        internalDrawMode: mode,
+        boxSelectMode: mode !== 'off' ? false : prev.boxSelectMode,
+        boxSelectBounds: mode !== 'off' ? null : prev.boxSelectBounds,
+      }))
     }
   }, [onExternalDrawModeChange])
 
@@ -367,11 +373,13 @@ export default function GenericMapContainer({
   }, [onExternalDrawComplete, clearAllSelections])
 
   const handleBoxSelectModeChange = useCallback((active: boolean) => {
+    // Turn off draw mode when entering box select (mutually exclusive)
     // Clear frozen bounds when toggling box select mode
     setMapInteraction(prev => ({
       ...prev,
       boxSelectMode: active,
       boxSelectBounds: active ? prev.boxSelectBounds : null,
+      internalDrawMode: active ? 'off' : prev.internalDrawMode,
     }))
   }, [])
 
