@@ -303,10 +303,9 @@ export default function GenericMapContainer({
     sheetWidth: 480,
   })
 
-  // Additive mode: toggled via button OR held via Shift key
+  // Additive mode: toggled via button OR held via Shift key (only when no other mode active)
   const [additiveModeToggled, setAdditiveModeToggled] = useState(false)
   const [isShiftHeld, setIsShiftHeld] = useState(false)
-  const isAdditiveMode = additiveModeToggled || isShiftHeld
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -333,6 +332,10 @@ export default function GenericMapContainer({
 
   // Use external draw mode if provided, otherwise use internal
   const effectiveDrawMode = externalDrawMode ?? mapInteraction.internalDrawMode
+
+  // Additive mode only active when no other mode is active (shift-click disabled in draw/box modes)
+  const noOtherModeActive = effectiveDrawMode === 'off' && !mapInteraction.boxSelectMode
+  const isAdditiveMode = noOtherModeActive && (additiveModeToggled || isShiftHeld)
 
   // Register clear callback so startDraw can clear existing drawings
   const clearSpatialFilter = useCallback(() => {
