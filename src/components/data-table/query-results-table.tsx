@@ -355,7 +355,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         const filename = `${layerName}-${timestamp}`;
 
         if (format === 'csv') {
-            // Build headers: geometry + main columns + related table columns
+            // Build headers: main columns + related table columns + geometry
             const mainHeaders = columnConfigs.map(c => c.label);
             const relatedHeaders: string[] = [];
             const relatedTables = selectedLayer?.relatedTables || [];
@@ -370,10 +370,44 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
 
             const allHeaders = [...mainHeaders, ...relatedHeaders, 'geometry'];
 
-            downloadCSV(dataToExport, filename, allHeaders, (row, header) => {
+            // Build denormalized rows: one row per related record (or one row if no related data)
+            interface ExportRow {
+                feature: RowData;
+                relatedRecord: Record<string, unknown> | null;
+                relatedTableIndex: number | null;
+            }
+
+            const expandedRows: ExportRow[] = [];
+
+            for (const row of dataToExport) {
+                // Find all related records across all tables
+                const allRelatedRecords: { record: Record<string, unknown>; tableIndex: number }[] = [];
+
+                relatedTables.forEach((table, tableIndex) => {
+                    const targetValue = String(row.properties[table.targetField] ?? '');
+                    const dataMap = relatedDataMaps[tableIndex];
+                    const records = dataMap?.get(targetValue) || [];
+                    records.forEach(record => {
+                        allRelatedRecords.push({ record, tableIndex });
+                    });
+                });
+
+                if (allRelatedRecords.length === 0) {
+                    // No related records - add one row with empty related columns
+                    expandedRows.push({ feature: row, relatedRecord: null, relatedTableIndex: null });
+                } else {
+                    // One row per related record
+                    for (const { record, tableIndex } of allRelatedRecords) {
+                        expandedRows.push({ feature: row, relatedRecord: record, relatedTableIndex: tableIndex });
+                    }
+                }
+            }
+
+            downloadCSV(expandedRows, filename, allHeaders, (exportRow, header) => {
+                const { feature: row, relatedRecord, relatedTableIndex } = exportRow;
+
                 // Handle geometry column (WKT format)
                 if (header === 'geometry') {
-                    // Cast to satisfy wellknown's GeoJSON types
                     return geojsonToWKT(row.feature.geometry as Parameters<typeof geojsonToWKT>[0]) || '';
                 }
 
@@ -384,7 +418,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                     return formatFieldValue(config.fieldConfig, rawValue, row.properties);
                 }
 
-                // Check related tables
+                // Check related tables - only return value if this row's related record matches
                 for (let tableIndex = 0; tableIndex < relatedTables.length; tableIndex++) {
                     const table = relatedTables[tableIndex];
                     const prefix = table.fieldLabel ? `${table.fieldLabel}: ` : '';
@@ -394,20 +428,13 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                     );
 
                     if (displayField) {
-                        const targetValue = String(row.properties[table.targetField] ?? '');
-                        const dataMap = relatedDataMaps[tableIndex];
-                        const relatedRows = dataMap?.get(targetValue) || [];
-
-                        if (relatedRows.length === 0) return '';
-
-                        // Join multiple values with semicolon
-                        const values = relatedRows.map(r => {
-                            const raw = r[displayField.field];
+                        // Only show value if this row's related record is from this table
+                        if (relatedRecord && relatedTableIndex === tableIndex) {
+                            const raw = relatedRecord[displayField.field];
                             const formatted = formatNumeric(raw, displayField.format);
                             return displayField.transform ? displayField.transform(formatted) : formatted;
-                        });
-
-                        return values.filter(v => v !== null && v !== undefined && v !== '').join('; ');
+                        }
+                        return '';
                     }
                 }
 
