@@ -344,17 +344,21 @@ export default function GenericMapContainer({
     onRegisterClearSpatialFilter(clearSpatialFilter)
   }
 
-  // Centralized mode setter - handles mutual exclusivity between draw and box select
+  // Centralized mode setter - handles mutual exclusivity between all selection modes
   const setActiveMode = useCallback((
-    mode: 'draw' | 'boxSelect' | 'none',
+    mode: 'draw' | 'boxSelect' | 'additive' | 'none',
     drawType?: 'rectangle' | 'polygon'
   ) => {
+    // Update map interaction state
     setMapInteraction(prev => ({
       ...prev,
       internalDrawMode: mode === 'draw' ? drawType! : 'off',
       boxSelectMode: mode === 'boxSelect',
       boxSelectBounds: mode === 'boxSelect' ? prev.boxSelectBounds : null,
     }))
+
+    // Update additive mode
+    setAdditiveModeToggled(mode === 'additive')
 
     // Sync external draw mode if provided
     if (onExternalDrawModeChange) {
@@ -520,7 +524,7 @@ export default function GenericMapContainer({
             boxSelectBounds={mapInteraction.boxSelectBounds}
             onBoxSelectConfirm={handleBoxSelectConfirm}
             isAdditiveMode={isAdditiveMode}
-            onAdditiveModeToggle={() => setAdditiveModeToggled(prev => !prev)}
+            onAdditiveModeToggle={() => additiveModeToggled ? setActiveMode('none') : setActiveMode('additive')}
             onClearSelection={handleClearAllSelections}
           />
         </div>
