@@ -375,6 +375,58 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         }
     }, [hasSelection, selectedRows, rowData, selectedLayer, columnConfigs]);
 
+    // Export related table data as separate CSV
+    const handleExportRelated = useCallback((tableIndex: number) => {
+        setOpenDropdown('none');
+        const relatedTable = selectedLayer?.relatedTables?.[tableIndex];
+        if (!relatedTable) return;
+
+        const dataMap = relatedDataMaps[tableIndex];
+        if (!dataMap || dataMap.size === 0) return;
+
+        // Get target values to export (selected rows or all rows)
+        const dataToExport = hasSelection ? selectedRows : rowData;
+        const targetValues = new Set(
+            dataToExport.map(row => String(row.properties[relatedTable.targetField] ?? ''))
+        );
+
+        // Collect related data rows only for selected/visible features
+        const relatedRows: Record<string, unknown>[] = [];
+        dataMap.forEach((rows, key) => {
+            if (targetValues.has(key)) {
+                relatedRows.push(...rows);
+            }
+        });
+
+        if (relatedRows.length === 0) return;
+
+        const timestamp = new Date().toISOString().split('T')[0];
+        const tableName = (relatedTable.fieldLabel || `related-${tableIndex}`).replace(/\s+/g, '-').toLowerCase();
+        const layerName = (selectedLayer?.layerTitle || 'export').replace(/\s+/g, '-').toLowerCase();
+        const filename = `${layerName}-${tableName}-${timestamp}`;
+
+        // Include matching field first (for joining), then displayFields
+        const matchingField = relatedTable.matchingField;
+        const displayFields = relatedTable.displayFields || [];
+
+        // Build headers: matching field first, then display fields
+        const headers = [matchingField, ...displayFields.map(df => df.label || df.field)];
+        const fieldKeys = [matchingField, ...displayFields.map(df => df.field)];
+
+        downloadCSV(relatedRows, filename, headers, (row, header) => {
+            const idx = headers.indexOf(header);
+            const field = fieldKeys[idx];
+            if (!field) return '';
+            const rawValue = row[field];
+            // Apply formatting if displayFields has format config
+            const displayField = displayFields.find(df => (df.label || df.field) === header);
+            if (displayField?.format) {
+                return formatNumeric(rawValue, displayField.format);
+            }
+            return rawValue === null || rawValue === undefined ? '' : String(rawValue);
+        });
+    }, [selectedLayer, relatedDataMaps, hasSelection, selectedRows, rowData]);
+
     // Build columns dynamically for selected layer
     const columns = useMemo((): ColumnDef<RowData>[] => {
         const cols: ColumnDef<RowData>[] = [
@@ -674,7 +726,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                         <Download className="h-3 w-3" />
                     </Button>
                     {openDropdown === 'export' && (
-                        <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-md shadow-lg py-1 min-w-20">
+                        <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-md shadow-lg py-1 min-w-32">
                             <button
                                 onClick={() => handleExport('csv')}
                                 className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted"
@@ -687,6 +739,22 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             >
                                 GeoJSON
                             </button>
+                            {selectedLayer?.relatedTables && selectedLayer.relatedTables.length > 0 && (
+                                <>
+                                    <div className="border-t border-border my-1" />
+                                    <div className="px-3 py-1 text-xs text-muted-foreground">Related Data</div>
+                                    {selectedLayer.relatedTables.map((table, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => handleExportRelated(idx)}
+                                            className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted"
+                                            disabled={!relatedDataMaps[idx] || relatedDataMaps[idx].size === 0}
+                                        >
+                                            {table.fieldLabel || `Related ${idx + 1}`} (CSV)
+                                        </button>
+                                    ))}
+                                </>
+                            )}
                         </div>
                     )}
                 </div>
