@@ -332,6 +332,7 @@ function ReportGenerator() {
                             <MapPreview
                                 polygon={JSON.stringify(pendingAoi)}
                                 height={isMobile ? 250 : 300}
+                                title=""
                             />
                         )}
                         <div className="flex flex-wrap gap-2 justify-end shrink-0">

@@ -406,27 +406,31 @@ export function MapPreview({
         return () => abortController.abort();
     }, [bounds, renderMap, canvasWidth]);
 
+    // Build descriptive alt text for accessibility
+    const altText = title
+        || (hazardCodes.length > 0
+            ? `Map preview showing ${hazardCodes.join(', ')} hazard layers`
+            : 'Map preview of selected area');
+
     if (imageDataUrl) {
         return (
-            <div className="relative overflow-hidden shadow-sm print-map-container">
+            <div className="relative overflow-hidden shadow-sm print-map-container rounded-lg border">
                 {title && (
-                    <div className="bg-muted px-4 py-2 border-t border-x rounded-t-lg flex justify-between items-center">
+                    <div className="bg-muted px-4 py-2 flex justify-between items-center border-b">
                         <span className="font-semibold text-sm">{title}</span>
                         {tooltip && <div>{tooltip}</div>}
                     </div>
                 )}
-                <div className="relative bg-secondary border-x">
-                    <img src={imageDataUrl} alt={title} className="print-map-image w-full h-auto block" />
-                </div>
-                {scaleInfo && (
-                    <div className="px-4 py-2 border-x border-b rounded-b-lg bg-muted">
-                        <div className="text-xs flex items-center gap-2 flex-wrap">
+                <div className="relative bg-secondary">
+                    <img src={imageDataUrl} alt={altText} className="print-map-image w-full h-auto block" />
+                    {scaleInfo && (
+                        <div className="absolute bottom-2 left-2 px-2 py-1 bg-background/80 backdrop-blur-sm rounded text-xs flex items-center gap-2 print:bg-background print:border">
                             <span className="text-foreground whitespace-nowrap">Scale:</span>
                             <div style={{ width: `${scaleInfo.pixelWidth}px`, minWidth: '30px' }} className="h-1 bg-muted-foreground" />
                             <span className="text-foreground whitespace-nowrap">{scaleInfo.text}</span>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
         );
     }
