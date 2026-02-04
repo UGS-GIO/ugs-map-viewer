@@ -194,7 +194,7 @@ export interface QFaultsFeatureType {
     strandnames: string[];
 
 }
-export const qFaultsLayerName = 'qfaults_current';
+export const qFaultsLayerName = 'hazards_qfaults_current';
 export const qFaultsWMSTitle = 'Hazardous (Quaternary age) Faults - Statewide';
 const qFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',
