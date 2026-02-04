@@ -416,7 +416,7 @@ const SITLAConfig: LayerProps = {
         sublayers: [{
             id: 0,
             visible: true,
-    crs: 'EPSG:26912',
+            crs: 'EPSG:26912',
         }],
     },
 };
@@ -473,7 +473,7 @@ const faultsWMSConfig: WMSLayerProps = {
     ],
 };
 
-const qFaultsLayerName = 'quaternaryfaults_current';
+const qFaultsLayerName = 'hazards_qfaults_current';
 const qFaultsWMSTitle = 'Hazardous (Quaternary age) Faults';
 const qFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',
