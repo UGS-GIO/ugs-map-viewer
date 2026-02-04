@@ -176,7 +176,7 @@ const faultsWMSConfig: WMSLayerProps = {
     ],
 };
 
-const qFaultsLayerName = 'qfaults_current';
+const qFaultsLayerName = 'hazards_qfaults_current';
 const qFaultsWMSTitle = 'Hazardous (Quaternary age) Faults';
 const qFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',

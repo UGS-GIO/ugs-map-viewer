@@ -11,7 +11,7 @@ interface ReviewableLayerInfo {
 }
 
 export interface LayerOption {
-    value: string; // The raw name, e.g., 'hazards:qfaults_current'
+    value: string; // The raw name, e.g., 'hazards:hazards_qfaults_current'
     label: string; // The friendly title, e.g., 'Hazardous (Quaternary age) Faults - Statewide'
 }
 
