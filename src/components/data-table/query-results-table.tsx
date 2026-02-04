@@ -53,56 +53,9 @@ import { useZoomToFeature } from '@/hooks/use-zoom-to-feature';
 import { downloadCSV, downloadGeoJSON, geojsonToWKT } from '@/lib/download-utils';
 import { cn, formatNumeric } from '@/lib/utils';
 import { useBulkRelatedTable } from '@/hooks/use-bulk-related-table';
-import { isValidElement, type ReactNode } from 'react';
+import { isValidElement } from 'react';
 
 type ViewMode = 'map' | 'split' | 'table';
-
-/** Serialized React element shape (from JSON.stringify or similar) */
-interface SerializedReactElement {
-    props?: { children?: ReactNode };
-    _owner?: unknown;
-}
-
-function isSerializedReactElement(value: unknown): value is SerializedReactElement {
-    return typeof value === 'object' && value !== null && 'props' in value && '_owner' in value;
-}
-
-/**
- * Extract plain text from a value that might be a React element.
- * Used for CSV export where we can't render JSX.
- */
-function extractTextFromValue(value: unknown): string {
-    if (value === null || value === undefined) return '';
-    if (typeof value === 'string') return value;
-    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-
-    if (isValidElement(value)) {
-        return extractTextFromReactNode((value as React.ReactElement<{ children?: ReactNode }>).props.children);
-    }
-
-    if (isSerializedReactElement(value) && value.props?.children !== undefined) {
-        return extractTextFromReactNode(value.props.children);
-    }
-
-    return String(value);
-}
-
-function extractTextFromReactNode(node: ReactNode): string {
-    if (node === null || node === undefined) return '';
-    if (typeof node === 'string') return node;
-    if (typeof node === 'number' || typeof node === 'boolean') return String(node);
-    if (Array.isArray(node)) return node.map(extractTextFromReactNode).join('');
-
-    if (isValidElement(node)) {
-        return extractTextFromReactNode((node as React.ReactElement<{ children?: ReactNode }>).props.children);
-    }
-
-    if (isSerializedReactElement(node) && node.props?.children !== undefined) {
-        return extractTextFromReactNode(node.props.children);
-    }
-
-    return '';
-}
 
 interface QueryResultsTableProps {
     layerContent: LayerContentProps[];
@@ -480,9 +433,12 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                         if (relatedRecord && relatedTableIndex === tableIndex) {
                             const raw = relatedRecord[displayField.field];
                             const formatted = formatNumeric(raw, displayField.format);
-                            const result = displayField.transform ? displayField.transform(formatted) : formatted;
-                            // Extract text if transform returned a React element
-                            return extractTextFromValue(result);
+                            // Skip transform for CSV if it returns JSX (use formatted value instead)
+                            if (displayField.transform) {
+                                const result = displayField.transform(formatted);
+                                return isValidElement(result) ? formatted : result;
+                            }
+                            return formatted;
                         }
                         return '';
                     }
