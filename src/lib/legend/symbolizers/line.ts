@@ -41,12 +41,6 @@ function createCompositeLineHTML(lineSymbolizers: Symbolizer[]): SVGSVGElement {
     svg.setAttribute("height", SYMBOL_CONSTANTS.SVG_HEIGHT.toString());
     svg.setAttribute("viewBox", `0 0 ${SYMBOL_CONSTANTS.SVG_WIDTH} ${SYMBOL_CONSTANTS.SVG_HEIGHT}`);
     svg.style.display = "block";
-    svg.style.width = `${SYMBOL_CONSTANTS.SVG_WIDTH}px`;
-    svg.style.height = `${SYMBOL_CONSTANTS.SVG_HEIGHT}px`;
-    svg.style.maxWidth = `${SYMBOL_CONSTANTS.SVG_WIDTH}px`;
-    svg.style.maxHeight = `${SYMBOL_CONSTANTS.SVG_HEIGHT}px`;
-    svg.style.minWidth = `${SYMBOL_CONSTANTS.SVG_WIDTH}px`;
-    svg.style.minHeight = `${SYMBOL_CONSTANTS.SVG_HEIGHT}px`;
 
     // Process symbolizers in order (first = bottom layer, last = top layer)
     lineSymbolizers.forEach((symbolizer, index) => {

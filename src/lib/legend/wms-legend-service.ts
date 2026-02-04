@@ -19,7 +19,7 @@ export function buildGetLegendGraphicUrl(
         format: 'application/json',
         layer
     })
-    return `${baseUrl}wms?${params.toString()}`
+    return `${baseUrl}/wms?${params.toString()}`
 }
 
 /**
