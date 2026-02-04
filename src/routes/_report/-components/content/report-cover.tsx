@@ -1,5 +1,5 @@
 import { HAZARDS_REPORT_CONTENT } from '@/routes/_report/-data/hazards-content'
-import { ReportScreenshot } from '@/routes/_report/-components/shared/report-screenshot'
+import { MapPreview } from '@/routes/_report/-components/shared/map-preview'
 import { AnchorLinkIcon } from '@/routes/_report/-components/shared/anchor-link-icon'
 
 interface ReportCoverProps {
@@ -20,7 +20,7 @@ export function ReportCover({ polygon }: ReportCoverProps) {
                     <div className="prose max-w-none text-sm">
                         <p dangerouslySetInnerHTML={{ __html: HAZARDS_REPORT_CONTENT.coverPageIntro }} />
                     </div>
-                    <ReportScreenshot
+                    <MapPreview
                         title={title}
                         polygon={polygon}
                         height={400}

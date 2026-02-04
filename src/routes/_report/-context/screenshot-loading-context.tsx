@@ -40,8 +40,13 @@ export function ScreenshotLoadingProvider({ children }: { children: React.ReactN
 
 export function useScreenshotLoading() {
     const context = useContext(ScreenshotLoadingContext)
+    // Return no-op functions for standalone usage outside provider
     if (!context) {
-        throw new Error('useScreenshotLoading must be used within ScreenshotLoadingProvider')
+        return {
+            registerLoading: () => {},
+            unregisterLoading: () => {},
+            isAllLoaded: true
+        }
     }
     return context
 }

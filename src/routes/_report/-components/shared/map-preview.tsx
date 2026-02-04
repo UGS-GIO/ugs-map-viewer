@@ -13,7 +13,7 @@ const TILE_URL = 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.
 // Padding around polygon in pixels (matching MapLibre fitBounds behavior)
 const MAP_PADDING_PX = 50;
 
-interface ReportScreenshotProps {
+interface MapPreviewProps {
     title?: string;
     polygon?: string;
     hazardCodes?: string[];
@@ -312,14 +312,14 @@ function drawPolygon(
     ctx.setLineDash([]);
 }
 
-export function ReportScreenshot({
+export function MapPreview({
     title = 'Map',
     polygon,
     hazardCodes = [],
     height = 400,
     geoserverUrl,
     tooltip
-}: ReportScreenshotProps) {
+}: MapPreviewProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [canvasWidth, setCanvasWidth] = useState(800);

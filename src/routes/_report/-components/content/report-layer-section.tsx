@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { getHazardTextSections, HazardUnit } from '@/routes/_report/-utils/static-hazards-service'
-import { ReportScreenshot } from '@/routes/_report/-components/shared/report-screenshot'
+import { MapPreview } from '@/routes/_report/-components/shared/map-preview'
 import { ReportLegend, type CustomLegendItem } from '@/routes/_report/-components/content/report-legend'
 import {
     Popover,
@@ -105,7 +105,7 @@ export function ReportLayerSection({ layer, groupName, groupId, polygon }: Repor
                 </div>
             )}
 
-            <ReportScreenshot
+            <MapPreview
                 polygon={polygon}
                 hazardCodes={[layer.code]}
                 height={MAP_HEIGHT}

@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useMap } from '@/hooks/use-map';
-import { useMapLibreScreenshot } from '@/hooks/use-maplibre-screenshot';
 import { Button } from '@/components/ui/button';
+import { MapPreview } from '@/routes/_report/-components/shared/map-preview';
 import { BackToMenuButton } from "@/components/ui/back-to-menu-button";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -22,19 +22,12 @@ function ReportGenerator() {
     const isMobile = useIsMobile();
     const [activeDialog, setActiveDialog] = useState<DialogType>(null);
     const [pendingAoi, setPendingAoi] = useState<PolygonGeometry | null>(null);
-    const [aoiForScreenshot, setAoiForScreenshot] = useState<string | null>(null);
     const { toast } = useToast();
 
     // Use ref to track sketching state synchronously to prevent race conditions
     // The ref is checked immediately in click handlers before React re-renders
     const isSketchingRef = useRef(false);
 
-    // Use the MapLibre screenshot hook
-    const { screenshot, isLoading: isCapturing } = useMapLibreScreenshot({
-        polygon: aoiForScreenshot,
-        width: '50vw',
-        height: '50vh'
-    });
 
     // Handle draw completion from the shared TerraDraw instance
     const handleDrawComplete = (polygon: Polygon) => {
@@ -76,7 +69,6 @@ function ReportGenerator() {
                 crs: 'EPSG:3857' // Web Mercator
             };
             setPendingAoi(aoi);
-            setAoiForScreenshot(JSON.stringify(aoi));
             setActiveDialog('confirmation');
             setActiveButton(undefined);
         } else {
@@ -95,7 +87,6 @@ function ReportGenerator() {
 
     const handleNavigate = (aoi: PolygonGeometry) => {
         setPendingAoi(aoi);
-        setAoiForScreenshot(JSON.stringify(aoi));
         setActiveDialog('confirmation');
     };
 
@@ -337,31 +328,17 @@ function ReportGenerator() {
                         <DialogTitle>Generate report for the selected area?</DialogTitle>
                     </DialogHeader>
                     <div className="flex-1 min-h-0 flex flex-col gap-4">
-                        <div className="flex-1 min-h-0 flex items-center justify-center">
-                            {isCapturing ? (
-                                <div className="flex items-center justify-center w-full h-full min-h-32 bg-muted rounded-md">
-                                    <div className="text-center">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                                        <p className="text-sm text-muted-foreground">Generating map preview...</p>
-                                    </div>
-                                </div>
-                            ) : screenshot ? (
-                                <img
-                                    src={screenshot}
-                                    alt="map preview"
-                                    className="rounded-md max-w-full max-h-full object-contain"
-                                />
-                            ) : (
-                                <div className="flex items-center justify-center w-full h-full min-h-32 bg-destructive/10 rounded-md">
-                                    <p className="text-sm text-destructive">Failed to generate map preview</p>
-                                </div>
-                            )}
-                        </div>
+                        {pendingAoi && (
+                            <MapPreview
+                                polygon={JSON.stringify(pendingAoi)}
+                                height={isMobile ? 250 : 300}
+                            />
+                        )}
                         <div className="flex flex-wrap gap-2 justify-end shrink-0">
-                            <Button onClick={handleConfirmNavigation} variant="default" disabled={isCapturing || !screenshot}>
+                            <Button onClick={handleConfirmNavigation} variant="default">
                                 Generate Report
                             </Button>
-                            <Button onClick={handleCopyLink} variant="secondary" disabled={isCapturing}>
+                            <Button onClick={handleCopyLink} variant="secondary">
                                 Copy Link
                             </Button>
                             <Button onClick={handleCloseDialog} variant="secondary">
