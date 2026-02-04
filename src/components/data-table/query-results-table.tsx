@@ -57,6 +57,16 @@ import { isValidElement, type ReactNode } from 'react';
 
 type ViewMode = 'map' | 'split' | 'table';
 
+/** Serialized React element shape (from JSON.stringify or similar) */
+interface SerializedReactElement {
+    props?: { children?: ReactNode };
+    _owner?: unknown;
+}
+
+function isSerializedReactElement(value: unknown): value is SerializedReactElement {
+    return typeof value === 'object' && value !== null && 'props' in value && '_owner' in value;
+}
+
 /**
  * Extract plain text from a value that might be a React element.
  * Used for CSV export where we can't render JSX.
@@ -66,18 +76,12 @@ function extractTextFromValue(value: unknown): string {
     if (typeof value === 'string') return value;
     if (typeof value === 'number' || typeof value === 'boolean') return String(value);
 
-    // Check if it's a React element (has props.children)
     if (isValidElement(value)) {
-        const element = value as React.ReactElement<{ children?: ReactNode }>;
-        return extractTextFromReactNode(element.props.children);
+        return extractTextFromReactNode((value as React.ReactElement<{ children?: ReactNode }>).props.children);
     }
 
-    // Check if it's a plain object that looks like a serialized React element
-    if (typeof value === 'object' && 'props' in value && '_owner' in value) {
-        const serialized = value as { props?: { children?: ReactNode } };
-        if (serialized.props?.children !== undefined) {
-            return extractTextFromReactNode(serialized.props.children);
-        }
+    if (isSerializedReactElement(value) && value.props?.children !== undefined) {
+        return extractTextFromReactNode(value.props.children);
     }
 
     return String(value);
@@ -87,22 +91,14 @@ function extractTextFromReactNode(node: ReactNode): string {
     if (node === null || node === undefined) return '';
     if (typeof node === 'string') return node;
     if (typeof node === 'number' || typeof node === 'boolean') return String(node);
-
-    if (Array.isArray(node)) {
-        return node.map(extractTextFromReactNode).join('');
-    }
+    if (Array.isArray(node)) return node.map(extractTextFromReactNode).join('');
 
     if (isValidElement(node)) {
-        const element = node as React.ReactElement<{ children?: ReactNode }>;
-        return extractTextFromReactNode(element.props.children);
+        return extractTextFromReactNode((node as React.ReactElement<{ children?: ReactNode }>).props.children);
     }
 
-    // Handle serialized React elements
-    if (typeof node === 'object' && node !== null && 'props' in node) {
-        const serialized = node as { props?: { children?: ReactNode } };
-        if (serialized.props?.children !== undefined) {
-            return extractTextFromReactNode(serialized.props.children);
-        }
+    if (isSerializedReactElement(node) && node.props?.children !== undefined) {
+        return extractTextFromReactNode(node.props.children);
     }
 
     return '';
