@@ -18,7 +18,8 @@ export function downloadCSV<T>(
         .map((h) => {
           const val = getValue(row, h)
           if (val == null) return ''
-          const str = String(val)
+          // Handle objects/arrays by converting to JSON to avoid [object Object]
+          const str = typeof val === 'object' ? JSON.stringify(val) : String(val)
           // Escape quotes and wrap in quotes if contains comma/quote/newline
           if (str.includes(',') || str.includes('"') || str.includes('\n')) {
             return `"${str.replace(/"/g, '""')}"`
