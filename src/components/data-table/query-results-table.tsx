@@ -433,10 +433,14 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                         if (relatedRecord && relatedTableIndex === tableIndex) {
                             const raw = relatedRecord[displayField.field];
                             const formatted = formatNumeric(raw, displayField.format);
-                            // Skip transform for CSV if it returns JSX (use formatted value instead)
+                            // Extract URL from Link elements for CSV export
                             if (displayField.transform) {
                                 const result = displayField.transform(formatted);
-                                return isValidElement(result) ? formatted : result;
+                                if (isValidElement(result)) {
+                                    const props = result.props as { to?: string; href?: string };
+                                    return props.to || props.href || formatted;
+                                }
+                                return result;
                             }
                             return formatted;
                         }

@@ -390,7 +390,7 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
                                 if (value === 'DOGM') {
                                     return <Link to="https://dataexplorer.ogm.utah.gov/">Utah Division of Oil, Gas and Mining</Link>
                                 } else if (value === 'UGS') {
-                                    return <>Utah Geological Survey - contact <Link to="mailto:gstpierre@utah.gov">gstpierre@utah.gov</Link></>
+                                    return <Link to="mailto:gstpierre@utah.gov">Utah Geological Survey - contact gstpierre@utah.gov</Link>
                                 }
                                 return value !== '' ? value : 'No Data';
                             }
