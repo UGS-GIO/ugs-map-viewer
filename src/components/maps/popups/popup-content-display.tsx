@@ -10,8 +10,6 @@ import { memo, useMemo, ReactNode } from "react";
 import {
     FieldConfig,
     StringPopupFieldConfig,
-    NumberPopupFieldConfig,
-    CustomPopupFieldConfig,
     ProcessedRasterSource,
     LinkFields,
     ColorCodingRecordFunction,
@@ -20,6 +18,12 @@ import {
     LinkConfig,
     LinkDefinition
 } from "@/lib/types/mapping-types";
+import {
+    isNumberField,
+    isStringField,
+    isCustomField,
+    formatFieldValue,
+} from "@/lib/field-formatting";
 
 interface LabelValuePair {
     label: string | undefined;
@@ -39,53 +43,7 @@ type PopupContentDisplayProps = {
     bulkRelatedData?: RelatedDataMap[];
 };
 
-// --- Type Guards ---
-const isNumberField = (field: FieldConfig | undefined): field is NumberPopupFieldConfig =>
-    !!field && field.type === 'number';
-
-const isStringField = (field: FieldConfig | undefined): field is StringPopupFieldConfig =>
-    !!field && field.type === 'string';
-
-const isCustomField = (field: FieldConfig | undefined): field is CustomPopupFieldConfig =>
-    !!field && field.type === 'custom';
-
 // --- Utility Functions ---
-const formatWithSigFigs = (value: number, decimalPlaces: number): string => {
-    if (isNaN(value)) return 'N/A';
-    return Number(value.toFixed(decimalPlaces)).toString();
-};
-
-const getDefaultTransform = (config: NumberPopupFieldConfig): ((value: number) => string) => {
-    return (value: number) => {
-        const numericValue = typeof value === 'number' && !isNaN(value) ? value : 0;
-        let formatted = config.decimalPlaces
-            ? formatWithSigFigs(numericValue, config.decimalPlaces)
-            : numericValue.toString();
-
-        if (config.unit) {
-            formatted += ` ${config.unit}`;
-        }
-        return formatted;
-    };
-};
-
-const processFieldValue = (field: StringPopupFieldConfig | NumberPopupFieldConfig, rawValue: unknown): string => {
-    if (field.type === 'number') {
-        const numberForTransform = rawValue === null ? null : Number(rawValue);
-        const numberForDefault = Number(rawValue ?? 0);
-
-        if (field.transform) {
-            return field.transform(numberForTransform) || '';
-        }
-        return getDefaultTransform(field)(numberForDefault);
-    }
-
-    if (field.transform) {
-        return field.transform(rawValue === null ? null : String(rawValue)) || '';
-    }
-    return String(rawValue ?? '');
-};
-
 const getRasterFeatureValue = (rasterSource: ProcessedRasterSource | undefined): number | null => {
     if (!rasterSource?.data?.features?.length) return null;
     const valueField = rasterSource.valueField;
@@ -312,7 +270,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
             finalDisplayValue = currentConfig.transform?.(properties)?.toString() || '';
         } else if (currentConfig && (isStringField(currentConfig) || isNumberField(currentConfig))) {
             const rawValue = popupFields ? properties[currentConfig.field] : valueFromPropertiesDirectly;
-            finalDisplayValue = processFieldValue(currentConfig, rawValue);
+            finalDisplayValue = formatFieldValue(currentConfig, rawValue, properties);
         } else {
             finalDisplayValue = String(entryData ?? '');
         }
