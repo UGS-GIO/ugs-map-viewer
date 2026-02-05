@@ -9,12 +9,33 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
+import { PROD_POSTGREST_URL } from '@/lib/constants';
+//import qFaultsWMSConfig  from './-data/layers/layers';
+import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox';
 
 export default function Map() {
     const { isCollapsed, sidebarWidthPx } = useSidebar();
     const isMobile = useIsMobile();
     const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
     const { handleMapReady, contextValue, setClearSpatialFilterCallback, setLayerTurnedOffCallback } = useMapContextState();
+
+    const searchConfig: SearchSourceConfig[] = [
+        defaultMasqueradeConfig,
+        {
+          type: 'postgREST',
+          url: PROD_POSTGREST_URL,
+          functionName: "search_fault_data",
+          //layerName: qFaultsWMSConfig,
+          searchTerm: "search_term",
+          sourceName: 'Faults',
+          crs: 'EPSG:4326',
+          displayField: "concatnames",
+          params: { select: 'concatnames' }, // Exclude geometry from search for fast response
+          headers: {
+            'Accept-Profile': 'hazards',
+          }
+        },
+      ];
 
     return (
         <MapContext.Provider value={contextValue}>
@@ -32,7 +53,14 @@ export default function Map() {
                         <Layout.Header className='hidden md:flex'>
                             <TopNav />
                             <div className='ml-auto flex items-center space-x-4'>
-                                {/* Search Combobox goes here */}
+                                <div className="flex-1 min-w-0">
+                                    <SearchCombobox
+                                        config={searchConfig}
+                                        onFeatureSelect={handleSearchSelect}
+                                        onCollectionSelect={handleCollectionSelect}
+                                        className="w-full"
+                                    />
+                                    </div>
                             </div>
                         </Layout.Header>
 
