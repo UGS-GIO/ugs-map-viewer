@@ -8,7 +8,9 @@ const HazardsSearchSchema = z.object({
   aoi: z.union([
     z.string(),
     z.object({}).passthrough()
-  ]).optional()
+  ]).optional(),
+  // Dev-only: test all hazards regardless of polygon
+  testAll: z.union([z.boolean(), z.string().transform(v => v === 'true')]).optional(),
 })
 
 export const Route = createFileRoute('/_report/hazards')({

@@ -92,6 +92,7 @@ interface BaseLayerProps {
     visible?: boolean;
     options?: any;
     opacity?: number;
+    maxZoomLevel?: number;
 }
 
 export interface WMSLayerProps extends BaseLayerProps {

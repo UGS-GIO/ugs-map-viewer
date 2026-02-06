@@ -48,11 +48,12 @@ import {
 import { hasRasterData, type LayerContentProps, type ExtendedFeature } from '@/components/maps/popups/types';
 import type { SelectedFeatureRef } from '@/hooks/use-map-url-sync';
 import type { HighlightFeature } from '@/components/maps/types';
-import { useMap } from '@/hooks/use-map';
-import { zoomToFeature, zoomToFeatures } from '@/lib/map/utils';
-import { downloadCSV, downloadGeoJSON } from '@/lib/download-utils';
+import { formatFieldValue } from '@/lib/field-formatting';
+import { useZoomToFeature } from '@/hooks/use-zoom-to-feature';
+import { downloadCSV, downloadGeoJSON, geojsonToWKT } from '@/lib/download-utils';
 import { cn, formatNumeric } from '@/lib/utils';
 import { useBulkRelatedTable } from '@/hooks/use-bulk-related-table';
+import { isValidElement } from 'react';
 
 type ViewMode = 'map' | 'split' | 'table';
 
@@ -73,6 +74,8 @@ interface ColumnConfig {
     id: string;
     label: string;
     field: string;
+    /** Original field config for formatting (unit, decimalPlaces, transform) */
+    fieldConfig?: import('@/lib/types/mapping-types').FieldConfig;
 }
 
 interface RowData {
@@ -81,6 +84,7 @@ interface RowData {
     layerTitle: string;
     feature: ExtendedFeature;
     properties: Record<string, unknown>;
+    maxZoomLevel?: number;
 }
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
@@ -89,7 +93,7 @@ const EMPTY_COLUMN_FILTERS: { id: string; value: string }[] = [];
 type OpenDropdown = 'none' | 'export' | 'columns';
 
 export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeChange, selectedFeatureRefs = [], onSelectedFeaturesChange, onHighlightChange }: QueryResultsTableProps) {
-    const { map } = useMap();
+    const { zoomTo, zoomToAll, map } = useZoomToFeature({ onHighlightChange });
     const mapRef = useRef(map);
     mapRef.current = map;
 
@@ -150,6 +154,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 sourceCRS: selectedLayer.sourceCRS,
                 feature: syntheticFeature,
                 properties: syntheticFeature.properties || {},
+                maxZoomLevel: selectedLayer.maxZoomLevel,
             }];
         }
 
@@ -159,6 +164,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             sourceCRS: selectedLayer.sourceCRS,
             feature,
             properties: feature.properties || {},
+            maxZoomLevel: selectedLayer.maxZoomLevel,
         }));
     }, [selectedLayer]);
 
@@ -213,6 +219,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                     id: fieldConfig.field,
                     label,
                     field: fieldConfig.field,
+                    fieldConfig, // Preserve full config for formatting
                 }));
         }
 
@@ -275,16 +282,10 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             onSelectedFeaturesChange?.(rowIndicesToFeatureRefs([numericId]));
             lastClickedRowRef.current = numericId;
 
-            // Zoom and highlight single feature (use rowIndex for rowData access)
+            // Zoom and highlight single feature
             const row = rowData[numericId];
-            const currentMap = mapRef.current;
-            if (currentMap && row && row.feature.geometry) {
-                onHighlightChange?.([{
-                    id: row.feature.id as string | number,
-                    geometry: row.feature.geometry,
-                    properties: row.feature.properties || {}
-                }]);
-                zoomToFeature(row.feature, currentMap, row.sourceCRS);
+            if (row?.feature.geometry) {
+                zoomTo(row.feature, row.sourceCRS, { maxZoom: row.maxZoomLevel });
             }
         }
     }, [rowSelection, rowData, rowIndicesToFeatureRefs, onSelectedFeaturesChange, onHighlightChange]);
@@ -342,23 +343,10 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
 
     // Zoom to all selected features
     const handleZoomToSelected = useCallback(() => {
-        const currentMap = mapRef.current;
-        if (!currentMap || selectedRows.length === 0) return;
-
-        // Highlight selected features (declarative)
-        const highlights: HighlightFeature[] = selectedRows
-            .filter(row => row.feature.geometry)
-            .map(row => ({
-                id: row.feature.id as string | number,
-                geometry: row.feature.geometry!,
-                properties: row.feature.properties || {}
-            }));
-        onHighlightChange?.(highlights);
-
-        // Zoom to fit all
+        if (selectedRows.length === 0) return;
         const features = selectedRows.map(r => r.feature);
-        zoomToFeatures(features, currentMap, selectedRows[0].sourceCRS);
-    }, [selectedRows, onHighlightChange]);
+        zoomToAll(features, selectedRows[0].sourceCRS, { maxZoom: selectedRows[0].maxZoomLevel });
+    }, [selectedRows, zoomToAll]);
 
     // Clear selection
     const handleClearSelection = useCallback(() => {
@@ -376,8 +364,100 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         const filename = `${layerName}-${timestamp}`;
 
         if (format === 'csv') {
-            const headers = columnConfigs.map(c => c.field);
-            downloadCSV(dataToExport, filename, headers, (row, key) => row.properties[key]);
+            // Build headers: main columns + related table columns + geometry
+            const mainHeaders = columnConfigs.map(c => c.label);
+            const relatedHeaders: string[] = [];
+            const relatedTables = selectedLayer?.relatedTables || [];
+
+            // Add headers for each related table's display fields
+            relatedTables.forEach((table) => {
+                const prefix = table.fieldLabel ? `${table.fieldLabel}: ` : '';
+                table.displayFields?.forEach(df => {
+                    relatedHeaders.push(`${prefix}${df.label || df.field}`);
+                });
+            });
+
+            const allHeaders = [...mainHeaders, ...relatedHeaders, 'geometry'];
+
+            // Build denormalized rows: one row per related record (or one row if no related data)
+            interface ExportRow {
+                feature: RowData;
+                relatedRecord: Record<string, unknown> | null;
+                relatedTableIndex: number | null;
+            }
+
+            const expandedRows: ExportRow[] = [];
+
+            for (const row of dataToExport) {
+                // Find all related records across all tables
+                const allRelatedRecords: { record: Record<string, unknown>; tableIndex: number }[] = [];
+
+                relatedTables.forEach((table, tableIndex) => {
+                    const targetValue = String(row.properties[table.targetField] ?? '');
+                    const dataMap = relatedDataMaps[tableIndex];
+                    const records = dataMap?.get(targetValue) || [];
+                    records.forEach(record => {
+                        allRelatedRecords.push({ record, tableIndex });
+                    });
+                });
+
+                if (allRelatedRecords.length === 0) {
+                    // No related records - add one row with empty related columns
+                    expandedRows.push({ feature: row, relatedRecord: null, relatedTableIndex: null });
+                } else {
+                    // One row per related record
+                    for (const { record, tableIndex } of allRelatedRecords) {
+                        expandedRows.push({ feature: row, relatedRecord: record, relatedTableIndex: tableIndex });
+                    }
+                }
+            }
+
+            downloadCSV(expandedRows, filename, allHeaders, (exportRow, header) => {
+                const { feature: row, relatedRecord, relatedTableIndex } = exportRow;
+
+                // Handle geometry column (WKT format)
+                if (header === 'geometry') {
+                    return geojsonToWKT(row.feature.geometry as Parameters<typeof geojsonToWKT>[0]) || '';
+                }
+
+                // Check if it's a main column
+                const config = columnConfigs.find(c => c.label === header);
+                if (config) {
+                    const rawValue = row.properties[config.field];
+                    return formatFieldValue(config.fieldConfig, rawValue, row.properties);
+                }
+
+                // Check related tables - only return value if this row's related record matches
+                for (let tableIndex = 0; tableIndex < relatedTables.length; tableIndex++) {
+                    const table = relatedTables[tableIndex];
+                    const prefix = table.fieldLabel ? `${table.fieldLabel}: ` : '';
+
+                    const displayField = table.displayFields?.find(
+                        df => `${prefix}${df.label || df.field}` === header
+                    );
+
+                    if (displayField) {
+                        // Only show value if this row's related record is from this table
+                        if (relatedRecord && relatedTableIndex === tableIndex) {
+                            const raw = relatedRecord[displayField.field];
+                            const formatted = formatNumeric(raw, displayField.format);
+                            // Extract URL from Link elements for CSV export
+                            if (displayField.transform) {
+                                const result = displayField.transform(formatted);
+                                if (isValidElement(result)) {
+                                    const props = result.props as { to?: string; href?: string };
+                                    return props.to || props.href || formatted;
+                                }
+                                return result;
+                            }
+                            return formatted;
+                        }
+                        return '';
+                    }
+                }
+
+                return '';
+            });
         } else {
             // Convert to format expected by downloadGeoJSON
             const geoData = dataToExport.map(row => ({
@@ -386,7 +466,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             }));
             downloadGeoJSON(geoData, filename, { geometryKey: 'geometry' });
         }
-    }, [hasSelection, selectedRows, rowData, selectedLayer, columnConfigs]);
+    }, [hasSelection, selectedRows, rowData, selectedLayer, columnConfigs, relatedDataMaps]);
 
     // Build columns dynamically for selected layer
     const columns = useMemo((): ColumnDef<RowData>[] => {
@@ -435,11 +515,12 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                         )}
                     </Button>
                 ),
-                cell: ({ getValue }) => {
-                    const value = getValue();
-                    if (value === null || value === undefined) return '-';
-                    if (typeof value === 'object') return JSON.stringify(value);
-                    return String(value);
+                cell: ({ row, getValue }) => {
+                    const rawValue = getValue();
+                    // Use field formatting - handles custom fields that compute from properties
+                    const formatted = formatFieldValue(config.fieldConfig, rawValue, row.original.properties);
+                    // Return formatted value or '-' for empty/null values
+                    return formatted || '-';
                 },
                 filterFn: 'includesString',
             });
@@ -686,7 +767,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                         <Download className="h-3 w-3" />
                     </Button>
                     {openDropdown === 'export' && (
-                        <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-md shadow-lg py-1 min-w-20">
+                        <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-md shadow-lg py-1 min-w-32">
                             <button
                                 onClick={() => handleExport('csv')}
                                 className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted"

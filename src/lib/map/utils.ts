@@ -9,6 +9,14 @@ import { point } from '@turf/helpers';
 import { bbox as turfBbox } from '@turf/bbox';
 import type { MapLibreMap } from '@/lib/types/map-types';
 
+export const DEFAULT_ZOOM_TO_FEATURE_MAX_ZOOM = 14;
+
+export interface ZoomToFeatureOptions {
+    maxZoom?: number;
+    padding?: number;
+    animate?: boolean;
+}
+
 /**
  * Create a bounding box around a point with a given radius buffer.
  * Uses Turf for accurate buffering at any latitude.
@@ -135,19 +143,20 @@ class MapLibreLayerProxy {
 }
 
 
-/**
- * Zooms the MapLibre map to the bounding box of the specified feature.
- *
- * @param feature - The feature to zoom to, which must include a bounding box (bbox).
- * @param map - The MapLibre map instance to perform the zoom action on.
- * @param sourceCRS - The coordinate reference system of the feature's bounding box.
- */
+/** Zooms the map to a single feature's bounding box. */
 export const zoomToFeature = (
     feature: ExtendedFeature,
     map: MapLibreMap,
-    sourceCRS: string
+    sourceCRS: string,
+    options: ZoomToFeatureOptions = {}
 ) => {
     if (!map) return;
+
+    const {
+        maxZoom = DEFAULT_ZOOM_TO_FEATURE_MAX_ZOOM,
+        padding = 50,
+        animate = true,
+    } = options;
 
     let bbox: number[] | null = null;
 
@@ -179,30 +188,31 @@ export const zoomToFeature = (
         [bbox[0], bbox[1]], // southwest corner
         [bbox[2], bbox[3]]  // northeast corner
     ], {
-        padding: 50,
-        animate: true
+        padding,
+        animate,
+        maxZoom,
     });
 }
 
-/**
- * Zooms the MapLibre map to fit all specified features.
- *
- * @param features - The features to zoom to.
- * @param map - The MapLibre map instance to perform the zoom action on.
- * @param sourceCRS - The coordinate reference system of the features.
- */
+/** Zooms the map to fit multiple features. */
 export const zoomToFeatures = (
     features: ExtendedFeature[],
     map: MapLibreMap,
-    sourceCRS: string
+    sourceCRS: string,
+    options: ZoomToFeatureOptions = {}
 ) => {
     if (!map || features.length === 0) return;
 
-    // If only one feature, use zoomToFeature
     if (features.length === 1) {
-        zoomToFeature(features[0], map, sourceCRS);
+        zoomToFeature(features[0], map, sourceCRS, options);
         return;
     }
+
+    const {
+        maxZoom = DEFAULT_ZOOM_TO_FEATURE_MAX_ZOOM,
+        padding = 50,
+        animate = true,
+    } = options;
 
     // Calculate combined bounds of all features
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -229,11 +239,12 @@ export const zoomToFeatures = (
     }
 
     map.fitBounds([
-        [minX, minY], // southwest corner
-        [maxX, maxY]  // northeast corner
+        [minX, minY],
+        [maxX, maxY]
     ], {
-        padding: 50,
-        animate: true
+        padding,
+        animate,
+        maxZoom,
     });
 }
 

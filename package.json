@@ -82,6 +82,7 @@
     "terra-draw": "^1.19.0",
     "terra-draw-maplibre-gl-adapter": "^1.2.2",
     "use-debounce": "^10.0.6",
+    "wellknown": "^0.5.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
@@ -100,6 +101,7 @@
     "@types/proj4": "^2.5.5",
     "@types/react": "^18.2.79",
     "@types/react-dom": "^18.2.25",
+    "@types/wellknown": "^0.5.8",
     "@typescript-eslint/eslint-plugin": "^6.14.0",
     "@typescript-eslint/parser": "^6.14.0",
     "@vitejs/plugin-react-swc": "^3.6.0",
