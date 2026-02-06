@@ -202,11 +202,18 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         }
 
         if (selectedLayer?.popupFields && Object.keys(selectedLayer.popupFields).length > 0) {
-            return Object.entries(selectedLayer.popupFields).map(([label, fieldConfig]) => ({
-                id: fieldConfig.field,
-                label,
-                field: fieldConfig.field,
-            }));
+            const seen = new Set<string>();
+            return Object.entries(selectedLayer.popupFields)
+                .filter(([, fieldConfig]) => {
+                    if (seen.has(fieldConfig.field)) return false;
+                    seen.add(fieldConfig.field);
+                    return true;
+                })
+                .map(([label, fieldConfig]) => ({
+                    id: fieldConfig.field,
+                    label,
+                    field: fieldConfig.field,
+                }));
         }
 
         // Auto-generate columns from first feature's properties
@@ -291,6 +298,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
     const handleLayerChange = useCallback((index: number) => {
         setSelectedLayerIndex(index);
         setFilter({ column: 'all', value: '' });
+        setColumnVisibility({});
         lastClickedRowRef.current = null;
         onSelectedFeaturesChange?.([]);
     }, [onSelectedFeaturesChange]);
