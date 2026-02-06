@@ -217,7 +217,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 })
                 .map(([label, fieldConfig]) => ({
                     id: fieldConfig.field,
-                    label,
+                    label: label || fieldConfig.field.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
                     field: fieldConfig.field,
                     fieldConfig, // Preserve full config for formatting
                 }));
@@ -495,9 +495,17 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         ];
 
         for (const config of columnConfigs) {
+            const isNumeric = config.fieldConfig?.type === 'number';
             cols.push({
                 id: config.id,
-                accessorFn: (row) => row.properties[config.field],
+                accessorFn: (row) => {
+                    const val = row.properties[config.field];
+                    if (isNumeric) {
+                        const num = Number(val);
+                        return Number.isFinite(num) ? num : null;
+                    }
+                    return val;
+                },
                 header: ({ column }) => (
                     <Button
                         variant="ghost"
@@ -522,6 +530,8 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                     // Return formatted value or '-' for empty/null values
                     return formatted || '-';
                 },
+                sortingFn: isNumeric ? 'basic' : 'alphanumeric',
+                sortUndefined: 'last',
                 filterFn: 'includesString',
             });
         }
