@@ -1,7 +1,7 @@
 import { GroupLayerProps, WMSLayerProps } from '@/lib/types/mapping-types'
 import { LayerProps } from "@/lib/types/mapping-types";
 import { ExtendedFeature } from '@/components/maps/popups/types';
-import { convertBbox, convertCoordinate } from '@/lib/map/conversion-utils';
+import { convertBbox, convertCoordinate, convertGeometryToWGS84 } from '@/lib/map/conversion-utils';
 import { createMapFactory } from '@/lib/map/factory/factory';
 import type { Geometry } from 'geojson';
 import { buffer } from '@turf/buffer';
@@ -254,50 +254,12 @@ function calculateGeometryBounds(geometry: Geometry, sourceCRS: string): number[
         if (geometry.type === 'Point') {
             const coords = geometry.coordinates as [number, number];
             const converted = convertCoordinate(coords, sourceCRS) as [number, number];
-            // Create a buffer around the point (100 meters)
             return createPointBufferBbox(converted, 0.1);
-        } else if (geometry.type === 'LineString' || geometry.type === 'MultiPoint') {
-            const coords = geometry.coordinates as [number, number][];
-            if (!coords.length) return null;
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            for (const coord of coords) {
-                const converted = convertCoordinate(coord, sourceCRS);
-                minX = Math.min(minX, converted[0]);
-                minY = Math.min(minY, converted[1]);
-                maxX = Math.max(maxX, converted[0]);
-                maxY = Math.max(maxY, converted[1]);
-            }
-            return [minX, minY, maxX, maxY];
-        } else if (geometry.type === 'Polygon' || geometry.type === 'MultiLineString') {
-            const rings = geometry.coordinates as [number, number][][];
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            for (const ring of rings) {
-                for (const coord of ring) {
-                    const converted = convertCoordinate(coord, sourceCRS);
-                    minX = Math.min(minX, converted[0]);
-                    minY = Math.min(minY, converted[1]);
-                    maxX = Math.max(maxX, converted[0]);
-                    maxY = Math.max(maxY, converted[1]);
-                }
-            }
-            return [minX, minY, maxX, maxY];
-        } else if (geometry.type === 'MultiPolygon') {
-            const polygons = geometry.coordinates as [number, number][][][];
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            for (const polygon of polygons) {
-                for (const ring of polygon) {
-                    for (const coord of ring) {
-                        const converted = convertCoordinate(coord, sourceCRS);
-                        minX = Math.min(minX, converted[0]);
-                        minY = Math.min(minY, converted[1]);
-                        maxX = Math.max(maxX, converted[0]);
-                        maxY = Math.max(maxY, converted[1]);
-                    }
-                }
-            }
-            return [minX, minY, maxX, maxY];
         }
-        return null;
+        const wgs84 = convertGeometryToWGS84(geometry, sourceCRS);
+        if (!wgs84) return null;
+        const [minX, minY, maxX, maxY] = turfBbox(wgs84);
+        return [minX, minY, maxX, maxY];
     } catch (error) {
         console.error('[calculateGeometryBounds] Error:', error);
         return null;
