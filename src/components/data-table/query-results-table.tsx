@@ -363,9 +363,11 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         const layerName = (selectedLayer?.layerTitle || 'export').replace(/\s+/g, '-').toLowerCase();
         const filename = `${layerName}-${timestamp}`;
 
+        const visibleConfigs = columnConfigs.filter(c => columnVisibility[c.id] !== false);
+
         if (format === 'csv') {
-            // Build headers: main columns + related table columns + geometry
-            const mainHeaders = columnConfigs.map(c => c.label);
+            // Build headers: only visible columns + related table columns + geometry
+            const mainHeaders = visibleConfigs.map(c => c.label);
             const relatedHeaders: string[] = [];
             const relatedTables = selectedLayer?.relatedTables || [];
 
@@ -421,7 +423,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 }
 
                 // Check if it's a main column
-                const config = columnConfigs.find(c => c.label === header);
+                const config = visibleConfigs.find(c => c.label === header);
                 if (config) {
                     const rawValue = row.properties[config.field];
                     return formatFieldValue(config.fieldConfig, rawValue, row.properties);
@@ -459,14 +461,19 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 return '';
             });
         } else {
-            // Convert to format expected by downloadGeoJSON
-            const geoData = dataToExport.map(row => ({
-                ...row.properties,
-                geometry: row.feature.geometry,
-            }));
+            // Convert to format expected by downloadGeoJSON - only visible fields
+            const visibleFields = new Set(visibleConfigs.map(c => c.field));
+            const geoData = dataToExport.map(row => {
+                const filtered: Record<string, unknown> = {};
+                for (const field of visibleFields) {
+                    if (field in row.properties) filtered[field] = row.properties[field];
+                }
+                filtered.geometry = row.feature.geometry;
+                return filtered;
+            });
             downloadGeoJSON(geoData, filename, { geometryKey: 'geometry' });
         }
-    }, [hasSelection, selectedRows, rowData, selectedLayer, columnConfigs, relatedDataMaps]);
+    }, [hasSelection, selectedRows, rowData, selectedLayer, columnConfigs, columnVisibility, relatedDataMaps]);
 
     // Build columns dynamically for selected layer
     const columns = useMemo((): ColumnDef<RowData>[] => {
