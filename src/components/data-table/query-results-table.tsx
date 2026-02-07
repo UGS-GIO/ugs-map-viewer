@@ -1,4 +1,5 @@
 import { useMemo, useState, useCallback, useRef, useEffect, Fragment } from 'react';
+import { useDebounce } from 'use-debounce';
 import {
     useReactTable,
     getCoreRowModel,
@@ -30,6 +31,13 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuCheckboxItem,
+} from '@/components/ui/dropdown-menu';
+import {
     ChevronFirst,
     ChevronLast,
     ChevronLeft,
@@ -47,14 +55,15 @@ import {
     SplitSquareVertical,
 } from 'lucide-react';
 import { hasRasterData, type LayerContentProps, type ExtendedFeature } from '@/components/maps/popups/types';
+import type { ColumnConfig, RowData, ViewMode } from './types';
 import type { SelectedFeatureRef } from '@/hooks/use-map-url-sync';
 import type { HighlightFeature } from '@/components/maps/types';
 import { formatFieldValue } from '@/lib/field-formatting';
 import { useZoomToFeature } from '@/hooks/use-zoom-to-feature';
-import { downloadCSV, downloadGeoJSON, geojsonToWKT } from '@/lib/download-utils';
-import { cn, formatNumeric } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { useBulkRelatedTable } from '@/hooks/use-bulk-related-table';
-import { isValidElement } from 'react';
+import { exportTableData } from './table-export-utils';
+import { ExpandedRelatedTable } from './expanded-related-table';
 
 // TanStack Table meta augmentation - allows type-safe access to shared state in cell renderers
 // without including it in column def dependencies (avoids unnecessary column recreation)
@@ -63,7 +72,7 @@ declare module '@tanstack/react-table' {
     interface TableMeta<TData extends TanstackRowData> {
         expandedTables: Record<string, number | null>;
         setExpandedTables: React.Dispatch<React.SetStateAction<Record<string, number | null>>>;
-        relatedDataMaps: Map<string, Record<string, unknown>[]>[];
+        relatedDataMaps: import('@/hooks/use-bulk-related-table').RelatedDataMap[];
         relatedLoading: boolean;
     }
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -71,8 +80,6 @@ declare module '@tanstack/react-table' {
         columnConfig?: ColumnConfig;
     }
 }
-
-type ViewMode = 'map' | 'split' | 'table';
 
 interface QueryResultsTableProps {
     layerContent: LayerContentProps[];
@@ -87,32 +94,11 @@ interface QueryResultsTableProps {
     onHighlightChange?: (features: HighlightFeature[]) => void;
 }
 
-interface ColumnConfig {
-    id: string;
-    label: string;
-    field: string;
-    /** Original field config for formatting (unit, decimalPlaces, transform) */
-    fieldConfig?: import('@/lib/types/mapping-types').FieldConfig;
-}
-
-interface RowData {
-    id: string;
-    sourceCRS: string;
-    layerTitle: string;
-    feature: ExtendedFeature;
-    properties: Record<string, unknown>;
-    maxZoomLevel?: number;
-}
-
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 const EMPTY_COLUMN_FILTERS: { id: string; value: string }[] = [];
 
-type OpenDropdown = 'none' | 'export' | 'columns';
-
 export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeChange, selectedFeatureRefs = [], onSelectedFeaturesChange, onHighlightChange }: QueryResultsTableProps) {
-    const { zoomTo, zoomToAll, map } = useZoomToFeature({ onHighlightChange });
-    const mapRef = useRef(map);
-    mapRef.current = map;
+    const { zoomTo, zoomToAll } = useZoomToFeature({ onHighlightChange });
 
     // Filter to layers with features OR raster data
     const layersWithData = useMemo(() =>
@@ -124,23 +110,11 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
 
     const [selectedLayerIndex, setSelectedLayerIndex] = useState(0);
     const [filter, setFilter] = useState({ column: 'all', value: '' });
+    const [debouncedFilterValue] = useDebounce(filter.value, 200);
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
-    const [openDropdown, setOpenDropdown] = useState<OpenDropdown>('none');
     const [expandedTables, setExpandedTables] = useState<Record<string, number | null>>({});
     const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 25 });
     const lastClickedRowRef = useRef<number | null>(null);
-
-    // Close dropdowns when clicking outside
-    useEffect(() => {
-        if (openDropdown === 'none') return;
-        const handleClick = () => setOpenDropdown('none');
-        // Delay to avoid closing immediately on the same click
-        const timer = setTimeout(() => document.addEventListener('click', handleClick), 0);
-        return () => {
-            clearTimeout(timer);
-            document.removeEventListener('click', handleClick);
-        };
-    }, [openDropdown]);
 
     // Clamp selectedLayerIndex if layersWithData shrinks
     useEffect(() => {
@@ -382,140 +356,6 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         onHighlightChange?.([]);
     }, [onSelectedFeaturesChange, onHighlightChange]);
 
-    // Export handlers
-    const handleExport = useCallback((format: 'csv' | 'geojson') => {
-        setOpenDropdown('none');
-        // When no selection, export only filtered rows (respecting active search filter)
-        const filteredRowData = filter.value
-            ? rowData.filter(row => {
-                const searchValue = filter.value.toLowerCase();
-                if (filter.column === 'all') {
-                    return columnConfigs.some(config => {
-                        const val = row.properties[config.field];
-                        return val != null && String(val).toLowerCase().includes(searchValue);
-                    });
-                }
-                const val = row.properties[filter.column];
-                return val != null && String(val).toLowerCase().includes(searchValue);
-            })
-            : rowData;
-        const dataToExport = hasSelection ? selectedRows : filteredRowData;
-        const timestamp = new Date().toISOString().split('T')[0];
-        const layerName = (selectedLayer?.layerTitle || 'export').replace(/\s+/g, '-').toLowerCase();
-        const filename = `${layerName}-${timestamp}`;
-
-        const visibleConfigs = columnConfigs.filter(c => columnVisibility[c.id] !== false);
-
-        if (format === 'csv') {
-            // Build headers: only visible columns + related table columns + geometry
-            const mainHeaders = visibleConfigs.map(c => c.label);
-            const relatedHeaders: string[] = [];
-            const relatedTables = selectedLayer?.relatedTables || [];
-
-            // Add headers for each related table's display fields
-            relatedTables.forEach((table) => {
-                const prefix = `${table.fieldLabel || 'Related'}: `;
-                table.displayFields?.forEach(df => {
-                    relatedHeaders.push(`${prefix}${df.label || df.field}`);
-                });
-            });
-
-            const allHeaders = [...mainHeaders, ...relatedHeaders, 'geometry'];
-
-            // Build denormalized rows: one row per related record (or one row if no related data)
-            interface ExportRow {
-                feature: RowData;
-                relatedRecord: Record<string, unknown> | null;
-                relatedTableIndex: number | null;
-            }
-
-            const expandedRows: ExportRow[] = [];
-
-            for (const row of dataToExport) {
-                // Find all related records across all tables
-                const allRelatedRecords: { record: Record<string, unknown>; tableIndex: number }[] = [];
-
-                relatedTables.forEach((table, tableIndex) => {
-                    const targetValue = String(row.properties[table.targetField] ?? '');
-                    const dataMap = relatedDataMaps[tableIndex];
-                    const records = dataMap?.get(targetValue) || [];
-                    records.forEach(record => {
-                        allRelatedRecords.push({ record, tableIndex });
-                    });
-                });
-
-                if (allRelatedRecords.length === 0) {
-                    // No related records - add one row with empty related columns
-                    expandedRows.push({ feature: row, relatedRecord: null, relatedTableIndex: null });
-                } else {
-                    // One row per related record
-                    for (const { record, tableIndex } of allRelatedRecords) {
-                        expandedRows.push({ feature: row, relatedRecord: record, relatedTableIndex: tableIndex });
-                    }
-                }
-            }
-
-            downloadCSV(expandedRows, filename, allHeaders, (exportRow, header) => {
-                const { feature: row, relatedRecord, relatedTableIndex } = exportRow;
-
-                // Handle geometry column (WKT format)
-                if (header === 'geometry') {
-                    return geojsonToWKT(row.feature.geometry as Parameters<typeof geojsonToWKT>[0]) || '';
-                }
-
-                // Check if it's a main column
-                const config = visibleConfigs.find(c => c.label === header);
-                if (config) {
-                    const rawValue = row.properties[config.field];
-                    return formatFieldValue(config.fieldConfig, rawValue, row.properties);
-                }
-
-                // Check related tables - only return value if this row's related record matches
-                for (let tableIndex = 0; tableIndex < relatedTables.length; tableIndex++) {
-                    const table = relatedTables[tableIndex];
-                    const prefix = `${table.fieldLabel || 'Related'}: `;
-
-                    const displayField = table.displayFields?.find(
-                        df => `${prefix}${df.label || df.field}` === header
-                    );
-
-                    if (displayField) {
-                        // Only show value if this row's related record is from this table
-                        if (relatedRecord && relatedTableIndex === tableIndex) {
-                            const raw = relatedRecord[displayField.field];
-                            const formatted = formatNumeric(raw, displayField.format);
-                            // Extract URL from Link elements for CSV export
-                            if (displayField.transform) {
-                                const result = displayField.transform(formatted);
-                                if (isValidElement(result)) {
-                                    const props = result.props as { to?: string; href?: string };
-                                    return props.to || props.href || formatted;
-                                }
-                                return result;
-                            }
-                            return formatted;
-                        }
-                        return '';
-                    }
-                }
-
-                return '';
-            });
-        } else {
-            // Convert to format expected by downloadGeoJSON - only visible fields
-            const visibleFields = new Set(visibleConfigs.map(c => c.field));
-            const geoData = dataToExport.map(row => {
-                const filtered: Record<string, unknown> = {};
-                for (const field of visibleFields) {
-                    if (field in row.properties) filtered[field] = row.properties[field];
-                }
-                filtered.geometry = row.feature.geometry;
-                return filtered;
-            });
-            downloadGeoJSON(geoData, filename, { geometryKey: 'geometry' });
-        }
-    }, [hasSelection, selectedRows, rowData, selectedLayer, columnConfigs, columnVisibility, relatedDataMaps, filter]);
-
     // Build columns dynamically for selected layer
     // Uses columnDef.meta for column config and table.options.meta for shared state,
     // so columns are only recreated when the actual column structure changes.
@@ -643,14 +483,14 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         return cols;
     }, [columnConfigs, selectedLayer?.relatedTables]);
 
-    // Derive filters from filter state
-    const globalFilter = filter.column === 'all' ? filter.value : '';
+    // Derive filters from filter state (debounced to avoid filtering on every keystroke)
+    const globalFilter = filter.column === 'all' ? debouncedFilterValue : '';
     const columnFilters = useMemo(() => {
-        if (filter.column !== 'all' && filter.value) {
-            return [{ id: filter.column, value: filter.value }];
+        if (filter.column !== 'all' && debouncedFilterValue) {
+            return [{ id: filter.column, value: debouncedFilterValue }];
         }
         return EMPTY_COLUMN_FILTERS;
-    }, [filter]);
+    }, [filter.column, debouncedFilterValue]);
 
     const table = useReactTable({
         data: rowData,
@@ -680,6 +520,19 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             relatedLoading,
         },
     });
+
+    // Export handlers — uses TanStack's filtered model to match what's visible in the table
+    const handleExport = useCallback((format: 'csv' | 'geojson') => {
+        const filteredRows = table.getFilteredRowModel().rows.map(r => r.original);
+        exportTableData({
+            format,
+            dataToExport: hasSelection ? selectedRows : filteredRows,
+            layerTitle: selectedLayer?.layerTitle || '',
+            visibleConfigs: columnConfigs.filter(c => columnVisibility[c.id] !== false),
+            relatedTables: selectedLayer?.relatedTables || [],
+            relatedDataMaps,
+        });
+    }, [hasSelection, selectedRows, table, selectedLayer, columnConfigs, columnVisibility, relatedDataMaps]);
 
     // Total count across all layers (includes raster-only as 1)
     const totalCount = layersWithData.reduce((sum, layer) => {
@@ -819,64 +672,53 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 )}
 
                 {/* Export dropdown */}
-                <div className="relative">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === 'export' ? 'none' : 'export'); }}
-                        className="h-6 px-2 text-xs text-muted-foreground"
-                        title={hasSelection ? `Export ${selectedRows.length} selected` : 'Export all'}
-                    >
-                        <Download className="h-3 w-3" />
-                    </Button>
-                    {openDropdown === 'export' && (
-                        <div className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-md shadow-lg py-1 min-w-32">
-                            <button
-                                onClick={() => handleExport('csv')}
-                                className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted"
-                            >
-                                CSV
-                            </button>
-                            <button
-                                onClick={() => handleExport('geojson')}
-                                className="w-full px-3 py-1.5 text-sm text-left hover:bg-muted"
-                            >
-                                GeoJSON
-                            </button>
-                        </div>
-                    )}
-                </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs text-muted-foreground"
+                            title={hasSelection ? `Export ${selectedRows.length} selected` : 'Export all'}
+                        >
+                            <Download className="h-3 w-3" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleExport('csv')}>
+                            CSV
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleExport('geojson')}>
+                            GeoJSON
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
 
                 {/* Column visibility picker */}
-                <div className="relative">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => { e.stopPropagation(); setOpenDropdown(openDropdown === 'columns' ? 'none' : 'columns'); }}
-                        className="h-6 px-2 text-xs text-muted-foreground"
-                    >
-                        <Columns3 className="h-3 w-3" />
-                    </Button>
-                    {openDropdown === 'columns' && (
-                        <div onClick={(e) => e.stopPropagation()} className="absolute right-0 top-full mt-1 z-50 bg-popover border border-border rounded-md shadow-lg p-2 min-w-40 max-h-60 overflow-auto">
-                            {table
-                                .getAllColumns()
-                                .filter((column) => column.getCanHide())
-                                .map((column) => (
-                                    <label
-                                        key={column.id}
-                                        className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-muted rounded cursor-pointer"
-                                    >
-                                        <Checkbox
-                                            checked={column.getIsVisible()}
-                                            onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                                        />
-                                        <span>{column.columnDef.meta?.columnConfig?.label || column.id}</span>
-                                    </label>
-                                ))}
-                        </div>
-                    )}
-                </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs text-muted-foreground"
+                        >
+                            <Columns3 className="h-3 w-3" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="max-h-60 overflow-auto">
+                        {table
+                            .getAllColumns()
+                            .filter((column) => column.getCanHide())
+                            .map((column) => (
+                                <DropdownMenuCheckboxItem
+                                    key={column.id}
+                                    checked={column.getIsVisible()}
+                                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                                >
+                                    {column.columnDef.meta?.columnConfig?.label || column.id}
+                                </DropdownMenuCheckboxItem>
+                            ))}
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
 
             {/* Table */}
@@ -943,46 +785,15 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
 
                                             const targetValue = String(row.original.properties[relatedTable.targetField] ?? '');
                                             const dataMap = table.options.meta!.relatedDataMaps[tableIndex];
-                                            const rows = dataMap?.get(targetValue) || [];
-                                            if (rows.length === 0) return null;
-
-                                            const headers = relatedTable.displayFields?.map(df => df.label || df.field) || [];
+                                            const relatedRows = dataMap?.get(targetValue) || [];
 
                                             return (
-                                                <TableRow key={`${row.id}-expanded`} className="bg-muted/30">
-                                                    <TableCell colSpan={columns.length} className="p-4">
-                                                        <div>
-                                                            <h4 className="text-sm font-medium mb-2">{relatedTable.fieldLabel}</h4>
-                                                            <Table>
-                                                                <TableHeader>
-                                                                    <TableRow>
-                                                                        {headers.map((h, i) => (
-                                                                            <TableHead key={i} className="h-8 text-xs">
-                                                                                {h}
-                                                                            </TableHead>
-                                                                        ))}
-                                                                    </TableRow>
-                                                                </TableHeader>
-                                                                <TableBody>
-                                                                    {rows.map((r, i) => (
-                                                                        <TableRow key={i}>
-                                                                            {relatedTable.displayFields?.map((df, j) => {
-                                                                                const raw = r[df.field];
-                                                                                const formatted = formatNumeric(raw, df.format);
-                                                                                const value = df.transform ? df.transform(formatted) : formatted;
-                                                                                return (
-                                                                                    <TableCell key={j} className="py-1.5 text-xs">
-                                                                                        {value}
-                                                                                    </TableCell>
-                                                                                );
-                                                                            })}
-                                                                        </TableRow>
-                                                                    ))}
-                                                                </TableBody>
-                                                            </Table>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
+                                                <ExpandedRelatedTable
+                                                    key={`${row.id}-expanded`}
+                                                    relatedTable={relatedTable}
+                                                    rows={relatedRows}
+                                                    colSpan={columns.length}
+                                                />
                                             );
                                         })()}
                                     </Fragment>
@@ -1018,6 +829,11 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             ))}
                         </SelectContent>
                     </Select>
+                    {table.getFilteredRowModel().rows.length < rowData.length && (
+                        <span className="text-xs text-muted-foreground">
+                            {table.getFilteredRowModel().rows.length} of {rowData.length}
+                        </span>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-1">
