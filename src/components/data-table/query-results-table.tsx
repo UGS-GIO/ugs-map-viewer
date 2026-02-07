@@ -9,6 +9,7 @@ import {
     type ColumnDef,
     type VisibilityState,
     type RowSelectionState,
+    type RowData as TanstackRowData,
 } from '@tanstack/react-table';
 import {
     Table,
@@ -54,6 +55,22 @@ import { downloadCSV, downloadGeoJSON, geojsonToWKT } from '@/lib/download-utils
 import { cn, formatNumeric } from '@/lib/utils';
 import { useBulkRelatedTable } from '@/hooks/use-bulk-related-table';
 import { isValidElement } from 'react';
+
+// TanStack Table meta augmentation - allows type-safe access to shared state in cell renderers
+// without including it in column def dependencies (avoids unnecessary column recreation)
+declare module '@tanstack/react-table' {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    interface TableMeta<TData extends TanstackRowData> {
+        expandedTables: Record<string, number | null>;
+        setExpandedTables: React.Dispatch<React.SetStateAction<Record<string, number | null>>>;
+        relatedDataMaps: Map<string, Record<string, unknown>[]>[];
+        relatedLoading: boolean;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    interface ColumnMeta<TData extends TanstackRowData, TValue> {
+        columnConfig?: ColumnConfig;
+    }
+}
 
 type ViewMode = 'map' | 'split' | 'table';
 
@@ -110,6 +127,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
     const [openDropdown, setOpenDropdown] = useState<OpenDropdown>('none');
     const [expandedTables, setExpandedTables] = useState<Record<string, number | null>>({});
+    const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 25 });
     const lastClickedRowRef = useRef<number | null>(null);
 
     // Close dropdowns when clicking outside
@@ -123,6 +141,13 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             document.removeEventListener('click', handleClick);
         };
     }, [openDropdown]);
+
+    // Clamp selectedLayerIndex if layersWithData shrinks
+    useEffect(() => {
+        if (selectedLayerIndex >= layersWithData.length && layersWithData.length > 0) {
+            setSelectedLayerIndex(0);
+        }
+    }, [selectedLayerIndex, layersWithData.length]);
 
     // Get the currently selected layer
     const selectedLayer = layersWithData[selectedLayerIndex] || null;
@@ -288,7 +313,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 zoomTo(row.feature, row.sourceCRS, { maxZoom: row.maxZoomLevel });
             }
         }
-    }, [rowSelection, rowData, rowIndicesToFeatureRefs, onSelectedFeaturesChange, onHighlightChange]);
+    }, [rowSelection, rowData, rowIndicesToFeatureRefs, onSelectedFeaturesChange, zoomTo]);
 
     // Handle column filter selection change
     const handleFilterColumnChange = useCallback((value: string) => {
@@ -300,6 +325,8 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         setSelectedLayerIndex(index);
         setFilter({ column: 'all', value: '' });
         setColumnVisibility({});
+        setExpandedTables({});
+        setPagination(prev => ({ ...prev, pageIndex: 0 }));
         lastClickedRowRef.current = null;
         onSelectedFeaturesChange?.([]);
     }, [onSelectedFeaturesChange]);
@@ -358,7 +385,21 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
     // Export handlers
     const handleExport = useCallback((format: 'csv' | 'geojson') => {
         setOpenDropdown('none');
-        const dataToExport = hasSelection ? selectedRows : rowData;
+        // When no selection, export only filtered rows (respecting active search filter)
+        const filteredRowData = filter.value
+            ? rowData.filter(row => {
+                const searchValue = filter.value.toLowerCase();
+                if (filter.column === 'all') {
+                    return columnConfigs.some(config => {
+                        const val = row.properties[config.field];
+                        return val != null && String(val).toLowerCase().includes(searchValue);
+                    });
+                }
+                const val = row.properties[filter.column];
+                return val != null && String(val).toLowerCase().includes(searchValue);
+            })
+            : rowData;
+        const dataToExport = hasSelection ? selectedRows : filteredRowData;
         const timestamp = new Date().toISOString().split('T')[0];
         const layerName = (selectedLayer?.layerTitle || 'export').replace(/\s+/g, '-').toLowerCase();
         const filename = `${layerName}-${timestamp}`;
@@ -373,7 +414,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
 
             // Add headers for each related table's display fields
             relatedTables.forEach((table) => {
-                const prefix = table.fieldLabel ? `${table.fieldLabel}: ` : '';
+                const prefix = `${table.fieldLabel || 'Related'}: `;
                 table.displayFields?.forEach(df => {
                     relatedHeaders.push(`${prefix}${df.label || df.field}`);
                 });
@@ -432,7 +473,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 // Check related tables - only return value if this row's related record matches
                 for (let tableIndex = 0; tableIndex < relatedTables.length; tableIndex++) {
                     const table = relatedTables[tableIndex];
-                    const prefix = table.fieldLabel ? `${table.fieldLabel}: ` : '';
+                    const prefix = `${table.fieldLabel || 'Related'}: `;
 
                     const displayField = table.displayFields?.find(
                         df => `${prefix}${df.label || df.field}` === header
@@ -473,9 +514,11 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             });
             downloadGeoJSON(geoData, filename, { geometryKey: 'geometry' });
         }
-    }, [hasSelection, selectedRows, rowData, selectedLayer, columnConfigs, columnVisibility, relatedDataMaps]);
+    }, [hasSelection, selectedRows, rowData, selectedLayer, columnConfigs, columnVisibility, relatedDataMaps, filter]);
 
     // Build columns dynamically for selected layer
+    // Uses columnDef.meta for column config and table.options.meta for shared state,
+    // so columns are only recreated when the actual column structure changes.
     const columns = useMemo((): ColumnDef<RowData>[] => {
         const cols: ColumnDef<RowData>[] = [
             {
@@ -505,36 +548,39 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             const isNumeric = config.fieldConfig?.type === 'number';
             cols.push({
                 id: config.id,
+                meta: { columnConfig: config },
                 accessorFn: (row) => {
                     const val = row.properties[config.field];
                     if (isNumeric) {
                         const num = Number(val);
-                        return Number.isFinite(num) ? num : null;
+                        return Number.isFinite(num) ? num : undefined;
                     }
                     return val;
                 },
-                header: ({ column }) => (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2 -ml-2"
-                        onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-                    >
-                        {config.label}
-                        {column.getIsSorted() === 'asc' ? (
-                            <ArrowUp className="ml-1 h-3 w-3" />
-                        ) : column.getIsSorted() === 'desc' ? (
-                            <ArrowDown className="ml-1 h-3 w-3" />
-                        ) : (
-                            <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
-                        )}
-                    </Button>
-                ),
-                cell: ({ row, getValue }) => {
+                header: ({ column }) => {
+                    const label = column.columnDef.meta?.columnConfig?.label ?? column.id;
+                    return (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2 -ml-2"
+                            onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                        >
+                            {label}
+                            {column.getIsSorted() === 'asc' ? (
+                                <ArrowUp className="ml-1 h-3 w-3" />
+                            ) : column.getIsSorted() === 'desc' ? (
+                                <ArrowDown className="ml-1 h-3 w-3" />
+                            ) : (
+                                <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" />
+                            )}
+                        </Button>
+                    );
+                },
+                cell: ({ row, getValue, column }) => {
                     const rawValue = getValue();
-                    // Use field formatting - handles custom fields that compute from properties
-                    const formatted = formatFieldValue(config.fieldConfig, rawValue, row.original.properties);
-                    // Return formatted value or '-' for empty/null values
+                    const fieldConfig = column.columnDef.meta?.columnConfig?.fieldConfig;
+                    const formatted = formatFieldValue(fieldConfig, rawValue, row.original.properties);
                     return formatted || '-';
                 },
                 sortingFn: isNumeric ? 'basic' : 'alphanumeric',
@@ -544,26 +590,28 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         }
 
         // Add columns for related tables
+        // Cell renderers access relatedDataMaps/expandedTables via table.options.meta
+        // so these deps don't cause column recreation.
         if (selectedLayer?.relatedTables) {
             selectedLayer.relatedTables.forEach((relatedTable, tableIndex) => {
-                // Use fieldLabel like the popup does, default to 'Description'
                 const label = relatedTable.fieldLabel || 'Description';
 
                 cols.push({
                     id: `related-${tableIndex}`,
                     header: label || 'Related',
-                    cell: ({ row }) => {
+                    cell: ({ row, table }) => {
+                        const meta = table.options.meta!;
                         const targetValue = String(row.original.properties[relatedTable.targetField] ?? '');
                         if (!targetValue) return '-';
-                        const currentMap = relatedDataMaps[tableIndex];
+                        const currentMap = meta.relatedDataMaps[tableIndex];
                         if (!currentMap || currentMap.size === 0) {
-                            return relatedLoading ? 'Loading...' : '-';
+                            return meta.relatedLoading ? 'Loading...' : '-';
                         }
 
                         const rows = currentMap.get(targetValue);
                         if (!rows || rows.length === 0) return '-';
 
-                        const isExpanded = expandedTables[row.id] === tableIndex;
+                        const isExpanded = meta.expandedTables[row.id] === tableIndex;
                         return (
                             <Button
                                 variant="ghost"
@@ -571,7 +619,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                                 className="h-6 px-2 text-xs"
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    setExpandedTables(prev => ({
+                                    meta.setExpandedTables(prev => ({
                                         ...prev,
                                         [row.id]: prev[row.id] === tableIndex ? null : tableIndex
                                     }));
@@ -586,14 +634,14 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             </Button>
                         );
                     },
-                    filterFn: 'includesString',
+                    enableSorting: false,
                     size: 120,
                 });
             });
         }
 
         return cols;
-    }, [columnConfigs, selectedLayer?.relatedTables, relatedDataMaps, relatedLoading, expandedTables]);
+    }, [columnConfigs, selectedLayer?.relatedTables]);
 
     // Derive filters from filter state
     const globalFilter = filter.column === 'all' ? filter.value : '';
@@ -614,6 +662,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         getFilteredRowModel: getFilteredRowModel(),
         onColumnVisibilityChange: setColumnVisibility,
         onRowSelectionChange: handleRowSelectionChange,
+        onPaginationChange: setPagination,
         enableRowSelection: true,
         enableColumnResizing: true,
         columnResizeMode: 'onChange',
@@ -622,11 +671,13 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             columnFilters,
             columnVisibility,
             rowSelection,
+            pagination,
         },
-        initialState: {
-            pagination: {
-                pageSize: 25,
-            },
+        meta: {
+            expandedTables,
+            setExpandedTables,
+            relatedDataMaps,
+            relatedLoading,
         },
     });
 
@@ -757,11 +808,6 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                                     {config.label}
                                 </option>
                             ))}
-                            {selectedLayer?.relatedTables?.map((table, idx) => (
-                                <option key={`related-${idx}`} value={`related-${idx}`}>
-                                    {table.fieldLabel || table.displayFields?.[0]?.label || 'Description'}
-                                </option>
-                            ))}
                         </select>
                         <Input
                             placeholder="Search..."
@@ -816,21 +862,18 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             {table
                                 .getAllColumns()
                                 .filter((column) => column.getCanHide())
-                                .map((column) => {
-                                    const config = columnConfigs.find(c => c.id === column.id);
-                                    return (
-                                        <label
-                                            key={column.id}
-                                            className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-muted rounded cursor-pointer"
-                                        >
-                                            <Checkbox
-                                                checked={column.getIsVisible()}
-                                                onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                                            />
-                                            <span>{config?.label || column.id}</span>
-                                        </label>
-                                    );
-                                })}
+                                .map((column) => (
+                                    <label
+                                        key={column.id}
+                                        className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-muted rounded cursor-pointer"
+                                    >
+                                        <Checkbox
+                                            checked={column.getIsVisible()}
+                                            onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                                        />
+                                        <span>{column.columnDef.meta?.columnConfig?.label || column.id}</span>
+                                    </label>
+                                ))}
                         </div>
                     )}
                 </div>
@@ -893,13 +936,13 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                                                 </TableCell>
                                             ))}
                                         </TableRow>
-                                        {expandedTables[row.id] !== undefined && expandedTables[row.id] !== null && selectedLayer?.relatedTables && (() => {
-                                            const tableIndex = expandedTables[row.id]!;
+                                        {table.options.meta?.expandedTables[row.id] != null && selectedLayer?.relatedTables && (() => {
+                                            const tableIndex = table.options.meta!.expandedTables[row.id]!;
                                             const relatedTable = selectedLayer.relatedTables[tableIndex];
                                             if (!relatedTable) return null;
 
                                             const targetValue = String(row.original.properties[relatedTable.targetField] ?? '');
-                                            const dataMap = relatedDataMaps[tableIndex];
+                                            const dataMap = table.options.meta!.relatedDataMaps[tableIndex];
                                             const rows = dataMap?.get(targetValue) || [];
                                             if (rows.length === 0) return null;
 
