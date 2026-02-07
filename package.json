@@ -46,7 +46,7 @@
     "@tanstack/react-table": "^8.16.0",
     "@tanstack/zod-adapter": "^1.132.2",
     "@turf/bbox": "^7.2.0",
-    "@turf/boolean-intersects": "^7.3.1",
+
     "@turf/buffer": "^7.2.0",
     "@turf/clone": "^7.2.0",
     "@turf/helpers": "^7.2.0",
