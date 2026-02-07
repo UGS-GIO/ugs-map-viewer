@@ -70,19 +70,29 @@ export function useMapCoordinates() {
             // Update on initial load
             updateFromMapLibre();
 
-            // Update on zoom change
-            const handleZoom = () => updateFromMapLibre();
+            // Throttle zoom updates to one per animation frame - the 'zoom' event
+            // fires ~60fps during zoom animations, and each setState call triggers
+            // a React re-render of the footer. RAF batches these to at most 1/frame.
+            let zoomRaf: number | null = null;
+            const handleZoom = () => {
+                if (zoomRaf) cancelAnimationFrame(zoomRaf);
+                zoomRaf = requestAnimationFrame(() => updateFromMapLibre());
+            };
             mapLibreInstance.on('zoom', handleZoom);
 
-            // Update on mouse move (desktop)
+            // Throttle mousemove the same way - fires on every pixel of movement
+            let moveRaf: number | null = null;
             const handleMouseMove = (e: maplibregl.MapMouseEvent) => {
-                updateFromMapLibre(e.lngLat);
+                if (moveRaf) cancelAnimationFrame(moveRaf);
+                moveRaf = requestAnimationFrame(() => updateFromMapLibre(e.lngLat));
             };
             mapLibreInstance.on('mousemove', handleMouseMove);
 
             return () => {
                 mapLibreInstance.off('zoom', handleZoom);
                 mapLibreInstance.off('mousemove', handleMouseMove);
+                if (zoomRaf) cancelAnimationFrame(zoomRaf);
+                if (moveRaf) cancelAnimationFrame(moveRaf);
             };
         },
         [isDecimalDegrees]

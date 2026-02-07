@@ -65,8 +65,9 @@ export default function DataMap({
   const mapRef = useRef<MapRef>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  // Track current zoom for box select validation
-  const [currentZoom, setCurrentZoom] = useState(zoom)
+  // Track current zoom via ref (avoids full DataMap re-render on every moveend)
+  const currentZoomRef = useRef(zoom)
+  const [isBoxSelectZoomValid, setIsBoxSelectZoomValid] = useState(zoom >= BOX_SELECT_MIN_ZOOM)
   const [styleLoaded, setStyleLoaded] = useState(false)
   const hasRestoredRef = useRef(false)
 
@@ -74,8 +75,7 @@ export default function DataMap({
   const [contextMenuCoords, setContextMenuCoords] = useState<ContextMenuCoords | null>(null)
   const [contextMenuOpen, setContextMenuOpen] = useState(false)
 
-  // Check if zoomed in enough for box select
-  const isBoxSelectZoomValid = currentZoom >= BOX_SELECT_MIN_ZOOM
+  // isBoxSelectZoomValid is tracked as state above (only re-renders when threshold is crossed)
 
   // Get the raw map instance (memoized to avoid recreating on every render)
   const mapInstance = mapRef.current?.getMap() ?? null
@@ -305,7 +305,9 @@ export default function DataMap({
     const mapCenter = map.getCenter()
     const mapZoom = map.getZoom()
 
-    setCurrentZoom(mapZoom)
+    currentZoomRef.current = mapZoom
+    // Only trigger re-render when the box-select validity threshold is crossed
+    setIsBoxSelectZoomValid(mapZoom >= BOX_SELECT_MIN_ZOOM)
     onMoveEnd?.(mapCenter.lat, mapCenter.lng, mapZoom)
   }, [onMoveEnd])
 
@@ -530,7 +532,7 @@ export default function DataMap({
         onZoomOut={handleZoomOut}
         onCenterHere={handleCenterHere}
         hasSelection={highlightFeatures.length > 0}
-        currentZoom={currentZoom}
+        currentZoom={currentZoomRef.current}
       />
       <div ref={containerRef} className="relative w-full h-full">
         {showLoading && !boxSelectMode && <LoadingOverlay />}
