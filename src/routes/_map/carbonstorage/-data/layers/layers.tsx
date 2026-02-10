@@ -199,6 +199,81 @@ const sco2WFSConfig: WFSLayerProps = {
     ],
 };
 
+// SCO2 Grid Summary WMS Layer (aggregated - one row per grid cell, capacity color + cost labels)
+const sco2GridSummaryLayerName = 'sco2_grid_summary';
+const sco2GridSummaryWMSTitle = 'SCO2 Storage Grid';
+const sco2GridSummaryWMSConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: sco2GridSummaryWMSTitle,
+    visible: false,
+    opacity: 0.75,
+    crs: 'EPSG:4326',
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${sco2GridSummaryLayerName}`,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'State': { field: 'state', type: 'string' },
+                'Geo Regions': { field: 'geo_regions', type: 'string' },
+                'Formation Count': { field: 'formation_count', type: 'number' },
+                'Total Capacity (Mt CO₂)': {
+                    field: 'capacity_mtco2',
+                    type: 'number',
+                    transform: (v) => v != null ? addThousandsSeparator(v.toFixed(1)) : null,
+                },
+                'Capacity Rank': {
+                    field: 'capacity_percentile',
+                    type: 'number',
+                    description: 'Relative to all evaluated grid cells. High = top third, Mid = middle third, Low = bottom third by total storage capacity.',
+                    transform: (v) => {
+                        if (v == null) return null;
+                        const label = v >= 0.67 ? 'High' : v >= 0.33 ? 'Mid' : 'Low';
+                        const pct = Math.round(v * 100);
+                        return `${label} (top ${pct}%)`;
+                    },
+                },
+                'Avg Cost ($/tCO₂)': {
+                    field: 'avg_cost_per_tco2',
+                    type: 'number',
+                    decimalPlaces: 2,
+                },
+                'Cost Rank': {
+                    field: 'cost_percentile',
+                    type: 'number',
+                    description: 'Relative to all evaluated grid cells. Low = cheapest third, Mid = middle third, High = most expensive third by capacity-weighted average cost.',
+                    transform: (v) => {
+                        if (v == null) return null;
+                        const label = v >= 0.67 ? 'Low' : v >= 0.33 ? 'Mid' : 'High';
+                        const pct = Math.round((1 - v) * 100);
+                        return `${label} (top ${pct}% cost)`;
+                    },
+                },
+            },
+            relatedTables: [
+                {
+                    fieldLabel: 'Formation Details',
+                    matchingField: 'basegrid_id',
+                    targetField: 'id50km',
+                    url: `${PROD_GEOSERVER_URL}/wfs`,
+                    headers: {},
+                    fetchMode: 'wfs',
+                    wfsTypeName: `${ENERGY_MINERALS_WORKSPACE}:sco2_draft_13aug24`,
+                    sortBy: 'capacity_mtco2',
+                    sortDirection: 'desc',
+                    displayAs: 'table',
+                    displayFields: [
+                        { field: 'name', label: 'Formation' },
+                        { field: 'capacity_mtco2', label: 'Capacity (Mt CO₂)', format: 'number' },
+                        { field: 'storage_cost_doll_per_tco2', label: 'Cost ($/tCO₂)', format: 'number' },
+                    ],
+                },
+            ],
+        },
+    ],
+};
+
 // Rivers WMS Layer
 const riversLayerName = 'rivers';
 const riversWMSTitle = 'Major Rivers';
@@ -845,6 +920,7 @@ const ccsResourcesConfig: LayerProps = {
     title: 'Carbon Storage Resources',
     visible: true,
     layers: [
+        sco2GridSummaryWMSConfig,
         sco2WFSConfig,
         basinNamesWMSConfig,
         co2SourcesWMSConfig,

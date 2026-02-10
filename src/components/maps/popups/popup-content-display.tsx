@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { RelatedDataMap, EMPTY_RELATED_DATA_MAP } from "@/hooks/use-bulk-related-table";
 import { Feature, Geometry, GeoJsonProperties } from "geojson";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Info } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { LayerContentProps } from "@/components/maps/popups/types";
 import { Link } from "@/components/ui/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -323,9 +324,22 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
 
         const colorStyle = getColorStyle(colorCodingMap, colorCodingMode, fieldKey, finalDisplayValue);
         const hasColorStyling = colorStyle.className || Object.keys(colorStyle.style).length > 0;
+        const description = currentConfig?.description;
+        const labelContent = description ? (
+            <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <span className="inline-flex items-center gap-1">{label}<Info className="h-3.5 w-3.5 text-muted-foreground" /></span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-64 text-xs">
+                        {description}
+                    </TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        ) : label;
         const content = (
             <div key={`feature-item-${label}-${index}`} className="flex flex-col">
-                <p className="font-bold underline text-primary">{label}</p>
+                <p className="font-bold underline text-primary">{labelContent}</p>
                 <div className="break-words">
                     {hasColorStyling ? (
                         <span className={colorStyle.className} style={colorStyle.style}>
@@ -407,7 +421,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         }
 
         const totalWords = flatValues.map(v => String(v.value)).join(" ").split(/\s+/).length;
-        const isLongContent = !useTableFormat && (totalWords > 20 || flatValues.length > 3);
+        const isLongContent = useTableFormat || totalWords > 20 || flatValues.length > 3;
         contentItems.push({ content: relatedContent, isLongContent, originalIndex: 1000 + tableIndex });
     });
 
