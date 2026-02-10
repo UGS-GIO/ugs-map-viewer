@@ -43,6 +43,8 @@ interface PostgRESTConfig extends BaseConfig {
     functionName?: string;
     searchTerm?: string;
     placeholder?: string;
+    groupByField?: string;
+    groupLabels?: Record<string, string>;
 }
 
 type PostgRESTParams =
@@ -645,11 +647,11 @@ function SearchCombobox({
                                     return null;
                                 }
 
-                                return (
-                                    <CommandGroup key={sourceIndex} heading={getSourceDisplayName(source)}>
-                                        {/* Type guard for Masquerade results */}
-                                        {sourceResult.type === 'masquerade' && Array.isArray(sourceResult.data) && sourceResult.data.map((suggestion, sugIndex) => {
-                                            return (
+                                // Masquerade results — single group
+                                if (sourceResult.type === 'masquerade' && Array.isArray(sourceResult.data)) {
+                                    return (
+                                        <CommandGroup key={sourceIndex} heading={getSourceDisplayName(source)}>
+                                            {sourceResult.data.map((suggestion, sugIndex) => (
                                                 <CommandItem
                                                     key={`${suggestion.magicKey}-${sugIndex}`}
                                                     value={suggestion.text}
@@ -658,15 +660,20 @@ function SearchCombobox({
                                                 >
                                                     <span className='text-wrap'>{formatAddressCase(suggestion.text)}</span>
                                                 </CommandItem>
-                                            )
-                                        }
-                                        )}
+                                            ))}
+                                        </CommandGroup>
+                                    );
+                                }
 
-                                        {/* Type guard for PostgREST results */}
-                                        {sourceResult.type === 'postgREST' && sourceResult.data && 'features' in sourceResult.data && sourceResult.data.features.map((feature, featureIndex) => {
+                                // PostgREST results
+                                if (sourceResult.type === 'postgREST' && sourceResult.data && 'features' in sourceResult.data) {
+                                    const features = sourceResult.data.features;
+                                    const postgRESTSource = source as PostgRESTConfig;
+
+                                    const renderFeatureItems = (items: typeof features) =>
+                                        items.map((feature, featureIndex) => {
                                             const displayValue = String(feature.properties?.[source.displayField] ?? '');
                                             if (!displayValue) return null;
-
                                             return (
                                                 <CommandItem
                                                     key={feature.id ?? `${displayValue}-${featureIndex}-${sourceIndex}`}
@@ -677,9 +684,37 @@ function SearchCombobox({
                                                     <span className="text-wrap">{displayValue}</span>
                                                 </CommandItem>
                                             );
-                                        })}
-                                    </CommandGroup>
-                                );
+                                        });
+
+                                    // Grouped rendering when groupByField is configured
+                                    if (postgRESTSource.groupByField) {
+                                        const groups = new Map<string, typeof features>();
+                                        for (const feature of features) {
+                                            const groupKey = String(feature.properties?.[postgRESTSource.groupByField] ?? 'other');
+                                            const existing = groups.get(groupKey);
+                                            if (existing) existing.push(feature);
+                                            else groups.set(groupKey, [feature]);
+                                        }
+
+                                        return Array.from(groups.entries()).map(([groupKey, groupFeatures]) => (
+                                            <CommandGroup
+                                                key={`${sourceIndex}-${groupKey}`}
+                                                heading={postgRESTSource.groupLabels?.[groupKey] ?? groupKey}
+                                            >
+                                                {renderFeatureItems(groupFeatures)}
+                                            </CommandGroup>
+                                        ));
+                                    }
+
+                                    // Default flat rendering
+                                    return (
+                                        <CommandGroup key={sourceIndex} heading={getSourceDisplayName(source)}>
+                                            {renderFeatureItems(features)}
+                                        </CommandGroup>
+                                    );
+                                }
+
+                                return null;
                             })}
 
                             {/* Empty State Check */}

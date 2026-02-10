@@ -31,7 +31,13 @@ const searchConfig: SearchSourceConfig[] = [
     sourceName: 'Geologic Units',
     crs: 'EPSG:4326',
     displayField: "unit_label",
-    params: { select: 'unit_label' },
+    params: { select: 'unit_label,match_type' },
+    groupByField: 'match_type',
+    groupLabels: {
+      name: 'Name Matches',
+      symbol: 'Symbol Matches',
+      description: 'Description Matches',
+    },
     headers: {
       'Accept-Profile': 'mapping',
     }
