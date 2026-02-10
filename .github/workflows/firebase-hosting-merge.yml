@@ -33,7 +33,12 @@ jobs:
         run: npm ci
 
       - name: Build Project
-        run: npm run build
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
+            npm run build
+          else
+            npm run build -- --mode preview
+          fi
 
       # === Semantic Release (Only on master branch) ===
       # Creates GitHub releases and tags based on commit messages

@@ -5,6 +5,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { hazardLayerNameMap as importedHazardLayerNameMap } from '@/routes/_report/-data/hazard-unit-map';
 import { PROD_GEOSERVER_URL } from '@/lib/constants';
 import { useReportMap } from '@/routes/_report/-hooks/use-report-map';
+import { convertCoordinate } from '@/lib/map/conversion-utils';
+
 // Type it properly for indexing
 const hazardLayerNameMap: Record<string, string> = importedHazardLayerNameMap as Record<string, string>;
 
@@ -31,17 +33,7 @@ function parsePolygonCoordinates(polygon: string | undefined): number[][] | null
 
             // Convert to WGS84 if not already
             if (sourceCRS !== 'EPSG:4326') {
-                // Web Mercator to WGS84 conversion
-                if (sourceCRS === 'EPSG:3857') {
-                    return coords.map(([x, y]: number[]) => {
-                        const lng = (x / 20037508.34) * 180;
-                        const lat = (Math.atan(Math.exp((y / 20037508.34) * Math.PI)) * 360) / Math.PI - 90;
-                        return [lng, lat];
-                    });
-                }
-
-                // If it's a different projection, log a warning
-                console.warn(`Polygon is in ${sourceCRS}. Automatic conversion only supported for Web Mercator (EPSG:3857).`);
+                return coords.map(([x, y]: number[]) => convertCoordinate([x, y], sourceCRS, 'EPSG:4326'));
             }
 
             return coords;

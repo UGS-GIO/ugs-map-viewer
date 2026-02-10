@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback } from 'react';
+import { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearch, useNavigate } from '@tanstack/react-router';
 
 interface PopupCoords {
@@ -122,18 +122,30 @@ export function useMapUrlSync({ onFiltersChange }: UseMapUrlSyncProps = {}): Map
         });
     }, [navigate]);
 
-    // Update map position (lat, lon, zoom) in URL
+    // Update map position (lat, lon, zoom) in URL - debounced to avoid
+    // cascading re-renders during continuous zoom/pan (Chrome fires many
+    // discrete wheel events per scroll gesture, each triggering moveend)
+    const positionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    useEffect(() => {
+        return () => {
+            if (positionTimeoutRef.current) clearTimeout(positionTimeoutRef.current);
+        };
+    }, []);
+
     const setMapPosition = useCallback((lat: number, lon: number, zoom: number) => {
-        navigate({
-            to: ".",
-            search: (prev) => ({
-                ...prev,
-                lat: round6(lat),
-                lon: round6(lon),
-                zoom: Math.round(zoom * 100) / 100, // 2 decimal places for zoom
-            }),
-            replace: true,
-        });
+        if (positionTimeoutRef.current) clearTimeout(positionTimeoutRef.current);
+        positionTimeoutRef.current = setTimeout(() => {
+            navigate({
+                to: ".",
+                search: (prev) => ({
+                    ...prev,
+                    lat: round6(lat),
+                    lon: round6(lon),
+                    zoom: Math.round(zoom * 100) / 100,
+                }),
+                replace: true,
+            });
+        }, 150);
     }, [navigate]);
 
     // Parse click buffer bounds from URL (format: sw_lng,sw_lat,ne_lng,ne_lat)

@@ -59,6 +59,17 @@ export const convertBbox = (bbox: number[], sourceEPSG: string, targetEPSG: stri
         return bbox;
     }
 
+    // Detect coordinates already in WGS84 degrees despite source claiming EPSG:3857.
+    // EPSG:3857 meter values are in the millions; if all values fit within degree ranges
+    // they're almost certainly already in WGS84.
+    if (sourceEPSG.toUpperCase() === 'EPSG:3857' && targetEPSG.toUpperCase() === 'EPSG:4326') {
+        const [x1, y1, x2, y2] = bbox;
+        const allInDegreeRange =
+            Math.abs(x1) <= 180 && Math.abs(x2) <= 180 &&
+            Math.abs(y1) <= 90 && Math.abs(y2) <= 90;
+        if (allInDegreeRange) return bbox;
+    }
+
     try {
         // Convert all four corners of the bbox to handle projection distortions
         const sw = convertCoordinate([bbox[0], bbox[1]], sourceEPSG, targetEPSG); // southwest

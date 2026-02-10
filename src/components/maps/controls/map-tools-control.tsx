@@ -55,13 +55,39 @@ export function MapToolsControl({
 
   const activeStyle: React.CSSProperties = {
     ...buttonStyle,
-    backgroundColor: 'rgba(0, 0, 0, 0.15)',
-    color: '#000',
+    backgroundColor: '#f59e0b',
+    color: '#fff',
+  }
+
+  // Determine active mode label for the indicator
+  const getActiveModeLabel = (): string | null => {
+    if (drawMode === 'rectangle') return 'Rectangle draw'
+    if (drawMode === 'polygon') return 'Polygon draw'
+    if (boxSelectActive) return 'Box select'
+    if (isAdditiveMode) return 'Multi-select'
+    return null
+  }
+  const activeModeLabel = getActiveModeLabel()
+
+  const indicatorStyle: React.CSSProperties = {
+    position: 'absolute',
+    top: '50%',
+    right: '100%',
+    transform: 'translateY(-50%)',
+    marginRight: 6,
+    padding: '2px 8px',
+    backgroundColor: '#f59e0b',
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: 500,
+    borderRadius: 4,
+    whiteSpace: 'nowrap',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
   }
 
   return container
     ? createPortal(
-        <div data-tour="map-tools">
+        <div data-tour="map-tools" style={{ position: 'relative' }}>
           {/* Draw rectangle */}
           {onDrawModeChange && (
             <button
@@ -125,6 +151,13 @@ export function MapToolsControl({
             >
               <CopyPlus size={18} strokeWidth={1.5} />
             </button>
+          )}
+
+          {/* Active mode indicator */}
+          {activeModeLabel && (
+            <div style={indicatorStyle}>
+              {activeModeLabel}
+            </div>
           )}
         </div>,
         container

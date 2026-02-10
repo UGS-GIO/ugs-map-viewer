@@ -465,7 +465,7 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
                                 if (value === 'DOGM') {
                                     return <Link to="https://dataexplorer.ogm.utah.gov/">Utah Division of Oil, Gas and Mining</Link>
                                 } else if (value === 'UGS') {
-                                    return <>Utah Geological Survey - contact <Link to="mailto:gstpierre@utah.gov">gstpierre@utah.gov</Link></>
+                                    return <Link to="mailto:gstpierre@utah.gov">Utah Geological Survey - contact gstpierre@utah.gov</Link>
                                 }
                                 return value !== '' ? value : 'No Data';
                             }
@@ -491,7 +491,7 @@ const SITLAConfig: LayerProps = {
         sublayers: [{
             id: 0,
             visible: true,
-    crs: 'EPSG:26912',
+            crs: 'EPSG:26912',
         }],
     },
 };
@@ -548,7 +548,7 @@ const faultsWMSConfig: WMSLayerProps = {
     ],
 };
 
-const qFaultsLayerName = 'quaternaryfaults_current';
+const qFaultsLayerName = 'hazards_qfaults_current';
 const qFaultsWMSTitle = 'Hazardous (Quaternary age) Faults';
 const qFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',

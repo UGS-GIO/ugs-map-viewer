@@ -303,10 +303,9 @@ export default function GenericMapContainer({
     sheetWidth: 480,
   })
 
-  // Additive mode: toggled via button OR held via Shift key
+  // Additive mode: toggled via button OR held via Shift key (only when no other mode active)
   const [additiveModeToggled, setAdditiveModeToggled] = useState(false)
   const [isShiftHeld, setIsShiftHeld] = useState(false)
-  const isAdditiveMode = additiveModeToggled || isShiftHeld
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -334,6 +333,10 @@ export default function GenericMapContainer({
   // Use external draw mode if provided, otherwise use internal
   const effectiveDrawMode = externalDrawMode ?? mapInteraction.internalDrawMode
 
+  // Additive mode only active when no other mode is active (shift-click disabled in draw/box modes)
+  const noOtherModeActive = effectiveDrawMode === 'off' && !mapInteraction.boxSelectMode
+  const isAdditiveMode = noOtherModeActive && (additiveModeToggled || isShiftHeld)
+
   // Register clear callback so startDraw can clear existing drawings
   const clearSpatialFilter = useCallback(() => {
     setMapInteraction(prev => ({ ...prev, spatialFilter: null }))
@@ -344,31 +347,54 @@ export default function GenericMapContainer({
     onRegisterClearSpatialFilter(clearSpatialFilter)
   }
 
-  // Memoized callbacks for map interactions (prevents useTerraDraw from reinitializing)
-  const handleDrawModeChange = useCallback((mode: DrawMode) => {
+  // Centralized mode setter - handles mutual exclusivity between all selection modes
+  const setActiveMode = useCallback((
+    mode: 'draw' | 'boxSelect' | 'additive' | 'none',
+    drawType?: 'rectangle' | 'polygon'
+  ) => {
+    // Update map interaction state
+    setMapInteraction(prev => ({
+      ...prev,
+      internalDrawMode: mode === 'draw' ? drawType! : 'off',
+      boxSelectMode: mode === 'boxSelect',
+      boxSelectBounds: mode === 'boxSelect' ? prev.boxSelectBounds : null,
+    }))
+
+    // Update additive mode
+    setAdditiveModeToggled(mode === 'additive')
+
+    // Sync external draw mode if provided
     if (onExternalDrawModeChange) {
-      onExternalDrawModeChange(mode)
-    } else {
-      setMapInteraction(prev => ({ ...prev, internalDrawMode: mode }))
+      onExternalDrawModeChange(mode === 'draw' ? drawType! : 'off')
     }
   }, [onExternalDrawModeChange])
 
+  // Handler for draw mode toggle from toolbar
+  const handleDrawModeChange = useCallback((mode: DrawMode) => {
+    if (mode === 'off') {
+      setActiveMode('none')
+    } else {
+      setActiveMode('draw', mode)
+    }
+  }, [setActiveMode])
+
   const handleSpatialFilterChange = useCallback((filter: SpatialFilter) => {
     setMapInteraction(prev => ({ ...prev, spatialFilter: filter }))
+    // Clear previous selections when a new area is drawn
+    if (filter) {
+      setHighlightedFeatures([])
+      clearAllSelections()
+    }
     // If there's an external callback waiting for the polygon, call it
     if (filter?.polygon && onExternalDrawComplete) {
       onExternalDrawComplete(filter.polygon)
     }
-  }, [onExternalDrawComplete])
+  }, [onExternalDrawComplete, clearAllSelections])
 
+  // Handler for box select toggle from toolbar
   const handleBoxSelectModeChange = useCallback((active: boolean) => {
-    // Clear frozen bounds when toggling box select mode
-    setMapInteraction(prev => ({
-      ...prev,
-      boxSelectMode: active,
-      boxSelectBounds: active ? prev.boxSelectBounds : null,
-    }))
-  }, [])
+    setActiveMode(active ? 'boxSelect' : 'none')
+  }, [setActiveMode])
 
   const handleBoxSelectConfirm = useCallback((bounds: { sw: [number, number]; ne: [number, number] }) => {
     // Store frozen bounds for visualization
@@ -501,7 +527,7 @@ export default function GenericMapContainer({
             boxSelectBounds={mapInteraction.boxSelectBounds}
             onBoxSelectConfirm={handleBoxSelectConfirm}
             isAdditiveMode={isAdditiveMode}
-            onAdditiveModeToggle={() => setAdditiveModeToggled(prev => !prev)}
+            onAdditiveModeToggle={() => additiveModeToggled ? setActiveMode('none') : setActiveMode('additive')}
             onClearSelection={handleClearAllSelections}
           />
         </div>

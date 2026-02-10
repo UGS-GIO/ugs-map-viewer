@@ -1,13 +1,21 @@
 import { GroupLayerProps, WMSLayerProps } from '@/lib/types/mapping-types'
 import { LayerProps } from "@/lib/types/mapping-types";
 import { ExtendedFeature } from '@/components/maps/popups/types';
-import { convertBbox, convertCoordinate } from '@/lib/map/conversion-utils';
+import { convertBbox, convertCoordinate, convertGeometryToWGS84 } from '@/lib/map/conversion-utils';
 import { createMapFactory } from '@/lib/map/factory/factory';
 import type { Geometry } from 'geojson';
 import { buffer } from '@turf/buffer';
 import { point } from '@turf/helpers';
 import { bbox as turfBbox } from '@turf/bbox';
 import type { MapLibreMap } from '@/lib/types/map-types';
+
+export const DEFAULT_ZOOM_TO_FEATURE_MAX_ZOOM = 14;
+
+export interface ZoomToFeatureOptions {
+    maxZoom?: number;
+    padding?: number;
+    animate?: boolean;
+}
 
 /**
  * Create a bounding box around a point with a given radius buffer.
@@ -135,19 +143,20 @@ class MapLibreLayerProxy {
 }
 
 
-/**
- * Zooms the MapLibre map to the bounding box of the specified feature.
- *
- * @param feature - The feature to zoom to, which must include a bounding box (bbox).
- * @param map - The MapLibre map instance to perform the zoom action on.
- * @param sourceCRS - The coordinate reference system of the feature's bounding box.
- */
+/** Zooms the map to a single feature's bounding box. */
 export const zoomToFeature = (
     feature: ExtendedFeature,
     map: MapLibreMap,
-    sourceCRS: string
+    sourceCRS: string,
+    options: ZoomToFeatureOptions = {}
 ) => {
     if (!map) return;
+
+    const {
+        maxZoom = DEFAULT_ZOOM_TO_FEATURE_MAX_ZOOM,
+        padding = 50,
+        animate = true,
+    } = options;
 
     let bbox: number[] | null = null;
 
@@ -179,30 +188,31 @@ export const zoomToFeature = (
         [bbox[0], bbox[1]], // southwest corner
         [bbox[2], bbox[3]]  // northeast corner
     ], {
-        padding: 50,
-        animate: true
+        padding,
+        animate,
+        maxZoom,
     });
 }
 
-/**
- * Zooms the MapLibre map to fit all specified features.
- *
- * @param features - The features to zoom to.
- * @param map - The MapLibre map instance to perform the zoom action on.
- * @param sourceCRS - The coordinate reference system of the features.
- */
+/** Zooms the map to fit multiple features. */
 export const zoomToFeatures = (
     features: ExtendedFeature[],
     map: MapLibreMap,
-    sourceCRS: string
+    sourceCRS: string,
+    options: ZoomToFeatureOptions = {}
 ) => {
     if (!map || features.length === 0) return;
 
-    // If only one feature, use zoomToFeature
     if (features.length === 1) {
-        zoomToFeature(features[0], map, sourceCRS);
+        zoomToFeature(features[0], map, sourceCRS, options);
         return;
     }
+
+    const {
+        maxZoom = DEFAULT_ZOOM_TO_FEATURE_MAX_ZOOM,
+        padding = 50,
+        animate = true,
+    } = options;
 
     // Calculate combined bounds of all features
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
@@ -229,11 +239,12 @@ export const zoomToFeatures = (
     }
 
     map.fitBounds([
-        [minX, minY], // southwest corner
-        [maxX, maxY]  // northeast corner
+        [minX, minY],
+        [maxX, maxY]
     ], {
-        padding: 50,
-        animate: true
+        padding,
+        animate,
+        maxZoom,
     });
 }
 
@@ -243,50 +254,12 @@ function calculateGeometryBounds(geometry: Geometry, sourceCRS: string): number[
         if (geometry.type === 'Point') {
             const coords = geometry.coordinates as [number, number];
             const converted = convertCoordinate(coords, sourceCRS) as [number, number];
-            // Create a buffer around the point (100 meters)
             return createPointBufferBbox(converted, 0.1);
-        } else if (geometry.type === 'LineString' || geometry.type === 'MultiPoint') {
-            const coords = geometry.coordinates as [number, number][];
-            if (!coords.length) return null;
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            for (const coord of coords) {
-                const converted = convertCoordinate(coord, sourceCRS);
-                minX = Math.min(minX, converted[0]);
-                minY = Math.min(minY, converted[1]);
-                maxX = Math.max(maxX, converted[0]);
-                maxY = Math.max(maxY, converted[1]);
-            }
-            return [minX, minY, maxX, maxY];
-        } else if (geometry.type === 'Polygon' || geometry.type === 'MultiLineString') {
-            const rings = geometry.coordinates as [number, number][][];
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            for (const ring of rings) {
-                for (const coord of ring) {
-                    const converted = convertCoordinate(coord, sourceCRS);
-                    minX = Math.min(minX, converted[0]);
-                    minY = Math.min(minY, converted[1]);
-                    maxX = Math.max(maxX, converted[0]);
-                    maxY = Math.max(maxY, converted[1]);
-                }
-            }
-            return [minX, minY, maxX, maxY];
-        } else if (geometry.type === 'MultiPolygon') {
-            const polygons = geometry.coordinates as [number, number][][][];
-            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-            for (const polygon of polygons) {
-                for (const ring of polygon) {
-                    for (const coord of ring) {
-                        const converted = convertCoordinate(coord, sourceCRS);
-                        minX = Math.min(minX, converted[0]);
-                        minY = Math.min(minY, converted[1]);
-                        maxX = Math.max(maxX, converted[0]);
-                        maxY = Math.max(maxY, converted[1]);
-                    }
-                }
-            }
-            return [minX, minY, maxX, maxY];
         }
-        return null;
+        const wgs84 = convertGeometryToWGS84(geometry, sourceCRS);
+        if (!wgs84) return null;
+        const [minX, minY, maxX, maxY] = turfBbox(wgs84);
+        return [minX, minY, maxX, maxY];
     } catch (error) {
         console.error('[calculateGeometryBounds] Error:', error);
         return null;

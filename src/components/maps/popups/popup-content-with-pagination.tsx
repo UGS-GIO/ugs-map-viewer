@@ -2,28 +2,25 @@ import { useMemo, useState, memo, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Shrink } from "lucide-react"
 import { PopupContentDisplay } from "@/components/maps/popups/popup-content-display"
-import { useMap } from "@/hooks/use-map"
 import { useGetPopupButtons } from "@/hooks/use-get-popup-buttons"
-import { zoomToFeature } from "@/lib/map/utils"
+import { useZoomToFeature } from "@/hooks/use-zoom-to-feature"
 import type { HighlightFeature } from "@/components/maps/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { useBulkRelatedTable, RelatedDataMap } from "@/hooks/use-bulk-related-table"
 import { ExtendedFeature, LayerContentProps, hasRasterData, getLayerCountText } from "./types"
 
-
-// Extracted outside to prevent recreation on every render
 interface PopupButtonsProps {
     feature: ExtendedFeature;
     sourceCRS: string;
-    title: string;
-    onZoom: (feature: ExtendedFeature, sourceCRS: string, title: string) => void;
+    maxZoomLevel?: number;
+    onZoom: (feature: ExtendedFeature, sourceCRS: string, maxZoomLevel?: number) => void;
     extraButtons: React.ReactNode[] | null;
 }
 
-const PopupButtons = memo(({ feature, sourceCRS, title, onZoom, extraButtons }: PopupButtonsProps) => (
+const PopupButtons = memo(({ feature, sourceCRS, maxZoomLevel, onZoom, extraButtons }: PopupButtonsProps) => (
     <div className="flex justify-start gap-2">
-        <Button variant="ghost" onClick={() => onZoom(feature, sourceCRS, title)} className="flex gap-x-2">
+        <Button variant="ghost" onClick={() => onZoom(feature, sourceCRS, maxZoomLevel)} className="flex gap-x-2">
             <Shrink className="h-5 w-5" />
             <span className="hidden md:flex">Zoom to Feature</span>
             <span className="md:hidden">Zoom</span>
@@ -38,7 +35,6 @@ interface PopupContentWithPaginationProps {
     onHighlightChange?: (features: HighlightFeature[]) => void
 }
 
-// Single feature card - no wrapper, just the content
 const FeatureCard = memo(({
     layer,
     feature,
@@ -49,17 +45,15 @@ const FeatureCard = memo(({
     layer: LayerContentProps,
     feature: ExtendedFeature,
     buttons: React.ReactNode[] | null,
-    handleZoomToFeature: (feature: ExtendedFeature, sourceCRS: string, title: string) => void,
+    handleZoomToFeature: (feature: ExtendedFeature, sourceCRS: string, maxZoomLevel?: number) => void,
     bulkRelatedData?: RelatedDataMap[],
 }) => {
-    const title = layer.layerTitle || layer.groupLayerTitle;
-
     return (
         <div className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
             <PopupButtons
                 feature={feature}
                 sourceCRS={layer.sourceCRS}
-                title={title}
+                maxZoomLevel={layer.maxZoomLevel}
                 onZoom={handleZoomToFeature}
                 extraButtons={buttons}
             />
@@ -90,7 +84,7 @@ const RasterOnlyCard = memo(({ layer }: { layer: LayerContentProps }) => {
 RasterOnlyCard.displayName = 'RasterOnlyCard';
 
 const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange }: PopupContentWithPaginationProps) => {
-    const { map } = useMap()
+    const { zoomTo } = useZoomToFeature({ onHighlightChange })
     const buttons = useGetPopupButtons()
     // -1 = "All", 0+ = specific layer index
     const [selectedLayerIndex, setSelectedLayerIndex] = useState(-1)
@@ -179,24 +173,9 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange }: Po
         }
     }, [layerContent, onHighlightChange])
 
-    const handleZoomToFeature = useCallback((feature: ExtendedFeature, sourceCRS: string, _title: string) => {
-        if (!map) {
-            console.warn('[PopupContent] No map available for zoom');
-            return;
-        }
-
-        // Highlight feature declaratively
-        if (feature.geometry) {
-            onHighlightChange?.([{
-                id: feature.id as string | number,
-                geometry: feature.geometry,
-                properties: feature.properties || {}
-            }])
-        }
-
-        // Zoom to feature
-        zoomToFeature(feature, map, sourceCRS)
-    }, [map, onHighlightChange])
+    const handleZoomToFeature = (feature: ExtendedFeature, sourceCRS: string, maxZoomLevel?: number) => {
+        zoomTo(feature, sourceCRS, { maxZoom: maxZoomLevel })
+    }
 
     // If no layers, return null
     if (layerContent.length === 0) return null;

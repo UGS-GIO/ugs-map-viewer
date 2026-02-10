@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useMap } from '@/hooks/use-map';
-import { useMapLibreScreenshot } from '@/hooks/use-maplibre-screenshot';
 import { Button } from '@/components/ui/button';
+import { MapPreview } from '@/routes/_report/-components/shared/map-preview';
 import { BackToMenuButton } from "@/components/ui/back-to-menu-button";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -22,19 +22,12 @@ function ReportGenerator() {
     const isMobile = useIsMobile();
     const [activeDialog, setActiveDialog] = useState<DialogType>(null);
     const [pendingAoi, setPendingAoi] = useState<PolygonGeometry | null>(null);
-    const [aoiForScreenshot, setAoiForScreenshot] = useState<string | null>(null);
     const { toast } = useToast();
 
     // Use ref to track sketching state synchronously to prevent race conditions
     // The ref is checked immediately in click handlers before React re-renders
     const isSketchingRef = useRef(false);
 
-    // Use the MapLibre screenshot hook
-    const { screenshot, isLoading: isCapturing } = useMapLibreScreenshot({
-        polygon: aoiForScreenshot,
-        width: '50vw',
-        height: '50vh'
-    });
 
     // Handle draw completion from the shared TerraDraw instance
     const handleDrawComplete = (polygon: Polygon) => {
@@ -76,7 +69,6 @@ function ReportGenerator() {
                 crs: 'EPSG:3857' // Web Mercator
             };
             setPendingAoi(aoi);
-            setAoiForScreenshot(JSON.stringify(aoi));
             setActiveDialog('confirmation');
             setActiveButton(undefined);
         } else {
@@ -95,7 +87,6 @@ function ReportGenerator() {
 
     const handleNavigate = (aoi: PolygonGeometry) => {
         setPendingAoi(aoi);
-        setAoiForScreenshot(JSON.stringify(aoi));
         setActiveDialog('confirmation');
     };
 
@@ -201,6 +192,9 @@ function ReportGenerator() {
         setActiveButton('customArea');
         if (isMobile) setNavOpened(false);
 
+        // Clear the ignore click flag to ensure drawing works
+        setIgnoreNextClick?.(false);
+
         // Set sketching state synchronously with ref
         isSketchingRef.current = true;
         setIsSketching(true);
@@ -231,8 +225,44 @@ function ReportGenerator() {
     }
 
     const handleResetDrawing = () => {
-        setIsSketching(true);
+        setActiveDialog(null);
+        setPendingAoi(null);
         handleCustomAreaButton();
+    }
+
+    const handleZoomToFit = () => {
+        if (!map) return;
+
+        const bounds = map.getBounds();
+        const sw = bounds.getSouthWest();
+        const ne = bounds.getNorthEast();
+
+        // Convert to Web Mercator for area calculation
+        const [swX, swY] = proj4('EPSG:4326', 'EPSG:3857', [sw.lng, sw.lat]);
+        const [neX, neY] = proj4('EPSG:4326', 'EPSG:3857', [ne.lng, ne.lat]);
+
+        const areaWidth = Math.abs(neX - swX);
+        const areaHeight = Math.abs(neY - swY);
+
+        // Calculate scale factor needed to fit within limits (12000m x 18000m)
+        // Add a small buffer (0.95) to ensure we're comfortably within limits
+        const scaleX = (18000 * 0.95) / areaWidth;
+        const scaleY = (12000 * 0.95) / areaHeight;
+        const scaleFactor = Math.min(scaleX, scaleY);
+
+        // Calculate zoom delta (each zoom level is 2x)
+        const zoomDelta = Math.log2(1 / scaleFactor);
+        const currentZoom = map.getZoom();
+        const newZoom = currentZoom + zoomDelta;
+
+        // Close dialog and zoom
+        setActiveDialog(null);
+        map.zoomTo(newZoom, { duration: 500 });
+
+        // After zoom completes, trigger current map extent
+        setTimeout(() => {
+            handleCurrentMapExtentButton();
+        }, 600);
     }
 
     return (
@@ -246,16 +276,16 @@ function ReportGenerator() {
                     </p>
                 </div>
                 <div className="space-y-2">
-                    <div className="flex flex-wrap justify-start items-center md:space-x-4">
-                        <Button onClick={handleCurrentMapExtentButton} variant="default" className="w-full md:w-auto flex-grow mb-2 md:mb-0">
+                    <div className="flex flex-wrap gap-2 justify-start items-center">
+                        <Button onClick={handleCurrentMapExtentButton} variant="default" className="w-full md:w-auto flex-grow">
                             {buttonText('currentMapExtent', 'Current Map Extent')}
                         </Button>
-                        <Button onClick={handleCustomAreaButton} variant="default" className="w-full md:w-auto flex-grow mb-2 md:mb-0">
+                        <Button onClick={handleCustomAreaButton} variant="default" className="w-full md:w-auto flex-grow">
                             {buttonText('customArea', 'Draw Custom Area')}
                         </Button>
                     </div>
                     <div className="flex w-full">
-                        <Button onClick={handleReset} variant="secondary" className="w-full flex-grow mb-2 md:mb-0">
+                        <Button onClick={handleReset} variant="secondary" className="w-full flex-grow">
                             {buttonText('reset', 'Reset')}
                         </Button>
                     </div>
@@ -272,11 +302,14 @@ function ReportGenerator() {
                         <DialogTitle>Area too large</DialogTitle>
                     </DialogHeader>
                     <DialogDescription asChild>
-                        <div>
-                            <p>The map area is too large. Please draw a smaller custom area or zoom in.</p>
-                            <div className="flex flex-row space-x-2 mt-4 justify-end">
-                                <Button onClick={handleResetDrawing} variant="default">
-                                    Create a new area
+                        <div className="space-y-4">
+                            <p>The map area is too large. Please draw a smaller custom area, zoom in, or let us zoom to fit.</p>
+                            <div className="flex flex-wrap gap-2 justify-end">
+                                <Button onClick={handleZoomToFit} variant="default">
+                                    Zoom to fit
+                                </Button>
+                                <Button onClick={handleResetDrawing} variant="secondary">
+                                    Draw new area
                                 </Button>
                                 <Button onClick={handleReset} variant="secondary">
                                     Close
@@ -290,36 +323,23 @@ function ReportGenerator() {
 
             {/* Confirmation Dialog */}
             <Dialog open={activeDialog === 'confirmation'} onOpenChange={handleCloseDialog}>
-                <DialogContent className="w-full sm:w-3/5">
+                <DialogContent className="w-full sm:w-3/5 max-h-[90vh] flex flex-col">
                     <DialogHeader>
                         <DialogTitle>Generate report for the selected area?</DialogTitle>
                     </DialogHeader>
-                    <div>
-                        <div className="flex justify-center">
-                            {isCapturing ? (
-                                <div className="flex items-center justify-center w-full h-80 bg-muted rounded-md">
-                                    <div className="text-center">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
-                                        <p className="text-sm text-muted-foreground">Generating map preview...</p>
-                                    </div>
-                                </div>
-                            ) : screenshot ? (
-                                <img
-                                    src={screenshot}
-                                    alt="map preview"
-                                    className="rounded-md w-full max-w-full h-auto"
-                                />
-                            ) : (
-                                <div className="flex items-center justify-center w-full h-80 bg-destructive/10 rounded-md">
-                                    <p className="text-sm text-destructive">Failed to generate map preview</p>
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex flex-row space-x-2 mt-4 justify-end">
-                            <Button onClick={handleConfirmNavigation} variant="default" disabled={isCapturing || !screenshot}>
+                    <div className="flex-1 min-h-0 flex flex-col gap-4">
+                        {pendingAoi && (
+                            <MapPreview
+                                polygon={JSON.stringify(pendingAoi)}
+                                height={isMobile ? 250 : 300}
+                                title=""
+                            />
+                        )}
+                        <div className="flex flex-wrap gap-2 justify-end shrink-0">
+                            <Button onClick={handleConfirmNavigation} variant="default">
                                 Generate Report
                             </Button>
-                            <Button onClick={handleCopyLink} variant="secondary" disabled={isCapturing}>
+                            <Button onClick={handleCopyLink} variant="secondary">
                                 Copy Link
                             </Button>
                             <Button onClick={handleCloseDialog} variant="secondary">
