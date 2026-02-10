@@ -206,7 +206,7 @@ const sco2GridSummaryWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: sco2GridSummaryWMSTitle,
-    visible: false,
+    visible: true,
     opacity: 0.75,
     crs: 'EPSG:4326',
     sublayers: [
