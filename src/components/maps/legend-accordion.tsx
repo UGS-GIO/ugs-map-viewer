@@ -34,6 +34,7 @@ const LegendAccordion = ({ layerId, url, isOpen, layerName, customLegend }: Lege
                                         {previewItem?.html &&
                                             <span
                                                 className="flex items-center justify-center w-8 min-w-8"
+                                                aria-hidden="true"
                                                 dangerouslySetInnerHTML={{ __html: previewItem?.html?.outerHTML || '' }}
                                             />
                                         }

@@ -323,6 +323,11 @@ export class ExportControl implements maplibregl.IControl {
     private async generateCanvas(width: number, height: number): Promise<HTMLCanvasElement> {
         if (!this.map) throw new Error('Map not available');
 
+        // Capture current view bounds before creating export map
+        const currentBounds = this.map.getBounds();
+        const bearing = this.map.getBearing();
+        const pitch = this.map.getPitch();
+
         // Create a hidden container for rendering (offscreen to avoid visual artifacts)
         const hiddenContainer = document.createElement('div');
         hiddenContainer.style.cssText = `
@@ -337,22 +342,30 @@ export class ExportControl implements maplibregl.IControl {
         document.body.appendChild(hiddenContainer);
 
         // Create a new map instance for export
+        // Use fitBoundsOptions instead of center/zoom so the export shows the same
+        // geographic extent regardless of the (much larger) export container size.
         const exportMap = new maplibregl.Map({
             container: hiddenContainer,
             style: this.map.getStyle(),
-            center: this.map.getCenter(),
-            zoom: this.map.getZoom(),
-            bearing: this.map.getBearing(),
-            pitch: this.map.getPitch(),
+            bounds: currentBounds,
+            fitBoundsOptions: { padding: 0 },
+            bearing,
+            pitch,
             interactive: false,
             attributionControl: false,
         });
 
-        // Wait for map to load
+        // Wait for map to fully render
         await new Promise<void>((resolve, reject) => {
-            exportMap.once('idle', () => resolve());
-            exportMap.once('error', reject);
-            setTimeout(() => reject(new Error('Map render timeout')), 30000);
+            const timeout = setTimeout(() => reject(new Error('Map render timeout')), 30000);
+            exportMap.once('idle', () => {
+                clearTimeout(timeout);
+                resolve();
+            });
+            exportMap.once('error', (e) => {
+                clearTimeout(timeout);
+                reject(e);
+            });
         });
 
         // Get canvas

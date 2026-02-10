@@ -91,20 +91,20 @@ export function BivariateLegend({ wmsUrl, layerName, xLabel, yLabel }: Bivariate
 
     return (
         <div
-            className="grid items-center text-xs text-foreground gap-1 mx-auto"
-            style={{
-                gridTemplateColumns: colTemplate,
-                maxWidth: '13rem',
-            }}
+            role="img"
+            aria-label={`Bivariate legend: ${yLabel} (vertical axis) vs ${xLabel} (horizontal axis), ${grid.rows} by ${grid.cols} grid`}
+            className="grid items-center text-xs text-foreground gap-1 mx-auto w-4/5"
+            style={{ gridTemplateColumns: colTemplate }}
         >
             {/* X-axis label spans color columns */}
-            <div style={{ gridColumn: `3 / -1` }} className="text-center font-medium pb-0.5">
+            <div style={{ gridColumn: `3 / -1` }} className="text-center font-medium pb-0.5" aria-hidden="true">
                 {xLabel} &rarr;
             </div>
 
             {/* Y-axis label (rotated, spans all color rows) */}
             <div
                 className="font-medium text-center"
+                aria-hidden="true"
                 style={{
                     gridColumn: 1,
                     gridRow: `2 / ${2 + grid.rows}`,
@@ -117,7 +117,7 @@ export function BivariateLegend({ wmsUrl, layerName, xLabel, yLabel }: Bivariate
 
             {/* Color rows with y-tick labels */}
             {grid.colors.map((row, r) => (
-                <div key={`row-${r}`} className="contents">
+                <div key={`row-${r}`} className="contents" aria-hidden="true">
                     <span className="text-right pr-0.5">{grid.yTicks[r]}</span>
                     {row.map((color, c) => (
                         <div
@@ -144,7 +144,7 @@ export function BivariateLegend({ wmsUrl, layerName, xLabel, yLabel }: Bivariate
                     style={{ gridColumn: `3 / -1` }}
                 >
                     <div
-                        className="w-3 h-3 rounded-[2px] border border-border shrink-0"
+                        className="w-5 h-5 rounded-[2px] border border-border shrink-0"
                         style={{ backgroundColor: grid.noData.color, opacity: grid.noData.opacity }}
                     />
                     <span>{grid.noData.label}</span>
