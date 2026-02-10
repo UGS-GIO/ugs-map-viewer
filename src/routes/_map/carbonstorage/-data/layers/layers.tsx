@@ -1,7 +1,7 @@
 import { Link } from "@/components/ui/link";
 import { BivariateLegend } from "@/components/maps/bivariate-legend";
 import { ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
-import { LayerProps, WMSLayerProps, WFSLayerProps } from "@/lib/types/mapping-types";
+import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
 
@@ -112,94 +112,6 @@ const pipelinesWMSConfig: WMSLayerProps = {
     ],
 };
 
-// SCO2 WFS Layer - uses client-side vector rendering for better click detection
-const sco2LayerName = 'sco2_draft_13aug24';
-const sco2WFSTitle = 'Statewide Storage Resource Estimates';
-const sco2WFSConfig: WFSLayerProps = {
-    type: 'wfs',
-    wfsUrl: `${PROD_GEOSERVER_URL}/wfs`,
-    typeName: `${ENERGY_MINERALS_WORKSPACE}:${sco2LayerName}`,
-    title: sco2WFSTitle,
-    visible: false,
-    crs: 'EPSG:4326',
-    geometryType: 'point',
-    style: {
-        // Size by capacity_mtco2: 4.72 Mt → 10px, 5764 Mt → 60px (capped at 35px default)
-        circleRadiusProperty: {
-            field: 'capacity_mtco2',
-            stops: [4.72, 10, 5764, 60],
-        },
-        // Color by storage_cost_doll_per_tco2 (step function)
-        circleColorProperty: {
-            field: 'storage_cost_doll_per_tco2',
-            defaultColor: '#00FF00',  // Green for lowest costs
-            stops: [
-                [11.795, '#FFFF00'],   // Yellow
-                [21.640, '#FFA500'],   // Orange
-                [35.451, '#FF0000'],   // Red
-                [52.522, '#8B0000'],   // Dark Red
-            ],
-        },
-        circleStrokeColor: '#000000',
-        circleStrokeWidth: 1,
-    },
-    sublayers: [
-        {
-            name: sco2LayerName,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'Storage Resource Estimate (Mt CO₂)': {
-                    field: 'capacity_mtco2',
-                    type: 'number',
-                    decimalPlaces: 2,
-                },
-                'Storage Cost ($/tCO₂)': {
-                    field: 'storage_cost_doll_per_tco2',
-                    type: 'number',
-                    decimalPlaces: 2,
-                },
-                'Formation': { field: 'name', type: 'string' },
-                'Thickness (m)': {
-                    field: 'thickness_m',
-                    type: 'number',
-                    decimalPlaces: 2,
-                },
-                'Depth (m)': {
-                    field: 'depth_m',
-                    type: 'number',
-                    decimalPlaces: 2,
-                },
-                'Permeability (md)': {
-                    field: 'permeability_md',
-                    type: 'number',
-                    decimalPlaces: 2,
-                },
-                'Porosity (φ)': {
-                    field: 'porosity',
-                    type: 'number',
-                    decimalPlaces: 2,
-                },
-                'Pressure (MPa)': {
-                    field: 'pressure_mpa',
-                    type: 'number',
-                    decimalPlaces: 2,
-                },
-                'Temperature (C)': {
-                    field: 'temperature_c',
-                    type: 'number',
-                    decimalPlaces: 1,
-                },
-                'Temperature Gradient (C/km)': {
-                    field: 'temperature_gradient_c_per_km',
-                    type: 'number',
-                    decimalPlaces: 2,
-                },
-            },
-        },
-    ],
-};
-
 // SCO2 Grid Summary WMS Layer (aggregated - one row per grid cell, capacity color + cost labels)
 const sco2GridSummaryLayerName = 'sco2_grid_summary';
 const sco2GridSummaryWMSTitle = 'SCO2 Storage Grid';
@@ -207,7 +119,7 @@ const sco2GridSummaryWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: sco2GridSummaryWMSTitle,
-    visible: true,
+    visible: false,
     opacity: 0.75,
     crs: 'EPSG:4326',
     customLegend: (
@@ -930,7 +842,6 @@ const ccsResourcesConfig: LayerProps = {
     visible: true,
     layers: [
         sco2GridSummaryWMSConfig,
-        sco2WFSConfig,
         basinNamesWMSConfig,
         co2SourcesWMSConfig,
         sitlaReportsWMSConfig,
