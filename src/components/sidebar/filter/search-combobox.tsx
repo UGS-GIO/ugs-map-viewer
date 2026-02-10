@@ -140,6 +140,7 @@ function SearchCombobox({
     const [isShaking, setIsShaking] = useState(false);
     const { map } = useMap()
     const commandRef = useRef<HTMLDivElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
 
     // Mutation for fetching collection geometries (Enter key)
@@ -323,7 +324,7 @@ function SearchCombobox({
 
             enabled: (
                 !!debouncedSearch &&
-                debouncedSearch.trim().length > 3 &&
+                debouncedSearch.trim().length >= 2 &&
                 (activeSourceIndex === null || activeSourceIndex === index)
             ),
             refetchOnWindowFocus: false,
@@ -348,6 +349,7 @@ function SearchCombobox({
         setActiveSourceIndex(sourceIndex === activeSourceIndex ? null : sourceIndex);
         setInputValue('');
         setSearch('');
+        requestAnimationFrame(() => inputRef.current?.focus());
     };
 
     const handleResultSelect = async (
@@ -572,6 +574,7 @@ function SearchCombobox({
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="end">
                     <Command ref={commandRef} shouldFilter={false} className='max-h-[400px]'>
                         <CommandInput
+                            ref={inputRef}
                             placeholder={placeholderText}
                             className="h-9"
                             value={search}
@@ -615,7 +618,7 @@ function SearchCombobox({
                                 const source = config[sourceIndex];
 
                                 // Loading State: check if query is loading AND search term is valid length
-                                const isSearchLongEnough = debouncedSearch.trim().length > 3;
+                                const isSearchLongEnough = debouncedSearch.trim().length >= 2;
                                 if (sourceResult.isLoading && isSearchLongEnough) {
                                     return (
                                         <CommandItem key={`loading-${sourceIndex}`} disabled className="opacity-50 italic">
