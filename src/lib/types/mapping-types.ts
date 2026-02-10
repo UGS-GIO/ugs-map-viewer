@@ -95,6 +95,7 @@ interface BaseLayerProps {
     options?: any;
     opacity?: number;
     maxZoomLevel?: number;
+    customLegend?: React.ReactNode;
 }
 
 export interface WMSLayerProps extends BaseLayerProps {
