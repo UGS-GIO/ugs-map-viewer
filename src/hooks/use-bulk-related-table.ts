@@ -42,22 +42,51 @@ export function useBulkRelatedTable(
             const results = await Promise.all(
                 configs.map(async (config): Promise<RelatedDataMap> => {
                     try {
-                        // Use PostgREST 'in' operator to fetch only matching rows
-                        // e.g., ?relate_id=in.(value1,value2,value3)
-                        const inValues = uniqueValues.join(',');
-                        const queryUrl = `${config.url}?${config.matchingField}=in.(${inValues})`;
+                        let rows: PostgRESTRow[];
 
-                        const response = await fetch(queryUrl, {
-                            headers: config.headers,
-                        });
+                        if (config.fetchMode === 'wfs' && config.wfsTypeName) {
+                            // WFS mode: build CQL_FILTER IN query
+                            const inValues = uniqueValues.map(v => `'${v}'`).join(',');
+                            const cqlFilter = `${config.matchingField} IN (${inValues})`;
+                            const wfsUrl = new URL(config.url);
+                            wfsUrl.searchParams.set('service', 'WFS');
+                            wfsUrl.searchParams.set('version', '1.1.0');
+                            wfsUrl.searchParams.set('request', 'GetFeature');
+                            wfsUrl.searchParams.set('typeName', config.wfsTypeName);
+                            wfsUrl.searchParams.set('outputFormat', 'application/json');
+                            wfsUrl.searchParams.set('CQL_FILTER', cqlFilter);
+                            if (config.sortBy) {
+                                const dir = config.sortDirection === 'desc' ? ' D' : ' A';
+                                wfsUrl.searchParams.set('sortBy', `${config.sortBy}${dir}`);
+                            }
 
-                        if (!response.ok) {
-                            console.error(`[useBulkRelatedTable] fetch failed: ${response.status}`);
-                            return new Map();
+                            const response = await fetch(wfsUrl.toString());
+                            if (!response.ok) {
+                                console.error(`[useBulkRelatedTable] WFS fetch failed: ${response.status}`);
+                                return new Map();
+                            }
+
+                            const geojson = await response.json();
+                            rows = (geojson.features || []).map(
+                                (f: { properties?: PostgRESTRow }) => f.properties || {}
+                            );
+                        } else {
+                            // PostgREST mode (default)
+                            const inValues = uniqueValues.join(',');
+                            const queryUrl = `${config.url}?${config.matchingField}=in.(${inValues})`;
+
+                            const response = await fetch(queryUrl, {
+                                headers: config.headers,
+                            });
+
+                            if (!response.ok) {
+                                console.error(`[useBulkRelatedTable] fetch failed: ${response.status}`);
+                                return new Map();
+                            }
+
+                            const data = await response.json();
+                            rows = Array.isArray(data) ? data : [data];
                         }
-
-                        const data = await response.json();
-                        const rows = Array.isArray(data) ? data : [data];
 
                         // Build a map: matchingField value -> array of rows
                         // (supports multiple matches like formation tops per well)

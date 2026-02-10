@@ -252,17 +252,16 @@ async function queryVisibleLayers(
   wmsUrl: string,
   options: QueryOptions = {}
 ): Promise<WfsFeature[]> {
-  // Build WFS URL from WMS URL (just replace /wms with /wfs)
-  const wfsUrl = wmsUrl.replace(/\/wms\/?$/, '/wfs')
-
-  // Build list of all sublayers to query
-  const queries: Array<{ typeName: string; layerTitle: string }> = []
+  // Build list of all sublayers to query, with per-layer WFS URL
+  const queries: Array<{ typeName: string; layerTitle: string; wfsUrl: string }> = []
   for (const layer of visibleLayers) {
+    // Use layer's own URL when present, fall back to global wmsUrl
+    const layerWfsUrl = (layer.url || wmsUrl).replace(/\/wms\/?$/, '/wfs')
     for (const sublayer of layer.sublayers || []) {
       if (sublayer.queryable === false) continue
       const typeName = sublayer.name || ''
       if (!typeName) continue
-      queries.push({ typeName, layerTitle: layer.title })
+      queries.push({ typeName, layerTitle: layer.title, wfsUrl: layerWfsUrl })
     }
   }
 
@@ -270,11 +269,11 @@ async function queryVisibleLayers(
 
   // Query all layers in parallel
   const results = await Promise.all(
-    queries.map(async ({ typeName, layerTitle }) => {
+    queries.map(async ({ typeName, layerTitle, wfsUrl: layerWfsUrl }) => {
       try {
-        const geometryField = await getGeometryField(wfsUrl, typeName)
+        const geometryField = await getGeometryField(layerWfsUrl, typeName)
         const features = await queryWfs({
-          wfsUrl,
+          wfsUrl: layerWfsUrl,
           typeName,
           geometryField,
           spatialFilter,

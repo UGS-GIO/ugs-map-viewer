@@ -39,6 +39,8 @@ interface BaseFieldConfig {
     label?: string;
     field: string;
     type: 'string' | 'number' | 'custom';
+    /** Tooltip text shown on hover over the field label */
+    description?: string;
 }
 
 // String-specific field configuration
@@ -237,6 +239,10 @@ export interface RelatedTable {
     sortDirection?: 'asc' | 'desc';
     /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers */
     displayAs?: 'list' | 'table';
+    /** Fetch mode: 'postgrest' (default) or 'wfs' for GeoServer WFS queries */
+    fetchMode?: 'postgrest' | 'wfs';
+    /** WFS typeName (required when fetchMode is 'wfs'), e.g. 'emp:sco2_with_grid' */
+    wfsTypeName?: string;
 }
 
 

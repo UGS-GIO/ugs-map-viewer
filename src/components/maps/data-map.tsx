@@ -566,7 +566,8 @@ export default function DataMap({
         {visibleWmsLayers.map((layer) => {
           const layerName = getWmsLayerName(layer)
           const cqlFilter = layerFilters[layer.title]
-          const tileUrl = buildWmsTileUrl(wmsUrl, layerName, cqlFilter)
+          const layerWmsUrl = layer.url || wmsUrl
+          const tileUrl = buildWmsTileUrl(layerWmsUrl, layerName, cqlFilter)
 
           return (
             <Source
@@ -583,7 +584,7 @@ export default function DataMap({
                 // Metadata for findLayerByTitle and legend provider
                 metadata={{
                   title: layer.title,
-                  'wms-url': wmsUrl,
+                  'wms-url': layerWmsUrl,
                   'wms-layer': layerName,
                 }}
               />
