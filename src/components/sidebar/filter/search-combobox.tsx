@@ -23,7 +23,7 @@ import { ExtendedFeature } from '@/components/maps/popups/types';
 export const defaultMasqueradeConfig: SearchSourceConfig = {
     type: 'masquerade',
     url: MASQUERADE_GEOCODER_URL,
-    sourceName: 'Address Search',
+    sourceName: 'Address or City Search',
     displayField: 'text',
     outSR: 4326 // Request WGS84
 }
@@ -243,7 +243,6 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
             queryKey: queryKeys.sidebar.search(source.url, source.type, debouncedSearch, index),
             queryFn: async (): Promise<QueryData> => {
                 if (source.type === 'masquerade') {
-
                     const params = new URLSearchParams();
                     params.set('text', debouncedSearch.trim());
                     params.set('maxSuggestions', (source.maxSuggestions ?? 6).toString());
@@ -262,12 +261,17 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                     const data = await response.json();
                     const suggestions = (data?.suggestions || []) as Suggestion[];
 
-                    // Filter based on magicKey and only include address points
-                    const addressPointSuggestions = suggestions.filter(s =>
-                        s.magicKey?.includes('opensgid.location.address_points')
-                    );
+                    // MODIFIED: Include both address points AND populated places (cities)
+                    const addressAndCitySuggestions = suggestions.filter(s => {
+                        const magicKey = s.magicKey || '';
+                        return (
+                            magicKey.includes('opensgid.location.address_points') ||
+                            magicKey.includes('opensgid.boundaries.municipal') ||
+                            magicKey.includes('gnis.place_names')
+                        );
+                    });
 
-                    return addressPointSuggestions; // Type: Suggestion[]
+                    return addressAndCitySuggestions; // Type: Suggestion[]
 
                 } else if (source.type === 'postgREST') {
                     // Fetch logic for PostgREST
