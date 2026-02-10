@@ -1,5 +1,4 @@
 import { Link } from "@/components/ui/link";
-import { BivariateLegend } from "@/components/maps/bivariate-legend";
 import { ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils";
@@ -122,14 +121,7 @@ const sco2GridSummaryWMSConfig: WMSLayerProps = {
     visible: false,
     opacity: 0.75,
     crs: 'EPSG:4326',
-    customLegend: (
-        <BivariateLegend
-            wmsUrl={`${PROD_GEOSERVER_URL}/wms`}
-            layerName={`${ENERGY_MINERALS_WORKSPACE}:${sco2GridSummaryLayerName}`}
-            xLabel="Cost"
-            yLabel="Capacity"
-        />
-    ),
+    bivariateLegend: { xLabel: 'Cost', yLabel: 'Capacity' },
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${sco2GridSummaryLayerName}`,

@@ -20,6 +20,7 @@ interface LayerControlsProps {
     /** Full layer name for WFS download (e.g., "hazards:quaternaryfaults_current") */
     layerName?: string | null;
     customLegend?: React.ReactNode;
+    bivariateLegend?: { xLabel: string; yLabel: string };
 }
 
 const LayerControls: React.FC<LayerControlsProps> = ({
@@ -33,6 +34,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     openLegend,
     layerName,
     customLegend,
+    bivariateLegend,
 }) => {
     const [openAccordion, setOpenAccordion] = useState<string | null>(null);
     const [cleanDescription, setCleanDescription] = useState<string>('');
@@ -179,6 +181,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     url={url}
                     layerName={layerName}
                     customLegend={customLegend}
+                    bivariateLegend={bivariateLegend}
                 />
             </div>
         </div>

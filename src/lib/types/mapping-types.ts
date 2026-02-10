@@ -96,6 +96,8 @@ interface BaseLayerProps {
     opacity?: number;
     maxZoomLevel?: number;
     customLegend?: React.ReactNode;
+    /** Structured bivariate legend config — works in both sidebar and print export */
+    bivariateLegend?: { xLabel: string; yLabel: string };
 }
 
 export interface WMSLayerProps extends BaseLayerProps {
