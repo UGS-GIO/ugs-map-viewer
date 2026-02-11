@@ -600,8 +600,15 @@ const mtStationsLayerConfig: WMSLayerProps = {
             popupFields: {
                 'Station': { field: 'station', type: 'string' },
                 'Project': { field: 'project', type: 'string' },
-                'Year': { field: 'year', type: 'string' },
-                'Source': { field: 'source', type: 'string' },
+                'Location (WGS84)': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const lat = props?.['lat_wgs84'];
+                        const lon = props?.['long_wgs84'];
+                        return lat != null && lon != null ? `${lat}, ${lon}` : '';
+                    }
+                },
             },
             linkFields: {
                 'link': {
@@ -610,7 +617,7 @@ const mtStationsLayerConfig: WMSLayerProps = {
                         if (!value) return [{ href: '', label: '' }];
                         return [{
                             href: value,
-                            label: 'View Data',
+                            label: 'Archive Link',
                         }];
                     }
                 }
