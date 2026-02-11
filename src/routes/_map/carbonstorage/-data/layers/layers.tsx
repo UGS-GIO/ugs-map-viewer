@@ -274,7 +274,7 @@ const transmissionLinesWMSConfig: WMSLayerProps = {
 
 // Seamless Geological Units WMS Layer
 const seamlessGeolunitsLayerName = 'mapping_geolunits_500k';
-const seamlessGeolunitsWMSTitle = 'Geologic Units (500k)';
+export const seamlessGeolunitsWMSTitle = 'Geologic Units (500k)';
 const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -304,7 +304,6 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
                 'series_id': {
                     baseUrl: '',
                     transform: (value: string) => {
-                        // the value is a url that needs to be transformed into href and label for the link
                         const transformedValues = {
                             href: `https://doi.org/10.34191/${value}`,
                             label: `${value}`
@@ -865,7 +864,7 @@ const geologicalInformationConfig: LayerProps = {
     layers: [
         qFaultsWMSConfig,
         faultsWMSConfig,
-        seamlessGeolunitsWMSConfig
+        seamlessGeolunitsWMSConfig,
     ]
 }
 const subsurfaceDataConfig: LayerProps = {

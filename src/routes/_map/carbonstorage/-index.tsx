@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react'
+import { useMemo, useEffect, useCallback } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import { Layout } from '@/components/layout/layout'
 import { TopNav } from '@/components/top-nav'
@@ -9,7 +9,7 @@ import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { wellWithTopsWMSTitle } from './-data/layers/layers'
+import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle } from './-data/layers/layers'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
@@ -28,7 +28,9 @@ const searchConfig: SearchSourceConfig[] = [
     url: PROD_POSTGREST_URL,
     functionName: "search_geologic_units",
     searchTerm: "search_term",
+    functionParams: { search_scale: 'small' },
     sourceName: 'Geologic Units',
+    layerName: seamlessGeolunitsWMSTitle,
     crs: 'EPSG:4326',
     displayField: "unit_label",
     params: { select: 'unit_label,match_type' },
@@ -77,6 +79,28 @@ export default function Map() {
     }
   }, [filtersFromUrl, selectedLayerTitles, updateLayerSelection])
 
+  // Auto-select the associated layer when a search result is picked
+  const ensureLayerSelected = useCallback(
+    (sourceIndex: number, configs: SearchSourceConfig[]) => {
+      const src = configs[sourceIndex]
+      const layerName = src?.type === 'postgREST' ? src.layerName : undefined
+      if (layerName && !selectedLayerTitles.has(layerName)) {
+        updateLayerSelection(layerName, true)
+      }
+    },
+    [selectedLayerTitles, updateLayerSelection]
+  )
+
+  const onFeatureSelect: typeof handleSearchSelect = useCallback(
+    (...args) => { ensureLayerSelected(args[2], args[3]); handleSearchSelect(...args) },
+    [ensureLayerSelected]
+  )
+
+  const onCollectionSelect: typeof handleCollectionSelect = useCallback(
+    (...args) => { ensureLayerSelected(args[2], args[3]); handleCollectionSelect(...args) },
+    [ensureLayerSelected]
+  )
+
   return (
     <MapContext.Provider value={contextValue}>
       <TourAutoStart route="ccs" />
@@ -95,8 +119,8 @@ export default function Map() {
                 <div className="flex-1 min-w-0">
                   <SearchCombobox
                     config={searchConfig}
-                    onFeatureSelect={handleSearchSelect}
-                    onCollectionSelect={handleCollectionSelect}
+                    onFeatureSelect={onFeatureSelect}
+                    onCollectionSelect={onCollectionSelect}
                     className="w-full"
                   />
                 </div>
