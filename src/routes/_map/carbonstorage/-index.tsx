@@ -50,7 +50,7 @@ export default function Map() {
   const { isCollapsed, sidebarWidthPx } = useSidebar();
   const isMobile = useIsMobile();
   const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
-  const { selectedLayerTitles, updateLayerSelection } = useLayerUrl()
+  const { selectedLayerTitles, updateLayerSelection, setGroupVisibility, groupVisibility } = useLayerUrl()
   const { handleMapReady, contextValue, setClearSpatialFilterCallback, setLayerTurnedOffCallback } = useMapContextState();
 
   // Get URL filters
@@ -79,7 +79,12 @@ export default function Map() {
     }
   }, [filtersFromUrl, selectedLayerTitles, updateLayerSelection])
 
-  // Auto-select the associated layer when a search result is picked
+  // Map child layers to their parent group for auto-visibility
+  const LAYER_PARENT_GROUP: Record<string, string> = {
+    [seamlessGeolunitsWMSTitle]: 'Geological Information',
+  }
+
+  // Auto-select the associated layer and its parent group when a search result is picked
   const ensureLayerSelected = useCallback(
     (sourceIndex: number, configs: SearchSourceConfig[]) => {
       const src = configs[sourceIndex]
@@ -87,8 +92,12 @@ export default function Map() {
       if (layerName && !selectedLayerTitles.has(layerName)) {
         updateLayerSelection(layerName, true)
       }
+      const parentGroup = layerName ? LAYER_PARENT_GROUP[layerName] : undefined
+      if (parentGroup && !groupVisibility.get(parentGroup)) {
+        setGroupVisibility(parentGroup, true)
+      }
     },
-    [selectedLayerTitles, updateLayerSelection]
+    [selectedLayerTitles, updateLayerSelection, groupVisibility, setGroupVisibility]
   )
 
   const onFeatureSelect: typeof handleSearchSelect = useCallback(

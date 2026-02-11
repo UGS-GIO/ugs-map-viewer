@@ -284,7 +284,7 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     sublayers: [
         {
             name: `${MAPPING_WORKSPACE}:${seamlessGeolunitsLayerName}`,
-            popupEnabled: false,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
                 'Unit': {

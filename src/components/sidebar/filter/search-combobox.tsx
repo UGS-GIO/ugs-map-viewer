@@ -15,7 +15,7 @@ import { MASQUERADE_GEOCODER_URL } from '@/lib/constants';
 import { useMap } from '@/hooks/use-map';
 import { convertBbox } from '@/lib/map/conversion-utils';
 import { zoomToExtent } from '@/lib/sidebar/filter/util';
-import { highlightFeature, highlightFeatureCollection, clearGraphics } from '@/lib/map/highlight-utils';
+import { highlightFeature, highlightFeatureCollection, clearGraphics, type HighlightOptions } from '@/lib/map/highlight-utils';
 import { useToast } from "@/hooks/use-toast";
 import { findLayerByTitle } from '@/lib/map/utils';
 import { ExtendedFeature } from '@/components/maps/popups/types';
@@ -73,20 +73,19 @@ interface Suggestion {
 }
 
 type QueryData = Suggestion[] | FeatureCollection<Geometry, GeoJsonProperties>;
-// QueryResult type
-interface QueryResultWrapper<TData = QueryData> {
-    data: TData | undefined;
+interface QueryResultWrapper {
+    data: QueryData | undefined;
     error: Error | null;
     isLoading: boolean;
     isError: boolean;
-    type: SearchSourceConfig['type']; // Add type here
+    type: SearchSourceConfig['type'];
 }
 
 
 interface SearchComboboxProps {
     config: SearchSourceConfig[];
-    // Called when a feature is selected (PostgREST or resolved Masquerade address)
-    onFeatureSelect?: (searchResult: Feature<Geometry, GeoJsonProperties> | null, _sourceUrl: string, sourceIndex: number, searchConfig: SearchSourceConfig[], map: MapLibreMap) => void
+    // Called when a feature (or multi-geometry collection) is selected
+    onFeatureSelect?: (searchResult: Feature<Geometry, GeoJsonProperties> | FeatureCollection<Geometry, GeoJsonProperties> | null, _sourceUrl: string, sourceIndex: number, searchConfig: SearchSourceConfig[], map: MapLibreMap) => void
     // Called when Enter is pressed to select all results
     onCollectionSelect?: (collection: FeatureCollection<Geometry, GeoJsonProperties> | null, _sourceUrl: string | null, _sourceIndex: number, searchConfig: SearchSourceConfig[], map: MapLibreMap) => void;
     className?: string;
@@ -118,6 +117,13 @@ function appendFunctionParams(params: URLSearchParams, source: PostgRESTConfig):
             params.set(key, val);
         }
     }
+}
+
+function resultHasData(result: QueryResultWrapper): boolean {
+    if (!result.data) return false;
+    if (result.type === 'masquerade') return Array.isArray(result.data) && result.data.length > 0;
+    if (result.type === 'postgREST') return 'features' in result.data && result.data.features.length > 0;
+    return false;
 }
 
 function getSourceDisplayName(sourceConfig: SearchSourceConfig): string {
@@ -153,43 +159,18 @@ function SearchCombobox({
     const inputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
 
-    // Mutation for fetching collection geometries (Enter key)
-    const collectionGeometryMutation = useMutation({
-        mutationFn: async ({ searchTerm, sourceConfig }: { searchTerm: string; sourceConfig: PostgRESTConfig }) => {
-            const params = new URLSearchParams();
-            params.set(sourceConfig.searchTerm!, `%${searchTerm}%`);
+    // Mutation for fetching geometries from a PostgREST function
+    const geometryMutation = useMutation({
+        mutationFn: async ({ searchParams, sourceConfig }: { searchParams: Record<string, string>; sourceConfig: PostgRESTConfig }) => {
+            const params = new URLSearchParams(searchParams);
             appendFunctionParams(params, sourceConfig);
             const url = `${sourceConfig.url}/rpc/${sourceConfig.functionName}?${params.toString()}`;
             const response = await fetch(url, {
                 method: 'GET',
-                headers: {
-                    ...sourceConfig.headers,
-                    'Accept': 'application/geo+json',
-                }
+                headers: { ...sourceConfig.headers, 'Accept': 'application/geo+json' },
             });
             if (!response.ok) {
                 throw new Error(`Failed to fetch geometries: ${response.status}`);
-            }
-            return response.json();
-        },
-    });
-
-    // Mutation for fetching single feature geometry
-    const singleGeometryMutation = useMutation({
-        mutationFn: async ({ concatnames, sourceConfig }: { concatnames: string; sourceConfig: PostgRESTConfig }) => {
-            const params = new URLSearchParams();
-            params.set('search_key', concatnames);
-            appendFunctionParams(params, sourceConfig);
-            const url = `${sourceConfig.url}/rpc/${sourceConfig.functionName}?${params.toString()}`;
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    ...sourceConfig.headers,
-                    'Accept': 'application/geo+json',
-                }
-            });
-            if (!response.ok) {
-                throw new Error(`Failed to fetch geometry: ${response.status}`);
             }
             return response.json();
         },
@@ -216,8 +197,7 @@ function SearchCombobox({
     });
 
     // Combined loading state for all async operations
-    const isAnyMutationPending = collectionGeometryMutation.isPending ||
-        singleGeometryMutation.isPending ||
+    const isAnyMutationPending = geometryMutation.isPending ||
         addressCandidateMutation.isPending;
 
     const ensureLayerVisibleByTitle = useCallback((layerTitle: string | undefined) => {
@@ -421,21 +401,27 @@ function SearchCombobox({
 
             ensureLayerVisibleByTitle(sourceConfig.layerName);
 
-            let featureWithGeom: Feature<Geometry, GeoJsonProperties> | null = itemData;
+            let result: Feature<Geometry, GeoJsonProperties> | FeatureCollection<Geometry, GeoJsonProperties> | null = itemData;
 
             // If geometry is missing, fetch it using mutation
             if (!itemData.geometry && sourceConfig.functionName) {
                 const concatnames = itemData.properties?.[sourceConfig.displayField];
                 if (concatnames) {
                     try {
-                        const data = await singleGeometryMutation.mutateAsync({
-                            concatnames,
-                            sourceConfig
+                        const data = await geometryMutation.mutateAsync({
+                            searchParams: { search_key: concatnames },
+                            sourceConfig,
                         });
+                        let features: Feature<Geometry, GeoJsonProperties>[] = [];
                         if (data?.type === 'FeatureCollection' && data.features?.length > 0) {
-                            featureWithGeom = data.features[0];
+                            features = data.features;
                         } else if (Array.isArray(data) && data.length > 0 && data[0]?.type === 'Feature') {
-                            featureWithGeom = data[0];
+                            features = data;
+                        }
+                        if (features.length === 1) {
+                            result = features[0];
+                        } else if (features.length > 1) {
+                            result = featureCollection(features);
                         }
                     } catch (error) {
                         console.error("Error fetching feature geometry:", error);
@@ -443,7 +429,7 @@ function SearchCombobox({
                 }
             }
 
-            onFeatureSelect?.(featureWithGeom, sourceConfig.url, sourceIndex, searchConfig, map);
+            onFeatureSelect?.(result, sourceConfig.url, sourceIndex, searchConfig, map);
         } else {
             console.error("Mismatched item data type or config type in handleResultSelect", itemData, sourceConfig);
             setInputValue(value);
@@ -514,9 +500,9 @@ function SearchCombobox({
             const sourceConfig = searchConfig[firstValidSourceIndex] as PostgRESTConfig;
             if (sourceConfig.functionName && sourceConfig.searchTerm) {
                 try {
-                    const data = await collectionGeometryMutation.mutateAsync({
-                        searchTerm: currentSearchTerm,
-                        sourceConfig
+                    const data = await geometryMutation.mutateAsync({
+                        searchParams: { [sourceConfig.searchTerm!]: `%${currentSearchTerm}%` },
+                        sourceConfig,
                     });
                     if (data?.type === 'FeatureCollection' && data.features?.length > 0) {
                         allVisibleFeatures = data.features;
@@ -653,9 +639,7 @@ function SearchCombobox({
                                     );
                                 }
 
-                                const hasData = sourceResult.data &&
-                                    ((sourceResult.type === 'masquerade' && Array.isArray(sourceResult.data) && sourceResult.data.length > 0) ||
-                                        (sourceResult.type === 'postgREST' && 'features' in sourceResult.data && sourceResult.data.features.length > 0));
+                                const hasData = resultHasData(sourceResult);
 
                                 // Empty State
                                 if (isSearchLongEnough && !sourceResult.isLoading && !hasData) {
@@ -738,14 +722,9 @@ function SearchCombobox({
                             })}
 
                             {/* Empty State Check */}
-                            {!isLoading && debouncedSearch.trim().length > 1 && queryResults.every(result => {
-                                // Check if this specific source is loading or has data
-                                const hasDataForSource = result.data &&
-                                    ((result.type === 'masquerade' && Array.isArray(result.data) && result.data.length > 0) ||
-                                        (result.type === 'postgREST' && 'features' in result.data && result.data.features.length > 0));
-                                // The condition for .every is true if the source is NOT loading AND it does NOT have data
-                                return !result.isLoading && !hasDataForSource;
-                            }) && (
+                            {!isLoading && debouncedSearch.trim().length > 1 && queryResults.every(r =>
+                                !r.isLoading && !resultHasData(r)
+                            ) && (
                                     <CommandEmpty>No results found for "{debouncedSearch}".</CommandEmpty>
                                 )}
                         </CommandList>
@@ -773,38 +752,56 @@ const determineCRS = (
     return "EPSG:4326";
 };
 
-// Handler for single feature selection
+// Shared highlight + zoom logic
+function highlightAndZoom(
+    features: Feature<ExtendedGeometry, GeoJsonProperties>[],
+    sourceConfig: SearchSourceConfig,
+    map: MapLibreMap,
+    title: string,
+    options?: HighlightOptions,
+) {
+    if (!features.length) return;
+    const sourceCRS = determineCRS(features[0], sourceConfig);
+
+    if (features.length === 1) {
+        const feat = features[0];
+        const featureToHighlight: ExtendedFeature = {
+            type: 'Feature',
+            geometry: feat.geometry,
+            properties: feat.properties || {},
+            namespace: (feat as ExtendedFeature)?.namespace || '',
+        };
+        highlightFeature(featureToHighlight, map, sourceCRS, title, options);
+    } else {
+        highlightFeatureCollection(features, map, sourceCRS, title, options);
+    }
+
+    const geojson = features.length === 1 ? features[0].geometry : featureCollection(features);
+    const resultBbox = bbox(geojson);
+    if (!resultBbox.every(isFinite)) return;
+
+    const [xmin, ymin, xmax, ymax] = convertBbox(resultBbox, sourceCRS, "EPSG:4326");
+    const isPoint = features.length === 1 && features[0].geometry.type === 'Point';
+    zoomToExtent(xmin, ymin, xmax, ymax, map, isPoint ? 13000 : undefined);
+}
+
+// Handler for single feature selection (also handles multi-feature results from search)
 const handleSearchSelect = (
-    feature: Feature<ExtendedGeometry, GeoJsonProperties> | null,
+    result: Feature<ExtendedGeometry, GeoJsonProperties> | FeatureCollection<ExtendedGeometry, GeoJsonProperties> | null,
     _sourceUrl: string,
     sourceIndex: number,
     searchConfig: SearchSourceConfig[],
     map: MapLibreMap,
 ) => {
     const sourceConfig = searchConfig[sourceIndex];
-    const geom = feature?.geometry;
-
-    if (!map || !sourceConfig || !geom) return;
+    if (!map || !sourceConfig || !result) return;
 
     clearGraphics(map);
-    const sourceCRS = determineCRS(feature, sourceConfig);
-
-    const featureToHighlight: ExtendedFeature = {
-        type: 'Feature',
-        geometry: geom,
-        properties: feature?.properties || {},
-        namespace: (feature as ExtendedFeature)?.namespace || ''
-    };
-    highlightFeature(featureToHighlight, map, sourceCRS, 'Search Box Single Feature Highlight');
-
-    const featureBbox = bbox(geom);
-    if (!featureBbox?.every(isFinite)) return;
-
-    const [xmin, ymin, xmax, ymax] = convertBbox(featureBbox, sourceCRS, "EPSG:4326");
-    zoomToExtent(xmin, ymin, xmax, ymax, map, geom.type === "Point" ? 13000 : undefined);
+    const features = result.type === 'FeatureCollection' ? result.features : [result];
+    highlightAndZoom(features, sourceConfig, map, 'Search Box Highlight');
 };
 
-// Handler for collection selection
+// Handler for collection selection (Enter key)
 const handleCollectionSelect = (
     collection: FeatureCollection<ExtendedGeometry, GeoJsonProperties> | null,
     _sourceUrl: string | null,
@@ -815,21 +812,13 @@ const handleCollectionSelect = (
     if (!collection?.features?.length || !map) return;
 
     clearGraphics(map);
-    const sourceCRS = determineCRS(collection.features[0], searchConfig[sourceIndex]);
-
-    highlightFeatureCollection(
+    highlightAndZoom(
         collection.features,
+        searchConfig[sourceIndex],
         map,
-        sourceCRS,
         'Search Box Collection Highlight',
-        { outlineWidth: 6, pointSize: 16, outlineColor: [255, 255, 0, 1] }
+        { outlineWidth: 6, pointSize: 16, outlineColor: [255, 255, 0, 1] },
     );
-
-    const collectionBbox = bbox(collection);
-    if (!collectionBbox.every(isFinite)) return;
-
-    const [xmin, ymin, xmax, ymax] = convertBbox(collectionBbox, sourceCRS, "EPSG:4326");
-    zoomToExtent(xmin, ymin, xmax, ymax, map);
 };
 
 export { SearchCombobox, handleSearchSelect, handleCollectionSelect };
