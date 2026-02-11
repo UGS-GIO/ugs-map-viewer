@@ -33,6 +33,12 @@ const numericFormatters: Record<string, (n: number) => string> = {
 
 export function formatNumeric(value: unknown, format?: string): string {
   if (value === null || value === undefined || value === '') return '';
+
+  // Handle objects/arrays by converting to JSON to avoid [object Object]
+  if (typeof value === 'object') {
+    return JSON.stringify(value);
+  }
+
   if (!format || !numericFormatters[format]) return String(value);
 
   const num = Number(value);

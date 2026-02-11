@@ -7,7 +7,7 @@ export const quaternaryFaultsHazardCode = 'QFF';
 // This map directly links a hazard code to its GeoServer layer name string.
 export const hazardLayerNameMap = {
     // Earthquake Hazards
-    [quaternaryFaultsHazardCode]: `${HAZARDS_WORKSPACE}:quaternaryfaults_test`,
+    [quaternaryFaultsHazardCode]: `${HAZARDS_WORKSPACE}:qfaults_current`,
     'LQS': `${HAZARDS_WORKSPACE}:liquefaction_current`,
     'SFR': `${HAZARDS_WORKSPACE}:surfacefaultrupture_current`,
     [groundshakingHazardCode]: `${HAZARDS_WORKSPACE}:groundshaking_current`,
@@ -37,3 +37,33 @@ export const hazardLayerNameMap = {
     'SLS': `${HAZARDS_WORKSPACE}:solublesoilandrock_current`,
     'WSS': `${HAZARDS_WORKSPACE}:windblownsand_current`,
 };
+
+// Geometry field names per layer (default is 'shape', override where different)
+// TODO: All layers will eventually migrate to 'geom'
+const geometryFieldOverrides: Record<string, string> = {
+    [quaternaryFaultsHazardCode]: 'geom',
+};
+
+// Native CRS per layer (default is EPSG:26912, override where different)
+// TODO: All layers will eventually migrate to EPSG:3857
+const crsOverrides: Record<string, string> = {
+    [quaternaryFaultsHazardCode]: 'EPSG:3857',
+};
+
+/**
+ * Get the geometry field name for a hazard code
+ * @param hazardCode - The hazard code (e.g., 'QFF', 'LQS')
+ * @returns The geometry field name ('geom' or 'shape')
+ */
+export function getGeometryField(hazardCode: string): string {
+    return geometryFieldOverrides[hazardCode] || 'shape';
+}
+
+/**
+ * Get the native CRS for a hazard code
+ * @param hazardCode - The hazard code (e.g., 'QFF', 'LQS')
+ * @returns The EPSG code (e.g., 'EPSG:26912', 'EPSG:3857')
+ */
+export function getLayerCRS(hazardCode: string): string {
+    return crsOverrides[hazardCode] || 'EPSG:26912';
+}

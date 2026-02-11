@@ -46,7 +46,7 @@
     "@tanstack/react-table": "^8.16.0",
     "@tanstack/zod-adapter": "^1.132.2",
     "@turf/bbox": "^7.2.0",
-    "@turf/boolean-intersects": "^7.3.1",
+
     "@turf/buffer": "^7.2.0",
     "@turf/clone": "^7.2.0",
     "@turf/helpers": "^7.2.0",
@@ -82,6 +82,7 @@
     "terra-draw": "^1.19.0",
     "terra-draw-maplibre-gl-adapter": "^1.2.2",
     "use-debounce": "^10.0.6",
+    "wellknown": "^0.5.0",
     "zod": "^3.22.4"
   },
   "devDependencies": {
@@ -100,6 +101,7 @@
     "@types/proj4": "^2.5.5",
     "@types/react": "^18.2.79",
     "@types/react-dom": "^18.2.25",
+    "@types/wellknown": "^0.5.8",
     "@typescript-eslint/eslint-plugin": "^6.14.0",
     "@typescript-eslint/parser": "^6.14.0",
     "@vitejs/plugin-react-swc": "^3.6.0",
@@ -108,6 +110,7 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
     "husky": "^9.1.7",
+    "jsdom": "^28.0.0",
     "postcss": "^8.4.38",
     "prettier": "^3.2.5",
     "prettier-plugin-tailwindcss": "^0.5.14",

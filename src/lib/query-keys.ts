@@ -33,8 +33,10 @@ export const queryKeys = {
   map: {
     all: ['map'] as const,
     screenshots: () => [...queryKeys.map.all, 'screenshot'] as const,
-    screenshot: (polygon: string, width: string, height: string) =>
-      [...queryKeys.map.screenshots(), { polygon, width, height }] as const,
+    screenshot: (polygon: string, hazardCodes: string[], width: number, height: number) =>
+      [...queryKeys.map.screenshots(), { polygon, hazardCodes, width, height }] as const,
+    simpleScreenshot: (polygon: string, width: string, height: string) =>
+      [...queryKeys.map.screenshots(), 'simple', { polygon, width, height }] as const,
   },
 
   // Page info queries

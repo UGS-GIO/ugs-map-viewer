@@ -8,16 +8,20 @@ import { SectionTabs, Section } from '@/routes/_report/-components/layouts/secti
 import { FileText, AlertTriangle, Printer, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Image } from '@/components/ui/image'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { queryGeoServerForHazardUnits } from '@/routes/_report/-utils/geoserver-wfs-service'
+import { ScreenshotLoadingProvider, useIsAllScreenshotsLoaded } from '@/routes/_report/-context/screenshot-loading-context'
 import {
     HazardUnit,
     queryGroupingStatic,
     queryHazardUnitsStatic,
     queryAllUnitsForHazardCodes,
     queryReferencesStatic,
+    getAllHazardCodes,
 } from '@/routes/_report/-utils/static-hazards-service'
 import type { CustomLegendItem } from '@/routes/_report/-components/content/report-legend'
 import { generateQFFLegendItems } from '@/routes/_report/-utils/qff-legend-service'
+import { hazardLayerNameMap } from '@/routes/_report/-data/hazard-unit-map'
 import { HeroSection } from '@/components/layout/hero-section'
 import { ReportCover } from '@/routes/_report/-components/content/report-cover'
 import { ReportSummary } from '@/routes/_report/-components/content/report-summary'
@@ -28,10 +32,12 @@ import heroImage from '@/assets/geologic-hazards-banner-alstrom-point-1920px.web
 import { Banner, BannerIcon, BannerTitle } from '@/components/ui/banner'
 import { toast } from "sonner"
 import { ReportHeader } from './layouts/report-header'
+import { ReportFooter } from './layouts/report-footer'
 
 
 interface HazardsReportProps {
     polygon: string
+    testAllHazards?: boolean
 }
 
 interface HazardLayer {
@@ -50,7 +56,7 @@ interface HazardGroup {
     layers: HazardLayer[]
 }
 
-export function HazardsReport({ polygon }: HazardsReportProps) {
+export function HazardsReport({ polygon, testAllHazards = false }: HazardsReportProps) {
     const sectionRefs = useRef<{ [key: string]: HTMLElement | null }>({})
     const printRef = useRef<HTMLDivElement>(null)
     const [activeSection, setActiveSection] = useState<string>('cover')
@@ -58,29 +64,34 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
 
     // Query for hazard data
     const { data: hazardGroups = [], isLoading } = useQuery({
-        queryKey: queryKeys.hazards.report(polygon),
+        queryKey: [...queryKeys.hazards.report(polygon), testAllHazards],
         queryFn: async () => {
-            const allHazardInfos = await queryGeoServerForHazardUnits(polygon);
+            // In test mode, use all hazard codes; otherwise query by polygon
+            const allHazardInfos = testAllHazards ? [] : await queryGeoServerForHazardUnits(polygon);
 
             const hazardInfos = allHazardInfos.filter(
                 ({ units }) => units && units.length > 0
             )
 
-            const flatUnitCodes = Array.from(
-                new Set(
-                    hazardInfos.reduce(
-                        (prev: string[], { units }) => prev.concat(units),
-                        []
+            const flatUnitCodes = testAllHazards
+                ? getAllHazardCodes().map(code => `test${code.toLowerCase()}`)
+                : Array.from(
+                    new Set(
+                        hazardInfos.reduce(
+                            (prev: string[], { units }) => prev.concat(units),
+                            []
+                        )
                     )
                 )
-            )
 
-            // Extract unique hazard codes from the polygon results
-            const hazardCodes = Array.from(
-                new Set(
-                    hazardInfos.map(h => h.hazard)
+            // Extract unique hazard codes - in test mode use all codes
+            const hazardCodes = testAllHazards
+                ? getAllHazardCodes()
+                : Array.from(
+                    new Set(
+                        hazardInfos.map(h => h.hazard)
+                    )
                 )
-            )
 
             const [
                 groupings,
@@ -134,9 +145,11 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                 if (groupMap[g.HazardGroup]) {
                     groupMap[g.HazardGroup].layers.push({
                         code: g.HazardCode,
-                        name: units[0]?.HazardName || g.HazardCode,
+                        name: allUnitsForLayer[0]?.HazardName || units[0]?.HazardName || g.HazardCode,
                         category: g.HazardGroup,
-                        url: hazardInfo?.url || '',
+                        url: testAllHazards
+                            ? hazardLayerNameMap[g.HazardCode as keyof typeof hazardLayerNameMap] || ''
+                            : hazardInfo?.url || '',
                         units: allUnitsForLayer.map(u => ({
                             HazardName: u.HazardName,
                             HazardUnit: u.HazardUnit,
@@ -152,7 +165,7 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
 
             return Object.values(groupMap).filter(g => g.layers.length > 0)
         },
-        enabled: !!polygon,
+        enabled: !!polygon || testAllHazards,
     })
 
     const sections: Section[] = useMemo(() => [
@@ -203,19 +216,20 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
         setActiveSection(bestSection)
     }, [sectionIds])
 
-    const scrollToSection = (sectionId: string) => {
+    const scrollToSection = useCallback((sectionId: string) => {
         const element = sectionRefs.current[sectionId]
         if (element) {
             element.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
-    }
+    }, [])
 
     // Handle anchor link navigation from URL hash on page load and hash changes
     useEffect(() => {
         const handleHashChange = () => {
             const hash = window.location.hash.slice(1) // Remove '#' prefix
             if (hash && sectionRefs.current[hash]) {
-                scrollToSection(hash)
+                // Small delay to ensure content is rendered
+                setTimeout(() => scrollToSection(hash), 100)
             }
         }
 
@@ -225,10 +239,11 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
         // Listen for hash changes (e.g., when clicking anchor link icons)
         window.addEventListener('hashchange', handleHashChange)
         return () => window.removeEventListener('hashchange', handleHashChange)
-    }, [])
+    }, [sections, scrollToSection])
 
     const handlePrint = useReactToPrint({
         contentRef: printRef,
+        documentTitle: 'Geologic Hazards Report',
     })
 
     if (isLoading) {
@@ -243,9 +258,9 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
     }
 
     return (
-        <>
-            <ReportLayout
-                header={<ReportHeader />}
+        <ScreenshotLoadingProvider>
+        <ReportLayout
+                header={<ReportHeader testAllHazards={testAllHazards} />}
                 hero={
                     <div className="print:hidden">
                         <HeroSection
@@ -262,43 +277,38 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                     </div>
                 }
                 tabs={
-                    <div className="print:hidden flex justify-between">
+                    <div className="print:hidden flex flex-col lg:flex-row lg:justify-between lg:items-center">
                         <SectionTabs
                             sections={sections}
                             activeSection={activeSection}
                             onSectionChange={scrollToSection}
                         />
-                        <div>
-                            <Button
-                                onClick={() => {
-                                    const reportUrl = window.location.href; // Use the current URL
-
-                                    // Directly copy the URL to the clipboard and show toast notification
-                                    navigator.clipboard.writeText(reportUrl)
-                                        .then(() => {
-                                            // Success toast
-                                            toast('Report link copied to clipboard!');
-                                        })
-                                        .catch((err) => {
-                                            // Failure toast
-                                            toast.warning('Failed to copy report link.');
-                                            console.error('Could not copy text: ', err);
-                                        });
-                                }}
-                                variant="default"
-                                className='inline-flex gap-1.5 p-2 mx-4 my-2 items-center'
-                            >
-                                <Upload className="h-4 w-4 mr-2" />
-                                Share Report
-                            </Button>
-                            <Button
-                                onClick={handlePrint}
-                                variant="default"
-                                className='inline-flex gap-1.5 p-2 mx-4 my-2 items-center'
-                            >
-                                <Printer className="h-4 w-4 mr-2" />
-                                Print / Save as PDF
-                            </Button>
+                        <div className="flex justify-center lg:justify-end gap-2 px-4 py-2 lg:py-0">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Button
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(window.location.href)
+                                                    .then(() => toast('Report link copied to clipboard!'))
+                                                    .catch((err) => {
+                                                        toast.warning('Failed to copy report link.');
+                                                        console.error('Could not copy text: ', err);
+                                                    });
+                                            }}
+                                            variant="default"
+                                            size="sm"
+                                        >
+                                            <Upload className="h-4 w-4" />
+                                            <span className="hidden sm:inline ml-1.5">Share</span>
+                                        </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Share Report</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                                <PrintButton onPrint={handlePrint} />
+                            </TooltipProvider>
                         </div>
                     </div>
                 }
@@ -310,14 +320,9 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                         </BannerTitle>
                     </Banner>
                 }
-                footer={
-                    <div className="flex items-center justify-between w-full text-sm text-muted-foreground print:hidden">
-                        <span>Utah Geological Survey</span>
-                        <span>Generated: {new Date().toLocaleString()}</span>
-                    </div>
-                }
+                footer={<ReportFooter />}
             >
-                <div ref={printRef} className="report-content space-y-12 max-w-7xl mx-auto">
+                <div ref={printRef} className="report-content space-y-6 md:space-y-12 max-w-7xl mx-auto">
                     {/* Print-only header */}
                     <div className="hidden print:block mb-8">
                         <div className="flex items-center justify-between border-b-2 border-secondary pb-4">
@@ -374,8 +379,8 @@ export function HazardsReport({ polygon }: HazardsReportProps) {
                         <ReportResources />
                     </SectionWithObserver>
                 </div>
-            </ReportLayout>
-        </>
+        </ReportLayout>
+        </ScreenshotLoadingProvider>
     )
 }
 
@@ -410,8 +415,34 @@ function SectionWithObserver({
     }, [ref, setRef])
 
     return (
-        <div ref={setRefs} id={id} className="scroll-mt-20">
+        <div ref={setRefs} id={id} className="scroll-mt-16 md:scroll-mt-20">
             {children}
         </div>
+    )
+}
+
+// Print button that tracks screenshot loading state
+function PrintButton({ onPrint }: { onPrint: () => void }) {
+    const isAllLoaded = useIsAllScreenshotsLoaded()
+
+    return (
+        <Tooltip>
+            <TooltipTrigger asChild>
+                <Button
+                    onClick={onPrint}
+                    variant="default"
+                    size="sm"
+                    disabled={!isAllLoaded}
+                >
+                    <Printer className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1.5">
+                        {isAllLoaded ? 'Print' : 'Loading...'}
+                    </span>
+                </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+                <p>{isAllLoaded ? 'Print / Save as PDF' : 'Waiting for maps to load...'}</p>
+            </TooltipContent>
+        </Tooltip>
     )
 }
