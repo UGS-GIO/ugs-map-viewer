@@ -1,6 +1,6 @@
 import { Link } from "@/components/ui/link";
 
-const appTitle = 'Carbon Storage Portal (beta)';
+const appTitle = 'Carbon Storage Portal';
 
 const references = (
     <div>
@@ -66,7 +66,7 @@ const acknowledgments = (
 const dataDisclaimer = (
     <div className="space-y-2">
         <p>
-            This web application is currently released as a beta version and remains under active development. Although we strive for accuracy and reliability, the data presented may be incomplete, outdated, or incorrect, and features may change, malfunction, or be removed without notice. Users should not rely on this application as the sole source for decision-making or critical operations, and use of the application is at your own risk. We welcome your feedback and encourage you to report any issues or suggestions to <Link to="mailto:gstpierre@utah.gov">gstpierre@utah.gov</Link> to help us improve the application.
+            This web application remains under active development. Although we strive for accuracy and reliability, the data presented may be incomplete, outdated, or incorrect, and features may change, malfunction, or be removed without notice. Users should not rely on this application as the sole source for decision-making or critical operations, and use of the application is at your own risk. We welcome your feedback and encourage you to report any issues or suggestions to <Link to="mailto:gstpierre@utah.gov">gstpierre@utah.gov</Link> to help us improve the application.
         </p>
         <p>
             The Utah Department of Natural Resources, Utah Geological Survey, makes no warranty, expressed or implied, regarding its suitability for a particular use, and does not guarantee accuracy or completeness of the data. The Utah Department of Natural Resources, Utah Geological Survey, shall not be liable under any circumstances for any direct, indirect, special, incidental, or consequential damages with respect to claims by users of this product.
