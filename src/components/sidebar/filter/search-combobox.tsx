@@ -41,6 +41,8 @@ interface PostgRESTConfig extends BaseConfig {
     crs?: string; // Optional: if provided, it will be used to convert coordinates to WGS84
     params?: PostgRESTParams;
     functionName?: string;
+    /** Extra parameters passed to the PostgREST function (e.g. { search_scale: 'small' }) */
+    functionParams?: Record<string, string>;
     searchTerm?: string;
     placeholder?: string;
     groupByField?: string;
@@ -110,6 +112,14 @@ function formatName(name: string): string {
         .trim();
 }
 
+function appendFunctionParams(params: URLSearchParams, source: PostgRESTConfig): void {
+    if (source.functionParams) {
+        for (const [key, val] of Object.entries(source.functionParams)) {
+            params.set(key, val);
+        }
+    }
+}
+
 function getSourceDisplayName(sourceConfig: SearchSourceConfig): string {
     if (sourceConfig.sourceName) return sourceConfig.sourceName;
     let name = '';
@@ -146,7 +156,10 @@ function SearchCombobox({
     // Mutation for fetching collection geometries (Enter key)
     const collectionGeometryMutation = useMutation({
         mutationFn: async ({ searchTerm, sourceConfig }: { searchTerm: string; sourceConfig: PostgRESTConfig }) => {
-            const url = `${sourceConfig.url}/rpc/${sourceConfig.functionName}?${sourceConfig.searchTerm}=${encodeURIComponent(`%${searchTerm}%`)}`;
+            const params = new URLSearchParams();
+            params.set(sourceConfig.searchTerm!, `%${searchTerm}%`);
+            appendFunctionParams(params, sourceConfig);
+            const url = `${sourceConfig.url}/rpc/${sourceConfig.functionName}?${params.toString()}`;
             const response = await fetch(url, {
                 method: 'GET',
                 headers: {
@@ -164,7 +177,10 @@ function SearchCombobox({
     // Mutation for fetching single feature geometry
     const singleGeometryMutation = useMutation({
         mutationFn: async ({ concatnames, sourceConfig }: { concatnames: string; sourceConfig: PostgRESTConfig }) => {
-            const url = `${sourceConfig.url}/rpc/${sourceConfig.functionName}?search_key=${encodeURIComponent(concatnames)}`;
+            const params = new URLSearchParams();
+            params.set('search_key', concatnames);
+            appendFunctionParams(params, sourceConfig);
+            const url = `${sourceConfig.url}/rpc/${sourceConfig.functionName}?${params.toString()}`;
             const response = await fetch(url, {
                 method: 'GET',
                 headers: {
@@ -266,6 +282,7 @@ function SearchCombobox({
                         if (params && 'select' in params && params.select) {
                             urlParams.set('select', params.select);
                         }
+                        appendFunctionParams(urlParams, source);
                         apiUrl = `${functionUrl}?${urlParams.toString()}`;
                     } else {
                         // PostgREST Table/View Query
