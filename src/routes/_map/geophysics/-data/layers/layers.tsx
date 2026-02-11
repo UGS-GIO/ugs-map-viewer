@@ -584,6 +584,40 @@ const geothermalTEMLayerConfig: WMSLayerProps = {
     ],
 };
 
+// MT Stations
+const mtStationsLayerName = 'enmin_geophysics_mtstations_current';
+const mtStationsLayerTitle = 'MT Stations';
+const mtStationsLayerConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: mtStationsLayerTitle,
+    visible: false,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${mtStationsLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Station': { field: 'station', type: 'string' },
+                'Project': { field: 'project', type: 'string' },
+                'Year': { field: 'year', type: 'string' },
+                'Source': { field: 'source', type: 'string' },
+            },
+            linkFields: {
+                'link': {
+                    baseUrl: '',
+                    transform: (value: string) => {
+                        if (!value) return [{ href: '', label: '' }];
+                        return [{
+                            href: value,
+                            label: 'View Data',
+                        }];
+                    }
+                }
+            }
+        },
+    ],
+};
 
 // Wells and Springs with Joins WMS Layer
 const geothermalWellsJoinsName = 'enmin_geothermal_ingenious_wellfeatures_current';
@@ -732,6 +766,7 @@ const geophysicalDataConfig: LayerProps = {
     visible: true,
     layers: [
         gravityStationsLayerConfig,
+        mtStationsLayerConfig,
         geothermalTEMLayerConfig,
         pacesLegacyLayerConfig,
         gGBARasterWMSConfig
