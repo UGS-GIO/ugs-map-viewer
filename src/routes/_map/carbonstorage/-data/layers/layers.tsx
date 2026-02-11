@@ -473,7 +473,7 @@ const faultsWMSConfig: WMSLayerProps = {
     ],
 };
 
-const qFaultsLayerName = 'quaternaryfaults_current';
+const qFaultsLayerName = 'hazards_qfaults_current';
 const qFaultsWMSTitle = 'Hazardous (Quaternary age) Faults';
 const qFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',
@@ -1033,6 +1033,7 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
 };
 
 // Non-Petroleum Well Catalogue Data
+/*
 const nonPetroleumCatLayerName = 'nwpd_nonpetroleumwellcatalogwells';
 const nonPetroleumCatLayerTitle = 'Non-Petroleum Wells';
 const nonPetroleumCatLayerConfig: WMSLayerProps = {
@@ -1069,8 +1070,7 @@ const nonPetroleumCatLayerConfig: WMSLayerProps = {
         },
     ],
 };
-
-
+*/
 
 
 // Energy and Minerals Group Layer
@@ -1124,8 +1124,7 @@ const subsurfaceDataConfig: LayerProps = {
         oilGasFieldsWMSConfig,
         geothermalWellsWMSConfig,
         geothermalSpringsJoinsConfig,
-        geothermalWellsJoinsConfig,
-        nonPetroleumCatLayerConfig
+        geothermalWellsJoinsConfig
     ]
 }
 
