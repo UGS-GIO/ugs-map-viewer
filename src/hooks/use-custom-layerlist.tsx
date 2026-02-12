@@ -273,6 +273,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
                             url={extentOptions.type === 'wms' ? extentOptions.wmsUrl || '' : ''}
                             openLegend={isUserExpanded}
                             layerName={extentOptions.type === 'wms' ? extentOptions.layerName : null}
+                            customLegend={layerConfig.customLegend}
+                            bivariateLegend={layerConfig.bivariateLegend}
                         />
                     </AccordionContent>
                 </AccordionItem>

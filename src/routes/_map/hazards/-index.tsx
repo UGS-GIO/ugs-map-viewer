@@ -6,7 +6,8 @@ import GenericMapContainer from '@/components/maps/generic-map-container';
 import Sidebar from '@/components/sidebar';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox';
+import { useRef } from 'react';
+import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, type SearchComboboxHandle } from '@/components/sidebar/filter/search-combobox';
 import { PROD_POSTGREST_URL } from '@/lib/constants';
 import { qFaultsWMSTitle } from './-data/layers/layers';
 import { useMapContextState } from '@/hooks/use-map-context-state';
@@ -17,6 +18,7 @@ export default function Map() {
   const { isCollapsed, sidebarWidthPx } = useSidebar();
   const isMobile = useIsMobile();
   const { handleMapReady, contextValue, drawMode, setDrawMode, handleDrawComplete, setClearSpatialFilterCallback, setLayerTurnedOffCallback } = useMapContextState();
+  const searchRef = useRef<SearchComboboxHandle>(null);
   // Use 56px (3.5rem) when collapsed, dynamic pixel width when expanded
   // On mobile, no margin needed (sidebar is top, not left)
   const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
@@ -55,6 +57,7 @@ export default function Map() {
               <div className='flex items-center flex-1 min-w-0 md:flex-initial md:w-1/3 md:ml-auto space-x-2'>
                 <div className="flex-1 min-w-0">
                   <SearchCombobox
+                    ref={searchRef}
                     config={searchConfig}
                     onFeatureSelect={handleSearchSelect}
                     onCollectionSelect={handleCollectionSelect}
@@ -75,6 +78,7 @@ export default function Map() {
                 onExternalDrawComplete={handleDrawComplete}
                 onRegisterClearSpatialFilter={setClearSpatialFilterCallback}
                 onRegisterLayerTurnedOff={setLayerTurnedOffCallback}
+                onClearSearch={() => searchRef.current?.clear()}
               />
             </Layout.Body>
 

@@ -1,54 +1,35 @@
 import { Link } from "@/components/ui/link";
 import { ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
-import { LayerProps, WMSLayerProps, WFSLayerProps } from "@/lib/types/mapping-types";
+import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
 
 // GeoRegions WMS Layer
-const basinNamesLayerName = 'basin_names';
-const basinNamesWMSTitle = 'Geo-region Carbon Storage Ranking';
-const basinNamesWMSConfig: WMSLayerProps = {
+const georegionsLayerName = 'enmin_ccus_georegions_current';
+const georegionsWMSTitle = 'Geo-region Carbon Storage Ranking';
+const georegionsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
-    title: basinNamesWMSTitle,
+    title: georegionsWMSTitle,
     visible: true,
     opacity: 0.3,
     crs: 'EPSG:3857',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${basinNamesLayerName}`,
+            name: `${ENERGY_MINERALS_WORKSPACE}:${georegionsLayerName}`,
             popupEnabled: false,
             queryable: true,
             popupFields: {
                 'Name': { field: 'name', type: 'string' },
+                'Ranking': { field: 'ranking', type: 'string' },
+                'Key Reservoirs': { field: 'keyreservoirs', type: 'string' },
+                'Key Caprocks': { field: 'keycaprocks', type: 'string' },
                 'Description': { field: 'description', type: 'string' },
-                'Report Link': { field: 'reportlink', type: 'string' },
-                'Ranked Formation': { field: 'rankedformation', type: 'string' },
-                'Rank': {
-                    type: 'custom',
-                    field: 'ranknumber',
-                    transform: (properties: GeoJsonProperties | null | undefined): string => {
-                        if (!properties) {
-                            return '';
-                        }
-
-                        const rankNumber = properties.ranknumber;
-                        const rankingText = properties.ranking;
-
-                        if (rankNumber === null || rankNumber === undefined || rankNumber === 0) {
-                            return "Coming Soon";
-                        }
-
-                        if (rankingText) {
-                            return rankingText;
-                        } else {
-                            return String(rankNumber);
-                        }
-                    }
-                },
+                'Geo-region Map': { field: 'georegionmap', type: 'string', transform: () => 'Coming Soon' },
+                'Stratigraphic Column': { field: 'stratcolumn', type: 'string', transform: () => 'Coming Soon' },
             },
             colorCodingMap: {
-                'ranknumber': (value: string | number) => {
+                'ranking': (value: string | number) => {
                     const strValue = String(value).toLowerCase();
                     if (strValue.includes("coming soon")) return "#ABA290";
                     if (strValue.includes("excellent")) return "#3DC200";
@@ -111,90 +92,78 @@ const pipelinesWMSConfig: WMSLayerProps = {
     ],
 };
 
-// SCO2 WFS Layer - uses client-side vector rendering for better click detection
-const sco2LayerName = 'sco2_draft_13aug24';
-const sco2WFSTitle = 'Statewide Storage Resource Estimates';
-const sco2WFSConfig: WFSLayerProps = {
-    type: 'wfs',
-    wfsUrl: `${PROD_GEOSERVER_URL}/wfs`,
-    typeName: `${ENERGY_MINERALS_WORKSPACE}:${sco2LayerName}`,
-    title: sco2WFSTitle,
+// SCO2 Grid Summary WMS Layer (aggregated - one row per grid cell, capacity color + cost labels)
+const sco2GridSummaryLayerName = 'sco2_grid_summary';
+const sco2GridSummaryWMSTitle = 'Statewide Storage Resource Estimates';
+const sco2GridSummaryWMSConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: sco2GridSummaryWMSTitle,
     visible: false,
+    opacity: 0.75,
     crs: 'EPSG:4326',
-    geometryType: 'point',
-    style: {
-        // Size by capacity_mtco2: 4.72 Mt → 10px, 5764 Mt → 60px (capped at 35px default)
-        circleRadiusProperty: {
-            field: 'capacity_mtco2',
-            stops: [4.72, 10, 5764, 60],
-        },
-        // Color by storage_cost_doll_per_tco2 (step function)
-        circleColorProperty: {
-            field: 'storage_cost_doll_per_tco2',
-            defaultColor: '#00FF00',  // Green for lowest costs
-            stops: [
-                [11.795, '#FFFF00'],   // Yellow
-                [21.640, '#FFA500'],   // Orange
-                [35.451, '#FF0000'],   // Red
-                [52.522, '#8B0000'],   // Dark Red
-            ],
-        },
-        circleStrokeColor: '#000000',
-        circleStrokeWidth: 1,
-    },
+    bivariateLegend: { xLabel: 'Cost', yLabel: 'Capacity' },
     sublayers: [
         {
-            name: sco2LayerName,
-            popupEnabled: false,
+            name: `${ENERGY_MINERALS_WORKSPACE}:${sco2GridSummaryLayerName}`,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
-                'Storage Resource Estimate (Mt CO₂)': {
+                'State': { field: 'state', type: 'string' },
+                'Geo Regions': { field: 'geo_regions', type: 'string' },
+                'Formation Count': { field: 'formation_count', type: 'number' },
+                'Total Capacity (Mt CO₂)': {
                     field: 'capacity_mtco2',
                     type: 'number',
-                    decimalPlaces: 2,
+                    transform: (v) => v != null ? addThousandsSeparator(v.toFixed(1)) : null,
                 },
-                'Storage Cost ($/tCO₂)': {
-                    field: 'storage_cost_doll_per_tco2',
+                'Capacity Rank': {
+                    field: 'capacity_percentile',
+                    type: 'number',
+                    description: 'Relative to all evaluated grid cells. High = top third, Mid = middle third, Low = bottom third by total storage capacity.',
+                    transform: (v) => {
+                        if (v == null) return null;
+                        const label = v >= 0.67 ? 'High' : v >= 0.33 ? 'Mid' : 'Low';
+                        const pct = Math.round(v * 100);
+                        return `${label} (top ${pct}%)`;
+                    },
+                },
+                'Avg Cost ($/tCO₂)': {
+                    field: 'avg_cost_per_tco2',
                     type: 'number',
                     decimalPlaces: 2,
                 },
-                'Formation': { field: 'name', type: 'string' },
-                'Thickness (m)': {
-                    field: 'thickness_m',
+                'Cost Rank': {
+                    field: 'cost_percentile',
                     type: 'number',
-                    decimalPlaces: 2,
-                },
-                'Depth (m)': {
-                    field: 'depth_m',
-                    type: 'number',
-                    decimalPlaces: 2,
-                },
-                'Permeability (md)': {
-                    field: 'permeability_md',
-                    type: 'number',
-                    decimalPlaces: 2,
-                },
-                'Porosity (φ)': {
-                    field: 'porosity',
-                    type: 'number',
-                    decimalPlaces: 2,
-                },
-                'Pressure (MPa)': {
-                    field: 'pressure_mpa',
-                    type: 'number',
-                    decimalPlaces: 2,
-                },
-                'Temperature (C)': {
-                    field: 'temperature_c',
-                    type: 'number',
-                    decimalPlaces: 1,
-                },
-                'Temperature Gradient (C/km)': {
-                    field: 'temperature_gradient_c_per_km',
-                    type: 'number',
-                    decimalPlaces: 2,
+                    description: 'Relative to all evaluated grid cells. Low = cheapest third, Mid = middle third, High = most expensive third by capacity-weighted average cost.',
+                    transform: (v) => {
+                        if (v == null) return null;
+                        const label = v >= 0.67 ? 'Low' : v >= 0.33 ? 'Mid' : 'High';
+                        const pct = Math.round((1 - v) * 100);
+                        return `${label} (top ${pct}% cost)`;
+                    },
                 },
             },
+            relatedTables: [
+                {
+                    fieldLabel: 'Formation Details',
+                    matchingField: 'basegrid_id',
+                    targetField: 'id50km',
+                    url: `${PROD_GEOSERVER_URL}/wfs`,
+                    headers: {},
+                    fetchMode: 'wfs',
+                    wfsTypeName: `${ENERGY_MINERALS_WORKSPACE}:sco2_draft_13aug24`,
+                    sortBy: 'capacity_mtco2',
+                    sortDirection: 'desc',
+                    displayAs: 'table',
+                    displayFields: [
+                        { field: 'name', label: 'Formation' },
+                        { field: 'capacity_mtco2', label: 'Capacity (Mt CO₂)', format: 'number' },
+                        { field: 'storage_cost_doll_per_tco2', label: 'Cost ($/tCO₂)', format: 'number' },
+                    ],
+                },
+            ],
         },
     ],
 };
@@ -286,7 +255,7 @@ const transmissionLinesWMSConfig: WMSLayerProps = {
 
 // Seamless Geological Units WMS Layer
 const seamlessGeolunitsLayerName = 'mapping_geolunits_500k';
-const seamlessGeolunitsWMSTitle = 'Geologic Units (500k)';
+export const seamlessGeolunitsWMSTitle = 'Geologic Units (500k)';
 const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -296,7 +265,7 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     sublayers: [
         {
             name: `${MAPPING_WORKSPACE}:${seamlessGeolunitsLayerName}`,
-            popupEnabled: false,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
                 'Unit': {
@@ -316,7 +285,6 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
                 'series_id': {
                     baseUrl: '',
                     transform: (value: string) => {
-                        // the value is a url that needs to be transformed into href and label for the link
                         const transformedValues = {
                             href: `https://doi.org/10.34191/${value}`,
                             label: `${value}`
@@ -335,7 +303,7 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: wellWithTopsWMSTitle,
-    visible: false,
+    visible: true,
     crs: 'EPSG:26912',
     sublayers: [
         {
@@ -724,7 +692,7 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
                     }
                 },
                 'Description': { field: 'description', type: 'string' },
-                '': { field: 'linktoreport', type: 'string', transform: (value: string | null) => value },
+                'Report': { field: 'linktoreport', type: 'string', transform: () => 'Coming Soon' },
             },
             colorCodingMap: {
                 'ranking': (value: string | number) => {
@@ -737,25 +705,6 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
                 }
             },
             colorCodingMode: 'background',
-            linkFields: {
-                'linktoreport': {
-                    transform: (value: string) => {
-                        if (value === 'None') {
-                            const transformedValues = {
-                                href: '',
-                                label: 'Not currently available'
-                            };
-                            return [transformedValues];
-                        } else {
-                            const transformedValues = {
-                                href: value,
-                                label: `Report`
-                            };
-                            return [transformedValues];
-                        }
-                    }
-                },
-            }
         }
     ],
 };
@@ -840,6 +789,72 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
     ],
 };
 
+// Geochemistry Well Sites WMS Layer
+const geochemWellSitesLayerName = 'enmin_ccus_geochemistry_current';
+const geochemWellSitesWMSTitle = 'Wells with Reservoir Data';
+const geochemWellSitesWMSConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: geochemWellSitesWMSTitle,
+    visible: false,
+    crs: 'EPSG:3857',
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${geochemWellSitesLayerName}`,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Well Name': { field: 'wellname', type: 'string' },
+                'UWI': { field: 'uwi', type: 'string' },
+                'Operator': { field: 'operator', type: 'string' },
+                'Data Type': { field: 'datatype', type: 'string' },
+                'Geo-region': { field: 'georegion', type: 'string' },
+                'Field Name': { field: 'fieldname', type: 'string' },
+                'County': { field: 'section', type: 'string' },
+                'Location': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props: GeoJsonProperties | null | undefined) => {
+                        const sec = props?.['section_1'];
+                        const twp = props?.['township'];
+                        const tDir = props?.['t_direction'];
+                        const rng = props?.['range'];
+                        const rDir = props?.['r_direction'];
+                        if (!twp && !rng) return '';
+                        const parts: string[] = [];
+                        if (sec) parts.push(`Sec ${sec}`);
+                        if (twp) parts.push(`T${twp}${tDir || ''}`);
+                        if (rng) parts.push(`R${rng}${rDir || ''}`);
+                        return parts.join(', ');
+                    }
+                },
+            },
+            relatedTables: [
+                {
+                    fieldLabel: 'Geochemistry Data',
+                    matchingField: 'uwi',
+                    targetField: 'uwi',
+                    url: PROD_POSTGREST_URL + '/ccus_geochem_data',
+                    headers: {
+                        "Accept-Profile": 'emp',
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    displayFields: [
+                        { field: 'formation', label: 'Formation' },
+                        { field: 'depth_top_interval', label: 'Depth (ft)' },
+                        { field: 'porosity_percent', label: 'Porosity (%)' },
+                        { field: 'perm_md_klink', label: 'Permeability (mD)' },
+                        { field: 'salinity_ppm', label: 'Salinity (ppm)' },
+                    ],
+                    sortBy: 'depth_top_interval',
+                    sortDirection: 'asc',
+                    displayAs: 'table'
+                },
+            ],
+        },
+    ],
+};
 
 
 // Wells and Springs with Joins WMS Layer
@@ -896,7 +911,6 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
         },
     ],
 };
-
 
 // Springs with Joins WMS Layer
 const geothermalSpringsJoinsName = 'enmin_geothermal_ingenious_springfeatures_current';
@@ -956,7 +970,7 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalWellsWMSTitle,
-    visible: true,
+    visible: false,
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsLayerName}`,
@@ -1079,8 +1093,8 @@ const ccsResourcesConfig: LayerProps = {
     title: 'Carbon Storage Resources',
     visible: true,
     layers: [
-        sco2WFSConfig,
-        basinNamesWMSConfig,
+        sco2GridSummaryWMSConfig,
+        georegionsWMSConfig,
         co2SourcesWMSConfig,
         sitlaReportsWMSConfig,
         ccsExclusionAreasWMSConfig,
@@ -1111,7 +1125,7 @@ const geologicalInformationConfig: LayerProps = {
     layers: [
         qFaultsWMSConfig,
         faultsWMSConfig,
-        seamlessGeolunitsWMSConfig
+        seamlessGeolunitsWMSConfig,
     ]
 }
 const subsurfaceDataConfig: LayerProps = {
@@ -1120,11 +1134,12 @@ const subsurfaceDataConfig: LayerProps = {
     visible: false,
     layers: [
         wellWithTopsWMSConfig,
+        geochemWellSitesWMSConfig,
         coresAndCuttingsWMSConfig,
         oilGasFieldsWMSConfig,
         geothermalWellsWMSConfig,
         geothermalSpringsJoinsConfig,
-        geothermalWellsJoinsConfig
+        geothermalWellsJoinsConfig,
     ]
 }
 

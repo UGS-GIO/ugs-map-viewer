@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react'
+import { useMemo, useEffect, useCallback, useRef } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import { Layout } from '@/components/layout/layout'
 import { TopNav } from '@/components/top-nav'
@@ -9,22 +9,50 @@ import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { wellWithTopsWMSTitle } from './-data/layers/layers'
+import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle } from './-data/layers/layers'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
+import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, type SearchComboboxHandle } from '@/components/sidebar/filter/search-combobox'
+import { PROD_POSTGREST_URL } from '@/lib/constants'
 
 // Carbon Storage specific filter mapping
 const CCS_FILTER_MAPPING: Record<string, string> = {
   [wellWithTopsWMSTitle]: wellWithTopsWMSTitle,
 }
 
+const searchConfig: SearchSourceConfig[] = [
+  defaultMasqueradeConfig,
+  {
+    type: 'postgREST',
+    url: PROD_POSTGREST_URL,
+    functionName: "search_geologic_units",
+    searchTerm: "search_term",
+    functionParams: { search_scale: 'small' },
+    sourceName: 'Geologic Units',
+    layerName: seamlessGeolunitsWMSTitle,
+    crs: 'EPSG:4326',
+    displayField: "unit_label",
+    params: { select: 'unit_label,match_type' },
+    groupByField: 'match_type',
+    groupLabels: {
+      name: 'Name Matches',
+      symbol: 'Symbol Matches',
+      description: 'Description Matches',
+    },
+    headers: {
+      'Accept-Profile': 'mapping',
+    }
+  },
+]
+
 export default function Map() {
   const { isCollapsed, sidebarWidthPx } = useSidebar();
   const isMobile = useIsMobile();
   const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
-  const { selectedLayerTitles, updateLayerSelection } = useLayerUrl()
+  const { selectedLayerTitles, updateLayerSelection, setGroupVisibility, groupVisibility } = useLayerUrl()
   const { handleMapReady, contextValue, setClearSpatialFilterCallback, setLayerTurnedOffCallback } = useMapContextState();
+  const searchRef = useRef<SearchComboboxHandle>(null);
 
   // Get URL filters
   const searchParams = useSearch({ from: '/_map/carbonstorage/' })
@@ -52,6 +80,37 @@ export default function Map() {
     }
   }, [filtersFromUrl, selectedLayerTitles, updateLayerSelection])
 
+  // Map child layers to their parent group for auto-visibility
+  const LAYER_PARENT_GROUP: Record<string, string> = {
+    [seamlessGeolunitsWMSTitle]: 'Geological Information',
+  }
+
+  // Auto-select the associated layer and its parent group when a search result is picked
+  const ensureLayerSelected = useCallback(
+    (sourceIndex: number, configs: SearchSourceConfig[]) => {
+      const src = configs[sourceIndex]
+      const layerName = src?.type === 'postgREST' ? src.layerName : undefined
+      if (layerName && !selectedLayerTitles.has(layerName)) {
+        updateLayerSelection(layerName, true)
+      }
+      const parentGroup = layerName ? LAYER_PARENT_GROUP[layerName] : undefined
+      if (parentGroup && !groupVisibility.get(parentGroup)) {
+        setGroupVisibility(parentGroup, true)
+      }
+    },
+    [selectedLayerTitles, updateLayerSelection, groupVisibility, setGroupVisibility]
+  )
+
+  const onFeatureSelect: typeof handleSearchSelect = useCallback(
+    (...args) => { ensureLayerSelected(args[2], args[3]); handleSearchSelect(...args) },
+    [ensureLayerSelected]
+  )
+
+  const onCollectionSelect: typeof handleCollectionSelect = useCallback(
+    (...args) => { ensureLayerSelected(args[2], args[3]); handleCollectionSelect(...args) },
+    [ensureLayerSelected]
+  )
+
   return (
     <MapContext.Provider value={contextValue}>
       <TourAutoStart route="ccs" />
@@ -67,7 +126,15 @@ export default function Map() {
             <Layout.Header className='hidden md:flex items-center justify-between px-4 md:px-6'>
               <TopNav />
               <div className='flex items-center flex-1 min-w-0 md:flex-initial md:w-1/3 md:ml-auto space-x-2'>
-                {/* SearchCombobox removed - needs refactoring for new architecture */}
+                <div className="flex-1 min-w-0">
+                  <SearchCombobox
+                    ref={searchRef}
+                    config={searchConfig}
+                    onFeatureSelect={onFeatureSelect}
+                    onCollectionSelect={onCollectionSelect}
+                    className="w-full"
+                  />
+                </div>
               </div>
             </Layout.Header>
 
@@ -80,6 +147,7 @@ export default function Map() {
                 skipContextProvider
                 onRegisterClearSpatialFilter={setClearSpatialFilterCallback}
                 onRegisterLayerTurnedOff={setLayerTurnedOffCallback}
+                onClearSearch={() => searchRef.current?.clear()}
               />
             </Layout.Body>
 

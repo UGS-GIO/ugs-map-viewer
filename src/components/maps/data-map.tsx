@@ -80,11 +80,14 @@ export default function DataMap({
   // Get the raw map instance (memoized to avoid recreating on every render)
   const mapInstance = mapRef.current?.getMap() ?? null
 
-  // Get visible WMS layers - flatten groups recursively (defined early for use in callbacks)
+  // Get visible layers - flatten groups recursively (defined early for use in callbacks)
   const visibleWmsLayers = useMemo(() => flattenWmsLayers(layers), [layers])
-
-  // Get visible WFS layers - flatten groups recursively
   const visibleWfsLayers = useMemo(() => flattenWfsLayers(layers), [layers])
+
+  // Reverse for MapLibre draw order: first in config (top of sidebar) should draw on top.
+  // MapLibre draws later layers on top, so we reverse so config-first renders last.
+  const wmsDrawOrder = useMemo(() => [...visibleWmsLayers].reverse(), [visibleWmsLayers])
+  const wfsDrawOrder = useMemo(() => [...visibleWfsLayers].reverse(), [visibleWfsLayers])
 
   // Fetch WFS layer data using TanStack Query (automatic caching, retries, deduplication)
   const { data: wfsLayerData } = useWfsLayerData(visibleWfsLayers)
@@ -151,8 +154,9 @@ export default function DataMap({
       polygon: filter.polygon,
       visibleLayers: wmsLayers,
       wmsUrl,
+      layerFilters,
     })
-  }, [onSpatialFilterChange, wmsUrl, onFeatureClick])
+  }, [onSpatialFilterChange, wmsUrl, onFeatureClick, layerFilters])
 
   // Terra Draw hook
   const { justFinishedDrawingRef } = useTerraDraw({
@@ -273,6 +277,7 @@ export default function DataMap({
         tolerance: clickTolerance,
         mapInstance: map,
         wmsUrl,
+        layerFilters,
       },
       {
         onSuccess: (wmsFeatures) => {
@@ -296,7 +301,7 @@ export default function DataMap({
         },
       }
     )
-  }, [onFeatureClick, visibleWmsLayers, visibleWfsLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, drawMode, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange])
+  }, [onFeatureClick, visibleWmsLayers, visibleWfsLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, drawMode, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange, layerFilters])
 
   // Handle map move end - track zoom only (box select now uses click-to-confirm)
   const handleMoveEnd = useCallback(() => {
@@ -360,6 +365,7 @@ export default function DataMap({
           boxSize: BOX_SELECT_SIZE,
           pageSize: BOX_SELECT_PAGE_SIZE,
           wmsUrl,
+          layerFilters,
         },
         {
           onSuccess: (wmsFeatures) => {
@@ -372,7 +378,7 @@ export default function DataMap({
         }
       )
     }
-  }, [onBoxSelectConfirm, visibleWmsLayers, visibleWfsLayers, boxSelectQuery, wmsUrl, onFeatureClick, isAdditiveMode])
+  }, [onBoxSelectConfirm, visibleWmsLayers, visibleWfsLayers, boxSelectQuery, wmsUrl, onFeatureClick, isAdditiveMode, layerFilters])
 
   // Handle map load
   const handleLoad = useCallback(() => {
@@ -412,6 +418,7 @@ export default function DataMap({
             tolerance: tolerance || clickTolerance,
             mapInstance: map,
             wmsUrl,
+            layerFilters,
           },
           {
             onSuccess: (wmsFeatures) => {
@@ -424,7 +431,7 @@ export default function DataMap({
         )
       }
     }
-  }, [onMapReady, clickBufferBounds, onFeatureClick, visibleWmsLayers, visibleWfsLayers, clickTolerance, clickQuery, wmsUrl])
+  }, [onMapReady, clickBufferBounds, onFeatureClick, visibleWmsLayers, visibleWfsLayers, clickTolerance, clickQuery, wmsUrl, layerFilters])
 
   // Combine loading states
   const showLoading = isLoading || queryLoading
@@ -490,6 +497,7 @@ export default function DataMap({
         tolerance: clickTolerance,
         mapInstance: map,
         wmsUrl,
+        layerFilters,
       },
       {
         onSuccess: (wmsFeatures) => {
@@ -500,7 +508,7 @@ export default function DataMap({
         },
       }
     )
-  }, [visibleWmsLayers, visibleWfsLayers, clickTolerance, clickQuery, wmsUrl, onFeatureClick, onClickBufferChange])
+  }, [visibleWmsLayers, visibleWfsLayers, clickTolerance, clickQuery, wmsUrl, onFeatureClick, onClickBufferChange, layerFilters])
 
   const handleZoomIn = useCallback((coords: { lng: number; lat: number }) => {
     const map = mapRef.current?.getMap()
@@ -564,11 +572,12 @@ export default function DataMap({
           position="top-right"
         />
 
-        {/* WMS Layers */}
-        {visibleWmsLayers.map((layer) => {
+        {/* WMS Layers (reversed so config-first = drawn on top) */}
+        {wmsDrawOrder.map((layer) => {
           const layerName = getWmsLayerName(layer)
           const cqlFilter = layerFilters[layer.title]
-          const tileUrl = buildWmsTileUrl(wmsUrl, layerName, cqlFilter)
+          const layerWmsUrl = layer.url || wmsUrl
+          const tileUrl = buildWmsTileUrl(layerWmsUrl, layerName, cqlFilter)
 
           return (
             <Source
@@ -585,7 +594,7 @@ export default function DataMap({
                 // Metadata for findLayerByTitle and legend provider
                 metadata={{
                   title: layer.title,
-                  'wms-url': wmsUrl,
+                  'wms-url': layerWmsUrl,
                   'wms-layer': layerName,
                 }}
               />
@@ -593,8 +602,8 @@ export default function DataMap({
           )
         })}
 
-        {/* WFS Layers (client-side vector) */}
-        {visibleWfsLayers.map((layer) => {
+        {/* WFS Layers (reversed so config-first = drawn on top) */}
+        {wfsDrawOrder.map((layer) => {
           const sourceId = getWfsSourceId(layer)
           const geojson = wfsLayerData.get(sourceId)
           if (!geojson) return null

@@ -40,6 +40,21 @@ interface MapBounds {
   height: number
 }
 
+const BIVARIATE_CELL_RE = /^bivariate_(\d+)_(\d+)$/
+
+/** Extract short tick label: "High Cap / Low Cost" → "High" (first word of the nth part) */
+function shortLabel(title: string, index: 0 | 1): string {
+  const part = title.split(' / ')[index]?.trim() ?? ''
+  return part.split(' ')[0] ?? ''
+}
+
+interface VisibleWmsLayer {
+  title: string
+  layerName: string
+  url: string
+  bivariateLegend?: { xLabel: string; yLabel: string }
+}
+
 // Helper to fetch legend data for visible WMS layers (filtered by map extent)
 async function fetchLegendDataForVisibleLayers(
   layers: LayerProps[],
@@ -48,8 +63,8 @@ async function fetchLegendDataForVisibleLayers(
   const results: LegendItem[] = []
 
   // Extract visible WMS layers
-  const getVisibleWmsLayers = (layerArray: LayerProps[]): { title: string; layerName: string; url: string }[] => {
-    const visible: { title: string; layerName: string; url: string }[] = []
+  const getVisibleWmsLayers = (layerArray: LayerProps[]): VisibleWmsLayer[] => {
+    const visible: VisibleWmsLayer[] = []
     for (const layer of layerArray) {
       if (layer.type === 'group' && 'layers' in layer) {
         visible.push(...getVisibleWmsLayers(layer.layers || []))
@@ -60,7 +75,8 @@ async function fetchLegendDataForVisibleLayers(
           visible.push({
             title: layer.title || sublayer.name,
             layerName: sublayer.name,
-            url: wmsLayer.url || `${PROD_GEOSERVER_URL}/wms`
+            url: wmsLayer.url || `${PROD_GEOSERVER_URL}/wms`,
+            bivariateLegend: layer.bivariateLegend,
           })
         }
       }
@@ -84,7 +100,8 @@ async function fetchLegendDataForVisibleLayers(
 
       // Add extent parameters for content-dependent legend (GeoServer feature)
       // Requires hideEmptyRules to actually filter out symbols with no features in view
-      if (bounds) {
+      // Skip for bivariate layers — we need the full grid regardless of viewport
+      if (bounds && !layer.bivariateLegend) {
         params.set('BBOX', `${bounds.south},${bounds.west},${bounds.north},${bounds.east}`)
         params.set('CRS', 'EPSG:4326')
         params.set('WIDTH', String(Math.round(bounds.width)))
@@ -107,6 +124,55 @@ async function fetchLegendDataForVisibleLayers(
       const rules = legendData?.Legend?.[0]?.rules || []
 
       if (rules.length === 0) continue
+
+      // Bivariate legend: parse grid from bivariate_R_C rule names
+      if (layer.bivariateLegend) {
+        const cells: { row: number; col: number; color: string; title: string }[] = []
+        let noData: { color: string; opacity: number; label: string } | undefined
+        for (const rule of rules) {
+          const poly = rule.symbolizers?.[0]?.Polygon
+          if (!poly) continue
+          if (rule.name === 'bivariate_nodata') {
+            noData = {
+              color: poly.fill ?? '#fff',
+              opacity: parseFloat(poly['fill-opacity'] ?? '1'),
+              label: rule.title || 'No Data',
+            }
+            continue
+          }
+          const m = rule.name?.match(BIVARIATE_CELL_RE)
+          if (m) {
+            cells.push({ row: +m[1], col: +m[2], color: poly.fill ?? '#000', title: rule.title || '' })
+          }
+        }
+        if (cells.length > 0) {
+          const maxRow = Math.max(...cells.map(c => c.row))
+          const maxCol = Math.max(...cells.map(c => c.col))
+          const colors: string[][] = Array.from({ length: maxRow + 1 }, () =>
+            Array.from({ length: maxCol + 1 }, () => '#000')
+          )
+          const yTicks: string[] = Array.from({ length: maxRow + 1 }, () => '')
+          const xTicks: string[] = Array.from({ length: maxCol + 1 }, () => '')
+          for (const c of cells) {
+            colors[c.row][c.col] = c.color
+            if (!yTicks[c.row]) yTicks[c.row] = shortLabel(c.title, 0)
+            if (!xTicks[c.col]) xTicks[c.col] = shortLabel(c.title, 1)
+          }
+          results.push({
+            layerTitle: layer.title,
+            symbols: [],
+            bivariate: {
+              colors,
+              xLabel: layer.bivariateLegend.xLabel,
+              yLabel: layer.bivariateLegend.yLabel,
+              xTicks,
+              yTicks,
+              noData: noData ?? undefined,
+            }
+          })
+        }
+        continue
+      }
 
       const symbols: LegendItem['symbols'] = []
       for (const rule of rules) {
@@ -161,6 +227,8 @@ interface GenericMapContainerProps {
   onRegisterClearSpatialFilter?: (callback: () => void) => void
   /** Register callback for when layer is turned off (clears selection/highlights) */
   onRegisterLayerTurnedOff?: (callback: (layerTitle: string) => void) => void
+  /** Called when all selections are cleared (context menu, popup close, etc.) */
+  onClearSearch?: () => void
 }
 
 export default function GenericMapContainer({
@@ -174,6 +242,7 @@ export default function GenericMapContainer({
   onExternalDrawComplete,
   onRegisterClearSpatialFilter,
   onRegisterLayerTurnedOff,
+  onClearSearch,
 }: GenericMapContainerProps) {
   const isMobile = useIsMobile()
   const { viewMode, setViewMode, center, zoom, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs } = useMapUrlSync()
@@ -433,10 +502,11 @@ export default function GenericMapContainer({
   const handleClearAllSelections = useCallback(() => {
     setHighlightedFeatures([])
     clearAllSelections()
+    onClearSearch?.()
     // Close the sheet and clear box select bounds
     setPanelState(prev => ({ ...prev, isSheetOpen: false }))
     setMapInteraction(prev => ({ ...prev, boxSelectBounds: null }))
-  }, [clearAllSelections])
+  }, [clearAllSelections, onClearSearch])
 
   // Derived: click point for raster queries (center of click buffer)
   const clickPoint = useMemo(() => {

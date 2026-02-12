@@ -20,6 +20,14 @@ export interface LegendItem {
         label: string;
         svgHtml: string;
     }>;
+    bivariate?: {
+        colors: string[][];
+        xLabel: string;
+        yLabel: string;
+        xTicks: string[];
+        yTicks: string[];
+        noData?: { color: string; opacity: number; label: string };
+    };
 }
 
 export interface MapBounds {
@@ -323,6 +331,11 @@ export class ExportControl implements maplibregl.IControl {
     private async generateCanvas(width: number, height: number): Promise<HTMLCanvasElement> {
         if (!this.map) throw new Error('Map not available');
 
+        // Capture current view bounds before creating export map
+        const currentBounds = this.map.getBounds();
+        const bearing = this.map.getBearing();
+        const pitch = this.map.getPitch();
+
         // Create a hidden container for rendering (offscreen to avoid visual artifacts)
         const hiddenContainer = document.createElement('div');
         hiddenContainer.style.cssText = `
@@ -337,22 +350,30 @@ export class ExportControl implements maplibregl.IControl {
         document.body.appendChild(hiddenContainer);
 
         // Create a new map instance for export
+        // Use fitBoundsOptions instead of center/zoom so the export shows the same
+        // geographic extent regardless of the (much larger) export container size.
         const exportMap = new maplibregl.Map({
             container: hiddenContainer,
             style: this.map.getStyle(),
-            center: this.map.getCenter(),
-            zoom: this.map.getZoom(),
-            bearing: this.map.getBearing(),
-            pitch: this.map.getPitch(),
+            bounds: currentBounds,
+            fitBoundsOptions: { padding: 0 },
+            bearing,
+            pitch,
             interactive: false,
             attributionControl: false,
         });
 
-        // Wait for map to load
+        // Wait for map to fully render
         await new Promise<void>((resolve, reject) => {
-            exportMap.once('idle', () => resolve());
-            exportMap.once('error', reject);
-            setTimeout(() => reject(new Error('Map render timeout')), 30000);
+            const timeout = setTimeout(() => reject(new Error('Map render timeout')), 30000);
+            exportMap.once('idle', () => {
+                clearTimeout(timeout);
+                resolve();
+            });
+            exportMap.once('error', (e) => {
+                clearTimeout(timeout);
+                reject(e);
+            });
         });
 
         // Get canvas
@@ -602,19 +623,28 @@ export class ExportControl implements maplibregl.IControl {
         const titleHeight = 16 * scale;
         const layerGap = 8 * scale;
 
+        const hasBivariate = legendData.some(l => l.bivariate);
+        const bivariateCellSize = 30 * scale;
+
         // Calculate total height needed
         let totalHeight = padding * 2;
         for (const layer of legendData) {
             totalHeight += titleHeight + layerGap;
-            totalHeight += layer.symbols.length * rowHeight;
+            if (layer.bivariate) {
+                const bvRows = layer.bivariate.colors.length;
+                // axis label + grid + tick labels + optional nodata
+                totalHeight += 14 * scale + bvRows * bivariateCellSize + 14 * scale + (layer.bivariate.noData ? 16 * scale : 0);
+            } else {
+                totalHeight += layer.symbols.length * rowHeight;
+            }
         }
 
         // Max height: leave room for scale bar (60px) and some margin from top (100px)
         const maxHeight = canvasHeight - margin - 60 * scale - 100 * scale;
         const constrainedHeight = Math.min(totalHeight, maxHeight);
 
-        // Position in bottom-left, above scale bar
-        const maxWidth = 200 * scale;
+        // Position in bottom-left, above scale bar — wider panel when bivariate content is present
+        const maxWidth = (hasBivariate ? 260 : 200) * scale;
         const x = margin;
         const y = canvasHeight - margin - constrainedHeight - 60 * scale;
 
@@ -647,32 +677,138 @@ export class ExportControl implements maplibregl.IControl {
             ctx.fillText(layer.layerTitle, x + padding, currentY, maxWidth - padding * 2);
             currentY += titleHeight;
 
-            // Symbols
-            ctx.font = `${10 * scale}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-            for (const symbol of layer.symbols) {
-                if (currentY > y + constrainedHeight - padding) break;
+            if (layer.bivariate) {
+                currentY += this.drawBivariateLegend(ctx, x + padding, currentY, maxWidth - padding * 2, scale, layer.bivariate);
+            } else {
+                // Symbols
+                ctx.font = `${10 * scale}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+                for (const symbol of layer.symbols) {
+                    if (currentY > y + constrainedHeight - padding) break;
 
-                // Draw symbol (convert SVG to image)
-                try {
-                    const img = await this.svgToImage(symbol.svgHtml, symbolSize, symbolSize);
-                    ctx.drawImage(img, x + padding, currentY, symbolSize, rowHeight - 2 * scale);
-                } catch {
-                    // Draw placeholder rectangle if SVG fails
-                    ctx.fillStyle = '#ccc';
-                    ctx.fillRect(x + padding, currentY + 2 * scale, symbolSize, rowHeight - 4 * scale);
+                    // Draw symbol (convert SVG to image)
+                    try {
+                        const img = await this.svgToImage(symbol.svgHtml, symbolSize, symbolSize);
+                        ctx.drawImage(img, x + padding, currentY, symbolSize, rowHeight - 2 * scale);
+                    } catch {
+                        // Draw placeholder rectangle if SVG fails
+                        ctx.fillStyle = '#ccc';
+                        ctx.fillRect(x + padding, currentY + 2 * scale, symbolSize, rowHeight - 4 * scale);
+                    }
+
+                    // Label
+                    ctx.fillStyle = '#666';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(symbol.label, x + padding + symbolSize + 6 * scale, currentY + rowHeight / 2, maxWidth - padding * 2 - symbolSize - 10 * scale);
+                    currentY += rowHeight;
                 }
-
-                // Label
-                ctx.fillStyle = '#666';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(symbol.label, x + padding + symbolSize + 6 * scale, currentY + rowHeight / 2, maxWidth - padding * 2 - symbolSize - 10 * scale);
-                currentY += rowHeight;
             }
 
             currentY += layerGap;
         }
 
         ctx.restore();
+    }
+
+    /**
+     * Draw a bivariate color grid legend on canvas. Returns the total height consumed.
+     */
+    private drawBivariateLegend(
+        ctx: CanvasRenderingContext2D,
+        x: number,
+        y: number,
+        availWidth: number,
+        scale: number,
+        bv: NonNullable<LegendItem['bivariate']>
+    ): number {
+        const font = (size: number, weight = 'normal') =>
+            `${weight} ${size * scale}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+
+        const rows = bv.colors.length;
+        const cols = bv.colors[0]?.length ?? 0;
+        const tickFontSize = 8;
+        const labelFontSize = 9;
+        const cellSize = Math.min(30 * scale, (availWidth - 30 * scale) / cols);
+        const gridWidth = cellSize * cols;
+        const gridHeight = cellSize * rows;
+
+        // Measure y-tick widths
+        ctx.font = font(tickFontSize);
+        const yTickWidth = Math.max(...bv.yTicks.map(t => ctx.measureText(t).width), 0);
+        const yLabelWidth = 12 * scale;
+
+        const gridX = x + yLabelWidth + yTickWidth + 4 * scale;
+        let curY = y;
+
+        // X-axis label above grid
+        ctx.fillStyle = '#333';
+        ctx.font = font(labelFontSize, 'bold');
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(`${bv.xLabel} →`, gridX + gridWidth / 2, curY);
+        curY += labelFontSize * scale + 4 * scale;
+
+        const gridY = curY;
+
+        // Y-axis label (rotated, centered on grid)
+        ctx.save();
+        ctx.translate(x + labelFontSize * scale / 2, gridY + gridHeight / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillStyle = '#333';
+        ctx.font = font(labelFontSize, 'bold');
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${bv.yLabel} →`, 0, 0);
+        ctx.restore();
+
+        // Y-tick labels
+        ctx.fillStyle = '#666';
+        ctx.font = font(tickFontSize);
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        for (let r = 0; r < rows; r++) {
+            ctx.fillText(bv.yTicks[r] ?? '', gridX - 4 * scale, gridY + r * cellSize + cellSize / 2);
+        }
+
+        // Color grid
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                ctx.fillStyle = bv.colors[r][c];
+                ctx.fillRect(gridX + c * cellSize, gridY + r * cellSize, cellSize - 1 * scale, cellSize - 1 * scale);
+            }
+        }
+
+        curY = gridY + gridHeight + 2 * scale;
+
+        // X-tick labels
+        ctx.fillStyle = '#666';
+        ctx.font = font(tickFontSize);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        for (let c = 0; c < cols; c++) {
+            ctx.fillText(bv.xTicks[c] ?? '', gridX + c * cellSize + cellSize / 2, curY);
+        }
+        curY += tickFontSize * scale + 4 * scale;
+
+        // No-data swatch
+        if (bv.noData) {
+            const swatchSize = 10 * scale;
+            ctx.fillStyle = bv.noData.color;
+            ctx.globalAlpha = bv.noData.opacity;
+            ctx.fillRect(gridX, curY, swatchSize, swatchSize);
+            ctx.globalAlpha = 1;
+            ctx.strokeStyle = '#999';
+            ctx.lineWidth = 0.5 * scale;
+            ctx.strokeRect(gridX, curY, swatchSize, swatchSize);
+
+            ctx.fillStyle = '#666';
+            ctx.font = font(tickFontSize);
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(bv.noData.label, gridX + swatchSize + 4 * scale, curY + swatchSize / 2);
+            curY += swatchSize + 4 * scale;
+        }
+
+        return curY - y;
     }
 
     private svgToImage(svgHtml: string, width: number, height: number): Promise<HTMLImageElement> {

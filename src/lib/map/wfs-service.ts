@@ -74,20 +74,12 @@ async function getGeometryField(wfsUrl: string, typeName: string): Promise<strin
 }
 
 /**
- * Convert bounds to WKT POLYGON with SRID
- */
-function boundsToWkt(bounds: Bounds): string {
-  const { sw, ne } = bounds
-  return `SRID=4326;POLYGON((${sw.lng} ${sw.lat}, ${ne.lng} ${sw.lat}, ${ne.lng} ${ne.lat}, ${sw.lng} ${ne.lat}, ${sw.lng} ${sw.lat}))`
-}
-
-/**
- * Convert GeoJSON Polygon to WKT with SRID
+ * Convert GeoJSON Polygon to WKT (no SRID prefix — CRS comes from srsName param)
  */
 function polygonToWkt(polygon: Polygon): string {
   const ring = polygon.coordinates[0]
   const coords = ring.map(([lng, lat]) => `${lng} ${lat}`).join(', ')
-  return `SRID=4326;POLYGON((${coords}))`
+  return `POLYGON((${coords}))`
 }
 
 /**
@@ -113,7 +105,9 @@ export interface WfsQueryOptions {
 }
 
 /**
- * Build WFS GetFeature URL with BBOX filter
+ * Build WFS GetFeature URL with spatial filter
+ * Uses BBOX parameter for bounds queries (proper CRS handling across all layers)
+ * Uses CQL INTERSECTS for polygon queries (spatial filter drawing)
  */
 function buildWfsUrl(options: WfsQueryOptions): string {
   const {
@@ -135,16 +129,25 @@ function buildWfsUrl(options: WfsQueryOptions): string {
   url.searchParams.set('outputFormat', 'application/json')
   url.searchParams.set('srsName', crs)
 
-  // Use CQL INTERSECTS for all spatial queries
-  const wkt = 'type' in spatialFilter && spatialFilter.type === 'Polygon'
-    ? polygonToWkt(spatialFilter as Polygon)
-    : boundsToWkt(spatialFilter as Bounds)
+  const isPolygon = 'type' in spatialFilter
 
-  const spatialCql = `INTERSECTS(${geometryField}, ${wkt})`
-  const cqlFilter = attributeFilter
-    ? `${spatialCql} AND ${attributeFilter}`
-    : spatialCql
-  url.searchParams.set('CQL_FILTER', cqlFilter)
+  if (isPolygon) {
+    // Polygon: use CQL INTERSECTS for arbitrary geometry
+    const wkt = polygonToWkt(spatialFilter)
+    const spatialCql = `INTERSECTS(${geometryField}, ${wkt})`
+    const cqlFilter = attributeFilter
+      ? `${spatialCql} AND (${attributeFilter})`
+      : spatialCql
+    url.searchParams.set('CQL_FILTER', cqlFilter)
+  } else {
+    // Bounds: use BBOX parameter — GeoServer handles CRS reprojection natively,
+    // avoiding SRID mismatch errors for layers with non-4326 native CRS
+    const { sw, ne } = spatialFilter
+    url.searchParams.set('BBOX', `${sw.lng},${sw.lat},${ne.lng},${ne.lat},EPSG:4326`)
+    if (attributeFilter) {
+      url.searchParams.set('CQL_FILTER', attributeFilter)
+    }
+  }
 
   // WFS 1.1.0 uses maxFeatures instead of count
   if (count) url.searchParams.set('maxFeatures', String(count))
@@ -230,6 +233,8 @@ export interface ClickQueryParams {
   mapInstance: maplibregl.Map
   /** Base WMS URL - used to derive WFS endpoint */
   wmsUrl: string
+  /** CQL filters keyed by layer title, applied to narrow query results */
+  layerFilters?: Record<string, string>
 }
 
 export interface BoxSelectQueryParams {
@@ -240,6 +245,8 @@ export interface BoxSelectQueryParams {
   pageSize: number
   /** Base WMS URL - used to derive WFS endpoint */
   wmsUrl: string
+  /** CQL filters keyed by layer title */
+  layerFilters?: Record<string, string>
 }
 
 /**
@@ -250,19 +257,20 @@ async function queryVisibleLayers(
   visibleLayers: WMSLayerProps[],
   spatialFilter: Bounds | Polygon,
   wmsUrl: string,
-  options: QueryOptions = {}
+  options: QueryOptions = {},
+  layerFilters?: Record<string, string>
 ): Promise<WfsFeature[]> {
-  // Build WFS URL from WMS URL (just replace /wms with /wfs)
-  const wfsUrl = wmsUrl.replace(/\/wms\/?$/, '/wfs')
-
-  // Build list of all sublayers to query
-  const queries: Array<{ typeName: string; layerTitle: string }> = []
+  // Build list of all sublayers to query, with per-layer WFS URL
+  const queries: Array<{ typeName: string; layerTitle: string; wfsUrl: string; attributeFilter?: string }> = []
   for (const layer of visibleLayers) {
+    // Use layer's own URL when present, fall back to global wmsUrl
+    const layerWfsUrl = (layer.url || wmsUrl).replace(/\/wms\/?$/, '/wfs')
+    const cqlFilter = layerFilters?.[layer.title]
     for (const sublayer of layer.sublayers || []) {
       if (sublayer.queryable === false) continue
       const typeName = sublayer.name || ''
       if (!typeName) continue
-      queries.push({ typeName, layerTitle: layer.title })
+      queries.push({ typeName, layerTitle: layer.title, wfsUrl: layerWfsUrl, attributeFilter: cqlFilter })
     }
   }
 
@@ -270,14 +278,15 @@ async function queryVisibleLayers(
 
   // Query all layers in parallel
   const results = await Promise.all(
-    queries.map(async ({ typeName, layerTitle }) => {
+    queries.map(async ({ typeName, layerTitle, wfsUrl: layerWfsUrl, attributeFilter }) => {
       try {
-        const geometryField = await getGeometryField(wfsUrl, typeName)
+        const geometryField = await getGeometryField(layerWfsUrl, typeName)
         const features = await queryWfs({
-          wfsUrl,
+          wfsUrl: layerWfsUrl,
           typeName,
           geometryField,
           spatialFilter,
+          attributeFilter,
         }, options)
 
         return features.map(f => ({
@@ -300,21 +309,21 @@ async function queryVisibleLayers(
  * Query features at a click point with tolerance
  */
 export async function queryWFSFeatures(params: ClickQueryParams): Promise<WfsFeature[]> {
-  const { point, visibleLayers, tolerance, mapInstance, wmsUrl } = params
+  const { point, visibleLayers, tolerance, mapInstance, wmsUrl, layerFilters } = params
 
   const bounds: Bounds = {
     sw: mapInstance.unproject([point.x - tolerance, point.y + tolerance]),
     ne: mapInstance.unproject([point.x + tolerance, point.y - tolerance]),
   }
 
-  return queryVisibleLayers(visibleLayers, bounds, wmsUrl, { pageSize: 50 })
+  return queryVisibleLayers(visibleLayers, bounds, wmsUrl, { pageSize: 50 }, layerFilters)
 }
 
 /**
  * Query features in box select area with pagination
  */
 export async function queryBoxSelectFeatures(params: BoxSelectQueryParams): Promise<WfsFeature[]> {
-  const { visibleLayers, mapInstance, containerRect, boxSize, pageSize, wmsUrl } = params
+  const { visibleLayers, mapInstance, containerRect, boxSize, pageSize, wmsUrl, layerFilters } = params
 
   const centerX = containerRect.width / 2
   const centerY = containerRect.height / 2
@@ -325,7 +334,7 @@ export async function queryBoxSelectFeatures(params: BoxSelectQueryParams): Prom
     ne: mapInstance.unproject([centerX + halfBox, centerY - halfBox]),
   }
 
-  return queryVisibleLayers(visibleLayers, bounds, wmsUrl, { paginate: true, pageSize })
+  return queryVisibleLayers(visibleLayers, bounds, wmsUrl, { paginate: true, pageSize }, layerFilters)
 }
 
 /**
@@ -336,9 +345,11 @@ export interface PolygonQueryParams {
   visibleLayers: WMSLayerProps[]
   wmsUrl: string
   pageSize?: number
+  /** CQL filters keyed by layer title */
+  layerFilters?: Record<string, string>
 }
 
 export async function queryPolygonFeatures(params: PolygonQueryParams): Promise<WfsFeature[]> {
-  const { polygon, visibleLayers, wmsUrl, pageSize = 100 } = params
-  return queryVisibleLayers(visibleLayers, polygon, wmsUrl, { paginate: true, pageSize })
+  const { polygon, visibleLayers, wmsUrl, pageSize = 100, layerFilters } = params
+  return queryVisibleLayers(visibleLayers, polygon, wmsUrl, { paginate: true, pageSize }, layerFilters)
 }

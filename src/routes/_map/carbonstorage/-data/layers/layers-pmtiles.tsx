@@ -17,7 +17,7 @@ const sco2Config: PMTilesLayerProps = {
     styleUrl: CARBONSTORAGE_STYLE_URL,
     sourceLayer: sco2LayerName,
     title: sco2Title,
-    visible: true,
+    visible: false,
     opacity: 0.8,
     sublayers: [
         {
