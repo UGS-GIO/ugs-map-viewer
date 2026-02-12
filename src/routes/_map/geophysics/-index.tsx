@@ -10,7 +10,7 @@ import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
 import { PROD_POSTGREST_URL } from '@/lib/constants';
-//import qFaultsWMSConfig  from './-data/layers/layers';
+//import { geothermalTEMLayerConfig} from './-data/layers/layers';
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox';
 
 export default function Map() {
@@ -24,15 +24,15 @@ export default function Map() {
         {
           type: 'postgREST',
           url: PROD_POSTGREST_URL,
-          functionName: "search_fault_data",
-          //layerName: qFaultsWMSConfig,
+          functionName: "search_geothermal_thermal_data",
+          //layerName: geothermalTEMLayerConfig,
           searchTerm: "search_term",
-          sourceName: 'Faults',
+          sourceName: 'Geothermal Thermal Data',
           crs: 'EPSG:4326',
           displayField: "concatnames",
-          params: { select: 'concatnames' }, // Exclude geometry from search for fast response
+          params: { select: 'station' }, // Exclude geometry from search for fast response
           headers: {
-            'Accept-Profile': 'hazards',
+            'Accept-Profile': 'minearals',
           }
         },
       ];
@@ -52,7 +52,7 @@ export default function Map() {
                         {/* ===== Top Heading ===== */}
                         <Layout.Header className='hidden md:flex'>
                             <TopNav />
-                            <div className='ml-auto flex items-center space-x-4'>
+                            <div className='flex items-center flex-1 min-w-0 md:flex-initial md:w-1/3 md:ml-auto space-x-2'>
                                 <div className="flex-1 min-w-0">
                                     <SearchCombobox
                                         config={searchConfig}
