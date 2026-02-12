@@ -99,7 +99,7 @@ const sco2GridSummaryWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: sco2GridSummaryWMSTitle,
-    visible: true,
+    visible: false,
     opacity: 0.75,
     crs: 'EPSG:4326',
     bivariateLegend: { xLabel: 'Cost', yLabel: 'Capacity' },
@@ -970,7 +970,7 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalWellsWMSTitle,
-    visible: true,
+    visible: false,
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsLayerName}`,
@@ -1131,7 +1131,7 @@ const geologicalInformationConfig: LayerProps = {
 const subsurfaceDataConfig: LayerProps = {
     type: 'group',
     title: 'Subsurface Data',
-    visible: true,
+    visible: false,
     layers: [
         wellWithTopsWMSConfig,
         geochemWellSitesWMSConfig,
