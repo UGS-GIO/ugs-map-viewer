@@ -783,7 +783,7 @@ const geophysicalDataConfig: LayerProps = {
 const geothermalWellsandSpringsConfig: LayerProps = {
     type: 'group',
     title: 'Geothermal Resources',
-    visible: true,
+    visible: false,
     layers: [
         heatflowLayerConfig,
         geothermalUseLayerConfig,

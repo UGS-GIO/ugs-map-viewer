@@ -1,5 +1,5 @@
 import { Link } from "@/components/ui/link";
-const appTitle = 'Geophysical & Geothermal Data Portal';
+const appTitle = 'Geophysical & Geothermal Data Portal (beta)';
 
 const references = (
     <ul className="list-disc ml-5 space-y-4">
