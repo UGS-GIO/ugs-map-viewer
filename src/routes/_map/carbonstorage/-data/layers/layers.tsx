@@ -113,12 +113,12 @@ const pipelinesWMSConfig: WMSLayerProps = {
 
 // SCO2 Grid Summary WMS Layer (aggregated - one row per grid cell, capacity color + cost labels)
 const sco2GridSummaryLayerName = 'sco2_grid_summary';
-const sco2GridSummaryWMSTitle = 'SCO2 Storage Grid';
+const sco2GridSummaryWMSTitle = 'Statewide Storage Resource Estimates';
 const sco2GridSummaryWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: sco2GridSummaryWMSTitle,
-    visible: false,
+    visible: true,
     opacity: 0.75,
     crs: 'EPSG:4326',
     bivariateLegend: { xLabel: 'Cost', yLabel: 'Capacity' },
@@ -322,7 +322,7 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: wellWithTopsWMSTitle,
-    visible: false,
+    visible: true,
     crs: 'EPSG:26912',
     sublayers: [
         {
@@ -1169,7 +1169,7 @@ const geologicalInformationConfig: LayerProps = {
 const subsurfaceDataConfig: LayerProps = {
     type: 'group',
     title: 'Subsurface Data',
-    visible: false,
+    visible: true,
     layers: [
         wellWithTopsWMSConfig,
         coresAndCuttingsWMSConfig,
