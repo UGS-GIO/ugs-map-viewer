@@ -47,12 +47,14 @@ interface PostgRESTConfig extends BaseConfig {
     placeholder?: string;
     groupByField?: string;
     groupLabels?: Record<string, string>;
+    secondaryDisplayField?: string;
 }
 
 type PostgRESTParams =
-    | { targetField: string; select?: string } // Search specific field
-    | { select: string; targetField?: never } // Select specific columns only
-    | { searchKeyParam: string, targetField?: never, select?: never }; // Function param name (less common now?)
+    | { targetField: string; select?: string; targetFields?: never } // Search specific field
+    | { targetFields: string[]; select?: string; targetField?: never } // OR search across multiple fields
+    | { select: string; targetField?: never; targetFields?: never } // Select specific columns only
+    | { searchKeyParam: string; targetField?: never; targetFields?: never; select?: never }; // Function param name
 
 export interface MasqueradeConfig extends BaseConfig {
     type: 'masquerade';
@@ -113,6 +115,15 @@ function formatName(name: string): string {
         .join(' ')
         .replace(/^Rpc\s/, '')
         .trim();
+}
+
+function getDisplayValue(properties: GeoJsonProperties, source: SearchSourceConfig): string {
+    const primary = String(properties?.[source.displayField] ?? '');
+    if (source.type === 'postgREST' && source.secondaryDisplayField) {
+        const secondary = String(properties?.[source.secondaryDisplayField] ?? '');
+        if (secondary) return `${primary} — ${secondary}`;
+    }
+    return primary;
 }
 
 function appendFunctionParams(params: URLSearchParams, source: PostgRESTConfig): void {
@@ -283,7 +294,10 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                         apiUrl = `${source.url}`;
                         const searchTermValue = debouncedSearch ? `%${debouncedSearch}%` : '';
 
-                        if (params && 'targetField' in params && params.targetField && searchTermValue) {
+                        if (params && 'targetFields' in params && params.targetFields && searchTermValue) {
+                            const orConditions = params.targetFields.map(f => `${f}.ilike.${searchTermValue}`).join(',');
+                            urlParams.set('or', `(${orConditions})`);
+                        } else if (params && 'targetField' in params && params.targetField && searchTermValue) {
                             urlParams.set(params.targetField, `ilike.${searchTermValue}`);
                         }
 
@@ -410,7 +424,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
 
         // Handle PostgREST feature selection
         if (sourceConfig.type === 'postgREST' && 'type' in itemData && itemData.type === 'Feature') {
-            const displayValue = String(itemData.properties?.[sourceConfig.displayField] ?? '');
+            const displayValue = getDisplayValue(itemData.properties, sourceConfig);
             setInputValue(displayValue || value);
 
             ensureLayerVisibleByTitle(sourceConfig.layerName);
@@ -705,7 +719,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
 
                                     const renderFeatureItems = (items: typeof features) =>
                                         items.map((feature, featureIndex) => {
-                                            const displayValue = String(feature.properties?.[source.displayField] ?? '');
+                                            const displayValue = getDisplayValue(feature.properties, source);
                                             if (!displayValue) return null;
                                             return (
                                                 <CommandItem
