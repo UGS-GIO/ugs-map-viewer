@@ -227,6 +227,8 @@ interface GenericMapContainerProps {
   onRegisterClearSpatialFilter?: (callback: () => void) => void
   /** Register callback for when layer is turned off (clears selection/highlights) */
   onRegisterLayerTurnedOff?: (callback: (layerTitle: string) => void) => void
+  /** Called when all selections are cleared (context menu, popup close, etc.) */
+  onClearSearch?: () => void
 }
 
 export default function GenericMapContainer({
@@ -240,6 +242,7 @@ export default function GenericMapContainer({
   onExternalDrawComplete,
   onRegisterClearSpatialFilter,
   onRegisterLayerTurnedOff,
+  onClearSearch,
 }: GenericMapContainerProps) {
   const isMobile = useIsMobile()
   const { viewMode, setViewMode, center, zoom, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs } = useMapUrlSync()
@@ -499,10 +502,11 @@ export default function GenericMapContainer({
   const handleClearAllSelections = useCallback(() => {
     setHighlightedFeatures([])
     clearAllSelections()
+    onClearSearch?.()
     // Close the sheet and clear box select bounds
     setPanelState(prev => ({ ...prev, isSheetOpen: false }))
     setMapInteraction(prev => ({ ...prev, boxSelectBounds: null }))
-  }, [clearAllSelections])
+  }, [clearAllSelections, onClearSearch])
 
   // Derived: click point for raster queries (center of click buffer)
   const clickPoint = useMemo(() => {

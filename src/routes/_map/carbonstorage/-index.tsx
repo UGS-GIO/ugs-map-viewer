@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useCallback } from 'react'
+import { useMemo, useEffect, useCallback, useRef } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import { Layout } from '@/components/layout/layout'
 import { TopNav } from '@/components/top-nav'
@@ -13,7 +13,7 @@ import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle } from './-data/layers/
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
-import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox'
+import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, type SearchComboboxHandle } from '@/components/sidebar/filter/search-combobox'
 import { PROD_POSTGREST_URL } from '@/lib/constants'
 
 // Carbon Storage specific filter mapping
@@ -52,6 +52,7 @@ export default function Map() {
   const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
   const { selectedLayerTitles, updateLayerSelection, setGroupVisibility, groupVisibility } = useLayerUrl()
   const { handleMapReady, contextValue, setClearSpatialFilterCallback, setLayerTurnedOffCallback } = useMapContextState();
+  const searchRef = useRef<SearchComboboxHandle>(null);
 
   // Get URL filters
   const searchParams = useSearch({ from: '/_map/carbonstorage/' })
@@ -127,6 +128,7 @@ export default function Map() {
               <div className='flex items-center flex-1 min-w-0 md:flex-initial md:w-1/3 md:ml-auto space-x-2'>
                 <div className="flex-1 min-w-0">
                   <SearchCombobox
+                    ref={searchRef}
                     config={searchConfig}
                     onFeatureSelect={onFeatureSelect}
                     onCollectionSelect={onCollectionSelect}
@@ -145,6 +147,7 @@ export default function Map() {
                 skipContextProvider
                 onRegisterClearSpatialFilter={setClearSpatialFilterCallback}
                 onRegisterLayerTurnedOff={setLayerTurnedOffCallback}
+                onClearSearch={() => searchRef.current?.clear()}
               />
             </Layout.Body>
 

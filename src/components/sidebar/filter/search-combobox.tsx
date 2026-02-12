@@ -1,10 +1,10 @@
-import { useRef, useState, useMemo, useCallback } from 'react';
+import { useRef, useState, useMemo, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { useQueries, useMutation } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Command, CommandInput, CommandList, CommandItem, CommandGroup, CommandEmpty, CommandSeparator } from '@/components/ui/command';
-import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FeatureCollection, Geometry, GeoJsonProperties, Feature } from 'geojson';
 import { featureCollection, point as turfPoint } from '@turf/helpers';
@@ -91,6 +91,10 @@ interface SearchComboboxProps {
     className?: string;
 }
 
+export interface SearchComboboxHandle {
+    clear: () => void;
+}
+
 // Pure helper functions (outside component to avoid recreation)
 function formatAddressCase(address: string | undefined | null): string {
     if (!address) return '';
@@ -142,12 +146,12 @@ function getSourceDisplayName(sourceConfig: SearchSourceConfig): string {
     return formatName(name || sourceConfig.url.split('/').pop() || 'Unknown Source');
 }
 
-function SearchCombobox({
+const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(function SearchCombobox({
     config,
     onFeatureSelect,
     onCollectionSelect,
     className,
-}: SearchComboboxProps) {
+}, ref) {
     const [open, setOpen] = useState(false);
     const [inputValue, setInputValue] = useState(''); // value shown in the combobox input/button
     const [search, setSearch] = useState(''); // internal search term driving debounced queries
@@ -205,6 +209,21 @@ function SearchCombobox({
         const foundLayer = findLayerByTitle(map, layerTitle);
         if (foundLayer) foundLayer.visible = true;
     }, [map]);
+
+    const clearSearch = useCallback(() => {
+        setInputValue('');
+        setSearch('');
+        setActiveSourceIndex(null);
+        setOpen(false);
+        if (map) clearGraphics(map);
+    }, [map]);
+
+    const handleClear = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        clearSearch();
+    }, [clearSearch]);
+
+    useImperativeHandle(ref, () => ({ clear: clearSearch }), [clearSearch]);
 
     const placeholderText = useMemo(() => {
         if (activeSourceIndex !== null && config[activeSourceIndex]) {
@@ -570,7 +589,12 @@ function SearchCombobox({
                         </span>
                         <span className='ml-2 flex-shrink-0'>
                             {(isLoading || isAnyMutationPending) && <Loader2 className="h-4 w-4 animate-spin" />}
-                            {!isLoading && !isAnyMutationPending && <ChevronsUpDown className="h-4 w-4 opacity-50" />}
+                            {!isLoading && !isAnyMutationPending && inputValue && (
+                                <X className="h-4 w-4 opacity-50 hover:opacity-100" onClick={handleClear} />
+                            )}
+                            {!isLoading && !isAnyMutationPending && !inputValue && (
+                                <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                            )}
                         </span>
                     </Button>
                 </PopoverTrigger>
@@ -732,7 +756,7 @@ function SearchCombobox({
                 </PopoverContent>
         </Popover>
     );
-}
+});
 
 // Shared CRS determination logic
 const determineCRS = (
