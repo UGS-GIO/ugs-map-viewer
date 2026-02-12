@@ -1172,9 +1172,9 @@ const subsurfaceDataConfig: LayerProps = {
     visible: true,
     layers: [
         wellWithTopsWMSConfig,
+        geochemWellSitesWMSConfig,
         coresAndCuttingsWMSConfig,
         oilGasFieldsWMSConfig,
-        geochemWellSitesWMSConfig,
         geothermalWellsWMSConfig,
         geothermalSpringsJoinsConfig,
         geothermalWellsJoinsConfig,
