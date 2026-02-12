@@ -80,11 +80,14 @@ export default function DataMap({
   // Get the raw map instance (memoized to avoid recreating on every render)
   const mapInstance = mapRef.current?.getMap() ?? null
 
-  // Get visible WMS layers - flatten groups recursively (defined early for use in callbacks)
+  // Get visible layers - flatten groups recursively (defined early for use in callbacks)
   const visibleWmsLayers = useMemo(() => flattenWmsLayers(layers), [layers])
-
-  // Get visible WFS layers - flatten groups recursively
   const visibleWfsLayers = useMemo(() => flattenWfsLayers(layers), [layers])
+
+  // Reverse for MapLibre draw order: first in config (top of sidebar) should draw on top.
+  // MapLibre draws later layers on top, so we reverse so config-first renders last.
+  const wmsDrawOrder = useMemo(() => [...visibleWmsLayers].reverse(), [visibleWmsLayers])
+  const wfsDrawOrder = useMemo(() => [...visibleWfsLayers].reverse(), [visibleWfsLayers])
 
   // Fetch WFS layer data using TanStack Query (automatic caching, retries, deduplication)
   const { data: wfsLayerData } = useWfsLayerData(visibleWfsLayers)
@@ -569,8 +572,8 @@ export default function DataMap({
           position="top-right"
         />
 
-        {/* WMS Layers */}
-        {visibleWmsLayers.map((layer) => {
+        {/* WMS Layers (reversed so config-first = drawn on top) */}
+        {wmsDrawOrder.map((layer) => {
           const layerName = getWmsLayerName(layer)
           const cqlFilter = layerFilters[layer.title]
           const layerWmsUrl = layer.url || wmsUrl
@@ -599,8 +602,8 @@ export default function DataMap({
           )
         })}
 
-        {/* WFS Layers (client-side vector) */}
-        {visibleWfsLayers.map((layer) => {
+        {/* WFS Layers (reversed so config-first = drawn on top) */}
+        {wfsDrawOrder.map((layer) => {
           const sourceId = getWfsSourceId(layer)
           const geojson = wfsLayerData.get(sourceId)
           if (!geojson) return null
