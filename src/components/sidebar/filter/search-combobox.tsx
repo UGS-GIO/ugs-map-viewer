@@ -561,41 +561,48 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                    <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={open}
-                        data-tour="search-box"
-                        className={cn(className,
-                            'w-full',
-                            'justify-between',
-                            'text-left h-auto min-h-10',
-                        )}
-                        aria-label={placeholderText}
-                    >
-                        <span
-                            className={cn(
-                                'truncate',
-                                isShaking && 'animate-shake text-destructive'
+                <div className="relative flex items-center">
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            role="combobox"
+                            aria-expanded={open}
+                            data-tour="search-box"
+                            className={cn(className,
+                                'w-full',
+                                'justify-between',
+                                'text-left h-auto min-h-10',
+                                inputValue && 'pr-8',
                             )}
+                            aria-label={placeholderText}
                         >
-                            {isAnyMutationPending ? 'Loading...' : (inputValue || placeholderText)}
-                        </span>
-                        <span className='ml-2 flex-shrink-0'>
-                            {(isLoading || isAnyMutationPending) && <Loader2 className="h-4 w-4 animate-spin" />}
-                            {!isLoading && !isAnyMutationPending && inputValue && (
-                                <X
-                                    className="h-4 w-4 opacity-50 hover:opacity-100"
-                                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); clearSearch(); }}
-                                />
-                            )}
-                            {!isLoading && !isAnyMutationPending && !inputValue && (
-                                <ChevronsUpDown className="h-4 w-4 opacity-50" />
-                            )}
-                        </span>
-                    </Button>
-                </PopoverTrigger>
+                            <span
+                                className={cn(
+                                    'truncate',
+                                    isShaking && 'animate-shake text-destructive'
+                                )}
+                            >
+                                {isAnyMutationPending ? 'Loading...' : (inputValue || placeholderText)}
+                            </span>
+                            <span className='ml-2 flex-shrink-0'>
+                                {(isLoading || isAnyMutationPending) && <Loader2 className="h-4 w-4 animate-spin" />}
+                                {!isLoading && !isAnyMutationPending && !inputValue && (
+                                    <ChevronsUpDown className="h-4 w-4 opacity-50" />
+                                )}
+                            </span>
+                        </Button>
+                    </PopoverTrigger>
+                    {!isLoading && !isAnyMutationPending && inputValue && (
+                        <button
+                            type="button"
+                            onClick={clearSearch}
+                            className="absolute right-2 rounded-sm p-0.5 opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none"
+                        >
+                            <X className="h-4 w-4" />
+                            <span className="sr-only">Clear search</span>
+                        </button>
+                    )}
+                </div>
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="end">
                     <Command ref={commandRef} shouldFilter={false} className='max-h-[400px]'>
                         <CommandInput
