@@ -74,20 +74,12 @@ async function getGeometryField(wfsUrl: string, typeName: string): Promise<strin
 }
 
 /**
- * Convert bounds to WKT POLYGON with SRID
- */
-function boundsToWkt(bounds: Bounds): string {
-  const { sw, ne } = bounds
-  return `SRID=4326;POLYGON((${sw.lng} ${sw.lat}, ${ne.lng} ${sw.lat}, ${ne.lng} ${ne.lat}, ${sw.lng} ${ne.lat}, ${sw.lng} ${sw.lat}))`
-}
-
-/**
- * Convert GeoJSON Polygon to WKT with SRID
+ * Convert GeoJSON Polygon to WKT (no SRID prefix — CRS comes from srsName param)
  */
 function polygonToWkt(polygon: Polygon): string {
   const ring = polygon.coordinates[0]
   const coords = ring.map(([lng, lat]) => `${lng} ${lat}`).join(', ')
-  return `SRID=4326;POLYGON((${coords}))`
+  return `POLYGON((${coords}))`
 }
 
 /**
@@ -113,7 +105,9 @@ export interface WfsQueryOptions {
 }
 
 /**
- * Build WFS GetFeature URL with CQL INTERSECTS filter
+ * Build WFS GetFeature URL with spatial filter
+ * Uses BBOX parameter for bounds queries (proper CRS handling across all layers)
+ * Uses CQL INTERSECTS for polygon queries (spatial filter drawing)
  */
 function buildWfsUrl(options: WfsQueryOptions): string {
   const {
@@ -135,16 +129,25 @@ function buildWfsUrl(options: WfsQueryOptions): string {
   url.searchParams.set('outputFormat', 'application/json')
   url.searchParams.set('srsName', crs)
 
-  // Use CQL INTERSECTS for all spatial queries
-  const wkt = 'type' in spatialFilter
-    ? polygonToWkt(spatialFilter)
-    : boundsToWkt(spatialFilter)
+  const isPolygon = 'type' in spatialFilter
 
-  const spatialCql = `INTERSECTS(${geometryField}, ${wkt})`
-  const cqlFilter = attributeFilter
-    ? `${spatialCql} AND (${attributeFilter})`
-    : spatialCql
-  url.searchParams.set('CQL_FILTER', cqlFilter)
+  if (isPolygon) {
+    // Polygon: use CQL INTERSECTS for arbitrary geometry
+    const wkt = polygonToWkt(spatialFilter)
+    const spatialCql = `INTERSECTS(${geometryField}, ${wkt})`
+    const cqlFilter = attributeFilter
+      ? `${spatialCql} AND (${attributeFilter})`
+      : spatialCql
+    url.searchParams.set('CQL_FILTER', cqlFilter)
+  } else {
+    // Bounds: use BBOX parameter — GeoServer handles CRS reprojection natively,
+    // avoiding SRID mismatch errors for layers with non-4326 native CRS
+    const { sw, ne } = spatialFilter
+    url.searchParams.set('BBOX', `${sw.lng},${sw.lat},${ne.lng},${ne.lat},EPSG:4326`)
+    if (attributeFilter) {
+      url.searchParams.set('CQL_FILTER', attributeFilter)
+    }
+  }
 
   // WFS 1.1.0 uses maxFeatures instead of count
   if (count) url.searchParams.set('maxFeatures', String(count))
