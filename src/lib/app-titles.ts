@@ -9,7 +9,7 @@ export const APP_TITLES: Record<string, string> = {
   'wetlands': 'Utah Wetlands Portal',
   'wetlandplants': 'Wetland and Riparian Plants of Utah',
   'geophysics': 'Geophysical & Geothermal Data Portal',
-  'carbonstorage': 'Carbon Storage Portal (beta)',
+  'carbonstorage': 'Carbon Storage Portal',
 };
 
 export function getAppTitle(page: string): string {
