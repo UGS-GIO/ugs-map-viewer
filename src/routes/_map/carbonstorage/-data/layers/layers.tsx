@@ -829,7 +829,7 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
 
 // Geochemistry Well Sites WMS Layer
 const geochemWellSitesLayerName = 'enmin_ccus_geochemistry_current';
-const geochemWellSitesWMSTitle = 'Geochemistry Well Sites';
+const geochemWellSitesWMSTitle = 'Wells With Reservoir Data';
 const geochemWellSitesWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
