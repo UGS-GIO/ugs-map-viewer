@@ -826,6 +826,73 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
     ],
 };
 
+// Geochemistry Well Sites WMS Layer
+const geochemWellSitesLayerName = 'enmin_ccus_geochemistry_current';
+const geochemWellSitesWMSTitle = 'Geochemistry Well Sites';
+const geochemWellSitesWMSConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: geochemWellSitesWMSTitle,
+    visible: false,
+    crs: 'EPSG:3857',
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${geochemWellSitesLayerName}`,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Well Name': { field: 'wellname', type: 'string' },
+                'UWI': { field: 'uwi', type: 'string' },
+                'Operator': { field: 'operator', type: 'string' },
+                'Data Type': { field: 'datatype', type: 'string' },
+                'Geo-region': { field: 'georegion', type: 'string' },
+                'Field Name': { field: 'fieldname', type: 'string' },
+                'County': { field: 'section', type: 'string' },
+                'Location': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props: GeoJsonProperties | null | undefined) => {
+                        const sec = props?.['section_1'];
+                        const twp = props?.['township'];
+                        const tDir = props?.['t_direction'];
+                        const rng = props?.['range'];
+                        const rDir = props?.['r_direction'];
+                        if (!twp && !rng) return '';
+                        const parts: string[] = [];
+                        if (sec) parts.push(`Sec ${sec}`);
+                        if (twp) parts.push(`T${twp}${tDir || ''}`);
+                        if (rng) parts.push(`R${rng}${rDir || ''}`);
+                        return parts.join(', ');
+                    }
+                },
+            },
+            relatedTables: [
+                {
+                    fieldLabel: 'Geochemistry Data',
+                    matchingField: 'uwi',
+                    targetField: 'uwi',
+                    url: PROD_POSTGREST_URL + '/ccus_geochem_data',
+                    headers: {
+                        "Accept-Profile": 'emp',
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    displayFields: [
+                        { field: 'formation', label: 'Formation' },
+                        { field: 'depth_top_interval', label: 'Depth (ft)' },
+                        { field: 'porosity_percent', label: 'Porosity (%)' },
+                        { field: 'perm_md_klink', label: 'Permeability (mD)' },
+                        { field: 'salinity_ppm', label: 'Salinity (ppm)' },
+                    ],
+                    sortBy: 'depth_top_interval',
+                    sortDirection: 'asc',
+                    displayAs: 'table'
+                },
+            ],
+        },
+    ],
+};
+
 // Energy and Minerals Group Layer
 const ccsResourcesConfig: LayerProps = {
     type: 'group',
@@ -874,7 +941,8 @@ const subsurfaceDataConfig: LayerProps = {
     layers: [
         wellWithTopsWMSConfig,
         coresAndCuttingsWMSConfig,
-        oilGasFieldsWMSConfig
+        oilGasFieldsWMSConfig,
+        geochemWellSitesWMSConfig,
     ]
 }
 
