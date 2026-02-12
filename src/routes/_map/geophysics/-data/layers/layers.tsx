@@ -125,6 +125,7 @@ const SITLAConfig: LayerProps = {
     },
 };
 
+
 const faultsLayerName = 'faults_m-179dm';
 const faultsWMSTitle = 'Utah Faults';
 const faultsWMSConfig: WMSLayerProps = {
@@ -259,7 +260,7 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
 
 // geothermalWells WMS Layer
 const geothermalWellsLayerName = 'mart_geothermal_wellsandsprings_current';
-const geothermalWellsWMSTitle = 'Geothermal Wells & Springs';
+const geothermalWellsWMSTitle = 'Geothermal Wells & Springs (UGS)';
 const geothermalWellsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -405,8 +406,8 @@ const heatflowLayerConfig: WMSLayerProps = {
 
 
 // gravity stations
-const gravityStationsLayeName = 'enmin_geophysics_ugsobsgrav_current';
-const gravityStationsLayeTitle = 'Gravity Stations';
+const gravityStationsLayeName = 'enmin_geophysics_ugsgravity_current';
+const gravityStationsLayeTitle = 'Modern Gravity Stations';
 const gravityStationsLayerConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -423,8 +424,8 @@ const gravityStationsLayerConfig: WMSLayerProps = {
                     field: 'custom',
                     type: 'custom',
                     transform: (props) => {
-                        const depthStart = props?.['latitude_wgs84'];
-                        const depthEnd = props?.['longitude_wgs84'];
+                        const depthStart = props?.['lat_wgs84'];
+                        const depthEnd = props?.['long_wgs84'];
                         return `${depthStart} , ${depthEnd}`;
                     }
                 },
@@ -433,7 +434,7 @@ const gravityStationsLayerConfig: WMSLayerProps = {
                     field: 'custom',
                     type: 'custom',
                     transform: (props) => {
-                        const bht = props?.['observed'];
+                        const bht = props?.['observed_grav_mgal'];
                         return `${bht} mGal`;
                     }
                 },
@@ -482,7 +483,7 @@ const geothermalUseLayerConfig: WMSLayerProps = {
 
 // deep sedimentary basins
 const deepSedimentaryBasinsLayerName = 'geothermal_deepsedbasin_current';
-const deepSedimentaryBasinsLayerTitle = 'Deep Sedimentary Basins';
+const deepSedimentaryBasinsLayerTitle = 'Geothermal Deep Sedimentary Basins';
 const deepSedimentaryBasinsLayerConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -502,7 +503,7 @@ const deepSedimentaryBasinsLayerConfig: WMSLayerProps = {
 
 // deep sedimentary basins
 const potentialResourcesLayerName = 'geothermal_potentialresourcearea_current';
-const potentialResourcesLayerTitle = 'Potential Resource Areas';
+const potentialResourcesLayerTitle = 'Potential Geothermal Resource Areas';
 const potentialResourcesLayerConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -512,9 +513,9 @@ const potentialResourcesLayerConfig: WMSLayerProps = {
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${potentialResourcesLayerName}`,
             popupEnabled: false,
-            queryable: false,
+            queryable: true,
             popupFields: {
-                'Name': { field: 'name', type: 'string' },
+                'ID': { field: 'id', type: 'string' },
             },
         },
     ],
@@ -522,7 +523,7 @@ const potentialResourcesLayerConfig: WMSLayerProps = {
 
 // Known Geothermal Resource Areas (KGRA)
 const geothermalKgraLayerName = 'geothermal_kgra_current';
-const geothermalKgraLayerTitle = 'Known Geothermal Resource Areas (KGRA)';
+const geothermalKgraLayerTitle = 'Known Geothermal Resource Areas';
 const geothermalKgraLayerConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -540,9 +541,10 @@ const geothermalKgraLayerConfig: WMSLayerProps = {
     ],
 };
 
+
 // Known Geothermal Resource Areas (KGRA)
 const pacesLegacyLayerName = 'enmin_geophysics_pacesgravity_current';
-const pacesLegacyLayerTitle = 'PACES Legacy Gravity Stations';
+const pacesLegacyLayerTitle = 'Legacy Gravity Stations';
 const pacesLegacyLayerConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -562,7 +564,7 @@ const pacesLegacyLayerConfig: WMSLayerProps = {
 
 // TEM data
 const geothermalTEMLayerName = 'enmin_geophysics_tem_current';
-const geothermalTEMLayerTitle = 'TEM Data';
+const geothermalTEMLayerTitle = 'Transient Electromagnetic Data (TEM)';
 const geothermalTEMLayerConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -576,30 +578,57 @@ const geothermalTEMLayerConfig: WMSLayerProps = {
             popupFields: {
                 'Station': { field: 'station', type: 'string' },
                 'Date': { field: 'date', type: 'string' },
-                'Time': { field: 'time', type: 'string' },
-                'Configuration': { field: 'configuration', type: 'string' },
-                'Resistor': { field: 'resistor__', type: 'string' },
-                'Elevation': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: (props) => {
-                        const vars = props?.['elev_geoid_navd88_m'];
-                        return `${vars} Meters`;
-                    }
-                },
-                'Data Quality': { field: 'dataquality', type: 'string' },
-                'Project': { field: 'project', type: 'string' },
-                'Notes': { field: 'notes', type: 'string' },
-                'Archive Link': { field: 'archivelink', type: 'string' }
+                'Archive Link': { field: 'archivelink', type: 'string' },
             },
         },
     ],
 };
 
+// MT Stations
+const mtStationsLayerName = 'enmin_geophysics_mtstations_current';
+const mtStationsLayerTitle = 'Magnetotelluric Data (MT)';
+const mtStationsLayerConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: mtStationsLayerTitle,
+    visible: true,
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${mtStationsLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Station': { field: 'station', type: 'string' },
+                'Project': { field: 'project', type: 'string' },
+                'Location (WGS84)': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const lat = props?.['lat_wgs84'];
+                        const lon = props?.['long_wgs84'];
+                        return lat != null && lon != null ? `${lat}, ${lon}` : '';
+                    }
+                },
+            },
+            linkFields: {
+                'link': {
+                    baseUrl: '',
+                    transform: (value: string) => {
+                        if (!value) return [{ href: '', label: '' }];
+                        return [{
+                            href: value,
+                            label: 'Archive Link',
+                        }];
+                    }
+                }
+            }
+        },
+    ],
+};
 
 // Wells and Springs with Joins WMS Layer
 const geothermalWellsJoinsName = 'enmin_geothermal_ingenious_wellfeatures_current';
-const geothermalWellsJoinsTitle = 'Ingenious Wells';
+const geothermalWellsJoinsTitle = 'Geothermal Wells (INGENIOUS)';
 const geothermalWellsJoinsConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -655,7 +684,7 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
 
 // Springs with Joins WMS Layer
 const geothermalSpringsJoinsName = 'enmin_geothermal_ingenious_springfeatures_current';
-const geothermalSpringsJoinsTitle = 'Ingenious Springs';
+const geothermalSpringsJoinsTitle = 'Geothermal Springs (INGENIOUS)';
 const geothermalSpringsJoinsConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -704,65 +733,67 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
     ],
 };
 
-
-
-// ingqFaults WMS Layer
-/* const ingqFaultsLayerName = 'mart_geothermal_qfaults_ingenious_current';
-const ingqFaultsWMSTitle = 'Great Basin Faults (INGENIOUS Project)';
-const ingqFaultsWMSConfig: WMSLayerProps = {
+// CGBA Gravity Anomalies Raster WMS Layer  (following hazards ground shaking raster example)
+const cgbaRasterLayerName = 'enmin_geophysics_gravanomalyraster_current';
+const cgbaRasterWMSTitle = 'Complete Bouguer Gravity Anomaly';
+const cgbaRasterWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
-    title: ingqFaultsWMSTitle,
+    title: cgbaRasterWMSTitle,
     visible: false,
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${ingqFaultsLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'Name': { field: 'name', type: 'string' },
-                'Slip Rate': { field: 'sliprate_n', type: 'string' },
-                'Recency N': { field: 'recency_n', type: 'string' },
-                'Recency CI': { field: 'recency_ci', type: 'string' },
-                'Age': { field: 'age', type: 'string' },
-                'Mapped Scale': { field: 'mappedscal', type: 'string' },
-                'CFM URL': { field: 'cfm_url', type: 'string' },
-                'Geometry': { field: 'geometry_c', type: 'string' },
-                'Dip Direction': { field: 'dipdirect', type: 'string' },
-                'FType': { field: 'ftype_', type: 'string' },
-                'Comments': { field: 'comments', type: 'string' },
-                'Notes': { field: 'notes', type: 'string' }
+    opacity: 0.9,
+    crs: 'EPSG:26912',
+        sublayers: [
+            {
+                name: `${ENERGY_MINERALS_WORKSPACE}:${cgbaRasterLayerName}`,
+                popupEnabled: false,
+                queryable: true,
+                popupFields: {
+                    // empty in favor or using the rasterSource
+                },
+                rasterSource: {
+                    url: `${PROD_GEOSERVER_URL}/wms`,
+                    headers: {
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    layerName: `${ENERGY_MINERALS_WORKSPACE}:${cgbaRasterLayerName}`,
+                    valueField: "GRAY_INDEX",
+                    valueLabel: "Peak Ground Acceleration",
+                    transform: (value: number) => `${value} g`,
+                }
+    
             },
-        },
-    ],
-}; */
-
-
+        ],
+};
 
 const geophysicalDataConfig: LayerProps = {
     type: 'group',
     title: 'Geophysical Data',
     visible: true,
     layers: [
-        gravityStationsLayerConfig,
+        mtStationsLayerConfig,
         geothermalTEMLayerConfig,
-        pacesLegacyLayerConfig
+        gravityStationsLayerConfig,
+        pacesLegacyLayerConfig,
+        cgbaRasterWMSConfig
     ]
 }
 
 const geothermalWellsandSpringsConfig: LayerProps = {
     type: 'group',
     title: 'Geothermal Resources',
-    visible: true,
+    visible: false,
     layers: [
-        geothermalWellsWMSConfig,
         heatflowLayerConfig,
         geothermalUseLayerConfig,
+        geothermalWellsJoinsConfig,
+        geothermalSpringsJoinsConfig,
+        geothermalWellsWMSConfig,
         geothermalKgraLayerConfig,
         deepSedimentaryBasinsLayerConfig,
         potentialResourcesLayerConfig,
-        geothermalWellsJoinsConfig,
-        geothermalSpringsJoinsConfig
+        
     ]
 }
 
@@ -774,7 +805,7 @@ const geologicalInformationConfig: LayerProps = {
         qFaultsWMSConfig,
         //ingqFaultsWMSConfig,
         faultsWMSConfig,
-        seamlessGeolunitsWMSConfig
+        seamlessGeolunitsWMSConfig,
     ]
 }
 
@@ -787,7 +818,7 @@ const infrastructureAndLandUseConfig: LayerProps = {
         roadsWMSConfig,
         railroadsWMSConfig,
         transmissionLinesWMSConfig,
-        SITLAConfig,
+        SITLAConfig
     ]
 }
 
