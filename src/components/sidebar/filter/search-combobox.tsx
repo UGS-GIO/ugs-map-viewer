@@ -218,11 +218,6 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
         if (map) clearGraphics(map);
     }, [map]);
 
-    const handleClear = useCallback((e: React.MouseEvent) => {
-        e.stopPropagation();
-        clearSearch();
-    }, [clearSearch]);
-
     useImperativeHandle(ref, () => ({ clear: clearSearch }), [clearSearch]);
 
     const placeholderText = useMemo(() => {
@@ -590,7 +585,10 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                         <span className='ml-2 flex-shrink-0'>
                             {(isLoading || isAnyMutationPending) && <Loader2 className="h-4 w-4 animate-spin" />}
                             {!isLoading && !isAnyMutationPending && inputValue && (
-                                <X className="h-4 w-4 opacity-50 hover:opacity-100" onClick={handleClear} />
+                                <X
+                                    className="h-4 w-4 opacity-50 hover:opacity-100"
+                                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); clearSearch(); }}
+                                />
                             )}
                             {!isLoading && !isAnyMutationPending && !inputValue && (
                                 <ChevronsUpDown className="h-4 w-4 opacity-50" />
