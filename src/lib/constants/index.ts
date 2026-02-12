@@ -49,6 +49,10 @@ export const layerFetchConfigs: Record<string, LayerFetchConfig[]> = {
         tableName: 'ccuslayerinfo',
         acceptProfile: 'emp'
     }],
+    'geophysics': [{
+        tableName: 'geophysicslayerinfo',
+        acceptProfile: 'emp'
+    }],
 };
 
 export const getLayerFetchConfig = (page: string | null): LayerFetchConfig[] | null => {
