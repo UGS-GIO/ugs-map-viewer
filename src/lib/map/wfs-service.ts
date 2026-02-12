@@ -143,9 +143,12 @@ function buildWfsUrl(options: WfsQueryOptions): string {
     // Bounds: use BBOX parameter — GeoServer handles CRS reprojection natively,
     // avoiding SRID mismatch errors for layers with non-4326 native CRS
     const { sw, ne } = spatialFilter
-    url.searchParams.set('BBOX', `${sw.lng},${sw.lat},${ne.lng},${ne.lat},EPSG:4326`)
     if (attributeFilter) {
-      url.searchParams.set('CQL_FILTER', attributeFilter)
+      // Combine spatial + attribute into single CQL_FILTER to avoid BBOX/CQL param conflict
+      const spatialCql = `BBOX(${geometryField},${sw.lng},${sw.lat},${ne.lng},${ne.lat},'EPSG:4326')`
+      url.searchParams.set('CQL_FILTER', `${spatialCql} AND (${attributeFilter})`)
+    } else {
+      url.searchParams.set('BBOX', `${sw.lng},${sw.lat},${ne.lng},${ne.lat},EPSG:4326`)
     }
   }
 
