@@ -47,19 +47,6 @@ export const clearGraphics = (
 };
 
 /**
- * Create a pin marker on the MapLibre map
- */
-export function createPinGraphic(
-  lat: number,
-  long: number,
-  map: MapLibreMap
-) {
-  if (!map) return;
-  const provider = createHighlightProvider(map);
-  provider.createPinGraphic(lat, long);
-}
-
-/**
  * Feature-like object with optional geometry (e.g., ClickedFeature)
  */
 interface FeatureLike {

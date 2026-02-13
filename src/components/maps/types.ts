@@ -67,4 +67,8 @@ export interface DataMapProps {
   onFeatureBboxChange?: (bbox: BoundsBox | null) => void
   /** Callback when selection should be cleared (from context menu) */
   onClearSelection?: () => void
+  /** Pin marker coordinates (from shared link or context menu) */
+  pinCoords?: { lat: number; lon: number } | null
+  /** Callback to set or clear the pin */
+  onPinChange?: (coords: { lat: number; lon: number } | null) => void
 }

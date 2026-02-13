@@ -1,6 +1,6 @@
 import { useRef, useMemo, useCallback, useState, useEffect } from 'react'
 import { useWfsLayerData, getWfsSourceId, queryWfsLayersInScreenBbox, queryWfsLayersAtPoint, type WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
-import Map, { NavigationControl, Source, Layer, MapLayerMouseEvent } from 'react-map-gl/maplibre'
+import Map, { NavigationControl, Source, Layer, Marker, MapLayerMouseEvent } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
@@ -61,6 +61,8 @@ export default function DataMap({
   featureBbox,
   onFeatureBboxChange,
   onClearSelection,
+  pinCoords,
+  onPinChange,
 }: DataMapProps) {
   const mapRef = useRef<MapRef>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -535,11 +537,12 @@ export default function DataMap({
         onOpenChange={setContextMenuOpen}
         coords={contextMenuCoords}
         onQueryHere={onFeatureClick ? handleQueryHere : undefined}
-        onClearSelection={highlightFeatures.length > 0 ? onClearSelection : undefined}
+        onClearSelection={onClearSelection}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onCenterHere={handleCenterHere}
-        hasSelection={highlightFeatures.length > 0}
+        onPinLocation={onPinChange ? (coords) => onPinChange(coords) : undefined}
+        hasSelection={highlightFeatures.length > 0 || !!pinCoords}
         currentZoom={currentZoomRef.current}
       />
       <div ref={containerRef} className="relative w-full h-full">
@@ -565,6 +568,8 @@ export default function DataMap({
           onDrawModeChange={onDrawModeChange}
           hasFilter={!!spatialFilter}
           onClearFilter={onSpatialFilterChange ? () => onSpatialFilterChange(null) : undefined}
+          hasPin={!!pinCoords}
+          onClearPin={onPinChange ? () => onPinChange(null) : undefined}
           boxSelectActive={boxSelectMode}
           onBoxSelectToggle={onBoxSelectModeChange}
           isAdditiveMode={isAdditiveMode}
@@ -675,6 +680,19 @@ export default function DataMap({
 
         {/* Frozen box select bounds visualization */}
         {boxSelectBounds && <ClickBufferLayer bounds={boxSelectBounds} />}
+
+        {/* Pin marker from shared link or context menu */}
+        {pinCoords && (
+          <Marker key={`${pinCoords.lat},${pinCoords.lon}`} longitude={pinCoords.lon} latitude={pinCoords.lat} anchor="bottom">
+            <svg width="22" height="34" viewBox="0 0 22 34" className="drop-shadow-md animate-in zoom-in-0 duration-300 origin-bottom">
+              <path
+                d="M11 0C4.925 0 0 4.925 0 11c0 9 11 23 11 23s11-14 11-23C22 4.925 17.075 0 11 0z"
+                className="fill-primary"
+              />
+              <circle cx="11" cy="11" r="4" className="fill-primary-foreground" />
+            </svg>
+          </Marker>
+        )}
 
         {children}
       </Map>

@@ -245,7 +245,7 @@ export default function GenericMapContainer({
   onClearSearch,
 }: GenericMapContainerProps) {
   const isMobile = useIsMobile()
-  const { viewMode, setViewMode, center, zoom, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs } = useMapUrlSync()
+  const { viewMode, setViewMode, center, zoom, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
   const { setNavOpened } = useSidebar()
   const rawLayersConfig = useGetLayerConfigsData(layerConfigKey)
   const { selectedLayerTitles, isInitialized, groupVisibility } = useLayerUrl()
@@ -502,11 +502,12 @@ export default function GenericMapContainer({
   const handleClearAllSelections = useCallback(() => {
     setHighlightedFeatures([])
     clearAllSelections()
+    setPopupCoords(null)
     onClearSearch?.()
     // Close the sheet and clear box select bounds
     setPanelState(prev => ({ ...prev, isSheetOpen: false }))
     setMapInteraction(prev => ({ ...prev, boxSelectBounds: null }))
-  }, [clearAllSelections, onClearSearch])
+  }, [clearAllSelections, setPopupCoords, onClearSearch])
 
   // Derived: click point for raster queries (center of click buffer)
   const clickPoint = useMemo(() => {
@@ -579,7 +580,7 @@ export default function GenericMapContainer({
             center={center}
             zoom={zoom}
             highlightFeatures={highlightedFeatures}
-            onFeatureClick={handleFeatureClick}
+            onFeatureClick={(...args) => { setPopupCoords(null); handleFeatureClick(...args) }}
             onMoveEnd={setMapPosition}
             layerFilters={layerFilters}
             onMapReady={handleMapReady}
@@ -599,6 +600,8 @@ export default function GenericMapContainer({
             isAdditiveMode={isAdditiveMode}
             onAdditiveModeToggle={() => additiveModeToggled ? setActiveMode('none') : setActiveMode('additive')}
             onClearSelection={handleClearAllSelections}
+            pinCoords={popupCoords}
+            onPinChange={setPopupCoords}
           />
         </div>
 
