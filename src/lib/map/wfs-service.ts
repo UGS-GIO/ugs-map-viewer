@@ -74,12 +74,15 @@ async function getGeometryField(wfsUrl: string, typeName: string): Promise<strin
 }
 
 /**
- * Convert GeoJSON Polygon to WKT (no SRID prefix — CRS comes from srsName param)
+ * Convert GeoJSON Polygon to WKT with SRID prefix.
+ * CQL INTERSECTS evaluates in the layer's native CRS, so we must declare
+ * our polygon's CRS explicitly. Without this, layers stored in EPSG:3857
+ * silently return 0 results when queried with EPSG:4326 coordinates.
  */
 function polygonToWkt(polygon: Polygon): string {
   const ring = polygon.coordinates[0]
   const coords = ring.map(([lng, lat]) => `${lng} ${lat}`).join(', ')
-  return `POLYGON((${coords}))`
+  return `SRID=4326;POLYGON((${coords}))`
 }
 
 /**
