@@ -336,39 +336,4 @@ export class MapLibreHighlight implements HighlightProvider {
 
     return true;
   }
-
-  createPinGraphic(lat: number, lon: number): void {
-    const sourceId = `pin-${Date.now()}`;
-    const layerId = `pin-layer-${sourceId}`;
-
-    const geoJsonFeature: Feature = {
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: [lon, lat]
-      },
-      properties: {}
-    };
-
-    this.map.addSource(sourceId, {
-      type: 'geojson',
-      data: geoJsonFeature
-    });
-
-    this.highlightSources.add(sourceId);
-
-    const pinLayer: LayerSpecification = {
-      id: layerId,
-      type: 'circle',
-      source: sourceId,
-      paint: {
-        'circle-radius': 10,
-        'circle-color': '#ff0000',
-        'circle-stroke-width': 2,
-        'circle-stroke-color': '#ffffff'
-      }
-    };
-
-    this.map.addLayer(pinLayer);
-  }
 }

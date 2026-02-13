@@ -41,6 +41,7 @@ interface MapContextMenuProps {
   onZoomIn?: (coords: { lng: number; lat: number }) => void
   onZoomOut?: (coords: { lng: number; lat: number }) => void
   onCenterHere?: (coords: { lng: number; lat: number }) => void
+  onPinLocation?: (coords: { lat: number; lon: number }) => void
   hasSelection?: boolean
   currentZoom?: number
 }
@@ -54,6 +55,7 @@ export function MapContextMenu({
   onZoomIn,
   onZoomOut,
   onCenterHere,
+  onPinLocation,
   hasSelection = false,
   currentZoom = 10,
 }: MapContextMenuProps) {
@@ -94,11 +96,19 @@ export function MapContextMenu({
     const url = new URL(window.location.href)
     url.searchParams.set('lat', coords.lat.toFixed(6))
     url.searchParams.set('lon', coords.lng.toFixed(6))
-    url.searchParams.set('scale', zoomToScale(currentZoom).toString())
+    url.searchParams.set('zoom', String(Math.round(currentZoom * 100) / 100))
+    // Add pin marker at the shared location
+    url.searchParams.set('popup_lat', coords.lat.toFixed(6))
+    url.searchParams.set('popup_lon', coords.lng.toFixed(6))
+    // Remove transient selection state from shared link
+    for (const key of ['click_bbox', 'feature_bbox', 'features', 'view']) {
+      url.searchParams.delete(key)
+    }
     navigator.clipboard.writeText(url.toString())
+    onPinLocation?.({ lat: coords.lat, lon: coords.lng })
     toast({ description: 'Link copied to clipboard' })
     onOpenChange(false)
-  }, [coords, currentZoom, toast, onOpenChange])
+  }, [coords, currentZoom, toast, onOpenChange, onPinLocation])
 
   // Open in external map services
   const handleOpenInMaps = useCallback((service: 'google' | 'apple' | 'osm' | 'bing' | 'ugs') => {

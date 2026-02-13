@@ -35,11 +35,4 @@ export interface HighlightProvider {
    * @param title - Optional title to filter which graphics to remove
    */
   clearGraphics(title?: string): void;
-
-  /**
-   * Create a pin marker at specified coordinates
-   * @param lat - Latitude
-   * @param lon - Longitude
-   */
-  createPinGraphic(lat: number, lon: number): void;
 }

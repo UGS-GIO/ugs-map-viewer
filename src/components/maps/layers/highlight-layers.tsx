@@ -43,22 +43,22 @@ export function HighlightLayers({ features }: HighlightLayersProps) {
   return (
     <Source id="highlight-source" type="geojson" data={geoJson}>
       {hasLines && (
-        <Layer id="highlight-line-shadow" type="line" source="highlight-source" paint={HIGHLIGHT_STYLES.line.shadow} />
+        <Layer id="highlight-line-shadow" type="line" source="highlight-source" filter={['==', '$type', 'LineString']} paint={HIGHLIGHT_STYLES.line.shadow} />
       )}
       {hasLines && (
-        <Layer id="highlight-line-main" type="line" source="highlight-source" paint={HIGHLIGHT_STYLES.line.main} />
+        <Layer id="highlight-line-main" type="line" source="highlight-source" filter={['==', '$type', 'LineString']} paint={HIGHLIGHT_STYLES.line.main} />
       )}
       {hasPolygons && (
-        <Layer id="highlight-fill" type="fill" source="highlight-source" paint={HIGHLIGHT_STYLES.fill.main} />
+        <Layer id="highlight-fill" type="fill" source="highlight-source" filter={['==', '$type', 'Polygon']} paint={HIGHLIGHT_STYLES.fill.main} />
       )}
       {hasPolygons && (
-        <Layer id="highlight-fill-stroke" type="line" source="highlight-source" paint={HIGHLIGHT_STYLES.fill.stroke} />
+        <Layer id="highlight-fill-stroke" type="line" source="highlight-source" filter={['==', '$type', 'Polygon']} paint={HIGHLIGHT_STYLES.fill.stroke} />
       )}
       {hasPoints && (
-        <Layer id="highlight-point-shadow" type="circle" source="highlight-source" paint={HIGHLIGHT_STYLES.circle.shadow} />
+        <Layer id="highlight-point-shadow" type="circle" source="highlight-source" filter={['==', '$type', 'Point']} paint={HIGHLIGHT_STYLES.circle.shadow} />
       )}
       {hasPoints && (
-        <Layer id="highlight-point-main" type="circle" source="highlight-source" paint={HIGHLIGHT_STYLES.circle.main} />
+        <Layer id="highlight-point-main" type="circle" source="highlight-source" filter={['==', '$type', 'Point']} paint={HIGHLIGHT_STYLES.circle.main} />
       )}
     </Source>
   )

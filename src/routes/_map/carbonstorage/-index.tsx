@@ -25,6 +25,23 @@ const searchConfig: SearchSourceConfig[] = [
   defaultMasqueradeConfig,
   {
     type: 'postgREST',
+    url: `${PROD_POSTGREST_URL}/wellswithtops_hascore`,
+    sourceName: 'Wells Database',
+    layerName: wellWithTopsWMSTitle,
+    crs: 'EPSG:26912',
+    displayField: 'api',
+    secondaryDisplayField: 'wellname',
+    params: {
+      targetFields: ['api', 'wellname'],
+      select: 'api,wellname,shape',
+    },
+    headers: {
+      'Accept-Profile': 'emp',
+      'Accept': 'application/geo+json',
+    },
+  },
+  {
+    type: 'postgREST',
     url: PROD_POSTGREST_URL,
     functionName: "search_geologic_units",
     searchTerm: "search_term",
@@ -83,6 +100,7 @@ export default function Map() {
   // Map child layers to their parent group for auto-visibility
   const LAYER_PARENT_GROUP: Record<string, string> = {
     [seamlessGeolunitsWMSTitle]: 'Geological Information',
+    [wellWithTopsWMSTitle]: 'Subsurface Data',
   }
 
   // Auto-select the associated layer and its parent group when a search result is picked

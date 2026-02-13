@@ -17,6 +17,9 @@ interface MapToolsControlProps {
   // Multi-select / additive mode
   isAdditiveMode?: boolean
   onAdditiveModeToggle?: () => void
+  // Pin marker
+  hasPin?: boolean
+  onClearPin?: () => void
   position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 }
 
@@ -29,6 +32,8 @@ export function MapToolsControl({
   onBoxSelectToggle,
   isAdditiveMode = false,
   onAdditiveModeToggle,
+  hasPin = false,
+  onClearPin,
   position = 'top-right',
 }: MapToolsControlProps) {
   const control = useControl<PortalControl>(
@@ -122,6 +127,19 @@ export function MapToolsControl({
               style={{ ...buttonStyle, color: '#dc2626' }}
               onClick={onClearFilter}
               title="Clear spatial filter"
+            >
+              <X size={18} strokeWidth={1.5} />
+            </button>
+          )}
+
+          {/* Clear pin marker */}
+          {hasPin && onClearPin && (
+            <button
+              type="button"
+              className="maplibregl-ctrl-icon"
+              style={{ ...buttonStyle, color: '#dc2626' }}
+              onClick={onClearPin}
+              title="Clear pin marker"
             >
               <X size={18} strokeWidth={1.5} />
             </button>

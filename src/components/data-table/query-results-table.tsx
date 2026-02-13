@@ -716,7 +716,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                                         checked={column.getIsVisible()}
                                         onCheckedChange={(value) => column.toggleVisibility(!!value)}
                                     />
-                                    <span>{column.columnDef.meta?.columnConfig?.label || column.id}</span>
+                                    <span>{column.columnDef.meta?.columnConfig?.label || (typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id)}</span>
                                 </label>
                             ))}
                     </DropdownMenuContent>
