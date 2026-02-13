@@ -93,7 +93,7 @@ export function BivariateLegend({ wmsUrl, layerName, xLabel, yLabel }: Bivariate
         <div
             role="img"
             aria-label={`Bivariate legend: ${yLabel} (vertical axis) vs ${xLabel} (horizontal axis), ${grid.rows} by ${grid.cols} grid`}
-            className="grid items-center text-xs text-foreground gap-1 mx-auto w-4/5"
+            className="grid items-center text-xs text-foreground gap-1 w-4/5"
             style={{ gridTemplateColumns: colTemplate }}
         >
             {/* X-axis label spans color columns */}
