@@ -20,7 +20,7 @@ jobs:
         run: npm ci
 
       - name: Build Project
-        run: npm run build
+        run: npm run build -- --mode preview
 
       - name: Deploy to Firebase Hosting Preview Channel (Dev Project)
         uses: FirebaseExtended/action-hosting-deploy@v0

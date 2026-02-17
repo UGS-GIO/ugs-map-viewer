@@ -1,17 +1,24 @@
-import { createContext, useContext, useCallback, ReactNode, useMemo, useEffect, useRef } from 'react';
+import { createContext, useContext, useCallback, ReactNode, useMemo, useEffect, useRef, useState } from 'react';
 import { useSearch, useNavigate, useLocation } from '@tanstack/react-router';
 import { LayerProps } from '@/lib/types/mapping-types';
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs';
 
 type ActiveFilters = Record<string, string>;
 
+/** Maps group layer titles to their visibility state (default: true) */
+type GroupVisibility = Map<string, boolean>;
+
 interface LayerUrlContextType {
     selectedLayerTitles: Set<string>;
-    hiddenGroupTitles: Set<string>;
     activeFilters: ActiveFilters;
     updateLayerSelection: (titles: string | string[], shouldBeSelected: boolean) => void;
-    toggleGroupVisibility: (title: string) => void;
     updateFilter: (layerTitle: string, filterValue: string | undefined) => void;
+    /** Whether the layer URL has been initialized (defaults applied if needed) */
+    isInitialized: boolean;
+    /** Visibility state for group layers (controls child visibility and queryability) */
+    groupVisibility: GroupVisibility;
+    /** Update a group's visibility state */
+    setGroupVisibility: (groupTitle: string, visible: boolean) => void;
 }
 
 const LayerUrlContext = createContext<LayerUrlContextType | undefined>(undefined);
@@ -31,20 +38,49 @@ const getAllValidTitles = (layers: LayerProps[], groupsOnly = false): Set<string
     return titles;
 };
 
-const getDefaultVisible = (layers: LayerProps[]): { selected: string[], hidden: string[] } => {
-    let selected: string[] = [];
-    let hidden: string[] = [];
+const getDefaultSelected = (layers: LayerProps[]): string[] => {
+    const selected: string[] = [];
     layers.forEach(layer => {
         if (layer.type === 'group' && 'layers' in layer && layer.layers) {
-            if (layer.visible === false && layer.title) hidden.push(layer.title);
-            const children = getDefaultVisible(layer.layers);
-            selected.push(...children.selected);
-            hidden.push(...children.hidden);
+            selected.push(...getDefaultSelected(layer.layers));
         } else if (layer.visible && layer.title) {
             selected.push(layer.title);
         }
     });
-    return { selected, hidden };
+    return selected;
+};
+
+// Check if a group has any visible children by default
+const hasVisibleChildren = (layers: LayerProps[]): boolean =>
+    layers.some(layer => {
+        if (layer.type === 'group' && 'layers' in layer && layer.layers) {
+            return hasVisibleChildren(layer.layers);
+        }
+        return layer.visible === true;
+    });
+
+// Get default group visibility: false if no children are visible
+const getDefaultGroupVisibility = (layers: LayerProps[]): Map<string, boolean> => {
+    const visibility = new Map<string, boolean>();
+    layers.forEach(layer => {
+        if (layer.type === 'group' && layer.title && 'layers' in layer && layer.layers) {
+            visibility.set(layer.title, hasVisibleChildren(layer.layers));
+            // Recurse for nested groups
+            getDefaultGroupVisibility(layer.layers).forEach((v, k) => visibility.set(k, v));
+        }
+    });
+    return visibility;
+};
+
+const normalizeLayersObj = (layers: string | { selected?: string[] } | undefined): { selected?: string[] } => {
+    if (typeof layers === 'string') {
+        try {
+            return JSON.parse(layers);
+        } catch {
+            return {};
+        }
+    }
+    return layers || {};
 };
 
 interface LayerUrlProviderProps {
@@ -58,13 +94,20 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
     const hasInitializedForPath = useRef<string | null>(null);
     const location = useLocation();
 
+    // Normalize layers: handle both string and object formats
+    const normalizedLayers = useMemo(() => normalizeLayersObj(urlLayers), [urlLayers]);
+
+    // isInitialized = URL has a layers key with a selected array (even if empty)
+    // This distinguishes between "user explicitly set layers" vs "no layers param in URL"
+    const isInitialized = normalizedLayers?.selected !== undefined;
+
     useEffect(() => {
         if (!layersConfig || hasInitializedForPath.current === location.pathname) return;
 
         const allValidLayerTitles = getAllValidTitles(layersConfig);
-        const defaults = getDefaultVisible(layersConfig);
+        const defaultSelected = getDefaultSelected(layersConfig);
 
-        let finalLayers = urlLayers;
+        let finalLayers: { selected?: string[] } = normalizedLayers;
         let finalFilters = urlFilters;
         let needsUpdate = false;
 
@@ -76,84 +119,74 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
             }
         }
 
-        if (!urlLayers || urlLayers.selected?.length === 0) {
-            finalLayers = { ...urlLayers, ...defaults };
+        // Only set defaults if layers param is completely missing from URL
+        // If user explicitly sets layers.selected = [], respect that (empty map)
+        if (!normalizedLayers || normalizedLayers.selected === undefined) {
+            finalLayers = { selected: defaultSelected };
             needsUpdate = true;
         } else {
-            const currentSelected = urlLayers.selected || [];
-            const validSelected = currentSelected.filter(title => allValidLayerTitles.has(title));
+            // Validate existing selection - remove any invalid layer titles
+            const currentSelected = normalizedLayers.selected;
+            const validSelected = currentSelected.filter((title: string) => allValidLayerTitles.has(title));
             if (validSelected.length !== currentSelected.length) {
-                finalLayers = { ...urlLayers, selected: validSelected };
+                finalLayers = { selected: validSelected };
                 needsUpdate = true;
             }
         }
 
         if (needsUpdate) {
+            // Dedupe to handle StrictMode double-mount
+            const dedupedLayers = {
+                selected: finalLayers.selected ? [...new Set(finalLayers.selected)] : undefined,
+            };
+
             navigate({
                 to: '.',
-                search: (prev) => ({ ...prev, layers: finalLayers, filters: finalFilters }),
+                search: (prev) => ({ ...prev, layers: dedupedLayers, filters: finalFilters }),
                 replace: true
             });
         }
 
         hasInitializedForPath.current = location.pathname;
 
-    }, [layersConfig, navigate, urlLayers, urlFilters, location.pathname]);
+    }, [layersConfig, navigate, normalizedLayers, urlFilters, location.pathname]);
 
-    // Create a map to find a layer's parent group title
-    const childToParentMap = useMemo(() => {
-        const map = new Map<string, string>();
-        if (!layersConfig) return map;
-
-        const traverse = (layers: LayerProps[], parent: LayerProps) => {
-            for (const layer of layers) {
-                // Ensure the parent is a group and has a title before setting the map
-                if (parent.type === 'group' && parent.title && layer.title) {
-                    map.set(layer.title, parent.title);
-                }
-
-                // Use a type guard to confirm 'layer' is a group before recursing
-                if (layer.type === 'group' && 'layers' in layer && layer.layers) {
-                    traverse(layer.layers, layer);
-                }
-            }
-        };
-
-        // Start the traversal for each top-level item
-        for (const layer of layersConfig) {
-            // Use a type guard on the top-level items as well
-            if (layer.type === 'group' && 'layers' in layer && layer.layers) {
-                traverse(layer.layers, layer);
-            }
-        }
-
-        return map;
-    }, [layersConfig]);
-
-    const selectedLayerTitles = useMemo(() => new Set(urlLayers?.selected || []), [urlLayers]);
-    const hiddenGroupTitles = useMemo(() => new Set(urlLayers?.hidden || []), [urlLayers]);
+    // Memoize based on array contents, not object reference
+    const selectedLayerTitles = useMemo(
+        () => new Set<string>(normalizedLayers?.selected || []),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [JSON.stringify(normalizedLayers?.selected)]
+    );
     const activeFilters: ActiveFilters = useMemo(() => urlFilters || {}, [urlFilters]);
 
-    // This function now turns on the parent group when a child is selected
+    // Group visibility state
+    const [groupVisibility, setGroupVisibilityState] = useState<GroupVisibility>(() => new Map());
+
+    // Compute default group visibility from config (groups with no visible children default to false)
+    const defaultGroupVisibility = useMemo(() =>
+        layersConfig ? getDefaultGroupVisibility(layersConfig) : new Map<string, boolean>()
+    , [layersConfig]);
+
+    const setGroupVisibility = useCallback((groupTitle: string, visible: boolean) => {
+        setGroupVisibilityState(prev => {
+            const next = new Map(prev);
+            next.set(groupTitle, visible);
+            return next;
+        });
+    }, []);
+
     const updateLayerSelection = useCallback((titles: string | string[], shouldBeSelected: boolean) => {
         const titlesToUpdate = Array.isArray(titles) ? titles : [titles];
 
         navigate({
             to: '.',
             search: (prev) => {
-                const currentSelected = new Set(prev.layers?.selected || []);
-                const currentHidden = new Set(prev.layers?.hidden || []);
+                const prevLayersObj = normalizeLayersObj(prev.layers);
+                const currentSelected = new Set(prevLayersObj?.selected || []);
                 const currentFilters = { ...(prev.filters || {}) };
 
                 if (shouldBeSelected) {
-                    titlesToUpdate.forEach(title => {
-                        currentSelected.add(title);
-                        // If selecting a child, ensure its parent group is not hidden
-                        const parentTitle = childToParentMap.get(title);
-                        if (parentTitle) {
-                            currentHidden.delete(parentTitle);
-                        }
-                    });
+                    titlesToUpdate.forEach(title => currentSelected.add(title));
                 } else {
                     titlesToUpdate.forEach(title => {
                         currentSelected.delete(title);
@@ -163,24 +196,21 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
 
                 return {
                     ...prev,
-                    layers: {
-                        ...prev.layers,
-                        selected: Array.from(currentSelected),
-                        hidden: Array.from(currentHidden),
-                    },
+                    layers: { selected: Array.from(currentSelected) },
                     filters: Object.keys(currentFilters).length > 0 ? currentFilters : undefined,
                 };
             },
             replace: true,
         });
-    }, [navigate, childToParentMap]);
+    }, [navigate]);
 
     const updateFilter = useCallback((layerTitle: string, filterValue: string | undefined) => {
         navigate({
             to: '.',
             search: (prev) => {
+                const prevLayersObj = normalizeLayersObj(prev.layers);
                 const currentFilters = { ...(prev.filters || {}) };
-                const currentSelected = new Set(prev.layers?.selected || []);
+                const currentSelected = new Set(prevLayersObj?.selected || []);
 
                 if (filterValue) {
                     currentFilters[layerTitle] = filterValue;
@@ -191,7 +221,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
 
                 return {
                     ...prev,
-                    layers: { ...prev.layers, selected: Array.from(currentSelected) },
+                    layers: { selected: Array.from(currentSelected) },
                     filters: Object.keys(currentFilters).length > 0 ? currentFilters : undefined,
                 };
             },
@@ -199,32 +229,21 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         });
     }, [navigate]);
 
-    const toggleGroupVisibility = useCallback((title: string) => {
-        navigate({
-            to: '.',
-            search: (prev) => {
-                const newHiddenSet = new Set(prev.layers?.hidden || []);
-                if (newHiddenSet.has(title)) {
-                    newHiddenSet.delete(title);
-                } else {
-                    newHiddenSet.add(title);
-                }
-                return {
-                    ...prev,
-                    layers: { ...prev.layers, hidden: Array.from(newHiddenSet) }
-                };
-            },
-            replace: true
-        });
-    }, [navigate]);
+    // Merge user state with defaults (user state takes precedence)
+    const mergedGroupVisibility = useMemo(() => {
+        const merged = new Map(defaultGroupVisibility);
+        groupVisibility.forEach((v, k) => merged.set(k, v));
+        return merged;
+    }, [defaultGroupVisibility, groupVisibility]);
 
     const value = {
         selectedLayerTitles,
-        hiddenGroupTitles,
         activeFilters,
         updateLayerSelection,
-        toggleGroupVisibility,
         updateFilter,
+        isInitialized,
+        groupVisibility: mergedGroupVisibility,
+        setGroupVisibility,
     };
 
     return (

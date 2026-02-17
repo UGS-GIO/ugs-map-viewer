@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
-import { useMap } from '@/hooks/use-map';
+import { useMapInstance } from '@/context/map-instance-context';
 import { convertDDToDMS } from '@/lib/map/conversion-utils';
-import * as webMercatorUtils from '@arcgis/core/geometry/support/webMercatorUtils';
-import Point from '@arcgis/core/geometry/Point';
-import { useIsMobile } from '@/hooks/use-mobile';
+import type maplibregl from 'maplibre-gl';
 
 const COORD_PRECISION = 3;
 
@@ -26,12 +24,11 @@ const convertToDisplayFormat = (x: string, y: string, isDD: boolean, convertDDTo
 };
 
 export function useMapCoordinates() {
-    const { view } = useMap();
-    const isMobile = useIsMobile();
+    const { map } = useMapInstance();
     const navigate = useNavigate();
     const search = useSearch({ from: '/_map' });
     const isDecimalDegrees = search.coordinate_format !== 'dms';
-    const [scale, setScale] = useState<number>(view?.scale || 0);
+    const [scale, setScale] = useState<number>(0);
     const [coordinates, setCoordinates] = useState<{ x: string; y: string }>({ x: "", y: "" });
     const lastDecimalCoordinates = useRef<{ x: string; y: string }>({ x: "", y: "" });
 
@@ -44,75 +41,69 @@ export function useMapCoordinates() {
         }
     }, [isDecimalDegrees]);
 
-    const updateDisplayedCoordinatesAndScale = useCallback((point: __esri.Point | nullish, currentScale: number) => {
-        if (point && typeof point.x === 'number' && typeof point.y === 'number') {
-            const geoPoint = webMercatorUtils.webMercatorToGeographic(point) as Point;
-            if (geoPoint && typeof geoPoint.x === 'number' && typeof geoPoint.y === 'number') {
+    const handleMapLibreChange = useCallback(
+        (mapLibreInstance: maplibregl.Map) => {
+            const updateFromMapLibre = (mapPoint?: { lng: number; lat: number }) => {
+                if (!mapPoint) {
+                    const center = mapLibreInstance.getCenter();
+                    mapPoint = center;
+                }
+
+                // For MapLibre, coordinates are already in geographic WGS84
                 lastDecimalCoordinates.current = {
-                    x: formatCoord(geoPoint.x),
-                    y: formatCoord(geoPoint.y),
+                    x: formatCoord(mapPoint.lng),
+                    y: formatCoord(mapPoint.lat),
                 };
-                setCoordinates(convertToDisplayFormat(lastDecimalCoordinates.current.x, lastDecimalCoordinates.current.y, isDecimalDegrees, convertDDToDMS));
-            }
-        }
-        setScale(currentScale);
-    }, [isDecimalDegrees]);
+                setCoordinates(convertToDisplayFormat(
+                    lastDecimalCoordinates.current.x,
+                    lastDecimalCoordinates.current.y,
+                    isDecimalDegrees,
+                    convertDDToDMS
+                ));
 
-    const handleDesktopViewChange = useCallback(
-        (currentView: __esri.MapView | __esri.SceneView) => {
-            let zoomWatcher: __esri.WatchHandle;
-            let pointerMoveHandler: __esri.WatchHandle;
+                // Calculate scale from zoom level (approximate)
+                const zoomLevel = mapLibreInstance.getZoom();
+                const approximateScale = 559192 / Math.pow(2, zoomLevel);
+                setScale(Math.round(approximateScale));
+            };
 
-            currentView.when(() => {
-                updateDisplayedCoordinatesAndScale(currentView.center, currentView.scale);
-                zoomWatcher = currentView.watch("zoom", () => {
-                    updateDisplayedCoordinatesAndScale(
-                        currentView.toMap(currentView.center) || currentView.center,
-                        currentView.scale
-                    );
-                });
-                pointerMoveHandler = currentView.on("pointer-move", (event: __esri.ViewPointerMoveEvent) => {
-                    const mapPoint = currentView.toMap({ x: event.x, y: event.y });
-                    updateDisplayedCoordinatesAndScale(mapPoint, currentView.scale);
-                });
-            });
+            // Update on initial load
+            updateFromMapLibre();
+
+            // Throttle zoom updates to one per animation frame - the 'zoom' event
+            // fires ~60fps during zoom animations, and each setState call triggers
+            // a React re-render of the footer. RAF batches these to at most 1/frame.
+            let zoomRaf: number | null = null;
+            const handleZoom = () => {
+                if (zoomRaf) cancelAnimationFrame(zoomRaf);
+                zoomRaf = requestAnimationFrame(() => updateFromMapLibre());
+            };
+            mapLibreInstance.on('zoom', handleZoom);
+
+            // Throttle mousemove the same way - fires on every pixel of movement
+            let moveRaf: number | null = null;
+            const handleMouseMove = (e: maplibregl.MapMouseEvent) => {
+                if (moveRaf) cancelAnimationFrame(moveRaf);
+                moveRaf = requestAnimationFrame(() => updateFromMapLibre(e.lngLat));
+            };
+            mapLibreInstance.on('mousemove', handleMouseMove);
+
             return () => {
-                zoomWatcher?.remove();
-                pointerMoveHandler?.remove();
+                mapLibreInstance.off('zoom', handleZoom);
+                mapLibreInstance.off('mousemove', handleMouseMove);
+                if (zoomRaf) cancelAnimationFrame(zoomRaf);
+                if (moveRaf) cancelAnimationFrame(moveRaf);
             };
         },
-        [updateDisplayedCoordinatesAndScale]
-    );
-
-    const handleMobileViewChange = useCallback(
-        (currentView: __esri.MapView | __esri.SceneView) => {
-            let stationaryWatcher: __esri.WatchHandle;
-            currentView.when(() => {
-                updateDisplayedCoordinatesAndScale(currentView.center, currentView.scale);
-                stationaryWatcher = currentView.watch("stationary", (isStationary) => {
-                    if (isStationary) {
-                        updateDisplayedCoordinatesAndScale(currentView.center, currentView.scale);
-                    }
-                });
-            });
-            return () => {
-                stationaryWatcher?.remove();
-            };
-        },
-        [updateDisplayedCoordinatesAndScale]
+        [isDecimalDegrees]
     );
 
     useEffect(() => {
-        if (view) {
-            let cleanupFunction: () => void;
-            if (isMobile) {
-                cleanupFunction = handleMobileViewChange(view);
-            } else {
-                cleanupFunction = handleDesktopViewChange(view);
-            }
-            return cleanupFunction;
+        // Use MapLibre map
+        if (map && typeof map.on === 'function' && typeof map.getCenter === 'function') {
+            return handleMapLibreChange(map);
         }
-    }, [view, isMobile, handleDesktopViewChange, handleMobileViewChange]);
+    }, [map, handleMapLibreChange]);
 
     const setCoordinateFormat = useCallback((newIsDecimalDegrees: boolean) => {
         navigate({

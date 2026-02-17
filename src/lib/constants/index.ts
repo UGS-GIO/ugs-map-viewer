@@ -1,4 +1,4 @@
-export const PROD_GEOSERVER_URL = 'https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver/';
+export const PROD_GEOSERVER_URL = 'https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver';
 export const PROD_POSTGREST_URL = 'https://postgrest-seamlessgeolmap-734948684426.us-central1.run.app';
 export const HAZARDS_WORKSPACE = 'hazards';
 export const ENERGY_MINERALS_WORKSPACE = 'energy_mineral';
@@ -47,6 +47,10 @@ export const layerFetchConfigs: Record<string, LayerFetchConfig[]> = {
     ],
     'carbonstorage': [{
         tableName: 'ccuslayerinfo',
+        acceptProfile: 'emp'
+    }],
+    'geophysics': [{
+        tableName: 'geophysicslayerinfo',
         acceptProfile: 'emp'
     }],
 };

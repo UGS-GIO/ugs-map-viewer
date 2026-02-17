@@ -1,4 +1,4 @@
-import { Button, buttonVariants } from './custom/button'
+import { Button, buttonVariants } from './ui/button'
 import { Link } from '@tanstack/react-router'
 import {
   Collapsible,
@@ -6,21 +6,21 @@ import {
   CollapsibleTrigger,
 } from './ui/collapsible'
 
-// todo add tooltip functionality back
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
-  TooltipTrigger,
-  TooltipArrow
+  TooltipTrigger
 } from './ui/tooltip'
 import { cn } from '@/lib/utils'
 import useCheckActiveNav from '@/hooks/use-check-active-nav'
 import { Suspense } from 'react'
 import { ChevronLeft } from 'lucide-react'
-import { LoadingSpinner } from './custom/loading-spinner'
+import { Spinner } from './ui/loading-spinner'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { SideLink } from '@/lib/types/sidelink-types'
+import ThemeSwitch from '@/components/theme-switch'
+import { TourButton } from '@/components/tour-button'
 
 interface NavProps extends React.HTMLAttributes<HTMLDivElement> {
   isCollapsed: boolean
@@ -84,7 +84,7 @@ export default function Nav({
 
   return (
     <div className="flex flex-1 overflow-hidden" >
-      <div className="hidden md:flex flex-col items-center gap-4 pt-2 border-r" >
+      <div className="hidden md:flex flex-col items-center gap-4 pt-2 border-r px-1" data-tour="sidebar-icons">
         {links.map((link, index) => (
           <NavLinkIcon
             key={index}
@@ -96,6 +96,11 @@ export default function Nav({
             closeNav={closeNav}
           />
         ))}
+        {/* Tour and theme switch at bottom of icon bar */}
+        <div className="mt-auto pb-2 flex flex-col gap-2">
+          <TourButton />
+          <ThemeSwitch />
+        </div>
       </div>
       <div
         data-collapsed={isCollapsed}
@@ -106,15 +111,15 @@ export default function Nav({
       >
         <TooltipProvider delayDuration={0}>
           {currentContent ? (
-            <div className="px-4 pb-4 h-full">
-              <Suspense fallback={<div><LoadingSpinner /></div>}>
+            <div className="h-full overflow-y-auto">
+              <Suspense fallback={<div className="px-4"><Spinner /></div>}>
                 {DynamicComponent ? (
-                  <div className='overflow-y-auto h-full'>
+                  <div className="px-4 pb-4">
                     <DynamicComponent />
                   </div>
                 ) : (
                   <div className='w-full flex justify-center'>
-                    <LoadingSpinner />
+                    <Spinner />
                   </div>
                 )}
               </Suspense>
@@ -328,11 +333,12 @@ export function NavLinkIcon({
           variant: 'ghost',
           size: 'icon',
         }),
-        'h-12 w-14 justify-center rounded-none transition-transform duration-200 ease-in-out',
+        'h-12 w-10 justify-center rounded-none transition-transform duration-200 ease-in-out',
         // checkActiveNav(link.title ?? '') ? 'bg-accent text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'
 
       )}
       aria-current={checkActiveNav(link.componentPath ?? '') ? 'page' : undefined}
+      data-tour={link.title?.toLowerCase() === 'feedback' ? 'feedback' : undefined}
     >
       {/* {link.icon} */}
       <TooltipProvider>
@@ -340,9 +346,8 @@ export function NavLinkIcon({
           <TooltipTrigger asChild>
             {link.icon}
           </TooltipTrigger>
-          <TooltipContent side='right' className="z-50 bg-secondary text-base text-secondary-foreground">
+          <TooltipContent side='right'>
             <p>{link.title}</p>
-            <TooltipArrow className="fill-current text-secondary" />
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -352,7 +357,7 @@ export function NavLinkIcon({
       variant="ghost"
       size="icon"
       aria-label={link.title}
-      className={cn('h-12 w-14 justify-center rounded-none transition-transform duration-200 ease-in-out z-50',
+      className={cn('h-12 w-10 justify-center rounded-none transition-transform duration-200 ease-in-out z-50',
         isCollapsed ? '' : 'rotate-0',
         checkActiveNav(link.title ?? '') ? 'bg-accent text-primary-foreground text-white dark:text-black' : 'hover:bg-accent hover:text-accent-foreground',        // home can be active when currentContent is null
         link.title === 'Home' && !currentContent && !isCollapsed ? 'bg-accent text-accent-foreground' : ''
@@ -364,9 +369,8 @@ export function NavLinkIcon({
           <TooltipTrigger asChild>
             {link.icon}
           </TooltipTrigger>
-          <TooltipContent side='right' className="z-50 bg-secondary text-base text-secondary-foreground">
+          <TooltipContent side='right'>
             <p>{link.title}</p>
-            <TooltipArrow className="fill-current text-secondary" />
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>

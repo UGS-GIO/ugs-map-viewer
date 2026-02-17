@@ -1,6 +1,13 @@
-import { LayerFetchConfig, getLayerFetchConfig } from "@/lib/constants";
+import { LayerFetchConfig, getLayerFetchConfig, PROD_POSTGREST_URL } from "@/lib/constants";
 import { useQuery } from "@tanstack/react-query";
+import type { PostgRESTRowOf } from '@/lib/types/postgrest-types';
 import { useGetCurrentPage } from "@/hooks/use-get-current-page";
+import { queryKeys } from '@/lib/query-keys';
+
+type FeatureAttributes = PostgRESTRowOf<{
+    title: string;
+    content: string;
+}>;
 
 interface CombinedResult {
     data: Record<string, string>;
@@ -18,7 +25,7 @@ const fetchLayerDescriptions = async (configs: LayerFetchConfig[] | null) => {
     const allResults = await Promise.all(
         configs.map(async ({ tableName, acceptProfile }) => {
             const outfields = 'content,title';
-            const url = `https://postgrest-seamlessgeolmap-734948684426.us-central1.run.app/${tableName}?select=${outfields}`;
+            const url = `${PROD_POSTGREST_URL}/${tableName}?select=${outfields}`;
 
             const response = await fetch(url, {
                 headers: {
@@ -32,7 +39,7 @@ const fetchLayerDescriptions = async (configs: LayerFetchConfig[] | null) => {
                 throw new Error(`Failed to fetch layer descriptions from ${tableName}: ${response.status} ${response.statusText}`);
             }
 
-            return await response.json();
+            return await response.json() as FeatureAttributes[];
         })
     );
 
@@ -45,17 +52,11 @@ const useFetchLayerDescriptions = (): CombinedResult => {
     const fetchConfigs = getLayerFetchConfig(currentPage);
 
     const { data = [], isLoading, error } = useQuery<FeatureAttributes[], Error>({
-        queryKey: ['layerDescriptions', currentPage, fetchConfigs?.map(c => c.tableName).join(',')],
+        queryKey: queryKeys.layers.description(currentPage, fetchConfigs?.map(c => c.tableName).join(',')),
         queryFn: () => fetchLayerDescriptions(fetchConfigs),
         enabled: !!fetchConfigs && fetchConfigs.length > 0,
         staleTime: 1000 * 60 * 60 * 1,
     });
-
-
-    type FeatureAttributes = {
-        title: string;
-        content: string;
-    };
 
     // Combine results for easier consumption
     const combinedResult: CombinedResult = {
