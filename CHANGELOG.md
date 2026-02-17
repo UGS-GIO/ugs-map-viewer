@@ -1,3 +1,33 @@
+## [1.16.4](https://github.com/UGS-GIO/ugs-map-viewer/compare/v1.16.3...v1.16.4) (2026-01-22)
+
+
+### common
+
+* **♻️ Refactors**(`common`): use new qfaults layer
+
+### hazards
+
+* **🐛 Bug Fixes**(`hazards`): remove is_current filter from qfaults layer* **🐛 Bug Fixes**(`hazards`): update related table to use unitdescriptions_current* **🐛 Bug Fixes**(`hazards`): use unitdescriptions_current table in hazards-review layers
+
+## [1.16.3](https://github.com/UGS-GIO/ugs-map-viewer/compare/v1.16.2...v1.16.3) (2025-11-13)
+
+
+### ccs
+
+* **♻️ Refactors**(`ccs`): changes to georegion opacity,  popup disclaimer and su… ([#327](https://github.com/UGS-GIO/ugs-map-viewer/issues/327))* **♻️ Refactors**(`ccs`): swap seamlessgeolunits layer ([#329](https://github.com/UGS-GIO/ugs-map-viewer/issues/329))
+
+### common
+
+* **♻️ Refactors**(`common`): add error boundaries for wrong url and out of bounds arguments ([#325](https://github.com/UGS-GIO/ugs-map-viewer/issues/325))* **♻️ Refactors**(`common`): change github link to new url, edit readme ([#326](https://github.com/UGS-GIO/ugs-map-viewer/issues/326))* **🐛 Bug Fixes**(`common`): don't wait for initview.when() to be true to render the map ([#324](https://github.com/UGS-GIO/ugs-map-viewer/issues/324))* **🐛 Bug Fixes**(`common`): use a div instead of p in popup ([#323](https://github.com/UGS-GIO/ugs-map-viewer/issues/323))
+
+### data-reviewer
+
+* **🐛 Bug Fixes**(`data-reviewer`): allow for multiple layer config descriptions to be displayed on 1 page ([#321](https://github.com/UGS-GIO/ugs-map-viewer/issues/321))
+
+### wetlandplants
+
+* **♻️ Refactors**(`wetlandplants`): initial setup for wetland plants app ([#320](https://github.com/UGS-GIO/ugs-map-viewer/issues/320))
+
 ## [1.16.2](https://github.com/UGS-GIO/geohaz-v2/compare/v1.16.1...v1.16.2) (2025-10-06)
 
 
