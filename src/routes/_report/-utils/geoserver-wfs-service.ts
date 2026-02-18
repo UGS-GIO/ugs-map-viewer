@@ -169,6 +169,23 @@ export async function queryWFSFeatures<T extends WFSProperties = WFSProperties>(
 }
 
 /**
+ * Query USGS 24K quad names that intersect the polygon
+ */
+export async function queryIntersectingQuadNames(polygon: string): Promise<string[]> {
+    const polygonWKT = convertPolygonToWKT(polygon, 'EPSG:26912');
+    const features = await queryWFSFeatures(
+        'gen_gis:24kquads',
+        polygonWKT,
+        'name'
+    );
+
+    return Array.from(new Set(
+        features.map(f => f.properties.name)
+            .filter((name): name is string => typeof name === 'string' && name !== '')
+    )).sort();
+}
+
+/**
  * Query all GeoServer hazard layers for units that intersect the polygon
  */
 export async function queryGeoServerForHazardUnits(polygon: string) {

@@ -4,9 +4,10 @@ import { AnchorLinkIcon } from '@/routes/_report/-components/shared/anchor-link-
 
 interface ReportCoverProps {
     polygon: string
+    quadNames: string[]
 }
 
-export function ReportCover({ polygon }: ReportCoverProps) {
+export function ReportCover({ polygon, quadNames }: ReportCoverProps) {
     const title = 'Area of Interest Overview Map'
     return (
         <section className="space-y-12">
@@ -25,6 +26,12 @@ export function ReportCover({ polygon }: ReportCoverProps) {
                         polygon={polygon}
                         height={400}
                     />
+                    {quadNames.length > 0 && (
+                        <p className="text-sm text-muted-foreground">
+                            <span className="font-semibold">USGS 7.5&apos; Quadrangle{quadNames.length > 1 ? 's' : ''}:</span>{' '}
+                            {quadNames.join(', ')}
+                        </p>
+                    )}
                     <p className="text-xs text-muted-foreground italic leading-relaxed" dangerouslySetInnerHTML={{ __html: HAZARDS_REPORT_CONTENT.disclaimer }} />
                 </div>
             </div>
