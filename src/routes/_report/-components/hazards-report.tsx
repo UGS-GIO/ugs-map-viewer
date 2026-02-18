@@ -14,6 +14,7 @@ import { ScreenshotLoadingProvider, useIsAllScreenshotsLoaded } from '@/routes/_
 import {
     HazardUnit,
     queryGroupingStatic,
+    queryGroupTextStatic,
     queryHazardUnitsStatic,
     queryAllUnitsForHazardCodes,
     queryReferencesStatic,
@@ -163,7 +164,10 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                 }
             })
 
-            return Object.values(groupMap).filter(g => g.layers.length > 0)
+            // Return groups sorted by layer list order (Order_ field)
+            return queryGroupTextStatic(Object.keys(groupMap))
+                .map(gt => groupMap[gt.HazardGroup])
+                .filter((g): g is HazardGroup => !!g && g.layers.length > 0)
         },
         enabled: !!polygon || testAllHazards,
     })
