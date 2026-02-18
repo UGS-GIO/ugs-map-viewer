@@ -375,7 +375,7 @@ export function MapPreview({
 
         // Draw layers (basemap tiles use queryClient for caching)
         await drawBasemapTiles(ctx, viewport, queryClient, checkCancelled);
-        await drawHazardLayers(ctx, viewport, validHazardLayers, geoserverUrl || PROD_GEOSERVER_URL, checkCancelled);
+        await drawHazardLayers(ctx, viewport, [{ code: 'QUADS', layerName: 'gen_gis:24kquads' }, ...validHazardLayers], geoserverUrl || PROD_GEOSERVER_URL, checkCancelled);
 
         checkCancelled();
         drawPolygon(ctx, viewport, polygonCoords);
