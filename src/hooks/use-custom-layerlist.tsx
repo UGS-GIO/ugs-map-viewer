@@ -45,7 +45,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
     } = useLayerItemState(layerConfig);
 
     const { map } = useMap();
-    const { groupVisibility, setGroupVisibility } = useLayerUrl();
+    const { groupVisibility, setGroupVisibility, layerOpacity: layerOpacityMap, setLayerOpacity } = useLayerUrl();
     const { setIsCollapsed, setNavOpened } = useSidebar();
     const { data: layerDescriptions } = useFetchLayerDescriptions();
     const isMobile = useIsMobile();
@@ -68,11 +68,6 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
         if (layerConfig.type !== 'group' || !layerConfig.title) return;
         setGroupVisibility(layerConfig.title, visible);
     }, [layerConfig, setGroupVisibility]);
-
-    const liveLayer = useMemo(() => {
-        if (!map || !layerConfig.title) return null;
-        return findLayerByTitle(map, layerConfig.title);
-    }, [map, layerConfig.title, isSelected]);
 
     // Extract extent query options based on layer type
     const extentOptions: UseLayerExtentOptions = useMemo(() => {
@@ -125,7 +120,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
         if (layer) {
             layer.opacity = value / 100;
         }
-    }, [map, layerConfig.title]);
+        setLayerOpacity(layerConfig.title, value / 100);
+    }, [map, layerConfig.title, setLayerOpacity]);
 
     const { onLayerTurnedOff } = useMap();
 
@@ -263,13 +259,12 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
                     </AccordionHeader>
                     <AccordionContent>
                         <LayerControls
-                            key={liveLayer?.id ?? 'pending'}
-                            layerOpacity={liveLayer?.opacity ?? (isSelected ? (layerConfig.opacity ?? 0.8) : null)}
+                            layerOpacity={isSelected ? (layerOpacityMap.get(layerConfig.title || '') ?? layerConfig.opacity ?? 0.8) : null}
                             handleOpacityChange={handleOpacityChange}
                             title={layerConfig.title || ''}
                             description={layerDescriptions ? layerDescriptions[layerConfig.title || ''] : ''}
                             handleZoomToLayer={handleZoomToLayer}
-                            layerId={liveLayer?.id || ''}
+                            layerId={layerConfig.title || ''}
                             url={extentOptions.type === 'wms' ? extentOptions.wmsUrl || '' : ''}
                             openLegend={isUserExpanded}
                             layerName={extentOptions.type === 'wms' ? extentOptions.layerName : null}

@@ -14,7 +14,8 @@ export function useLayerVisibility(
     layers: LayerProps[],
     selectedLayerTitles: Set<string>,
     isInitialized: boolean = true,
-    groupVisibility?: Map<string, boolean>
+    groupVisibility?: Map<string, boolean>,
+    layerOpacity?: Map<string, number>
 ): LayerProps[] {
     return useMemo(() => {
         // Not initialized yet - return layers with their default visibility
@@ -40,9 +41,14 @@ export function useLayerVisibility(
                 }
                 // Child layer is visible if selected AND parent group toggle is on
                 const isSelected = selectedLayerTitles.has(layer.title || '');
-                return { ...layer, visible: isSelected && parentGroupVisible };
+                const opacityOverride = layerOpacity?.get(layer.title || '');
+                return {
+                    ...layer,
+                    visible: isSelected && parentGroupVisible,
+                    ...(opacityOverride !== undefined && { opacity: opacityOverride }),
+                };
             });
 
         return applySelection(layers);
-    }, [layers, selectedLayerTitles, isInitialized, groupVisibility]);
+    }, [layers, selectedLayerTitles, isInitialized, groupVisibility, layerOpacity]);
 }

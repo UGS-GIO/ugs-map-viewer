@@ -8,6 +8,9 @@ type ActiveFilters = Record<string, string>;
 /** Maps group layer titles to their visibility state (default: true) */
 type GroupVisibility = Map<string, boolean>;
 
+/** Maps layer titles to their user-set opacity (0–1) */
+type LayerOpacity = Map<string, number>;
+
 interface LayerUrlContextType {
     selectedLayerTitles: Set<string>;
     activeFilters: ActiveFilters;
@@ -19,6 +22,10 @@ interface LayerUrlContextType {
     groupVisibility: GroupVisibility;
     /** Update a group's visibility state */
     setGroupVisibility: (groupTitle: string, visible: boolean) => void;
+    /** User-set opacity overrides for individual layers */
+    layerOpacity: LayerOpacity;
+    /** Persist a layer's opacity so it survives toggle off/on */
+    setLayerOpacity: (title: string, opacity: number) => void;
 }
 
 const LayerUrlContext = createContext<LayerUrlContextType | undefined>(undefined);
@@ -162,6 +169,12 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
     // Group visibility state
     const [groupVisibility, setGroupVisibilityState] = useState<GroupVisibility>(() => new Map());
 
+    // Layer opacity overrides (persisted across toggle off/on)
+    const [layerOpacity, setLayerOpacityState] = useState<LayerOpacity>(() => new Map());
+    const setLayerOpacity = useCallback((title: string, opacity: number) => {
+        setLayerOpacityState(prev => { const next = new Map(prev); next.set(title, opacity); return next; });
+    }, []);
+
     // Compute default group visibility from config (groups with no visible children default to false)
     const defaultGroupVisibility = useMemo(() =>
         layersConfig ? getDefaultGroupVisibility(layersConfig) : new Map<string, boolean>()
@@ -244,6 +257,8 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         isInitialized,
         groupVisibility: mergedGroupVisibility,
         setGroupVisibility,
+        layerOpacity,
+        setLayerOpacity,
     };
 
     return (

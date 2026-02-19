@@ -246,8 +246,8 @@ export default function GenericMapContainer({
   const { viewMode, setViewMode, center, zoom, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
   const { setNavOpened } = useSidebar()
   const rawLayersConfig = useGetLayerConfigsData(layerConfigKey)
-  const { selectedLayerTitles, isInitialized, groupVisibility } = useLayerUrl()
-  const layersConfig = useLayerVisibility(rawLayersConfig || [], selectedLayerTitles, isInitialized, groupVisibility)
+  const { selectedLayerTitles, isInitialized, groupVisibility, layerOpacity } = useLayerUrl()
+  const layersConfig = useLayerVisibility(rawLayersConfig || [], selectedLayerTitles, isInitialized, groupVisibility, layerOpacity)
   const popupSheetRef = useRef<PopupSheetRef>(null)
   const sheetTriggerRef = useRef<HTMLButtonElement>(null)
 
