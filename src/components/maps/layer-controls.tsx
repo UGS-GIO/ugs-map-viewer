@@ -101,13 +101,13 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         {layerOpacity !== null ? (
                             <Slider
                                 className="flex-grow"
-                                defaultValue={[layerOpacity * 100]}
+                                value={[layerOpacity * 100]}
                                 onValueChange={(e) => handleOpacityChange(e[0])}
                             />
                         ) : (
                             <Slider
                                 className="flex-grow opacity-50"
-                                defaultValue={[100]}
+                                value={[100]}
                                 disabled
                             />
                         )}
