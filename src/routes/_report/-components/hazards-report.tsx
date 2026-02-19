@@ -377,6 +377,7 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                             <ReportGroupSection
                                 group={group}
                                 polygon={polygon}
+                                showAllHazardTypes={testAllHazards}
                             />
                         </SectionWithObserver>
                     ))}

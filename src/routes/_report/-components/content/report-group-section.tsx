@@ -70,14 +70,39 @@ interface HazardGroup {
     layers: HazardLayer[]
 }
 
+/**
+ * Check if a parsed hazard type name from the group intro text matches any
+ * layer that actually intersects the report area. Uses word-overlap matching
+ * since the text names differ slightly from the layer names
+ * (e.g., "Liquefaction" vs "Liquefaction Susceptibility").
+ */
+function hazardMatchesAnyLayer(hazardName: string, layers: HazardLayer[]): boolean {
+    const stopWords = new Set(['and', 'the', 'or', 'of', 'in', 'for', 'to'])
+    const hazardWords = hazardName.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/)
+        .filter(w => w.length >= 4 && !stopWords.has(w))
+
+    return layers.some(layer => {
+        const nameWords = new Set(
+            layer.name.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/)
+        )
+        return hazardWords.some(word => nameWords.has(word))
+    })
+}
+
 interface ReportGroupSectionProps {
     group: HazardGroup
     polygon: string
+    showAllHazardTypes?: boolean
 }
 
-export function ReportGroupSection({ group, polygon }: ReportGroupSectionProps) {
+export function ReportGroupSection({ group, polygon, showAllHazardTypes = false }: ReportGroupSectionProps) {
     const groupIntroText = getGroupIntroText(group.name) || ''
     const parsed = parseHazardIntro(groupIntroText)
+
+    // Filter hazard types table to only those that intersect the report area
+    const filteredHazards = showAllHazardTypes
+        ? parsed.hazards
+        : parsed.hazards.filter(h => hazardMatchesAnyLayer(h.name, group.layers))
 
     return (
         <section className="space-y-8 page-break-before">
@@ -96,7 +121,7 @@ export function ReportGroupSection({ group, polygon }: ReportGroupSectionProps) 
                 </div>
 
                 {/* Hazards Table */}
-                {parsed.hazards.length > 0 && (
+                {filteredHazards.length > 0 && (
                     <div className="border rounded-lg overflow-hidden">
                         <Table>
                             <TableHeader className="bg-muted">
@@ -106,7 +131,7 @@ export function ReportGroupSection({ group, polygon }: ReportGroupSectionProps) 
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {parsed.hazards.map((hazard, idx) => (
+                                {filteredHazards.map((hazard, idx) => (
                                     <TableRow key={idx}>
                                         <TableCell className="p-4 font-medium align-top">{hazard.name}</TableCell>
                                         <TableCell className="p-4 text-sm">{hazard.description}</TableCell>
