@@ -1,6 +1,7 @@
 import { createPortal } from 'react-dom'
 import { useControl } from 'react-map-gl/maplibre'
 import { PortalControl } from './portal-control'
+import { ControlButton } from './control-button'
 import { Square, Pentagon, X, Crosshair, CopyPlus } from 'lucide-react'
 
 export type DrawMode = 'off' | 'rectangle' | 'polygon'
@@ -43,27 +44,6 @@ export function MapToolsControl({
 
   const container = control?.getContainer()
 
-  // MapLibre native button styling
-  const buttonStyle: React.CSSProperties = {
-    width: 29,
-    height: 29,
-    padding: 0,
-    border: 'none',
-    boxSizing: 'border-box',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
-    color: '#333',
-  }
-
-  const activeStyle: React.CSSProperties = {
-    ...buttonStyle,
-    backgroundColor: '#f59e0b',
-    color: '#fff',
-  }
-
   // Determine active mode label for the indicator
   const getActiveModeLabel = (): string | null => {
     if (drawMode === 'rectangle') return 'Rectangle draw'
@@ -74,106 +54,72 @@ export function MapToolsControl({
   }
   const activeModeLabel = getActiveModeLabel()
 
-  const indicatorStyle: React.CSSProperties = {
-    position: 'absolute',
-    top: '50%',
-    right: '100%',
-    transform: 'translateY(-50%)',
-    marginRight: 6,
-    padding: '2px 8px',
-    backgroundColor: '#f59e0b',
-    color: '#fff',
-    fontSize: 11,
-    fontWeight: 500,
-    borderRadius: 4,
-    whiteSpace: 'nowrap',
-    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-  }
-
   return container
     ? createPortal(
-        <div data-tour="map-tools" style={{ position: 'relative' }}>
+        <div data-tour="map-tools" className="relative">
           {/* Draw rectangle */}
           {onDrawModeChange && (
-            <button
-              type="button"
-              className="maplibregl-ctrl-icon"
-              style={drawMode === 'rectangle' ? activeStyle : buttonStyle}
-              onClick={() => onDrawModeChange(drawMode === 'rectangle' ? 'off' : 'rectangle')}
+            <ControlButton
+              icon={Square}
               title="Draw rectangle filter"
-            >
-              <Square size={18} strokeWidth={1.5} />
-            </button>
+              onClick={() => onDrawModeChange(drawMode === 'rectangle' ? 'off' : 'rectangle')}
+              active={drawMode === 'rectangle'}
+            />
           )}
 
           {/* Draw polygon */}
           {onDrawModeChange && (
-            <button
-              type="button"
-              className="maplibregl-ctrl-icon"
-              style={drawMode === 'polygon' ? activeStyle : buttonStyle}
-              onClick={() => onDrawModeChange(drawMode === 'polygon' ? 'off' : 'polygon')}
+            <ControlButton
+              icon={Pentagon}
               title="Draw polygon filter"
-            >
-              <Pentagon size={18} strokeWidth={1.5} />
-            </button>
+              onClick={() => onDrawModeChange(drawMode === 'polygon' ? 'off' : 'polygon')}
+              active={drawMode === 'polygon'}
+            />
           )}
 
           {/* Clear filter */}
           {hasFilter && onClearFilter && (
-            <button
-              type="button"
-              className="maplibregl-ctrl-icon"
-              style={{ ...buttonStyle, color: '#dc2626' }}
-              onClick={onClearFilter}
+            <ControlButton
+              icon={X}
               title="Clear spatial filter"
-            >
-              <X size={18} strokeWidth={1.5} />
-            </button>
+              onClick={onClearFilter}
+              variant="danger"
+            />
           )}
 
           {/* Clear pin marker */}
           {hasPin && onClearPin && (
-            <button
-              type="button"
-              className="maplibregl-ctrl-icon"
-              style={{ ...buttonStyle, color: '#dc2626' }}
-              onClick={onClearPin}
+            <ControlButton
+              icon={X}
               title="Clear pin marker"
-            >
-              <X size={18} strokeWidth={1.5} />
-            </button>
+              onClick={onClearPin}
+              variant="danger"
+            />
           )}
 
           {/* Box select */}
           {onBoxSelectToggle && (
-            <button
-              type="button"
-              className="maplibregl-ctrl-icon"
-              style={boxSelectActive ? activeStyle : buttonStyle}
-              onClick={() => onBoxSelectToggle(!boxSelectActive)}
+            <ControlButton
+              icon={Crosshair}
               title={boxSelectActive ? 'Exit box select' : 'Box select mode'}
-            >
-              <Crosshair size={18} strokeWidth={1.5} />
-            </button>
+              onClick={() => onBoxSelectToggle(!boxSelectActive)}
+              active={boxSelectActive}
+            />
           )}
 
           {/* Multi-select toggle */}
           {onAdditiveModeToggle && (
-            <button
-              type="button"
-              className="maplibregl-ctrl-icon"
-              style={isAdditiveMode ? activeStyle : buttonStyle}
-              onClick={onAdditiveModeToggle}
+            <ControlButton
+              icon={CopyPlus}
               title={isAdditiveMode ? 'Multi-select ON (click to disable)' : 'Multi-select OFF (click or hold Shift)'}
-            >
-              <CopyPlus size={18} strokeWidth={1.5} />
-            </button>
+              onClick={onAdditiveModeToggle}
+              active={isAdditiveMode}
+            />
           )}
 
           {/* Active mode indicator */}
           {activeModeLabel && (
-            <div style={indicatorStyle}>
+            <div className="absolute top-1/2 right-full mr-1.5 -translate-y-1/2 whitespace-nowrap rounded bg-amber-500 px-2 py-0.5 text-[11px] font-medium text-white shadow-sm">
               {activeModeLabel}
             </div>
           )}

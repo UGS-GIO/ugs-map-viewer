@@ -35,10 +35,6 @@ export class HomeControl implements maplibregl.IControl {
       createElement(Home, { size: 20, strokeWidth: 2 })
     );
     button.innerHTML = homeIcon;
-    button.style.display = 'flex';
-    button.style.alignItems = 'center';
-    button.style.justifyContent = 'center';
-    button.style.color = '#333'; // MapLibre's default icon color
 
     button.addEventListener('click', () => {
       if (this.initialBounds) {

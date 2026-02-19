@@ -71,4 +71,10 @@ export interface DataMapProps {
   pinCoords?: { lat: number; lon: number } | null
   /** Callback to set or clear the pin */
   onPinChange?: (coords: { lat: number; lon: number } | null) => void
+  /** Current view mode (map/split/table) */
+  viewMode?: 'map' | 'split' | 'table'
+  /** Callback when view mode changes */
+  onViewModeChange?: (mode: 'map' | 'split' | 'table') => void
+  /** Whether the map has query results (enables split/table modes) */
+  hasResults?: boolean
 }

@@ -20,13 +20,11 @@ import { MobileMapNav } from './mobile-map-nav'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
 import { MapContext } from '@/context/map-context'
 import { useMapInstance } from '@/context/map-instance-context'
-import { ViewModeControl } from '@/lib/map/controls/view-mode-control'
-import { HomeControl } from '@/lib/map/controls/home-control'
-import { DualScaleControl } from '@/lib/map/controls/dual-scale-control'
+import { HomeControl, DualScaleControl } from '@/components/maps/controls'
+import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
 import { usePopupData } from '@/hooks/use-popup-data'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
-import type { LegendItem } from '@/lib/map/controls/export-control'
 import type { LayerProps, WMSLayerProps } from '@/lib/types/mapping-types'
 import { createSVGSymbol } from '@/lib/legend/symbol-generator'
 import type { Legend } from '@/lib/types/geoserver-types'
@@ -302,12 +300,6 @@ export default function GenericMapContainer({
     onRegisterLayerTurnedOff(handleLayerTurnedOff)
   }
 
-  // Ref for ViewModeControl to sync state
-  const viewModeControlRef = useRef<ViewModeControl | null>(null)
-  // Stable ref for setViewMode to avoid recreating controls
-  const setViewModeRef = useRef(setViewMode)
-  setViewModeRef.current = setViewMode
-
   // Add map controls when map is ready (desktop only)
   useEffect(() => {
     if (!mapInstance || isMobile) return
@@ -333,16 +325,8 @@ export default function GenericMapContainer({
     mapInstance.addControl(scaleControl, 'bottom-left')
     controls.push(scaleControl)
 
-    // View mode control - uses ref callback to avoid recreation on mode change
-    const viewModeControl = new ViewModeControl({
-      onModeChange: (mode) => setViewModeRef.current(mode),
-    })
-    mapInstance.addControl(viewModeControl, 'top-right')
-    controls.push(viewModeControl)
-    viewModeControlRef.current = viewModeControl
-
     // Lazy load export control
-    import('@/lib/map/controls/export-control').then(({ ExportControl }) => {
+    import('@/components/maps/controls/export-control').then(({ ExportControl }) => {
       const exportControl = new ExportControl({
         pageSize: 'A4',
         pageOrientation: 'landscape',
@@ -361,7 +345,6 @@ export default function GenericMapContainer({
           mapInstance.removeControl(control)
         } catch { /* control may already be removed */ }
       })
-      viewModeControlRef.current = null
     }
   }, [mapInstance, isMobile])
 
@@ -526,12 +509,6 @@ export default function GenericMapContainer({
   // Derived: has results (includes raster-only layers)
   const hasResults = useMemo(() => popupContent.length > 0, [popupContent])
 
-  // Sync ViewModeControl state (mode and hasResults)
-  useEffect(() => {
-    viewModeControlRef.current?.setHasResults(hasResults)
-    viewModeControlRef.current?.setMode(viewMode)
-  }, [hasResults, viewMode])
-
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode)
     if (mode === 'map' && hasResults) {
@@ -602,6 +579,9 @@ export default function GenericMapContainer({
             onClearSelection={handleClearAllSelections}
             pinCoords={popupCoords}
             onPinChange={setPopupCoords}
+            viewMode={viewMode}
+            onViewModeChange={handleViewModeChange}
+            hasResults={hasResults}
           />
         </div>
 

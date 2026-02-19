@@ -11,7 +11,7 @@ import {
   BOX_SELECT_MIN_ZOOM,
 } from './constants'
 import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
-import { BoxSelectOverlay, MapToolsControl } from './controls'
+import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
 import { flattenWmsLayers, flattenWfsLayers, buildWmsTileUrl, getWmsLayerName } from '@/lib/map/layer-utils'
 import type maplibregl from 'maplibre-gl'
@@ -63,6 +63,9 @@ export default function DataMap({
   onClearSelection,
   pinCoords,
   onPinChange,
+  viewMode,
+  onViewModeChange,
+  hasResults = false,
 }: DataMapProps) {
   const mapRef = useRef<MapRef>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -561,6 +564,16 @@ export default function DataMap({
         onLoad={handleLoad}
       >
         <NavigationControl position="top-left" />
+
+        {/* View mode control - rendered before MapToolsControl so it stacks above */}
+        {viewMode && onViewModeChange && (
+          <ViewModeControl
+            mode={viewMode}
+            hasResults={hasResults}
+            onModeChange={onViewModeChange}
+            position="top-right"
+          />
+        )}
 
         {/* Map tools control */}
         <MapToolsControl

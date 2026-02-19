@@ -6,13 +6,15 @@ import type { IControl } from 'maplibre-gl'
  */
 export class PortalControl implements IControl {
   private container: HTMLDivElement | null = null
+  private className: string
+
+  constructor(className = 'maplibregl-ctrl maplibregl-ctrl-group') {
+    this.className = className
+  }
 
   onAdd(): HTMLDivElement {
     this.container = document.createElement('div')
-    this.container.className = 'maplibregl-ctrl maplibregl-ctrl-group'
-    // Make horizontal layout
-    this.container.style.display = 'flex'
-    this.container.style.flexDirection = 'row'
+    this.container.className = this.className
     return this.container
   }
 
