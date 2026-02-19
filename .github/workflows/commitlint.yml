@@ -7,6 +7,8 @@ on:
 jobs:
   commitlint:
     runs-on: ubuntu-latest
+    # Skip for release PRs — commits were already linted when merged to develop
+    if: github.event.pull_request.base.ref != 'master'
     steps:
       - uses: actions/checkout@v4
         with:
