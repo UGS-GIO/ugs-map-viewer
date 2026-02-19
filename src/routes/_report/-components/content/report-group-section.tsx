@@ -16,7 +16,7 @@ function parseHazardIntro(htmlText: string) {
     const doc = parser.parseFromString(htmlText, 'text/html')
 
     const paragraphs: string[] = []
-    const hazards: { name: string; description: string }[] = []
+    const hazards: { name: string; description: string; codes: string[] }[] = []
 
     let inHazardSection = false
 
@@ -35,11 +35,12 @@ function parseHazardIntro(htmlText: string) {
             const strong = p.querySelector('strong')
             if (strong) {
                 const hazardName = strong.textContent?.trim() || ''
+                const codes = (strong.getAttribute('data-code') || '').split(',').filter(Boolean)
                 const fullText = text.replace(/\s+/g, ' ')
                 const description = fullText.substring(fullText.indexOf('–') + 1).trim()
 
                 if (hazardName && description) {
-                    hazards.push({ name: hazardName, description })
+                    hazards.push({ name: hazardName, description, codes })
                 }
             } else if (text && !text.match(/^&nbsp;$/)) {
                 // End of hazards section - remaining text is closing paragraph
@@ -70,23 +71,11 @@ interface HazardGroup {
     layers: HazardLayer[]
 }
 
-/**
- * Check if a parsed hazard type name from the group intro text matches any
- * layer that actually intersects the report area. Uses word-overlap matching
- * since the text names differ slightly from the layer names
- * (e.g., "Liquefaction" vs "Liquefaction Susceptibility").
- */
-function hazardMatchesAnyLayer(hazardName: string, layers: HazardLayer[]): boolean {
-    const stopWords = new Set(['and', 'the', 'or', 'of', 'in', 'for', 'to'])
-    const hazardWords = hazardName.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/)
-        .filter(w => w.length >= 4 && !stopWords.has(w))
-
-    return layers.some(layer => {
-        const nameWords = new Set(
-            layer.name.toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/)
-        )
-        return hazardWords.some(word => nameWords.has(word))
-    })
+/** Check if a parsed hazard type matches any layer present in the report via data-code */
+function hazardMatchesAnyLayer(hazard: { codes: string[] }, layers: HazardLayer[]): boolean {
+    if (hazard.codes.length === 0) return false
+    const layerCodes = new Set(layers.map(l => l.code))
+    return hazard.codes.some(code => layerCodes.has(code))
 }
 
 interface ReportGroupSectionProps {
@@ -102,7 +91,7 @@ export function ReportGroupSection({ group, polygon, showAllHazardTypes = false 
     // Filter hazard types table to only those that intersect the report area
     const filteredHazards = showAllHazardTypes
         ? parsed.hazards
-        : parsed.hazards.filter(h => hazardMatchesAnyLayer(h.name, group.layers))
+        : parsed.hazards.filter(h => hazardMatchesAnyLayer(h, group.layers))
 
     return (
         <section className="space-y-8 page-break-before">
