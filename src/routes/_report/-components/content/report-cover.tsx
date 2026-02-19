@@ -1,6 +1,7 @@
 import { HAZARDS_REPORT_CONTENT } from '@/routes/_report/-data/hazards-content'
 import { MapPreview } from '@/routes/_report/-components/shared/map-preview'
 import { AnchorLinkIcon } from '@/routes/_report/-components/shared/anchor-link-icon'
+import { Link } from '@/components/ui/link'
 
 interface ReportCoverProps {
     polygon: string
@@ -27,8 +28,8 @@ export function ReportCover({ polygon, quadNames }: ReportCoverProps) {
                         height={400}
                     />
                     {quadNames.length > 0 && (
-                        <p className="text-sm text-muted-foreground">
-                            <span className="font-semibold">USGS 7.5&apos; Quadrangle{quadNames.length > 1 ? 's' : ''}:</span>{' '}
+                        <p className="text-sm text-foreground">
+                            <Link to="https://geology.utah.gov/map-pub/survey-notes/mapping-utahs-geology/" className="font-semibold">USGS 7.5&apos; Quadrangle{quadNames.length > 1 ? 's' : ''}</Link>:{' '}
                             {quadNames.join(', ')}
                         </p>
                     )}

@@ -45,8 +45,8 @@
     "@tanstack/react-router": "1.132.2",
     "@tanstack/react-table": "^8.16.0",
     "@tanstack/zod-adapter": "^1.132.2",
+    "@turf/area": "^7.3.4",
     "@turf/bbox": "^7.2.0",
-
     "@turf/buffer": "^7.2.0",
     "@turf/clone": "^7.2.0",
     "@turf/helpers": "^7.2.0",

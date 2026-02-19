@@ -1,5 +1,6 @@
 import { useState, useRef } from "react";
 import { useMap } from '@/hooks/use-map';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { MapPreview } from '@/routes/_report/-components/shared/map-preview';
 import { BackToMenuButton } from "@/components/ui/back-to-menu-button";
@@ -9,11 +10,31 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, Di
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "@/components/ui/link";
 import proj4 from 'proj4';
+import turfArea from '@turf/area';
+import { polygon as turfPolygon } from '@turf/helpers';
 import { serializePolygonForUrl, PolygonGeometry } from '@/lib/map/conversion-utils';
+import { queryIntersectingQuadNames } from '@/routes/_report/-utils/geoserver-wfs-service';
+import { queryKeys } from '@/lib/query-keys';
 import type { Polygon } from 'geojson';
 
 type ActiveButtonOptions = 'currentMapExtent' | 'customArea' | 'reset';
 type DialogType = 'areaTooLarge' | 'confirmation' | null;
+
+const SQ_METERS_PER_SQ_MILE = 2589988.11;
+const SQ_METERS_PER_SQ_KM = 1_000_000;
+
+/** Geodesic area from a Web Mercator polygon via @turf/area */
+function formatAoiArea(aoi: PolygonGeometry): string {
+    // Convert rings from Web Mercator to WGS84 for turf
+    const wgs84Rings = aoi.rings.map(ring =>
+        ring.map(([x, y]) => proj4('EPSG:3857', 'EPSG:4326', [x, y]))
+    );
+    const sqM = turfArea(turfPolygon(wgs84Rings));
+    const sqMi = (sqM / SQ_METERS_PER_SQ_MILE).toFixed(1);
+    const sqKm = (sqM / SQ_METERS_PER_SQ_KM).toFixed(1);
+
+    return `~${sqMi} mi² (~${sqKm} km²)`;
+}
 
 function ReportGenerator() {
     const { map, setIsSketching, setIgnoreNextClick, startDraw, cancelDraw } = useMap();
@@ -27,6 +48,16 @@ function ReportGenerator() {
     // Use ref to track sketching state synchronously to prevent race conditions
     // The ref is checked immediately in click handlers before React re-renders
     const isSketchingRef = useRef(false);
+
+    // Serialize pending AOI for queries (stable reference when AOI doesn't change)
+    const serializedAoi = pendingAoi ? JSON.stringify(pendingAoi) : null;
+
+    // Query quad names when confirmation dialog is open
+    const { data: quadNames = [] } = useQuery({
+        queryKey: queryKeys.hazards.quadNames(serializedAoi ?? ''),
+        queryFn: () => queryIntersectingQuadNames(serializedAoi!),
+        enabled: !!serializedAoi && activeDialog === 'confirmation',
+    });
 
 
     // Handle draw completion from the shared TerraDraw instance
@@ -297,35 +328,38 @@ function ReportGenerator() {
 
             {/* Area Too Large Dialog */}
             <Dialog open={activeDialog === 'areaTooLarge'} onOpenChange={handleCloseDialog}>
-                <DialogContent className="w-full sm:w-4/5">
+                <DialogContent className="w-full sm:w-4/5" role="alertdialog">
                     <DialogHeader>
                         <DialogTitle>Area too large</DialogTitle>
+                        <DialogDescription>
+                            The map area is too large. Please draw a smaller custom area, zoom in, or let us zoom to fit.
+                        </DialogDescription>
                     </DialogHeader>
-                    <DialogDescription asChild>
-                        <div className="space-y-4">
-                            <p>The map area is too large. Please draw a smaller custom area, zoom in, or let us zoom to fit.</p>
-                            <div className="flex flex-wrap gap-2 justify-end">
-                                <Button onClick={handleZoomToFit} variant="default">
-                                    Zoom to fit
-                                </Button>
-                                <Button onClick={handleResetDrawing} variant="secondary">
-                                    Draw new area
-                                </Button>
-                                <Button onClick={handleReset} variant="secondary">
-                                    Close
-                                </Button>
-                            </div>
-                        </div>
-                    </DialogDescription>
+                    <div className="flex flex-wrap gap-2 justify-end" role="group" aria-label="Area size options">
+                        <Button onClick={handleZoomToFit} variant="default">
+                            Zoom to fit
+                        </Button>
+                        <Button onClick={handleResetDrawing} variant="secondary">
+                            Draw new area
+                        </Button>
+                        <Button onClick={handleReset} variant="secondary">
+                            Close
+                        </Button>
+                    </div>
                     <DialogClose />
                 </DialogContent>
             </Dialog>
 
             {/* Confirmation Dialog */}
             <Dialog open={activeDialog === 'confirmation'} onOpenChange={handleCloseDialog}>
-                <DialogContent className="w-full sm:w-3/5 max-h-[90vh] flex flex-col">
+                <DialogContent className="w-full sm:w-3/5 max-h-[90vh] flex flex-col" aria-describedby="confirmation-description">
                     <DialogHeader>
                         <DialogTitle>Generate report for the selected area?</DialogTitle>
+                        <DialogDescription id="confirmation-description">
+                            {pendingAoi && formatAoiArea(pendingAoi)}
+                            {pendingAoi && quadNames.length > 0 && ' · '}
+                            {quadNames.length > 0 && `${quadNames.join(', ')} quad${quadNames.length > 1 ? 's' : ''}`}
+                        </DialogDescription>
                     </DialogHeader>
                     <div className="flex-1 min-h-0 flex flex-col gap-4">
                         {pendingAoi && (
@@ -335,7 +369,7 @@ function ReportGenerator() {
                                 title=""
                             />
                         )}
-                        <div className="flex flex-wrap gap-2 justify-end shrink-0">
+                        <div className="flex flex-wrap gap-2 justify-end shrink-0" role="group" aria-label="Report actions">
                             <Button onClick={handleConfirmNavigation} variant="default">
                                 Generate Report
                             </Button>
