@@ -7,7 +7,7 @@ export const quaternaryFaultsHazardCode = 'QFF';
 // This map directly links a hazard code to its GeoServer layer name string.
 export const hazardLayerNameMap = {
     // Earthquake Hazards
-    [quaternaryFaultsHazardCode]: `${HAZARDS_WORKSPACE}:qfaults_current`,
+    [quaternaryFaultsHazardCode]: `${HAZARDS_WORKSPACE}:hazards_qfaults_current`,
     'LQS': `${HAZARDS_WORKSPACE}:liquefaction_current`,
     'SFR': `${HAZARDS_WORKSPACE}:surfacefaultrupture_current`,
     [groundshakingHazardCode]: `${HAZARDS_WORKSPACE}:groundshaking_current`,

@@ -111,7 +111,7 @@ async function queryLayerForUnits(
 
 /**
  * Generic WFS feature query - fetch raw features from a layer with custom CQL filter
- * @param layerName - Full layer name (e.g., "hazards:qfaults_current")
+ * @param layerName - Full layer name (e.g., "hazards:hazards_qfaults_current")
  * @param polygonWKT - WKT polygon string (must be in the same CRS as specified)
  * @param propertyNames - Comma-separated property names to fetch (optional - fetches all if not specified)
  * @param cqlFilterAddition - Additional CQL filter conditions (optional)
@@ -166,6 +166,23 @@ export async function queryWFSFeatures<T extends WFSProperties = WFSProperties>(
         console.error(`Error querying ${layerName}:`, error);
         return [];
     }
+}
+
+/**
+ * Query USGS 24K quad names that intersect the polygon
+ */
+export async function queryIntersectingQuadNames(polygon: string): Promise<string[]> {
+    const polygonWKT = convertPolygonToWKT(polygon, 'EPSG:26912');
+    const features = await queryWFSFeatures(
+        'gen_gis:24kquads',
+        polygonWKT,
+        'name'
+    );
+
+    return Array.from(new Set(
+        features.map(f => f.properties.name)
+            .filter((name): name is string => typeof name === 'string' && name !== '')
+    )).sort();
 }
 
 /**

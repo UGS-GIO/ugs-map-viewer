@@ -9,11 +9,12 @@ import { FileText, AlertTriangle, Printer, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Image } from '@/components/ui/image'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { queryGeoServerForHazardUnits } from '@/routes/_report/-utils/geoserver-wfs-service'
+import { queryGeoServerForHazardUnits, queryIntersectingQuadNames } from '@/routes/_report/-utils/geoserver-wfs-service'
 import { ScreenshotLoadingProvider, useIsAllScreenshotsLoaded } from '@/routes/_report/-context/screenshot-loading-context'
 import {
     HazardUnit,
     queryGroupingStatic,
+    queryGroupTextStatic,
     queryHazardUnitsStatic,
     queryAllUnitsForHazardCodes,
     queryReferencesStatic,
@@ -61,6 +62,13 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
     const printRef = useRef<HTMLDivElement>(null)
     const [activeSection, setActiveSection] = useState<string>('cover')
     const visibleSectionsRef = useRef<Map<string, IntersectionObserverEntry>>(new Map())
+
+    // Query for quad names (runs in parallel with hazard data)
+    const { data: quadNames = [] } = useQuery({
+        queryKey: queryKeys.hazards.quadNames(polygon),
+        queryFn: () => queryIntersectingQuadNames(polygon),
+        enabled: !!polygon,
+    })
 
     // Query for hazard data
     const { data: hazardGroups = [], isLoading } = useQuery({
@@ -163,7 +171,10 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                 }
             })
 
-            return Object.values(groupMap).filter(g => g.layers.length > 0)
+            // Return groups sorted by layer list order (Order_ field)
+            return queryGroupTextStatic(Object.keys(groupMap))
+                .map(gt => groupMap[gt.HazardGroup])
+                .filter((g): g is HazardGroup => !!g && g.layers.length > 0)
         },
         enabled: !!polygon || testAllHazards,
     })
@@ -344,6 +355,7 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                     <SectionWithObserver id="cover" setRef={(el) => sectionRefs.current['cover'] = el} updateVisible={updateVisibleSection}>
                         <ReportCover
                             polygon={polygon}
+                            quadNames={quadNames}
                         />
                     </SectionWithObserver>
 
@@ -365,6 +377,7 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                             <ReportGroupSection
                                 group={group}
                                 polygon={polygon}
+                                showAllHazardTypes={testAllHazards}
                             />
                         </SectionWithObserver>
                     ))}

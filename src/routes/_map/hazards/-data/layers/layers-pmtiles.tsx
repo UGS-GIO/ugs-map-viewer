@@ -204,7 +204,7 @@ export interface QFaultsFeatureType {
     strandnames: string[];
 
 }
-export const qFaultsLayerName = 'quaternaryfaults_current';
+export const qFaultsLayerName = 'hazards_qfaults_current';
 export const qFaultsWMSTitle = 'Hazardous (Quaternary age) Faults - Statewide';
 
 const qFaultsConfig: PMTilesLayerProps = {
@@ -217,7 +217,7 @@ const qFaultsConfig: PMTilesLayerProps = {
     opacity: 1,
     sublayers: [
         {
-            name: 'quaternaryfaults_current',
+            name: 'hazards_qfaults_current',
             queryable: true,
             popupFields: {
                 'Fault Zone Name': { field: 'faultzone', type: 'string' },

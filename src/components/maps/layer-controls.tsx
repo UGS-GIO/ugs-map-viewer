@@ -1,4 +1,4 @@
-import { Info, Shrink, TableOfContents, Download, Loader2 } from 'lucide-react';
+import { Info, Shrink, TableOfContents } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -6,7 +6,6 @@ import { LegendAccordion } from '@/components/maps/legend-accordion';
 import { useEffect, useRef, useState } from 'react';
 import { Toggle } from '@/components/ui/toggle';
 import { LayerDescriptionAccordion } from '@/components/maps/layer-description-accordion';
-import { downloadLayerAsGeoJSON } from '@/lib/download-utils';
 
 interface LayerControlsProps {
     handleZoomToLayer: () => void;
@@ -17,7 +16,6 @@ interface LayerControlsProps {
     layerId: string;
     url: string;
     openLegend?: boolean;
-    /** Full layer name for WFS download (e.g., "hazards:quaternaryfaults_current") */
     layerName?: string | null;
     customLegend?: React.ReactNode;
     bivariateLegend?: { xLabel: string; yLabel: string };
@@ -38,8 +36,6 @@ const LayerControls: React.FC<LayerControlsProps> = ({
 }) => {
     const [openAccordion, setOpenAccordion] = useState<string | null>(null);
     const [cleanDescription, setCleanDescription] = useState<string>('');
-    const [isDownloading, setIsDownloading] = useState(false);
-    const [downloadProgress, setDownloadProgress] = useState<string | null>(null);
     const lastOpacityRef = useRef(layerOpacity ?? 1);
 
     if (layerOpacity !== null) {
@@ -72,28 +68,6 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     const handleToggle = (type: 'info' | 'legend') => {
         setOpenAccordion(current => (current === type ? null : type));
     };
-
-    const handleDownload = async () => {
-        if (!url || !layerName) return;
-        setIsDownloading(true);
-        setDownloadProgress(null);
-        try {
-            await downloadLayerAsGeoJSON(url, layerName, title, (_percent, fetched, total) => {
-                if (total) {
-                    setDownloadProgress(`${fetched.toLocaleString()} / ${total.toLocaleString()}`);
-                } else {
-                    setDownloadProgress(`${fetched.toLocaleString()} features`);
-                }
-            });
-        } catch (error) {
-            console.error('Failed to download layer:', error);
-        } finally {
-            setIsDownloading(false);
-            setDownloadProgress(null);
-        }
-    };
-
-    const canDownload = !!url && !!layerName;
 
     return (
         <div className="flex flex-col gap-y-4 pt-2">
@@ -151,26 +125,6 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                             <TableOfContents className="h-5 w-5" />
                             <span className='text-xs'>Legend</span>
                         </Toggle>
-
-                        {canDownload && (
-                            <Button
-                                variant="ghost"
-                                size="stacked"
-                                className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
-                                onClick={handleDownload}
-                                disabled={isDownloading}
-                                data-tour="layer-export"
-                            >
-                                {isDownloading ? (
-                                    <Loader2 className="h-5 w-5 animate-spin" />
-                                ) : (
-                                    <Download className="h-5 w-5" />
-                                )}
-                                <span className='text-xs'>
-                                    {downloadProgress || 'Export'}
-                                </span>
-                            </Button>
-                        )}
                     </div>
                 </div>
             </div>

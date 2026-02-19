@@ -79,6 +79,7 @@ export const queryKeys = {
     all: ['hazards'] as const,
     reports: () => [...queryKeys.hazards.all, 'report'] as const,
     report: (polygon: string) => [...queryKeys.hazards.reports(), polygon] as const,
+    quadNames: (polygon: string) => [...queryKeys.hazards.all, 'quad-names', polygon] as const,
   },
 } as const;
 

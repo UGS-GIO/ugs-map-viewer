@@ -38,7 +38,7 @@ export const ReportHeader = ({ onPrint, testAllHazards = false }: ReportHeaderPr
                     />
                 </Link>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-                    <span className='font-semibold text-base sm:text-lg text-foreground'>{appTitle}</span>
+                    <Link to="/hazards" className='font-semibold text-base sm:text-lg text-foreground'>{appTitle}</Link>
                     <span className='hidden sm:inline text-muted-foreground'>|</span>
                     <span className='text-xs sm:text-sm text-muted-foreground'>Utah Geological Survey</span>
                 </div>

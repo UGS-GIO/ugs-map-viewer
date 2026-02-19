@@ -16,7 +16,7 @@ function parseHazardIntro(htmlText: string) {
     const doc = parser.parseFromString(htmlText, 'text/html')
 
     const paragraphs: string[] = []
-    const hazards: { name: string; description: string }[] = []
+    const hazards: { name: string; description: string; codes: string[] }[] = []
 
     let inHazardSection = false
 
@@ -35,11 +35,12 @@ function parseHazardIntro(htmlText: string) {
             const strong = p.querySelector('strong')
             if (strong) {
                 const hazardName = strong.textContent?.trim() || ''
+                const codes = (strong.getAttribute('data-code') || '').split(',').filter(Boolean)
                 const fullText = text.replace(/\s+/g, ' ')
                 const description = fullText.substring(fullText.indexOf('–') + 1).trim()
 
                 if (hazardName && description) {
-                    hazards.push({ name: hazardName, description })
+                    hazards.push({ name: hazardName, description, codes })
                 }
             } else if (text && !text.match(/^&nbsp;$/)) {
                 // End of hazards section - remaining text is closing paragraph
@@ -70,14 +71,27 @@ interface HazardGroup {
     layers: HazardLayer[]
 }
 
+/** Check if a parsed hazard type matches any layer present in the report via data-code */
+function hazardMatchesAnyLayer(hazard: { codes: string[] }, layers: HazardLayer[]): boolean {
+    if (hazard.codes.length === 0) return false
+    const layerCodes = new Set(layers.map(l => l.code))
+    return hazard.codes.some(code => layerCodes.has(code))
+}
+
 interface ReportGroupSectionProps {
     group: HazardGroup
     polygon: string
+    showAllHazardTypes?: boolean
 }
 
-export function ReportGroupSection({ group, polygon }: ReportGroupSectionProps) {
+export function ReportGroupSection({ group, polygon, showAllHazardTypes = false }: ReportGroupSectionProps) {
     const groupIntroText = getGroupIntroText(group.name) || ''
     const parsed = parseHazardIntro(groupIntroText)
+
+    // Filter hazard types table to only those that intersect the report area
+    const filteredHazards = showAllHazardTypes
+        ? parsed.hazards
+        : parsed.hazards.filter(h => hazardMatchesAnyLayer(h, group.layers))
 
     return (
         <section className="space-y-8 page-break-before">
@@ -96,7 +110,7 @@ export function ReportGroupSection({ group, polygon }: ReportGroupSectionProps) 
                 </div>
 
                 {/* Hazards Table */}
-                {parsed.hazards.length > 0 && (
+                {filteredHazards.length > 0 && (
                     <div className="border rounded-lg overflow-hidden">
                         <Table>
                             <TableHeader className="bg-muted">
@@ -106,7 +120,7 @@ export function ReportGroupSection({ group, polygon }: ReportGroupSectionProps) 
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {parsed.hazards.map((hazard, idx) => (
+                                {filteredHazards.map((hazard, idx) => (
                                     <TableRow key={idx}>
                                         <TableCell className="p-4 font-medium align-top">{hazard.name}</TableCell>
                                         <TableCell className="p-4 text-sm">{hazard.description}</TableCell>
