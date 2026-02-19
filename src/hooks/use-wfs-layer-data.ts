@@ -26,6 +26,7 @@ async function fetchWfsGeoJson(layer: WFSLayerProps): Promise<FeatureCollection<
     srsName: layer.crs || 'EPSG:4326',
   })
   const url = `${layer.wfsUrl}?${params.toString()}`
+
   const response = await fetch(url)
   if (!response.ok) {
     throw new Error(`WFS request failed: ${response.status} ${response.statusText}`)
@@ -50,7 +51,12 @@ export function queryWfsLayersInScreenBbox(
 ): WfsLayerFeature[] {
   if (wfsLayers.length === 0) return []
 
-  const wfsLayerIds = wfsLayers.map(layer => `${getWfsSourceId(layer)}-circle`)
+  // Query both point (-circle) and polygon (-fill) layer IDs, filtering to those that exist
+  const wfsLayerIds = wfsLayers.flatMap(layer => {
+    const sourceId = getWfsSourceId(layer)
+    return [`${sourceId}-circle`, `${sourceId}-fill`].filter(id => map.getLayer(id))
+  })
+  if (wfsLayerIds.length === 0) return []
   const features = map.queryRenderedFeatures(bbox, { layers: wfsLayerIds })
 
   return features.map(f => {
