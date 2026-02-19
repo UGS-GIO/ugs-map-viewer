@@ -115,7 +115,7 @@ export function downloadGeoJSON<T extends Record<string, unknown>>(
 /**
  * Download entire layer via WFS as GeoJSON with pagination
  * @param wmsUrl - The WMS base URL (will be converted to WFS)
- * @param layerName - Full layer name including workspace (e.g., "hazards:quaternaryfaults_current")
+ * @param layerName - Full layer name including workspace (e.g., "hazards:hazards_qfaults_current")
  * @param title - Layer title for filename
  * @param onProgress - Optional callback for progress updates (0-100)
  * @param maxFeatures - Maximum features to fetch (default 10000, for browser performance)

@@ -17,7 +17,7 @@ interface LayerControlsProps {
     layerId: string;
     url: string;
     openLegend?: boolean;
-    /** Full layer name for WFS download (e.g., "hazards:quaternaryfaults_current") */
+    /** Full layer name for WFS download (e.g., "hazards:hazards_qfaults_current") */
     layerName?: string | null;
     customLegend?: React.ReactNode;
     bivariateLegend?: { xLabel: string; yLabel: string };

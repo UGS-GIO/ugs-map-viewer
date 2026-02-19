@@ -574,7 +574,7 @@ const wildernessStudyAreasConfig: PMTilesLayerProps = {
 };
 
 // Quaternary Faults
-const qFaultsLayerName = 'quaternaryfaults_current';
+const qFaultsLayerName = 'hazards_qfaults_current';
 const qFaultsTitle = 'Hazardous (Quaternary age) Faults';
 const qFaultsConfig: PMTilesLayerProps = {
     type: 'pmtiles',

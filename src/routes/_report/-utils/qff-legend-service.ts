@@ -15,11 +15,11 @@ import { createCustomLegend } from '@/routes/_report/-utils/hazard-legend-factor
 export async function generateQFFLegendItems(polygon: string): Promise<CustomLegendItem[]> {
     return createCustomLegend(polygon, {
         code: 'QFF',
-        wfsLayer: 'hazards:qfaults_current',
-        wmsLayer: 'hazards:qfaults_current',
-        properties: 'faultzone,faultname,sectionname,strandname,mappedscale,slipsense,faultage,sliprate,qffhazardunit',
+        wfsLayer: 'hazards:hazards_qfaults_current',
+        wmsLayer: 'hazards:hazards_qfaults_current',
         geometryField: 'geom',
         crs: 'EPSG:3857',
+        properties: 'faultzone,faultname,sectionname,strandname,mappedscale,slipsense,faultage,sliprate,qffhazardunit',
         unitField: 'qffhazardunit',
         groupByField: 'faultzone',
         fallbackField: 'faultname',

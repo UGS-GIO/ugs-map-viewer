@@ -111,7 +111,7 @@ async function queryLayerForUnits(
 
 /**
  * Generic WFS feature query - fetch raw features from a layer with custom CQL filter
- * @param layerName - Full layer name (e.g., "hazards:qfaults_current")
+ * @param layerName - Full layer name (e.g., "hazards:hazards_qfaults_current")
  * @param polygonWKT - WKT polygon string (must be in the same CRS as specified)
  * @param propertyNames - Comma-separated property names to fetch (optional - fetches all if not specified)
  * @param cqlFilterAddition - Additional CQL filter conditions (optional)
