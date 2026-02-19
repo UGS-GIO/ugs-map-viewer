@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { LegendAccordion } from '@/components/maps/legend-accordion';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Toggle } from '@/components/ui/toggle';
 import { LayerDescriptionAccordion } from '@/components/maps/layer-description-accordion';
 import { downloadLayerAsGeoJSON } from '@/lib/download-utils';
@@ -40,6 +40,11 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     const [cleanDescription, setCleanDescription] = useState<string>('');
     const [isDownloading, setIsDownloading] = useState(false);
     const [downloadProgress, setDownloadProgress] = useState<string | null>(null);
+    const lastOpacityRef = useRef(layerOpacity ?? 1);
+
+    if (layerOpacity !== null) {
+        lastOpacityRef.current = layerOpacity;
+    }
 
     useEffect(() => {
         if (openLegend) {
@@ -107,7 +112,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         ) : (
                             <Slider
                                 className="flex-grow opacity-50"
-                                value={[100]}
+                                value={[lastOpacityRef.current * 100]}
                                 disabled
                             />
                         )}
