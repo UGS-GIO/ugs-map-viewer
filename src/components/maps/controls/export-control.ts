@@ -134,10 +134,6 @@ export class ExportControl implements maplibregl.IControl {
         button.title = 'Export map';
         button.setAttribute('aria-label', 'Export map');
         button.setAttribute('data-tour', 'print-map');
-        button.style.display = 'flex';
-        button.style.alignItems = 'center';
-        button.style.justifyContent = 'center';
-        button.style.color = '#333';
 
         const iconElement = createElement(Printer, { size: 20, strokeWidth: 2 });
         button.innerHTML = renderToStaticMarkup(iconElement);
@@ -169,9 +165,7 @@ export class ExportControl implements maplibregl.IControl {
 
         const closeBtn = document.createElement('button');
         closeBtn.type = 'button';
-        closeBtn.className = 'bg-transparent border-none cursor-pointer p-0 flex items-center justify-center text-muted-foreground hover:text-foreground';
-        closeBtn.style.width = '16px';
-        closeBtn.style.height = '16px';
+        closeBtn.className = 'size-4 bg-transparent border-none cursor-pointer p-0 flex items-center justify-center text-muted-foreground hover:text-foreground';
         closeBtn.innerHTML = renderToStaticMarkup(createElement(X, { size: 14 }));
         closeBtn.addEventListener('click', (e) => {
             e.stopPropagation();

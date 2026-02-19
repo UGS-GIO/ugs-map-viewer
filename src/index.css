@@ -148,3 +148,40 @@
     @apply after:pointer-events-none after:absolute after:bottom-0 after:left-0 after:hidden after:h-32 after:w-full after:bg-[linear-gradient(180deg,_transparent_10%,_hsl(var(--background))_70%)] after:md:block;
   }
 }
+
+/* MapLibre control overrides — unlayered to beat maplibre-gl.css specificity */
+.maplibregl-ctrl.maplibregl-ctrl-group button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dark .maplibregl-ctrl-group {
+  background: hsl(var(--popover));
+  color: hsl(var(--foreground));
+}
+
+.dark .maplibregl-ctrl-group:not(:empty) {
+  box-shadow: 0 0 0 2px hsl(var(--border));
+}
+
+.dark .maplibregl-ctrl-group button + button {
+  border-color: hsl(var(--border));
+}
+
+.dark .maplibregl-ctrl-group button:not(.maplibregl-ctrl-compass) .maplibregl-ctrl-icon {
+  filter: brightness(0) invert(1);
+}
+
+.dark .maplibregl-ctrl button.maplibregl-ctrl-compass .maplibregl-ctrl-icon {
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23e5e5e5' viewBox='0 0 29 29'%3E%3Cpath d='m10.5 14 4-8 4 8z'/%3E%3Cpath fill='%23666' d='m10.5 16 4 8 4-8z'/%3E%3C/svg%3E");
+}
+
+.dark .maplibregl-ctrl-group button:not(:disabled):hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark .maplibregl-ctrl-attrib {
+  background-color: hsl(var(--popover) / 0.75);
+  color: hsl(var(--foreground));
+}
