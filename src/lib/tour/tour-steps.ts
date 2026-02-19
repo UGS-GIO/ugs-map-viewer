@@ -88,15 +88,6 @@ export const baseMapSteps: DriveStep[] = [
     },
   },
   {
-    element: '[data-tour="layer-export"]',
-    popover: {
-      title: 'Export Data',
-      description: 'Download layer data as GeoJSON or Parquet format for use in other applications.',
-      side: 'left',
-      align: 'center',
-    },
-  },
-  {
     element: '[data-tour="basemap-selector"]',
     popover: {
       title: 'Basemap',
