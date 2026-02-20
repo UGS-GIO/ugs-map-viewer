@@ -312,17 +312,27 @@ async function queryVisibleLayers(
 }
 
 /**
- * Query features at a click point with tolerance
+ * Query features at a click point with tolerance.
+ * Uses CQL INTERSECTS instead of BBOX to match against actual geometry
+ * rather than bounding boxes.
  */
 export async function queryWFSFeatures(params: ClickQueryParams): Promise<WfsFeature[]> {
   const { point, visibleLayers, tolerance, mapInstance, wmsUrl, layerFilters } = params
 
-  const bounds: Bounds = {
-    sw: mapInstance.unproject([point.x - tolerance, point.y + tolerance]),
-    ne: mapInstance.unproject([point.x + tolerance, point.y - tolerance]),
+  const sw = mapInstance.unproject([point.x - tolerance, point.y + tolerance])
+  const ne = mapInstance.unproject([point.x + tolerance, point.y - tolerance])
+  const clickPolygon: Polygon = {
+    type: 'Polygon',
+    coordinates: [[
+      [sw.lng, sw.lat],
+      [ne.lng, sw.lat],
+      [ne.lng, ne.lat],
+      [sw.lng, ne.lat],
+      [sw.lng, sw.lat],
+    ]],
   }
 
-  return queryVisibleLayers(visibleLayers, bounds, wmsUrl, { pageSize: 50 }, layerFilters)
+  return queryVisibleLayers(visibleLayers, clickPolygon, wmsUrl, { pageSize: 50 }, layerFilters)
 }
 
 /**
