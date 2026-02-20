@@ -1,14 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps } from '@/lib/types/mapping-types';
+import type { PostgRESTRowOf } from '@/lib/types/postgrest-types';
 import { isGroupLayer, isWMSLayer } from '@/lib/map/utils';
 import { useGetLayerConfigsData } from './use-get-layer-configs';
+import { queryKeys } from '@/lib/query-keys';
 
-interface ReviewableLayerInfo {
+type ReviewableLayerInfo = PostgRESTRowOf<{
     schema_name: string;
     matview_name: string;
     has_r_values: boolean;
-}
+}>
 
 export interface LayerOption {
     value: string; // The raw name, e.g., 'hazards:hazards_qfaults_current'
@@ -32,14 +34,14 @@ const fetchReviewableLayers = async (): Promise<ReviewableLayerInfo[]> => {
         throw new Error(`Failed to fetch reviewable layers: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
-    return await response.json();
+    return await response.json() as ReviewableLayerInfo[];
 };
 
 export const useFetchReviewableLayers = () => {
     const layerConfig = useGetLayerConfigsData('review-layers');
 
     return useQuery<ReviewableLayerInfo[], Error, LayerOption[]>({
-        queryKey: ['reviewableLayers', layerConfig],
+        queryKey: queryKeys.layers.reviewable(layerConfig),
         queryFn: fetchReviewableLayers,
         enabled: !!layerConfig,
         select: (data) => {

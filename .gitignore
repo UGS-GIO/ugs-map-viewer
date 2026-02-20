@@ -24,4 +24,5 @@ dist-ssr
 *.sln
 *.sw?
 
-hosting.*.cache
+.firebase/
+scripts/output/
