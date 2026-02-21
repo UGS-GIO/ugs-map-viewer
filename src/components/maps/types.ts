@@ -45,7 +45,7 @@ export interface DataMapProps {
   spatialFilter?: SpatialFilter
   onSpatialFilterChange?: (filter: SpatialFilter) => void
   /** External draw callback — receives polygon directly, skips spatial filter query pipeline */
-  onExternalDrawComplete?: (polygon: import('geojson').Polygon) => void
+  onExternalDrawComplete?: (polygon: Polygon) => void
   /** Box select mode - shows positioning overlay */
   boxSelectMode?: boolean
   onBoxSelectModeChange?: (active: boolean) => void

@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react'
 import { TerraDraw, TerraDrawRectangleMode, TerraDrawPolygonMode } from 'terra-draw'
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter'
 import type { Polygon } from 'geojson'
-import type { DrawMode, SpatialFilter } from '@/components/maps/types'
+import type { DrawMode } from '@/components/maps/types'
 
 // Standardized drawing colors - matches spatial filter layer (orange)
 const DRAW_FILL_COLOR = '#f59e0b'
@@ -19,10 +19,9 @@ interface UseTerraDrawOptions {
   styleLoaded: boolean
   drawMode: DrawMode
   onDrawModeChange?: (mode: DrawMode) => void
-  onSpatialFilterChange?: (filter: SpatialFilter) => void
-  /** When set, receives the polygon directly and skips the spatial filter query pipeline.
-   *  Used by external callers (report generator) that only need the geometry. */
-  onExternalDrawComplete?: (polygon: Polygon) => void
+  /** Called when a drawing is completed with the         relatedDataMaps: import('@/hooks/use-bulk-related-table').RelatedDataMap[];
+polygon geometry */
+  onDrawFinished?: (polygon: Polygon, mode: 'rectangle' | 'polygon') => void
 }
 
 /**
@@ -34,19 +33,16 @@ export function useTerraDraw({
   styleLoaded,
   drawMode,
   onDrawModeChange,
-  onSpatialFilterChange,
-  onExternalDrawComplete,
+  onDrawFinished,
 }: UseTerraDrawOptions) {
   const terraDrawRef = useRef<TerraDraw | null>(null)
   const justFinishedDrawingRef = useRef(false)
 
   // Stable refs for callbacks — prevents Terra Draw teardown/rebuild on callback identity changes
-  const onSpatialFilterChangeRef = useRef(onSpatialFilterChange)
-  onSpatialFilterChangeRef.current = onSpatialFilterChange
   const onDrawModeChangeRef = useRef(onDrawModeChange)
   onDrawModeChangeRef.current = onDrawModeChange
-  const onExternalDrawCompleteRef = useRef(onExternalDrawComplete)
-  onExternalDrawCompleteRef.current = onExternalDrawComplete
+  const onDrawFinishedRef = useRef(onDrawFinished)
+  onDrawFinishedRef.current = onDrawFinished
 
   // Helper to clean up existing Terra Draw sources/layers
   const cleanupTerraDrawLayers = (mapInstance: maplibregl.Map) => {
@@ -121,36 +117,15 @@ export function useTerraDraw({
       terraDraw.setMode(drawMode)
     }
 
-    // Listen for drawing completion - clear and call callback
+    // Listen for drawing completion - emit polygon and reset
     terraDraw.on('finish', (id: string | number) => {
       const snapshot = terraDraw.getSnapshot()
       const feature = snapshot.find(f => f.id === id)
       if (feature && isPolygon(feature.geometry)) {
-        const geometry = feature.geometry
-
-        if (onExternalDrawCompleteRef.current) {
-          // External draw (report generator) — just pass the polygon, skip query pipeline
-          onExternalDrawCompleteRef.current(geometry)
-        } else {
-          // Map tools draw — set spatial filter (triggers polygon query + overlay)
-          const coords = geometry.coordinates[0]
-          const lngs = coords.map(c => c[0])
-          const lats = coords.map(c => c[1])
-          const bbox: [number, number, number, number] = [
-            Math.min(...lngs),
-            Math.min(...lats),
-            Math.max(...lngs),
-            Math.max(...lats),
-          ]
-          onSpatialFilterChangeRef.current?.({
-            type: feature.properties?.mode === 'rectangle' ? 'bbox' : 'polygon',
-            bbox,
-            polygon: geometry,
-          })
-        }
+        const mode = feature.properties?.mode === 'rectangle' ? 'rectangle' : 'polygon'
+        onDrawFinishedRef.current?.(feature.geometry, mode)
       }
 
-      // Clear all drawn features and exit draw mode
       terraDraw.clear()
       justFinishedDrawingRef.current = true
       onDrawModeChangeRef.current?.('off')

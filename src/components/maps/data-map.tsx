@@ -19,6 +19,7 @@ import type maplibregl from 'maplibre-gl'
 import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
 import { useTerraDraw } from '@/hooks/use-terra-draw'
+import type { Polygon } from 'geojson'
 import { useFeatureQuery } from '@/hooks/use-feature-query'
 import type { DataMapProps } from './types'
 import { LoadingOverlay } from '@/components/ui/loading-spinner'
@@ -164,14 +165,28 @@ export default function DataMap({
     })
   }, [onSpatialFilterChange, wmsUrl, onFeatureClick, layerFilters])
 
-  // Terra Draw hook
+  // Route drawn polygons to either the external caller (report) or the spatial filter pipeline
+  const handleDrawFinished = useCallback((polygon: Polygon, mode: 'rectangle' | 'polygon') => {
+    if (onExternalDrawComplete) {
+      onExternalDrawComplete(polygon)
+      return
+    }
+    const coords = polygon.coordinates[0]
+    const lngs = coords.map(c => c[0])
+    const lats = coords.map(c => c[1])
+    handleSpatialFilterChange({
+      type: mode === 'rectangle' ? 'bbox' : 'polygon',
+      bbox: [Math.min(...lngs), Math.min(...lats), Math.max(...lngs), Math.max(...lats)],
+      polygon,
+    })
+  }, [onExternalDrawComplete, handleSpatialFilterChange])
+
   const { justFinishedDrawingRef } = useTerraDraw({
     map: mapInstance,
     styleLoaded,
     drawMode,
     onDrawModeChange,
-    onSpatialFilterChange: handleSpatialFilterChange,
-    onExternalDrawComplete,
+    onDrawFinished: handleDrawFinished,
   })
 
   // Calculate initial view - use feature_bbox if restoring, otherwise use props

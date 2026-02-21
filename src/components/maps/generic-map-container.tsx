@@ -6,6 +6,7 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import maplibregl from 'maplibre-gl'
+import type { Polygon } from 'geojson'
 import DataMap, { HighlightFeature, DrawMode, SpatialFilter } from '@/components/maps/data-map'
 import { PopupSheet, PopupSheetRef } from '@/components/maps/popups/popup-sheet'
 import { QueryResultsTable } from '@/components/data-table/query-results-table'
@@ -220,7 +221,7 @@ interface GenericMapContainerProps {
   /** Callback when external draw mode changes */
   onExternalDrawModeChange?: (mode: DrawMode) => void
   /** Callback when external drawing completes with polygon */
-  onExternalDrawComplete?: (polygon: import('geojson').Polygon) => void
+  onExternalDrawComplete?: (polygon: Polygon) => void
   /** Register callback to clear spatial filter (called by startDraw) */
   onRegisterClearSpatialFilter?: (callback: () => void) => void
   /** Register callback for when layer is turned off (clears selection/highlights) */
@@ -450,9 +451,9 @@ export default function GenericMapContainer({
   }, [])
 
   // Context-exposed draw controls (only used when skipContextProvider is false)
-  const externalDrawCallbackRef = useRef<((polygon: import('geojson').Polygon) => void) | null>(null)
+  const externalDrawCallbackRef = useRef<((polygon: Polygon) => void) | null>(null)
 
-  const startDraw = useCallback((mode: 'rectangle' | 'polygon', onComplete: (polygon: import('geojson').Polygon) => void) => {
+  const startDraw = useCallback((mode: 'rectangle' | 'polygon', onComplete: (polygon: Polygon) => void) => {
     externalDrawCallbackRef.current = onComplete
     setMapInteraction(prev => ({ ...prev, internalDrawMode: mode, spatialFilter: null }))
   }, [])
