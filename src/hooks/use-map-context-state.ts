@@ -38,25 +38,31 @@ export function useMapContextState() {
     clearSpatialFilterRef.current = callback
   }, [])
 
+  // Track whether an external caller (report generator) is drawing
+  const [isExternalDrawActive, setIsExternalDrawActive] = useState(false)
+
   // Draw controls - shared between report generator and map tools
   const startDraw = useCallback((mode: 'rectangle' | 'polygon', onComplete: (polygon: Polygon) => void) => {
     // Clear any existing drawing/filter before starting new one
     clearSpatialFilterRef.current?.()
     externalDrawCallbackRef.current = onComplete
+    setIsExternalDrawActive(true)
     setDrawMode(mode)
   }, [])
 
   const cancelDraw = useCallback(() => {
     externalDrawCallbackRef.current = null
+    setIsExternalDrawActive(false)
     setDrawMode('off')
   }, [])
 
-  // Called by GenericMapContainer when a spatial filter is set (drawing completed)
+  // Called directly by Terra Draw when external draw finishes (skips spatial filter pipeline)
   const handleDrawComplete = useCallback((polygon: Polygon) => {
     if (externalDrawCallbackRef.current) {
       externalDrawCallbackRef.current(polygon)
       externalDrawCallbackRef.current = null
     }
+    setIsExternalDrawActive(false)
   }, [])
 
   const contextValue: MapContextProps = useMemo(() => ({
@@ -82,5 +88,6 @@ export function useMapContextState() {
     drawMode,
     setDrawMode,
     handleDrawComplete,
+    isExternalDrawActive,
   }
 }

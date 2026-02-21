@@ -49,6 +49,7 @@ export default function DataMap({
   onDrawModeChange,
   spatialFilter,
   onSpatialFilterChange,
+  onExternalDrawComplete,
   boxSelectMode = false,
   onBoxSelectModeChange,
   boxSelectBounds,
@@ -170,6 +171,7 @@ export default function DataMap({
     drawMode,
     onDrawModeChange,
     onSpatialFilterChange: handleSpatialFilterChange,
+    onExternalDrawComplete,
   })
 
   // Calculate initial view - use feature_bbox if restoring, otherwise use props
@@ -577,7 +579,7 @@ export default function DataMap({
 
         {/* Map tools control */}
         <MapToolsControl
-          drawMode={drawMode}
+          drawMode={onExternalDrawComplete ? 'off' : drawMode}
           onDrawModeChange={onDrawModeChange}
           hasFilter={!!spatialFilter}
           onClearFilter={onSpatialFilterChange ? () => onSpatialFilterChange(null) : undefined}

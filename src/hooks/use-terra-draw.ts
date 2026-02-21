@@ -10,13 +10,19 @@ const DRAW_FILL_OPACITY = 0.15
 const DRAW_OUTLINE_COLOR = '#f59e0b'
 const DRAW_OUTLINE_WIDTH = 2
 
+function isPolygon(geometry: GeoJSON.Geometry): geometry is Polygon {
+  return geometry.type === 'Polygon'
+}
+
 interface UseTerraDrawOptions {
   map: maplibregl.Map | null
   styleLoaded: boolean
   drawMode: DrawMode
   onDrawModeChange?: (mode: DrawMode) => void
   onSpatialFilterChange?: (filter: SpatialFilter) => void
-  onDrawFinished?: () => void
+  /** When set, receives the polygon directly and skips the spatial filter query pipeline.
+   *  Used by external callers (report generator) that only need the geometry. */
+  onExternalDrawComplete?: (polygon: Polygon) => void
 }
 
 /**
@@ -29,10 +35,18 @@ export function useTerraDraw({
   drawMode,
   onDrawModeChange,
   onSpatialFilterChange,
-  onDrawFinished,
+  onExternalDrawComplete,
 }: UseTerraDrawOptions) {
   const terraDrawRef = useRef<TerraDraw | null>(null)
   const justFinishedDrawingRef = useRef(false)
+
+  // Stable refs for callbacks — prevents Terra Draw teardown/rebuild on callback identity changes
+  const onSpatialFilterChangeRef = useRef(onSpatialFilterChange)
+  onSpatialFilterChangeRef.current = onSpatialFilterChange
+  const onDrawModeChangeRef = useRef(onDrawModeChange)
+  onDrawModeChangeRef.current = onDrawModeChange
+  const onExternalDrawCompleteRef = useRef(onExternalDrawComplete)
+  onExternalDrawCompleteRef.current = onExternalDrawComplete
 
   // Helper to clean up existing Terra Draw sources/layers
   const cleanupTerraDrawLayers = (mapInstance: maplibregl.Map) => {
@@ -89,9 +103,9 @@ export function useTerraDraw({
     return terraDraw
   }
 
-  // Initialize Terra Draw when map style is ready
+  // Initialize Terra Draw when map + style are ready (stable deps only)
   useEffect(() => {
-    if (!map || !onSpatialFilterChange || !styleLoaded) return
+    if (!map || !styleLoaded) return
 
     // Stop existing Terra Draw if present (handles style reloads)
     if (terraDrawRef.current) {
@@ -111,32 +125,35 @@ export function useTerraDraw({
     terraDraw.on('finish', (id: string | number) => {
       const snapshot = terraDraw.getSnapshot()
       const feature = snapshot.find(f => f.id === id)
-      if (feature) {
-        const geometry = feature.geometry as Polygon
-        const coords = geometry.coordinates[0]
+      if (feature && isPolygon(feature.geometry)) {
+        const geometry = feature.geometry
 
-        // Calculate bbox from polygon coordinates
-        const lngs = coords.map(c => c[0])
-        const lats = coords.map(c => c[1])
-        const bbox: [number, number, number, number] = [
-          Math.min(...lngs),
-          Math.min(...lats),
-          Math.max(...lngs),
-          Math.max(...lats),
-        ]
-
-        onSpatialFilterChange({
-          type: feature.properties?.mode === 'rectangle' ? 'bbox' : 'polygon',
-          bbox,
-          polygon: geometry,
-        })
+        if (onExternalDrawCompleteRef.current) {
+          // External draw (report generator) — just pass the polygon, skip query pipeline
+          onExternalDrawCompleteRef.current(geometry)
+        } else {
+          // Map tools draw — set spatial filter (triggers polygon query + overlay)
+          const coords = geometry.coordinates[0]
+          const lngs = coords.map(c => c[0])
+          const lats = coords.map(c => c[1])
+          const bbox: [number, number, number, number] = [
+            Math.min(...lngs),
+            Math.min(...lats),
+            Math.max(...lngs),
+            Math.max(...lats),
+          ]
+          onSpatialFilterChangeRef.current?.({
+            type: feature.properties?.mode === 'rectangle' ? 'bbox' : 'polygon',
+            bbox,
+            polygon: geometry,
+          })
+        }
       }
 
       // Clear all drawn features and exit draw mode
       terraDraw.clear()
       justFinishedDrawingRef.current = true
-      onDrawModeChange?.('off')
-      onDrawFinished?.()
+      onDrawModeChangeRef.current?.('off')
     })
 
     // Handle map style changes (basemap switches) - reinitialize Terra Draw
@@ -168,7 +185,7 @@ export function useTerraDraw({
       }
       terraDrawRef.current = null
     }
-  }, [map, onSpatialFilterChange, onDrawModeChange, onDrawFinished, styleLoaded])
+  }, [map, styleLoaded])
 
   // Handle draw mode changes - setMode() instead of reinitializing
   useEffect(() => {

@@ -437,11 +437,7 @@ export default function GenericMapContainer({
       setHighlightedFeatures([])
       clearAllSelections()
     }
-    // If there's an external callback waiting for the polygon, call it
-    if (filter?.polygon && onExternalDrawComplete) {
-      onExternalDrawComplete(filter.polygon)
-    }
-  }, [onExternalDrawComplete, clearAllSelections])
+  }, [clearAllSelections])
 
   // Handler for box select toggle from toolbar
   const handleBoxSelectModeChange = useCallback((active: boolean) => {
@@ -570,6 +566,7 @@ export default function GenericMapContainer({
             onDrawModeChange={handleDrawModeChange}
             spatialFilter={mapInteraction.spatialFilter}
             onSpatialFilterChange={handleSpatialFilterChange}
+            onExternalDrawComplete={onExternalDrawComplete}
             boxSelectMode={mapInteraction.boxSelectMode}
             onBoxSelectModeChange={handleBoxSelectModeChange}
             boxSelectBounds={mapInteraction.boxSelectBounds}

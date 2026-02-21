@@ -17,7 +17,7 @@ import { TourAutoStart } from '@/components/tour-auto-start';
 export default function Map() {
   const { isCollapsed, sidebarWidthPx } = useSidebar();
   const isMobile = useIsMobile();
-  const { handleMapReady, contextValue, drawMode, setDrawMode, handleDrawComplete, setClearSpatialFilterCallback, setLayerTurnedOffCallback } = useMapContextState();
+  const { handleMapReady, contextValue, drawMode, setDrawMode, handleDrawComplete, isExternalDrawActive, setClearSpatialFilterCallback, setLayerTurnedOffCallback } = useMapContextState();
   const searchRef = useRef<SearchComboboxHandle>(null);
   // Use 56px (3.5rem) when collapsed, dynamic pixel width when expanded
   // On mobile, no margin needed (sidebar is top, not left)
@@ -75,7 +75,7 @@ export default function Map() {
                 skipContextProvider
                 externalDrawMode={drawMode}
                 onExternalDrawModeChange={setDrawMode}
-                onExternalDrawComplete={handleDrawComplete}
+                onExternalDrawComplete={isExternalDrawActive ? handleDrawComplete : undefined}
                 onRegisterClearSpatialFilter={setClearSpatialFilterCallback}
                 onRegisterLayerTurnedOff={setLayerTurnedOffCallback}
                 onClearSearch={() => searchRef.current?.clear()}
