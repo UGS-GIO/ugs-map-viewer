@@ -57,23 +57,23 @@ const getDefaultSelected = (layers: LayerProps[]): string[] => {
     return selected;
 };
 
-// Check if a group has any visible children by default
-const hasVisibleChildren = (layers: LayerProps[]): boolean =>
+// Check if a group has any visible (config default) or URL-selected children
+export const hasActiveChildren = (layers: LayerProps[], selectedTitles: Set<string>): boolean =>
     layers.some(layer => {
         if (layer.type === 'group' && 'layers' in layer && layer.layers) {
-            return hasVisibleChildren(layer.layers);
+            return hasActiveChildren(layer.layers, selectedTitles);
         }
-        return layer.visible === true;
+        return layer.visible === true || selectedTitles.has(layer.title || '');
     });
 
-// Get default group visibility: false if no children are visible
-const getDefaultGroupVisibility = (layers: LayerProps[]): Map<string, boolean> => {
+// Get default group visibility based on config defaults AND URL selection
+export const getDefaultGroupVisibility = (layers: LayerProps[], selectedTitles: Set<string>): Map<string, boolean> => {
     const visibility = new Map<string, boolean>();
     layers.forEach(layer => {
         if (layer.type === 'group' && layer.title && 'layers' in layer && layer.layers) {
-            visibility.set(layer.title, hasVisibleChildren(layer.layers));
+            visibility.set(layer.title, hasActiveChildren(layer.layers, selectedTitles));
             // Recurse for nested groups
-            getDefaultGroupVisibility(layer.layers).forEach((v, k) => visibility.set(k, v));
+            getDefaultGroupVisibility(layer.layers, selectedTitles).forEach((v, k) => visibility.set(k, v));
         }
     });
     return visibility;
@@ -175,10 +175,10 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         setLayerOpacityState(prev => { const next = new Map(prev); next.set(title, opacity); return next; });
     }, []);
 
-    // Compute default group visibility from config (groups with no visible children default to false)
+    // Compute default group visibility from config defaults AND URL-selected layers
     const defaultGroupVisibility = useMemo(() =>
-        layersConfig ? getDefaultGroupVisibility(layersConfig) : new Map<string, boolean>()
-    , [layersConfig]);
+        layersConfig ? getDefaultGroupVisibility(layersConfig, selectedLayerTitles) : new Map<string, boolean>()
+    , [layersConfig, selectedLayerTitles]);
 
     const setGroupVisibility = useCallback((groupTitle: string, visible: boolean) => {
         setGroupVisibilityState(prev => {
