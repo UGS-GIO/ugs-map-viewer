@@ -1,4 +1,4 @@
-import { createContext, useContext, useCallback, ReactNode, useMemo, useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useCallback, ReactNode, useMemo, useEffect, useRef } from 'react';
 import { useSearch, useNavigate, useLocation } from '@tanstack/react-router';
 import { LayerProps } from '@/lib/types/mapping-types';
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs';
@@ -79,34 +79,28 @@ export const getDefaultGroupVisibility = (layers: LayerProps[], selectedTitles: 
     return visibility;
 };
 
-const normalizeLayersObj = (layers: string | { selected?: string[] } | undefined): { selected?: string[] } => {
-    if (typeof layers === 'string') {
-        try {
-            return JSON.parse(layers);
-        } catch {
-            return {};
-        }
-    }
-    return layers || {};
-};
-
 interface LayerUrlProviderProps {
     children: ReactNode;
 }
 
 export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
     const navigate = useNavigate();
-    const { layers: urlLayers, filters: urlFilters } = useSearch({ from: '/_map' });
+
+    // 1. Grab everything from the URL, including the new visibility and opacities params
+    const {
+        layers: urlLayers,
+        filters: urlFilters,
+        visibility: urlVisibility,
+        opacities: urlOpacities
+    } = useSearch({ from: '/_map' });
+
     const layersConfig = useGetLayerConfigsData();
     const hasInitializedForPath = useRef<string | null>(null);
     const location = useLocation();
 
-    // Normalize layers: handle both string and object formats
-    const normalizedLayers = useMemo(() => normalizeLayersObj(urlLayers), [urlLayers]);
-
     // isInitialized = URL has a layers key with a selected array (even if empty)
     // This distinguishes between "user explicitly set layers" vs "no layers param in URL"
-    const isInitialized = normalizedLayers?.selected !== undefined;
+    const isInitialized = urlLayers?.selected !== undefined;
 
     useEffect(() => {
         if (!layersConfig || hasInitializedForPath.current === location.pathname) return;
@@ -114,7 +108,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         const allValidLayerTitles = getAllValidTitles(layersConfig);
         const defaultSelected = getDefaultSelected(layersConfig);
 
-        let finalLayers: { selected?: string[] } = normalizedLayers;
+        let finalLayers: { selected?: string[] } | undefined = urlLayers;
         let finalFilters = urlFilters;
         let needsUpdate = false;
 
@@ -128,12 +122,12 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
 
         // Only set defaults if layers param is completely missing from URL
         // If user explicitly sets layers.selected = [], respect that (empty map)
-        if (!normalizedLayers || normalizedLayers.selected === undefined) {
+        if (!urlLayers || urlLayers.selected === undefined) {
             finalLayers = { selected: defaultSelected };
             needsUpdate = true;
         } else {
             // Validate existing selection - remove any invalid layer titles
-            const currentSelected = normalizedLayers.selected;
+            const currentSelected = urlLayers.selected;
             const validSelected = currentSelected.filter((title: string) => allValidLayerTitles.has(title));
             if (validSelected.length !== currentSelected.length) {
                 finalLayers = { selected: validSelected };
@@ -144,7 +138,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         if (needsUpdate) {
             // Dedupe to handle StrictMode double-mount
             const dedupedLayers = {
-                selected: finalLayers.selected ? [...new Set(finalLayers.selected)] : undefined,
+                selected: finalLayers?.selected ? [...new Set(finalLayers.selected)] : undefined,
             };
 
             navigate({
@@ -156,37 +150,66 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
 
         hasInitializedForPath.current = location.pathname;
 
-    }, [layersConfig, navigate, normalizedLayers, urlFilters, location.pathname]);
+    }, [layersConfig, navigate, urlLayers, urlFilters, location.pathname]);
 
     // Memoize based on array contents, not object reference
     const selectedLayerTitles = useMemo(
-        () => new Set<string>(normalizedLayers?.selected || []),
+        () => new Set<string>(urlLayers?.selected || []),
         // eslint-disable-next-line react-hooks/exhaustive-deps
-        [JSON.stringify(normalizedLayers?.selected)]
+        [JSON.stringify(urlLayers?.selected)]
     );
+
     const activeFilters: ActiveFilters = useMemo(() => urlFilters || {}, [urlFilters]);
-
-    // Group visibility state
-    const [groupVisibility, setGroupVisibilityState] = useState<GroupVisibility>(() => new Map());
-
-    // Layer opacity overrides (persisted across toggle off/on)
-    const [layerOpacity, setLayerOpacityState] = useState<LayerOpacity>(() => new Map());
-    const setLayerOpacity = useCallback((title: string, opacity: number) => {
-        setLayerOpacityState(prev => { const next = new Map(prev); next.set(title, opacity); return next; });
-    }, []);
 
     // Compute default group visibility from config defaults AND URL-selected layers
     const defaultGroupVisibility = useMemo(() =>
         layersConfig ? getDefaultGroupVisibility(layersConfig, selectedLayerTitles) : new Map<string, boolean>()
-    , [layersConfig, selectedLayerTitles]);
+        , [layersConfig, selectedLayerTitles]);
+
+    // 2. Derive layerOpacity purely from the URL
+    const layerOpacity = useMemo(() => {
+        return new Map<string, number>(Object.entries(urlOpacities || {}));
+    }, [urlOpacities]);
+
+    // 3. Merge config defaults with URL overrides (URL takes precedence)
+    const mergedGroupVisibility = useMemo(() => {
+        const merged = new Map(defaultGroupVisibility);
+        if (urlVisibility) {
+            Object.entries(urlVisibility).forEach(([k, v]) => {
+                merged.set(k, Boolean(v));
+            });
+        }
+        return merged;
+    }, [defaultGroupVisibility, urlVisibility]);
+
+    // 4. Setters now update the URL parameters directly
+    const setLayerOpacity = useCallback((title: string, opacity: number) => {
+        navigate({
+            to: '.',
+            search: (prev) => ({
+                ...prev,
+                opacities: {
+                    ...(prev.opacities || {}),
+                    [title]: opacity,
+                }
+            }),
+            replace: true,
+        });
+    }, [navigate]);
 
     const setGroupVisibility = useCallback((groupTitle: string, visible: boolean) => {
-        setGroupVisibilityState(prev => {
-            const next = new Map(prev);
-            next.set(groupTitle, visible);
-            return next;
+        navigate({
+            to: '.',
+            search: (prev) => ({
+                ...prev,
+                visibility: {
+                    ...(prev.visibility || {}),
+                    [groupTitle]: visible,
+                }
+            }),
+            replace: true,
         });
-    }, []);
+    }, [navigate]);
 
     const updateLayerSelection = useCallback((titles: string | string[], shouldBeSelected: boolean) => {
         const titlesToUpdate = Array.isArray(titles) ? titles : [titles];
@@ -194,8 +217,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         navigate({
             to: '.',
             search: (prev) => {
-                const prevLayersObj = normalizeLayersObj(prev.layers);
-                const currentSelected = new Set(prevLayersObj?.selected || []);
+                const currentSelected = new Set(prev.layers?.selected || []);
                 const currentFilters = { ...(prev.filters || {}) };
 
                 if (shouldBeSelected) {
@@ -221,9 +243,8 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         navigate({
             to: '.',
             search: (prev) => {
-                const prevLayersObj = normalizeLayersObj(prev.layers);
                 const currentFilters = { ...(prev.filters || {}) };
-                const currentSelected = new Set(prevLayersObj?.selected || []);
+                const currentSelected = new Set(prev.layers?.selected || []);
 
                 if (filterValue) {
                     currentFilters[layerTitle] = filterValue;
@@ -241,13 +262,6 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
             replace: true
         });
     }, [navigate]);
-
-    // Merge user state with defaults (user state takes precedence)
-    const mergedGroupVisibility = useMemo(() => {
-        const merged = new Map(defaultGroupVisibility);
-        groupVisibility.forEach((v, k) => merged.set(k, v));
-        return merged;
-    }, [defaultGroupVisibility, groupVisibility]);
 
     const value = {
         selectedLayerTitles,
