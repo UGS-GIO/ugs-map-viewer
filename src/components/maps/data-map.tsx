@@ -20,11 +20,11 @@ import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
 import { useTerraDraw } from '@/hooks/use-terra-draw'
 import type { Polygon } from 'geojson'
+import { bbox as turfBbox } from '@turf/bbox'
 import { useFeatureQuery } from '@/hooks/use-feature-query'
 import type { DataMapProps } from './types'
 import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
-import { bbox as turfBbox } from '@turf/bbox'
 
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps } from './types'
@@ -171,14 +171,8 @@ export default function DataMap({
       onExternalDrawComplete(polygon)
       return
     }
-    const coords = polygon.coordinates[0]
-    const lngs = coords.map(c => c[0])
-    const lats = coords.map(c => c[1])
-    handleSpatialFilterChange({
-      type: mode === 'rectangle' ? 'bbox' : 'polygon',
-      bbox: [Math.min(...lngs), Math.min(...lats), Math.max(...lngs), Math.max(...lats)],
-      polygon,
-    })
+    const bbox = turfBbox(polygon) as [number, number, number, number]
+    handleSpatialFilterChange({ type: mode === 'rectangle' ? 'bbox' : 'polygon', bbox, polygon })
   }, [onExternalDrawComplete, handleSpatialFilterChange])
 
   const { justFinishedDrawingRef } = useTerraDraw({

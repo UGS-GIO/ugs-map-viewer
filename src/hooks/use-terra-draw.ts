@@ -19,8 +19,7 @@ interface UseTerraDrawOptions {
   styleLoaded: boolean
   drawMode: DrawMode
   onDrawModeChange?: (mode: DrawMode) => void
-  /** Called when a drawing is completed with the         relatedDataMaps: import('@/hooks/use-bulk-related-table').RelatedDataMap[];
-polygon geometry */
+  /** Called when a drawing is completed with the polygon geometry */
   onDrawFinished?: (polygon: Polygon, mode: 'rectangle' | 'polygon') => void
 }
 
