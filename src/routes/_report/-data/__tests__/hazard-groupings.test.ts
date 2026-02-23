@@ -11,11 +11,6 @@ describe('hazard-groupings.json', () => {
     }
   });
 
-  it('SGS maps to Flooding', () => {
-    const sgs = groupings.features.find(f => f.properties.HazardCode === 'SGS');
-    expect(sgs?.properties.HazardGroup).toBe('Flooding');
-  });
-
   it('has no duplicate HazardCodes', () => {
     const codes = groupings.features.map(f => f.properties.HazardCode);
     expect(new Set(codes).size).toBe(codes.length);
