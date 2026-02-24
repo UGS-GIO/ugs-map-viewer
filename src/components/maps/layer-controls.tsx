@@ -3,9 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { LegendAccordion } from '@/components/maps/legend-accordion';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Toggle } from '@/components/ui/toggle';
 import { LayerDescriptionAccordion } from '@/components/maps/layer-description-accordion';
+import { useQuery } from '@tanstack/react-query';
 
 interface LayerControlsProps {
     handleZoomToLayer: () => void;
@@ -36,40 +37,47 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     customLegend,
     bivariateLegend,
 }) => {
-    const [openAccordion, setOpenAccordion] = useState<string | null>(null);
-    const [cleanDescription, setCleanDescription] = useState<string>('');
-    const lastOpacityRef = useRef(layerOpacity ?? 1);
+    // 1. Render-phase state sync
+    // This allows openLegend to dictate the default state when the accordion opens,
+    // but still lets the user freely toggle between info/legend locally afterwards.
+    const [prevOpenLegend, setPrevOpenLegend] = useState(openLegend);
+    const [activeTab, setActiveTab] = useState<'info' | 'legend' | null>(openLegend ? 'legend' : null);
+
+    if (openLegend !== prevOpenLegend) {
+        setPrevOpenLegend(openLegend);
+        if (openLegend) setActiveTab('legend');
+    }
+
+    // 2. Local state for the slider drag
     const [dragValue, setDragValue] = useState<number | null>(null);
+    const lastOpacityRef = useRef(layerOpacity ?? 1);
 
     if (layerOpacity !== null) {
         lastOpacityRef.current = layerOpacity;
     }
 
-    useEffect(() => {
-        if (openLegend) {
-            setOpenAccordion('legend');
-        }
-    }, [openLegend]);
-
-    // Lazy load DOMPurify only when description is needed
-    useEffect(() => {
-        if (description) {
-            import('dompurify').then(({ default: DOMPurify }) => {
-                const sanitized = DOMPurify.sanitize(description, {
-                    USE_PROFILES: { html: true },
-                    ALLOWED_ATTR: ['target', 'href'],
-                    ADD_ATTR: ['target']
-                });
-                setCleanDescription(sanitized);
+    // 3. TanStack Query for DOMPurify (No useEffect!)
+    // This automatically lazy-loads dompurify, sanitizes, and caches the result.
+    const { data: cleanDescription = '' } = useQuery({
+        queryKey: ['sanitize-description', description],
+        queryFn: async () => {
+            if (!description) return '';
+            const DOMPurify = (await import('dompurify')).default;
+            return DOMPurify.sanitize(description, {
+                USE_PROFILES: { html: true },
+                ALLOWED_ATTR: ['target', 'href'],
+                ADD_ATTR: ['target']
             });
-        }
-    }, [description]);
+        },
+        enabled: !!description, // Only run if description exists
+        staleTime: Infinity,    // Description doesn't change, never refetch
+    });
 
-    const infoPressed = openAccordion === 'info';
-    const legendPressed = openAccordion === 'legend';
+    const infoPressed = activeTab === 'info';
+    const legendPressed = activeTab === 'legend';
 
     const handleToggle = (type: 'info' | 'legend') => {
-        setOpenAccordion(current => (current === type ? null : type));
+        setActiveTab(current => (current === type ? null : type));
     };
 
     return (
@@ -85,12 +93,12 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                                 className="flex-grow"
                                 value={[dragValue ?? layerOpacity * 100]}
                                 onValueChange={(e) => {
-                                    setDragValue(e[0])
-                                    handleOpacityChange(e[0])
+                                    setDragValue(e[0]);
+                                    handleOpacityChange(e[0]);
                                 }}
                                 onValueCommit={(e) => {
-                                    setDragValue(e[0])
-                                    handleOpacityCommit(e[0])
+                                    setDragValue(null); // Clear local drag state so it syncs back with the URL
+                                    handleOpacityCommit(e[0]);
                                 }}
                             />
                         ) : (
