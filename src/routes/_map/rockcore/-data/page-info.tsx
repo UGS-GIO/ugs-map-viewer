@@ -1,0 +1,154 @@
+import { Link } from "@/components/ui/link";
+
+const appTitle = 'Subsurface Data Portal (RockCore)';
+
+const references = (
+    <div>
+        <ul className="list-disc ml-5 space-y-4">
+            <li>
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit:&nbsp;
+                <Link to="https://www.carbonsolutionsllc.com/sco%e2%82%82t%e1%b4%be%e1%b4%bf%e1%b4%bc-unlocking-the-nations-subsurface-to-support-the-energy-transition/">
+                    https://www.carbonsolutionsllc.com/sco₂tᴾᴿᴼ-unlocking-the-nations-subsurface-to-support-the-energy-transition/
+                </Link>, accessed January 2025.
+            </li>
+        </ul>
+    </div>
+)
+
+const acknowledgments = (
+    <div className="space-y-2">
+        <p>
+            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip
+        </p>
+        <p>
+            <Link to="https://geology.utah.gov/">Utah Geological Survey</Link> project team: Dr. Gabriela St. Pierre, Dr. Eugene Szymanski, Michael Vanden Berg, Tara Tankersley
+        </p>
+        <p>
+            University of Utah project team:
+        </p>
+        <p className="pl-4">
+            <Link to="https://egi.utah.edu/">Lorem</Link>: Prof. Nathan Moodie and Dr. Eric Edelman;
+
+        </p>
+    </div>
+)
+
+const dataDisclaimer = (
+    <div className="space-y-2">
+        <p>
+            This product represents a compilation of information from both the Utah Geological Survey and external sources. The Utah Department of Natural Resources, Utah Geological Survey, makes no warranty, expressed or implied, regarding its suitability for a particular use. The Utah Department of Natural Resources, Utah Geological Survey, shall not be liable under any circumstances for any direct, indirect, special, incidental, or consequential damages with respect to claims by users of this product.
+        </p>
+        <p>
+            The Utah Department of Natural Resources, Utah Geological Survey, makes no warranty, expressed or implied, regarding its suitability for a particular use, and does not guarantee accuracy or completeness of the data. The Utah Department of Natural Resources, Utah Geological Survey, shall not be liable under any circumstances for any direct, indirect, special, incidental, or consequential damages with respect to claims by users of this product.
+        </p>
+    </div>
+);
+
+const mapDetails = (
+    <div className='mx-2 space-y-2'>
+        <p>
+            Established in 1951, the Utah Geological Survey’s Utah Core Research Center contains the region’s only publicly available and most complete collection of geologic core and cuttings from Utah. The facility presently holds core from over 1500 drill holes, totaling about 400,000 feet of material, and cuttings from nearly 5000 drill holes, representing over 57,000,000 feet of subsurface data. This collection represents about $5 billion worth of investment in Utah’s natural resources. </p>
+        <p>
+             The UCRC’s collection also includes cataloged outcrop samples (mostly from graduate student projects and state geologic mapping efforts), cuttings from water and geothermal wells, sidewall plugs, and numerous other hand samples. The UCRC inventory can be searched using this map or the entire database can be downloaded as a spreadsheet. If you have any questions regarding the UCRC’s collection or would like to look at any of the samples, please contact the UCRC at 801-537-3359. <Link to="https://geology.utah.gov/energy-minerals/ccus/">Learn More</Link>.
+        </p>
+    </div>
+)
+
+const mapDetailsShortened = (
+    <p className='text-left text-sm mx-2 font-normal'>
+         Established in 1951, the Utah Geological Survey’s Utah Core Research Center contains the region’s only publicly available and most complete collection of geologic core and cuttings from Utah.
+    </p>
+)
+
+const dataSources = (
+    <div className='mx-2 space-y-4'>
+        <p>
+            Data for the Subsurface Data Portal was collected from a variety of authoritative sources including the Utah Geological Survey, Utah Division of Oil, Gas and Mining, Utah State and Institutional Trust Lands Administration, and federal agencies.
+        </p>
+
+        <p className="text-lg font-semibold underline">
+            Rockcore Resources
+        </p>
+
+        <div className="space-y-2">
+            <p>
+                <strong>Lorem ipsum dolor</strong> - Lorem ipsum dolor
+            </p>
+            <span><Link to="https://www.carbonsolutionsllc.com/sco%e2%82%82t%e1%b4%be%e1%b4%bf%e1%b4%bc-unlocking-the-nations-subsurface-to-support-the-energy-transition/">View website</Link></span>
+
+            <p>
+                <strong>GeoRegions</strong> - Utah Geological Survey
+            </p>
+            <span>Report coming soon</span>
+            <p>
+                <strong>Lorem ipsum dolor</strong> - Lorem ipsum dolor
+            </p>
+        </div>
+
+        <p className="text-lg font-semibold underline mt-4">
+            Subsurface Data
+        </p>
+
+        <div className="space-y-2">
+            <p>
+                <strong>Wells Database</strong> - Utah Division of Oil, Gas and Mining
+            </p>
+
+        </div>
+
+        <p className="text-lg font-semibold underline mt-4">
+            Geological Information
+        </p>
+
+        <div className="space-y-2">
+            <p>
+                <strong>Hazardous (Quaternary age) Faults</strong> - Utah Geological Survey
+            </p>
+            <span><Link to="https://maps.geology.utah.gov/hazards">Access data</Link></span>
+
+            <p>
+                <strong>Utah Faults</strong> - Utah Geological Survey
+            </p>
+            <span><Link to="https://geology.utah.gov/publication-details/?pub=M-179dm">Access data</Link></span>
+
+            <p>
+                <strong>Geological Units (500k)</strong> - Utah Geological Survey
+            </p>
+            <span><Link to="https://geology.utah.gov/publication-details/?pub=M-179dm">Access data</Link></span>
+        </div>
+
+        <p className="text-lg font-semibold underline mt-4">
+            Infrastructure and Land Use
+        </p>
+
+        <div className="space-y-2">
+            <p>
+                <strong>Utah Roads</strong> - Local data stewards & UDOT & UGRC
+            </p>
+            <span><Link to="https://opendata.gis.utah.gov/datasets/utah-roads/about">Access data</Link></span>
+
+            <p>
+                <strong>Wilderness Study Areas</strong> - U.S. Bureau of Land Management
+            </p>
+            <span><Link to="https://gbp-blm-egis.hub.arcgis.com/maps/0ae90ebbc1f54f77b80b76a6148ab83d/about">Access data</Link></span>
+
+            <p>
+                <strong>Major Rivers</strong> - UGRC
+            </p>
+            <span><Link to="https://opendata.gis.utah.gov/datasets/utah-major-rivers-polygons/about">Access data</Link></span>
+
+            <p>
+                <strong>Utah Land Ownership</strong> - School and Institutional Trust Lands Administration (SITLA) & BLM & Partners
+            </p>
+            <span><Link to="https://opendata.gis.utah.gov/datasets/SITLA::land-ownership/about">Access data</Link></span>
+        </div>
+    </div>
+)
+
+const dataSourcesShortened = (
+    <p className='text-left text-sm mx-2 font-normal'>
+        Data for the subsurface data Portal was collected from a variety of authoritative sources including the Utah Geological Survey, Utah Division of Oil, Gas and Mining, Utah State and Institutional Trust Lands Administration, and federal agencies...
+    </p>
+)
+
+export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle };
