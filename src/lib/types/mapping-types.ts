@@ -88,7 +88,7 @@ export type ExtendedSublayerProperties = {
 
 
 interface BaseLayerProps {
-    type: 'feature' | 'tile' | 'map-image' | 'geojson' | 'imagery' | 'wms' | 'group' | 'pmtiles' | 'wfs';
+    type: 'feature' | 'tile' | 'map-image' | 'geojson' | 'imagery' | 'wms' | 'group' | 'pmtiles' | 'wfs' | 'raster-pmtiles';
     title: string;
     url?: string;
     visible?: boolean;
@@ -166,15 +166,26 @@ export interface WFSLayerProps extends BaseLayerProps {
     sublayers?: ExtendedSublayerProperties[];
 }
 
+export interface RasterPMTilesLayerProps extends BaseLayerProps {
+    type: 'raster-pmtiles';
+    /** URL to the raster PMTiles file (relative or absolute) */
+    pmtilesUrl: string;
+    /** Optional sublayer config for click queries via WMS GetFeatureInfo */
+    sublayers?: ExtendedSublayerProperties[];
+    /** WMS URL used only for click queries (GetFeatureInfo), not rendering */
+    queryUrl?: string;
+    crs?: string;
+}
+
 export interface GroupLayerProps extends BaseLayerProps {
     type: 'group';
     layers?: LayerProps[];
 }
 
 
-export type LayerType = 'feature' | 'tile' | 'map-image' | 'imagery' | 'group' | 'geojson' | 'wms' | 'pmtiles' | 'wfs'
+export type LayerType = 'feature' | 'tile' | 'map-image' | 'imagery' | 'group' | 'geojson' | 'wms' | 'pmtiles' | 'wfs' | 'raster-pmtiles'
 
-export type LayerProps = WMSLayerProps | PMTilesLayerProps | WFSLayerProps | GroupLayerProps | BaseLayerProps;
+export type LayerProps = WMSLayerProps | PMTilesLayerProps | WFSLayerProps | RasterPMTilesLayerProps | GroupLayerProps | BaseLayerProps;
 
 export type MapImageLayerRenderer = {
     type: 'map-image-renderer';

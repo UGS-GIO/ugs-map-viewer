@@ -1,5 +1,5 @@
 import { ENERGY_MINERALS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL } from "@/lib/constants";
-import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { LayerProps, WMSLayerProps, RasterPMTilesLayerProps } from "@/lib/types/mapping-types";
 import { toTitleCase, toSentenceCase } from "@/lib/utils";
 
 
@@ -733,9 +733,9 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
     ],
 };
 
-// CGBA Gravity Anomalies Raster WMS Layer  (following hazards ground shaking raster example)
+// CGBA Gravity Anomalies Raster — WMS layer for comparison (tile seams visible)
 const cgbaRasterLayerName = 'enmin_geophysics_gravanomalyraster_current';
-const cgbaRasterWMSTitle = 'Complete Bouguer Gravity Anomaly';
+const cgbaRasterWMSTitle = 'Complete Bouguer Gravity Anomaly WMS';
 const cgbaRasterWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -748,9 +748,7 @@ const cgbaRasterWMSConfig: WMSLayerProps = {
                 name: `${ENERGY_MINERALS_WORKSPACE}:${cgbaRasterLayerName}`,
                 popupEnabled: false,
                 queryable: true,
-                popupFields: {
-                    // empty in favor or using the rasterSource
-                },
+                popupFields: {},
                 rasterSource: {
                     url: `${PROD_GEOSERVER_URL}/wms`,
                     headers: {
@@ -759,12 +757,42 @@ const cgbaRasterWMSConfig: WMSLayerProps = {
                     },
                     layerName: `${ENERGY_MINERALS_WORKSPACE}:${cgbaRasterLayerName}`,
                     valueField: "GRAY_INDEX",
-                    valueLabel: "Peak Ground Acceleration",
-                    transform: (value: number) => `${value} g`,
+                    valueLabel: "Gravity Anomaly",
+                    transform: (value: number) => `${value} mGal`,
                 }
-    
+
             },
         ],
+};
+
+// CGBA Gravity Anomalies — pre-tiled raster PMTiles (no tile seams)
+const cgbaRasterPMTilesConfig: RasterPMTilesLayerProps = {
+    type: 'raster-pmtiles',
+    title: 'Complete Bouguer Gravity Anomaly',
+    pmtilesUrl: '/pmtiles/gravity_anomaly.pmtiles',
+    visible: false,
+    opacity: 0.9,
+    queryUrl: `${PROD_GEOSERVER_URL}/wms`,
+    crs: 'EPSG:26912',
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${cgbaRasterLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {},
+            rasterSource: {
+                url: `${PROD_GEOSERVER_URL}/wms`,
+                headers: {
+                    "Accept": "application/json",
+                    "Cache-Control": "no-cache",
+                },
+                layerName: `${ENERGY_MINERALS_WORKSPACE}:${cgbaRasterLayerName}`,
+                valueField: "GRAY_INDEX",
+                valueLabel: "Gravity Anomaly",
+                transform: (value: number) => `${value} mGal`,
+            }
+        },
+    ],
 };
 
 const geophysicalDataConfig: LayerProps = {
@@ -776,7 +804,8 @@ const geophysicalDataConfig: LayerProps = {
         geothermalTEMLayerConfig,
         gravityStationsLayerConfig,
         pacesLegacyLayerConfig,
-        cgbaRasterWMSConfig
+        cgbaRasterPMTilesConfig,
+        cgbaRasterWMSConfig,
     ]
 }
 

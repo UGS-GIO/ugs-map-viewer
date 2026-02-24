@@ -13,7 +13,7 @@ import {
 import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
-import { flattenWmsLayers, flattenWfsLayers, buildWmsTileUrl, getWmsLayerName } from '@/lib/map/layer-utils'
+import { flattenWmsLayers, flattenWfsLayers, flattenRasterPmtilesLayers, buildWmsTileUrl, getWmsLayerName } from '@/lib/map/layer-utils'
 import type maplibregl from 'maplibre-gl'
 
 import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
@@ -88,11 +88,13 @@ export default function DataMap({
   // Get visible layers - flatten groups recursively (defined early for use in callbacks)
   const visibleWmsLayers = useMemo(() => flattenWmsLayers(layers), [layers])
   const visibleWfsLayers = useMemo(() => flattenWfsLayers(layers), [layers])
+  const visibleRasterPmtilesLayers = useMemo(() => flattenRasterPmtilesLayers(layers), [layers])
 
   // Reverse for MapLibre draw order: first in config (top of sidebar) should draw on top.
   // MapLibre draws later layers on top, so we reverse so config-first renders last.
   const wmsDrawOrder = useMemo(() => [...visibleWmsLayers].reverse(), [visibleWmsLayers])
   const wfsDrawOrder = useMemo(() => [...visibleWfsLayers].reverse(), [visibleWfsLayers])
+  const rasterPmtilesDrawOrder = useMemo(() => [...visibleRasterPmtilesLayers].reverse(), [visibleRasterPmtilesLayers])
 
   // Fetch WFS layer data using TanStack Query (automatic caching, retries, deduplication)
   const { data: wfsLayerData } = useWfsLayerData(visibleWfsLayers)
@@ -589,6 +591,29 @@ export default function DataMap({
           onAdditiveModeToggle={onAdditiveModeToggle}
           position="top-right"
         />
+
+        {/* Raster PMTiles layers (pre-tiled rasters, no WMS tile seams) */}
+        {rasterPmtilesDrawOrder.map((layer) => {
+          const absoluteUrl = layer.pmtilesUrl.startsWith('http')
+            ? layer.pmtilesUrl
+            : `${window.location.origin}${layer.pmtilesUrl}`
+          return (
+            <Source
+              key={layer.title}
+              id={`raster-pmtiles-${layer.title}`}
+              type="raster"
+              url={`pmtiles://${absoluteUrl}`}
+              tileSize={256}
+            >
+              <Layer
+                id={`raster-pmtiles-layer-${layer.title}`}
+                type="raster"
+                paint={{ 'raster-opacity': layer.opacity ?? 0.8 }}
+                metadata={{ title: layer.title }}
+              />
+            </Source>
+          )
+        })}
 
         {/* WMS Layers (reversed so config-first = drawn on top) */}
         {wmsDrawOrder.map((layer) => {
