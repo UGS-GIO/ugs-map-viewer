@@ -6,6 +6,7 @@ import { useLayerItemState } from '@/hooks/use-layer-item-state';
 import { LayerProps, WMSLayerProps, PMTilesLayerProps, WFSLayerProps } from '@/lib/types/mapping-types';
 import { useMap } from '@/hooks/use-map';
 import { findLayerByTitle, isWMSLayer } from '@/lib/map/utils';
+import { isArcGISMapServerLayer } from '@/lib/map/layer-utils';
 import { useLayerExtent, UseLayerExtentOptions } from '@/hooks/use-layer-extent';
 import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions';
 import { useSidebar } from '@/hooks/use-sidebar';
@@ -94,6 +95,12 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
                 type: 'wms',
                 wmsUrl,
                 layerName: layerConfig.typeName,
+            };
+        }
+        if (isArcGISMapServerLayer(layerConfig)) {
+            return {
+                type: 'arcgis',
+                mapServerUrl: layerConfig.url,
             };
         }
         if (isWMSLayer(layerConfig)) {
@@ -276,6 +283,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
                             layerName={extentOptions.type === 'wms' ? extentOptions.layerName : null}
                             customLegend={layerConfig.customLegend}
                             bivariateLegend={layerConfig.bivariateLegend}
+                            arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
                         />
                     </AccordionContent>
                 </AccordionItem>

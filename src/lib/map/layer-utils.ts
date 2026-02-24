@@ -1,7 +1,7 @@
 /**
  * Layer traversal and URL parsing utilities
  */
-import type { LayerProps, WMSLayerProps, WFSLayerProps } from '@/lib/types/mapping-types'
+import type { LayerProps, WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps } from '@/lib/types/mapping-types'
 
 /**
  * Recursively flatten layer groups into a flat array of visible WMS layers
@@ -125,4 +125,33 @@ export function getWmsLayerName(layer: WMSLayerProps): string {
     return sublayerName
   }
   return layer.title
+}
+
+/**
+ * Type guard — narrows LayerProps to ArcGISMapServerLayerProps
+ */
+export function isArcGISMapServerLayer(layer: LayerProps): layer is ArcGISMapServerLayerProps {
+  return layer.type === 'map-image'
+}
+
+/**
+ * Recursively flatten layer groups into a flat array of visible ArcGIS MapServer layers
+ */
+export function flattenArcGisLayers(layers: LayerProps[]): ArcGISMapServerLayerProps[] {
+  const result: ArcGISMapServerLayerProps[] = []
+  for (const layer of layers) {
+    if (layer.type === 'group' && 'layers' in layer && layer.layers) {
+      result.push(...flattenArcGisLayers(layer.layers))
+    } else if (layer.type === 'map-image' && layer.visible === true) {
+      result.push(layer as ArcGISMapServerLayerProps)
+    }
+  }
+  return result
+}
+
+/**
+ * Build an ArcGIS MapServer export tile URL for MapLibre
+ */
+export function buildArcGisExportUrl(baseUrl: string): string {
+  return `${baseUrl}/export?bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image&bbox={bbox-epsg-3857}`
 }
