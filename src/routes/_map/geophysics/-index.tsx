@@ -10,7 +10,7 @@ import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
 import { PROD_POSTGREST_URL } from '@/lib/constants';
-//import { geothermalTEMLayerConfig} from './-data/layers/layers';
+import { geothermalTEMLayerTitle, gravityStationsLayerTitle } from './-data/layers/layers';
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox';
 
 export default function Map() {
@@ -25,14 +25,30 @@ export default function Map() {
           type: 'postgREST',
           url: PROD_POSTGREST_URL,
           functionName: "search_geothermal_thermal_data",
-          //layerName: geothermalTEMLayerConfig,
+          layerName: geothermalTEMLayerTitle,
           searchTerm: "search_term",
           sourceName: 'Geothermal Thermal Data',
           crs: 'EPSG:4326',
           displayField: "concatnames",
-          params: { select: 'station' }, // Exclude geometry from search for fast response
+          params: { select: 'concatnames' }, // Exclude geometry from search for fast response
           headers: {
-            'Accept-Profile': 'minearals',
+            'Accept-Profile': 'emp',
+             }
+        },
+        {
+          type: 'postgREST',
+          url: `${PROD_POSTGREST_URL}/enmin_geophysics_ugsgravity_current`,
+          layerName: gravityStationsLayerTitle,
+          sourceName: 'Modern Gravity Stations',
+          crs: 'EPSG:4326',
+          displayField: "unique_id",
+          params: { 
+            targetField: 'unique_id',
+            select: 'unique_id,ogc_fid' 
+          },
+          headers: {
+            'Accept-Profile': 'emp',
+            'Accept': 'application/geo+json',
           }
         },
       ];

@@ -405,13 +405,13 @@ const heatflowLayerConfig: WMSLayerProps = {
 };
 
 
-// gravity stations
-const gravityStationsLayeName = 'enmin_geophysics_ugsgravity_current';
-const gravityStationsLayeTitle = 'Modern Gravity Stations';
+// gravity stations 
+export const gravityStationsLayeName = 'enmin_geophysics_ugsgravity_current';
+export const gravityStationsLayerTitle = 'Modern Gravity Stations';
 const gravityStationsLayerConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
-    title: gravityStationsLayeTitle,
+    title: gravityStationsLayerTitle,
     visible: true,
     sublayers: [
         {
@@ -562,9 +562,15 @@ const pacesLegacyLayerConfig: WMSLayerProps = {
     ],
 };
 
+export interface searchFeatureType {
+    geom: GeoJSON.MultiLineString;
+    concatnames: string;
+    station: string[];
+}
+
 // TEM data
-const geothermalTEMLayerName = 'enmin_geophysics_tem_current';
-const geothermalTEMLayerTitle = 'Transient Electromagnetic Data (TEM)';
+export const geothermalTEMLayerName = 'enmin_geophysics_tem_current';
+export const geothermalTEMLayerTitle = 'Transient Electromagnetic Data (TEM)';
 const geothermalTEMLayerConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
