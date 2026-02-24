@@ -11,6 +11,7 @@ interface LayerControlsProps {
     handleZoomToLayer: () => void;
     layerOpacity: number | null;
     handleOpacityChange: (e: number) => void;
+    handleOpacityCommit: (e: number) => void;
     title: string;
     description: string;
     layerId: string;
@@ -25,6 +26,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     handleZoomToLayer,
     layerOpacity,
     handleOpacityChange,
+    handleOpacityCommit,
     description,
     title,
     layerId,
@@ -37,6 +39,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     const [openAccordion, setOpenAccordion] = useState<string | null>(null);
     const [cleanDescription, setCleanDescription] = useState<string>('');
     const lastOpacityRef = useRef(layerOpacity ?? 1);
+    const [dragValue, setDragValue] = useState<number | null>(null);
 
     if (layerOpacity !== null) {
         lastOpacityRef.current = layerOpacity;
@@ -80,8 +83,15 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         {layerOpacity !== null ? (
                             <Slider
                                 className="flex-grow"
-                                value={[layerOpacity * 100]}
-                                onValueChange={(e) => handleOpacityChange(e[0])}
+                                value={[dragValue ?? layerOpacity * 100]}
+                                onValueChange={(e) => {
+                                    setDragValue(e[0])
+                                    handleOpacityChange(e[0])
+                                }}
+                                onValueCommit={(e) => {
+                                    setDragValue(e[0])
+                                    handleOpacityCommit(e[0])
+                                }}
                             />
                         ) : (
                             <Slider
