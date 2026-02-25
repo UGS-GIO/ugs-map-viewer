@@ -766,6 +766,36 @@ const cgbaRasterWMSConfig: WMSLayerProps = {
         ],
 };
 
+// CGBA Gravity Anomalies Raster — tiled WMS (has tile seams, but dynamic contrast)
+const cgbaRasterTiledWMSTitle = 'Complete Bouguer Gravity Anomaly Tiled WMS';
+const cgbaRasterTiledWMSConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: cgbaRasterTiledWMSTitle,
+    visible: false,
+    opacity: 0.9,
+    crs: 'EPSG:26912',
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${cgbaRasterLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {},
+            rasterSource: {
+                url: `${PROD_GEOSERVER_URL}/wms`,
+                headers: {
+                    "Accept": "application/json",
+                    "Cache-Control": "no-cache",
+                },
+                layerName: `${ENERGY_MINERALS_WORKSPACE}:${cgbaRasterLayerName}`,
+                valueField: "GRAY_INDEX",
+                valueLabel: "Gravity Anomaly",
+                transform: (value: number) => `${value} mGal`,
+            }
+        },
+    ],
+};
+
 // CGBA Gravity Anomalies — pre-tiled raster PMTiles (no tile seams)
 const cgbaRasterPMTilesConfig: RasterPMTilesLayerProps = {
     type: 'raster-pmtiles',
@@ -807,6 +837,7 @@ const geophysicalDataConfig: LayerProps = {
         pacesLegacyLayerConfig,
         cgbaRasterPMTilesConfig,
         cgbaRasterWMSConfig,
+        cgbaRasterTiledWMSConfig,
     ]
 }
 
