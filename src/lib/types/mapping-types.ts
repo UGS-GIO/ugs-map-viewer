@@ -105,6 +105,8 @@ export interface WMSLayerProps extends BaseLayerProps {
     sublayers: ExtendedSublayerProperties[];
     customLayerParameters?: object | null | undefined;
     crs?: string; // EPSG code (e.g., 'EPSG:26912', 'EPSG:3857') for WMS GetFeatureInfo requests
+    /** Render as a single viewport image instead of tiles. Eliminates reprojection seams on continuous rasters. */
+    singleTile?: boolean;
 }
 
 export interface PMTilesLayerProps extends BaseLayerProps {

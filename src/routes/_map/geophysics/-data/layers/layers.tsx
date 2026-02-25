@@ -743,6 +743,7 @@ const cgbaRasterWMSConfig: WMSLayerProps = {
     visible: false,
     opacity: 0.9,
     crs: 'EPSG:26912',
+    singleTile: true,
         sublayers: [
             {
                 name: `${ENERGY_MINERALS_WORKSPACE}:${cgbaRasterLayerName}`,

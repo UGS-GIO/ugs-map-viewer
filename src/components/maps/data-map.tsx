@@ -13,6 +13,7 @@ import {
 import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
+import { SingleTileWmsLayer } from './layers/single-tile-wms-layer'
 import { flattenWmsLayers, flattenWfsLayers, flattenRasterPmtilesLayers, buildWmsTileUrl, getWmsLayerName } from '@/lib/map/layer-utils'
 import type maplibregl from 'maplibre-gl'
 
@@ -615,8 +616,22 @@ export default function DataMap({
           )
         })}
 
-        {/* WMS Layers (reversed so config-first = drawn on top) */}
-        {wmsDrawOrder.map((layer) => {
+        {/* Single-tile WMS layers (one image per viewport, no reprojection seams) */}
+        {wmsDrawOrder
+          .filter((layer) => layer.singleTile)
+          .map((layer) => (
+            <SingleTileWmsLayer
+              key={layer.title}
+              layer={layer}
+              wmsUrl={wmsUrl}
+              cqlFilter={layerFilters[layer.title]}
+            />
+          ))}
+
+        {/* Tiled WMS Layers (reversed so config-first = drawn on top) */}
+        {wmsDrawOrder
+          .filter((layer) => !layer.singleTile)
+          .map((layer) => {
           const layerName = getWmsLayerName(layer)
           const cqlFilter = layerFilters[layer.title]
           const layerWmsUrl = layer.url || wmsUrl
