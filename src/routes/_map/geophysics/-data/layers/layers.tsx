@@ -800,7 +800,7 @@ const cgbaRasterTiledWMSConfig: WMSLayerProps = {
 const cgbaRasterPMTilesConfig: RasterPMTilesLayerProps = {
     type: 'raster-pmtiles',
     title: 'Complete Bouguer Gravity Anomaly',
-    pmtilesUrl: '/pmtiles/gravity_anomaly.pmtiles',
+    pmtilesUrl: '/pmtiles/gravity_anomaly_v2.pmtiles',
     visible: false,
     opacity: 0.9,
     queryUrl: `${PROD_GEOSERVER_URL}/wms`,
