@@ -323,7 +323,7 @@ const coresConfig: PMTilesLayerProps = {
                 'inventory_link': {
                     transform: (value: string | null) => [{
                         label: `${value}`,
-                        href: 'https://geology.utah.gov/apps/rockcore/'
+                        href: 'https://geology.utah.gov/apps/subsurface/'
                     }]
                 }
             }

@@ -72,7 +72,7 @@ export default function Map() {
   const searchRef = useRef<SearchComboboxHandle>(null);
 
   // Get URL filters
-  const searchParams = useSearch({ from: '/_map/rockcore/' })
+  const searchParams = useSearch({ from: '/_map/subsurface/' })
   const filtersFromUrl = searchParams.filters ?? {}
 
   // Build CQL filters for layers

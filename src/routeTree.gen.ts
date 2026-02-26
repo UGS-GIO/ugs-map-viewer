@@ -24,7 +24,7 @@ const MapWetlandsIndexLazyRouteImport = createFileRoute('/_map/wetlands/')()
 const MapWetlandplantsIndexLazyRouteImport = createFileRoute(
   '/_map/wetlandplants/',
 )()
-const MapRockcoreIndexLazyRouteImport = createFileRoute('/_map/rockcore/')()
+const MapSubsurfaceIndexLazyRouteImport = createFileRoute('/_map/subsurface/')()
 const MapMineralsIndexLazyRouteImport = createFileRoute('/_map/minerals/')()
 const MapHazardsIndexLazyRouteImport = createFileRoute('/_map/hazards/')()
 const MapHazardsReviewIndexLazyRouteImport = createFileRoute(
@@ -90,12 +90,12 @@ const MapWetlandplantsIndexLazyRoute =
   } as any).lazy(() =>
     import('./routes/_map/wetlandplants/index.lazy').then((d) => d.Route),
   )
-const MapRockcoreIndexLazyRoute = MapRockcoreIndexLazyRouteImport.update({
-  id: '/rockcore/',
-  path: '/rockcore/',
+const MapSubsurfaceIndexLazyRoute = MapSubsurfaceIndexLazyRouteImport.update({
+  id: '/subsurface/',
+  path: '/subsurface/',
   getParentRoute: () => MapRoute,
 } as any).lazy(() =>
-  import('./routes/_map/rockcore/index.lazy').then((d) => d.Route),
+  import('./routes/_map/subsurface/index.lazy').then((d) => d.Route),
 )
 const MapMineralsIndexLazyRoute = MapMineralsIndexLazyRouteImport.update({
   id: '/minerals/',
@@ -153,7 +153,7 @@ export interface FileRoutesByFullPath {
   '/geophysics': typeof MapGeophysicsIndexLazyRoute
   '/hazards-review/': typeof MapHazardsReviewIndexLazyRoute
   '/minerals': typeof MapMineralsIndexLazyRoute
-  '/rockcore': typeof MapRockcoreIndexLazyRoute
+  '/subsurface': typeof MapSubsurfaceIndexLazyRoute
   '/wetlandplants': typeof MapWetlandplantsIndexLazyRoute
   '/wetlands': typeof MapWetlandsIndexLazyRoute
 }
@@ -167,7 +167,7 @@ export interface FileRoutesByTo {
   '/geophysics': typeof MapGeophysicsIndexLazyRoute
   '/hazards-review': typeof MapHazardsReviewIndexLazyRoute
   '/minerals': typeof MapMineralsIndexLazyRoute
-  '/rockcore': typeof MapRockcoreIndexLazyRoute
+  '/subsurface': typeof MapSubsurfaceIndexLazyRoute
   '/wetlandplants': typeof MapWetlandplantsIndexLazyRoute
   '/wetlands': typeof MapWetlandsIndexLazyRoute
 }
@@ -187,7 +187,7 @@ export interface FileRoutesById {
   '/_map/hazards-review/': typeof MapHazardsReviewIndexLazyRoute
   '/_map/hazards/': typeof MapHazardsIndexLazyRoute
   '/_map/minerals/': typeof MapMineralsIndexLazyRoute
-  '/_map/rockcore/': typeof MapRockcoreIndexLazyRoute
+  '/_map/subsurface/': typeof MapSubsurfaceIndexLazyRoute
   '/_map/wetlandplants/': typeof MapWetlandplantsIndexLazyRoute
   '/_map/wetlands/': typeof MapWetlandsIndexLazyRoute
 }
@@ -204,7 +204,7 @@ export interface FileRouteTypes {
     | '/geophysics'
     | '/hazards-review/'
     | '/minerals'
-    | '/rockcore'
+    | '/subsurface'
     | '/wetlandplants'
     | '/wetlands'
   fileRoutesByTo: FileRoutesByTo
@@ -218,7 +218,7 @@ export interface FileRouteTypes {
     | '/geophysics'
     | '/hazards-review'
     | '/minerals'
-    | '/rockcore'
+    | '/subsurface'
     | '/wetlandplants'
     | '/wetlands'
   id:
@@ -237,7 +237,7 @@ export interface FileRouteTypes {
     | '/_map/hazards-review/'
     | '/_map/hazards/'
     | '/_map/minerals/'
-    | '/_map/rockcore/'
+    | '/_map/subsurface/'
     | '/_map/wetlandplants/'
     | '/_map/wetlands/'
   fileRoutesById: FileRoutesById
@@ -322,11 +322,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MapWetlandplantsIndexLazyRouteImport
       parentRoute: typeof MapRoute
     }
-    '/_map/rockcore/': {
-      id: '/_map/rockcore/'
-      path: '/rockcore'
-      fullPath: '/rockcore'
-      preLoaderRoute: typeof MapRockcoreIndexLazyRouteImport
+    '/_map/subsurface/': {
+      id: '/_map/subsurface/'
+      path: '/subsurface'
+      fullPath: '/subsurface'
+      preLoaderRoute: typeof MapSubsurfaceIndexLazyRouteImport
       parentRoute: typeof MapRoute
     }
     '/_map/minerals/': {
@@ -426,7 +426,7 @@ interface MapRouteChildren {
   MapGeophysicsIndexLazyRoute: typeof MapGeophysicsIndexLazyRoute
   MapHazardsIndexLazyRoute: typeof MapHazardsIndexLazyRoute
   MapMineralsIndexLazyRoute: typeof MapMineralsIndexLazyRoute
-  MapRockcoreIndexLazyRoute: typeof MapRockcoreIndexLazyRoute
+  MapSubsurfaceIndexLazyRoute: typeof MapSubsurfaceIndexLazyRoute
   MapWetlandplantsIndexLazyRoute: typeof MapWetlandplantsIndexLazyRoute
   MapWetlandsIndexLazyRoute: typeof MapWetlandsIndexLazyRoute
 }
@@ -437,7 +437,7 @@ const MapRouteChildren: MapRouteChildren = {
   MapGeophysicsIndexLazyRoute: MapGeophysicsIndexLazyRoute,
   MapHazardsIndexLazyRoute: MapHazardsIndexLazyRoute,
   MapMineralsIndexLazyRoute: MapMineralsIndexLazyRoute,
-  MapRockcoreIndexLazyRoute: MapRockcoreIndexLazyRoute,
+  MapSubsurfaceIndexLazyRoute: MapSubsurfaceIndexLazyRoute,
   MapWetlandplantsIndexLazyRoute: MapWetlandplantsIndexLazyRoute,
   MapWetlandsIndexLazyRoute: MapWetlandsIndexLazyRoute,
 }

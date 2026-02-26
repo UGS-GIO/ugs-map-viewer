@@ -574,7 +574,7 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
                         return [
                             {
                                 label: `${value}`,
-                                href: 'https://geology.utah.gov/apps/rockcore/'
+                                href: 'https://geology.utah.gov/apps/subsurface/'
                             }
                         ];
                     }
@@ -874,31 +874,33 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
                 'Driller Total Depth (m)': { field: 'drillertotaldepth_m', type: 'number' },
                 'True Vertical Depth (m)': { field: 'trueverticaldepth_m', type: 'number' },
                 'In Formation': { field: 'informationsource', type: 'string' },
-                'Has Temperature Data': { field: 'hastemperaturedata', type: 'string', transform: (value: string | null) => {
+                'Has Temperature Data': {
+                    field: 'hastemperaturedata', type: 'string', transform: (value: string | null) => {
                         if (value === '1') return 'YES'
                         return 'NO'
                     },
                 },
-                'Has Geochemistry Data': { field: 'hasgeochemistrydata', type: 'string', transform: (value: string | null) => {
+                'Has Geochemistry Data': {
+                    field: 'hasgeochemistrydata', type: 'string', transform: (value: string | null) => {
                         if (value === '1') return 'YES'
                         return 'NO'
                     },
                 },
                 'Sort ID': { field: 'sortid', type: 'string' },
-                '': { field: 'geothermal_link', type: 'custom',  transform: (() => 'Geothermal Data Repository')},
-                },
-                linkFields: {
-                    'geothermal_link': {
-                        transform: (value: string | null) => {
-                            return [
-                                {
-                                    label: `${value}`,
-                                    href: 'https://gdr.openei.org/submissions/1391'
-                                }
-                            ];
-                        }
+                '': { field: 'geothermal_link', type: 'custom', transform: (() => 'Geothermal Data Repository') },
+            },
+            linkFields: {
+                'geothermal_link': {
+                    transform: (value: string | null) => {
+                        return [
+                            {
+                                label: `${value}`,
+                                href: 'https://gdr.openei.org/submissions/1391'
+                            }
+                        ];
                     }
-                }, 
+                }
+            },
         },
     ],
 };
@@ -925,32 +927,34 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
                 'Longitude': { field: 'longdegree', type: 'number' },
                 'Elevation Ground Level (m)': { field: 'elevationgl_m', type: 'number' },
                 'In Formation': { field: 'informationsource', type: 'string' },
-                'Has Temperature Data': { field: 'hastemperaturedata', type: 'string', transform: (value: string | null) => {
+                'Has Temperature Data': {
+                    field: 'hastemperaturedata', type: 'string', transform: (value: string | null) => {
                         if (value === '1') return 'YES'
                         return 'NO'
                     },
                 },
-                'Has Geochemistry Data': { field: 'hasgeochemistrydata', type: 'string', transform: (value: string | null) => {
+                'Has Geochemistry Data': {
+                    field: 'hasgeochemistrydata', type: 'string', transform: (value: string | null) => {
                         if (value === '1') return 'YES'
                         return 'NO'
                     },
                 },
                 'Sort ID': { field: 'sortid', type: 'string' },
-                '': { field: 'geothermal_link', type: 'custom',  transform: (() => 'Geothermal Data Repository')},
-                },
-                linkFields: {
-                    'geothermal_link': {
-                        transform: (value: string | null) => {
-                            return [
-                                {
-                                    label: `${value}`,
-                                    href: 'https://gdr.openei.org/submissions/1391'
-                                }
-                            ];
-                        }
-                    }
-                }, 
+                '': { field: 'geothermal_link', type: 'custom', transform: (() => 'Geothermal Data Repository') },
             },
+            linkFields: {
+                'geothermal_link': {
+                    transform: (value: string | null) => {
+                        return [
+                            {
+                                label: `${value}`,
+                                href: 'https://gdr.openei.org/submissions/1391'
+                            }
+                        ];
+                    }
+                }
+            },
+        },
     ],
 };
 
@@ -980,14 +984,14 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                                 .map(word => word.charAt(0).toUpperCase() + word.slice(1))
                                 .join(' ');
                         };
-                        
+
                         const regionl = props?.['region_loc'];
                         const countyl = props?.['county'];
-                        
+
                         // Convert to title case if they are strings
                         const formattedStart = typeof regionl === 'string' ? toTitleCase(regionl) : regionl;
                         const formattedEnd = typeof countyl === 'string' ? toTitleCase(countyl) : countyl;
-                        
+
                         return `${formattedStart}, ${formattedEnd}`;
                     }
                 },
