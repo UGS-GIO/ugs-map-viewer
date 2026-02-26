@@ -86,7 +86,6 @@ interface LayerUrlProviderProps {
 export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
     const navigate = useNavigate();
 
-    // 1. Grab everything from the URL, including the new visibility and opacities params
     const {
         layers: urlLayers,
         filters: urlFilters,
@@ -166,12 +165,11 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         layersConfig ? getDefaultGroupVisibility(layersConfig, selectedLayerTitles) : new Map<string, boolean>()
         , [layersConfig, selectedLayerTitles]);
 
-    // 2. Derive layerOpacity purely from the URL
     const layerOpacity = useMemo(() => {
         return new Map<string, number>(Object.entries(urlOpacities || {}));
     }, [urlOpacities]);
 
-    // 3. Merge config defaults with URL overrides (URL takes precedence)
+    // URL overrides take precedence over config defaults
     const mergedGroupVisibility = useMemo(() => {
         const merged = new Map(defaultGroupVisibility);
         if (urlVisibility) {
@@ -182,7 +180,6 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         return merged;
     }, [defaultGroupVisibility, urlVisibility]);
 
-    // 4. Setters now update the URL parameters directly
     const setLayerOpacity = useCallback((title: string, opacity: number) => {
         navigate({
             to: '.',

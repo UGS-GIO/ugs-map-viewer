@@ -38,9 +38,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     customLegend,
     bivariateLegend,
 }) => {
-    // 1. Render-phase state sync
-    // This allows openLegend to dictate the default state when the accordion opens,
-    // but still lets the user freely toggle between info/legend locally afterwards.
+    // Sync activeTab with openLegend prop, but let the user toggle freely afterwards
     const [prevOpenLegend, setPrevOpenLegend] = useState(openLegend);
     const [activeTab, setActiveTab] = useState<'info' | 'legend' | null>(openLegend ? 'legend' : null);
 
@@ -49,7 +47,6 @@ const LayerControls: React.FC<LayerControlsProps> = ({
         if (openLegend) setActiveTab('legend');
     }
 
-    // 2. Local state for the slider drag
     const [dragValue, setDragValue] = useState<number | null>(null);
     const lastOpacityRef = useRef(layerOpacity ?? 1);
 
@@ -57,8 +54,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
         lastOpacityRef.current = layerOpacity;
     }
 
-    // 3. TanStack Query for DOMPurify (No useEffect!)
-    // This automatically lazy-loads dompurify, sanitizes, and caches the result.
+    // Lazy-load DOMPurify and cache sanitized descriptions
     const { data: cleanDescription = '' } = useQuery({
         queryKey: [...queryKeys.modules.dompurify(), description],
         queryFn: async () => {
@@ -70,8 +66,8 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                 ADD_ATTR: ['target']
             });
         },
-        enabled: !!description, // Only run if description exists
-        staleTime: Infinity,    // Description doesn't change, never refetch
+        enabled: !!description,
+        staleTime: Infinity,
     });
 
     const infoPressed = activeTab === 'info';
