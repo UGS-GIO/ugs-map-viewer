@@ -180,7 +180,7 @@ const generateCQLFilter = (state: FilterState) => {
     * @returns An object containing the simplified filter state and an update function.
 **/
 const useWellFilterManager = () => {
-    const navigate = useNavigate({ from: '/carbonstorage/' });
+    const navigate = useNavigate({ from: '/carbonstorage' });
     const search = useSearch({ from: '/_map/carbonstorage/' });
 
     const cqlFilter = useMemo(() =>
@@ -231,7 +231,7 @@ const useWellFilterManager = () => {
 
 const MapConfigurations = () => {
     const { map } = useMap();
-    const navigate = useNavigate({ from: '/carbonstorage/' });
+    const navigate = useNavigate({ from: '/carbonstorage' });
     const search = useSearch({ from: '/_map/carbonstorage/' });
 
     const { simpleState, updateFilters } = useWellFilterManager();

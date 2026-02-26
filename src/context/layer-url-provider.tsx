@@ -93,6 +93,8 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
     const hasInitializedForPath = useRef<string | null>(null);
     const location = useLocation();
 
+
+
     // isInitialized = URL has a layers key with a selected array (even if empty)
     // This distinguishes between "user explicitly set layers" vs "no layers param in URL"
     const isInitialized = urlLayers?.selected !== undefined;
@@ -147,11 +149,10 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
 
     }, [layersConfig, navigate, urlLayers, urlFilters, location.pathname]);
 
-    // Memoize based on array contents, not object reference
+    // structuralSharing on useSearch guarantees stable references for unchanged values
     const selectedLayerTitles = useMemo(
         () => new Set<string>(urlLayers?.selected || []),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [JSON.stringify(urlLayers?.selected)]
+        [urlLayers?.selected]
     );
 
     const activeFilters: ActiveFilters = useMemo(() => urlFilters || {}, [urlFilters]);
