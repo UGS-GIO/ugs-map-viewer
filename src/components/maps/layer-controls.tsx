@@ -7,6 +7,7 @@ import { useRef, useState } from 'react';
 import { Toggle } from '@/components/ui/toggle';
 import { LayerDescriptionAccordion } from '@/components/maps/layer-description-accordion';
 import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/query-keys';
 
 interface LayerControlsProps {
     handleZoomToLayer: () => void;
@@ -59,7 +60,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     // 3. TanStack Query for DOMPurify (No useEffect!)
     // This automatically lazy-loads dompurify, sanitizes, and caches the result.
     const { data: cleanDescription = '' } = useQuery({
-        queryKey: ['sanitize-description', description],
+        queryKey: [...queryKeys.modules.dompurify(), description],
         queryFn: async () => {
             if (!description) return '';
             const DOMPurify = (await import('dompurify')).default;

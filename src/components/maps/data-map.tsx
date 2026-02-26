@@ -171,8 +171,8 @@ export default function DataMap({
       onExternalDrawComplete(polygon)
       return
     }
-    const bbox = turfBbox(polygon) as [number, number, number, number]
-    handleSpatialFilterChange({ type: mode === 'rectangle' ? 'bbox' : 'polygon', bbox, polygon })
+    const [w, s, e, n] = turfBbox(polygon)
+    handleSpatialFilterChange({ type: mode === 'rectangle' ? 'bbox' : 'polygon', bbox: [w, s, e, n], polygon })
   }, [onExternalDrawComplete, handleSpatialFilterChange])
 
   const { justFinishedDrawingRef } = useTerraDraw({
