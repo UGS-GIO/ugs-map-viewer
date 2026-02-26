@@ -30,16 +30,12 @@ interface LayerUrlContextType {
 
 const LayerUrlContext = createContext<LayerUrlContextType | undefined>(undefined);
 
-const getAllValidTitles = (layers: LayerProps[], groupsOnly = false): Set<string> => {
+const getAllValidTitles = (layers: LayerProps[]): Set<string> => {
     const titles = new Set<string>();
     layers.forEach(layer => {
-        if (layer.type === 'group' && layer.title) {
-            titles.add(layer.title);
-            if ('layers' in layer && layer.layers) {
-                getAllValidTitles(layer.layers, groupsOnly).forEach(t => titles.add(t));
-            }
-        } else if (!groupsOnly && layer.title) {
-            titles.add(layer.title);
+        if (layer.title) titles.add(layer.title);
+        if (layer.type === 'group' && 'layers' in layer && layer.layers) {
+            getAllValidTitles(layer.layers).forEach(t => titles.add(t));
         }
     });
     return titles;
@@ -165,9 +161,10 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         layersConfig ? getDefaultGroupVisibility(layersConfig, selectedLayerTitles) : new Map<string, boolean>()
         , [layersConfig, selectedLayerTitles]);
 
-    const layerOpacity = useMemo(() => {
-        return new Map<string, number>(Object.entries(urlOpacities || {}));
-    }, [urlOpacities]);
+    const layerOpacity = useMemo(
+        () => new Map<string, number>(Object.entries(urlOpacities || {})),
+        [urlOpacities]
+    );
 
     // URL overrides take precedence over config defaults
     const mergedGroupVisibility = useMemo(() => {
