@@ -142,8 +142,8 @@ export function flattenArcGisLayers(layers: LayerProps[]): ArcGISMapServerLayerP
   for (const layer of layers) {
     if (layer.type === 'group' && 'layers' in layer && layer.layers) {
       result.push(...flattenArcGisLayers(layer.layers))
-    } else if (layer.type === 'map-image' && layer.visible === true) {
-      result.push(layer as ArcGISMapServerLayerProps)
+    } else if (isArcGISMapServerLayer(layer) && layer.visible === true) {
+      result.push(layer)
     }
   }
   return result

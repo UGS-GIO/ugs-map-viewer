@@ -198,8 +198,8 @@ const fetchArcGisExtent = async (mapServerUrl: string): Promise<BoundingBox | nu
             : wkid ? `EPSG:${wkid}` : 'EPSG:4326';
 
         const rawBbox = [ext.xmin, ext.ymin, ext.xmax, ext.ymax];
-        const wgs84 = convertBbox(rawBbox, epsg);
-        return wgs84 as BoundingBox;
+        const [minLng, minLat, maxLng, maxLat] = convertBbox(rawBbox, epsg);
+        return [minLng, minLat, maxLng, maxLat];
     } catch (error) {
         console.error('Error fetching ArcGIS extent:', error);
         return null;
