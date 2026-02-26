@@ -1,6 +1,6 @@
 import { Link } from "@/components/ui/link";
 
-const appTitle = 'Subsurface Data Portal (RockCore)';
+const appTitle = 'Subsurface';
 
 const references = (
     <div>
@@ -47,9 +47,22 @@ const dataDisclaimer = (
 const mapDetails = (
     <div className='mx-2 space-y-2'>
         <p>
-            Established in 1951, the Utah Geological Survey’s Utah Core Research Center contains the region’s only publicly available and most complete collection of geologic core and cuttings from Utah. The facility presently holds core from over 1500 drill holes, totaling about 400,000 feet of material, and cuttings from nearly 5000 drill holes, representing over 57,000,000 feet of subsurface data. This collection represents about $5 billion worth of investment in Utah’s natural resources. </p>
+            Established in 1951, the Utah Geological Survey’s Utah Core Research Center contains the region’s only publicly available and most complete collection of geologic core and cuttings from Utah. The facility presently holds core from over 1500 drill holes, totaling about 400,000 feet of material, and cuttings from nearly 5000 drill holes, representing over 57,000,000 feet of subsurface data. This collection represents about $5 billion worth of investment in Utah’s natural resources. 
+        </p>
         <p>
-            The UCRC’s collection also includes cataloged outcrop samples (mostly from graduate student projects and state geologic mapping efforts), cuttings from water and geothermal wells, sidewall plugs, and numerous other hand samples. The UCRC inventory can be searched using this map or the entire database can be downloaded as a spreadsheet. If you have any questions regarding the UCRC’s collection or would like to look at any of the samples, please contact the UCRC at 801-537-3359. <Link to="https://geology.utah.gov/energy-minerals/ccus/">Learn More</Link>.
+            The UCRC’s collection also includes cataloged outcrop samples (mostly from graduate student projects and state geologic mapping efforts), cuttings from water and geothermal wells, sidewall plugs, and numerous other hand samples. The UCRC inventory can be searched using this map or the entire database can be downloaded as a spreadsheet. If you have any questions regarding the UCRC’s collection or would like to look at any of the samples, please contact the UCRC at 801-537-3359.
+        </p>
+        <p>
+            <strong>Related Information:</strong>
+        </p>
+        <p>
+            <Link to="https://geology.utah.gov/about-us/utah-core-research-center/">Utah Core Research Center</Link>
+        </p>
+        <p>
+            <Link to="https://oilgas.ogm.utah.gov/oilgasweb/live-data-search/lds-logs/logs-lu.xhtml">Oil & Gas Well Logs </Link> (Division of Oil, Gas and Mining) - View scanned logs of Utah oil and gas wells.
+        </p>
+        <p>
+            <Link to="https://www.waterrights.utah.gov/wellInfo/wellInfo.asp">Water Well Logs</Link> (Utah Division of Water Rights) - These logs contain links to well logs/geologic logs.
         </p>
     </div>
 )
