@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
-
-export type DrawMode = 'off' | 'rectangle' | 'polygon';
+import type { DrawMode } from '@/components/maps/types';
 
 interface MultiSelectContextType {
   // Draw mode (rectangle/polygon drawing)

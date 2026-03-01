@@ -46,11 +46,14 @@ export default function DataMap({
   isAdditiveMode = false,
   onAdditiveModeToggle,
   children,
-  drawMode = 'off',
-  onDrawModeChange,
+  activeDrawShape = 'off',
+  onDrawReset,
+  onDrawComplete,
+  toolbarDrawShape = 'off',
+  onToolbarDrawToggle,
+  onCancelMode,
   spatialFilter,
   onSpatialFilterChange,
-  onExternalDrawComplete,
   boxSelectMode = false,
   onBoxSelectModeChange,
   boxSelectBounds,
@@ -165,21 +168,18 @@ export default function DataMap({
     })
   }, [onSpatialFilterChange, wmsUrl, onFeatureClick, layerFilters])
 
-  // Route drawn polygons to either the external caller (report) or the spatial filter pipeline
+  // Route drawn polygons: external caller consumes (returns true), otherwise spatial filter
   const handleDrawFinished = useCallback((polygon: Polygon, mode: 'rectangle' | 'polygon') => {
-    if (onExternalDrawComplete) {
-      onExternalDrawComplete(polygon)
-      return
-    }
+    if (onDrawComplete && onDrawComplete(polygon)) return
     const [w, s, e, n] = turfBbox(polygon)
     handleSpatialFilterChange({ type: mode === 'rectangle' ? 'bbox' : 'polygon', bbox: [w, s, e, n], polygon })
-  }, [onExternalDrawComplete, handleSpatialFilterChange])
+  }, [onDrawComplete, handleSpatialFilterChange])
 
   const { justFinishedDrawingRef } = useTerraDraw({
     map: mapInstance,
     styleLoaded,
-    drawMode,
-    onDrawModeChange,
+    activeDrawShape,
+    onDrawReset,
     onDrawFinished: handleDrawFinished,
   })
 
@@ -241,7 +241,7 @@ export default function DataMap({
 
   // Handle map click - triggers mutation instead of direct fetch
   const handleMapClick = useCallback((e: MapLayerMouseEvent) => {
-    if (boxSelectMode || drawMode !== 'off') return
+    if (boxSelectMode || activeDrawShape !== 'off') return
     if (justFinishedDrawingRef.current) {
       justFinishedDrawingRef.current = false
       return
@@ -317,7 +317,7 @@ export default function DataMap({
         },
       }
     )
-  }, [onFeatureClick, visibleWmsLayers, visibleWfsLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, drawMode, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange, layerFilters])
+  }, [onFeatureClick, visibleWmsLayers, visibleWfsLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, activeDrawShape, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange, layerFilters])
 
   // Handle map move end - track zoom only (box select now uses click-to-confirm)
   const handleMoveEnd = useCallback(() => {
@@ -570,7 +570,7 @@ export default function DataMap({
         refreshExpiredTiles={false}
         onMoveEnd={handleMoveEnd}
         onClick={boxSelectMode ? undefined : handleMapClick}
-        cursor={drawMode !== 'off' ? 'crosshair' : boxSelectMode ? 'move' : onFeatureClick ? (isAdditiveMode ? 'copy' : 'pointer') : 'grab'}
+        cursor={activeDrawShape !== 'off' ? 'crosshair' : boxSelectMode ? 'move' : onFeatureClick ? (isAdditiveMode ? 'copy' : 'pointer') : 'grab'}
         boxZoom={false}
         onLoad={handleLoad}
       >
@@ -588,8 +588,9 @@ export default function DataMap({
 
         {/* Map tools control */}
         <MapToolsControl
-          drawMode={onExternalDrawComplete ? 'off' : drawMode}
-          onDrawModeChange={onDrawModeChange}
+          drawMode={toolbarDrawShape}
+          onDrawModeChange={onToolbarDrawToggle}
+          onCancelMode={onCancelMode}
           hasFilter={!!spatialFilter}
           onClearFilter={onSpatialFilterChange ? () => onSpatialFilterChange(null) : undefined}
           hasPin={!!pinCoords}

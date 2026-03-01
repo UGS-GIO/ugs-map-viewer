@@ -1,8 +1,9 @@
 import { createContext } from "react";
 import type { Polygon } from "geojson";
 import type { Map as MapLibreMap } from "maplibre-gl";
+import type { DrawMode } from "@/components/maps/types";
 
-export type DrawMode = 'off' | 'rectangle' | 'polygon'
+export type { DrawMode }
 
 export type MapContextProps = {
     map?: MapLibreMap
@@ -13,14 +14,13 @@ export type MapContextProps = {
     onLayerTurnedOff: (layerTitle: string) => void
 
     // Draw lifecycle — owned by useMapContextState
-    drawMode: DrawMode
-    setDrawMode: (mode: DrawMode) => void
-    startDraw: (mode: 'rectangle' | 'polygon', onComplete: (polygon: Polygon) => void, onCancel?: () => void) => void
+    activeDrawShape: DrawMode
+    startDraw: (mode: 'rectangle' | 'polygon', onComplete?: (polygon: Polygon) => void, onCancel?: () => void) => void
     cancelDraw: () => void
-    onDrawComplete: ((polygon: Polygon) => void) | undefined
+    handleDrawComplete: (polygon: Polygon) => boolean
 
     // Registration — container registers its callbacks
-    registerClearSpatialFilter: (fn: () => void) => void
+    registerPrepareForDraw: (fn: () => void) => void
     registerLayerTurnedOff: (fn: (title: string) => void) => void
     onMapReady: (map: MapLibreMap) => void
 }
@@ -30,12 +30,11 @@ export const MapContext = createContext<MapContextProps>({
     isSketching: false,
     setIsSketching: () => { },
     onLayerTurnedOff: () => { },
-    drawMode: 'off',
-    setDrawMode: () => { },
+    activeDrawShape: 'off',
     startDraw: () => { },
     cancelDraw: () => { },
-    onDrawComplete: undefined,
-    registerClearSpatialFilter: () => { },
+    handleDrawComplete: () => false,
+    registerPrepareForDraw: () => { },
     registerLayerTurnedOff: () => { },
     onMapReady: () => { },
 });

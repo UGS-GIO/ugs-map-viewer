@@ -17,8 +17,8 @@ function isPolygon(geometry: GeoJSON.Geometry): geometry is Polygon {
 interface UseTerraDrawOptions {
   map: maplibregl.Map | null
   styleLoaded: boolean
-  drawMode: DrawMode
-  onDrawModeChange?: (mode: DrawMode) => void
+  activeDrawShape: DrawMode
+  onDrawReset?: () => void
   /** Called when a drawing is completed with the polygon geometry */
   onDrawFinished?: (polygon: Polygon, mode: 'rectangle' | 'polygon') => void
 }
@@ -30,16 +30,18 @@ interface UseTerraDrawOptions {
 export function useTerraDraw({
   map,
   styleLoaded,
-  drawMode,
-  onDrawModeChange,
+  activeDrawShape,
+  onDrawReset,
   onDrawFinished,
 }: UseTerraDrawOptions) {
   const terraDrawRef = useRef<TerraDraw | null>(null)
   const justFinishedDrawingRef = useRef(false)
 
   // Stable refs for callbacks — prevents Terra Draw teardown/rebuild on callback identity changes
-  const onDrawModeChangeRef = useRef(onDrawModeChange)
-  onDrawModeChangeRef.current = onDrawModeChange
+  const activeDrawShapeRef = useRef(activeDrawShape)
+  activeDrawShapeRef.current = activeDrawShape
+  const onDrawResetRef = useRef(onDrawReset)
+  onDrawResetRef.current = onDrawReset
   const onDrawFinishedRef = useRef(onDrawFinished)
   onDrawFinishedRef.current = onDrawFinished
 
@@ -112,8 +114,8 @@ export function useTerraDraw({
     terraDrawRef.current = terraDraw
 
     // Sync to current draw mode immediately after initialization
-    if (drawMode !== 'off') {
-      terraDraw.setMode(drawMode)
+    if (activeDrawShape !== 'off') {
+      terraDraw.setMode(activeDrawShape)
     }
 
     // Listen for drawing completion - emit polygon and reset
@@ -127,7 +129,7 @@ export function useTerraDraw({
 
       terraDraw.clear()
       justFinishedDrawingRef.current = true
-      onDrawModeChangeRef.current?.('off')
+      onDrawResetRef.current?.()
     })
 
     // Handle map style changes (basemap switches) - reinitialize Terra Draw
@@ -143,8 +145,8 @@ export function useTerraDraw({
         terraDrawRef.current = newTerraDraw
 
         // Restore current mode
-        if (drawMode !== 'off') {
-          newTerraDraw.setMode(drawMode)
+        if (activeDrawShapeRef.current !== 'off') {
+          newTerraDraw.setMode(activeDrawShapeRef.current)
         }
       }
     }
@@ -169,12 +171,12 @@ export function useTerraDraw({
     // Clear any in-progress drawing when switching modes
     try { terraDraw.clear() } catch { /* ignore */ }
 
-    if (drawMode === 'off') {
+    if (activeDrawShape === 'off') {
       terraDraw.setMode('static')
     } else {
-      terraDraw.setMode(drawMode)
+      terraDraw.setMode(activeDrawShape)
     }
-  }, [drawMode])
+  }, [activeDrawShape])
 
   return { justFinishedDrawingRef }
 }

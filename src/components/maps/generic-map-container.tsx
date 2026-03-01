@@ -236,10 +236,11 @@ export default function GenericMapContainer({
   // Read draw lifecycle + registrations from context (owned by useMapContextState)
   const {
     map: mapInstance,
-    drawMode,
-    setDrawMode,
-    onDrawComplete,
-    registerClearSpatialFilter,
+    activeDrawShape,
+    startDraw,
+    cancelDraw,
+    handleDrawComplete,
+    registerPrepareForDraw,
     registerLayerTurnedOff,
     onMapReady,
   } = useMap()
@@ -354,38 +355,58 @@ export default function GenericMapContainer({
   const [spatialFilter, setSpatialFilter] = useState<SpatialFilter>(null)
   const [boxSelectMode, setBoxSelectMode] = useState(false)
   const [boxSelectBounds, setBoxSelectBounds] = useState<{ sw: [number, number]; ne: [number, number] } | null>(null)
+  const [toolbarDrawShape, setToolbarDrawShape] = useState<DrawMode>('off')
 
   // Additive mode only active when no other mode is active (shift-click disabled in draw/box modes)
-  const noOtherModeActive = drawMode === 'off' && !boxSelectMode
+  const noOtherModeActive = activeDrawShape === 'off' && !boxSelectMode
   const isAdditiveMode = noOtherModeActive && (additiveModeToggled || isShiftHeld)
 
-  // Register clear callback so startDraw can clear existing drawings
-  const clearSpatialFilter = useCallback(() => {
+  // Register callback so startDraw can clear conflicting container state
+  const prepareForDraw = useCallback(() => {
     setSpatialFilter(null)
+    setBoxSelectMode(false)
+    setBoxSelectBounds(null)
+    setAdditiveModeToggled(false)
+    setToolbarDrawShape('off')
   }, [])
 
   // Register once (safe - callback is stable)
-  registerClearSpatialFilter(clearSpatialFilter)
+  registerPrepareForDraw(prepareForDraw)
 
-  // Centralized mode setter - handles mutual exclusivity between all selection modes
+  // Centralized mode setter - handles mutual exclusivity (non-draw modes)
   const setActiveMode = useCallback((
-    mode: 'draw' | 'boxSelect' | 'additive' | 'none',
-    drawType?: 'rectangle' | 'polygon'
+    mode: 'boxSelect' | 'additive' | 'none'
   ) => {
-    // setDrawMode handles external draw cancellation internally
-    setDrawMode(mode === 'draw' ? drawType! : 'off')
+    cancelDraw()
+    setToolbarDrawShape('off')
     setBoxSelectMode(mode === 'boxSelect')
     if (mode !== 'boxSelect') setBoxSelectBounds(null)
     setAdditiveModeToggled(mode === 'additive')
-  }, [setDrawMode])
+  }, [cancelDraw])
 
-  // Handler for draw mode toggle from toolbar
-  const handleDrawModeChange = useCallback((mode: DrawMode) => {
+  // Toolbar draw toggle — starts draw via context, tracks highlight locally
+  const handleToolbarDrawToggle = useCallback((mode: DrawMode) => {
+    setBoxSelectMode(false)
+    setBoxSelectBounds(null)
+    setAdditiveModeToggled(false)
     if (mode === 'off') {
-      setActiveMode('none')
+      cancelDraw()
+      setToolbarDrawShape('off')
     } else {
-      setActiveMode('draw', mode)
+      startDraw(mode, undefined, () => setToolbarDrawShape('off'))
+      setToolbarDrawShape(mode)
     }
+  }, [cancelDraw, startDraw])
+
+  // Called by useTerraDraw when drawing finishes (resets to 'off')
+  const handleDrawReset = useCallback(() => {
+    cancelDraw()
+    setToolbarDrawShape('off')
+  }, [cancelDraw])
+
+  // Cancel any active mode (draw, box select, additive)
+  const handleCancelMode = useCallback(() => {
+    setActiveMode('none')
   }, [setActiveMode])
 
   const handleSpatialFilterChange = useCallback((filter: SpatialFilter) => {
@@ -488,11 +509,14 @@ export default function GenericMapContainer({
             onClickBufferChange={setClickBufferBounds}
             featureBbox={featureBbox}
             onFeatureBboxChange={setFeatureBbox}
-            drawMode={drawMode}
-            onDrawModeChange={handleDrawModeChange}
+            activeDrawShape={activeDrawShape}
+            onDrawReset={handleDrawReset}
+            onDrawComplete={handleDrawComplete}
+            toolbarDrawShape={toolbarDrawShape}
+            onToolbarDrawToggle={handleToolbarDrawToggle}
+            onCancelMode={handleCancelMode}
             spatialFilter={spatialFilter}
             onSpatialFilterChange={handleSpatialFilterChange}
-            onExternalDrawComplete={onDrawComplete}
             boxSelectMode={boxSelectMode}
             onBoxSelectModeChange={handleBoxSelectModeChange}
             boxSelectBounds={boxSelectBounds}
