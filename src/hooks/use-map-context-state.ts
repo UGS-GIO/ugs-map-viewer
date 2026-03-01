@@ -2,30 +2,34 @@ import { useState, useCallback, useRef, useMemo } from 'react'
 import type maplibregl from 'maplibre-gl'
 import type { MapContextProps, DrawMode } from '@/context/map-context'
 import type { Polygon } from 'geojson'
+import { useMapInstance } from '@/context/map-instance-context'
 
 /**
- * Hook to manage MapContext state at the page level
- * This allows components outside GenericMapContainer (like SearchCombobox) to access the map
+ * Hook to manage MapContext state at the page level.
+ * Single owner of the draw lifecycle — container and sidebar consumers read from context.
  */
 export function useMapContextState() {
   const [mapInstance, setMapInstance] = useState<maplibregl.Map | undefined>(undefined)
   const [isSketching, setIsSketching] = useState(false)
-  const [drawMode, setDrawMode] = useState<DrawMode>('off')
-  const ignoreNextClickRef = useRef(false)
+  const [drawMode, setDrawModeState] = useState<DrawMode>('off')
+  const { setMap: setMapInstanceGlobal } = useMapInstance()
+
   const layerTurnedOffCallbackRef = useRef<((layerTitle: string) => void) | undefined>(undefined)
   const externalDrawCallbackRef = useRef<((polygon: Polygon) => void) | null>(null)
+  const externalDrawCancelRef = useRef<(() => void) | null>(null)
   const clearSpatialFilterRef = useRef<(() => void) | undefined>(undefined)
 
-  const shouldIgnoreNextClick = useCallback(() => ignoreNextClickRef.current, [])
-  const setIgnoreNextClick = useCallback((ignore: boolean) => { ignoreNextClickRef.current = ignore }, [])
-  const consumeIgnoreClick = useCallback(() => { ignoreNextClickRef.current = false }, [])
+  // Track whether an external caller (report generator) is drawing
+  const [isExternalDrawActive, setIsExternalDrawActive] = useState(false)
 
-  const handleMapReady = useCallback((map: maplibregl.Map) => {
+  // Container forwards map instance here
+  const onMapReady = useCallback((map: maplibregl.Map) => {
     setMapInstance(map)
-  }, [])
+    setMapInstanceGlobal(map)
+  }, [setMapInstanceGlobal])
 
-  // Allow GenericMapContainer to register the layer callback
-  const setLayerTurnedOffCallback = useCallback((callback: (layerTitle: string) => void) => {
+  // Container registers its layer-turned-off handler
+  const registerLayerTurnedOff = useCallback((callback: (layerTitle: string) => void) => {
     layerTurnedOffCallbackRef.current = callback
   }, [])
 
@@ -33,30 +37,39 @@ export function useMapContextState() {
     layerTurnedOffCallbackRef.current?.(layerTitle)
   }, [])
 
-  // Allow GenericMapContainer to register the clear spatial filter callback
-  const setClearSpatialFilterCallback = useCallback((callback: () => void) => {
+  // Container registers its clear-spatial-filter handler
+  const registerClearSpatialFilter = useCallback((callback: () => void) => {
     clearSpatialFilterRef.current = callback
   }, [])
 
-  // Track whether an external caller (report generator) is drawing
-  const [isExternalDrawActive, setIsExternalDrawActive] = useState(false)
+  // Called by toolbar — cancels any active external draw, then sets mode
+  const setDrawMode = useCallback((mode: DrawMode) => {
+    if (externalDrawCallbackRef.current) {
+      externalDrawCancelRef.current?.()
+      externalDrawCallbackRef.current = null
+      externalDrawCancelRef.current = null
+      setIsExternalDrawActive(false)
+    }
+    setDrawModeState(mode)
+  }, [])
 
-  // Draw controls - shared between report generator and map tools
-  const startDraw = useCallback((mode: 'rectangle' | 'polygon', onComplete: (polygon: Polygon) => void) => {
-    // Clear any existing drawing/filter before starting new one
+  // External callers (report generator) start a draw session
+  const startDraw = useCallback((mode: 'rectangle' | 'polygon', onComplete: (polygon: Polygon) => void, onCancel?: () => void) => {
     clearSpatialFilterRef.current?.()
     externalDrawCallbackRef.current = onComplete
+    externalDrawCancelRef.current = onCancel ?? null
     setIsExternalDrawActive(true)
-    setDrawMode(mode)
+    setDrawModeState(mode)
   }, [])
 
   const cancelDraw = useCallback(() => {
     externalDrawCallbackRef.current = null
+    externalDrawCancelRef.current = null
     setIsExternalDrawActive(false)
-    setDrawMode('off')
+    setDrawModeState('off')
   }, [])
 
-  // Called directly by Terra Draw when external draw finishes (skips spatial filter pipeline)
+  // Called by Terra Draw when external draw finishes (skips spatial filter pipeline)
   const handleDrawComplete = useCallback((polygon: Polygon) => {
     if (externalDrawCallbackRef.current) {
       externalDrawCallbackRef.current(polygon)
@@ -65,29 +78,23 @@ export function useMapContextState() {
     setIsExternalDrawActive(false)
   }, [])
 
+  // onDrawComplete is non-null only when an external caller is drawing
+  const onDrawComplete = isExternalDrawActive ? handleDrawComplete : undefined
+
   const contextValue: MapContextProps = useMemo(() => ({
     map: mapInstance,
     isSketching,
     setIsSketching,
-    getIsSketching: () => isSketching,
-    shouldIgnoreNextClick,
-    setIgnoreNextClick,
-    consumeIgnoreClick,
     onLayerTurnedOff,
     drawMode,
+    setDrawMode,
     startDraw,
     cancelDraw,
-  }), [mapInstance, isSketching, shouldIgnoreNextClick, setIgnoreNextClick, consumeIgnoreClick, onLayerTurnedOff, drawMode, startDraw, cancelDraw])
+    onDrawComplete,
+    registerClearSpatialFilter,
+    registerLayerTurnedOff,
+    onMapReady,
+  }), [mapInstance, isSketching, onLayerTurnedOff, drawMode, setDrawMode, startDraw, cancelDraw, onDrawComplete, registerClearSpatialFilter, registerLayerTurnedOff, onMapReady])
 
-  return {
-    mapInstance,
-    handleMapReady,
-    contextValue,
-    setLayerTurnedOffCallback,
-    setClearSpatialFilterCallback,
-    drawMode,
-    setDrawMode,
-    handleDrawComplete,
-    isExternalDrawActive,
-  }
+  return { contextValue }
 }

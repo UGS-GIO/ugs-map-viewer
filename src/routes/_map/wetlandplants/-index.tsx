@@ -14,7 +14,7 @@ export default function Map() {
     const { isCollapsed, sidebarWidthPx } = useSidebar();
     const isMobile = useIsMobile();
     const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
-    const { handleMapReady, contextValue, setClearSpatialFilterCallback, setLayerTurnedOffCallback } = useMapContextState();
+    const { contextValue } = useMapContextState();
 
     return (
         <MapContext.Provider value={contextValue}>
@@ -38,13 +38,7 @@ export default function Map() {
 
                         {/* ===== Main ===== */}
                         <Layout.Body>
-                            <GenericMapContainer
-                                popupTitle="Wetland Plants"
-                                onMapReady={handleMapReady}
-                                skipContextProvider
-                                onRegisterClearSpatialFilter={setClearSpatialFilterCallback}
-                                onRegisterLayerTurnedOff={setLayerTurnedOffCallback}
-                            />
+                            <GenericMapContainer />
                         </Layout.Body>
 
                         {/* ===== Footer ===== */}

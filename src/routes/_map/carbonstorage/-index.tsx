@@ -68,7 +68,7 @@ export default function Map() {
   const isMobile = useIsMobile();
   const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
   const { selectedLayerTitles, updateLayerSelection, setGroupVisibility, groupVisibility } = useLayerUrl()
-  const { handleMapReady, contextValue, setClearSpatialFilterCallback, setLayerTurnedOffCallback } = useMapContextState();
+  const { contextValue } = useMapContextState();
   const searchRef = useRef<SearchComboboxHandle>(null);
 
   // Get URL filters
@@ -159,12 +159,7 @@ export default function Map() {
             {/* ===== Main ===== */}
             <Layout.Body>
               <GenericMapContainer
-                popupTitle="CCS Information"
                 layerFilters={layerFilters}
-                onMapReady={handleMapReady}
-                skipContextProvider
-                onRegisterClearSpatialFilter={setClearSpatialFilterCallback}
-                onRegisterLayerTurnedOff={setLayerTurnedOffCallback}
                 onClearSearch={() => searchRef.current?.clear()}
               />
             </Layout.Body>
