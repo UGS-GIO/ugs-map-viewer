@@ -399,7 +399,7 @@ export class MapLibreMapFactory implements MapFactory {
           title: layerConfig.title,
         },
       },
-      undefined
+        undefined
       );
     }
   }
@@ -432,7 +432,6 @@ export class MapLibreMapFactory implements MapFactory {
         type: 'raster',
         tiles: [sourceUrl],
         tileSize: 256,
-        scheme: 'tms',
       });
     }
 
@@ -451,7 +450,7 @@ export class MapLibreMapFactory implements MapFactory {
           title: layerConfig.title,
         },
       },
-      undefined
+        undefined
       );
     }
   }

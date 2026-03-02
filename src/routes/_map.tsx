@@ -42,6 +42,10 @@ const mapSearchSchema = z.object({
     feature_bbox: z.string().optional(),
     // Selected features for sharing (format: layer:id,layer:id,...)
     features: z.string().optional(),
+    // Visibility state overrides for group layers (format: Group Title: boolean)
+    visibility: z.record(z.boolean()).optional(),
+    // Custom opacity levels for individual layers (format: Layer Title: 0-1)
+    opacities: z.record(z.number()).optional(),
 }).strip()
 
 export type MapSearchParams = z.infer<typeof mapSearchSchema>;

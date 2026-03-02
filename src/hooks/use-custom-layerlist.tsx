@@ -114,14 +114,19 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
     const { refetch: fetchExtent, data: cachedExtent } = useLayerExtent(extentOptions);
 
     const handleOpacityChange = useCallback((value: number) => {
-        // Look up layer fresh each time to avoid stale memo issues
+        // Continuously updates, so don't update url with this
         if (!map || !layerConfig.title) return;
         const layer = findLayerByTitle(map, layerConfig.title);
         if (layer) {
             layer.opacity = value / 100;
         }
+    }, [map, layerConfig.title]);
+
+    const handleOpacityCommit = useCallback((value: number) => {
+        // Persist to URL only on mouse up / drag end
+        if (!layerConfig.title) return;
         setLayerOpacity(layerConfig.title, value / 100);
-    }, [map, layerConfig.title, setLayerOpacity]);
+    }, [layerConfig.title, setLayerOpacity]);
 
     const { onLayerTurnedOff } = useMap();
 
@@ -261,6 +266,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
                         <LayerControls
                             layerOpacity={isSelected ? (layerOpacityMap.get(layerConfig.title || '') ?? layerConfig.opacity ?? 0.8) : null}
                             handleOpacityChange={handleOpacityChange}
+                            handleOpacityCommit={handleOpacityCommit}
                             title={layerConfig.title || ''}
                             description={layerDescriptions ? layerDescriptions[layerConfig.title || ''] : ''}
                             handleZoomToLayer={handleZoomToLayer}
