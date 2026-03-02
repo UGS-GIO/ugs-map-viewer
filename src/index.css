@@ -145,7 +145,7 @@
     @apply border-border;
   }
   html, body {
-    @apply overflow-x-hidden;
+    @apply overflow-hidden;
   }
   body {
     @apply min-h-svh w-full bg-background text-foreground;
