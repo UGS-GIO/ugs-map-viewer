@@ -1,10 +1,11 @@
 import { Link } from "@/components/ui/link";
-import { ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
+import { MAPS_ASSETS_CDN_URL, ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { ArcGISMapServerLayerProps, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
 
 // GeoRegions WMS Layer
+const CCUS_IMAGE_BASE_URL = `${MAPS_ASSETS_CDN_URL}/ccus/png`;
 const georegionsLayerName = 'enmin_ccus_georegions_current';
 const georegionsWMSTitle = 'Geo-region Carbon Storage Ranking';
 const georegionsWMSConfig: WMSLayerProps = {
@@ -25,8 +26,22 @@ const georegionsWMSConfig: WMSLayerProps = {
                 'Key Reservoirs': { field: 'keyreservoirs', type: 'string' },
                 'Key Caprocks': { field: 'keycaprocks', type: 'string' },
                 'Description': { field: 'description', type: 'string' },
-                'Geo-region Map': { field: 'georegionmap', type: 'string', transform: () => 'Coming Soon' },
-                'Stratigraphic Column': { field: 'stratcolumn', type: 'string', transform: () => 'Coming Soon' },
+                'Geo-region Map': { field: 'georegionmap', type: 'string' },
+                'Stratigraphic Column': { field: 'stratcolumn', type: 'string' },
+            },
+            linkFields: {
+                'georegionmap': {
+                    transform: (value: string) => {
+                        if (!value) return [{ label: 'Not available', href: null }];
+                        return [{ label: 'View Image', href: `${CCUS_IMAGE_BASE_URL}/georegionmaps/${encodeURIComponent(value)}` }];
+                    }
+                },
+                'stratcolumn': {
+                    transform: (value: string) => {
+                        if (!value) return [{ label: 'Not available', href: null }];
+                        return [{ label: 'View Image', href: `${CCUS_IMAGE_BASE_URL}/stratcolumns/${encodeURIComponent(value)}` }];
+                    }
+                },
             },
             colorCodingMap: {
                 'ranking': (value: string | number) => {

@@ -6,6 +6,7 @@ export const GEN_GIS_WORKSPACE = 'gen_gis';
 export const MAPPING_WORKSPACE = 'mapping';
 export const GEOCODE_PROXY_FUNCTION_URL = 'http://127.0.0.1:5001/ut-dnr-ugs-maps-dev/us-central1/geocodeProxy';
 export const MASQUERADE_GEOCODER_URL = 'https://masquerade.ugrc.utah.gov/arcgis/rest/services/UtahLocator/GeocodeServer';
+export const MAPS_ASSETS_CDN_URL = 'https://maps-assets.geology.utah.gov';
 
 // Constants for symbol generation
 export const SYMBOL_CONSTANTS = {
