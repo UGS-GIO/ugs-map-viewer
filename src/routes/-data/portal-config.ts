@@ -16,7 +16,7 @@ export interface PortalMeta {
   title: string
   description: string
   href: string
-  status: 'stable' | 'beta'
+  status: 'stable' | 'beta' | 'in-progress'
   public: boolean
   image?: string
   imageCredit?: ImageCredit

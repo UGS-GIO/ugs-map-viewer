@@ -118,6 +118,11 @@ function PortalCard({ portal, featured }: { portal: typeof portals[number]; feat
                 Beta
               </Badge>
             )}
+            {portal.status === 'in-progress' && (
+              <Badge variant="outline" className="bg-amber-500/20 border-amber-400/40 text-amber-100 text-xs backdrop-blur-sm">
+                In Progress
+              </Badge>
+            )}
           </div>
           <h3 className={`font-bold text-white leading-tight ${featured ? 'text-2xl md:text-3xl' : 'text-xl'}`}>
             {portal.title}
