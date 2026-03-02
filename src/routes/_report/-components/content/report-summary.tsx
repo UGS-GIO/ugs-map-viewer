@@ -41,16 +41,17 @@ export function ReportSummary({ hazardGroups }: ReportSummaryProps) {
                                 </h4>
 
                                 {/* List of Geologic Hazards within the category */}
-                                <ul className="list-disc pl-5 space-y-1 text-sm">
-                                    {group.layers.map(layer => (
-                                        <li key={layer.code} className={layer.found ? '' : 'text-muted-foreground'}>
-                                            {layer.name}
-                                            {!layer.found && (
-                                                <span className="italic"> (no mapped data)</span>
-                                            )}
-                                        </li>
-                                    ))}
-                                </ul>
+                                {group.layers.some(l => l.found) ? (
+                                    <ul className="list-disc pl-5 space-y-1 text-sm">
+                                        {group.layers.filter(l => l.found).map(layer => (
+                                            <li key={layer.code}>
+                                                {layer.name}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground italic">No mapped data in this area</p>
+                                )}
                             </div>
                         ))}
                     </div>
