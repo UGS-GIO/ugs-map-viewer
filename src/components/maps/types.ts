@@ -39,9 +39,18 @@ export interface DataMapProps {
   isAdditiveMode?: boolean
   /** Callback to toggle additive mode */
   onAdditiveModeToggle?: () => void
-  /** Terra Draw props */
-  drawMode?: DrawMode
-  onDrawModeChange?: (mode: DrawMode) => void
+  /** The draw shape being drawn (rectangle/polygon/off) */
+  activeDrawShape?: DrawMode
+  /** Called by useTerraDraw when drawing finishes (always resets to 'off') */
+  onDrawReset?: () => void
+  /** Called with drawn polygon; returns true if consumed externally, false for spatial filter */
+  onDrawComplete?: (polygon: Polygon) => boolean
+  /** Toolbar-local draw shape for button highlighting */
+  toolbarDrawShape?: DrawMode
+  /** Toolbar draw mode toggle */
+  onToolbarDrawToggle?: (mode: DrawMode) => void
+  /** Cancel any active mode (draw, box select, additive) */
+  onCancelMode?: () => void
   spatialFilter?: SpatialFilter
   onSpatialFilterChange?: (filter: SpatialFilter) => void
   /** Box select mode - shows positioning overlay */

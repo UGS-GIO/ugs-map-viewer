@@ -1,7 +1,7 @@
 /**
  * Generic Map Container - Shared component for all map pages
  * Uses react-map-gl DataMap with unified state management
- * Provides MapContext for SearchCombobox and LayerControls
+ * Reads draw lifecycle and registrations from MapContext (owned by useMapContextState)
  */
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
@@ -17,9 +17,9 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { cn } from '@/lib/utils'
 import { MobileMapNav } from './mobile-map-nav'
-import { PROD_GEOSERVER_URL } from '@/lib/constants'
-import { MapContext } from '@/context/map-context'
-import { useMapInstance } from '@/context/map-instance-context'
+import { PROD_GEOSERVER_URL, POPUP_TITLES } from '@/lib/constants'
+import { useMap } from '@/hooks/use-map'
+import { useGetCurrentPage } from '@/hooks/use-get-current-page'
 import { HomeControl, DualScaleControl } from '@/components/maps/controls'
 import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
@@ -165,7 +165,7 @@ async function fetchLegendDataForVisibleLayers(
               yLabel: layer.bivariateLegend.yLabel,
               xTicks,
               yTicks,
-              noData: noData ?? undefined,
+              noData,
             }
           })
         }
@@ -205,44 +205,22 @@ async function fetchLegendDataForVisibleLayers(
 }
 
 interface GenericMapContainerProps {
-  /** Title shown in the popup drawer header */
-  popupTitle: string
   /** Optional CQL filters for WMS layers, keyed by layer title */
   layerFilters?: Record<string, string>
   /** Layer config key (default: 'layers') */
   layerConfigKey?: string
-  /** Callback when map is ready - used for lifting map instance to page level */
-  onMapReady?: (map: maplibregl.Map) => void
-  /** If true, don't wrap with MapContext.Provider (parent provides it) */
-  skipContextProvider?: boolean
-  /** External draw mode (used when skipContextProvider is true) */
-  externalDrawMode?: DrawMode
-  /** Callback when external draw mode changes */
-  onExternalDrawModeChange?: (mode: DrawMode) => void
-  /** Callback when external drawing completes with polygon */
-  onExternalDrawComplete?: (polygon: import('geojson').Polygon) => void
-  /** Register callback to clear spatial filter (called by startDraw) */
-  onRegisterClearSpatialFilter?: (callback: () => void) => void
-  /** Register callback for when layer is turned off (clears selection/highlights) */
-  onRegisterLayerTurnedOff?: (callback: (layerTitle: string) => void) => void
   /** Called when all selections are cleared (context menu, popup close, etc.) */
   onClearSearch?: () => void
 }
 
 export default function GenericMapContainer({
-  popupTitle,
   layerFilters = {},
   layerConfigKey = 'layers',
-  onMapReady: onMapReadyProp,
-  skipContextProvider = false,
-  externalDrawMode,
-  onExternalDrawModeChange,
-  onExternalDrawComplete,
-  onRegisterClearSpatialFilter,
-  onRegisterLayerTurnedOff,
   onClearSearch,
 }: GenericMapContainerProps) {
   const isMobile = useIsMobile()
+  const currentPage = useGetCurrentPage()
+  const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
   const { viewMode, setViewMode, center, zoom, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
   const { setNavOpened } = useSidebar()
   const rawLayersConfig = useGetLayerConfigsData(layerConfigKey)
@@ -255,21 +233,25 @@ export default function GenericMapContainer({
   const layersConfigRef = useRef<LayerProps[]>(layersConfig)
   layersConfigRef.current = layersConfig
 
-  // Map instance state for MapContext
-  const [mapInstance, setMapInstance] = useState<maplibregl.Map | undefined>(undefined)
-  const [isSketching, setIsSketching] = useState(false)
-  const { setMap: setMapInstanceGlobal } = useMapInstance()
+  // Read draw lifecycle + registrations from context (owned by useMapContextState)
+  const {
+    map: mapInstance,
+    activeDrawShape,
+    startDraw,
+    cancelDraw,
+    handleDrawComplete,
+    registerPrepareForDraw,
+    registerLayerTurnedOff,
+    onMapReady,
+  } = useMap()
 
   // Highlighted features state - controlled by popup/table navigation
-  // This is the single source of truth for what's highlighted on the map
   const [highlightedFeatures, setHighlightedFeatures] = useState<HighlightFeature[]>([])
 
   // Handle map ready callback
   const handleMapReady = useCallback((map: maplibregl.Map) => {
-    setMapInstance(map)
-    setMapInstanceGlobal(map) // Set in global context for footer coordinates
-    onMapReadyProp?.(map)
-  }, [onMapReadyProp, setMapInstanceGlobal])
+    onMapReady(map)
+  }, [onMapReady])
 
   // Callback for popup/table to update which features are highlighted
   const handleHighlightChange = useCallback((features: HighlightFeature[]) => {
@@ -282,9 +264,6 @@ export default function GenericMapContainer({
     handleFeatureClick,
     handleLayerTurnedOff,
     clearAllSelections,
-    shouldIgnoreNextClick,
-    setIgnoreNextClick,
-    consumeIgnoreClick,
   } = useFeatureSelection({
     viewMode,
     selectedFeatureRefs,
@@ -296,9 +275,7 @@ export default function GenericMapContainer({
   })
 
   // Register layer turned off callback with parent context (safe - callback is stable)
-  if (onRegisterLayerTurnedOff) {
-    onRegisterLayerTurnedOff(handleLayerTurnedOff)
-  }
+  registerLayerTurnedOff(handleLayerTurnedOff)
 
   // Add map controls when map is ready (desktop only)
   useEffect(() => {
@@ -374,74 +351,72 @@ export default function GenericMapContainer({
     }
   }, [])
 
-  // Map interaction state (internal, used when skipContextProvider is false)
-  const [mapInteraction, setMapInteraction] = useState({
-    internalDrawMode: 'off' as DrawMode,
-    spatialFilter: null as SpatialFilter,
-    boxSelectMode: false,
-    boxSelectBounds: null as { sw: [number, number]; ne: [number, number] } | null,
-  })
-
-  // Use external draw mode if provided, otherwise use internal
-  const effectiveDrawMode = externalDrawMode ?? mapInteraction.internalDrawMode
+  // Independent interaction states (no longer bundled in mapInteraction)
+  const [spatialFilter, setSpatialFilter] = useState<SpatialFilter>(null)
+  const [boxSelectMode, setBoxSelectMode] = useState(false)
+  const [boxSelectBounds, setBoxSelectBounds] = useState<{ sw: [number, number]; ne: [number, number] } | null>(null)
+  const [toolbarDrawShape, setToolbarDrawShape] = useState<DrawMode>('off')
 
   // Additive mode only active when no other mode is active (shift-click disabled in draw/box modes)
-  const noOtherModeActive = effectiveDrawMode === 'off' && !mapInteraction.boxSelectMode
+  const noOtherModeActive = activeDrawShape === 'off' && !boxSelectMode
   const isAdditiveMode = noOtherModeActive && (additiveModeToggled || isShiftHeld)
 
-  // Register clear callback so startDraw can clear existing drawings
-  const clearSpatialFilter = useCallback(() => {
-    setMapInteraction(prev => ({ ...prev, spatialFilter: null }))
+  // Register callback so startDraw can clear conflicting container state
+  const prepareForDraw = useCallback(() => {
+    setSpatialFilter(null)
+    setBoxSelectMode(false)
+    setBoxSelectBounds(null)
+    setAdditiveModeToggled(false)
+    setToolbarDrawShape('off')
   }, [])
 
-  // Register once on mount (safe - callback is stable)
-  if (onRegisterClearSpatialFilter) {
-    onRegisterClearSpatialFilter(clearSpatialFilter)
-  }
+  // Register once (safe - callback is stable)
+  registerPrepareForDraw(prepareForDraw)
 
-  // Centralized mode setter - handles mutual exclusivity between all selection modes
+  // Centralized mode setter - handles mutual exclusivity (non-draw modes)
   const setActiveMode = useCallback((
-    mode: 'draw' | 'boxSelect' | 'additive' | 'none',
-    drawType?: 'rectangle' | 'polygon'
+    mode: 'boxSelect' | 'additive' | 'none'
   ) => {
-    // Update map interaction state
-    setMapInteraction(prev => ({
-      ...prev,
-      internalDrawMode: mode === 'draw' ? drawType! : 'off',
-      boxSelectMode: mode === 'boxSelect',
-      boxSelectBounds: mode === 'boxSelect' ? prev.boxSelectBounds : null,
-    }))
-
-    // Update additive mode
+    cancelDraw()
+    setToolbarDrawShape('off')
+    setBoxSelectMode(mode === 'boxSelect')
+    if (mode !== 'boxSelect') setBoxSelectBounds(null)
     setAdditiveModeToggled(mode === 'additive')
+  }, [cancelDraw])
 
-    // Sync external draw mode if provided
-    if (onExternalDrawModeChange) {
-      onExternalDrawModeChange(mode === 'draw' ? drawType! : 'off')
-    }
-  }, [onExternalDrawModeChange])
-
-  // Handler for draw mode toggle from toolbar
-  const handleDrawModeChange = useCallback((mode: DrawMode) => {
+  // Toolbar draw toggle — starts draw via context, tracks highlight locally
+  const handleToolbarDrawToggle = useCallback((mode: DrawMode) => {
+    setBoxSelectMode(false)
+    setBoxSelectBounds(null)
+    setAdditiveModeToggled(false)
     if (mode === 'off') {
-      setActiveMode('none')
+      cancelDraw()
+      setToolbarDrawShape('off')
     } else {
-      setActiveMode('draw', mode)
+      startDraw(mode, undefined, () => setToolbarDrawShape('off'))
+      setToolbarDrawShape(mode)
     }
+  }, [cancelDraw, startDraw])
+
+  // Called by useTerraDraw when drawing finishes (resets to 'off')
+  const handleDrawReset = useCallback(() => {
+    cancelDraw()
+    setToolbarDrawShape('off')
+  }, [cancelDraw])
+
+  // Cancel any active mode (draw, box select, additive)
+  const handleCancelMode = useCallback(() => {
+    setActiveMode('none')
   }, [setActiveMode])
 
   const handleSpatialFilterChange = useCallback((filter: SpatialFilter) => {
-    setMapInteraction(prev => ({ ...prev, spatialFilter: filter }))
+    setSpatialFilter(filter)
     // Clear previous selections when a new area is drawn
     if (filter) {
       setHighlightedFeatures([])
       clearAllSelections()
     }
-    // If there's an external callback waiting for the polygon, call it
-    if (filter?.polygon && onExternalDrawComplete) {
-      onExternalDrawComplete(filter.polygon)
-    }
-  }, [onExternalDrawComplete, clearAllSelections])
+  }, [clearAllSelections])
 
   // Handler for box select toggle from toolbar
   const handleBoxSelectModeChange = useCallback((active: boolean) => {
@@ -449,37 +424,8 @@ export default function GenericMapContainer({
   }, [setActiveMode])
 
   const handleBoxSelectConfirm = useCallback((bounds: { sw: [number, number]; ne: [number, number] }) => {
-    // Store frozen bounds for visualization
-    setMapInteraction(prev => ({ ...prev, boxSelectBounds: bounds }))
+    setBoxSelectBounds(bounds)
   }, [])
-
-  // Context-exposed draw controls (only used when skipContextProvider is false)
-  const externalDrawCallbackRef = useRef<((polygon: import('geojson').Polygon) => void) | null>(null)
-
-  const startDraw = useCallback((mode: 'rectangle' | 'polygon', onComplete: (polygon: import('geojson').Polygon) => void) => {
-    externalDrawCallbackRef.current = onComplete
-    setMapInteraction(prev => ({ ...prev, internalDrawMode: mode, spatialFilter: null }))
-  }, [])
-
-  const cancelDraw = useCallback(() => {
-    externalDrawCallbackRef.current = null
-    setMapInteraction(prev => ({ ...prev, internalDrawMode: 'off', spatialFilter: null }))
-  }, [])
-
-  // MapContext value
-  const mapContextValue = useMemo(() => ({
-    map: mapInstance,
-    isSketching,
-    setIsSketching,
-    getIsSketching: () => isSketching,
-    shouldIgnoreNextClick,
-    setIgnoreNextClick,
-    consumeIgnoreClick,
-    onLayerTurnedOff: handleLayerTurnedOff,
-    drawMode: effectiveDrawMode,
-    startDraw,
-    cancelDraw,
-  }), [mapInstance, isSketching, shouldIgnoreNextClick, setIgnoreNextClick, consumeIgnoreClick, handleLayerTurnedOff, effectiveDrawMode, startDraw, cancelDraw])
 
   // Clear highlights when selections are cleared
   const handleClearAllSelections = useCallback(() => {
@@ -487,9 +433,8 @@ export default function GenericMapContainer({
     clearAllSelections()
     setPopupCoords(null)
     onClearSearch?.()
-    // Close the sheet and clear box select bounds
     setPanelState(prev => ({ ...prev, isSheetOpen: false }))
-    setMapInteraction(prev => ({ ...prev, boxSelectBounds: null }))
+    setBoxSelectBounds(null)
   }, [clearAllSelections, setPopupCoords, onClearSearch])
 
   // Derived: click point for raster queries (center of click buffer)
@@ -519,14 +464,12 @@ export default function GenericMapContainer({
   const handleCloseTable = useCallback(() => {
     handleClearAllSelections()
     setViewMode('map')
-    // Clear frozen box select bounds so user can make a new selection
-    setMapInteraction(prev => ({ ...prev, boxSelectBounds: null }))
+    setBoxSelectBounds(null)
   }, [handleClearAllSelections, setViewMode])
 
   const handleSheetClose = useCallback(() => {
     handleClearAllSelections()
-    // Clear frozen box select bounds so user can make a new selection
-    setMapInteraction(prev => ({ ...prev, boxSelectBounds: null }))
+    setBoxSelectBounds(null)
   }, [handleClearAllSelections])
 
   const handleSheetOpenChange = useCallback((open: boolean) => {
@@ -535,7 +478,7 @@ export default function GenericMapContainer({
 
   const shouldShrinkMap = viewMode === 'map' && panelState.isSheetOpen && !isMobile
 
-  const content = (
+  return (
     <div className="relative h-full w-full flex flex-col overflow-hidden">
       {/* Map + Drawer row */}
       <div
@@ -566,13 +509,17 @@ export default function GenericMapContainer({
             onClickBufferChange={setClickBufferBounds}
             featureBbox={featureBbox}
             onFeatureBboxChange={setFeatureBbox}
-            drawMode={effectiveDrawMode}
-            onDrawModeChange={handleDrawModeChange}
-            spatialFilter={mapInteraction.spatialFilter}
+            activeDrawShape={activeDrawShape}
+            onDrawReset={handleDrawReset}
+            onDrawComplete={handleDrawComplete}
+            toolbarDrawShape={toolbarDrawShape}
+            onToolbarDrawToggle={handleToolbarDrawToggle}
+            onCancelMode={handleCancelMode}
+            spatialFilter={spatialFilter}
             onSpatialFilterChange={handleSpatialFilterChange}
-            boxSelectMode={mapInteraction.boxSelectMode}
+            boxSelectMode={boxSelectMode}
             onBoxSelectModeChange={handleBoxSelectModeChange}
-            boxSelectBounds={mapInteraction.boxSelectBounds}
+            boxSelectBounds={boxSelectBounds}
             onBoxSelectConfirm={handleBoxSelectConfirm}
             isAdditiveMode={isAdditiveMode}
             onAdditiveModeToggle={() => additiveModeToggled ? setActiveMode('none') : setActiveMode('additive')}
@@ -692,16 +639,5 @@ export default function GenericMapContainer({
         />
       )}
     </div>
-  )
-
-  // Optionally skip context provider if parent provides it
-  if (skipContextProvider) {
-    return content
-  }
-
-  return (
-    <MapContext.Provider value={mapContextValue}>
-      {content}
-    </MapContext.Provider>
   )
 }

@@ -31,7 +31,7 @@ export default function Map() {
   const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
   const { user } = useAuth();
   const [showWelcomeDialog, setShowWelcomeDialog] = useState(true);
-  const { handleMapReady, contextValue, setClearSpatialFilterCallback, setLayerTurnedOffCallback } = useMapContextState();
+  const { contextValue } = useMapContextState();
 
   const handleLogout = async () => {
     try {
@@ -134,13 +134,7 @@ export default function Map() {
           </Layout.Header>
 
           <Layout.Body>
-            <GenericMapContainer
-              popupTitle="Hazards in your area"
-              onMapReady={handleMapReady}
-              skipContextProvider
-              onRegisterClearSpatialFilter={setClearSpatialFilterCallback}
-              onRegisterLayerTurnedOff={setLayerTurnedOffCallback}
-            />
+            <GenericMapContainer />
           </Layout.Body>
 
           <Layout.Footer className={cn('hidden md:flex z-20')} dynamicContent={<MapFooter />} />

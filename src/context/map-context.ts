@@ -1,54 +1,42 @@
 import { createContext } from "react";
 import type { Polygon } from "geojson";
 import type { Map as MapLibreMap } from "maplibre-gl";
+import type { DrawMode } from "@/components/maps/types";
 
-export type DrawMode = 'off' | 'rectangle' | 'polygon'
+export type { DrawMode }
 
-/**
- * MapContext interface for MapLibre GL JS
- *
- * Provides access to map instance and shared functionality
- */
 export type MapContextProps = {
-    // MapLibre map instance (undefined until map loads)
     map?: MapLibreMap
 
-    // Sketching state for drawing tools (e.g., Terra Draw)
     isSketching: boolean
     setIsSketching: (isSketching: boolean) => void
-    getIsSketching: () => boolean
-    shouldIgnoreNextClick: () => boolean
-    setIgnoreNextClick: (ignore: boolean) => void
-    consumeIgnoreClick: () => void
 
-    // Layer toggle callback - called when a layer is turned off to clear its features from results
     onLayerTurnedOff: (layerTitle: string) => void
 
-    // Drawing controls - shared TerraDraw instance
-    drawMode: DrawMode
-    startDraw: (mode: 'rectangle' | 'polygon', onComplete: (polygon: Polygon) => void) => void
+    // Draw lifecycle — owned by useMapContextState
+    activeDrawShape: DrawMode
+    startDraw: (mode: 'rectangle' | 'polygon', onComplete?: (polygon: Polygon) => void, onCancel?: () => void) => void
     cancelDraw: () => void
+    handleDrawComplete: (polygon: Polygon) => boolean
+
+    // Registration — container registers its callbacks
+    registerPrepareForDraw: (fn: () => void) => void
+    registerLayerTurnedOff: (fn: (title: string) => void) => void
+    onMapReady: (map: MapLibreMap) => void
 }
 
-/**
- * MapContext for MapLibre GL JS
- *
- * Created here and imported by:
- * - useMap hook (for consumers)
- * - MapLibreMapProvider (provides the map instance)
- */
 export const MapContext = createContext<MapContextProps>({
     map: undefined,
     isSketching: false,
     setIsSketching: () => { },
-    getIsSketching: () => false,
-    shouldIgnoreNextClick: () => false,
-    setIgnoreNextClick: () => { },
-    consumeIgnoreClick: () => { },
     onLayerTurnedOff: () => { },
-    drawMode: 'off',
+    activeDrawShape: 'off',
     startDraw: () => { },
     cancelDraw: () => { },
+    handleDrawComplete: () => false,
+    registerPrepareForDraw: () => { },
+    registerLayerTurnedOff: () => { },
+    onMapReady: () => { },
 });
 
 MapContext.displayName = 'MapContext';

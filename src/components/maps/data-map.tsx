@@ -19,11 +19,12 @@ import type maplibregl from 'maplibre-gl'
 import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
 import { useTerraDraw } from '@/hooks/use-terra-draw'
+import type { Polygon } from 'geojson'
+import { bbox as turfBbox } from '@turf/bbox'
 import { useFeatureQuery } from '@/hooks/use-feature-query'
 import type { DataMapProps } from './types'
 import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
-import { bbox as turfBbox } from '@turf/bbox'
 
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps } from './types'
@@ -45,8 +46,12 @@ export default function DataMap({
   isAdditiveMode = false,
   onAdditiveModeToggle,
   children,
-  drawMode = 'off',
-  onDrawModeChange,
+  activeDrawShape = 'off',
+  onDrawReset,
+  onDrawComplete,
+  toolbarDrawShape = 'off',
+  onToolbarDrawToggle,
+  onCancelMode,
   spatialFilter,
   onSpatialFilterChange,
   boxSelectMode = false,
@@ -163,13 +168,19 @@ export default function DataMap({
     })
   }, [onSpatialFilterChange, wmsUrl, onFeatureClick, layerFilters])
 
-  // Terra Draw hook
+  // Route drawn polygons: external caller consumes (returns true), otherwise spatial filter
+  const handleDrawFinished = useCallback((polygon: Polygon, mode: 'rectangle' | 'polygon') => {
+    if (onDrawComplete && onDrawComplete(polygon)) return
+    const [w, s, e, n] = turfBbox(polygon)
+    handleSpatialFilterChange({ type: mode === 'rectangle' ? 'bbox' : 'polygon', bbox: [w, s, e, n], polygon })
+  }, [onDrawComplete, handleSpatialFilterChange])
+
   const { justFinishedDrawingRef } = useTerraDraw({
     map: mapInstance,
     styleLoaded,
-    drawMode,
-    onDrawModeChange,
-    onSpatialFilterChange: handleSpatialFilterChange,
+    activeDrawShape,
+    onDrawReset,
+    onDrawFinished: handleDrawFinished,
   })
 
   // Calculate initial view - use feature_bbox if restoring, otherwise use props
@@ -230,7 +241,7 @@ export default function DataMap({
 
   // Handle map click - triggers mutation instead of direct fetch
   const handleMapClick = useCallback((e: MapLayerMouseEvent) => {
-    if (boxSelectMode || drawMode !== 'off') return
+    if (boxSelectMode || activeDrawShape !== 'off') return
     if (justFinishedDrawingRef.current) {
       justFinishedDrawingRef.current = false
       return
@@ -306,7 +317,7 @@ export default function DataMap({
         },
       }
     )
-  }, [onFeatureClick, visibleWmsLayers, visibleWfsLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, drawMode, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange, layerFilters])
+  }, [onFeatureClick, visibleWmsLayers, visibleWfsLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, activeDrawShape, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange, layerFilters])
 
   // Handle map move end - track zoom only (box select now uses click-to-confirm)
   const handleMoveEnd = useCallback(() => {
@@ -559,7 +570,7 @@ export default function DataMap({
         refreshExpiredTiles={false}
         onMoveEnd={handleMoveEnd}
         onClick={boxSelectMode ? undefined : handleMapClick}
-        cursor={drawMode !== 'off' ? 'crosshair' : boxSelectMode ? 'move' : onFeatureClick ? (isAdditiveMode ? 'copy' : 'pointer') : 'grab'}
+        cursor={activeDrawShape !== 'off' ? 'crosshair' : boxSelectMode ? 'move' : onFeatureClick ? (isAdditiveMode ? 'copy' : 'pointer') : 'grab'}
         boxZoom={false}
         onLoad={handleLoad}
       >
@@ -577,8 +588,9 @@ export default function DataMap({
 
         {/* Map tools control */}
         <MapToolsControl
-          drawMode={drawMode}
-          onDrawModeChange={onDrawModeChange}
+          drawMode={toolbarDrawShape}
+          onDrawModeChange={onToolbarDrawToggle}
+          onCancelMode={onCancelMode}
           hasFilter={!!spatialFilter}
           onClearFilter={onSpatialFilterChange ? () => onSpatialFilterChange(null) : undefined}
           hasPin={!!pinCoords}

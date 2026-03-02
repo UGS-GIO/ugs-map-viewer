@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import type { ClickedFeature, HighlightFeature } from '@/components/maps/types'
 import type { PopupSheetRef } from '@/components/maps/popups/popup-sheet'
 import type { ViewMode } from '@/hooks/use-map-url-sync'
@@ -50,7 +50,6 @@ export function useFeatureSelection({
 }: UseFeatureSelectionOptions) {
   // Note: _selectedFeatureRefs available for future URL restoration highlighting if needed
   const [selectedFeatures, setSelectedFeatures] = useState<ClickedFeature[]>([])
-  const ignoreNextClickRef = useRef(false)
 
   // Handle layer turned off - remove features from that layer
   const handleLayerTurnedOff = useCallback((layerTitle: string) => {
@@ -138,20 +137,11 @@ export function useFeatureSelection({
     setSelectedFeatureRefs([])
   }, [setClickBufferBounds, setFeatureBbox, setSelectedFeatureRefs, onHighlightChange])
 
-  // Stable function refs (don't change between renders)
-  const shouldIgnoreNextClick = useCallback(() => ignoreNextClickRef.current, [])
-  const setIgnoreNextClick = useCallback((ignore: boolean) => { ignoreNextClickRef.current = ignore }, [])
-  const consumeIgnoreClick = useCallback(() => { ignoreNextClickRef.current = false }, [])
-
   return {
     selectedFeatures,
     setSelectedFeatures,
     handleFeatureClick,
     handleLayerTurnedOff,
     clearAllSelections,
-    ignoreNextClickRef,
-    shouldIgnoreNextClick,
-    setIgnoreNextClick,
-    consumeIgnoreClick,
   }
 }

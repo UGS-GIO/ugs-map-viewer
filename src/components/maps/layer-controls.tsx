@@ -3,14 +3,17 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { LegendAccordion } from '@/components/maps/legend-accordion';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Toggle } from '@/components/ui/toggle';
 import { LayerDescriptionAccordion } from '@/components/maps/layer-description-accordion';
+import { useQuery } from '@tanstack/react-query';
+import { queryKeys } from '@/lib/query-keys';
 
 interface LayerControlsProps {
     handleZoomToLayer: () => void;
     layerOpacity: number | null;
     handleOpacityChange: (e: number) => void;
+    handleOpacityCommit: (e: number) => void;
     title: string;
     description: string;
     layerId: string;
@@ -25,6 +28,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     handleZoomToLayer,
     layerOpacity,
     handleOpacityChange,
+    handleOpacityCommit,
     description,
     title,
     layerId,
@@ -34,39 +38,43 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     customLegend,
     bivariateLegend,
 }) => {
-    const [openAccordion, setOpenAccordion] = useState<string | null>(null);
-    const [cleanDescription, setCleanDescription] = useState<string>('');
+    // Sync activeTab with openLegend prop, but let the user toggle freely afterwards
+    const [prevOpenLegend, setPrevOpenLegend] = useState(openLegend);
+    const [activeTab, setActiveTab] = useState<'info' | 'legend' | null>(openLegend ? 'legend' : null);
+
+    if (openLegend !== prevOpenLegend) {
+        setPrevOpenLegend(openLegend);
+        if (openLegend) setActiveTab('legend');
+    }
+
+    const [dragValue, setDragValue] = useState<number | null>(null);
     const lastOpacityRef = useRef(layerOpacity ?? 1);
 
     if (layerOpacity !== null) {
         lastOpacityRef.current = layerOpacity;
     }
 
-    useEffect(() => {
-        if (openLegend) {
-            setOpenAccordion('legend');
-        }
-    }, [openLegend]);
-
-    // Lazy load DOMPurify only when description is needed
-    useEffect(() => {
-        if (description) {
-            import('dompurify').then(({ default: DOMPurify }) => {
-                const sanitized = DOMPurify.sanitize(description, {
-                    USE_PROFILES: { html: true },
-                    ALLOWED_ATTR: ['target', 'href'],
-                    ADD_ATTR: ['target']
-                });
-                setCleanDescription(sanitized);
+    // Lazy-load DOMPurify and cache sanitized descriptions
+    const { data: cleanDescription = '' } = useQuery({
+        queryKey: [...queryKeys.modules.dompurify(), description],
+        queryFn: async () => {
+            if (!description) return '';
+            const DOMPurify = (await import('dompurify')).default;
+            return DOMPurify.sanitize(description, {
+                USE_PROFILES: { html: true },
+                ALLOWED_ATTR: ['target', 'href'],
+                ADD_ATTR: ['target']
             });
-        }
-    }, [description]);
+        },
+        enabled: !!description,
+        staleTime: Infinity,
+    });
 
-    const infoPressed = openAccordion === 'info';
-    const legendPressed = openAccordion === 'legend';
+    const infoPressed = activeTab === 'info';
+    const legendPressed = activeTab === 'legend';
 
     const handleToggle = (type: 'info' | 'legend') => {
-        setOpenAccordion(current => (current === type ? null : type));
+        setActiveTab(current => (current === type ? null : type));
     };
 
     return (
@@ -80,8 +88,15 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         {layerOpacity !== null ? (
                             <Slider
                                 className="flex-grow"
-                                value={[layerOpacity * 100]}
-                                onValueChange={(e) => handleOpacityChange(e[0])}
+                                value={[dragValue ?? layerOpacity * 100]}
+                                onValueChange={(e) => {
+                                    setDragValue(e[0]);
+                                    handleOpacityChange(e[0]);
+                                }}
+                                onValueCommit={(e) => {
+                                    setDragValue(null); // Clear local drag state so it syncs back with the URL
+                                    handleOpacityCommit(e[0]);
+                                }}
                             />
                         ) : (
                             <Slider
