@@ -13,7 +13,7 @@ import {
 import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
-import { flattenWmsLayers, flattenWfsLayers, buildWmsTileUrl, getWmsLayerName } from '@/lib/map/layer-utils'
+import { flattenWmsLayers, flattenWfsLayers, flattenArcGisLayers, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
 import type maplibregl from 'maplibre-gl'
 
 import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
@@ -93,11 +93,13 @@ export default function DataMap({
   // Get visible layers - flatten groups recursively (defined early for use in callbacks)
   const visibleWmsLayers = useMemo(() => flattenWmsLayers(layers), [layers])
   const visibleWfsLayers = useMemo(() => flattenWfsLayers(layers), [layers])
+  const visibleArcGisLayers = useMemo(() => flattenArcGisLayers(layers), [layers])
 
   // Reverse for MapLibre draw order: first in config (top of sidebar) should draw on top.
   // MapLibre draws later layers on top, so we reverse so config-first renders last.
   const wmsDrawOrder = useMemo(() => [...visibleWmsLayers].reverse(), [visibleWmsLayers])
   const wfsDrawOrder = useMemo(() => [...visibleWfsLayers].reverse(), [visibleWfsLayers])
+  const arcGisDrawOrder = useMemo(() => [...visibleArcGisLayers].reverse(), [visibleArcGisLayers])
 
   // Fetch WFS layer data using TanStack Query (automatic caching, retries, deduplication)
   const { data: wfsLayerData } = useWfsLayerData(visibleWfsLayers)
@@ -601,6 +603,27 @@ export default function DataMap({
           onAdditiveModeToggle={onAdditiveModeToggle}
           position="top-right"
         />
+
+        {/* ArcGIS MapServer Layers (reversed so config-first = drawn on top) */}
+        {arcGisDrawOrder.map((layer) => (
+          <Source
+            key={layer.title}
+            id={`arcgis-${layer.title}`}
+            type="raster"
+            tiles={[buildArcGisExportUrl(layer.url)]}
+            tileSize={512}
+          >
+            <Layer
+              id={`arcgis-layer-${layer.title}`}
+              type="raster"
+              paint={{ 'raster-opacity': layer.opacity ?? 0.8 }}
+              metadata={{
+                title: layer.title,
+                'arcgis-url': layer.url,
+              }}
+            />
+          </Source>
+        ))}
 
         {/* WMS Layers (reversed so config-first = drawn on top) */}
         {wmsDrawOrder.map((layer) => {

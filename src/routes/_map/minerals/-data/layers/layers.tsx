@@ -1,6 +1,6 @@
 import { GeoJsonProperties } from "geojson";
 import { PROD_GEOSERVER_URL, ENERGY_MINERALS_WORKSPACE } from "@/lib/constants";
-import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { ArcGISMapServerLayerProps, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator } from "@/lib/utils";
 
 // --- Industrial Minerals WMS Layer Configurations ---
@@ -516,18 +516,13 @@ const landAssessmentWMSConfig: WMSLayerProps = {
     ],
 }
 
-// --- SITLA Land Ownership Layer ---
-const SITLAConfig: LayerProps = {
-    type: 'feature',
-    title: 'SITLA Land Ownership',
-    url: 'https://gis.trustlands.utah.gov/mapping/rest/services/Land_Ownership_WM/MapServer/0',
-    opacity: 0.45,
-    options: {
-        popupEnabled: false,
-        title: 'SITLA Land Ownership',
-        elevationInfo: [{ mode: 'on-the-ground' }],
-        visible: false,
-    },
+// --- SITLA Land Ownership Layer (ArcGIS MapServer) ---
+const SITLAConfig: ArcGISMapServerLayerProps = {
+    type: 'map-image',
+    url: 'https://gis.trustlands.utah.gov/mapping/rest/services/Land_Ownership_WM/MapServer',
+    title: 'Land Ownership',
+    opacity: 0.5,
+    visible: false,
 };
 
 // --- Final Export ---
