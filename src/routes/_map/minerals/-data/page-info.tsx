@@ -188,7 +188,7 @@ const portalMeta: PortalMeta = {
     description: 'Mineral occurrences, critical minerals, mining districts, and industrial mineral potential.',
     href: '/minerals/',
     status: 'in-progress',
-    public: true,
+    public: false,
     image: 'https://geology.utah.gov/wp-content/uploads/snt49-3_wolverine-petrified-forest.jpg',
     imageCredit: {
         author: 'Marshall Robinson',

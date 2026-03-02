@@ -178,7 +178,7 @@ const portalMeta: PortalMeta = {
     description: 'Wetland mapping, riparian areas, and condition assessment following National Wetland Inventory standards.',
     href: '/wetlands/',
     status: 'in-progress',
-    public: true,
+    public: false,
     image: 'https://geology.utah.gov/wp-content/uploads/CascadeSprings2.jpg',
     imageCredit: {
         author: 'Christine Wilkerson',
