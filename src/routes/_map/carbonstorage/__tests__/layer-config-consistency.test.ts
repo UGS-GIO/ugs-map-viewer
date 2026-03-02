@@ -31,21 +31,22 @@ function extractLeafTitles(layers: LayerProps[]): string[] {
 describe('carbon storage layer config ↔ database consistency', () => {
   const leafTitles = extractLeafTitles(layersConfig)
 
-  let dbTitles: Set<string>
+  let dbRows: Map<string, string>
 
   beforeAll(async () => {
     const res = await fetch(
-      `${PROD_POSTGREST_URL}/ccuslayerinfo?select=title`,
+      `${PROD_POSTGREST_URL}/ccuslayerinfo?select=title,content`,
       { headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' } }
     )
-    const rows: { title: string }[] = await res.json()
-    dbTitles = new Set(rows.map(r => r.title))
+    const rows: { title: string; content: string }[] = await res.json()
+    dbRows = new Map(rows.map(r => [r.title, r.content]))
   })
 
   it.each(leafTitles)(
-    '"%s" has a description in ccuslayerinfo',
+    '"%s" has a non-empty description in ccuslayerinfo',
     (title) => {
-      expect(dbTitles.has(title)).toBe(true)
+      expect(dbRows.has(title)).toBe(true)
+      expect(dbRows.get(title)?.trim().length).toBeGreaterThan(0)
     }
   )
 

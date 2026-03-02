@@ -90,21 +90,22 @@ describe('layer titles match hazlayerinfo database', () => {
     .map(l => l.title)
     .filter((t): t is string => Boolean(t))
 
-  let dbTitles: Set<string>
+  let dbRows: Map<string, string>
 
   beforeAll(async () => {
     const res = await fetch(
-      `${PROD_POSTGREST_URL}/hazlayerinfo?select=title`,
+      `${PROD_POSTGREST_URL}/hazlayerinfo?select=title,content`,
       { headers: { 'Accept-Profile': 'hazards', 'Accept': 'application/json' } }
     )
-    const rows: { title: string }[] = await res.json()
-    dbTitles = new Set(rows.map(r => r.title))
+    const rows: { title: string; content: string }[] = await res.json()
+    dbRows = new Map(rows.map(r => [r.title, r.content]))
   })
 
   it.each(hazardTitles)(
-    '"%s" has a description in hazlayerinfo',
+    '"%s" has a non-empty description in hazlayerinfo',
     (title) => {
-      expect(dbTitles.has(title)).toBe(true)
+      expect(dbRows.has(title)).toBe(true)
+      expect(dbRows.get(title)?.trim().length).toBeGreaterThan(0)
     }
   )
 })

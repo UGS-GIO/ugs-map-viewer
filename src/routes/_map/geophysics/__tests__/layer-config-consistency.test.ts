@@ -31,21 +31,22 @@ function extractLeafTitles(layers: LayerProps[]): string[] {
 describe('geophysics layer config ↔ database consistency', () => {
   const leafTitles = extractLeafTitles(layersConfig)
 
-  let dbTitles: Set<string>
+  let dbRows: Map<string, string>
 
   beforeAll(async () => {
     const res = await fetch(
-      `${PROD_POSTGREST_URL}/geophysicslayerinfo?select=title`,
+      `${PROD_POSTGREST_URL}/geophysicslayerinfo?select=title,content`,
       { headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' } }
     )
-    const rows: { title: string }[] = await res.json()
-    dbTitles = new Set(rows.map(r => r.title))
+    const rows: { title: string; content: string }[] = await res.json()
+    dbRows = new Map(rows.map(r => [r.title, r.content]))
   })
 
   it.each(leafTitles)(
-    '"%s" has a description in geophysicslayerinfo',
+    '"%s" has a non-empty description in geophysicslayerinfo',
     (title) => {
-      expect(dbTitles.has(title)).toBe(true)
+      expect(dbRows.has(title)).toBe(true)
+      expect(dbRows.get(title)?.trim().length).toBeGreaterThan(0)
     }
   )
 
