@@ -178,8 +178,6 @@ export interface GroupLayerProps extends BaseLayerProps {
 }
 
 
-export type LayerType = 'feature' | 'tile' | 'map-image' | 'imagery' | 'group' | 'geojson' | 'wms' | 'pmtiles' | 'wfs'
-
 export type LayerProps = WMSLayerProps | PMTilesLayerProps | WFSLayerProps | GroupLayerProps | ArcGISMapServerLayerProps | BaseLayerProps;
 
 export type MapImageLayerRenderer = {

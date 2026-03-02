@@ -3,10 +3,10 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, Accordion
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { useLayerItemState } from '@/hooks/use-layer-item-state';
-import { LayerProps, WMSLayerProps, PMTilesLayerProps, WFSLayerProps } from '@/lib/types/mapping-types';
+import { LayerProps } from '@/lib/types/mapping-types';
 import { useMap } from '@/hooks/use-map';
-import { findLayerByTitle, isWMSLayer } from '@/lib/map/utils';
-import { isArcGISMapServerLayer } from '@/lib/map/layer-utils';
+import { findLayerByTitle } from '@/lib/map/utils';
+import { isWMSLayer, isWFSLayer, isPMTilesLayer, isArcGISMapServerLayer } from '@/lib/map/layer-utils';
 import { useLayerExtent, UseLayerExtentOptions } from '@/hooks/use-layer-extent';
 import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions';
 import { useSidebar } from '@/hooks/use-sidebar';
@@ -14,14 +14,6 @@ import LayerControls from '@/components/maps/layer-controls';
 import { useIsMobile } from './use-mobile';
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from '@/lib/constants';
 import { useLayerUrl } from '@/context/layer-url-provider';
-
-const isPMTilesLayer = (layer: LayerProps): layer is PMTilesLayerProps => {
-    return layer.type === 'pmtiles';
-};
-
-const isWFSLayerConfig = (layer: LayerProps): layer is WFSLayerProps => {
-    return layer.type === 'wfs';
-};
 
 // Helper to get all child layer titles from a group
 const getChildLayerTitles = (layer: LayerProps): string[] => {
@@ -87,7 +79,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
                 pmtilesUrl: layerConfig.pmtilesUrl,
             };
         }
-        if (isWFSLayerConfig(layerConfig)) {
+        if (isWFSLayer(layerConfig)) {
             // WFS layers can use WFS GetCapabilities for extent via WMS URL
             // Extract WMS URL from WFS URL (typically replace /wfs with /wms)
             const wmsUrl = layerConfig.wfsUrl.replace('/wfs', '/wms');
@@ -104,14 +96,13 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
             };
         }
         if (isWMSLayer(layerConfig)) {
-            const wmsLayer = layerConfig as WMSLayerProps;
-            const sublayers = wmsLayer.sublayers;
+            const sublayers = layerConfig.sublayers;
             const layerName = Array.isArray(sublayers) && sublayers.length > 0 && sublayers[0].name
                 ? sublayers[0].name
                 : null;
             return {
                 type: 'wms',
-                wmsUrl: wmsLayer.url ?? null,
+                wmsUrl: layerConfig.url ?? null,
                 layerName,
             };
         }

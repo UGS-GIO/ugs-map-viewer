@@ -175,6 +175,17 @@ const fetchPMTilesExtent = async (pmtilesUrl: string): Promise<BoundingBox | nul
     }
 };
 
+const ESRI_WKID_MAP: Record<number, string> = {
+    102100: 'EPSG:3857',
+    3857: 'EPSG:3857',
+    4326: 'EPSG:4326',
+}
+
+function wkidToEpsg(wkid?: number): string {
+    if (wkid && wkid in ESRI_WKID_MAP) return ESRI_WKID_MAP[wkid]
+    return wkid ? `EPSG:${wkid}` : 'EPSG:4326'
+}
+
 /**
  * Fetch extent from an ArcGIS MapServer service JSON
  */
@@ -192,10 +203,7 @@ const fetchArcGisExtent = async (mapServerUrl: string): Promise<BoundingBox | nu
         if (!ext || ext.xmin == null) return null;
 
         const wkid = ext.spatialReference?.wkid ?? ext.spatialReference?.latestWkid;
-        // Map well-known ESRI wkids to EPSG codes
-        const epsg = wkid === 102100 || wkid === 3857 ? 'EPSG:3857'
-            : wkid === 4326 ? 'EPSG:4326'
-            : wkid ? `EPSG:${wkid}` : 'EPSG:4326';
+        const epsg = wkidToEpsg(wkid);
 
         const rawBbox = [ext.xmin, ext.ymin, ext.xmax, ext.ymax];
         const [minLng, minLat, maxLng, maxLat] = convertBbox(rawBbox, epsg);
@@ -224,18 +232,28 @@ interface ArcGISExtentOptions {
 
 type UseLayerExtentOptions = WMSExtentOptions | PMTilesExtentOptions | ArcGISExtentOptions;
 
-const useLayerExtent = (options: UseLayerExtentOptions) => {
-    const queryKey = options.type === 'pmtiles'
-        ? queryKeys.layers.extent('pmtiles', options.pmtilesUrl)
-        : options.type === 'arcgis'
-        ? queryKeys.layers.extent('arcgis', options.mapServerUrl)
-        : queryKeys.layers.extent(options.wmsUrl || '', options.layerName || '');
+function getExtentQuery(options: UseLayerExtentOptions) {
+    switch (options.type) {
+        case 'pmtiles':
+            return {
+                queryKey: queryKeys.layers.extent('pmtiles', options.pmtilesUrl),
+                queryFn: () => fetchPMTilesExtent(options.pmtilesUrl),
+            }
+        case 'arcgis':
+            return {
+                queryKey: queryKeys.layers.extent('arcgis', options.mapServerUrl),
+                queryFn: () => fetchArcGisExtent(options.mapServerUrl),
+            }
+        case 'wms':
+            return {
+                queryKey: queryKeys.layers.extent(options.wmsUrl || '', options.layerName || ''),
+                queryFn: () => fetchLayerExtent(options.wmsUrl || '', options.layerName || ''),
+            }
+    }
+}
 
-    const queryFn = options.type === 'pmtiles'
-        ? () => fetchPMTilesExtent(options.pmtilesUrl)
-        : options.type === 'arcgis'
-        ? () => fetchArcGisExtent(options.mapServerUrl)
-        : () => fetchLayerExtent(options.wmsUrl || '', options.layerName || '');
+const useLayerExtent = (options: UseLayerExtentOptions) => {
+    const { queryKey, queryFn } = getExtentQuery(options)
 
     return useQuery({
         queryKey,

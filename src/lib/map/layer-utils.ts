@@ -1,63 +1,63 @@
 /**
- * Layer traversal and URL parsing utilities
+ * Layer type guards, traversal, and URL parsing utilities
  */
-import type { LayerProps, WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps } from '@/lib/types/mapping-types'
+import type { LayerProps, WMSLayerProps, WFSLayerProps, PMTilesLayerProps, GroupLayerProps, ArcGISMapServerLayerProps } from '@/lib/types/mapping-types'
+
+// ── Type guards ──────────────────────────────────────────────────────
+
+export const isWMSLayer = (layer: LayerProps): layer is WMSLayerProps =>
+  layer.type === 'wms'
+
+export const isWFSLayer = (layer: LayerProps): layer is WFSLayerProps =>
+  layer.type === 'wfs'
+
+export const isPMTilesLayer = (layer: LayerProps): layer is PMTilesLayerProps =>
+  layer.type === 'pmtiles'
+
+export const isGroupLayer = (layer: LayerProps): layer is GroupLayerProps =>
+  layer.type === 'group'
+
+export const isArcGISMapServerLayer = (layer: LayerProps): layer is ArcGISMapServerLayerProps =>
+  layer.type === 'map-image'
+
+// ── Generic layer flattening ─────────────────────────────────────────
 
 /**
- * Recursively flatten layer groups into a flat array of visible WMS layers
+ * Recursively flatten layer groups into a flat array of visible layers
+ * matching the given type guard.
  */
-export function flattenWmsLayers(layers: LayerProps[]): WMSLayerProps[] {
-  const result: WMSLayerProps[] = []
+export function flattenVisibleLayers<T extends LayerProps>(
+  layers: LayerProps[],
+  guard: (layer: LayerProps) => layer is T,
+): T[] {
+  const result: T[] = []
   for (const layer of layers) {
-    if (layer.type === 'group' && 'layers' in layer && layer.layers) {
-      result.push(...flattenWmsLayers(layer.layers))
-    } else if (layer.type === 'wms' && layer.visible === true) {
-      result.push(layer as WMSLayerProps)
+    if (isGroupLayer(layer) && layer.layers) {
+      result.push(...flattenVisibleLayers(layer.layers, guard))
+    } else if (guard(layer) && layer.visible === true) {
+      result.push(layer)
     }
   }
   return result
 }
 
-/**
- * Recursively flatten layer groups into a flat array of visible WFS layers
- */
-export function flattenWfsLayers(layers: LayerProps[]): WFSLayerProps[] {
-  const result: WFSLayerProps[] = []
-  for (const layer of layers) {
-    if (layer.type === 'group' && 'layers' in layer && layer.layers) {
-      result.push(...flattenWfsLayers(layer.layers))
-    } else if (layer.type === 'wfs' && layer.visible === true) {
-      result.push(layer as WFSLayerProps)
-    }
-  }
-  return result
-}
+export const flattenWmsLayers = (layers: LayerProps[]) =>
+  flattenVisibleLayers(layers, isWMSLayer)
 
-/**
- * Find a WMS layer by title, searching recursively through groups
- */
-export function findWmsLayerByTitle(layers: LayerProps[], title: string): WMSLayerProps | null {
-  for (const layer of layers) {
-    if (layer.type === 'group' && 'layers' in layer && layer.layers) {
-      const found = findWmsLayerByTitle(layer.layers, title)
-      if (found) return found
-    } else if (layer.type === 'wms') {
-      const wmsLayer = layer as WMSLayerProps
-      if (wmsLayer.title === title) {
-        return wmsLayer
-      }
-    }
-  }
-  return null
-}
+export const flattenWfsLayers = (layers: LayerProps[]) =>
+  flattenVisibleLayers(layers, isWFSLayer)
+
+export const flattenArcGisLayers = (layers: LayerProps[]) =>
+  flattenVisibleLayers(layers, isArcGISMapServerLayer)
+
+// ── Layer search ─────────────────────────────────────────────────────
 
 /**
  * Find any layer by title, searching recursively through groups
- * Works for WMS, WFS, PMTiles, and other layer types
  */
 export function findLayerByTitle(layers: LayerProps[], title: string): LayerProps | null {
   for (const layer of layers) {
-    if (layer.type === 'group' && 'layers' in layer && layer.layers) {
+    if (isGroupLayer(layer) && layer.layers) {
       const found = findLayerByTitle(layer.layers, title)
       if (found) return found
     } else if (layer.title === title) {
@@ -67,9 +67,8 @@ export function findLayerByTitle(layers: LayerProps[], title: string): LayerProp
   return null
 }
 
-/**
- * Parsed WMS URL components
- */
+// ── URL parsing & building ───────────────────────────────────────────
+
 export interface ParsedWmsUrl {
   baseUrl: string
   workspace: string
@@ -125,28 +124,6 @@ export function getWmsLayerName(layer: WMSLayerProps): string {
     return sublayerName
   }
   return layer.title
-}
-
-/**
- * Type guard — narrows LayerProps to ArcGISMapServerLayerProps
- */
-export function isArcGISMapServerLayer(layer: LayerProps): layer is ArcGISMapServerLayerProps {
-  return layer.type === 'map-image'
-}
-
-/**
- * Recursively flatten layer groups into a flat array of visible ArcGIS MapServer layers
- */
-export function flattenArcGisLayers(layers: LayerProps[]): ArcGISMapServerLayerProps[] {
-  const result: ArcGISMapServerLayerProps[] = []
-  for (const layer of layers) {
-    if (layer.type === 'group' && 'layers' in layer && layer.layers) {
-      result.push(...flattenArcGisLayers(layer.layers))
-    } else if (isArcGISMapServerLayer(layer) && layer.visible === true) {
-      result.push(layer)
-    }
-  }
-  return result
 }
 
 /**
