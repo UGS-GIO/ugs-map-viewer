@@ -19,6 +19,7 @@ interface HazardLayer {
     units: HazardUnit[]
     references: string[]
     customLegendItems?: CustomLegendItem[]
+    found: boolean
 }
 
 interface ReportLayerSectionProps {

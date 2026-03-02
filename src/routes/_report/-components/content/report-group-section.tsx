@@ -9,6 +9,8 @@ import {
     TableRow,
 } from '@/components/ui/table'
 import { AnchorLinkIcon } from '@/routes/_report/-components/shared/anchor-link-icon'
+import { Banner, BannerIcon, BannerTitle } from '@/components/ui/banner'
+import { AlertTriangle } from 'lucide-react'
 
 // Function to parse HTML and extract hazard information
 function parseHazardIntro(htmlText: string) {
@@ -63,6 +65,7 @@ interface HazardLayer {
     url: string
     units: HazardUnit[]
     references: string[]
+    found: boolean
 }
 
 interface HazardGroup {
@@ -71,27 +74,17 @@ interface HazardGroup {
     layers: HazardLayer[]
 }
 
-/** Check if a parsed hazard type matches any layer present in the report via data-code */
-function hazardMatchesAnyLayer(hazard: { codes: string[] }, layers: HazardLayer[]): boolean {
-    if (hazard.codes.length === 0) return false
-    const layerCodes = new Set(layers.map(l => l.code))
-    return hazard.codes.some(code => layerCodes.has(code))
-}
-
 interface ReportGroupSectionProps {
     group: HazardGroup
     polygon: string
-    showAllHazardTypes?: boolean
 }
 
-export function ReportGroupSection({ group, polygon, showAllHazardTypes = false }: ReportGroupSectionProps) {
+export function ReportGroupSection({ group, polygon }: ReportGroupSectionProps) {
     const groupIntroText = getGroupIntroText(group.name) || ''
     const parsed = parseHazardIntro(groupIntroText)
 
-    // Filter hazard types table to only those that intersect the report area
-    const filteredHazards = showAllHazardTypes
-        ? parsed.hazards
-        : parsed.hazards.filter(h => hazardMatchesAnyLayer(h, group.layers))
+    // Always show all hazard types; track which ones have mapped data
+    const layerCodes = new Set(group.layers.filter(l => l.found).map(l => l.code))
 
     return (
         <section className="space-y-8 page-break-before">
@@ -110,22 +103,33 @@ export function ReportGroupSection({ group, polygon, showAllHazardTypes = false 
                 </div>
 
                 {/* Hazards Table */}
-                {filteredHazards.length > 0 && (
+                {parsed.hazards.length > 0 && (
                     <div className="border rounded-lg overflow-hidden">
                         <Table>
                             <TableHeader className="bg-muted">
                                 <TableRow>
                                     <TableHead className="text-left p-4 font-semibold w-1/3">Hazard Type</TableHead>
                                     <TableHead className="text-left p-4 font-semibold">Description</TableHead>
+                                    <TableHead className="text-left p-4 font-semibold w-24">Mapped</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredHazards.map((hazard, idx) => (
-                                    <TableRow key={idx}>
-                                        <TableCell className="p-4 font-medium align-top">{hazard.name}</TableCell>
-                                        <TableCell className="p-4 text-sm">{hazard.description}</TableCell>
-                                    </TableRow>
-                                ))}
+                                {parsed.hazards.map((hazard, idx) => {
+                                    const isMapped = hazard.codes.some(code => layerCodes.has(code))
+                                    return (
+                                        <TableRow key={idx}>
+                                            <TableCell className={`p-4 align-top ${isMapped ? 'font-medium' : 'font-normal text-muted-foreground'}`}>
+                                                {hazard.name}
+                                            </TableCell>
+                                            <TableCell className={`p-4 text-sm ${isMapped ? '' : 'text-muted-foreground'}`}>
+                                                {hazard.description}
+                                            </TableCell>
+                                            <TableCell className="p-4 text-sm text-center">
+                                                {isMapped ? '✓' : '—'}
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })}
                             </TableBody>
                         </Table>
                     </div>
@@ -139,8 +143,21 @@ export function ReportGroupSection({ group, polygon, showAllHazardTypes = false 
                 )}
             </div>
 
-            {/* Individual Layer Sections */}
-            {group.layers.map(layer => (
+            {/* No mapped data banner */}
+            {group.layers.some(l => !l.found) && (
+                <Banner className="rounded-lg bg-transparent border border-muted-foreground/30">
+                    <BannerIcon className="text-muted-foreground" icon={AlertTriangle} />
+                    <BannerTitle className="text-muted-foreground">
+                        {group.layers.every(l => !l.found)
+                            ? `No ${group.name.toLowerCase()} data has been mapped in this area. The absence of mapped data does not imply the area is free from these hazards.`
+                            : `No mapped data in this area for: ${group.layers.filter(l => !l.found).map(l => l.name).join(', ')}. The absence of mapped data does not imply the area is free from these hazards.`
+                        }
+                    </BannerTitle>
+                </Banner>
+            )}
+
+            {/* Individual Layer Sections (found layers only) */}
+            {group.layers.filter(l => l.found).map(layer => (
                 <div
                     key={layer.code}
                     id={`${group.id}-${layer.code.toLowerCase()}`}

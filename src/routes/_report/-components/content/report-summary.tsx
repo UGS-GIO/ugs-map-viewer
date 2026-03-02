@@ -9,6 +9,7 @@ interface HazardGroup {
         code: string
         name: string
         units: HazardUnit[]
+        found: boolean
     }>
 }
 
@@ -39,15 +40,14 @@ export function ReportSummary({ hazardGroups }: ReportSummaryProps) {
                                     {group.name}
                                 </h4>
 
-                                {/* List of Mapped Geologic Hazards within the category */}
+                                {/* List of Geologic Hazards within the category */}
                                 <ul className="list-disc pl-5 space-y-1 text-sm">
-                                    {Array.from(
-                                        new Set(
-                                            group.layers.map(layer => layer.name)
-                                        )
-                                    ).map(layerName => (
-                                        <li key={layerName}>
-                                            {layerName}
+                                    {group.layers.map(layer => (
+                                        <li key={layer.code} className={layer.found ? '' : 'text-muted-foreground'}>
+                                            {layer.name}
+                                            {!layer.found && (
+                                                <span className="italic"> (no mapped data)</span>
+                                            )}
                                         </li>
                                     ))}
                                 </ul>
