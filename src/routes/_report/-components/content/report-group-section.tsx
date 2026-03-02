@@ -149,8 +149,8 @@ export function ReportGroupSection({ group, polygon }: ReportGroupSectionProps) 
                     <BannerIcon className="text-muted-foreground" icon={AlertTriangle} />
                     <BannerTitle className="text-muted-foreground">
                         {group.layers.every(l => !l.found)
-                            ? `No ${group.name.toLowerCase()} data has been mapped in this area. The absence of mapped data does not imply the area is free from these hazards.`
-                            : `No mapped data in this area for: ${group.layers.filter(l => !l.found).map(l => l.name).join(', ')}. The absence of mapped data does not imply the area is free from these hazards.`
+                            ? 'No hazards are mapped in your area for this topic. Please note that the absence of data does not imply that no geologic hazard or hazards exist.'
+                            : `No mapped data in this area for: ${group.layers.filter(l => !l.found).map(l => l.name).join(', ')}. Please note that the absence of data does not imply that no geologic hazard or hazards exist.`
                         }
                     </BannerTitle>
                 </Banner>
