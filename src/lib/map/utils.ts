@@ -1,5 +1,3 @@
-import { GroupLayerProps, WMSLayerProps } from '@/lib/types/mapping-types'
-import { LayerProps } from "@/lib/types/mapping-types";
 import { ExtendedFeature } from '@/components/maps/popups/types';
 import { convertBbox, convertCoordinate, convertGeometryToWGS84 } from '@/lib/map/conversion-utils';
 import { createMapFactory } from '@/lib/map/factory/factory';
@@ -8,6 +6,9 @@ import { buffer } from '@turf/buffer';
 import { point } from '@turf/helpers';
 import { bbox as turfBbox } from '@turf/bbox';
 import type { MapLibreMap } from '@/lib/types/map-types';
+
+// Re-export type guards from their canonical location
+export { isWMSLayer, isGroupLayer } from '@/lib/map/layer-utils';
 
 export const DEFAULT_ZOOM_TO_FEATURE_MAX_ZOOM = 14;
 
@@ -264,16 +265,6 @@ function calculateGeometryBounds(geometry: Geometry, sourceCRS: string): number[
         console.error('[calculateGeometryBounds] Error:', error);
         return null;
     }
-}
-
-// Type guard to check if the layer is a WMSLayerProps
-export const isWMSLayer = (layer: LayerProps): layer is WMSLayerProps => {
-    return layer.type === 'wms';
-}
-
-// Type guard to check if the layer is a GroupLayerProps
-export const isGroupLayer = (layer: LayerProps): layer is GroupLayerProps => {
-    return layer.type === 'group';
 }
 
 

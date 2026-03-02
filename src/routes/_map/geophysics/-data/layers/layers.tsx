@@ -1,5 +1,5 @@
 import { ENERGY_MINERALS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL } from "@/lib/constants";
-import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { ArcGISMapServerLayerProps, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { toTitleCase, toSentenceCase } from "@/lib/utils";
 
 
@@ -108,21 +108,13 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     ],
 };
 
-// SITLA Land Ownership Layer
-const SITLAConfig: LayerProps = {
+// SITLA Land Ownership Layer (ArcGIS MapServer)
+const SITLAConfig: ArcGISMapServerLayerProps = {
     type: 'map-image',
     url: 'https://gis.trustlands.utah.gov/mapping/rest/services/Land_Ownership_WM/MapServer',
-    opacity: 0.5,
     title: 'Land Ownership',
-    options: {
-        title: 'Land Ownership',
-        elevationInfo: [{ mode: 'on-the-ground' }],
-        visible: false,
-        sublayers: [{
-            id: 0,
-            visible: true,
-        }],
-    },
+    opacity: 0.5,
+    visible: false,
 };
 
 
