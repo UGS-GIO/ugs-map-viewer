@@ -7,8 +7,11 @@
  * these tests will catch it.
  */
 import { describe, it, expect, beforeAll } from 'vitest'
-import type { LayerProps } from '@/lib/types/mapping-types'
-import { isGroupLayer } from '@/lib/map/layer-utils'
+import type { LayerProps, GroupLayerProps } from '@/lib/types/mapping-types'
+
+function isGroupLayer(layer: LayerProps): layer is GroupLayerProps {
+  return layer.type === 'group'
+}
 import { PROD_POSTGREST_URL } from '@/lib/constants'
 import layersConfig from '@/routes/_map/carbonstorage/-data/layers/layers'
 

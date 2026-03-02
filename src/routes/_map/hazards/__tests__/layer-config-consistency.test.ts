@@ -7,8 +7,15 @@
  * data source is not updated, these tests will catch it.
  */
 import { describe, it, expect, beforeAll } from 'vitest'
-import type { LayerProps } from '@/lib/types/mapping-types'
-import { isWMSLayer, isGroupLayer } from '@/lib/map/layer-utils'
+import type { LayerProps, GroupLayerProps, WMSLayerProps } from '@/lib/types/mapping-types'
+
+function isGroupLayer(layer: LayerProps): layer is GroupLayerProps {
+  return layer.type === 'group'
+}
+
+function isWMSLayer(layer: LayerProps): layer is WMSLayerProps {
+  return layer.type === 'wms'
+}
 import { PROD_POSTGREST_URL } from '@/lib/constants'
 import layersConfig from '@/routes/_map/hazards/-data/layers/layers'
 import groupingsData from '@/routes/_report/-data/hazard-groupings.json'
