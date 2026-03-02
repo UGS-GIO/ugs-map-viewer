@@ -227,11 +227,10 @@ const portalMeta: PortalMeta = {
     href: '/carbonstorage/',
     status: 'stable',
     public: true,
-    image: 'https://geology.utah.gov/wp-content/uploads/alhambra_rock-1030x773.jpg',
+    image: 'https://geology.utah.gov/wp-content/uploads/snt44-1_gordon-creek-well-site.jpg',
     imageCredit: {
-        author: 'Marshall Robinson',
-        article: 'GeoSights: Alhambra Rock, San Juan County',
-        url: 'https://geology.utah.gov/map-pub/survey-notes/geosights/alhambra_rock/',
+        article: 'Energy News: Gordon Creek Field Carbon Storage',
+        url: 'https://geology.utah.gov/map-pub/survey-notes/energy-news/energy-news-utahs-gordon-creek-field-to-test-commercial-scale-storage-of-carbon-dioxide/',
     },
 }
 
