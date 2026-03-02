@@ -83,9 +83,6 @@ export function ReportGroupSection({ group, polygon }: ReportGroupSectionProps) 
     const groupIntroText = getGroupIntroText(group.name) || ''
     const parsed = parseHazardIntro(groupIntroText)
 
-    // Always show all hazard types; track which ones have mapped data
-    const layerCodes = new Set(group.layers.filter(l => l.found).map(l => l.code))
-
     return (
         <section className="space-y-8 page-break-before">
             {/* Group Header */}
@@ -110,26 +107,15 @@ export function ReportGroupSection({ group, polygon }: ReportGroupSectionProps) 
                                 <TableRow>
                                     <TableHead className="text-left p-4 font-semibold w-1/3">Hazard Type</TableHead>
                                     <TableHead className="text-left p-4 font-semibold">Description</TableHead>
-                                    <TableHead className="text-left p-4 font-semibold w-24">Mapped</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {parsed.hazards.map((hazard, idx) => {
-                                    const isMapped = hazard.codes.some(code => layerCodes.has(code))
-                                    return (
-                                        <TableRow key={idx}>
-                                            <TableCell className={`p-4 align-top ${isMapped ? 'font-medium' : 'font-normal text-muted-foreground'}`}>
-                                                {hazard.name}
-                                            </TableCell>
-                                            <TableCell className={`p-4 text-sm ${isMapped ? '' : 'text-muted-foreground'}`}>
-                                                {hazard.description}
-                                            </TableCell>
-                                            <TableCell className="p-4 text-sm text-center">
-                                                {isMapped ? '✓' : '—'}
-                                            </TableCell>
-                                        </TableRow>
-                                    )
-                                })}
+                                {parsed.hazards.map((hazard, idx) => (
+                                    <TableRow key={idx}>
+                                        <TableCell className="p-4 font-medium align-top">{hazard.name}</TableCell>
+                                        <TableCell className="p-4 text-sm">{hazard.description}</TableCell>
+                                    </TableRow>
+                                ))}
                             </TableBody>
                         </Table>
                     </div>
