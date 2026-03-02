@@ -3,8 +3,7 @@ import { useControl } from 'react-map-gl/maplibre'
 import { PortalControl } from './portal-control'
 import { ControlButton } from './control-button'
 import { Square, Pentagon, X, Crosshair, CopyPlus } from 'lucide-react'
-
-export type DrawMode = 'off' | 'rectangle' | 'polygon'
+import type { DrawMode } from '../types'
 
 interface MapToolsControlProps {
   // Draw mode
@@ -18,6 +17,8 @@ interface MapToolsControlProps {
   // Multi-select / additive mode
   isAdditiveMode?: boolean
   onAdditiveModeToggle?: () => void
+  // Cancel any active mode
+  onCancelMode?: () => void
   // Pin marker
   hasPin?: boolean
   onClearPin?: () => void
@@ -33,6 +34,7 @@ export function MapToolsControl({
   onBoxSelectToggle,
   isAdditiveMode = false,
   onAdditiveModeToggle,
+  onCancelMode,
   hasPin = false,
   onClearPin,
   position = 'top-right',
@@ -43,6 +45,8 @@ export function MapToolsControl({
   )
 
   const container = control?.getContainer()
+
+  const isModeActive = drawMode !== 'off' || boxSelectActive || isAdditiveMode
 
   // Determine active mode label for the indicator
   const getActiveModeLabel = (): string | null => {
@@ -114,6 +118,16 @@ export function MapToolsControl({
               title={isAdditiveMode ? 'Multi-select ON (click to disable)' : 'Multi-select OFF (click or hold Shift)'}
               onClick={onAdditiveModeToggle}
               active={isAdditiveMode}
+            />
+          )}
+
+          {/* Cancel active mode */}
+          {isModeActive && onCancelMode && (
+            <ControlButton
+              icon={X}
+              title="Cancel active mode"
+              onClick={onCancelMode}
+              variant="danger"
             />
           )}
 

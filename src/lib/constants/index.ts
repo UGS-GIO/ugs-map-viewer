@@ -55,6 +55,16 @@ export const layerFetchConfigs: Record<string, LayerFetchConfig[]> = {
     }],
 };
 
+export const POPUP_TITLES: Record<string, string> = {
+    hazards: 'Hazards in your area',
+    'hazards-review': 'Hazards in your area',
+    minerals: 'Mineral Resources',
+    wetlands: 'Wetlands',
+    wetlandplants: 'Wetland Plants',
+    geophysics: 'Geophysical Features',
+    carbonstorage: 'CCS Information',
+}
+
 export const getLayerFetchConfig = (page: string | null): LayerFetchConfig[] | null => {
     if (!page) return null;
     return layerFetchConfigs[page] || layerFetchConfigs['default'] || null;

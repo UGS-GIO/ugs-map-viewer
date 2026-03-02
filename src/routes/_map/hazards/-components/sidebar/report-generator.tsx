@@ -37,7 +37,7 @@ function formatAoiArea(aoi: PolygonGeometry): string {
 }
 
 function ReportGenerator() {
-    const { map, setIsSketching, setIgnoreNextClick, startDraw, cancelDraw } = useMap();
+    const { map, setIsSketching, startDraw, cancelDraw } = useMap();
     const [activeButton, setActiveButton] = useState<ActiveButtonOptions>();
     const { setNavOpened } = useSidebar();
     const isMobile = useIsMobile();
@@ -106,10 +106,6 @@ function ReportGenerator() {
             setActiveDialog('areaTooLarge');
             setActiveButton(undefined);
         }
-
-        // Set flag to ignore the next click (the finishing double-click)
-        // This will be checked and cleared by the click handler
-        setIgnoreNextClick(true);
 
         // Now safe to clear sketching state
         isSketchingRef.current = false;
@@ -223,15 +219,16 @@ function ReportGenerator() {
         setActiveButton('customArea');
         if (isMobile) setNavOpened(false);
 
-        // Clear the ignore click flag to ensure drawing works
-        setIgnoreNextClick?.(false);
-
         // Set sketching state synchronously with ref
         isSketchingRef.current = true;
         setIsSketching(true);
 
-        // Start drawing via context - pass callback for when drawing completes
-        startDraw('polygon', handleDrawComplete);
+        // Start drawing via context - pass callbacks for completion and external cancel
+        startDraw('polygon', handleDrawComplete, () => {
+            setActiveButton(undefined);
+            isSketchingRef.current = false;
+            setIsSketching(false);
+        });
     };
 
     const handleReset = () => {
@@ -240,7 +237,6 @@ function ReportGenerator() {
         setActiveDialog(null);
         isSketchingRef.current = false;
         setIsSketching(false);
-        setIgnoreNextClick(false);
     };
 
     const buttonText = (buttonName: ActiveButtonOptions, defaultText: string) => {

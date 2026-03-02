@@ -2,7 +2,7 @@ import { useRef, useEffect } from 'react'
 import { TerraDraw, TerraDrawRectangleMode, TerraDrawPolygonMode } from 'terra-draw'
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter'
 import type { Polygon } from 'geojson'
-import type { DrawMode, SpatialFilter } from '@/components/maps/types'
+import type { DrawMode } from '@/components/maps/types'
 
 // Standardized drawing colors - matches spatial filter layer (orange)
 const DRAW_FILL_COLOR = '#f59e0b'
@@ -10,13 +10,17 @@ const DRAW_FILL_OPACITY = 0.15
 const DRAW_OUTLINE_COLOR = '#f59e0b'
 const DRAW_OUTLINE_WIDTH = 2
 
+function isPolygon(geometry: GeoJSON.Geometry): geometry is Polygon {
+  return geometry.type === 'Polygon'
+}
+
 interface UseTerraDrawOptions {
   map: maplibregl.Map | null
   styleLoaded: boolean
-  drawMode: DrawMode
-  onDrawModeChange?: (mode: DrawMode) => void
-  onSpatialFilterChange?: (filter: SpatialFilter) => void
-  onDrawFinished?: () => void
+  activeDrawShape: DrawMode
+  onDrawReset?: () => void
+  /** Called when a drawing is completed with the polygon geometry */
+  onDrawFinished?: (polygon: Polygon, mode: 'rectangle' | 'polygon') => void
 }
 
 /**
@@ -26,13 +30,20 @@ interface UseTerraDrawOptions {
 export function useTerraDraw({
   map,
   styleLoaded,
-  drawMode,
-  onDrawModeChange,
-  onSpatialFilterChange,
+  activeDrawShape,
+  onDrawReset,
   onDrawFinished,
 }: UseTerraDrawOptions) {
   const terraDrawRef = useRef<TerraDraw | null>(null)
   const justFinishedDrawingRef = useRef(false)
+
+  // Stable refs for callbacks — prevents Terra Draw teardown/rebuild on callback identity changes
+  const activeDrawShapeRef = useRef(activeDrawShape)
+  activeDrawShapeRef.current = activeDrawShape
+  const onDrawResetRef = useRef(onDrawReset)
+  onDrawResetRef.current = onDrawReset
+  const onDrawFinishedRef = useRef(onDrawFinished)
+  onDrawFinishedRef.current = onDrawFinished
 
   // Helper to clean up existing Terra Draw sources/layers
   const cleanupTerraDrawLayers = (mapInstance: maplibregl.Map) => {
@@ -89,9 +100,9 @@ export function useTerraDraw({
     return terraDraw
   }
 
-  // Initialize Terra Draw when map style is ready
+  // Initialize Terra Draw when map + style are ready (stable deps only)
   useEffect(() => {
-    if (!map || !onSpatialFilterChange || !styleLoaded) return
+    if (!map || !styleLoaded) return
 
     // Stop existing Terra Draw if present (handles style reloads)
     if (terraDrawRef.current) {
@@ -103,40 +114,22 @@ export function useTerraDraw({
     terraDrawRef.current = terraDraw
 
     // Sync to current draw mode immediately after initialization
-    if (drawMode !== 'off') {
-      terraDraw.setMode(drawMode)
+    if (activeDrawShape !== 'off') {
+      terraDraw.setMode(activeDrawShape)
     }
 
-    // Listen for drawing completion - clear and call callback
+    // Listen for drawing completion - emit polygon and reset
     terraDraw.on('finish', (id: string | number) => {
       const snapshot = terraDraw.getSnapshot()
       const feature = snapshot.find(f => f.id === id)
-      if (feature) {
-        const geometry = feature.geometry as Polygon
-        const coords = geometry.coordinates[0]
-
-        // Calculate bbox from polygon coordinates
-        const lngs = coords.map(c => c[0])
-        const lats = coords.map(c => c[1])
-        const bbox: [number, number, number, number] = [
-          Math.min(...lngs),
-          Math.min(...lats),
-          Math.max(...lngs),
-          Math.max(...lats),
-        ]
-
-        onSpatialFilterChange({
-          type: feature.properties?.mode === 'rectangle' ? 'bbox' : 'polygon',
-          bbox,
-          polygon: geometry,
-        })
+      if (feature && isPolygon(feature.geometry)) {
+        const mode = feature.properties?.mode === 'rectangle' ? 'rectangle' : 'polygon'
+        onDrawFinishedRef.current?.(feature.geometry, mode)
       }
 
-      // Clear all drawn features and exit draw mode
       terraDraw.clear()
       justFinishedDrawingRef.current = true
-      onDrawModeChange?.('off')
-      onDrawFinished?.()
+      onDrawResetRef.current?.()
     })
 
     // Handle map style changes (basemap switches) - reinitialize Terra Draw
@@ -152,8 +145,8 @@ export function useTerraDraw({
         terraDrawRef.current = newTerraDraw
 
         // Restore current mode
-        if (drawMode !== 'off') {
-          newTerraDraw.setMode(drawMode)
+        if (activeDrawShapeRef.current !== 'off') {
+          newTerraDraw.setMode(activeDrawShapeRef.current)
         }
       }
     }
@@ -168,7 +161,7 @@ export function useTerraDraw({
       }
       terraDrawRef.current = null
     }
-  }, [map, onSpatialFilterChange, onDrawModeChange, onDrawFinished, styleLoaded])
+  }, [map, styleLoaded])
 
   // Handle draw mode changes - setMode() instead of reinitializing
   useEffect(() => {
@@ -178,12 +171,12 @@ export function useTerraDraw({
     // Clear any in-progress drawing when switching modes
     try { terraDraw.clear() } catch { /* ignore */ }
 
-    if (drawMode === 'off') {
+    if (activeDrawShape === 'off') {
       terraDraw.setMode('static')
     } else {
-      terraDraw.setMode(drawMode)
+      terraDraw.setMode(activeDrawShape)
     }
-  }, [drawMode])
+  }, [activeDrawShape])
 
   return { justFinishedDrawingRef }
 }
