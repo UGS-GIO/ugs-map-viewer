@@ -162,7 +162,7 @@
             "properties": {
                 "OBJECTID": 15,
                 "HazardCode": "SGS",
-                "HazardGroup": "Problem Soil/Rock",
+                "HazardGroup": "Flooding",
                 "GlobalID": "261fa38a-adc3-4e34-a4a8-6ddf1d59c6ac"
             }
         },

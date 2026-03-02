@@ -15,6 +15,7 @@ export const hazardLayerNameMap = {
     // Flooding Hazards
     'FLH': `${HAZARDS_WORKSPACE}:floodanddebrisflow_current`,
     'SGS': `${HAZARDS_WORKSPACE}:shallowgroundwater_current`,
+    'ERZ': `${HAZARDS_WORKSPACE}:erosionhazardzone_current`,
     'AAF': `${HAZARDS_WORKSPACE}:alluvialfan_current`,
 
     // Landslide Hazards
@@ -27,7 +28,6 @@ export const hazardLayerNameMap = {
     'CSS': `${HAZARDS_WORKSPACE}:collapsiblesoil_current`,
     'CRS': `${HAZARDS_WORKSPACE}:corrosivesoilrock_current`,
     'EFH': `${HAZARDS_WORKSPACE}:earthfissure_current`,
-    'ERZ': `${HAZARDS_WORKSPACE}:erosionhazardzone_current`,
     'EXS': `${HAZARDS_WORKSPACE}:expansivesoilrock_current`,
     'MKF': `${HAZARDS_WORKSPACE}:karstfeatures_current`,
     'PES': `${HAZARDS_WORKSPACE}:pipinganderosion_current`,

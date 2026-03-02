@@ -36,7 +36,7 @@ const landslideLegacyWMSConfig: WMSLayerProps = {
 }
 
 const landslideInventoryLayerName = 'landslideinventory_current';
-const landslideInventoryWMSTitle = 'Landslides';
+const landslideInventoryWMSTitle = 'Mapped Landslides';
 const landslideInventoryWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -200,7 +200,7 @@ export interface QFaultsFeatureType {
 
 }
 export const qFaultsLayerName = 'hazards_qfaults_current';
-export const qFaultsWMSTitle = 'Hazardous (Quaternary age) Faults - Statewide';
+export const qFaultsWMSTitle = 'Hazardous (Quaternary Age) Faults - Statewide';
 const qFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -246,7 +246,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
 
 
 const surfaceFaultRuptureLayerName = 'surfacefaultrupture_current';
-const surfaceFaultRuptureWMSTitle = 'Surface Fault Rupture Special Study Zones';
+const surfaceFaultRuptureWMSTitle = 'Surface-Fault-Rupture Hazard Special-Study Zones';
 const surfaceFaultRuptureWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -318,7 +318,7 @@ const windBlownSandWMSConfig: WMSLayerProps = {
 }
 
 const saltTectonicsDeformationLayerName = 'salttectonicsdeformation_current';
-const saltTectonicsDeformationWMSTitle = 'Salt Tectonics-Related Ground Deformation';
+const saltTectonicsDeformationWMSTitle = 'Salt Tectonics Related Ground Deformation';
 const saltTectonicsDeformationWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -689,7 +689,7 @@ const solubleSoilAndRockWMSConfig: WMSLayerProps = {
 }
 
 const alluvialFanLayerName = 'alluvialfan_current';
-const alluvialFanWMSTitle = 'Alluvial Fan Flooding Susceptibility (Source: Division of Emergency Management)';
+const alluvialFanWMSTitle = 'Alluvial-Fan Flooding Susceptibility (Source: Division of Emergency Management)';
 const alluvialFanWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -795,7 +795,7 @@ const earthFissureWMSConfig: WMSLayerProps = {
 }
 
 const erosionHazardZoneLayerName = 'erosionhazardzone_current';
-const erosionHazardZoneWMSTitle = 'J.E. Fuller Flood Erosion Hazard Zones';
+const erosionHazardZoneWMSTitle = 'J.E. Fuller Flood Erosion-Hazard Zones';
 const erosionHazardZoneWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -832,7 +832,7 @@ const erosionHazardZoneWMSConfig: WMSLayerProps = {
 }
 
 const karstFeaturesLayerName = 'karstfeatures_current';
-const karstFeaturesWMSTitle = 'Karst Features';
+const karstFeaturesWMSTitle = 'Karst Landscape Hazards';
 const karstFeaturesWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -928,7 +928,7 @@ const floodHazardsConfig: LayerProps = {
     type: 'group',
     title: 'Flooding Hazards',
     visible: false,
-    layers: [floodAndDebrisWMSConfig, shallowGroundwaterWMSConfig, alluvialFanWMSConfig],
+    layers: [floodAndDebrisWMSConfig, shallowGroundwaterWMSConfig, erosionHazardZoneWMSConfig, alluvialFanWMSConfig],
 };
 
 const earthquakesConfig: LayerProps = {
@@ -949,7 +949,7 @@ const soilHazardsConfig: LayerProps = {
     type: 'group',
     title: 'Problem Soil and Rock Hazards',
     visible: false,
-    layers: [collapsibleSoilWMSConfig, corrosiveSoilRockWMSConfig, earthFissureWMSConfig, expansiveSoilRockWMSConfig, erosionHazardZoneWMSConfig, karstFeaturesWMSConfig, pipingAndErosionWMSConfig, radonSusceptibilityWMSConfig, saltTectonicsDeformationWMSConfig, shallowBedrockWMSConfig, solubleSoilAndRockWMSConfig, windBlownSandWMSConfig],
+    layers: [collapsibleSoilWMSConfig, corrosiveSoilRockWMSConfig, earthFissureWMSConfig, expansiveSoilRockWMSConfig, karstFeaturesWMSConfig, pipingAndErosionWMSConfig, radonSusceptibilityWMSConfig, saltTectonicsDeformationWMSConfig, shallowBedrockWMSConfig, solubleSoilAndRockWMSConfig, windBlownSandWMSConfig],
 };
 
 const layersConfig: LayerProps[] = [
