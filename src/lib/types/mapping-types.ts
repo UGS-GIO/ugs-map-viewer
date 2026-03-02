@@ -107,6 +107,12 @@ export interface WMSLayerProps extends BaseLayerProps {
     crs?: string; // EPSG code (e.g., 'EPSG:26912', 'EPSG:3857') for WMS GetFeatureInfo requests
 }
 
+export interface ArcGISMapServerLayerProps extends BaseLayerProps {
+    type: 'map-image';
+    /** Base ArcGIS MapServer URL (e.g., .../MapServer — no /export, no /0) */
+    url: string;
+}
+
 export interface PMTilesLayerProps extends BaseLayerProps {
     type: 'pmtiles';
     /** URL to the PMTiles file (can be relative like '/pmtiles/layer.pmtiles' or absolute) */
@@ -172,9 +178,7 @@ export interface GroupLayerProps extends BaseLayerProps {
 }
 
 
-export type LayerType = 'feature' | 'tile' | 'map-image' | 'imagery' | 'group' | 'geojson' | 'wms' | 'pmtiles' | 'wfs'
-
-export type LayerProps = WMSLayerProps | PMTilesLayerProps | WFSLayerProps | GroupLayerProps | BaseLayerProps;
+export type LayerProps = WMSLayerProps | PMTilesLayerProps | WFSLayerProps | GroupLayerProps | ArcGISMapServerLayerProps | BaseLayerProps;
 
 export type MapImageLayerRenderer = {
     type: 'map-image-renderer';

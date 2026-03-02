@@ -22,6 +22,7 @@ interface LayerControlsProps {
     layerName?: string | null;
     customLegend?: React.ReactNode;
     bivariateLegend?: { xLabel: string; yLabel: string };
+    arcgisUrl?: string;
 }
 
 const LayerControls: React.FC<LayerControlsProps> = ({
@@ -37,6 +38,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     layerName,
     customLegend,
     bivariateLegend,
+    arcgisUrl,
 }) => {
     // Sync activeTab with openLegend prop, but let the user toggle freely afterwards
     const [prevOpenLegend, setPrevOpenLegend] = useState(openLegend);
@@ -156,6 +158,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     layerName={layerName}
                     customLegend={customLegend}
                     bivariateLegend={bivariateLegend}
+                    arcgisUrl={arcgisUrl}
                 />
             </div>
         </div>

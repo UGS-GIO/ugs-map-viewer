@@ -1,4 +1,4 @@
-import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { ArcGISMapServerLayerProps, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 
 export const PROD_GEOSERVER_URL = 'https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver';
 const WETLANDS_WORKSPACE = 'wetlands';
@@ -407,20 +407,13 @@ const wetConditionGroupConfig: LayerProps = {
     layers: [assessmentConfig, wetlandsWMSConfig, stressorsConfig]
 };
 
-// SITLA Land Ownership Layer
-const ownershipLayerName = 'Land Ownership';
-const ownershipTitle = ownershipLayerName;
-const ownershipConfig: LayerProps = {
-    type: 'feature',
-    title: ownershipTitle,
-    url: 'https://gis.trustlands.utah.gov/mapping/rest/services/Land_Ownership_WM/MapServer/0',
-    opacity: 0.45,
-    options: {
-        popupEnabled: false,
-        title: ownershipTitle,
-        elevationInfo: [{ mode: 'on-the-ground' }],
-        visible: false,
-    },
+// SITLA Land Ownership Layer (ArcGIS MapServer)
+const ownershipConfig: ArcGISMapServerLayerProps = {
+    type: 'map-image',
+    url: 'https://gis.trustlands.utah.gov/mapping/rest/services/Land_Ownership_WM/MapServer',
+    title: 'Land Ownership',
+    opacity: 0.5,
+    visible: false,
 };
 
 // landscape ecoregions

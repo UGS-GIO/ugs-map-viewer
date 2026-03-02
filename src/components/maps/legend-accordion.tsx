@@ -1,6 +1,7 @@
 import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import { BivariateLegend } from '@/components/maps/bivariate-legend';
 import useLegendPreview from '@/hooks/use-legend-preview';
+import { useArcGisLegend } from '@/hooks/use-arcgis-legend';
 
 interface LegendAccordionProps {
     layerId: string;
@@ -9,11 +10,13 @@ interface LegendAccordionProps {
     layerName?: string | null;
     customLegend?: React.ReactNode;
     bivariateLegend?: { xLabel: string; yLabel: string };
+    arcgisUrl?: string;
 }
 
-const LegendAccordion = ({ layerId, url, isOpen, layerName, customLegend, bivariateLegend }: LegendAccordionProps) => {
-    const skipFetch = !!customLegend || !!bivariateLegend;
+const LegendAccordion = ({ layerId, url, isOpen, layerName, customLegend, bivariateLegend, arcgisUrl }: LegendAccordionProps) => {
+    const skipFetch = !!customLegend || !!bivariateLegend || !!arcgisUrl;
     const { preview, isLoading, error } = useLegendPreview(layerId, url, layerName ?? undefined, skipFetch);
+    const { data: arcgisLegendItems, isLoading: arcgisLoading, error: arcgisError } = useArcGisLegend(arcgisUrl);
     // Use empty string instead of undefined to keep accordion controlled
     const accordionValue = isOpen ? "legend-accordion" : "";
 
@@ -30,6 +33,27 @@ const LegendAccordion = ({ layerId, url, isOpen, layerName, customLegend, bivari
         }
 
         if (customLegend) return customLegend;
+
+        if (arcgisUrl) {
+            return (
+                <>
+                    {arcgisLoading && <div>Loading legend...</div>}
+                    {arcgisError && <div>Error loading legend: {arcgisError.message}</div>}
+                    {arcgisLegendItems?.map((item, index) => (
+                        <div key={index} className="flex items-center space-x-2 py-1">
+                            <img
+                                src={`data:${item.contentType};base64,${item.imageData}`}
+                                width={item.width}
+                                height={item.height}
+                                alt={item.label}
+                                className="min-w-5"
+                            />
+                            <span className="text-sm">{item.label}</span>
+                        </div>
+                    ))}
+                </>
+            );
+        }
 
         return (
             <>

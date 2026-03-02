@@ -318,8 +318,6 @@ export class MapLibreMapFactory implements MapFactory {
       await this.addPMTilesLayer(map, layerConfig as PMTilesLayerProps);
     } else if (layerConfig.type === 'wfs') {
       await this.addWFSLayer(map, layerConfig as WFSLayerProps);
-    } else if (layerConfig.url) {
-      await this.addMapImageLayer(map, layerConfig);
     }
   }
 
@@ -383,57 +381,6 @@ export class MapLibreMapFactory implements MapFactory {
       },
     };
     map.addSource(sourceId, sourceSpec);
-
-    if (!map.getLayer(layerId)) {
-      map.addLayer({
-        id: layerId,
-        type: 'raster',
-        source: sourceId,
-        layout: {
-          visibility: layerConfig.visible ? 'visible' : 'none',
-        },
-        paint: {
-          'raster-opacity': layerConfig.opacity || 1,
-        },
-        metadata: {
-          title: layerConfig.title,
-        },
-      },
-        undefined
-      );
-    }
-  }
-
-  private async addMapImageLayer(map: maplibregl.Map, layerConfig: LayerProps): Promise<void> {
-    if (!layerConfig.url) return;
-
-    const sourceId = `mapimage-${layerConfig.title || 'layer'}`.replace(/\s+/g, '-').toLowerCase();
-    const layerId = `mapimage-layer-${sourceId}`;
-
-    // Build WMS GetMap URL with dynamic bbox for tile requests
-    const params = new URLSearchParams({
-      service: 'WMS',
-      version: '1.1.0',
-      request: 'GetMap',
-      layers: '0',
-      styles: '',
-      srs: 'EPSG:3857',
-      width: '256',
-      height: '256',
-      format: 'image/png',
-      transparent: 'true',
-    });
-
-    const baseUrl = layerConfig.url.replace(/\/$/, ''); // Remove trailing slash if present
-    const sourceUrl = `${baseUrl}?${params.toString()}&bbox={bbox-epsg-3857}`;
-
-    if (!map.getSource(sourceId)) {
-      map.addSource(sourceId, {
-        type: 'raster',
-        tiles: [sourceUrl],
-        tileSize: 256,
-      });
-    }
 
     if (!map.getLayer(layerId)) {
       map.addLayer({
