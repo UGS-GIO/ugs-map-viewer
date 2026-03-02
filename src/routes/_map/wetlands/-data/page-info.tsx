@@ -171,4 +171,20 @@ const dataSourcesShortened = (
     </p>
 )
 
-export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle };
+import type { PortalMeta } from '@/routes/-data/portal-config'
+
+const portalMeta: PortalMeta = {
+    title: appTitle,
+    description: 'Wetland mapping, riparian areas, and condition assessment following National Wetland Inventory standards.',
+    href: '/wetlands/',
+    status: 'stable',
+    public: true,
+    image: 'https://geology.utah.gov/wp-content/uploads/CascadeSprings2.jpg',
+    imageCredit: {
+        author: 'Christine Wilkerson',
+        article: 'GeoSights: Cascade Springs, Wasatch County',
+        url: 'https://geology.utah.gov/map-pub/survey-notes/geosights/cascade-springs/',
+    },
+}
+
+export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle, portalMeta };

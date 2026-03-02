@@ -40,6 +40,42 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
+  /* Utah Design System–aligned scope for the landing page (light) */
+  .landing {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 13%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 13%;
+    --primary: 211 83% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 211 40% 92%;
+    --secondary-foreground: 211 83% 42%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 40%;
+    --accent: 220 18% 16%;
+    --accent-foreground: 210 14% 93%;
+    --border: 220 13% 91%;
+    --ring: 211 83% 42%;
+  }
+
+  /* Landing page dark mode */
+  .dark .landing {
+    --background: 220 15% 10%;
+    --foreground: 210 14% 93%;
+    --card: 220 15% 13%;
+    --card-foreground: 210 14% 93%;
+    --primary: 211 80% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 215 20% 18%;
+    --secondary-foreground: 211 80% 55%;
+    --muted: 220 15% 15%;
+    --muted-foreground: 215 10% 60%;
+    --accent: 220 18% 12%;
+    --accent-foreground: 210 14% 85%;
+    --border: 220 12% 20%;
+    --ring: 211 80% 55%;
+  }
+
   .dark {
     --background: 0 0% 21%;
     --foreground: 60 9.1% 97.8%;

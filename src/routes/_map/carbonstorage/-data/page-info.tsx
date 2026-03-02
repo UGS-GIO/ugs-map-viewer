@@ -219,4 +219,20 @@ const dataSourcesShortened = (
     </p>
 )
 
-export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle };
+import type { PortalMeta } from '@/routes/-data/portal-config'
+
+const portalMeta: PortalMeta = {
+    title: appTitle,
+    description: 'Carbon capture, utilization, and storage (CCUS) site selection and storage resource assessment in Utah.',
+    href: '/carbonstorage/',
+    status: 'stable',
+    public: true,
+    image: 'https://geology.utah.gov/wp-content/uploads/alhambra_rock-1030x773.jpg',
+    imageCredit: {
+        author: 'Marshall Robinson',
+        article: 'GeoSights: Alhambra Rock, San Juan County',
+        url: 'https://geology.utah.gov/map-pub/survey-notes/geosights/alhambra_rock/',
+    },
+}
+
+export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle, portalMeta };

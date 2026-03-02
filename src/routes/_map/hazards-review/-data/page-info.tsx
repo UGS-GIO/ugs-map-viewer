@@ -193,4 +193,14 @@ const dataSourcesShortened = (
     </p>
 )
 
-export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle, projection };
+import type { PortalMeta } from '@/routes/-data/portal-config'
+
+const portalMeta: PortalMeta = {
+    title: appTitle,
+    description: 'Internal tool for reviewing and validating hazard data.',
+    href: '/hazards-review/',
+    status: 'stable',
+    public: false,
+}
+
+export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle, projection, portalMeta };
