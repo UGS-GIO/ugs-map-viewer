@@ -65,7 +65,7 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ThemeProvider defaultTheme='dark' storageKey='vite-ui-theme'>
+    <ThemeProvider defaultTheme='system' storageKey='vite-ui-theme'>
       <QueryClientProvider client={queryClient}>
         <RouterProvider router={router} />
         <Toaster />

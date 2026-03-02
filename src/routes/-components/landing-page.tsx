@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Image } from '@/components/ui/image'
 import { SocialLinks } from '@/components/social-links'
 import { portals } from '@/routes/-data/portal-config'
+import ThemeSwitch from '@/components/theme-switch'
 import { ArrowRight, MapPin, Phone } from 'lucide-react'
 import heroBg from '@/assets/geologic-hazards-banner-alstrom-point-1920px.webp'
 
@@ -38,19 +39,20 @@ function SiteHeader() {
           </h1>
           <p className="text-sm text-muted-foreground">Interactive Maps & Data</p>
         </div>
-        <nav aria-label="Main" className="ml-auto hidden sm:flex items-center gap-4 text-sm">
+        <nav aria-label="Main" className="ml-auto flex items-center gap-4 text-sm">
           <ExternalLink
             to="https://geology.utah.gov"
-            className="text-muted-foreground hover:text-primary"
+            className="text-muted-foreground hover:text-primary hidden sm:inline"
           >
             Main Site
           </ExternalLink>
           <ExternalLink
             to="https://geology.utah.gov/about/"
-            className="text-muted-foreground hover:text-primary"
+            className="text-muted-foreground hover:text-primary hidden sm:inline"
           >
             About UGS
           </ExternalLink>
+          <ThemeSwitch />
         </nav>
       </div>
     </header>
