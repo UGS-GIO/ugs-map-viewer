@@ -15,7 +15,6 @@ import {
     HazardUnit,
     queryGroupingStatic,
     queryGroupTextStatic,
-    queryHazardUnitsStatic,
     queryAllUnitsForHazardCodes,
     queryReferencesStatic,
     getAllHazardCodes,
@@ -49,6 +48,7 @@ interface HazardLayer {
     units: HazardUnit[]
     references: string[]
     customLegendItems?: CustomLegendItem[]
+    found: boolean
 }
 
 interface HazardGroup {
@@ -81,42 +81,30 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                 ({ units }) => units && units.length > 0
             )
 
-            const flatUnitCodes = testAllHazards
-                ? getAllHazardCodes().map(code => `test${code.toLowerCase()}`)
-                : Array.from(
-                    new Set(
-                        hazardInfos.reduce(
-                            (prev: string[], { units }) => prev.concat(units),
-                            []
-                        )
-                    )
-                )
+            // Codes actually found intersecting the polygon
+            const foundCodes = new Set(
+                testAllHazards
+                    ? getAllHazardCodes()
+                    : hazardInfos.map(h => h.hazard)
+            )
 
-            // Extract unique hazard codes - in test mode use all codes
-            const hazardCodes = testAllHazards
-                ? getAllHazardCodes()
-                : Array.from(
-                    new Set(
-                        hazardInfos.map(h => h.hazard)
-                    )
-                )
+            // Always use ALL hazard codes to build the full report
+            const allCodes = getAllHazardCodes()
 
             const [
                 groupings,
-                hazardUnitText,
                 allHazardUnits,
                 hazardReferences,
                 qffLegendItems,
             ] = await Promise.all([
-                Promise.resolve(queryGroupingStatic(flatUnitCodes)),
-                Promise.resolve(queryHazardUnitsStatic(flatUnitCodes)),
-                Promise.resolve(queryAllUnitsForHazardCodes(hazardCodes)),
-                Promise.resolve(queryReferencesStatic(flatUnitCodes)),
-                // Generate QFF legend items if QFF is present
-                hazardCodes.includes('QFF') ? generateQFFLegendItems(polygon) : Promise.resolve([]),
+                Promise.resolve(queryGroupingStatic(allCodes)),
+                Promise.resolve(queryAllUnitsForHazardCodes(allCodes)),
+                Promise.resolve(queryReferencesStatic(allCodes)),
+                // Generate QFF legend items if QFF is present in the polygon
+                foundCodes.has('QFF') ? generateQFFLegendItems(polygon) : Promise.resolve([]),
             ])
 
-            // Get unique groups
+            // Get unique groups from all codes
             const uniqueGroups = Array.from(new Set(groupings.map(g => g.HazardGroup)))
 
             // Organize by groups
@@ -130,40 +118,39 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                 }
             })
 
-            // Group hazards by their group
-            groupings.forEach(g => {
-                // Check if this hazard code was present in the polygon
-                if (!hazardCodes.includes(g.HazardCode)) return;
+            // Widen type so we can index with any string
+            const layerNamesByCode: Record<string, string> = hazardLayerNameMap
 
-                const units = hazardUnitText.filter(u => u.HazardCode === g.HazardCode)
+            // Group ALL hazards by their group
+            groupings.forEach(g => {
+                const isFound = foundCodes.has(g.HazardCode)
 
                 // Use allHazardUnits for legend (all possible units for this layer)
                 const allUnitsForLayer = allHazardUnits.filter(u => u.HazardCode === g.HazardCode)
 
                 const refs = hazardReferences.filter(r => r.Hazard === g.HazardCode)
 
-                // Find the matching hazard info to get the URL
+                // Find the matching hazard info to get the URL (only exists for found codes)
                 const hazardInfo = hazardInfos.find(h => h.hazard === g.HazardCode)
 
                 if (groupMap[g.HazardGroup]) {
                     groupMap[g.HazardGroup].layers.push({
                         code: g.HazardCode,
-                        name: allUnitsForLayer[0]?.HazardName || units[0]?.HazardName || g.HazardCode,
+                        name: allUnitsForLayer[0]?.HazardName || g.HazardCode,
                         category: g.HazardGroup,
-                        url: testAllHazards
-                            ? hazardLayerNameMap[g.HazardCode as keyof typeof hazardLayerNameMap] || ''
-                            : hazardInfo?.url || '',
-                        units: allUnitsForLayer,
+                        url: hazardInfo?.url || layerNamesByCode[g.HazardCode] || '',
+                        units: isFound ? allUnitsForLayer : [],
                         references: refs.map(r => r.Text),
-                        customLegendItems: g.HazardCode === 'QFF' ? qffLegendItems : undefined,
+                        customLegendItems: g.HazardCode === 'QFF' && isFound ? qffLegendItems : undefined,
+                        found: isFound,
                     })
                 }
             })
 
-            // Return groups sorted by layer list order (Order_ field)
+            // Return ALL groups sorted by Order_ field
             return queryGroupTextStatic(Object.keys(groupMap))
                 .map(gt => groupMap[gt.HazardGroup])
-                .filter((g): g is HazardGroup => !!g && g.layers.length > 0)
+                .filter((g): g is HazardGroup => !!g)
         },
         enabled: !!polygon || testAllHazards,
     })
@@ -366,7 +353,6 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                             <ReportGroupSection
                                 group={group}
                                 polygon={polygon}
-                                showAllHazardTypes={testAllHazards}
                             />
                         </SectionWithObserver>
                     ))}
