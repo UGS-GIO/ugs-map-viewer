@@ -8,8 +8,8 @@ export const quaternaryFaultsHazardCode = 'QFF';
 export const hazardLayerNameMap = {
     // Earthquake Hazards
     [quaternaryFaultsHazardCode]: `${HAZARDS_WORKSPACE}:hazards_qfaults_current`,
-    'LQS': `${HAZARDS_WORKSPACE}:liquefaction_current`,
     'SFR': `${HAZARDS_WORKSPACE}:surfacefaultrupture_current`,
+    'LQS': `${HAZARDS_WORKSPACE}:liquefaction_current`,
     [groundshakingHazardCode]: `${HAZARDS_WORKSPACE}:groundshaking_current`,
 
     // Flooding Hazards
@@ -19,10 +19,10 @@ export const hazardLayerNameMap = {
     'AAF': `${HAZARDS_WORKSPACE}:alluvialfan_current`,
 
     // Landslide Hazards
-    'LSS': `${HAZARDS_WORKSPACE}:landslidesusceptibility_current`,
-    'LSF': `${HAZARDS_WORKSPACE}:landslideinventory_current`,
-    'LSC': `${HAZARDS_WORKSPACE}:landslidelegacy_current`,
     'RFH': `${HAZARDS_WORKSPACE}:rockfall_current`,
+    'LSF': `${HAZARDS_WORKSPACE}:landslideinventory_current`,
+    'LSS': `${HAZARDS_WORKSPACE}:landslidesusceptibility_current`,
+    'LSC': `${HAZARDS_WORKSPACE}:landslidelegacy_current`,
 
     // Problem Soil and Rock Hazards
     'CSS': `${HAZARDS_WORKSPACE}:collapsiblesoil_current`,

@@ -151,32 +151,6 @@ describe('hazard layer config ↔ report data consistency', () => {
     )
   })
 
-  describe('sidebar group membership matches report groupings', () => {
-    for (const [sidebarGroup, childTitles] of groups) {
-      const reportGroup = sidebarToReportGroup[sidebarGroup]
-      if (!reportGroup) continue // skip utility layers (study areas, quads)
-
-      describe(`${sidebarGroup}`, () => {
-        it.each(childTitles)(
-          '%s belongs to report group "%s"',
-          (title) => {
-            const layer = hazardLayers.find(l => l.title === title)
-            expect(layer).toBeDefined()
-
-            const sublayerName = getSublayerName(layer!)
-            expect(sublayerName).not.toBeNull()
-
-            const code = reverseLayerMap.get(sublayerName!)
-            expect(code).toBeDefined()
-
-            const actualGroup = groupingsByCode.get(code!)
-            expect(actualGroup).toBe(reportGroup)
-          }
-        )
-      })
-    }
-  })
-
   it('no duplicate layer titles within hazard groups', () => {
     const allTitles = extractLeafTitles(layersConfig)
     const seen = new Set<string>()
@@ -186,6 +160,34 @@ describe('hazard layer config ↔ report data consistency', () => {
       seen.add(title)
     }
     expect(duplicates).toEqual([])
+  })
+
+  describe('report layer order matches sidebar order within each group', () => {
+    for (const [sidebarGroup, childTitles] of groups) {
+      const reportGroup = sidebarToReportGroup[sidebarGroup]
+      if (!reportGroup) continue
+
+      it(`${sidebarGroup} layers are in sidebar order`, () => {
+        // Sidebar order: convert titles → hazard codes
+        const sidebarCodes = childTitles
+          .map(title => {
+            const layer = hazardLayers.find(l => l.title === title)
+            if (!layer) return null
+            const sublayerName = getSublayerName(layer)
+            if (!sublayerName) return null
+            return reverseLayerMap.get(sublayerName) ?? null
+          })
+          .filter((c): c is string => c !== null)
+
+        // Groupings JSON order: codes in file order for this group
+        const groupingCodes = groupingFeatures
+          .filter(f => f.properties.HazardGroup === reportGroup)
+          .map(f => f.properties.HazardCode)
+          .filter(code => sidebarCodes.includes(code))
+
+        expect(groupingCodes).toEqual(sidebarCodes)
+      })
+    }
   })
 
   it('all hazard codes in groupings JSON that have layers are covered', () => {
