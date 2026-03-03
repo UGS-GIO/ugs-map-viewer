@@ -1,0 +1,65 @@
+/**
+ * Verifies that every layer title in the carbon storage config
+ * has a matching description row in the ccuslayerinfo database table.
+ *
+ * All titles are read dynamically from the actual config — nothing is
+ * hardcoded. If a layer title changes but the database is not updated,
+ * these tests will catch it.
+ */
+import { describe, it, expect, beforeAll } from 'vitest'
+import type { LayerProps, GroupLayerProps } from '@/lib/types/mapping-types'
+
+function isGroupLayer(layer: LayerProps): layer is GroupLayerProps {
+  return layer.type === 'group'
+}
+import { PROD_POSTGREST_URL } from '@/lib/constants'
+import layersConfig from '@/routes/_map/carbonstorage/-data/layers/layers'
+
+// ── Helpers ─────────────────────────────────────────────────────────
+
+function extractLeafTitles(layers: LayerProps[]): string[] {
+  const titles: string[] = []
+  for (const layer of layers) {
+    if (isGroupLayer(layer) && layer.layers) {
+      titles.push(...extractLeafTitles(layer.layers))
+    } else if (layer.title) {
+      titles.push(layer.title)
+    }
+  }
+  return titles
+}
+
+// ── Tests ───────────────────────────────────────────────────────────
+
+describe('carbon storage layer config ↔ database consistency', () => {
+  const leafTitles = extractLeafTitles(layersConfig)
+
+  let dbRows: Map<string, string>
+
+  beforeAll(async () => {
+    const res = await fetch(
+      `${PROD_POSTGREST_URL}/ccuslayerinfo?select=title,content`,
+      { headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' } }
+    )
+    const rows: { title: string; content: string }[] = await res.json()
+    dbRows = new Map(rows.map(r => [r.title, r.content]))
+  })
+
+  it.each(leafTitles)(
+    '"%s" has a non-empty description in ccuslayerinfo',
+    (title) => {
+      expect(dbRows.has(title)).toBe(true)
+      expect(dbRows.get(title)?.trim().length).toBeGreaterThan(0)
+    }
+  )
+
+  it('no duplicate layer titles', () => {
+    const seen = new Set<string>()
+    const duplicates: string[] = []
+    for (const title of leafTitles) {
+      if (seen.has(title)) duplicates.push(title)
+      seen.add(title)
+    }
+    expect(duplicates).toEqual([])
+  })
+})

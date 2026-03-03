@@ -40,7 +40,7 @@ const landslideLegacyWMSConfig: WMSLayerProps = {
 }
 
 const landslideInventoryLayerName = 'landslideinventory_review';
-const landslideInventoryWMSTitle = 'Landslides: Review';
+const landslideInventoryWMSTitle = 'Mapped Landslides: Review';
 const landslideInventoryWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -196,7 +196,7 @@ export interface QFaultsFeatureType {
     strandnames: string[];
 }
 export const qFaultsLayerName = 'quaternaryfaults_review';
-export const qFaultsWMSTitle = 'Hazardous (Quaternary age) Faults - Statewide: Review';
+export const qFaultsWMSTitle = 'Hazardous (Quaternary Age) Faults - Statewide: Review';
 const qFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -236,7 +236,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
 };
 
 const surfaceFaultRuptureLayerName = 'surfacefaultrupture_review';
-const surfaceFaultRuptureWMSTitle = 'Surface Fault Rupture Special Study Zones: Review';
+const surfaceFaultRuptureWMSTitle = 'Surface-Fault-Rupture Hazard Special-Study Zones: Review';
 const surfaceFaultRuptureWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -306,7 +306,7 @@ const windBlownSandWMSConfig: WMSLayerProps = {
 }
 
 const saltTectonicsDeformationLayerName = 'salttectonicsdeformation_review';
-const saltTectonicsDeformationWMSTitle = 'Salt Tectonics-Related Ground Deformation: Review';
+const saltTectonicsDeformationWMSTitle = 'Salt Tectonics Related Ground Deformation: Review';
 const saltTectonicsDeformationWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -666,7 +666,7 @@ const solubleSoilAndRockWMSConfig: WMSLayerProps = {
 }
 
 const alluvialFanLayerName = 'alluvialfan_review';
-const alluvialFanWMSTitle = 'Alluvial Fan Flooding Susceptibility (Source: Division of Emergency Management): Review';
+const alluvialFanWMSTitle = 'Alluvial-Fan Flooding Susceptibility (Source: Division of Emergency Management): Review';
 const alluvialFanWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -773,7 +773,7 @@ const earthFissureWMSConfig: WMSLayerProps = {
 }
 
 const erosionHazardZoneLayerName = 'erosionhazardzone_review';
-const erosionHazardZoneWMSTitle = 'J.E. Fuller Flood Erosion Hazard Zones: Review';
+const erosionHazardZoneWMSTitle = 'J.E. Fuller Flood Erosion-Hazard Zones: Review';
 const erosionHazardZoneWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -809,7 +809,7 @@ const erosionHazardZoneWMSConfig: WMSLayerProps = {
 }
 
 const karstFeaturesLayerName = 'karstfeatures_review';
-const karstFeaturesWMSTitle = 'Karst Features: Review';
+const karstFeaturesWMSTitle = 'Karst Landscape Hazards: Review';
 const karstFeaturesWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -900,7 +900,7 @@ const floodHazardsConfig: LayerProps = {
     type: 'group',
     title: 'Flooding Hazards: Review',
     visible: false,
-    layers: [floodAndDebrisWMSConfig, shallowGroundwaterWMSConfig, alluvialFanWMSConfig],
+    layers: [floodAndDebrisWMSConfig, shallowGroundwaterWMSConfig, erosionHazardZoneWMSConfig, alluvialFanWMSConfig],
 };
 
 const earthquakesConfig: LayerProps = {
@@ -926,7 +926,6 @@ const soilHazardsConfig: LayerProps = {
         corrosiveSoilRockWMSConfig,
         earthFissureWMSConfig,
         expansiveSoilRockWMSConfig,
-        erosionHazardZoneWMSConfig,
         karstFeaturesWMSConfig,
         pipingAndErosionWMSConfig,
         radonSusceptibilityWMSConfig,
@@ -972,10 +971,10 @@ export const karstFeaturesReviewConfig: WMSLayerProps = { ...karstFeaturesWMSCon
 export const studyAreasReviewConfig: WMSLayerProps = { ...studyAreasWMSConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
 
 // --- New "Review" Groupings Using the Filtered Layers ---
-export const floodHazardsReviewConfig: LayerProps = { ...floodHazardsConfig, layers: [shallowGroundwaterReviewConfig, alluvialFanReviewConfig] };
+export const floodHazardsReviewConfig: LayerProps = { ...floodHazardsConfig, layers: [shallowGroundwaterReviewConfig, erosionHazardZoneReviewConfig, alluvialFanReviewConfig] };
 export const earthquakesReviewConfig: LayerProps = { ...earthquakesConfig, layers: [qFaultsReviewConfig, surfaceFaultRuptureReviewConfig, liquefactionReviewConfig, groundshakingReviewConfig] };
 export const landslidesReviewConfig: LayerProps = { ...landslidesConfig, layers: [rockfallHazardReviewConfig, landslideInventoryReviewConfig, landslideSusceptibilityReviewConfig, landslideLegacyReviewConfig] };
-export const soilHazardsReviewConfig: LayerProps = { ...soilHazardsConfig, layers: [collapsibleSoilReviewConfig, corrosiveSoilRockReviewConfig, earthFissureReviewConfig, expansiveSoilRockReviewConfig, erosionHazardZoneReviewConfig, karstFeaturesReviewConfig, pipingAndErosionReviewConfig, radonSusceptibilityReviewConfig, saltTectonicsDeformationReviewConfig, shallowBedrockReviewConfig, solubleSoilAndRockReviewConfig, windBlownSandWMSConfig] };
+export const soilHazardsReviewConfig: LayerProps = { ...soilHazardsConfig, layers: [collapsibleSoilReviewConfig, corrosiveSoilRockReviewConfig, earthFissureReviewConfig, expansiveSoilRockReviewConfig, karstFeaturesReviewConfig, pipingAndErosionReviewConfig, radonSusceptibilityReviewConfig, saltTectonicsDeformationReviewConfig, shallowBedrockReviewConfig, solubleSoilAndRockReviewConfig, windBlownSandWMSConfig] };
 
 // --- New, Separate Config Array for Review Layers ---
 export const reviewLayersConfig: LayerProps[] = [

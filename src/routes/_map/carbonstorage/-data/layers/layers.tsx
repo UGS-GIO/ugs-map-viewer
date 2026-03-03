@@ -433,7 +433,7 @@ const faultsWMSConfig: WMSLayerProps = {
 };
 
 const qFaultsLayerName = 'hazards_qfaults_current';
-const qFaultsWMSTitle = 'Hazardous (Quaternary age) Faults';
+const qFaultsWMSTitle = 'Hazardous (Quaternary Age) Faults';
 const qFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,

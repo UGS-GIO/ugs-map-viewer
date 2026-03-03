@@ -88,7 +88,7 @@ const dataSources = (
 <p> 
     <strong><u>Geological Information</u></strong>
     <ul className="list-disc ml-5 space-y-4">
-        <li>Hazardous (Quaternary age) Faults - Utah Geological Survey <br />
+        <li>Hazardous (Quaternary Age) Faults - Utah Geological Survey <br />
             <Link to="https://opendata.gis.utah.gov/datasets/utahDNR::utah-quaternary-faults/Linkbout">Access data</Link>
         </li>
         <li>Great Basin Faults (INGENIOUS Project) - Geothermal Data Repository <br />
