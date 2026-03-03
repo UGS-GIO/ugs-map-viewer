@@ -152,7 +152,7 @@ const dataSources = (
 
         <div className="space-y-2">
             <p>
-                <strong>Hazardous (Quaternary age) Faults</strong> - Utah Geological Survey
+                <strong>Hazardous (Quaternary Age) Faults</strong> - Utah Geological Survey
             </p>
             <span><Link to="https://maps.geology.utah.gov/hazards">Access data</Link></span>
 

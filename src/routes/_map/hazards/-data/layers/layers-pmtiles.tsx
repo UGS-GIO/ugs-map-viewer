@@ -41,7 +41,7 @@ const landslideLegacyConfig: PMTilesLayerProps = {
 }
 
 const landslideInventoryLayerName = 'landslideinventory_current';
-const landslideInventoryTitle = 'Landslides';
+const landslideInventoryTitle = 'Mapped Landslides';
 const landslideInventoryConfig: PMTilesLayerProps = {
     type: 'pmtiles',
     pmtilesUrl: HAZARDS_PMTILES_URL,
@@ -205,7 +205,7 @@ export interface QFaultsFeatureType {
 
 }
 export const qFaultsLayerName = 'hazards_qfaults_current';
-export const qFaultsWMSTitle = 'Hazardous (Quaternary age) Faults - Statewide';
+export const qFaultsWMSTitle = 'Hazardous (Quaternary Age) Faults - Statewide';
 
 const qFaultsConfig: PMTilesLayerProps = {
     type: 'pmtiles',
@@ -265,7 +265,7 @@ const qFaultsConfig: PMTilesLayerProps = {
 
 
 const surfaceFaultRuptureLayerName = 'surfacefaultrupture_current';
-const surfaceFaultRuptureTitle = 'Surface Fault Rupture Special Study Zones';
+const surfaceFaultRuptureTitle = 'Surface-Fault-Rupture Hazard Special-Study Zones';
 const surfaceFaultRuptureConfig: PMTilesLayerProps = {
     type: 'pmtiles',
     pmtilesUrl: HAZARDS_PMTILES_URL,
@@ -337,7 +337,7 @@ const windBlownSandConfig: PMTilesLayerProps = {
 }
 
 const saltTectonicsDeformationLayerName = 'salttectonicsdeformation_current';
-const saltTectonicsDeformationTitle = 'Salt Tectonics-Related Ground Deformation';
+const saltTectonicsDeformationTitle = 'Salt Tectonics Related Ground Deformation';
 const saltTectonicsDeformationConfig: PMTilesLayerProps = {
     type: 'pmtiles',
     pmtilesUrl: HAZARDS_PMTILES_URL,
@@ -707,7 +707,7 @@ const solubleSoilAndRockConfig: PMTilesLayerProps = {
 }
 
 const alluvialFanLayerName = 'alluvialfan_current';
-const alluvialFanTitle = 'Alluvial Fan Flooding Susceptibility (Source: Division of Emergency Management)';
+const alluvialFanTitle = 'Alluvial-Fan Flooding Susceptibility (Source: Division of Emergency Management)';
 const alluvialFanConfig: PMTilesLayerProps = {
     type: 'pmtiles',
     pmtilesUrl: HAZARDS_PMTILES_URL,
@@ -817,7 +817,7 @@ const earthFissureConfig: PMTilesLayerProps = {
 }
 
 const erosionHazardZoneLayerName = 'erosionhazardzone_current';
-const erosionHazardZoneTitle = 'J.E. Fuller Flood Erosion Hazard Zones';
+const erosionHazardZoneTitle = 'J.E. Fuller Flood Erosion-Hazard Zones';
 const erosionHazardZoneConfig: PMTilesLayerProps = {
     type: 'pmtiles',
     pmtilesUrl: HAZARDS_PMTILES_URL,
@@ -854,7 +854,7 @@ const erosionHazardZoneConfig: PMTilesLayerProps = {
 }
 
 const karstFeaturesLayerName = 'karstfeatures_current';
-const karstFeaturesTitle = 'Karst Features';
+const karstFeaturesTitle = 'Karst Landscape Hazards';
 const karstFeaturesConfig: PMTilesLayerProps = {
     type: 'pmtiles',
     pmtilesUrl: HAZARDS_PMTILES_URL,
@@ -950,7 +950,7 @@ const floodHazardsConfig: LayerProps = {
     type: 'group',
     title: 'Flooding Hazards',
     visible: false,
-    layers: [floodAndDebrisConfig, shallowGroundwaterConfig, alluvialFanConfig],
+    layers: [floodAndDebrisConfig, shallowGroundwaterConfig, erosionHazardZoneConfig, alluvialFanConfig],
 };
 
 const earthquakesConfig: LayerProps = {
@@ -971,7 +971,7 @@ const soilHazardsConfig: LayerProps = {
     type: 'group',
     title: 'Problem Soil and Rock Hazards',
     visible: false,
-    layers: [collapsibleSoilConfig, corrosiveSoilRockConfig, earthFissureConfig, expansiveSoilRockConfig, erosionHazardZoneConfig, karstFeaturesConfig, pipingAndErosionConfig, radonSusceptibilityConfig, saltTectonicsDeformationConfig, shallowBedrockConfig, solubleSoilAndRockConfig, windBlownSandConfig],
+    layers: [collapsibleSoilConfig, corrosiveSoilRockConfig, earthFissureConfig, expansiveSoilRockConfig, karstFeaturesConfig, pipingAndErosionConfig, radonSusceptibilityConfig, saltTectonicsDeformationConfig, shallowBedrockConfig, solubleSoilAndRockConfig, windBlownSandConfig],
 };
 
 const layersConfig: LayerProps[] = [

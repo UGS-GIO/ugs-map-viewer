@@ -135,15 +135,10 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                 // Check if this hazard code was present in the polygon
                 if (!hazardCodes.includes(g.HazardCode)) return;
 
-                // Find the unit description matching the specific unit (using HazardCode to match the unit's base code, e.g., 'LSF')
-                const units = hazardUnitText.filter(u =>
-                    u.HazardUnit.toLowerCase().includes(g.HazardCode.toLowerCase())
-                )
+                const units = hazardUnitText.filter(u => u.HazardCode === g.HazardCode)
 
                 // Use allHazardUnits for legend (all possible units for this layer)
-                const allUnitsForLayer = allHazardUnits.filter(u =>
-                    u.HazardUnit.toLowerCase().includes(g.HazardCode.toLowerCase())
-                )
+                const allUnitsForLayer = allHazardUnits.filter(u => u.HazardCode === g.HazardCode)
 
                 const refs = hazardReferences.filter(r => r.Hazard === g.HazardCode)
 
@@ -158,13 +153,7 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                         url: testAllHazards
                             ? hazardLayerNameMap[g.HazardCode as keyof typeof hazardLayerNameMap] || ''
                             : hazardInfo?.url || '',
-                        units: allUnitsForLayer.map(u => ({
-                            HazardName: u.HazardName,
-                            HazardUnit: u.HazardUnit,
-                            UnitName: u.UnitName,
-                            Description: u.Description,
-                            HowToUse: u.HowToUse,
-                        })),
+                        units: allUnitsForLayer,
                         references: refs.map(r => r.Text),
                         customLegendItems: g.HazardCode === 'QFF' ? qffLegendItems : undefined,
                     })

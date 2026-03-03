@@ -7,6 +7,7 @@ import { hazardLayerNameMap } from '../-data/hazard-unit-map';
 import type { PostgRESTRowOf } from '@/lib/types/postgrest-types';
 
 export interface HazardUnit {
+    HazardCode: string;
     HazardUnit: string;
     HazardName: string;
     UnitName: string;
@@ -46,6 +47,7 @@ export interface HazardTextSections {
  */
 type HazardUnitRow = PostgRESTRowOf<{
     relate_id: string;
+    hazardcode: string;
     hazardname: string;
     description: string;
     notes: string | null;
@@ -101,6 +103,7 @@ export async function queryAllUnitsForHazardCodes(hazardCodes: string[]): Promis
         const data = await response.json() as HazardUnitRow[];
         // Map PostgREST results to the expected HazardUnit structure
         const postgrestResults = data.map((row): HazardUnit => ({
+            HazardCode: row.hazardcode,
             HazardUnit: row.relate_id,
             HazardName: row.hazardname,
             UnitName: row.hazardname,
@@ -145,6 +148,7 @@ export async function queryHazardUnitsStatic(units: string[]): Promise<HazardUni
 
         // Map PostgREST results to the expected HazardUnit structure
         const postgrestResults = data.map((row): HazardUnit => ({
+            HazardCode: row.hazardcode,
             HazardUnit: row.relate_id,
             HazardName: row.hazardname,
             UnitName: row.hazardname,
