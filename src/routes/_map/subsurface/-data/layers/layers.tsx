@@ -1,6 +1,6 @@
 import { Link } from "@/components/ui/link";
 import { ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
-import { ArcGISMapServerLayerProps, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
 
@@ -371,13 +371,22 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
     ],
 };
 
-// SITLA Land Ownership Layer (ArcGIS MapServer)
-const SITLAConfig: ArcGISMapServerLayerProps = {
+// SITLA Land Ownership Layer
+const SITLAConfig: LayerProps = {
     type: 'map-image',
     url: 'https://gis.trustlands.utah.gov/mapping/rest/services/Land_Ownership_WM/MapServer',
-    title: 'Land Ownership',
     opacity: 0.5,
-    visible: false,
+    title: 'Land Ownership',
+    options: {
+        title: 'Land Ownership',
+        elevationInfo: [{ mode: 'on-the-ground' }],
+        visible: false,
+        sublayers: [{
+            id: 0,
+            visible: true,
+            crs: 'EPSG:26912',
+        }],
+    },
 };
 
 const faultsLayerName = 'faults_m-179dm';
@@ -433,7 +442,7 @@ const faultsWMSConfig: WMSLayerProps = {
 };
 
 const qFaultsLayerName = 'hazards_qfaults_current';
-const qFaultsWMSTitle = 'Hazardous (Quaternary Age) Faults';
+const qFaultsWMSTitle = 'Hazardous (Quaternary age) Faults';
 const qFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
