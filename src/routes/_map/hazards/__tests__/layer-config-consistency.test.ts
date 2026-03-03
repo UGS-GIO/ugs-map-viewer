@@ -190,6 +190,36 @@ describe('hazard layer config ↔ report data consistency', () => {
     }
   })
 
+  describe('hazard code resolves to correct layer name from PostgREST', () => {
+    let unitNameByCode: Map<string, string>
+
+    beforeAll(async () => {
+      const codes = Object.keys(hazardLayerNameMap)
+      const filter = codes.map(c => `hazardcode.eq.${c}`).join(',')
+      const res = await fetch(
+        `${PROD_POSTGREST_URL}/unitdescriptions_current?or=(${filter})&select=hazardcode,hazardname`,
+        { headers: { 'Accept-Profile': 'hazards', 'Accept': 'application/json' } }
+      )
+      const rows: { hazardcode: string; hazardname: string }[] = await res.json()
+      unitNameByCode = new Map(rows.map(r => [r.hazardcode, r.hazardname]))
+    })
+
+    it.each(
+      hazardLayers
+        .filter(l => l.title)
+        .map(l => {
+          const sublayerName = getSublayerName(l)
+          const code = sublayerName ? reverseLayerMap.get(sublayerName) : null
+          return [l.title, code] as const
+        })
+        .filter((pair): pair is [string, string] => pair[1] != null)
+    )('%s (code %s) matches PostgREST hazardname', (sidebarTitle, code) => {
+      const dbName = unitNameByCode.get(code)
+      expect(dbName).toBeDefined()
+      expect(dbName).toBe(sidebarTitle)
+    })
+  })
+
   it('all hazard codes in groupings JSON that have layers are covered', () => {
     const configCodes = new Set(
       hazardLayers
