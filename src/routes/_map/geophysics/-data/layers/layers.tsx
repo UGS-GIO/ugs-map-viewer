@@ -751,8 +751,8 @@ const cgbaRasterWMSConfig: WMSLayerProps = {
                     },
                     layerName: `${ENERGY_MINERALS_WORKSPACE}:${cgbaRasterLayerName}`,
                     valueField: "GRAY_INDEX",
-                    valueLabel: "Peak Ground Acceleration",
-                    transform: (value: number) => `${value} g`,
+                    valueLabel: "Gravity Anomaly",
+                    transform: (value: number) => `${value} mGal`,
                 }
     
             },
