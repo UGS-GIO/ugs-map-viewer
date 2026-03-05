@@ -75,10 +75,8 @@ export interface DataMapProps {
   clickBufferBounds?: BoundsBox | null
   /** Callback when click buffer should update */
   onClickBufferChange?: (bounds: BoundsBox | null) => void
-  /** Feature geometry bounds for zoom extent (controlled by parent) */
+  /** Feature geometry bounds for zoom extent (read-only, controlled by parent) */
   featureBbox?: BoundsBox | null
-  /** Callback when feature bbox should update */
-  onFeatureBboxChange?: (bbox: BoundsBox | null) => void
   /** Callback when selection should be cleared (from context menu) */
   onClearSelection?: () => void
   /** Pin marker coordinates (from shared link or context menu) */
