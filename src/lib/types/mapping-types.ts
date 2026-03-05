@@ -38,7 +38,7 @@ export type ProcessedRasterSource = RasterSource & {
 interface BaseFieldConfig {
     label?: string;
     field: string;
-    type: 'string' | 'number' | 'custom';
+    type: 'string' | 'number' | 'date' | 'custom';
     /** Tooltip text shown on hover over the field label */
     description?: string;
 }
@@ -57,6 +57,12 @@ export interface NumberPopupFieldConfig extends BaseFieldConfig {
     transform?: (value: number | null) => string | null;
 }
 
+// Date-specific field configuration
+export interface DatePopupFieldConfig extends BaseFieldConfig {
+    type: 'date';
+    format?: 'iso' | 'short' | 'long';
+}
+
 // Custom-specific field configuration
 export interface CustomPopupFieldConfig extends BaseFieldConfig {
     type: 'custom';
@@ -64,7 +70,7 @@ export interface CustomPopupFieldConfig extends BaseFieldConfig {
 }
 
 // Your main FieldConfig is a discriminated union of these specific types
-export type FieldConfig = StringPopupFieldConfig | NumberPopupFieldConfig | CustomPopupFieldConfig;
+export type FieldConfig = StringPopupFieldConfig | NumberPopupFieldConfig | DatePopupFieldConfig | CustomPopupFieldConfig;
 
 export type ColorCodingMode = 'text' | 'background';
 

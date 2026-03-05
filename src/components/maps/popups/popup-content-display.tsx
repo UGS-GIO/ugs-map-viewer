@@ -22,6 +22,7 @@ import {
 import {
     isNumberField,
     isStringField,
+    isDateField,
     isCustomField,
     formatFieldValue,
 } from "@/lib/field-formatting";
@@ -269,6 +270,9 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
                 : String(rasterValue ?? '');
         } else if (currentConfig && isCustomField(currentConfig)) {
             finalDisplayValue = currentConfig.transform?.(properties)?.toString() || '';
+        } else if (currentConfig && isDateField(currentConfig)) {
+            const rawValue = popupFields ? properties[currentConfig.field] : valueFromPropertiesDirectly;
+            finalDisplayValue = formatFieldValue(currentConfig, rawValue, properties);
         } else if (currentConfig && (isStringField(currentConfig) || isNumberField(currentConfig))) {
             const rawValue = popupFields ? properties[currentConfig.field] : valueFromPropertiesDirectly;
             finalDisplayValue = formatFieldValue(currentConfig, rawValue, properties);

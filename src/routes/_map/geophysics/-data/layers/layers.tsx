@@ -2,19 +2,6 @@ import { ENERGY_MINERALS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_G
 import { ArcGISMapServerLayerProps, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { toTitleCase, toSentenceCase } from "@/lib/utils";
 
-const formatDateToISO = (value: string | null | undefined): string => {
-    if (!value) return '';
-    const parts = value.match(/(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
-    if (parts) {
-        const [, year, month, day] = parts;
-        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-    }
-    // Fallback for formats like "January 5, 2023"
-    const date = new Date(value);
-    if (isNaN(date.getTime())) return value;
-    return date.toISOString().slice(0, 10);
-};
-
 // Roads WMS Layer
 const roadsLayerName = 'ccus_majorroads';
 const roadsWMSTitle = 'Major Roads';
@@ -321,7 +308,7 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                         return `${utmStart} - ${utmEnd}`;
                     }
                 },
-                'Date': { field: 'date', type: 'string', transform: (value) => formatDateToISO(value) },
+                'Date': { field: 'date', type: 'date' },
                 'Reference': { field: 'reference', type: 'string' },
                 'PH': { field: 'ph', type: 'string' },
                 'Conductivity (microsiemens)': { field: 'cond', type: 'string' },
@@ -527,7 +514,7 @@ const gravityStationsLayerConfig: WMSLayerProps = {
                         return `${depthStart}, ${depthEnd}`;
                     }
                 },
-                'Date': { field: 'date', type: 'string', transform: (value) => formatDateToISO(value) },
+                'Date': { field: 'date', type: 'date' },
                 'Observed Measurement (mGal)': {
                     field: 'custom',
                     type: 'custom',
@@ -595,7 +582,7 @@ const geothermalTEMLayerConfig: WMSLayerProps = {
                     }
                 },
                 'Site Name': { field: 'station', type: 'string' },
-                'Date': { field: 'date', type: 'string', transform: (value) => formatDateToISO(value) },
+                'Date': { field: 'date', type: 'date' },
                 'Archive Link': { field: 'archivelink', type: 'string' },
             },
         },
