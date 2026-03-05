@@ -26,6 +26,7 @@ import { useFeatureSelection } from '@/hooks/use-feature-selection'
 import { usePopupData } from '@/hooks/use-popup-data'
 import type { RasterQueryResult } from '@/lib/map/wfs-service'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
+import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
 import type { LayerProps, WMSLayerProps } from '@/lib/types/mapping-types'
 import { createSVGSymbol } from '@/lib/legend/symbol-generator'
 import type { Legend } from '@/lib/types/geoserver-types'
@@ -288,17 +289,22 @@ export default function GenericMapContainer({
     // Update feature selection (handles additive, highlights, etc.)
     handleFeatureClick(result.features, options)
 
-    if (result.features.length > 0 || hasRasterData) {
-      // Open popup if we have any results
-      if (viewMode === 'map') {
-        requestAnimationFrame(() => popupSheetRef.current?.open())
+    // Compute feature bbox from first feature with geometry (for URL sync / zoom extent)
+    if (result.features.length > 0 && !options?.additive) {
+      const first = result.features.find(f => f.geometry)
+      if (first?.geometry) {
+        const bbox = calculateBboxFromGeometry(first.geometry)
+        if (bbox) setFeatureBbox({ sw: [bbox[0], bbox[1]], ne: [bbox[2], bbox[3]] })
       }
-    } else if (!options?.additive) {
-      // Empty non-additive click: clear URL state
-      setClickBufferBounds(null)
+    } else if (!options?.additive && !hasRasterData) {
       setFeatureBbox(null)
+      setClickBufferBounds(null)
     }
-  }, [handleFeatureClick, viewMode, setPopupCoords, setClickBufferBounds, setFeatureBbox])
+
+    if ((result.features.length > 0 || hasRasterData) && viewMode === 'map') {
+      requestAnimationFrame(() => popupSheetRef.current?.open())
+    }
+  }, [handleFeatureClick, viewMode, setPopupCoords, setFeatureBbox, setClickBufferBounds])
 
   // Register layer turned off callback with parent context (safe - callback is stable)
   registerLayerTurnedOff(handleLayerTurnedOff)
@@ -539,7 +545,6 @@ export default function GenericMapContainer({
             clickBufferBounds={clickBufferBounds}
             onClickBufferChange={setClickBufferBounds}
             featureBbox={featureBbox}
-            onFeatureBboxChange={setFeatureBbox}
             activeDrawShape={activeDrawShape}
             onDrawReset={handleDrawReset}
             onDrawComplete={handleDrawComplete}

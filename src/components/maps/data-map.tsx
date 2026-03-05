@@ -16,7 +16,6 @@ import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
 import { flattenWmsLayers, flattenWfsLayers, flattenArcGisLayers, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
 import type maplibregl from 'maplibre-gl'
 
-import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
 import { useTerraDraw } from '@/hooks/use-terra-draw'
 import type { Polygon } from 'geojson'
@@ -28,6 +27,63 @@ import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
 
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, ClickResult, DataMapProps } from './types'
+
+/**
+ * Encapsulates the WFS + WMS fan-out pattern shared by handleMapClick,
+ * handleQueryHere, and handleLoad. Queries WFS client-side, then optionally
+ * fans out to WMS + raster, merges results, and calls onClickResult.
+ */
+function queryAtPoint(opts: {
+  map: maplibregl.Map
+  point: { x: number; y: number }
+  tolerance: number
+  visibleWmsLayers: ReturnType<typeof flattenWmsLayers>
+  visibleWfsLayers: ReturnType<typeof flattenWfsLayers>
+  clickQuery: ReturnType<typeof useFeatureQuery>['clickQuery']
+  wmsUrl: string
+  layerFilters: Record<string, string>
+  onClickResult: NonNullable<DataMapProps['onClickResult']>
+  additive?: boolean
+}) {
+  const wfsFeatures = queryWfsLayersAtPoint(opts.map, opts.point, opts.tolerance, opts.visibleWfsLayers)
+
+  if (opts.visibleWmsLayers.length === 0) {
+    // WFS-only: emit immediately
+    opts.onClickResult(
+      { features: wfsFeatures, rasterResults: new globalThis.Map() },
+      opts.additive != null ? { additive: opts.additive } : undefined
+    )
+    return
+  }
+
+  // WMS + raster query, merge with WFS results
+  opts.clickQuery.mutate(
+    {
+      point: opts.point,
+      visibleLayers: opts.visibleWmsLayers,
+      tolerance: opts.tolerance,
+      mapInstance: opts.map,
+      wmsUrl: opts.wmsUrl,
+      layerFilters: opts.layerFilters,
+    },
+    {
+      onSuccess: ({ vectorFeatures: wmsFeatures, rasterResults }) => {
+        const allFeatures = [...wmsFeatures, ...wfsFeatures]
+        const hasRasterData = rasterResults.size > 0 &&
+          [...rasterResults.values()].some(r => r.data !== null)
+
+        if (allFeatures.length > 0 || hasRasterData) {
+          opts.onClickResult(
+            { features: allFeatures, rasterResults },
+            opts.additive != null ? { additive: opts.additive } : undefined
+          )
+        } else if (!opts.additive) {
+          opts.onClickResult({ features: [], rasterResults: new globalThis.Map() }, { additive: false })
+        }
+      },
+    }
+  )
+}
 
 /**
  * DataMap - Main map component using react-map-gl
@@ -64,7 +120,6 @@ export default function DataMap({
   clickBufferBounds,
   onClickBufferChange,
   featureBbox,
-  onFeatureBboxChange,
   onClearSelection,
   pinCoords,
   onPinChange,
@@ -248,7 +303,6 @@ export default function DataMap({
       justFinishedDrawingRef.current = false
       return
     }
-    // Allow click if there are WMS or WFS layers
     if (!onClickResult || (visibleWmsLayers.length === 0 && visibleWfsLayers.length === 0)) return
 
     const map = mapRef.current?.getMap()
@@ -266,61 +320,19 @@ export default function DataMap({
 
     const isAdditive = isAdditiveMode || (e.originalEvent?.shiftKey ?? false)
 
-    // Query WFS layers client-side (already rendered on map)
-    const wfsFeatures = queryWfsLayersAtPoint(map, e.point, clickTolerance, visibleWfsLayers)
-
-    // If no WMS layers, just use WFS results directly (no raster sources possible)
-    if (visibleWmsLayers.length === 0) {
-      if (wfsFeatures.length > 0) {
-        onClickResult({ features: wfsFeatures, rasterResults: new globalThis.Map() }, { additive: isAdditive })
-        const firstFeature = wfsFeatures.find(f => f.geometry)
-        if (firstFeature?.geometry && onFeatureBboxChange) {
-          const bbox = calculateBboxFromGeometry(firstFeature.geometry)
-          if (bbox) {
-            onFeatureBboxChange({ sw: [bbox[0], bbox[1]], ne: [bbox[2], bbox[3]] })
-          }
-        }
-      } else if (!isAdditive) {
-        onClickResult({ features: [], rasterResults: new globalThis.Map() }, { additive: false })
-        onFeatureBboxChange?.(null)
-      }
-      return
-    }
-
-    // Query WMS layers via WFS + raster GetFeatureInfo in parallel, then merge with client-side WFS results
-    clickQuery.mutate(
-      {
-        point: { x: e.point.x, y: e.point.y },
-        visibleLayers: visibleWmsLayers,
-        tolerance: clickTolerance,
-        mapInstance: map,
-        wmsUrl,
-        layerFilters,
-      },
-      {
-        onSuccess: ({ vectorFeatures: wmsFeatures, rasterResults }) => {
-          // Merge WMS and WFS layer results
-          const allFeatures = [...wmsFeatures, ...wfsFeatures]
-          const hasRasterData = rasterResults.size > 0 && [...rasterResults.values()].some(r => r.data !== null)
-
-          if (allFeatures.length > 0 || hasRasterData) {
-            onClickResult({ features: allFeatures, rasterResults }, { additive: isAdditive })
-
-            const firstFeature = allFeatures.find(f => f.geometry)
-            if (firstFeature?.geometry && onFeatureBboxChange) {
-              const bbox = calculateBboxFromGeometry(firstFeature.geometry)
-              if (bbox) {
-                onFeatureBboxChange({ sw: [bbox[0], bbox[1]], ne: [bbox[2], bbox[3]] })
-              }
-            }
-          } else if (!isAdditive) {
-            onClickResult({ features: [], rasterResults: new globalThis.Map() }, { additive: false })
-            onFeatureBboxChange?.(null)
-          }
-        },
-      }
-    )
-  }, [onClickResult, visibleWmsLayers, visibleWfsLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, activeDrawShape, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange, layerFilters])
+    queryAtPoint({
+      map,
+      point: { x: e.point.x, y: e.point.y },
+      tolerance: clickTolerance,
+      visibleWmsLayers,
+      visibleWfsLayers,
+      clickQuery,
+      wmsUrl,
+      layerFilters,
+      onClickResult,
+      additive: isAdditive,
+    })
+  }, [onClickResult, visibleWmsLayers, visibleWfsLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, activeDrawShape, onClickBufferChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange, layerFilters])
 
   // Handle map move end - track zoom only (box select now uses click-to-confirm)
   const handleMoveEnd = useCallback(() => {
@@ -417,38 +429,17 @@ export default function DataMap({
         const nePoint = map.project([clickBufferBounds.ne[0], clickBufferBounds.ne[1]])
         const tolerance = Math.abs(nePoint.x - swPoint.x) / 2
 
-        // Query WFS layers client-side
-        const wfsFeatures = queryWfsLayersAtPoint(map, centerPoint, tolerance || clickTolerance, visibleWfsLayers)
-
-        // If no WMS layers, just use WFS results directly
-        if (visibleWmsLayers.length === 0) {
-          if (wfsFeatures.length > 0) {
-            onClickResult({ features: wfsFeatures, rasterResults: new globalThis.Map() })
-          }
-          return
-        }
-
-        // Query WMS layers via WFS + raster, then merge
-        clickQuery.mutate(
-          {
-            point: { x: centerPoint.x, y: centerPoint.y },
-            visibleLayers: visibleWmsLayers,
-            tolerance: tolerance || clickTolerance,
-            mapInstance: map,
-            wmsUrl,
-            layerFilters,
-          },
-          {
-            onSuccess: ({ vectorFeatures: wmsFeatures, rasterResults }) => {
-              const allFeatures = [...wmsFeatures, ...wfsFeatures]
-              const hasRasterData = rasterResults.size > 0 && [...rasterResults.values()].some(r => r.data !== null)
-
-              if (allFeatures.length > 0 || hasRasterData) {
-                onClickResult({ features: allFeatures, rasterResults })
-              }
-            },
-          }
-        )
+        queryAtPoint({
+          map,
+          point: { x: centerPoint.x, y: centerPoint.y },
+          tolerance: tolerance || clickTolerance,
+          visibleWmsLayers,
+          visibleWfsLayers,
+          clickQuery,
+          wmsUrl,
+          layerFilters,
+          onClickResult,
+        })
       }
     }
   }, [onMapReady, clickBufferBounds, onClickResult, visibleWmsLayers, visibleWfsLayers, clickTolerance, clickQuery, wmsUrl, layerFilters])
@@ -498,38 +489,17 @@ export default function DataMap({
     const ne = map.unproject([point.x + clickTolerance, point.y - clickTolerance])
     onClickBufferChange?.({ sw: [sw.lng, sw.lat], ne: [ne.lng, ne.lat] })
 
-    // Query WFS layers client-side
-    const wfsFeatures = queryWfsLayersAtPoint(map, point, clickTolerance, visibleWfsLayers)
-
-    // If no WMS layers, just use WFS results directly
-    if (visibleWmsLayers.length === 0) {
-      if (wfsFeatures.length > 0) {
-        onClickResult({ features: wfsFeatures, rasterResults: new globalThis.Map() })
-      }
-      return
-    }
-
-    // Query WMS layers via WFS + raster, then merge
-    clickQuery.mutate(
-      {
-        point: { x: point.x, y: point.y },
-        visibleLayers: visibleWmsLayers,
-        tolerance: clickTolerance,
-        mapInstance: map,
-        wmsUrl,
-        layerFilters,
-      },
-      {
-        onSuccess: ({ vectorFeatures: wmsFeatures, rasterResults }) => {
-          const allFeatures = [...wmsFeatures, ...wfsFeatures]
-          const hasRasterData = rasterResults.size > 0 && [...rasterResults.values()].some(r => r.data !== null)
-
-          if (allFeatures.length > 0 || hasRasterData) {
-            onClickResult({ features: allFeatures, rasterResults })
-          }
-        },
-      }
-    )
+    queryAtPoint({
+      map,
+      point: { x: point.x, y: point.y },
+      tolerance: clickTolerance,
+      visibleWmsLayers,
+      visibleWfsLayers,
+      clickQuery,
+      wmsUrl,
+      layerFilters,
+      onClickResult,
+    })
   }, [visibleWmsLayers, visibleWfsLayers, clickTolerance, clickQuery, wmsUrl, onClickResult, onClickBufferChange, layerFilters])
 
   const handleZoomIn = useCallback((coords: { lng: number; lat: number }) => {
