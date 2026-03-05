@@ -7,8 +7,6 @@ import type { LayerContentProps } from "@/components/maps/popups/types";
 import { PopupContentWithPagination } from "@/components/maps/popups/popup-content-with-pagination";
 import { XIcon } from "lucide-react";
 import type { HighlightFeature } from "@/components/maps/types";
-import type { PopupCoords } from "@/hooks/use-map-url-sync";
-
 interface PopupSheetProps {
     popupContent: LayerContentProps[];
     sheetTriggerRef: React.RefObject<HTMLButtonElement>;
@@ -23,7 +21,8 @@ interface PopupSheetProps {
     onWidthChange?: (width: number) => void;
     /** Controlled open state from parent */
     isOpen?: boolean;
-    popupCoords?: PopupCoords | null;
+    /** Click point for raster-only zoom */
+    clickPoint?: { lng: number; lat: number } | null;
 }
 
 export interface PopupSheetRef {
@@ -45,7 +44,7 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
     width = DEFAULT_WIDTH,
     onWidthChange,
     isOpen: controlledOpen,
-    popupCoords,
+    clickPoint,
 }, ref) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const floatingCloseRef = useRef<HTMLDivElement>(null);
@@ -190,7 +189,7 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
                                 key={contentKey}
                                 layerContent={popupContent}
                                 onHighlightChange={onHighlightChange}
-                                popupCoords={popupCoords}
+                                clickPoint={clickPoint}
                             />
                         </div>
                     </div>

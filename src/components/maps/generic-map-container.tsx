@@ -585,7 +585,7 @@ export default function GenericMapContainer({
               width={panelState.sheetWidth}
               onWidthChange={(width) => setPanelState(prev => ({ ...prev, sheetWidth: width }))}
               isOpen={panelState.isSheetOpen}
-              popupCoords={popupCoords}
+              clickPoint={clickPoint}
             />
           </div>
         )}
@@ -609,7 +609,7 @@ export default function GenericMapContainer({
               onOpenChange={handleSheetOpenChange}
               onHighlightChange={setHighlightedFeatures}
               isOpen={panelState.isSheetOpen}
-              popupCoords={popupCoords}
+              clickPoint={clickPoint}
             />
           </div>
         )}

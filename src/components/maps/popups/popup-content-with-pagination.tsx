@@ -9,8 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { useBulkRelatedTable, RelatedDataMap } from "@/hooks/use-bulk-related-table"
 import { ExtendedFeature, LayerContentProps, hasRasterData, getLayerCountText } from "./types"
-import type { PopupCoords } from "@/hooks/use-map-url-sync"
-
 interface PopupButtonsProps {
     feature: ExtendedFeature;
     sourceCRS: string;
@@ -34,7 +32,7 @@ PopupButtons.displayName = 'PopupButtons';
 interface PopupContentWithPaginationProps {
     layerContent: LayerContentProps[]
     onHighlightChange?: (features: HighlightFeature[]) => void
-    popupCoords?: PopupCoords | null
+    clickPoint?: { lng: number; lat: number } | null
 }
 
 const FeatureCard = memo(({
@@ -72,19 +70,19 @@ const FeatureCard = memo(({
 FeatureCard.displayName = 'FeatureCard';
 
 // Raster-only card for layers with no vector features but with raster data
-const RasterOnlyCard = memo(({ layer, popupCoords, onZoom }: {
+const RasterOnlyCard = memo(({ layer, clickPoint, onZoom }: {
     layer: LayerContentProps
-    popupCoords?: PopupCoords | null
+    clickPoint?: { lng: number; lat: number } | null
     onZoom?: (feature: ExtendedFeature, sourceCRS: string, maxZoomLevel?: number) => void
 }) => {
     return (
         <div className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
-            {popupCoords && onZoom && (
+            {clickPoint && onZoom && (
                 <div className="flex justify-start gap-2">
                     <Button variant="ghost" onClick={() => {
                         const syntheticFeature: ExtendedFeature = {
                             type: 'Feature',
-                            geometry: { type: 'Point', coordinates: [popupCoords.lon, popupCoords.lat] },
+                            geometry: { type: 'Point', coordinates: [clickPoint.lng, clickPoint.lat] },
                             properties: {},
                             namespace: '',
                         }
@@ -106,7 +104,7 @@ const RasterOnlyCard = memo(({ layer, popupCoords, onZoom }: {
 });
 RasterOnlyCard.displayName = 'RasterOnlyCard';
 
-const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, popupCoords }: PopupContentWithPaginationProps) => {
+const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clickPoint }: PopupContentWithPaginationProps) => {
     const { zoomTo } = useZoomToFeature({ onHighlightChange })
     const buttons = useGetPopupButtons()
     // -1 = "All", 0+ = specific layer index
@@ -277,7 +275,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, popu
                                             />
                                         ))
                                     ) : hasRaster ? (
-                                        <RasterOnlyCard layer={layer} popupCoords={popupCoords} onZoom={handleZoomToFeature} />
+                                        <RasterOnlyCard layer={layer} clickPoint={clickPoint} onZoom={handleZoomToFeature} />
                                     ) : null}
                                 </div>
                             </div>
@@ -298,7 +296,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, popu
                                 />
                             ))
                         ) : hasRasterData(selectedLayer) ? (
-                            <RasterOnlyCard layer={selectedLayer} popupCoords={popupCoords} onZoom={handleZoomToFeature} />
+                            <RasterOnlyCard layer={selectedLayer} clickPoint={clickPoint} onZoom={handleZoomToFeature} />
                         ) : null}
                     </div>
                 ) : null}

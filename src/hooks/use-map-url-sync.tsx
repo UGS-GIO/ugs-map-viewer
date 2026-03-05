@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearch, useNavigate } from '@tanstack/react-router';
 
-export interface PopupCoords {
+interface PopupCoords {
     lat: number;
     lon: number;
 }
