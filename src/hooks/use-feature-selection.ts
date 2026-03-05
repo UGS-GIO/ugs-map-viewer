@@ -1,21 +1,9 @@
 import { useState, useCallback } from 'react'
 import type { ClickedFeature, HighlightFeature } from '@/components/maps/types'
-import type { PopupSheetRef } from '@/components/maps/popups/popup-sheet'
-import type { ViewMode } from '@/hooks/use-map-url-sync'
-
-interface FeatureRef {
-  layer: string
-  id: string
-}
 
 interface UseFeatureSelectionOptions {
-  viewMode: ViewMode
-  selectedFeatureRefs: FeatureRef[]
-  setSelectedFeatureRefs: (refs: FeatureRef[]) => void
-  setClickBufferBounds: (bounds: { sw: [number, number]; ne: [number, number] } | null) => void
-  setFeatureBbox: (bbox: { sw: [number, number]; ne: [number, number] } | null) => void
-  popupSheetRef: React.RefObject<PopupSheetRef | null>
   onHighlightChange?: (features: HighlightFeature[]) => void
+  onSelectionChange?: (features: ClickedFeature[]) => void
 }
 
 // Helper to convert ClickedFeatures to HighlightFeatures
@@ -40,15 +28,9 @@ function getFeatureKey(f: ClickedFeature): string {
  * Encapsulates selection logic including click handling, layer removal, and clearing
  */
 export function useFeatureSelection({
-  viewMode,
-  selectedFeatureRefs: _selectedFeatureRefs,
-  setSelectedFeatureRefs,
-  setClickBufferBounds,
-  setFeatureBbox,
-  popupSheetRef,
   onHighlightChange,
+  onSelectionChange,
 }: UseFeatureSelectionOptions) {
-  // Note: _selectedFeatureRefs available for future URL restoration highlighting if needed
   const [selectedFeatures, setSelectedFeatures] = useState<ClickedFeature[]>([])
 
   // Handle layer turned off - remove features from that layer
@@ -57,32 +39,18 @@ export function useFeatureSelection({
       const remaining = prev.filter(f => f.layerTitle !== layerTitle)
       if (remaining.length === prev.length) return prev
 
-      // Update URL refs
-      const remainingRefs = remaining.map(f => ({
-        layer: f.layerTitle || '',
-        id: String(f.id),
-      }))
-      setSelectedFeatureRefs(remainingRefs)
-
-      // Update highlights declaratively
       onHighlightChange?.(toHighlightFeatures(remaining))
-
-      // If no features remain, clear URL state
-      if (remaining.length === 0) {
-        setClickBufferBounds(null)
-        setFeatureBbox(null)
-      }
+      onSelectionChange?.(remaining)
 
       return remaining
     })
-  }, [setSelectedFeatureRefs, setClickBufferBounds, setFeatureBbox, onHighlightChange])
+  }, [onHighlightChange, onSelectionChange])
 
   // Handle feature click
   const handleFeatureClick = useCallback((features: ClickedFeature[], options?: { additive?: boolean }) => {
     // Clear highlights when clearing selection (non-additive with no features)
     if (!options?.additive && features.length === 0) {
       onHighlightChange?.([])
-      setClickBufferBounds(null)
       setSelectedFeatures([])
       return
     }
@@ -122,20 +90,13 @@ export function useFeatureSelection({
 
       return newSelection
     })
-
-    if (features.length > 0 && viewMode === 'map') {
-      requestAnimationFrame(() => popupSheetRef.current?.open())
-    }
-  }, [viewMode, setClickBufferBounds, popupSheetRef, onHighlightChange])
+  }, [onHighlightChange])
 
   // Clear all selections
   const clearAllSelections = useCallback(() => {
     onHighlightChange?.([])
     setSelectedFeatures([])
-    setClickBufferBounds(null)
-    setFeatureBbox(null)
-    setSelectedFeatureRefs([])
-  }, [setClickBufferBounds, setFeatureBbox, setSelectedFeatureRefs, onHighlightChange])
+  }, [onHighlightChange])
 
   return {
     selectedFeatures,

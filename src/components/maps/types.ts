@@ -1,6 +1,6 @@
 import type { Geometry, Polygon } from 'geojson'
 import type { LayerProps } from '@/lib/types/mapping-types'
-import type { WfsFeature } from '@/lib/map/wfs-service'
+import type { WfsFeature, RasterQueryResult } from '@/lib/map/wfs-service'
 
 // Re-export for convenience
 export type ClickedFeature = WfsFeature
@@ -24,13 +24,18 @@ export type BoundsBox = {
   ne: [number, number]
 }
 
+export interface ClickResult {
+  features: ClickedFeature[]
+  rasterResults: Map<string, RasterQueryResult>
+}
+
 export interface DataMapProps {
   wmsUrl: string
   layers: LayerProps[]
   center?: [number, number]
   zoom?: number
   highlightFeatures?: HighlightFeature[]
-  onFeatureClick?: (features: ClickedFeature[], options?: { additive?: boolean }) => void
+  onClickResult?: (result: ClickResult, options?: { additive?: boolean }) => void
   onMoveEnd?: (lat: number, lng: number, zoom: number) => void
   clickTolerance?: number
   isLoading?: boolean

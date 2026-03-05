@@ -6,7 +6,7 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import maplibregl from 'maplibre-gl'
-import DataMap, { HighlightFeature, DrawMode, SpatialFilter } from '@/components/maps/data-map'
+import DataMap, { HighlightFeature, ClickedFeature, DrawMode, SpatialFilter, ClickResult } from '@/components/maps/data-map'
 import { PopupSheet, PopupSheetRef } from '@/components/maps/popups/popup-sheet'
 import { QueryResultsTable } from '@/components/data-table/query-results-table'
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs'
@@ -24,6 +24,7 @@ import { HomeControl, DualScaleControl } from '@/components/maps/controls'
 import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
 import { usePopupData } from '@/hooks/use-popup-data'
+import type { RasterQueryResult } from '@/lib/map/wfs-service'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
 import type { LayerProps, WMSLayerProps } from '@/lib/types/mapping-types'
 import { createSVGSymbol } from '@/lib/legend/symbol-generator'
@@ -248,15 +249,22 @@ export default function GenericMapContainer({
   // Highlighted features state - controlled by popup/table navigation
   const [highlightedFeatures, setHighlightedFeatures] = useState<HighlightFeature[]>([])
 
+  // Raster query results from unified click pipeline
+  const [rasterResults, setRasterResults] = useState<Map<string, RasterQueryResult>>(new Map())
+
   // Handle map ready callback
   const handleMapReady = useCallback((map: maplibregl.Map) => {
     onMapReady(map)
   }, [onMapReady])
 
-  // Callback for popup/table to update which features are highlighted
-  const handleHighlightChange = useCallback((features: HighlightFeature[]) => {
-    setHighlightedFeatures(features)
-  }, [])
+  // Handle URL state updates when selection changes (e.g., layer turned off)
+  const handleSelectionChange = useCallback((features: ClickedFeature[]) => {
+    setSelectedFeatureRefs(features.map(f => ({ layer: f.layerTitle || '', id: String(f.id) })))
+    if (features.length === 0) {
+      setClickBufferBounds(null)
+      setFeatureBbox(null)
+    }
+  }, [setSelectedFeatureRefs, setClickBufferBounds, setFeatureBbox])
 
   // Feature selection hook
   const {
@@ -265,14 +273,32 @@ export default function GenericMapContainer({
     handleLayerTurnedOff,
     clearAllSelections,
   } = useFeatureSelection({
-    viewMode,
-    selectedFeatureRefs,
-    setSelectedFeatureRefs,
-    setClickBufferBounds,
-    setFeatureBbox,
-    popupSheetRef,
-    onHighlightChange: handleHighlightChange,
+    onHighlightChange: setHighlightedFeatures,
+    onSelectionChange: handleSelectionChange,
   })
+
+  // Orchestrate click results: update raster state, feature selection, and popup
+  const handleClickResult = useCallback((result: ClickResult, options?: { additive?: boolean }) => {
+    setPopupCoords(null)
+    setRasterResults(result.rasterResults)
+
+    const hasRasterData = result.rasterResults.size > 0 &&
+      [...result.rasterResults.values()].some(r => r.data !== null)
+
+    // Update feature selection (handles additive, highlights, etc.)
+    handleFeatureClick(result.features, options)
+
+    if (result.features.length > 0 || hasRasterData) {
+      // Open popup if we have any results
+      if (viewMode === 'map') {
+        requestAnimationFrame(() => popupSheetRef.current?.open())
+      }
+    } else if (!options?.additive) {
+      // Empty non-additive click: clear URL state
+      setClickBufferBounds(null)
+      setFeatureBbox(null)
+    }
+  }, [handleFeatureClick, viewMode, setPopupCoords, setClickBufferBounds, setFeatureBbox])
 
   // Register layer turned off callback with parent context (safe - callback is stable)
   registerLayerTurnedOff(handleLayerTurnedOff)
@@ -430,12 +456,16 @@ export default function GenericMapContainer({
   // Clear highlights when selections are cleared
   const handleClearAllSelections = useCallback(() => {
     setHighlightedFeatures([])
+    setRasterResults(new Map())
     clearAllSelections()
+    setClickBufferBounds(null)
+    setFeatureBbox(null)
+    setSelectedFeatureRefs([])
     setPopupCoords(null)
     onClearSearch?.()
     setPanelState(prev => ({ ...prev, isSheetOpen: false }))
     setBoxSelectBounds(null)
-  }, [clearAllSelections, setPopupCoords, onClearSearch])
+  }, [clearAllSelections, setClickBufferBounds, setFeatureBbox, setSelectedFeatureRefs, setPopupCoords, onClearSearch])
 
   // Derived: click point for raster queries (center of click buffer)
   const clickPoint = useMemo(() => {
@@ -443,9 +473,10 @@ export default function GenericMapContainer({
     return getBboxCenter(clickBufferBounds)
   }, [clickBufferBounds])
 
-  // Unified popup data: groups features by layer + fetches raster values
+  // Unified popup data: groups features by layer + merges pre-fetched raster values
   const { popupData: popupContent } = usePopupData({
     vectorFeatures: selectedFeatures,
+    rasterResults,
     clickPoint,
     clickBbox: clickBufferBounds,
     layersConfig,
@@ -500,7 +531,7 @@ export default function GenericMapContainer({
             center={center}
             zoom={zoom}
             highlightFeatures={highlightedFeatures}
-            onFeatureClick={(...args) => { setPopupCoords(null); handleFeatureClick(...args) }}
+            onClickResult={handleClickResult}
             onMoveEnd={setMapPosition}
             layerFilters={layerFilters}
             onMapReady={handleMapReady}
@@ -545,7 +576,7 @@ export default function GenericMapContainer({
               popupTitle={popupTitle}
               onClose={handleSheetClose}
               onOpenChange={handleSheetOpenChange}
-              onHighlightChange={handleHighlightChange}
+              onHighlightChange={setHighlightedFeatures}
               width={panelState.sheetWidth}
               onWidthChange={(width) => setPanelState(prev => ({ ...prev, sheetWidth: width }))}
               isOpen={panelState.isSheetOpen}
@@ -570,7 +601,7 @@ export default function GenericMapContainer({
               popupTitle={popupTitle}
               onClose={handleSheetClose}
               onOpenChange={handleSheetOpenChange}
-              onHighlightChange={handleHighlightChange}
+              onHighlightChange={setHighlightedFeatures}
               isOpen={panelState.isSheetOpen}
             />
           </div>
@@ -625,7 +656,7 @@ export default function GenericMapContainer({
             onViewModeChange={handleViewModeChange}
             selectedFeatureRefs={selectedFeatureRefs}
             onSelectedFeaturesChange={setSelectedFeatureRefs}
-            onHighlightChange={handleHighlightChange}
+            onHighlightChange={setHighlightedFeatures}
           />
         )}
       </div>

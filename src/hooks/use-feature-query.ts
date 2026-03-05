@@ -1,12 +1,13 @@
 import { useMutation } from '@tanstack/react-query'
 import {
-  queryWFSFeatures,
+  queryMapFeatures,
   queryBoxSelectFeatures,
   queryPolygonFeatures,
   type ClickQueryParams as WFSQueryParams,
   type BoxSelectQueryParams,
   type PolygonQueryParams,
   type WfsFeature as ClickedFeature,
+  type MapQueryResult,
 } from '@/lib/map/wfs-service'
 
 interface UseFeatureQueryOptions {
@@ -23,7 +24,7 @@ export function useFeatureQuery(options: UseFeatureQueryOptions = {}) {
   // TanStack mutation for WFS click queries
   // Using scope to ensure serial execution (prevents race conditions on rapid clicks)
   const clickQuery = useMutation({
-    mutationFn: queryWFSFeatures,
+    mutationFn: queryMapFeatures,
     scope: { id: 'feature-query' },
   })
 
@@ -52,4 +53,4 @@ export function useFeatureQuery(options: UseFeatureQueryOptions = {}) {
 }
 
 // Re-export types for convenience
-export type { WFSQueryParams, BoxSelectQueryParams, PolygonQueryParams, ClickedFeature }
+export type { WFSQueryParams, BoxSelectQueryParams, PolygonQueryParams, ClickedFeature, MapQueryResult }
