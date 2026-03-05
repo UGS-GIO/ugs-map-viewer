@@ -7,6 +7,7 @@ import type {
   FieldConfig,
   NumberPopupFieldConfig,
   StringPopupFieldConfig,
+  DatePopupFieldConfig,
   CustomPopupFieldConfig,
 } from '@/lib/types/mapping-types'
 
@@ -16,6 +17,9 @@ export const isNumberField = (field: FieldConfig | undefined): field is NumberPo
 
 export const isStringField = (field: FieldConfig | undefined): field is StringPopupFieldConfig =>
   !!field && field.type === 'string'
+
+export const isDateField = (field: FieldConfig | undefined): field is DatePopupFieldConfig =>
+  !!field && field.type === 'date'
 
 export const isCustomField = (field: FieldConfig | undefined): field is CustomPopupFieldConfig =>
   !!field && field.type === 'custom'
@@ -46,8 +50,26 @@ export const getNumberFieldTransform = (config: NumberPopupFieldConfig): ((value
 }
 
 /**
+ * Format a date value into the specified format
+ */
+export const formatDate = (value: unknown, format: DatePopupFieldConfig['format'] = 'iso'): string => {
+  if (value === null || value === undefined || value === '') return ''
+  const date = new Date(String(value))
+  if (isNaN(date.getTime())) return String(value)
+
+  switch (format) {
+    case 'short':
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    case 'long':
+      return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    default:
+      return date.toISOString().slice(0, 10)
+  }
+}
+
+/**
  * Format a field value based on its config
- * Works for string, number, and custom field types
+ * Works for string, number, date, and custom field types
  */
 export const formatFieldValue = (
   fieldConfig: FieldConfig | undefined,
@@ -72,6 +94,11 @@ export const formatFieldValue = (
       return fieldConfig.transform(numberForTransform) ?? ''
     }
     return getNumberFieldTransform(fieldConfig)(numberForDefault)
+  }
+
+  // Handle date fields
+  if (isDateField(fieldConfig)) {
+    return formatDate(rawValue, fieldConfig.format)
   }
 
   // Handle string fields
