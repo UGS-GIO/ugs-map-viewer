@@ -191,14 +191,14 @@ export default function DataMap({
     latitude?: number
     zoom?: number
     bounds?: [[number, number], [number, number]]
-    fitBoundsOptions?: { padding: number }
+    fitBoundsOptions?: { padding: number; maxZoom?: number }
   } | null>(null)
   if (!initialViewRef.current) {
     const bbox = featureBbox || clickBufferBounds
     if (bbox) {
       initialViewRef.current = {
         bounds: [bbox.sw, bbox.ne],
-        fitBoundsOptions: { padding: 50 }
+        fitBoundsOptions: { padding: 50, maxZoom: 14 }
       }
     } else {
       initialViewRef.current = { longitude: center[0], latitude: center[1], zoom }
