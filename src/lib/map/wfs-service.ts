@@ -3,7 +3,10 @@
  * All spatial queries use CQL INTERSECTS for accurate geometry matching
  */
 import type { Geometry, Feature, Polygon } from 'geojson'
-import type { WMSLayerProps } from '@/lib/types/mapping-types'
+import type { WMSLayerProps, RasterSource } from '@/lib/types/mapping-types'
+import type { GeoServerGeoJSON } from '@/lib/types/geoserver-types'
+import { convertCoordinate } from '@/lib/map/conversion-utils'
+import { createPointBufferBbox } from '@/lib/map/utils'
 
 export interface WfsFeature {
   id: string | number
@@ -368,4 +371,139 @@ export interface PolygonQueryParams {
 export async function queryPolygonFeatures(params: PolygonQueryParams): Promise<WfsFeature[]> {
   const { polygon, visibleLayers, wmsUrl, pageSize = 100, layerFilters } = params
   return queryVisibleLayers(visibleLayers, polygon, wmsUrl, { paginate: true, pageSize }, layerFilters)
+}
+
+// =============================================================================
+// Unified click query: WFS + raster GetFeatureInfo in parallel
+// =============================================================================
+
+export interface RasterQueryResult {
+  data: GeoServerGeoJSON | null
+  rasterSource: RasterSource
+}
+
+export interface MapQueryResult {
+  vectorFeatures: WfsFeature[]
+  rasterResults: Map<string, RasterQueryResult>
+}
+
+/**
+ * Fetch WMS GetFeatureInfo for a raster layer at a point
+ */
+async function fetchRasterValue(
+  rasterSource: RasterSource,
+  point: { lng: number; lat: number },
+  bbox?: { sw: [number, number]; ne: [number, number] } | null
+): Promise<GeoServerGeoJSON | null> {
+  // Use provided bbox or create a proper 100m buffer around the point
+  let sw: [number, number]
+  let ne: [number, number]
+
+  if (bbox) {
+    sw = bbox.sw
+    ne = bbox.ne
+  } else {
+    // Create a 100m buffer using shared utility (accurate at any latitude)
+    const bufferedBbox = createPointBufferBbox([point.lng, point.lat], 0.1)
+    if (bufferedBbox) {
+      const [minX, minY, maxX, maxY] = bufferedBbox
+      sw = [minX, minY]
+      ne = [maxX, maxY]
+    } else {
+      // Fallback to simple offset if buffer fails
+      const fallback = 0.001
+      sw = [point.lng - fallback, point.lat - fallback]
+      ne = [point.lng + fallback, point.lat + fallback]
+    }
+  }
+
+  const width = 101
+  const height = 101
+
+  // Convert to Web Mercator (EPSG:3857) using proj4
+  const [sw3857x, sw3857y] = convertCoordinate(sw, 'EPSG:4326', 'EPSG:3857')
+  const [ne3857x, ne3857y] = convertCoordinate(ne, 'EPSG:4326', 'EPSG:3857')
+  const [x3857, y3857] = convertCoordinate([point.lng, point.lat], 'EPSG:4326', 'EPSG:3857')
+
+  // Calculate pixel position within the bbox
+  const pixelX = Math.round(((x3857 - sw3857x) / (ne3857x - sw3857x)) * width)
+  const pixelY = Math.round(((ne3857y - y3857) / (ne3857y - sw3857y)) * height)
+
+  const params = new URLSearchParams()
+  params.set('service', 'WMS')
+  params.set('version', '1.3.0')
+  params.set('request', 'GetFeatureInfo')
+  params.set('layers', rasterSource.layerName)
+  params.set('query_layers', rasterSource.layerName)
+  params.set('info_format', 'application/json')
+  params.set('CRS', 'EPSG:3857')
+  params.set('bbox', `${sw3857x},${sw3857y},${ne3857x},${ne3857y}`)
+  params.set('width', width.toString())
+  params.set('height', height.toString())
+  params.set('i', pixelX.toString())
+  params.set('j', pixelY.toString())
+  params.set('feature_count', '1')
+
+  const url = `${rasterSource.url}?${params.toString()}`
+
+  try {
+    const response = await fetch(url)
+    if (!response.ok) {
+      console.warn('[queryMapFeatures] Raster fetch failed:', response.status)
+      return null
+    }
+    return await response.json()
+  } catch (error) {
+    console.warn('[queryMapFeatures] Raster fetch error:', error)
+    return null
+  }
+}
+
+/**
+ * Query map features at a click point — fires WFS (vector) and WMS GetFeatureInfo
+ * (raster) queries in parallel and returns combined results.
+ */
+export async function queryMapFeatures(params: ClickQueryParams): Promise<MapQueryResult> {
+  const { point, visibleLayers, tolerance, mapInstance } = params
+
+  // Derive click point and bbox in WGS84
+  const center = mapInstance.unproject([point.x, point.y])
+  const sw = mapInstance.unproject([point.x - tolerance, point.y + tolerance])
+  const ne = mapInstance.unproject([point.x + tolerance, point.y - tolerance])
+  const clickPoint = { lng: center.lng, lat: center.lat }
+  const clickBbox = {
+    sw: [sw.lng, sw.lat] as [number, number],
+    ne: [ne.lng, ne.lat] as [number, number],
+  }
+
+  // Find layers with rasterSource config
+  const rasterQueries: { layerTitle: string; rasterSource: RasterSource }[] = []
+  for (const layer of visibleLayers) {
+    const sublayer = layer.sublayers?.[0]
+    if (sublayer?.queryable && sublayer?.rasterSource) {
+      rasterQueries.push({ layerTitle: layer.title, rasterSource: sublayer.rasterSource })
+    }
+  }
+
+  // Fire WFS and raster queries in parallel
+  const [vectorFeatures, rasterResponses] = await Promise.all([
+    queryWFSFeatures(params),
+    Promise.all(
+      rasterQueries.map(({ rasterSource }) =>
+        fetchRasterValue(rasterSource, clickPoint, clickBbox)
+      )
+    ),
+  ])
+
+  // Build raster results map
+  const rasterResults = new Map<string, RasterQueryResult>()
+  for (let i = 0; i < rasterQueries.length; i++) {
+    const { layerTitle, rasterSource } = rasterQueries[i]
+    rasterResults.set(layerTitle, {
+      data: rasterResponses[i],
+      rasterSource,
+    })
+  }
+
+  return { vectorFeatures, rasterResults }
 }
