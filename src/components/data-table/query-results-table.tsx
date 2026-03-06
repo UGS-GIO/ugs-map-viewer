@@ -208,13 +208,20 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         if (selectedLayer?.popupFields && Object.keys(selectedLayer.popupFields).length > 0) {
             const seen = new Set<string>();
             return Object.entries(selectedLayer.popupFields)
-                .filter(([, fieldConfig]) => {
-                    if (seen.has(fieldConfig.field)) return false;
-                    seen.add(fieldConfig.field);
+                .map(([label, fieldConfig], index) => {
+                    // Use unique id per column: custom fields use label slug so multiple custom columns (e.g. Location, Observed Measurement) all appear in table/export
+                    const id = fieldConfig.type === 'custom'
+                        ? (label || '').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_()-]/g, '') || `custom_${index}`
+                        : fieldConfig.field;
+                    return { label, fieldConfig, id };
+                })
+                .filter(({ id }) => {
+                    if (seen.has(id)) return false;
+                    seen.add(id);
                     return true;
                 })
-                .map(([label, fieldConfig]) => ({
-                    id: fieldConfig.field,
+                .map(({ label, fieldConfig, id }) => ({
+                    id,
                     label: label || fieldConfig.field.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
                     field: fieldConfig.field,
                     fieldConfig, // Preserve full config for formatting
