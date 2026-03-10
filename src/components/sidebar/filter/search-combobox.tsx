@@ -440,8 +440,9 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                 const concatnames = itemData.properties?.[sourceConfig.displayField];
                 if (concatnames) {
                     try {
+                        const searchParamName = sourceConfig.searchTerm || 'search_key';
                         const data = await geometryMutation.mutateAsync({
-                            searchParams: { search_key: concatnames },
+                            searchParams: { [searchParamName]: concatnames },
                             sourceConfig,
                         });
                         let features: Feature<Geometry, GeoJsonProperties>[] = [];
