@@ -10,7 +10,6 @@ import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
 import { PROD_POSTGREST_URL } from '@/lib/constants';
-//import { geothermalTEMLayerConfig} from './-data/layers/layers';
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox';
 
 export default function Map() {
@@ -22,20 +21,30 @@ export default function Map() {
     const searchConfig: SearchSourceConfig[] = [
         defaultMasqueradeConfig,
         {
-          type: 'postgREST',
-          url: PROD_POSTGREST_URL,
-          functionName: "search_geothermal_thermal_data",
-          //layerName: geothermalTEMLayerConfig,
-          searchTerm: "search_term",
-          sourceName: 'Geothermal Thermal Data',
-          crs: 'EPSG:4326',
-          displayField: "concatnames",
-          params: { select: 'station' }, // Exclude geometry from search for fast response
-          headers: {
-            'Accept-Profile': 'minearals',
-          }
+            type: 'postgREST',
+            url: `${PROD_POSTGREST_URL}/enmin_geophysics_tem_current`,
+            sourceName: 'TEM Data',
+            displayField: 'station',
+            crs: 'EPSG:4326',
+            params: {
+                targetFields: ['station', 'project', 'unique_id'],
+                select: 'station,project,unique_id',
+            },
+            headers: { 'Accept-Profile': 'emp' },
         },
-      ];
+        {
+            type: 'postgREST',
+            url: `${PROD_POSTGREST_URL}/enmin_geophysics_ugsgravity_current`,
+            sourceName: 'Gravity Stations',
+            displayField: 'unique_id',
+            crs: 'EPSG:4326',
+            params: {
+                targetFields: ['unique_id', 'station', 'project'],
+                select: 'unique_id,station,project',
+            },
+            headers: { 'Accept-Profile': 'emp' },
+        },
+    ];
 
     return (
         <MapContext.Provider value={contextValue}>
