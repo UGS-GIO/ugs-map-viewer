@@ -582,6 +582,7 @@ const geothermalTEMLayerConfig: WMSLayerProps = {
                         return lat != null && lon != null ? `${lat}, ${lon}` : '';
                     }
                 },
+                'Data Quality': { field: 'dataquality', type: 'string' },
                 'Site Name': { field: 'station', type: 'string' },
                 'Date': { field: 'date', type: 'date' },
                 'Archive Link': { field: 'archivelink', type: 'string' },
