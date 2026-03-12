@@ -14,7 +14,7 @@ type ReviewableLayerInfo = PostgRESTRowOf<{
 
 export interface LayerOption {
     value: string; // The raw name, e.g., 'hazards:hazards_qfaults_current'
-    label: string; // The friendly title, e.g., 'Hazardous (Quaternary Age) Faults - Statewide'
+    label: string; // The friendly title, e.g., 'Hazardous Faults - Utah Quaternary Fault Database'
 }
 
 const fetchReviewableLayers = async (): Promise<ReviewableLayerInfo[]> => {
