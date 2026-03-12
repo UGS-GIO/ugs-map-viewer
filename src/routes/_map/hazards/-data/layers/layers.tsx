@@ -227,56 +227,40 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 'Slip Rate': { field: 'sliprate', type: 'string' },
                 'Structure Class': { field: 'faultclass', type: 'string' },
                 'Structure Age': { field: 'faultage', type: 'string' },
-                '': {
-                    field: 'usgs_link',
-                    type: 'custom',
-                    transform: (props: GeoJsonProperties | null | undefined) => {
-                        if (!props) {
-                            return 'No USGS link available';
-                        }
-                        return props['usgs_link'] || 'No USGS link available';
-                    }
-                },
-                '': {
+                'UGS Source Report': {
                     field: 'notes',
                     type: 'custom',
                     transform: (props: GeoJsonProperties | null | undefined) => {
-                        if (!props) {
-                            return 'No USGS link available';
-                        }
-                        return props['usgs_link'] || 'No USGS link available';
+                        return props?.['notes'] || 'No UGS link available';
+                    }
+                },
+                ' ': {
+                    field: 'usgs_link',
+                    type: 'custom',
+                    transform: (props: GeoJsonProperties | null | undefined) => {
+                        return props?.['usgs_link'] || 'No USGS link available';
                     }
                 },
             },
             linkFields: {
-                'usgs_link': {
-                    transform: (usgsLink: unknown) => {
-                        if (!usgsLink || usgsLink === 'No USGS link available') {
-                            return [{
-                                label: 'No USGS link available',
-                                href: ''
-                            }];
+                'notes': {
+                    transform: (value: unknown) => {
+                        const str = String(value ?? '');
+                        if (!str || !str.startsWith('http')) {
+                            return [{ label: 'Detailed report not currently available', href: '' }];
                         }
-                        return [{
-                            label: 'USGS Reference',
-                            href: `${usgsLink}`
-                        }];
+                        return [{ label: str, href: str }];
                     }
                 },
-                'notes': {
-                    transform: (ugsLink: unknown) => {
-                        if (!ugsLink || ugsLink === 'No UGS link available') {
-                            return [{
-                                label: 'No UGS link available',
-                                href: ''
-                            }];
+                'usgs_link': {
+                    transform: (value: unknown) => {
+                        const str = String(value ?? '');
+                        if (!str || !str.startsWith('http')) {
+                            return [{ label: str || 'No USGS link available', href: '' }];
                         }
-                        return [{
-                            label: 'UGS Source Report',
-                            href: `${ugsLink}`
-                        }];
+                        return [{ label: 'USGS Reference', href: str }];
                     }
-                }
+                },
             },
         },
     ],

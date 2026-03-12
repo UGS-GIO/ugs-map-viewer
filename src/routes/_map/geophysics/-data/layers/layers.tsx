@@ -1,5 +1,6 @@
 import { ENERGY_MINERALS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL } from "@/lib/constants";
 import { ArcGISMapServerLayerProps, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { GeoJsonProperties } from "geojson";
 import { toTitleCase, toSentenceCase } from "@/lib/utils";
 
 // Roads WMS Layer
@@ -192,32 +193,40 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 'Slip Rate': { field: 'sliprate', type: 'string' },
                 'Structure Class': { field: 'faultclass', type: 'string' },
                 'Structure Age': { field: 'faultage', type: 'string' },
-                '': {
+                'UGS Source Report': {
+                    field: 'notes',
+                    type: 'custom',
+                    transform: (props: GeoJsonProperties | null | undefined) => {
+                        return props?.['notes'] || 'No UGS link available';
+                    }
+                },
+                ' ': {
                     field: 'usgs_link',
                     type: 'custom',
-                    transform: (value) => {
-                        if (!value) {
-                            return 'No USGS link available';
-                        }
-                        return value['usgs_link'] || 'No USGS link available';
+                    transform: (props: GeoJsonProperties | null | undefined) => {
+                        return props?.['usgs_link'] || 'No USGS link available';
                     }
                 },
             },
             linkFields: {
-                'usgs_link': {
-                    transform: (usgsLink) => {
-                        if (!usgsLink || usgsLink === 'No USGS link available') {
-                            return [{
-                                label: 'No USGS link available',
-                                href: ''
-                            }];
+                'notes': {
+                    transform: (value: unknown) => {
+                        const str = String(value ?? '');
+                        if (!str || !str.startsWith('http')) {
+                            return [{ label: 'Detailed report not currently available', href: '' }];
                         }
-                        return [{
-                            label: 'Detailed Report',
-                            href: `${usgsLink}`
-                        }];
+                        return [{ label: str, href: str }];
                     }
-                }
+                },
+                'usgs_link': {
+                    transform: (value: unknown) => {
+                        const str = String(value ?? '');
+                        if (!str || !str.startsWith('http')) {
+                            return [{ label: str || 'No USGS link available', href: '' }];
+                        }
+                        return [{ label: 'USGS Reference', href: str }];
+                    }
+                },
             },
         },
     ],
