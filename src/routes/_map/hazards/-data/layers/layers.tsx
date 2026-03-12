@@ -237,6 +237,16 @@ const qFaultsWMSConfig: WMSLayerProps = {
                         return props['usgs_link'] || 'No USGS link available';
                     }
                 },
+                '': {
+                    field: 'notes',
+                    type: 'custom',
+                    transform: (props: GeoJsonProperties | null | undefined) => {
+                        if (!props) {
+                            return 'No USGS link available';
+                        }
+                        return props['usgs_link'] || 'No USGS link available';
+                    }
+                },
             },
             linkFields: {
                 'usgs_link': {
@@ -248,8 +258,22 @@ const qFaultsWMSConfig: WMSLayerProps = {
                             }];
                         }
                         return [{
-                            label: 'Detailed Report',
+                            label: 'USGS Reference',
                             href: `${usgsLink}`
+                        }];
+                    }
+                },
+                'notes': {
+                    transform: (ugsLink: unknown) => {
+                        if (!ugsLink || ugsLink === 'No UGS link available') {
+                            return [{
+                                label: 'No UGS link available',
+                                href: ''
+                            }];
+                        }
+                        return [{
+                            label: 'UGS Source Report',
+                            href: `${ugsLink}`
                         }];
                     }
                 }
