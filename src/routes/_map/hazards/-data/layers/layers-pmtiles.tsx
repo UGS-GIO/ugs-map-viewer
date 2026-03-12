@@ -205,7 +205,7 @@ export interface QFaultsFeatureType {
 
 }
 export const qFaultsLayerName = 'hazards_qfaults_current';
-export const qFaultsWMSTitle = 'Hazardous (Quaternary Age) Faults - Statewide';
+export const qFaultsWMSTitle = 'Hazardous Faults - Utah Quaternary Fault Database';
 
 const qFaultsConfig: PMTilesLayerProps = {
     type: 'pmtiles',

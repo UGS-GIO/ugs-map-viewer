@@ -196,7 +196,7 @@ export interface QFaultsFeatureType {
     strandnames: string[];
 }
 export const qFaultsLayerName = 'quaternaryfaults_review';
-export const qFaultsWMSTitle = 'Hazardous (Quaternary Age) Faults - Statewide: Review';
+export const qFaultsWMSTitle = 'Hazardous Faults - Utah Quaternary Fault Database: Review';
 const qFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
