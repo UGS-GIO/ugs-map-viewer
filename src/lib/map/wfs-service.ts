@@ -271,7 +271,11 @@ async function queryVisibleLayers(
   for (const layer of visibleLayers) {
     // Use layer's own URL when present, fall back to global wmsUrl
     const layerWfsUrl = (layer.url || wmsUrl).replace(/\/wms\/?$/, '/wfs')
-    const cqlFilter = layerFilters?.[layer.title]
+    const dynamicFilter = layerFilters?.[layer.title]
+    const staticFilter = layer.customLayerParameters?.cql_filter
+    const cqlFilter = dynamicFilter && staticFilter
+      ? `(${dynamicFilter}) AND (${staticFilter})`
+      : dynamicFilter || staticFilter
     for (const sublayer of layer.sublayers || []) {
       if (sublayer.queryable === false) continue
       const typeName = sublayer.name || ''

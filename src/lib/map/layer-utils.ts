@@ -95,7 +95,7 @@ export function parseWmsUrl(wmsUrl: string): ParsedWmsUrl | null {
 /**
  * Build a WMS GetMap tile URL for MapLibre
  */
-export function buildWmsTileUrl(baseUrl: string, layerName: string, cqlFilter?: string): string {
+export function buildWmsTileUrl(baseUrl: string, layerName: string, cqlFilter?: string, customLayerParameters?: Record<string, string> | null): string {
   const params = new URLSearchParams({
     service: 'WMS',
     version: '1.1.0',
@@ -108,8 +108,22 @@ export function buildWmsTileUrl(baseUrl: string, layerName: string, cqlFilter?: 
     format: 'image/png',
     transparent: 'true',
   })
-  if (cqlFilter) {
-    params.set('CQL_FILTER', cqlFilter)
+
+  // Merge dynamic UI filter with static customLayerParameters cql_filter
+  const staticCql = customLayerParameters?.cql_filter
+  const mergedCql = cqlFilter && staticCql
+    ? `(${cqlFilter}) AND (${staticCql})`
+    : cqlFilter || staticCql
+  if (mergedCql) {
+    params.set('CQL_FILTER', mergedCql)
+  }
+
+  // Add remaining custom parameters (excluding cql_filter already handled above)
+  if (customLayerParameters) {
+    for (const [key, value] of Object.entries(customLayerParameters)) {
+      if (key === 'cql_filter') continue
+      params.set(key, value)
+    }
   }
   return `${baseUrl}?${params.toString()}&bbox={bbox-epsg-3857}`
 }

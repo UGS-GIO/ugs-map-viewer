@@ -146,16 +146,17 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/hazards-review': typeof MapHazardsReviewRouteRouteWithChildren
-  '/hazards': typeof MapHazardsIndexLazyRoute
+  '/hazards': typeof ReportHazardsRouteRouteWithChildren
   '/login': typeof AuthLoginRoute
   '/hazards/report': typeof ReportHazardsReportLazyRoute
-  '/carbonstorage': typeof MapCarbonstorageIndexLazyRoute
-  '/geophysics': typeof MapGeophysicsIndexLazyRoute
+  '/carbonstorage/': typeof MapCarbonstorageIndexLazyRoute
+  '/geophysics/': typeof MapGeophysicsIndexLazyRoute
   '/hazards-review/': typeof MapHazardsReviewIndexLazyRoute
-  '/minerals': typeof MapMineralsIndexLazyRoute
-  '/subsurface': typeof MapSubsurfaceIndexLazyRoute
-  '/wetlandplants': typeof MapWetlandplantsIndexLazyRoute
-  '/wetlands': typeof MapWetlandsIndexLazyRoute
+  '/hazards/': typeof MapHazardsIndexLazyRoute
+  '/minerals/': typeof MapMineralsIndexLazyRoute
+  '/subsurface/': typeof MapSubsurfaceIndexLazyRoute
+  '/wetlandplants/': typeof MapWetlandplantsIndexLazyRoute
+  '/wetlands/': typeof MapWetlandsIndexLazyRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -200,13 +201,14 @@ export interface FileRouteTypes {
     | '/hazards'
     | '/login'
     | '/hazards/report'
-    | '/carbonstorage'
-    | '/geophysics'
+    | '/carbonstorage/'
+    | '/geophysics/'
     | '/hazards-review/'
-    | '/minerals'
-    | '/subsurface'
-    | '/wetlandplants'
-    | '/wetlands'
+    | '/hazards/'
+    | '/minerals/'
+    | '/subsurface/'
+    | '/wetlandplants/'
+    | '/wetlands/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -255,14 +257,14 @@ declare module '@tanstack/react-router' {
     '/_map': {
       id: '/_map'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof MapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth': {
       id: '/_auth'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -276,7 +278,7 @@ declare module '@tanstack/react-router' {
     '/_report': {
       id: '/_report'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof ReportRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -311,35 +313,35 @@ declare module '@tanstack/react-router' {
     '/_map/wetlands/': {
       id: '/_map/wetlands/'
       path: '/wetlands'
-      fullPath: '/wetlands'
+      fullPath: '/wetlands/'
       preLoaderRoute: typeof MapWetlandsIndexLazyRouteImport
       parentRoute: typeof MapRoute
     }
     '/_map/wetlandplants/': {
       id: '/_map/wetlandplants/'
       path: '/wetlandplants'
-      fullPath: '/wetlandplants'
+      fullPath: '/wetlandplants/'
       preLoaderRoute: typeof MapWetlandplantsIndexLazyRouteImport
       parentRoute: typeof MapRoute
     }
     '/_map/subsurface/': {
       id: '/_map/subsurface/'
       path: '/subsurface'
-      fullPath: '/subsurface'
+      fullPath: '/subsurface/'
       preLoaderRoute: typeof MapSubsurfaceIndexLazyRouteImport
       parentRoute: typeof MapRoute
     }
     '/_map/minerals/': {
       id: '/_map/minerals/'
       path: '/minerals'
-      fullPath: '/minerals'
+      fullPath: '/minerals/'
       preLoaderRoute: typeof MapMineralsIndexLazyRouteImport
       parentRoute: typeof MapRoute
     }
     '/_map/hazards/': {
       id: '/_map/hazards/'
       path: '/hazards'
-      fullPath: '/hazards'
+      fullPath: '/hazards/'
       preLoaderRoute: typeof MapHazardsIndexLazyRouteImport
       parentRoute: typeof MapRoute
     }
@@ -353,14 +355,14 @@ declare module '@tanstack/react-router' {
     '/_map/geophysics/': {
       id: '/_map/geophysics/'
       path: '/geophysics'
-      fullPath: '/geophysics'
+      fullPath: '/geophysics/'
       preLoaderRoute: typeof MapGeophysicsIndexLazyRouteImport
       parentRoute: typeof MapRoute
     }
     '/_map/carbonstorage/': {
       id: '/_map/carbonstorage/'
       path: '/carbonstorage'
-      fullPath: '/carbonstorage'
+      fullPath: '/carbonstorage/'
       preLoaderRoute: typeof MapCarbonstorageIndexLazyRouteImport
       parentRoute: typeof MapRoute
     }
