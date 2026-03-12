@@ -1,5 +1,5 @@
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE, PROD_POSTGREST_URL, GEN_GIS_WORKSPACE } from "@/lib/constants";
-import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { LayerProps, WMSLayerProps, LinkDefinition } from "@/lib/types/mapping-types";
 import { GeoJsonProperties } from "geojson";
 import GeoJSON from "geojson";
 
@@ -227,56 +227,38 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 'Slip Rate': { field: 'sliprate', type: 'string' },
                 'Structure Class': { field: 'faultclass', type: 'string' },
                 'Structure Age': { field: 'faultage', type: 'string' },
-                '': {
-                    field: 'usgs_link',
-                    type: 'custom',
-                    transform: (props: GeoJsonProperties | null | undefined) => {
-                        if (!props) {
-                            return 'No USGS link available';
-                        }
-                        return props['usgs_link'] || 'No USGS link available';
-                    }
-                },
-                '': {
+                'UGS Source Report': {
                     field: 'notes',
                     type: 'custom',
                     transform: (props: GeoJsonProperties | null | undefined) => {
-                        if (!props) {
-                            return 'No USGS link available';
-                        }
-                        return props['usgs_link'] || 'No USGS link available';
+                        return props?.['notes'] || 'No UGS link available';
+                    }
+                },
+                ' ': {
+                    field: 'usgs_link',
+                    type: 'custom',
+                    transform: (props: GeoJsonProperties | null | undefined) => {
+                        return props?.['usgs_link'] || 'No USGS link available';
                     }
                 },
             },
             linkFields: {
-                'usgs_link': {
-                    transform: (usgsLink: unknown) => {
-                        if (!usgsLink || usgsLink === 'No USGS link available') {
-                            return [{
-                                label: 'No USGS link available',
-                                href: ''
-                            }];
+                'notes': {
+                    transform: (value: unknown) => {
+                        if (!value || value === 'No UGS link available') {
+                            return [{ label: 'No UGS link available', href: '' }];
                         }
-                        return [{
-                            label: 'USGS Reference',
-                            href: `${usgsLink}`
-                        }];
+                        return [{ label: `${value}`, href: `${value}` }];
                     }
                 },
-                'notes': {
-                    transform: (ugsLink: unknown) => {
-                        if (!ugsLink || ugsLink === 'No UGS link available') {
-                            return [{
-                                label: 'No UGS link available',
-                                href: ''
-                            }];
+                'usgs_link': {
+                    transform: (value: unknown) => {
+                        if (!value || value === 'No USGS link available') {
+                            return [{ label: 'No USGS link available', href: '' }];
                         }
-                        return [{
-                            label: 'UGS Source Report',
-                            href: `${ugsLink}`
-                        }];
+                        return [{ label: 'USGS Reference', href: `${value}` }];
                     }
-                }
+                },
             },
         },
     ],
