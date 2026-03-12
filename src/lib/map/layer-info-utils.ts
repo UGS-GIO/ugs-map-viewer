@@ -3,8 +3,6 @@
  */
 import type {
     LayerProps,
-    WMSLayerProps,
-    WFSLayerProps,
     FieldConfig,
     RelatedTable,
     LinkFields,
@@ -12,6 +10,7 @@ import type {
     ColorCodingRecordFunction,
     ColorCodingMode,
 } from '@/lib/types/mapping-types';
+import { isWMSLayer, isWFSLayer } from '@/lib/map/layer-utils';
 
 export interface VisibleLayerInfo {
     visible: boolean;
@@ -21,7 +20,7 @@ export interface VisibleLayerInfo {
     relatedTables?: RelatedTable[];
     queryable?: boolean;
     linkFields?: LinkFields;
-    customLayerParameters?: object | null;
+    customLayerParameters?: Record<string, string> | null;
     rasterSource?: RasterSource;
     schema?: string;
     layerCrs: string;
@@ -51,7 +50,9 @@ export function buildVisibleLayersMap(layers: LayerProps[]): VisibleLayersMap {
 
         if (!('sublayers' in layer) || !layer.sublayers) return;
 
-        const crs = (layer as WMSLayerProps | WFSLayerProps).crs || 'EPSG:4326';
+        const wmsLayer = isWMSLayer(layer) ? layer : undefined;
+        const wfsLayer = isWFSLayer(layer) ? layer : undefined;
+        const crs = (wmsLayer?.crs ?? wfsLayer?.crs) || 'EPSG:4326';
         const prefix = layer.type === 'wms' ? '' : `${layer.type}:`;
 
         for (const sub of layer.sublayers) {
@@ -65,14 +66,14 @@ export function buildVisibleLayersMap(layers: LayerProps[]): VisibleLayersMap {
                 relatedTables: sub.relatedTables,
                 queryable: sub.queryable ?? true,
                 linkFields: sub.linkFields,
-                customLayerParameters: layer.type === 'wms' ? (layer as WMSLayerProps).customLayerParameters ?? undefined : undefined,
+                customLayerParameters: wmsLayer?.customLayerParameters ?? undefined,
                 rasterSource: sub.rasterSource,
                 schema: sub.schema,
                 layerCrs: layer.type === 'pmtiles' ? 'EPSG:4326' : crs,
                 colorCodingMap: sub.colorCodingMap,
                 colorCodingMode: sub.colorCodingMode,
-                wfsUrl: layer.type === 'wfs' ? (layer as WFSLayerProps).wfsUrl : undefined,
-                typeName: layer.type === 'wfs' ? (layer as WFSLayerProps).typeName : undefined,
+                wfsUrl: wfsLayer?.wfsUrl,
+                typeName: wfsLayer?.typeName,
             };
         }
     };

@@ -566,6 +566,7 @@ const geothermalTEMLayerConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalTEMLayerTitle,
     visible: true,
+    customLayerParameters: { cql_filter: "dataquality <> '3'" },
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalTEMLayerName}`,

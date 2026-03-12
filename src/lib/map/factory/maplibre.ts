@@ -350,7 +350,7 @@ export class MapLibreMapFactory implements MapFactory {
     if (layerConfig.customLayerParameters) {
       for (const [key, value] of Object.entries(layerConfig.customLayerParameters)) {
         if (value !== null && value !== undefined) {
-          params.set(key.toLowerCase(), String(value));
+          params.set(key, String(value));
         }
       }
     }
