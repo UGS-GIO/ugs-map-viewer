@@ -630,7 +630,7 @@ export default function DataMap({
           const layerName = getWmsLayerName(layer)
           const cqlFilter = layerFilters[layer.title]
           const layerWmsUrl = layer.url || wmsUrl
-          const tileUrl = buildWmsTileUrl(layerWmsUrl, layerName, cqlFilter)
+          const tileUrl = buildWmsTileUrl(layerWmsUrl, layerName, cqlFilter, layer.customLayerParameters)
 
           return (
             <Source

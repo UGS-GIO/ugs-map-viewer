@@ -31,7 +31,7 @@ export interface LayerContentProps {
     linkFields?: LinkFields
     colorCodingMap?: ColorCodingRecordFunction
     colorCodingMode?: ColorCodingMode
-    customLayerParameters?: { cql_filter?: string; [key: string]: unknown }
+    customLayerParameters?: Record<string, string> | null
     rasterSource?: ProcessedRasterSource
     visible: boolean
     queryable?: boolean

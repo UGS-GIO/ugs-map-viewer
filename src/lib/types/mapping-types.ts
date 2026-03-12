@@ -109,7 +109,7 @@ interface BaseLayerProps {
 export interface WMSLayerProps extends BaseLayerProps {
     type: 'wms';
     sublayers: ExtendedSublayerProperties[];
-    customLayerParameters?: object | null | undefined;
+    customLayerParameters?: Record<string, string> | null;
     crs?: string; // EPSG code (e.g., 'EPSG:26912', 'EPSG:3857') for WMS GetFeatureInfo requests
 }
 
