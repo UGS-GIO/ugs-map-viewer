@@ -264,7 +264,7 @@ const qFaultsConfig: PMTilesLayerProps = {
 };
 
 
-const surfaceFaultRuptureLayerName = 'surfacefaultrupture_current';
+const surfaceFaultRuptureLayerName = 'hazards_surfacefaultrupture_current';
 const surfaceFaultRuptureTitle = 'Surface-Fault-Rupture Hazard Special-Study Zones';
 const surfaceFaultRuptureConfig: PMTilesLayerProps = {
     type: 'pmtiles',
@@ -276,7 +276,7 @@ const surfaceFaultRuptureConfig: PMTilesLayerProps = {
     opacity: 0.75,
     sublayers: [
         {
-            name: 'surfacefaultrupture_current',
+            name: 'hazards_surfacefaultrupture_current',
             queryable: true,
             popupFields: {
                 'Mapped Scale': { field: 'sfrmappedscale', type: 'string' },

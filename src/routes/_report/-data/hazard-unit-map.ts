@@ -8,7 +8,7 @@ export const quaternaryFaultsHazardCode = 'QFF';
 export const hazardLayerNameMap = {
     // Earthquake Hazards
     [quaternaryFaultsHazardCode]: `${HAZARDS_WORKSPACE}:hazards_qfaults_current`,
-    'SFR': `${HAZARDS_WORKSPACE}:surfacefaultrupture_current`,
+    'SFR': `${HAZARDS_WORKSPACE}:hazards_surfacefaultrupture_current`,
     'LQS': `${HAZARDS_WORKSPACE}:liquefaction_current`,
     [groundshakingHazardCode]: `${HAZARDS_WORKSPACE}:groundshaking_current`,
 

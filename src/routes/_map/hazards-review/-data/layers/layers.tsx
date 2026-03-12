@@ -245,7 +245,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
 };
 
 
-const surfaceFaultRuptureLayerName = 'surfacefaultrupture_current';
+const surfaceFaultRuptureLayerName = 'hazards_surfacefaultrupture_current';
 const surfaceFaultRuptureWMSTitle = 'Surface-Fault-Rupture Hazard Special-Study Zones';
 const surfaceFaultRuptureWMSConfig: WMSLayerProps = {
     type: 'wms',
