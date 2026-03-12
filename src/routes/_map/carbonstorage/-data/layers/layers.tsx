@@ -448,7 +448,7 @@ const faultsWMSConfig: WMSLayerProps = {
 };
 
 const qFaultsLayerName = 'hazards_qfaults_current';
-const qFaultsWMSTitle = 'Hazardous (Quaternary Age) Faults';
+const qFaultsWMSTitle = 'Hazardous Faults - Utah Quaternary Fault Database';
 const qFaultsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
