@@ -397,10 +397,12 @@ export default function DataMap({
         const nePoint = map.project([clickBufferBounds.ne[0], clickBufferBounds.ne[1]])
         const tolerance = Math.abs(nePoint.x - swPoint.x) / 2
 
+        // Re-emit bounds so popup opens via handleClickBufferChange
+        onClickBufferChange?.(clickBufferBounds)
         queryAtPoint(map, centerPoint, tolerance || clickTolerance, false)
       }
     }
-  }, [onMapReady, clickBufferBounds, onFeatureClick, visibleWmsLayers, visibleWfsLayers, clickTolerance, clickQuery, wmsUrl, layerFilters])
+  }, [onMapReady, clickBufferBounds, onFeatureClick, visibleWmsLayers, visibleWfsLayers, clickTolerance, clickQuery, wmsUrl, layerFilters, onClickBufferChange])
 
   // Combine loading states
   const showLoading = isLoading || queryLoading
