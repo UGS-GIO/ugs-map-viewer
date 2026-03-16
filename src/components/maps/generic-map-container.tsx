@@ -274,6 +274,14 @@ export default function GenericMapContainer({
     onHighlightChange: handleHighlightChange,
   })
 
+  // Wrap setClickBufferBounds to also open the popup on click (handles raster-only layers)
+  const handleClickBufferChange = useCallback((bounds: { sw: [number, number]; ne: [number, number] } | null) => {
+    setClickBufferBounds(bounds)
+    if (bounds && viewMode === 'map') {
+      requestAnimationFrame(() => popupSheetRef.current?.open())
+    }
+  }, [setClickBufferBounds, viewMode])
+
   // Register layer turned off callback with parent context (safe - callback is stable)
   registerLayerTurnedOff(handleLayerTurnedOff)
 
@@ -454,13 +462,6 @@ export default function GenericMapContainer({
   // Derived: has results (includes raster-only layers)
   const hasResults = useMemo(() => popupContent.length > 0, [popupContent])
 
-  // Open popup when raster-only results arrive (no vector features to trigger it)
-  useEffect(() => {
-    if (popupContent.length > 0 && selectedFeatures.length === 0 && viewMode === 'map') {
-      requestAnimationFrame(() => popupSheetRef.current?.open())
-    }
-  }, [popupContent, selectedFeatures.length, viewMode])
-
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode)
     if (mode === 'map' && hasResults) {
@@ -513,7 +514,7 @@ export default function GenericMapContainer({
             onMapReady={handleMapReady}
             basemapId={basemap}
             clickBufferBounds={clickBufferBounds}
-            onClickBufferChange={setClickBufferBounds}
+            onClickBufferChange={handleClickBufferChange}
             featureBbox={featureBbox}
             onFeatureBboxChange={setFeatureBbox}
             activeDrawShape={activeDrawShape}
