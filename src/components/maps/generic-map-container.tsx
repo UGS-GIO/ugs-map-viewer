@@ -454,6 +454,13 @@ export default function GenericMapContainer({
   // Derived: has results (includes raster-only layers)
   const hasResults = useMemo(() => popupContent.length > 0, [popupContent])
 
+  // Open popup when raster-only results arrive (no vector features to trigger it)
+  useEffect(() => {
+    if (popupContent.length > 0 && selectedFeatures.length === 0 && viewMode === 'map') {
+      requestAnimationFrame(() => popupSheetRef.current?.open())
+    }
+  }, [popupContent, selectedFeatures.length, viewMode])
+
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode)
     if (mode === 'map' && hasResults) {
