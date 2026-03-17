@@ -176,7 +176,7 @@ const dataSources = (
             The data exists as an attributed GIS feature class available for download: <Link to="https://geology.utah.gov/docs/zip/Geologic_Hazards_Geodatabase.gdb.zip">GIS Data</Link>
         </p>
         <p className="font-bold">
-            Database Updated January 2026
+            Database Updated March 2026
         </p>
         <p className="font-bold">
             {projection}
