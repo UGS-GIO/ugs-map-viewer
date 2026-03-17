@@ -274,6 +274,14 @@ export default function GenericMapContainer({
     onHighlightChange: handleHighlightChange,
   })
 
+  // Wrap setClickBufferBounds to also open the popup on click (handles raster-only layers)
+  const handleClickBufferChange = useCallback((bounds: { sw: [number, number]; ne: [number, number] } | null) => {
+    setClickBufferBounds(bounds)
+    if (bounds && viewMode === 'map') {
+      requestAnimationFrame(() => popupSheetRef.current?.open())
+    }
+  }, [setClickBufferBounds, viewMode])
+
   // Register layer turned off callback with parent context (safe - callback is stable)
   registerLayerTurnedOff(handleLayerTurnedOff)
 
@@ -506,7 +514,7 @@ export default function GenericMapContainer({
             onMapReady={handleMapReady}
             basemapId={basemap}
             clickBufferBounds={clickBufferBounds}
-            onClickBufferChange={setClickBufferBounds}
+            onClickBufferChange={handleClickBufferChange}
             featureBbox={featureBbox}
             onFeatureBboxChange={setFeatureBbox}
             activeDrawShape={activeDrawShape}
