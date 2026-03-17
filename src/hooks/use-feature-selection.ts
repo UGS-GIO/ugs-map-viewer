@@ -69,20 +69,18 @@ export function useFeatureSelection({
 
       // If no features remain, clear URL state
       if (remaining.length === 0) {
-        setClickBufferBounds(null)
         setFeatureBbox(null)
       }
 
       return remaining
     })
-  }, [setSelectedFeatureRefs, setClickBufferBounds, setFeatureBbox, onHighlightChange])
+  }, [setSelectedFeatureRefs, setFeatureBbox, onHighlightChange])
 
   // Handle feature click
   const handleFeatureClick = useCallback((features: ClickedFeature[], options?: { additive?: boolean }) => {
     // Clear highlights when clearing selection (non-additive with no features)
     if (!options?.additive && features.length === 0) {
       onHighlightChange?.([])
-      setClickBufferBounds(null)
       setSelectedFeatures([])
       return
     }
@@ -126,7 +124,7 @@ export function useFeatureSelection({
     if (features.length > 0 && viewMode === 'map') {
       requestAnimationFrame(() => popupSheetRef.current?.open())
     }
-  }, [viewMode, setClickBufferBounds, popupSheetRef, onHighlightChange])
+  }, [viewMode, popupSheetRef, onHighlightChange])
 
   // Clear all selections
   const clearAllSelections = useCallback(() => {
