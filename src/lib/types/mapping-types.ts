@@ -41,6 +41,8 @@ interface BaseFieldConfig {
     type: 'string' | 'number' | 'date' | 'custom';
     /** Tooltip text shown on hover over the field label */
     description?: string;
+    /** Whether this field is sortable in the table. Defaults to true for string/number/date, false for custom. */
+    sortable?: boolean;
 }
 
 // String-specific field configuration
