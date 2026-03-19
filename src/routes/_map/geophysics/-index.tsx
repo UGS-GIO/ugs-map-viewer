@@ -28,7 +28,7 @@ export default function Map() {
             sourceName: 'TEM Data',
             displayField: 'station',
             crs: 'EPSG:4326',
-            params: { select: 'station,project,unique_id' },
+            params: { select: 'station,project,unique_id,geom' },
             headers: { 'Accept-Profile': 'emp' },
         },
         {
@@ -39,7 +39,7 @@ export default function Map() {
             sourceName: 'Gravity Stations',
             displayField: 'unique_id',
             crs: 'EPSG:4326',
-            params: { select: 'unique_id,station,project' },
+            params: { select: 'unique_id,station,project,geom' },
             headers: { 'Accept-Profile': 'emp' },
         },
     ];
