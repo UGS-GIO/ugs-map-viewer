@@ -304,8 +304,8 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                     }
                 },
                 'Class': { field: 'class', type: 'string' },
-                'Depth of Well': { field: 'depth', type: 'string' },
-                'Flow': { field: 'flow', type: 'string' },
+                'Depth of Well': { field: 'depth', type: 'number' },
+                'Flow': { field: 'flow', type: 'number' },
                 'Rate': { field: 'rate', type: 'string' },
                 'Location': { field: 'lat', type: 'string' },
                 'UTM (Easting/Northing)': {
@@ -525,12 +525,10 @@ const gravityStationsLayerConfig: WMSLayerProps = {
                 },
                 'Date': { field: 'date', type: 'date' },
                 'Observed Measurement (mGal)': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: (props) => {
-                        const bht = props?.['observed_grav_mgal'];
-                        return `${bht} mGal`;
-                    }
+                    field: 'observed_grav_mgal',
+                    type: 'number',
+                    decimalPlaces: 3,
+                    unit: 'mGal',
                 },
             },
         },
@@ -561,7 +559,7 @@ const pacesLegacyLayerConfig: WMSLayerProps = {
                         return `${depthStart}, ${depthEnd}`;
                     }
                 },
-                'Observed Measurement (mGal)': { field: 'observed_grav_mgal', type: 'string' },
+                'Observed Measurement (mGal)': { field: 'observed_grav_mgal', type: 'number', decimalPlaces: 3, unit: 'mGal' },
             },
         },
     ],
