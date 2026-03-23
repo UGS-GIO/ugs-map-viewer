@@ -525,12 +525,10 @@ const gravityStationsLayerConfig: WMSLayerProps = {
                 },
                 'Date': { field: 'date', type: 'date' },
                 'Observed Measurement (mGal)': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: (props) => {
-                        const bht = props?.['observed_grav_mgal'];
-                        return `${bht} mGal`;
-                    }
+                    field: 'observed_grav_mgal',
+                    type: 'number',
+                    decimalPlaces: 3,
+                    unit: 'mGal',
                 },
             },
         },
@@ -561,7 +559,7 @@ const pacesLegacyLayerConfig: WMSLayerProps = {
                         return `${depthStart}, ${depthEnd}`;
                     }
                 },
-                'Observed Measurement (mGal)': { field: 'observed_grav_mgal', type: 'string' },
+                'Observed Measurement (mGal)': { field: 'observed_grav_mgal', type: 'number', decimalPlaces: 3, unit: 'mGal' },
             },
         },
     ],
