@@ -470,7 +470,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 'Mapped Scale': { field: 'mappedscale', type: 'string' },
                 'Dip Direction': { field: 'dipdirection', type: 'string' },
                 'Slip Sense': { field: 'slipsense', type: 'string' },
-                'Slip Rate': { field: 'sliprate', type: 'number' },
+                'Slip Rate': { field: 'sliprate', type: 'string' },
                 'Structure Class': { field: 'faultclass', type: 'string' },
                 'Structure Age': { field: 'faultage', type: 'string' },
                 'UGS Source Report': {
@@ -1030,9 +1030,9 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                     }
                 },
                 'Class': { field: 'class', type: 'string' },
-                'Depth of Well': { field: 'depth', type: 'number' },
+                'Depth of Well': { field: 'depth', type: 'string' },
                 'Flow': { field: 'flow', type: 'string' },
-                'Rate': { field: 'rate', type: 'number' },
+                'Rate': { field: 'rate', type: 'string' },
                 'Location': { field: 'lat', type: 'string' },
                 'UTM (Easting/Northing)': {
                     field: 'custom',
@@ -1097,7 +1097,7 @@ const nonPetroleumCatLayerConfig: WMSLayerProps = {
                 },
                 'Field/Area': { field: 'field_area', type: 'string' },
                 'Purpose': { field: 'purpose', type: 'string' },
-                'Depth': { field: 'depth', type: 'number' }
+                'Depth': { field: 'depth', type: 'string' }
             },
         },
     ],

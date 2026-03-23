@@ -97,7 +97,7 @@ const landslideSusceptibilityWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Hazard': { field: 'hazard_symbology_text', type: 'string' },
                 'Mapped Scale': { field: 'lssmappedscale', type: 'string' },
-                'Critical Angle': { field: 'lsscriticalangle', type: 'number' },
+                'Critical Angle': { field: 'lsscriticalangle', type: 'string' },
             },
             relatedTables: [
                 {
@@ -222,7 +222,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 'Mapped Scale': { field: 'mappedscale', type: 'string' },
                 'Dip Direction': { field: 'dipdirection', type: 'string' },
                 'Slip Sense': { field: 'slipsense', type: 'string' },
-                'Slip Rate': { field: 'sliprate', type: 'number' },
+                'Slip Rate': { field: 'sliprate', type: 'string' },
                 'Structure Class': { field: 'faultclass', type: 'string' },
                 'Structure Age': { field: 'faultage', type: 'string' },
                 '': { field: 'usgs_link', type: 'string', transform: (link: string | null) => link },
