@@ -190,7 +190,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 'Mapped Scale': { field: 'mappedscale', type: 'string' },
                 'Dip Direction': { field: 'dipdirection', type: 'string' },
                 'Slip Sense': { field: 'slipsense', type: 'string' },
-                'Slip Rate': { field: 'sliprate', type: 'string' },
+                'Slip Rate': { field: 'sliprate', type: 'number' },
                 'Structure Class': { field: 'faultclass', type: 'string' },
                 'Structure Age': { field: 'faultage', type: 'string' },
                 'UGS Source Report': {
@@ -304,9 +304,9 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                     }
                 },
                 'Class': { field: 'class', type: 'string' },
-                'Depth of Well': { field: 'depth', type: 'string' },
+                'Depth of Well': { field: 'depth', type: 'number' },
                 'Flow': { field: 'flow', type: 'string' },
-                'Rate': { field: 'rate', type: 'string' },
+                'Rate': { field: 'rate', type: 'number' },
                 'Location': { field: 'lat', type: 'string' },
                 'UTM (Easting/Northing)': {
                     field: 'custom',
