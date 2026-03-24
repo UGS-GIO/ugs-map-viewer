@@ -246,7 +246,7 @@ function InteractiveMaps({ items }: { items: ExternalApp[] }) {
         <p className="text-muted-foreground mb-8 max-w-2xl">
           Discover additional mapped content through these interactive web applications. Take a virtual tour of Utah geology, find rockhounding destinations, or access databases of field data.
         </p>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((app) => (
             <AppCard
               key={app.href}
@@ -275,7 +275,7 @@ function StoryMapsAndTours({ items }: { items: ExternalApp[] }) {
         <p className="text-muted-foreground mb-8 max-w-2xl">
           Explore narrative-driven guides, virtual tours, and in-depth photo essays about Utah's geology and natural history.
         </p>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((app) => (
             <AppCard
               key={app.href}
