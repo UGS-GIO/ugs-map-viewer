@@ -80,7 +80,7 @@ const portalMeta: AppEntry = {
     title: appTitle,
     description: 'Plant community composition data from Utah\'s wetlands for restoration, research, and conservation.',
     href: '/wetlandplants/',
-    status: 'stable',
+    status: 'in-progress',
     public: false,
     image: 'https://geology.utah.gov/wp-content/uploads/gandy_warm_springs_leafy_overhang.jpg',
     imageCredit: {

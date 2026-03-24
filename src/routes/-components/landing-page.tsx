@@ -132,9 +132,10 @@ interface AppCardProps {
   imageCredit?: ImageCredit
   href: string
   isNew?: boolean
+  status?: 'stable' | 'beta' | 'in-progress'
 }
 
-function AppCard({ title, description, image, imageCredit, href, isNew }: AppCardProps) {
+function AppCard({ title, description, image, imageCredit, href, isNew, status }: AppCardProps) {
   const isInternal = href.startsWith('/')
   const linkClasses = "inline-flex items-center gap-1.5 mt-auto pt-4 text-sm font-semibold text-primary motion-safe:group-hover:gap-3 motion-safe:transition-all before:absolute before:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 
@@ -154,11 +155,23 @@ function AppCard({ title, description, image, imageCredit, href, isNew }: AppCar
       </div>
 
       <div className="flex flex-1 flex-col p-4">
-        {isNew && (
-          <Badge variant="outline" className="w-fit text-xs mb-1.5 bg-primary/10 border-primary/30 text-primary">
-            New
-          </Badge>
-        )}
+        <div className="flex gap-1.5 mb-1.5">
+          {isNew && (
+            <Badge variant="outline" className="w-fit text-xs bg-primary/10 border-primary/30 text-primary">
+              New
+            </Badge>
+          )}
+          {status === 'beta' && (
+            <Badge variant="outline" className="w-fit text-xs">
+              Beta
+            </Badge>
+          )}
+          {status === 'in-progress' && (
+            <Badge variant="outline" className="w-fit text-xs bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400">
+              In Progress
+            </Badge>
+          )}
+        </div>
         <h3 className="font-bold text-foreground leading-tight text-base">{title}</h3>
         <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed line-clamp-2">{description}</p>
         {isInternal ? (
