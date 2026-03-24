@@ -5,10 +5,26 @@ import { Badge } from '@/components/ui/badge'
 import { Image } from '@/components/ui/image'
 import { SocialLinks } from '@/components/social-links'
 import { portals, legacyApps, storyMaps, APP_CATEGORIES } from '@/routes/-data/portal-config'
-import type { AppCategory, ExternalApp, ImageCredit } from '@/routes/-data/portal-config'
+import type { AppCategory, ImageCredit } from '@/routes/-data/portal-config'
 import ThemeSwitch from '@/components/theme-switch'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { toTitleCase } from '@/lib/utils'
 import { ArrowRight, ExternalLinkIcon, MapPin, Phone } from 'lucide-react'
 import heroBg from '@/assets/geologic-hazards-banner-alstrom-point-1920px.webp'
+
+const STATE_LINKS = [
+  { label: 'Utah.gov Home', href: 'https://www.utah.gov/index.html' },
+  { label: 'Terms of Use', href: 'https://www.utah.gov/support/disclaimer.html' },
+  { label: 'Privacy Policy', href: 'https://www.utah.gov/support/privacypolicy.html' },
+  { label: 'Accessibility', href: 'https://www.utah.gov/support/accessibility.html' },
+  { label: 'Translate', href: 'https://www.utah.gov/support/translate.html' },
+]
+
+const RESOURCE_LINKS = [
+  { label: 'Utah Geological Survey', href: 'https://geology.utah.gov' },
+  { label: 'Department of Natural Resources', href: 'https://naturalresources.utah.gov' },
+  { label: 'The Natural Resources Map & Bookstore', href: 'https://utahmapstore.com' },
+]
 
 function UtahLogo() {
   return (
@@ -35,31 +51,13 @@ function StateBar() {
         </div>
         <nav aria-label="State of Utah">
           <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 list-none m-0 p-0">
-            <li>
-              <ExternalLink to="https://www.utah.gov/index.html" className="text-white/70 hover:text-white transition-colors text-xs">
-                Utah.gov Home
-              </ExternalLink>
-            </li>
-            <li>
-              <ExternalLink to="https://www.utah.gov/support/disclaimer.html" className="text-white/70 hover:text-white transition-colors text-xs">
-                Terms of Use
-              </ExternalLink>
-            </li>
-            <li>
-              <ExternalLink to="https://www.utah.gov/support/privacypolicy.html" className="text-white/70 hover:text-white transition-colors text-xs">
-                Privacy Policy
-              </ExternalLink>
-            </li>
-            <li>
-              <ExternalLink to="https://www.utah.gov/support/accessibility.html" className="text-white/70 hover:text-white transition-colors text-xs">
-                Accessibility
-              </ExternalLink>
-            </li>
-            <li>
-              <ExternalLink to="https://www.utah.gov/support/translate.html" className="text-white/70 hover:text-white transition-colors text-xs">
-                Translate
-              </ExternalLink>
-            </li>
+            {STATE_LINKS.map(({ label, href }) => (
+              <li key={href}>
+                <ExternalLink to={href} className="text-white/70 hover:text-white transition-colors text-xs">
+                  {label}
+                </ExternalLink>
+              </li>
+            ))}
           </ul>
         </nav>
       </div>
@@ -71,22 +69,13 @@ function SiteHeader() {
   return (
     <header className="bg-accent text-accent-foreground py-4 px-4">
       <div className="max-w-6xl mx-auto flex items-center gap-4">
-        <Image
-          src="/logo_main.png"
-          alt="Utah Geological Survey"
-          className="h-12 w-auto"
-        />
+        <Image src="/logo_main.png" alt="Utah Geological Survey" className="h-12 w-auto" />
         <div>
-          <h1 className="text-lg font-bold leading-tight">
-            Utah Geological Survey
-          </h1>
+          <h1 className="text-lg font-bold leading-tight">Utah Geological Survey</h1>
           <p className="text-sm text-accent-foreground/70">Interactive Maps & Data</p>
         </div>
         <nav aria-label="Main" className="ml-auto flex items-center gap-4 text-sm">
-          <ExternalLink
-            to="https://geology.utah.gov"
-            className="text-accent-foreground/80 hover:text-accent-foreground hidden sm:inline transition-colors"
-          >
+          <ExternalLink to="https://geology.utah.gov" className="text-accent-foreground/80 hover:text-accent-foreground hidden sm:inline transition-colors">
             geology.utah.gov
           </ExternalLink>
           <ThemeSwitch />
@@ -99,25 +88,41 @@ function SiteHeader() {
 function Hero() {
   return (
     <section aria-label="Welcome" className="relative h-[50vh] min-h-[400px] overflow-hidden">
-      <img
-        src={heroBg}
-        alt="Alstrom Point, Utah"
-        className="absolute inset-0 w-full h-full object-cover"
-      />
+      <img src={heroBg} alt="Alstrom Point, Utah" className="absolute inset-0 w-full h-full object-cover" />
       <div className="relative h-full max-w-6xl mx-auto px-4 flex flex-col justify-end pb-12">
         <div className="bg-background/90 backdrop-blur-sm rounded-lg p-6 max-w-xl shadow-lg">
-          <p className="text-muted-foreground text-sm font-semibold uppercase tracking-widest mb-2">
-            Utah Geological Survey
-          </p>
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground leading-[1.1]">
-            Explore Utah's Geology
-          </h2>
+          <p className="text-muted-foreground text-sm font-semibold uppercase tracking-widest mb-2">Utah Geological Survey</p>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground leading-[1.1]">Explore Utah's Geology</h2>
           <p className="mt-3 text-base sm:text-lg text-muted-foreground">
             Interactive maps and data for hazards, energy, minerals, and natural resources across the state.
           </p>
         </div>
       </div>
     </section>
+  )
+}
+
+function ImageCreditOverlay({ imageCredit }: { imageCredit: ImageCredit }) {
+  return (
+    <div className="absolute bottom-0 inset-x-0 z-20 bg-black/70 px-2.5 py-1">
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <a
+              href={imageCredit.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative block truncate text-[10px] text-white hover:underline transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/50"
+            >
+              Image: {imageCredit.article}
+            </a>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs text-xs">
+            Image: {imageCredit.article}
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    </div>
   )
 }
 
@@ -128,11 +133,11 @@ interface AppCardProps {
   imageCredit?: ImageCredit
   href: string
   external?: boolean
-  badge?: 'beta' | 'in-progress'
+  status?: 'stable' | 'beta' | 'in-progress'
   featured?: boolean
 }
 
-function AppCard({ title, description, image, imageCredit, href, external, badge, featured }: AppCardProps) {
+function AppCard({ title, description, image, imageCredit, href, external, status, featured }: AppCardProps) {
   const linkClasses = "inline-flex items-center gap-1.5 mt-auto pt-4 text-sm font-semibold text-primary motion-safe:group-hover:gap-3 motion-safe:transition-all before:absolute before:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 
   return (
@@ -147,58 +152,26 @@ function AppCard({ title, description, image, imageCredit, href, external, badge
         ) : (
           <div className="absolute inset-0 bg-secondary" />
         )}
-
-        {imageCredit && (
-          <div className="absolute bottom-0 inset-x-0 z-20 bg-black/70 px-2.5 py-1">
-            <a
-              href={imageCredit.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="relative text-[10px] text-white hover:underline transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/50"
-            >
-              Image: {imageCredit.article}
-            </a>
-          </div>
-        )}
+        {imageCredit && <ImageCreditOverlay imageCredit={imageCredit} />}
       </div>
 
       <div className={`flex flex-1 flex-col ${featured ? 'p-5' : 'p-4'}`}>
-        {badge && (
-          <div className="flex items-center gap-2 mb-1.5">
-            {badge === 'beta' && (
-              <Badge variant="outline" className="text-xs">
-                Beta
-              </Badge>
-            )}
-            {badge === 'in-progress' && (
-              <Badge variant="outline" className="bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs">
-                In Progress
-              </Badge>
-            )}
-          </div>
-        )}
-        <h3 className={`font-bold text-foreground leading-tight ${featured ? 'text-lg' : 'text-base'}`}>
-          {title}
-        </h3>
-        <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed line-clamp-2">
-          {description}
-        </p>
-        {external ? (
-          <a
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={`Visit ${title}`}
-            className={linkClasses}
+        {status && status !== 'stable' && (
+          <Badge
+            variant="outline"
+            className={`text-xs mb-1.5 ${status === 'in-progress' ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400' : ''}`}
           >
+            {toTitleCase(status.replace('-', ' '))}
+          </Badge>
+        )}
+        <h3 className={`font-bold text-foreground leading-tight ${featured ? 'text-lg' : 'text-base'}`}>{title}</h3>
+        <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed line-clamp-2">{description}</p>
+        {external ? (
+          <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`Visit ${title}`} className={linkClasses}>
             Visit <ExternalLinkIcon aria-hidden="true" className="h-3.5 w-3.5" />
           </a>
         ) : (
-          <Link
-            to={href}
-            aria-label={`Open ${title}`}
-            className={linkClasses}
-          >
+          <Link to={href} aria-label={`Open ${title}`} className={linkClasses}>
             Open map <ArrowRight aria-hidden="true" className="h-4 w-4" />
           </Link>
         )}
@@ -207,89 +180,41 @@ function AppCard({ title, description, image, imageCredit, href, external, badge
   )
 }
 
-function NewInteractiveMaps({ items }: { items: typeof portals }) {
-  if (items.length === 0) return null
+interface AppSectionProps {
+  id: string
+  heading: string
+  description: string
+  children: React.ReactNode
+  className?: string
+}
+
+function AppSection({ id, heading, description, children, className }: AppSectionProps) {
   return (
-    <section aria-labelledby="new-maps-heading" className="max-w-6xl mx-auto px-4 py-12 md:py-16">
-      <h2 id="new-maps-heading" className="text-2xl font-bold text-foreground mb-2">
-        New Interactive Maps
-      </h2>
-      <p className="text-muted-foreground mb-8 max-w-2xl">
-        Access geologic data through our suite of interactive mapping tools, built for planners, researchers, industry professionals, and the public.
-      </p>
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((portal) => (
-          <AppCard
-            key={portal.href}
-            title={portal.title}
-            description={portal.description}
-            image={portal.image}
-            imageCredit={portal.imageCredit}
-            href={portal.href}
-            badge={portal.status !== 'stable' ? portal.status : undefined}
-            featured
-          />
+    <section aria-labelledby={id} className={className}>
+      <div className="max-w-6xl mx-auto px-4 py-12 md:py-16">
+        <h2 id={id} className="text-2xl font-bold text-foreground mb-2">{heading}</h2>
+        <p className="text-muted-foreground mb-8 max-w-2xl">{description}</p>
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">{children}</div>
+      </div>
+    </section>
+  )
+}
+
+function CategoryFilter({ active, onChange }: { active: AppCategory | null, onChange: (cat: AppCategory | null) => void }) {
+  const chipClass = (isActive: boolean) =>
+    `rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${isActive ? 'bg-foreground text-background border-foreground' : 'bg-card text-muted-foreground border-border hover:bg-accent/50'}`
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 pt-10 md:pt-14">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
+        <button onClick={() => onChange(null)} className={chipClass(active === null)}>All</button>
+        {APP_CATEGORIES.map((cat) => (
+          <button key={cat} onClick={() => onChange(active === cat ? null : cat)} className={chipClass(active === cat)}>
+            {cat}
+          </button>
         ))}
       </div>
-    </section>
-  )
-}
-
-function InteractiveMaps({ items }: { items: ExternalApp[] }) {
-  if (items.length === 0) return null
-  return (
-    <section aria-labelledby="legacy-maps-heading" className="bg-muted/50 border-t border-border">
-      <div className="max-w-6xl mx-auto px-4 py-12 md:py-16">
-        <h2 id="legacy-maps-heading" className="text-2xl font-bold text-foreground mb-2">
-          Interactive Maps
-        </h2>
-        <p className="text-muted-foreground mb-8 max-w-2xl">
-          Discover additional mapped content through these interactive web applications. Take a virtual tour of Utah geology, find rockhounding destinations, or access databases of field data.
-        </p>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((app) => (
-            <AppCard
-              key={app.href}
-              title={app.title}
-              description={app.description}
-              image={app.image}
-              imageCredit={app.imageCredit}
-              href={app.href}
-              external
-            />
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function StoryMapsAndTours({ items }: { items: ExternalApp[] }) {
-  if (items.length === 0) return null
-  return (
-    <section aria-labelledby="storymaps-heading" className="border-t border-border">
-      <div className="max-w-6xl mx-auto px-4 py-12 md:py-16">
-        <h2 id="storymaps-heading" className="text-2xl font-bold text-foreground mb-2">
-          StoryMaps & Tours
-        </h2>
-        <p className="text-muted-foreground mb-8 max-w-2xl">
-          Explore narrative-driven guides, virtual tours, and in-depth photo essays about Utah's geology and natural history.
-        </p>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((app) => (
-            <AppCard
-              key={app.href}
-              title={app.title}
-              description={app.description}
-              image={app.image}
-              imageCredit={app.imageCredit}
-              href={app.href}
-              external
-            />
-          ))}
-        </div>
-      </div>
-    </section>
+    </div>
   )
 }
 
@@ -300,20 +225,13 @@ function SiteFooter() {
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <div className="flex items-center gap-3 mb-3">
-              <Image
-                src="/logo_main.png"
-                alt="Utah Geological Survey"
-                className="h-10 w-auto"
-              />
+              <Image src="/logo_main.png" alt="Utah Geological Survey" className="h-10 w-auto" />
               <h4 className="font-semibold leading-tight">Utah Geological Survey</h4>
             </div>
             <p className="text-sm text-accent-foreground/80 leading-relaxed mb-3">
               The UGS provides timely scientific information about Utah's geologic environment, resources, and hazards. A division of the Utah Department of Natural Resources.
             </p>
-            <ExternalLink
-              to="https://geology.utah.gov"
-              className="inline-flex items-center gap-1 text-sm text-accent-foreground/80 hover:text-accent-foreground font-medium"
-            >
+            <ExternalLink to="https://geology.utah.gov" className="inline-flex items-center gap-1 text-sm text-accent-foreground/80 hover:text-accent-foreground font-medium">
               geology.utah.gov <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
             </ExternalLink>
           </div>
@@ -323,17 +241,11 @@ function SiteFooter() {
             <address className="not-italic text-sm text-accent-foreground/80 space-y-2">
               <p className="flex items-start gap-2">
                 <MapPin aria-hidden="true" className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>
-                  1594 West North Temple, Suite 3110
-                  <br />
-                  Salt Lake City, Utah 84116
-                </span>
+                <span>1594 West North Temple, Suite 3110<br />Salt Lake City, Utah 84116</span>
               </p>
               <p className="flex items-center gap-2">
                 <Phone aria-hidden="true" className="h-4 w-4 shrink-0" />
-                <a href="tel:+18015373300" className="hover:underline">
-                  801-537-3300
-                </a>
+                <a href="tel:+18015373300" className="hover:underline">801-537-3300</a>
               </p>
             </address>
           </div>
@@ -341,59 +253,21 @@ function SiteFooter() {
           <nav aria-label="Resources">
             <h4 className="font-semibold mb-3">Resources</h4>
             <ul className="text-sm text-accent-foreground/80 space-y-1.5">
-              <li>
-                <ExternalLink to="https://geology.utah.gov" className="text-accent-foreground/80 hover:text-accent-foreground text-sm">
-                  Utah Geological Survey
-                </ExternalLink>
-              </li>
-              <li>
-                <ExternalLink to="https://naturalresources.utah.gov" className="text-accent-foreground/80 hover:text-accent-foreground text-sm">
-                  Department of Natural Resources
-                </ExternalLink>
-              </li>
-              <li>
-                <ExternalLink to="https://utahmapstore.com" className="text-accent-foreground/80 hover:text-accent-foreground text-sm">
-                  The Natural Resources Map & Bookstore
-                </ExternalLink>
-              </li>
+              {RESOURCE_LINKS.map(({ label, href }) => (
+                <li key={href}>
+                  <ExternalLink to={href} className="text-accent-foreground/80 hover:text-accent-foreground text-sm">{label}</ExternalLink>
+                </li>
+              ))}
             </ul>
           </nav>
         </div>
 
         <div className="mt-6 pt-4 border-t border-accent-foreground/20 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <SocialLinks
-            iconClassName="h-5 w-5 text-accent-foreground/60 hover:text-accent-foreground transition-colors"
-          />
-          <p className="text-xs text-accent-foreground/70">
-            &copy; {new Date().getFullYear()} Utah Geological Survey
-          </p>
+          <SocialLinks iconClassName="h-5 w-5 text-accent-foreground/60 hover:text-accent-foreground transition-colors" />
+          <p className="text-xs text-accent-foreground/70">&copy; {new Date().getFullYear()} Utah Geological Survey</p>
         </div>
       </div>
     </footer>
-  )
-}
-
-function CategoryFilter({ active, onChange }: { active: AppCategory | null, onChange: (cat: AppCategory | null) => void }) {
-  return (
-    <div className="max-w-6xl mx-auto px-4 pt-10 md:pt-14">
-      <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by category">
-        <button
-          onClick={() => onChange(null)}
-          className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${active === null ? 'bg-foreground text-background border-foreground' : 'bg-card text-muted-foreground border-border hover:bg-accent/50'}`}
-        >
-          All
-        </button>
-        {APP_CATEGORIES.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => onChange(active === cat ? null : cat)}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${active === cat ? 'bg-foreground text-background border-foreground' : 'bg-card text-muted-foreground border-border hover:bg-accent/50'}`}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
-    </div>
   )
 }
 
@@ -421,9 +295,23 @@ export function LandingPage() {
       <main id="main-content" className="flex-1">
         <Hero />
         <CategoryFilter active={categoryFilter} onChange={setCategoryFilter} />
-        <NewInteractiveMaps items={filteredPortals} />
-        <InteractiveMaps items={filteredLegacy} />
-        <StoryMapsAndTours items={filteredStoryMaps} />
+        {filteredPortals.length > 0 && (
+          <AppSection id="new-maps-heading" heading="New Interactive Maps" description="Access geologic data through our suite of interactive mapping tools, built for planners, researchers, industry professionals, and the public.">
+            {filteredPortals.map((p) => (
+              <AppCard key={p.href} title={p.title} description={p.description} image={p.image} imageCredit={p.imageCredit} href={p.href} status={p.status} featured />
+            ))}
+          </AppSection>
+        )}
+        {filteredLegacy.length > 0 && (
+          <AppSection id="legacy-maps-heading" heading="Interactive Maps" description="Discover additional mapped content through these interactive web applications. Take a virtual tour of Utah geology, find rockhounding destinations, or access databases of field data." className="bg-muted/50 border-t border-border">
+            {filteredLegacy.map((a) => <AppCard key={a.href} title={a.title} description={a.description} image={a.image} imageCredit={a.imageCredit} href={a.href} external />)}
+          </AppSection>
+        )}
+        {filteredStoryMaps.length > 0 && (
+          <AppSection id="storymaps-heading" heading="StoryMaps & Tours" description="Explore narrative-driven guides, virtual tours, and in-depth photo essays about Utah's geology and natural history." className="border-t border-border">
+            {filteredStoryMaps.map((a) => <AppCard key={a.href} title={a.title} description={a.description} image={a.image} imageCredit={a.imageCredit} href={a.href} external />)}
+          </AppSection>
+        )}
       </main>
       <SiteFooter />
       <StateBar />
