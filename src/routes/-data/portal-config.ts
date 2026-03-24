@@ -46,6 +46,7 @@ export interface ExternalApp {
   href: string
   image: string
   categories: AppCategory[]
+  imageCredit?: ImageCredit
 }
 
 const isProd = import.meta.env.MODE === 'production'
@@ -73,6 +74,10 @@ export const legacyApps: ExternalApp[] = [
     href: 'https://geology.utah.gov/?p=19461',
     image: `${UGS_UPLOADS}/Coal_Pile-710x375c.jpg`,
     categories: ['Minerals & Mining'],
+    imageCredit: {
+      article: "Glad You Asked: Is Utah's State Rock Good, Bad, or Ugly?",
+      url: 'https://geology.utah.gov/map-pub/survey-notes/glad-you-asked/glad-you-asked-is-utahs-state-rock-good-bad-or-ugly/',
+    },
   },
   {
     title: 'Aerial Imagery Collection',
@@ -87,6 +92,10 @@ export const legacyApps: ExternalApp[] = [
     href: 'https://geochron.geology.utah.gov',
     image: `${UGS_UPLOADS}/geo_hazards_fault_trench-710x375c.jpg`,
     categories: ['Hazards'],
+    imageCredit: {
+      article: 'Evaluating the seismic relation between the West Valley fault zone and Salt Lake City segment of the Wasatch fault zone',
+      url: 'https://geology.utah.gov/map-pub/survey-notes/evaluating-the-seismic-relation-between-the-west-valley-fault-zone-and-salt-lake-city-segment-of-the-wasatch-fault-zone/',
+    },
   },
   {
     title: 'Geologic Map Portal',
@@ -157,6 +166,10 @@ export const legacyApps: ExternalApp[] = [
     href: 'https://geology.utah.gov/apps/reportviewer/index.html',
     image: `${UGS_UPLOADS}/snt48-2_point-mountain-google-earth-1993-710x375c.jpg`,
     categories: ['Minerals & Mining'],
+    imageCredit: {
+      article: 'GeoSights: Point of the Mountain, Salt Lake and Utah Counties',
+      url: 'https://geology.utah.gov/map-pub/survey-notes/geosights/point-of-the-mountain/',
+    },
   },
   {
     title: 'Utah Rockhounder',
@@ -209,6 +222,10 @@ export const storyMaps: ExternalApp[] = [
     href: 'https://geology.utah.gov/apps/geosights/',
     image: `${UGS_UPLOADS}/DevilsPG41-710x375c.jpg`,
     categories: ['Popular Geology'],
+    imageCredit: {
+      article: "GeoSights: Devil's Playground, Box Elder County, Utah",
+      url: 'https://geology.utah.gov/map-pub/survey-notes/geosights/devils-playground/',
+    },
   },
   {
     title: 'Lake Bonneville Storymap',

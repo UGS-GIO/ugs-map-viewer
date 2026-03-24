@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Image } from '@/components/ui/image'
 import { SocialLinks } from '@/components/social-links'
 import { portals, legacyApps, storyMaps, APP_CATEGORIES } from '@/routes/-data/portal-config'
-import type { AppCategory, ExternalApp } from '@/routes/-data/portal-config'
+import type { AppCategory, ExternalApp, ImageCredit } from '@/routes/-data/portal-config'
 import ThemeSwitch from '@/components/theme-switch'
 import { ArrowRight, ExternalLinkIcon, MapPin, Phone } from 'lucide-react'
 import heroBg from '@/assets/geologic-hazards-banner-alstrom-point-1920px.webp'
@@ -121,60 +121,87 @@ function Hero() {
   )
 }
 
-function PortalCard({ portal }: { portal: typeof portals[number] }) {
+interface AppCardProps {
+  title: string
+  description: string
+  image?: string
+  imageCredit?: ImageCredit
+  href: string
+  external?: boolean
+  badge?: 'beta' | 'in-progress'
+  featured?: boolean
+}
+
+function AppCard({ title, description, image, imageCredit, href, external, badge, featured }: AppCardProps) {
+  const linkClasses = "inline-flex items-center gap-1.5 mt-auto pt-4 text-sm font-semibold text-primary motion-safe:group-hover:gap-3 motion-safe:transition-all before:absolute before:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm motion-safe:transition-shadow motion-safe:hover:shadow-md">
-      <div className="relative h-48 w-full overflow-hidden">
-        {portal.image ? (
+      <div className={`relative w-full overflow-hidden ${featured ? 'h-48' : 'h-40'}`}>
+        {image ? (
           <img
-            src={portal.image}
-            alt={`${portal.title} preview`}
+            src={image}
+            alt={`${title} preview`}
             className="absolute inset-0 w-full h-full object-cover motion-safe:transition-transform motion-safe:duration-500 motion-safe:group-hover:scale-105"
           />
         ) : (
           <div className="absolute inset-0 bg-secondary" />
         )}
 
-        {portal.imageCredit && (
+        {imageCredit && (
           <div className="absolute bottom-0 inset-x-0 z-20 bg-black/70 px-2.5 py-1">
             <a
-              href={portal.imageCredit.url}
+              href={imageCredit.url}
               target="_blank"
               rel="noopener noreferrer"
               className="relative text-[10px] text-white hover:underline transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/50"
             >
-              Image: {portal.imageCredit.article}
+              Image: {imageCredit.article}
             </a>
           </div>
         )}
       </div>
 
-      <div className="flex flex-1 flex-col p-5">
-        <div className="flex items-center gap-2 mb-1.5">
-          {portal.status === 'beta' && (
-            <Badge variant="outline" className="text-xs">
-              Beta
-            </Badge>
-          )}
-          {portal.status === 'in-progress' && (
-            <Badge variant="outline" className="bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs">
-              In Progress
-            </Badge>
-          )}
-        </div>
-        <h3 className="text-lg font-bold text-foreground leading-tight">
-          {portal.title}
+      <div className={`flex flex-1 flex-col ${featured ? 'p-5' : 'p-4'}`}>
+        {badge && (
+          <div className="flex items-center gap-2 mb-1.5">
+            {badge === 'beta' && (
+              <Badge variant="outline" className="text-xs">
+                Beta
+              </Badge>
+            )}
+            {badge === 'in-progress' && (
+              <Badge variant="outline" className="bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs">
+                In Progress
+              </Badge>
+            )}
+          </div>
+        )}
+        <h3 className={`font-bold text-foreground leading-tight ${featured ? 'text-lg' : 'text-base'}`}>
+          {title}
         </h3>
         <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed line-clamp-2">
-          {portal.description}
+          {description}
         </p>
-        <Link
-          to={portal.href}
-          aria-label={`Open ${portal.title}`}
-          className="inline-flex items-center gap-1.5 mt-auto pt-4 text-sm font-semibold text-primary motion-safe:group-hover:gap-3 motion-safe:transition-all before:absolute before:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >
-          Open map <ArrowRight aria-hidden="true" className="h-4 w-4" />
-        </Link>
+        {external ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Visit ${title}`}
+            className={linkClasses}
+          >
+            Visit <ExternalLinkIcon aria-hidden="true" className="h-3.5 w-3.5" />
+          </a>
+        ) : (
+          <Link
+            to={href}
+            aria-label={`Open ${title}`}
+            className={linkClasses}
+          >
+            Open map <ArrowRight aria-hidden="true" className="h-4 w-4" />
+          </Link>
+        )}
       </div>
     </div>
   )
@@ -192,40 +219,19 @@ function NewInteractiveMaps({ items }: { items: typeof portals }) {
       </p>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((portal) => (
-          <PortalCard key={portal.href} portal={portal} />
+          <AppCard
+            key={portal.href}
+            title={portal.title}
+            description={portal.description}
+            image={portal.image}
+            imageCredit={portal.imageCredit}
+            href={portal.href}
+            badge={portal.status !== 'stable' ? portal.status : undefined}
+            featured
+          />
         ))}
       </div>
     </section>
-  )
-}
-
-function ExternalAppCard({ app }: { app: ExternalApp }) {
-  return (
-    <a
-      href={app.href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group relative flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm motion-safe:transition-shadow motion-safe:hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-    >
-      <div className="relative h-40 w-full overflow-hidden">
-        <img
-          src={app.image}
-          alt={`${app.title} preview`}
-          className="absolute inset-0 w-full h-full object-cover motion-safe:transition-transform motion-safe:duration-500 motion-safe:group-hover:scale-105"
-        />
-      </div>
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="text-base font-bold text-foreground leading-tight">
-          {app.title}
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground leading-relaxed line-clamp-2">
-          {app.description}
-        </p>
-        <span className="inline-flex items-center gap-1.5 mt-auto pt-3 text-sm font-semibold text-primary motion-safe:group-hover:gap-3 motion-safe:transition-all">
-          Visit <ExternalLinkIcon aria-hidden="true" className="h-3.5 w-3.5" />
-        </span>
-      </div>
-    </a>
   )
 }
 
@@ -242,7 +248,15 @@ function InteractiveMaps({ items }: { items: ExternalApp[] }) {
         </p>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((app) => (
-            <ExternalAppCard key={app.href} app={app} />
+            <AppCard
+              key={app.href}
+              title={app.title}
+              description={app.description}
+              image={app.image}
+              imageCredit={app.imageCredit}
+              href={app.href}
+              external
+            />
           ))}
         </div>
       </div>
@@ -263,7 +277,15 @@ function StoryMapsAndTours({ items }: { items: ExternalApp[] }) {
         </p>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((app) => (
-            <ExternalAppCard key={app.href} app={app} />
+            <AppCard
+              key={app.href}
+              title={app.title}
+              description={app.description}
+              image={app.image}
+              imageCredit={app.imageCredit}
+              href={app.href}
+              external
+            />
           ))}
         </div>
       </div>
