@@ -4,11 +4,10 @@ import { Link as ExternalLink } from '@/components/ui/link'
 import { Badge } from '@/components/ui/badge'
 import { Image } from '@/components/ui/image'
 import { SocialLinks } from '@/components/social-links'
-import { portals, legacyApps, storyMaps, APP_CATEGORIES } from '@/routes/-data/portal-config'
+import { allApps, storyMaps, APP_CATEGORIES } from '@/routes/-data/portal-config'
 import type { AppCategory, ImageCredit } from '@/routes/-data/portal-config'
 import ThemeSwitch from '@/components/theme-switch'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { toTitleCase } from '@/lib/utils'
 import { ArrowRight, ExternalLinkIcon, MapPin, Phone } from 'lucide-react'
 import heroBg from '@/assets/geologic-hazards-banner-alstrom-point-1920px.webp'
 
@@ -132,17 +131,16 @@ interface AppCardProps {
   image?: string
   imageCredit?: ImageCredit
   href: string
-  external?: boolean
-  status?: 'stable' | 'beta' | 'in-progress'
-  featured?: boolean
+  isNew?: boolean
 }
 
-function AppCard({ title, description, image, imageCredit, href, external, status, featured }: AppCardProps) {
+function AppCard({ title, description, image, imageCredit, href, isNew }: AppCardProps) {
+  const isInternal = href.startsWith('/')
   const linkClasses = "inline-flex items-center gap-1.5 mt-auto pt-4 text-sm font-semibold text-primary motion-safe:group-hover:gap-3 motion-safe:transition-all before:absolute before:inset-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-lg border border-border bg-card shadow-sm motion-safe:transition-shadow motion-safe:hover:shadow-md">
-      <div className={`relative w-full overflow-hidden ${featured ? 'h-48' : 'h-40'}`}>
+      <div className="relative w-full overflow-hidden h-40">
         {image ? (
           <img
             src={image}
@@ -155,25 +153,22 @@ function AppCard({ title, description, image, imageCredit, href, external, statu
         {imageCredit && <ImageCreditOverlay imageCredit={imageCredit} />}
       </div>
 
-      <div className={`flex flex-1 flex-col ${featured ? 'p-5' : 'p-4'}`}>
-        {status && status !== 'stable' && (
-          <Badge
-            variant="outline"
-            className={`w-fit text-xs mb-1.5 ${status === 'in-progress' ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400' : ''}`}
-          >
-            {toTitleCase(status.replace('-', ' '))}
+      <div className="flex flex-1 flex-col p-4">
+        {isNew && (
+          <Badge variant="outline" className="w-fit text-xs mb-1.5 bg-primary/10 border-primary/30 text-primary">
+            New
           </Badge>
         )}
-        <h3 className={`font-bold text-foreground leading-tight ${featured ? 'text-lg' : 'text-base'}`}>{title}</h3>
+        <h3 className="font-bold text-foreground leading-tight text-base">{title}</h3>
         <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed line-clamp-2">{description}</p>
-        {external ? (
-          <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`Visit ${title}`} className={linkClasses}>
-            Visit <ExternalLinkIcon aria-hidden="true" className="h-3.5 w-3.5" />
-          </a>
-        ) : (
+        {isInternal ? (
           <Link to={href} aria-label={`Open ${title}`} className={linkClasses}>
             Open map <ArrowRight aria-hidden="true" className="h-4 w-4" />
           </Link>
+        ) : (
+          <a href={href} target="_blank" rel="noopener noreferrer" aria-label={`Visit ${title}`} className={linkClasses}>
+            Visit <ExternalLinkIcon aria-hidden="true" className="h-3.5 w-3.5" />
+          </a>
         )}
       </div>
     </div>
@@ -279,8 +274,7 @@ function matchesCategory(categories: AppCategory[] | undefined, filter: AppCateg
 export function LandingPage() {
   const [categoryFilter, setCategoryFilter] = useState<AppCategory | null>(null)
 
-  const filteredPortals = portals.filter((p) => matchesCategory(p.categories, categoryFilter))
-  const filteredLegacy = legacyApps.filter((a) => matchesCategory(a.categories, categoryFilter))
+  const filteredApps = allApps.filter((a) => matchesCategory(a.categories, categoryFilter))
   const filteredStoryMaps = storyMaps.filter((a) => matchesCategory(a.categories, categoryFilter))
 
   return (
@@ -295,21 +289,14 @@ export function LandingPage() {
       <main id="main-content" className="flex-1">
         <Hero />
         <CategoryFilter active={categoryFilter} onChange={setCategoryFilter} />
-        {filteredPortals.length > 0 && (
-          <AppSection id="new-maps-heading" heading="New Interactive Maps" description="Access geologic data through our suite of interactive mapping tools, built for planners, researchers, industry professionals, and the public.">
-            {filteredPortals.map((p) => (
-              <AppCard key={p.href} title={p.title} description={p.description} image={p.image} imageCredit={p.imageCredit} href={p.href} status={p.status} featured />
-            ))}
-          </AppSection>
-        )}
-        {filteredLegacy.length > 0 && (
-          <AppSection id="legacy-maps-heading" heading="Interactive Maps" description="Discover additional mapped content through these interactive web applications. Take a virtual tour of Utah geology, find rockhounding destinations, or access databases of field data." className="bg-muted/50 border-t border-border">
-            {filteredLegacy.map((a) => <AppCard key={a.href} title={a.title} description={a.description} image={a.image} imageCredit={a.imageCredit} href={a.href} external />)}
+        {filteredApps.length > 0 && (
+          <AppSection id="maps-heading" heading="Interactive Maps" description="Access geologic data through interactive mapping tools, databases, and applications built for planners, researchers, industry professionals, and the public.">
+            {filteredApps.map((a) => <AppCard key={a.href} {...a} />)}
           </AppSection>
         )}
         {filteredStoryMaps.length > 0 && (
           <AppSection id="storymaps-heading" heading="StoryMaps & Tours" description="Explore narrative-driven guides, virtual tours, and in-depth photo essays about Utah's geology and natural history." className="border-t border-border">
-            {filteredStoryMaps.map((a) => <AppCard key={a.href} title={a.title} description={a.description} image={a.image} imageCredit={a.imageCredit} href={a.href} external />)}
+            {filteredStoryMaps.map((a) => <AppCard key={a.href} {...a} />)}
           </AppSection>
         )}
       </main>

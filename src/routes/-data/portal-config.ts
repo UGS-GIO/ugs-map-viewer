@@ -29,29 +29,23 @@ export const APP_CATEGORIES: AppCategory[] = [
   'Popular Geology',
 ]
 
-export interface PortalMeta {
+export interface AppEntry {
   title: string
   description: string
   href: string
-  status: 'stable' | 'beta' | 'in-progress'
-  public: boolean
   image?: string
-  imageCredit?: ImageCredit
   categories?: AppCategory[]
-}
-
-export interface ExternalApp {
-  title: string
-  description: string
-  href: string
-  image: string
-  categories: AppCategory[]
   imageCredit?: ImageCredit
+  isNew?: boolean
+  status?: 'stable' | 'beta' | 'in-progress'
+  public?: boolean
 }
 
 const isProd = import.meta.env.MODE === 'production'
 
-const allPortals: PortalMeta[] = [
+const UGS_UPLOADS = 'https://geology.utah.gov/wp-content/uploads'
+
+const templateApps: AppEntry[] = ([
   { ...hazardsMeta, categories: ['Hazards'] },
   { ...carbonMeta, categories: ['Energy Resources'] },
   { ...geophysicsMeta, categories: ['Energy Resources', 'Hazards'] },
@@ -59,15 +53,11 @@ const allPortals: PortalMeta[] = [
   { ...wetlandsMeta, categories: ['Groundwater & Wetlands'] },
   { ...wetlandplantsMeta, categories: ['Groundwater & Wetlands'] },
   hazardsReviewMeta,
-]
+] satisfies AppEntry[])
+  .filter((p) => p.public || !isProd)
+  .map((p) => ({ ...p, isNew: true }))
 
-export const portals = allPortals.filter((p) =>
-  p.public || (!isProd && p.status !== 'stable')
-)
-
-const UGS_UPLOADS = 'https://geology.utah.gov/wp-content/uploads'
-
-export const legacyApps: ExternalApp[] = [
+const apps: AppEntry[] = [
   {
     title: 'Abandoned Coal Mine Maps',
     description: "For 58% of Utah's abandoned coal mines.",
@@ -131,6 +121,7 @@ export const legacyApps: ExternalApp[] = [
     href: 'https://roots.geology.utah.gov',
     image: `${UGS_UPLOADS}/roots-image-710x375c.jpg`,
     categories: ['Hazards'],
+    isNew: true,
   },
   {
     title: 'Subsurface Geotechnical Database',
@@ -187,7 +178,7 @@ export const legacyApps: ExternalApp[] = [
   },
 ]
 
-export const storyMaps: ExternalApp[] = [
+export const storyMaps: AppEntry[] = [
   {
     title: 'Bonneville Salt Flats Storymap',
     description: 'A changing landscape and modern research.',
@@ -263,3 +254,6 @@ export const storyMaps: ExternalApp[] = [
     categories: ['Groundwater & Wetlands'],
   },
 ]
+
+export const allApps: AppEntry[] = [...templateApps, ...apps]
+  .sort((a, b) => (a.isNew === b.isNew ? 0 : a.isNew ? -1 : 1))

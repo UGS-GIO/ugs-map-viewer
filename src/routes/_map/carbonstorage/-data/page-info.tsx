@@ -219,9 +219,9 @@ const dataSourcesShortened = (
     </p>
 )
 
-import type { PortalMeta } from '@/routes/-data/portal-config'
+import type { AppEntry } from '@/routes/-data/portal-config'
 
-const portalMeta: PortalMeta = {
+const portalMeta: AppEntry = {
     title: appTitle,
     description: 'Carbon capture, utilization, and storage (CCUS) site selection and storage resource assessment in Utah.',
     href: '/carbonstorage/',

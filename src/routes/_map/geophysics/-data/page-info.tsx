@@ -129,9 +129,9 @@ const dataSourcesShortened = (
     </p>
 )
 
-import type { PortalMeta } from '@/routes/-data/portal-config'
+import type { AppEntry } from '@/routes/-data/portal-config'
 
-const portalMeta: PortalMeta = {
+const portalMeta: AppEntry = {
     title: 'Geophysical & Geothermal Data Portal',
     description: 'Geophysical data coverage and geothermal resource evaluation across Utah.',
     href: '/geophysics/',

@@ -193,9 +193,9 @@ const dataSourcesShortened = (
     </p>
 )
 
-import type { PortalMeta } from '@/routes/-data/portal-config'
+import type { AppEntry } from '@/routes/-data/portal-config'
 
-const portalMeta: PortalMeta = {
+const portalMeta: AppEntry = {
     title: appTitle,
     description: 'Mapped geologic hazards in Utah including earthquakes, landslides, flooding, debris flows, radon, rockfall, and problem soils.',
     href: '/hazards/',
