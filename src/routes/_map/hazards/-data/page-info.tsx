@@ -201,10 +201,10 @@ const portalMeta: PortalMeta = {
     href: '/hazards/',
     status: 'stable',
     public: true,
-    image: 'https://geology.utah.gov/wp-content/uploads/ThistleLS2.jpg',
+    image: 'https://geology.utah.gov/wp-content/uploads/improving3.jpg',
     imageCredit: {
-        article: 'GeoSights: Thistle Landslide Revisited, Utah County',
-        url: 'https://geology.utah.gov/map-pub/survey-notes/geosights/thistle-landslide/',
+        article: 'Improving Our Understanding of Earthquake Hazards in Utah',
+        url: 'https://geology.utah.gov/map-pub/survey-notes/improving-our-understanding-of-earthquake-hazards-in-utah/',
     },
 }
 
