@@ -75,7 +75,7 @@ export async function fetchPostgRESTResults(
         apiUrl = `${apiUrl}?${urlParams.toString()}`;
     }
 
-    const response = await fetch(apiUrl, { method: 'GET', headers: { ...headers, 'Accept': 'application/geo+json' } });
+    const response = await fetch(apiUrl, { method: 'GET', headers });
     if (!response.ok) {
         throw new Error(`PostgREST error (${response.status}) from ${apiUrl}`);
     }

@@ -29,7 +29,7 @@ export default function Map() {
             displayField: 'station',
             crs: 'EPSG:4326',
             params: { select: 'station,project,unique_id,geom' },
-            headers: { 'Accept-Profile': 'emp' },
+            headers: { 'Accept-Profile': 'emp', 'Accept': 'application/geo+json' },
         },
         {
             type: 'postgREST',
@@ -40,7 +40,7 @@ export default function Map() {
             displayField: 'unique_id',
             crs: 'EPSG:4326',
             params: { select: 'unique_id,station,project,geom' },
-            headers: { 'Accept-Profile': 'emp' },
+            headers: { 'Accept-Profile': 'emp', 'Accept': 'application/geo+json' },
         },
     ];
 
