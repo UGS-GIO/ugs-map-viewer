@@ -159,7 +159,7 @@ function AppCard({ title, description, image, imageCredit, href, external, statu
         {status && status !== 'stable' && (
           <Badge
             variant="outline"
-            className={`text-xs mb-1.5 ${status === 'in-progress' ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400' : ''}`}
+            className={`w-fit text-xs mb-1.5 ${status === 'in-progress' ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400' : ''}`}
           >
             {toTitleCase(status.replace('-', ' '))}
           </Badge>
