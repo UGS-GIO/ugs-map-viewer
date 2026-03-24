@@ -205,9 +205,8 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                 const searchValue = itemData.properties?.[sourceConfig.displayField];
                 if (searchValue) {
                     try {
-                        const searchParamName = sourceConfig.searchTerm || 'search_key';
                         const data = await geometryMutation.mutateAsync({
-                            searchParams: { [searchParamName]: searchValue },
+                            searchParams: { search_key: searchValue },
                             sourceConfig,
                         });
                         let features: Feature<Geometry, GeoJsonProperties>[] = [];
