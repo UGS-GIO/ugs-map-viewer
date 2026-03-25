@@ -120,7 +120,7 @@ const apps: AppEntry[] = [
     description: 'Interactive guide to living with earthquakes in Utah.',
     href: 'https://roots.geology.utah.gov',
     image: `${UGS_UPLOADS}/roots-image-710x375c.jpg`,
-    categories: ['Hazards'],
+    categories: ['Hazards', 'Popular Geology'],
     isNew: true,
   },
   {
