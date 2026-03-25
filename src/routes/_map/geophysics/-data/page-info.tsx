@@ -136,7 +136,7 @@ const portalMeta: AppEntry = {
     description: 'Geophysical data coverage and geothermal resource evaluation across Utah.',
     href: '/geophysics/',
     status: 'beta',
-    public: true,
+    public: false,
     image: 'https://geology.utah.gov/wp-content/uploads/roosevelt_hot_springs_area_3a.jpg',
     imageCredit: {
         author: 'Mark Milligan',
