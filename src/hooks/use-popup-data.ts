@@ -227,6 +227,7 @@ export function usePopupData({
         popupFields: sublayerConfig?.popupFields,
         relatedTables: sublayerConfig?.relatedTables,
         linkFields: sublayerConfig?.linkFields,
+        imageFields: sublayerConfig?.imageFields,
         colorCodingMap: sublayerConfig?.colorCodingMap,
         colorCodingMode: sublayerConfig?.colorCodingMode,
         rasterSource: processedRasterSource,

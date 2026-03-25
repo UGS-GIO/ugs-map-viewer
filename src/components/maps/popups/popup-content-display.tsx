@@ -17,8 +17,10 @@ import {
     ColorCodingMode,
     RelatedTable,
     LinkConfig,
-    LinkDefinition
+    LinkDefinition,
+    ImageFieldConfig,
 } from "@/lib/types/mapping-types";
+import { PopupImageGallery, type GalleryImage } from "@/components/maps/popups/popup-image-gallery";
 import {
     isNumberField,
     isStringField,
@@ -172,7 +174,7 @@ const renderFieldContent = (
 
 // --- Main Component ---
 const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: PopupContentDisplayProps) => {
-    const { relatedTables, popupFields, linkFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
+    const { relatedTables, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
 
     // Convert bulk data to the format expected by getRelatedTableValues
     const data = useMemo((): ProcessedRelatedData[][] => {
@@ -396,8 +398,19 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
     const regularContent = contentItems.filter(item => !item.isLongContent).sort((a, b) => a.originalIndex - b.originalIndex).map(item => item.content);
     const useGridLayout = layout === "grid" || regularContent.length > 5;
 
+    const galleryImages = useMemo((): GalleryImage[] => {
+        if (!imageFields || !properties) return []
+        return imageFields.flatMap((cfg: ImageFieldConfig) => {
+            const value = properties[cfg.field]
+            if (!value) return []
+            const url = cfg.baseUrl ? `${cfg.baseUrl}/${encodeURIComponent(String(value))}` : String(value)
+            return [{ url, label: cfg.label || String(value) }]
+        })
+    }, [imageFields, properties])
+
     return (
         <div className="space-y-2">
+            {galleryImages.length > 0 && <PopupImageGallery images={galleryImages} />}
             {longContent.length > 0 && <div className="space-y-2 col-span-full">{longContent}</div>}
             <div className={useGridLayout ? "grid grid-cols-2 gap-2" : "space-y-2"}>{regularContent}</div>
         </div>

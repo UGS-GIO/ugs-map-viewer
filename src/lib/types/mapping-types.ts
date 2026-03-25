@@ -76,10 +76,17 @@ export type FieldConfig = StringPopupFieldConfig | NumberPopupFieldConfig | Date
 
 export type ColorCodingMode = 'text' | 'background';
 
+export interface ImageFieldConfig {
+    field: string;
+    label?: string;
+    baseUrl?: string;
+}
+
 export type CustomSublayerProps = {
     popupFields?: Record<string, FieldConfig>; // Maps field labels to attribute names
     relatedTables?: RelatedTable[];
     linkFields?: LinkFields;
+    imageFields?: ImageFieldConfig[];
     colorCodingMap?: ColorCodingRecordFunction; // Maps field names to color coding functions
     colorCodingMode?: ColorCodingMode; // How to apply the color: 'text' (default) or 'background'
     rasterSource?: RasterSource;

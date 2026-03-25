@@ -26,23 +26,11 @@ const georegionsWMSConfig: WMSLayerProps = {
                 'Key Reservoirs': { field: 'keyreservoirs', type: 'string' },
                 'Key Caprocks': { field: 'keycaprocks', type: 'string' },
                 'Description': { field: 'description', type: 'string' },
-                'Geo-region Map': { field: 'georegionmap', type: 'string' },
-                'Stratigraphic Column': { field: 'stratcolumn', type: 'string' },
             },
-            linkFields: {
-                'georegionmap': {
-                    transform: (value: string) => {
-                        if (!value) return [{ label: 'Not available', href: null }];
-                        return [{ label: 'View Image', href: `${CCUS_IMAGE_BASE_URL}/georegionmaps/${encodeURIComponent(value)}` }];
-                    }
-                },
-                'stratcolumn': {
-                    transform: (value: string) => {
-                        if (!value) return [{ label: 'Not available', href: null }];
-                        return [{ label: 'View Image', href: `${CCUS_IMAGE_BASE_URL}/stratcolumns/${encodeURIComponent(value)}` }];
-                    }
-                },
-            },
+            imageFields: [
+                { field: 'georegionmap', label: 'Geo-region Map', baseUrl: `${CCUS_IMAGE_BASE_URL}/georegionmaps` },
+                { field: 'stratcolumn', label: 'Stratigraphic Column', baseUrl: `${CCUS_IMAGE_BASE_URL}/stratcolumns` },
+            ],
             colorCodingMap: {
                 'ranking': (value: string | number) => {
                     const strValue = String(value).toLowerCase();
