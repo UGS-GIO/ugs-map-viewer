@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext } from '@/components/ui/carousel'
+import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext, type CarouselApi } from '@/components/ui/carousel'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
+import { X } from 'lucide-react'
 
 export interface GalleryImage {
     url: string
@@ -14,6 +15,15 @@ interface PopupImageGalleryProps {
 
 export function PopupImageGallery({ images }: PopupImageGalleryProps) {
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+    const [activeIndex, setActiveIndex] = useState(0)
+    const apiRef = useRef<CarouselApi>(undefined)
+
+    const handleApiChange = (newApi: CarouselApi) => {
+        if (!newApi) return
+        apiRef.current = newApi
+        setActiveIndex(newApi.selectedScrollSnap())
+        newApi.on('select', () => setActiveIndex(newApi.selectedScrollSnap()))
+    }
 
     if (images.length === 0) return null
 
@@ -37,40 +47,72 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
             </div>
 
             <Dialog open={lightboxIndex !== null} onOpenChange={(open) => { if (!open) setLightboxIndex(null) }}>
-                <DialogContent className="max-w-[90vw] max-h-[90svh] p-0 bg-background border-border overflow-hidden">
+                <DialogContent className="max-w-[90vw] max-h-[90svh] p-0 bg-background border-border overflow-hidden [&>button:last-child]:hidden">
                     <VisuallyHidden>
                         <DialogTitle>
                             {lightboxIndex !== null ? (images[lightboxIndex].label || `Image ${lightboxIndex + 1}`) : 'Image'}
                         </DialogTitle>
                         <DialogDescription>Image gallery viewer</DialogDescription>
                     </VisuallyHidden>
-                    <Carousel
-                        opts={{ startIndex: lightboxIndex ?? 0, loop: images.length > 1 }}
-                        className="w-full h-full"
-                    >
-                        <CarouselContent>
-                            {images.map((img, i) => (
-                                <CarouselItem key={img.url} className="flex items-center justify-center">
-                                    <div className="flex flex-col items-center gap-2 p-4 max-h-[85svh]">
+
+                    <div className="flex flex-col max-h-[90svh]">
+                        <button
+                            onClick={() => setLightboxIndex(null)}
+                            className="absolute top-2 right-2 z-10 inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                            aria-label="Close"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+
+                        <Carousel
+                            setApi={handleApiChange}
+                            opts={{ startIndex: lightboxIndex ?? 0, loop: images.length > 1 }}
+                            className="flex-1 min-h-0 outline-none"
+                            tabIndex={0}
+                            autoFocus
+                        >
+                            <CarouselContent>
+                                {images.map((img, i) => (
+                                    <CarouselItem key={img.url} className="flex items-center justify-center">
+                                        <div className="flex flex-col items-center gap-2 p-4">
+                                            <img
+                                                src={img.url}
+                                                alt={img.label || `Image ${i + 1}`}
+                                                className="max-w-full max-h-[60svh] object-contain rounded"
+                                            />
+                                            {img.label && (
+                                                <p className="text-sm text-muted-foreground text-center">{img.label}</p>
+                                            )}
+                                        </div>
+                                    </CarouselItem>
+                                ))}
+                            </CarouselContent>
+                            {images.length > 1 && (
+                                <>
+                                    <CarouselPrevious className="left-2 bg-accent hover:bg-accent/80 border-border text-accent-foreground" />
+                                    <CarouselNext className="right-2 bg-accent hover:bg-accent/80 border-border text-accent-foreground" />
+                                </>
+                            )}
+                        </Carousel>
+
+                        <div className="flex justify-center border-t border-border p-3">
+                            <div className="flex gap-2 overflow-x-auto scrollbar-thin">
+                                {images.map((img, i) => (
+                                    <button
+                                        key={img.url}
+                                        onClick={() => apiRef.current?.scrollTo(i)}
+                                        className={`relative shrink-0 w-14 h-10 rounded-sm border transition-shadow ${activeIndex === i ? 'ring-2 ring-primary border-primary' : 'border-border hover:border-muted-foreground'}`}
+                                    >
                                         <img
                                             src={img.url}
                                             alt={img.label || `Image ${i + 1}`}
-                                            className="max-w-full max-h-[75svh] object-contain rounded"
+                                            className="w-full h-full object-cover rounded-sm"
                                         />
-                                        {img.label && (
-                                            <p className="text-sm text-muted-foreground text-center">{img.label}</p>
-                                        )}
-                                    </div>
-                                </CarouselItem>
-                            ))}
-                        </CarouselContent>
-                        {images.length > 1 && (
-                            <>
-                                <CarouselPrevious className="left-2 bg-accent hover:bg-accent/80 border-border text-accent-foreground" />
-                                <CarouselNext className="right-2 bg-accent hover:bg-accent/80 border-border text-accent-foreground" />
-                            </>
-                        )}
-                    </Carousel>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 </DialogContent>
             </Dialog>
         </>
