@@ -1030,8 +1030,8 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                     }
                 },
                 'Class': { field: 'class', type: 'string' },
-                'Depth of Well': { field: 'depth', type: 'string' },
-                'Flow': { field: 'flow', type: 'string' },
+                'Depth of Well': { field: 'depth', type: 'number' },
+                'Flow': { field: 'flow', type: 'number' },
                 'Rate': { field: 'rate', type: 'string' },
                 'Location': { field: 'lat', type: 'string' },
                 'UTM (Easting/Northing)': {
@@ -1097,7 +1097,7 @@ const nonPetroleumCatLayerConfig: WMSLayerProps = {
                 },
                 'Field/Area': { field: 'field_area', type: 'string' },
                 'Purpose': { field: 'purpose', type: 'string' },
-                'Depth': { field: 'depth', type: 'string' }
+                'Depth': { field: 'depth', type: 'number' }
             },
         },
     ],

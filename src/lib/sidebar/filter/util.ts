@@ -38,53 +38,6 @@ function isRecordObject(value: unknown): value is Record<string, unknown> {
     return typeof value === 'object' && value !== null;
 }
 
-export const zoomToExtent = (
-    xmin: number,
-    ymin: number,
-    xmax: number,
-    ymax: number,
-    map: maplibregl.Map,
-    scale?: number,
-    onComplete?: () => void
-) => {
-    if (!map) {
-        console.warn('No map instance provided to zoomToExtent');
-        return;
-    }
-
-    // Set up one-time moveend listener if callback provided
-    if (onComplete) {
-        map.once('moveend', onComplete);
-    }
-
-    // If scale is provided, convert it to zoom level and use it as a target
-    // Web Mercator scale to zoom level conversion: zoom ≈ log2(591657550.5 / scale)
-    // 591657550.5 is the scale denominator at zoom level 0 for Web Mercator (EPSG:3857)
-    if (scale) {
-        const targetZoom = Math.log2(591657550.5 / scale);
-
-        // For points with a scale, we want to zoom to that specific level
-        // First fit to the bounds, then zoom to the target level
-        map.fitBounds(
-            [[xmin, ymin], [xmax, ymax]] as [[number, number], [number, number]],
-            {
-                padding: 100,
-                zoom: targetZoom,
-                duration: 500
-            }
-        );
-    } else {
-        // For polygons/lines without a scale, just fit to bounds with padding
-        map.fitBounds(
-            [[xmin, ymin], [xmax, ymax]] as [[number, number], [number, number]],
-            {
-                padding: 50,
-                duration: 500
-            }
-        );
-    }
-}
-
 /**
  * Apply CQL filter to MapLibre WMS layers
  * Updates the WMS source URL to include the CQL_FILTER parameter
