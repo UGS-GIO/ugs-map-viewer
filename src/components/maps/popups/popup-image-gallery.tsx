@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Dialog, DialogClose, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext, type CarouselApi } from '@/components/ui/carousel'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { X } from 'lucide-react'
@@ -47,7 +47,13 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
             </div>
 
             <Dialog open={lightboxIndex !== null} onOpenChange={(open) => { if (!open) setLightboxIndex(null) }}>
-                <DialogContent className="max-w-[90vw] max-h-[90svh] p-0 bg-background border-border overflow-hidden [&>button:last-child]:hidden">
+                <DialogContent
+                    className="max-w-[90vw] max-h-[90svh] p-0 bg-background border-border overflow-hidden"
+                    onKeyDown={(e: React.KeyboardEvent) => {
+                        if (e.key === 'ArrowLeft') apiRef.current?.scrollPrev()
+                        if (e.key === 'ArrowRight') apiRef.current?.scrollNext()
+                    }}
+                >
                     <VisuallyHidden>
                         <DialogTitle>
                             {lightboxIndex !== null ? (images[lightboxIndex].label || `Image ${lightboxIndex + 1}`) : 'Image'}
@@ -56,20 +62,15 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
                     </VisuallyHidden>
 
                     <div className="flex flex-col max-h-[90svh]">
-                        <button
-                            onClick={() => setLightboxIndex(null)}
-                            className="absolute top-2 right-2 z-10 inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                            aria-label="Close"
-                        >
+                        <DialogClose className="absolute top-2 right-2 z-10 inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
                             <X className="h-4 w-4" />
-                        </button>
+                            <span className="sr-only">Close</span>
+                        </DialogClose>
 
                         <Carousel
                             setApi={handleApiChange}
                             opts={{ startIndex: lightboxIndex ?? 0, loop: images.length > 1 }}
-                            className="flex-1 min-h-0 outline-none"
-                            tabIndex={0}
-                            autoFocus
+                            className="flex-1 min-h-0"
                         >
                             <CarouselContent>
                                 {images.map((img, i) => (
@@ -96,7 +97,7 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
                         </Carousel>
 
                         <div className="flex justify-center border-t border-border p-3">
-                            <div className="flex gap-2 overflow-x-auto scrollbar-thin">
+                            <div className="flex gap-2 overflow-x-auto scrollbar-thin p-1">
                                 {images.map((img, i) => (
                                     <button
                                         key={img.url}
