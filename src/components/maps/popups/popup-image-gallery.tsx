@@ -6,6 +6,7 @@ import { X } from 'lucide-react'
 
 export interface GalleryImage {
     url: string
+    thumbnailUrl?: string
     label?: string
 }
 
@@ -37,7 +38,7 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
                         className="relative shrink-0 w-20 h-16 rounded-md border border-border hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
                         <img
-                            src={img.url}
+                            src={img.thumbnailUrl ?? img.url}
                             alt={img.label || `Image ${i + 1}`}
                             className="w-full h-full object-cover rounded-sm"
                             loading="lazy"
@@ -46,7 +47,7 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
                 ))}
             </div>
 
-            <Dialog open={lightboxIndex !== null} onOpenChange={(open) => { if (!open) setLightboxIndex(null) }}>
+            <Dialog open={lightboxIndex !== null} onOpenChange={(open: boolean) => { if (!open) setLightboxIndex(null) }}>
                 <DialogContent
                     className="max-w-[90vw] max-h-[90svh] p-0 bg-background border-border overflow-hidden"
                     onKeyDown={(e: React.KeyboardEvent) => {
@@ -105,7 +106,7 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
                                         className={`relative shrink-0 w-14 h-10 rounded-sm border transition-shadow ${activeIndex === i ? 'ring-2 ring-primary border-primary' : 'border-border hover:border-muted-foreground'}`}
                                     >
                                         <img
-                                            src={img.url}
+                                            src={img.thumbnailUrl ?? img.url}
                                             alt={img.label || `Image ${i + 1}`}
                                             className="w-full h-full object-cover rounded-sm"
                                         />

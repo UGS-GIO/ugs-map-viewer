@@ -262,8 +262,16 @@ export interface RelatedTable {
     logicalOperator?: string;
     sortBy?: string;
     sortDirection?: 'asc' | 'desc';
-    /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers */
-    displayAs?: 'list' | 'table';
+    /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers, 'gallery' renders a photo gallery */
+    displayAs?: 'list' | 'table' | 'gallery';
+    /** Required when displayAs is 'gallery'. Field name containing the full-size image URL */
+    galleryUrlField?: string;
+    /** Optional when displayAs is 'gallery'. Field name containing the thumbnail URL. Falls back to galleryUrlField if not set */
+    galleryThumbnailField?: string;
+    /** Optional when displayAs is 'gallery'. Field name to use as the image caption/label */
+    galleryLabelField?: string;
+    /** Optional base URL prepended to gallery URL field values */
+    galleryBaseUrl?: string;
     /** Fetch mode: 'postgrest' (default) or 'wfs' for GeoServer WFS queries */
     fetchMode?: 'postgrest' | 'wfs';
     /** WFS typeName (required when fetchMode is 'wfs'), e.g. 'emp:sco2_with_grid' */

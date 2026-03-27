@@ -399,14 +399,36 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
     const useGridLayout = layout === "grid" || regularContent.length > 5;
 
     const galleryImages = useMemo((): GalleryImage[] => {
-        if (!imageFields || !properties) return []
-        return imageFields.flatMap((cfg: ImageFieldConfig) => {
-            const value = properties[cfg.field]
-            if (!value) return []
-            const url = cfg.baseUrl ? `${cfg.baseUrl}/${encodeURIComponent(String(value))}` : String(value)
-            return [{ url, label: cfg.label || String(value) }]
+        const fromImageFields: GalleryImage[] = (imageFields && properties)
+            ? imageFields.flatMap((cfg: ImageFieldConfig) => {
+                const value = properties[cfg.field]
+                if (!value) return []
+                const url = cfg.baseUrl ? `${cfg.baseUrl}/${encodeURIComponent(String(value))}` : String(value)
+                return [{ url, label: cfg.label || String(value) }]
+            })
+            : []
+
+        const fromRelatedTables: GalleryImage[] = (relatedTables ?? []).flatMap((table, tableIndex) => {
+            if (table.displayAs !== 'gallery' || !table.galleryUrlField) return []
+            const rows = data[tableIndex] ?? []
+            return rows.flatMap(row => {
+                const rawUrl = row[table.galleryUrlField!]
+                if (!rawUrl) return []
+                const url = table.galleryBaseUrl
+                    ? `${table.galleryBaseUrl}/${encodeURIComponent(String(rawUrl))}`
+                    : String(rawUrl)
+                const thumbnailUrl = table.galleryThumbnailField && row[table.galleryThumbnailField]
+                    ? (table.galleryBaseUrl
+                        ? `${table.galleryBaseUrl}/${encodeURIComponent(String(row[table.galleryThumbnailField]))}`
+                        : String(row[table.galleryThumbnailField]))
+                    : undefined
+                const label = table.galleryLabelField ? String(row[table.galleryLabelField] ?? '') : undefined
+                return [{ url, thumbnailUrl, label }]
+            })
         })
-    }, [imageFields, properties])
+
+        return [...fromImageFields, ...fromRelatedTables]
+    }, [imageFields, properties, relatedTables, data])
 
     return (
         <div className="space-y-2">
