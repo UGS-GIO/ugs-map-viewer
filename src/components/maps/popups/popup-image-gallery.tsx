@@ -63,7 +63,7 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
                     </VisuallyHidden>
 
                     <div className="flex flex-col max-h-[90svh]">
-                        <DialogClose className="absolute top-2 right-2 z-10 inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+                        <DialogClose className="absolute top-2 right-2 z-10 inline-flex items-center justify-center rounded-md p-3 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
                             <X className="h-4 w-4" />
                             <span className="sr-only">Close</span>
                         </DialogClose>
@@ -91,13 +91,13 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
                             </CarouselContent>
                             {images.length > 1 && (
                                 <>
-                                    <CarouselPrevious className="left-2 bg-accent hover:bg-accent/80 border-border text-accent-foreground" />
-                                    <CarouselNext className="right-2 bg-accent hover:bg-accent/80 border-border text-accent-foreground" />
+                                    <CarouselPrevious className="hidden sm:flex left-2 bg-accent hover:bg-accent/80 border-border text-accent-foreground" />
+                                    <CarouselNext className="hidden sm:flex right-2 bg-accent hover:bg-accent/80 border-border text-accent-foreground" />
                                 </>
                             )}
                         </Carousel>
 
-                        <div className="flex justify-center border-t border-border p-3">
+                        <div className="hidden sm:flex justify-center border-t border-border p-3">
                             <div className="flex gap-2 overflow-x-auto scrollbar-thin p-1">
                                 {images.map((img, i) => (
                                     <button
