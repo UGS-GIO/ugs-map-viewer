@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+
 @layer base {
   :root {
     --background: 0 0% 98%;
@@ -40,40 +41,48 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
-  /* Utah Design System–aligned scope for the landing page (light) */
+  /* UGS earth-tone scope for the landing page
+   * Source colors from geology.utah.gov/interactive-maps/
+   *   #441d0d deep brown — header/footer
+   *   #733016 mid brown  — state bar
+   *   #c3512f rust       — primary accent
+   *   #99ccd9 teal       — secondary accent
+   */
   .landing {
     --background: 0 0% 100%;
     --foreground: 0 0% 13%;
     --card: 0 0% 100%;
     --card-foreground: 0 0% 13%;
-    --primary: 211 83% 42%;
+    --primary: 14 61% 47%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 211 40% 92%;
-    --secondary-foreground: 211 83% 42%;
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 40%;
-    --accent: 220 18% 16%;
-    --accent-foreground: 210 14% 93%;
-    --border: 220 13% 91%;
-    --ring: 211 83% 42%;
+    --secondary: 14 30% 93%;
+    --secondary-foreground: 14 55% 35%;
+    --muted: 30 15% 96%;
+    --muted-foreground: 25 8% 40%;
+    --accent: 17 68% 16%;
+    --accent-foreground: 0 0% 100%;
+    --border: 30 10% 88%;
+    --ring: 14 61% 47%;
+    --state-bar: 17 68% 27%;
   }
 
   /* Landing page dark mode */
   .dark .landing {
-    --background: 220 15% 10%;
-    --foreground: 210 14% 93%;
-    --card: 220 15% 13%;
-    --card-foreground: 210 14% 93%;
-    --primary: 211 80% 55%;
+    --background: 20 15% 8%;
+    --foreground: 30 10% 92%;
+    --card: 20 12% 11%;
+    --card-foreground: 30 10% 92%;
+    --primary: 16 65% 58%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 215 20% 18%;
-    --secondary-foreground: 211 80% 55%;
-    --muted: 220 15% 15%;
-    --muted-foreground: 215 10% 60%;
-    --accent: 220 18% 12%;
-    --accent-foreground: 210 14% 85%;
-    --border: 220 12% 20%;
-    --ring: 211 80% 55%;
+    --secondary: 17 20% 16%;
+    --secondary-foreground: 16 65% 58%;
+    --muted: 20 12% 13%;
+    --muted-foreground: 25 8% 58%;
+    --accent: 17 55% 18%;
+    --accent-foreground: 30 15% 92%;
+    --border: 20 10% 18%;
+    --ring: 16 65% 58%;
+    --state-bar: 17 55% 28%;
   }
 
   .dark {

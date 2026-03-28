@@ -35,7 +35,7 @@ function UtahLogo() {
 
 function StateBar() {
   return (
-    <div className="bg-[#474747] text-white text-xs">
+    <div className="bg-[hsl(var(--state-bar))] text-white text-xs">
       <hr className="border-white/20 m-0" />
       <div className="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-y-3">
         <div className="flex items-center gap-3">
@@ -66,7 +66,7 @@ function StateBar() {
 
 function SiteHeader() {
   return (
-    <header className="bg-accent text-accent-foreground py-4 px-4">
+    <header className="bg-accent text-accent-foreground py-2.5 px-4">
       <div className="max-w-6xl mx-auto flex items-center gap-4">
         <Image src="/logo_main.png" alt="Utah Geological Survey" className="h-12 w-auto" />
         <div>
@@ -210,7 +210,7 @@ function AppSection({ id, heading, description, children, className }: AppSectio
 
 function CategoryFilter({ active, onChange }: { active: AppCategory | null, onChange: (cat: AppCategory | null) => void }) {
   const chipClass = (isActive: boolean) =>
-    `rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${isActive ? 'bg-foreground text-background border-foreground' : 'bg-card text-muted-foreground border-border hover:bg-accent/50'}`
+    `rounded-full px-4 py-1.5 text-sm font-medium border transition-colors ${isActive ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-muted-foreground border-border hover:bg-accent/50'}`
 
   return (
     <div className="max-w-6xl mx-auto px-4 pt-10 md:pt-14">
