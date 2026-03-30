@@ -1002,6 +1002,7 @@ const extraLayersConfig: LayerProps = {
         type: 'group',
         title: 'Additional Layers for Review (Not Finalized)',
         visible: false,
+        alwaysShowInReview: true,
         layers: [hazardsAquifersCombinedReviewConfig, hazardsAquifersDilineationReviewConfig, hazardsDisplacementContoursReviewConfig],
 };
 
@@ -1058,14 +1059,13 @@ export const extraLayersReviewConfig: LayerProps = {
 };
 // --- New, Separate Config Array for Review Layers ---
 export const reviewLayersConfig: LayerProps[] = [
+    extraLayersReviewConfig,
     earthquakesReviewConfig,
     floodHazardsReviewConfig,
     landslidesReviewConfig,
     soilHazardsReviewConfig,
     studyAreasReviewConfig,
-    extraLayersReviewConfig
     // quads24kWMSConfig, // This layer is for reference and does not have/need a filter
 ];
 
-// The original default export
 export default layersConfig;

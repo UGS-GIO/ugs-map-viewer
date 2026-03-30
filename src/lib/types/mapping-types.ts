@@ -183,6 +183,8 @@ export interface WFSLayerProps extends BaseLayerProps {
 export interface GroupLayerProps extends BaseLayerProps {
     type: 'group';
     layers?: LayerProps[];
+    /** Always show this group in the review layer list, bypassing the reviewable-names DB filter */
+    alwaysShowInReview?: boolean;
 }
 
 
