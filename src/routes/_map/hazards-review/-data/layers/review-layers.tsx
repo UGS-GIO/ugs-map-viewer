@@ -929,7 +929,7 @@ const hazardsDisplacementContoursReviewConfig: WMSLayerProps = {
 
 
 const studyAreasLayerName = 'studyareas_review';
-const studyAreasWMSTitle = 'Mapped Areas: Reviewsky';
+const studyAreasWMSTitle = 'Mapped Areas: Review';
 const studyAreasWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
