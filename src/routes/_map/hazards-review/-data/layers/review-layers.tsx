@@ -863,17 +863,17 @@ const karstFeaturesWMSConfig: WMSLayerProps = {
 const hazardsAquifersCombinedReviewConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Aquifers and Springs (Source: Utah Geological Survey): Review',
-    visible: false,
+    title: 'Aquifer Combined (Source: Utah Geological Survey): Review',
+    visible: true,
     sublayers: [
         {
-            name: `${HAZARDS_WORKSPACE}:hazards_aquifers_springs_combined_review`,
+            name: `${HAZARDS_WORKSPACE}:hazards_aquifers_combined_review`,
             popupEnabled: false,
             queryable: true,
             popupFields: {
                 'Name': { field: 'name', type: 'string' },
-                'Type': { field: 'type', type: 'string' },
-                'Mapped Scale': { field: 'mappedscale', type: 'string' },
+                'publication': { field: 'type', type: 'string' },
+                'Mapped Scale': { field: 'scale', type: 'string' },
             }
         },
     ],
@@ -884,17 +884,17 @@ const hazardsAquifersCombinedReviewConfig: WMSLayerProps = {
 const hazardsAquifersDilineationReviewConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Aquifers and Springs (Source: Utah Geological Survey): Review',
-    visible: false,
+    title: 'Aquifer Delineation (Source: Utah Geological Survey): Review',
+    visible: true,
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:hazards_aquifer_delineation_review`,
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'name', type: 'string' },
-                'Type': { field: 'type', type: 'string' },
-                'Mapped Scale': { field: 'mappedscale', type: 'string' },
+                'Aquifer': { field: 'aquifer', type: 'string' },
+                'Details': { field: 'details', type: 'string' },
+                'Mapped Scale': { field: 'scale', type: 'string' },
             }
         },
     ],
@@ -905,10 +905,10 @@ const hazardsDisplacementContoursReviewConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: 'Displacement Contours (Source: Utah Geological Survey): Review',
-    visible: false,
+    visible: true,
     sublayers: [
         {
-            name: `${HAZARDS_WORKSPACE}:hazards_displacement_contourss_review`,
+            name: `${HAZARDS_WORKSPACE}:hazards_displacement_contours_review`,
             popupEnabled: false,
             queryable: true,
             popupFields: {
