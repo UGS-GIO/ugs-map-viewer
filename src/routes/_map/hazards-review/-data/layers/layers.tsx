@@ -952,7 +952,73 @@ const soilHazardsConfig: LayerProps = {
     layers: [collapsibleSoilWMSConfig, corrosiveSoilRockWMSConfig, earthFissureWMSConfig, expansiveSoilRockWMSConfig, karstFeaturesWMSConfig, pipingAndErosionWMSConfig, radonSusceptibilityWMSConfig, saltTectonicsDeformationWMSConfig, shallowBedrockWMSConfig, solubleSoilAndRockWMSConfig, windBlownSandWMSConfig],
 };
 
+const aquifersCombinedConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: 'Aquifer Combined (Source: Utah Geological Survey): Review',
+    visible: true,
+    sublayers: [
+        {
+            name: `${HAZARDS_WORKSPACE}:hazards_aquifers_combined_review`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Name': { field: 'name', type: 'string' },
+                'Publication': { field: 'type', type: 'string' },
+                'Mapped Scale': { field: 'scale', type: 'string' },
+            }
+        },
+    ],
+};
+
+const aquiferDelineationConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: 'Aquifer Delineation (Source: Utah Geological Survey): Review',
+    visible: true,
+    sublayers: [
+        {
+            name: `${HAZARDS_WORKSPACE}:hazards_aquifer_delineation_review`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Aquifer': { field: 'aquifer', type: 'string' },
+                'Details': { field: 'details', type: 'string' },
+                'Mapped Scale': { field: 'scale', type: 'string' },
+            }
+        },
+    ],
+};
+
+const displacementContoursConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: 'Displacement Contours (Source: Utah Geological Survey): Review',
+    visible: true,
+    sublayers: [
+        {
+            name: `${HAZARDS_WORKSPACE}:hazards_displacement_contours_review`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Name': { field: 'name', type: 'string' },
+                'Type': { field: 'type', type: 'string' },
+                'Mapped Scale': { field: 'mappedscale', type: 'string' },
+            }
+        },
+    ],
+};
+
+const extraLayersConfig: LayerProps = {
+    type: 'group',
+    title: 'Additional Layers for Review (Not Finalized)',
+    visible: false,
+    alwaysShowInReview: true,
+    layers: [aquifersCombinedConfig, aquiferDelineationConfig, displacementContoursConfig],
+};
+
 const layersConfig: LayerProps[] = [
+    extraLayersConfig,
     earthquakesConfig,
     floodHazardsConfig,
     landslidesConfig,
