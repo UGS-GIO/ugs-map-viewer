@@ -868,12 +868,13 @@ const hazardsAquifersCombinedReviewConfig: WMSLayerProps = {
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:hazards_aquifers_combined_review`,
-            popupEnabled: false,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
                 'Name': { field: 'name', type: 'string' },
-                'publication': { field: 'type', type: 'string' },
-                'Mapped Scale': { field: 'scale', type: 'string' },
+                'Publication': { field: 'publication', type: 'string' },
+                'DOI': { field: 'doi', type: 'string' },
+                'Office': { field: 'office_1', type: 'string' },
             }
         },
     ],
@@ -889,12 +890,14 @@ const hazardsAquifersDilineationReviewConfig: WMSLayerProps = {
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:hazards_aquifer_delineation_review`,
-            popupEnabled: false,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
                 'Aquifer': { field: 'aquifer', type: 'string' },
+                'Broader Aquifer': { field: 'broader', type: 'string' },
                 'Details': { field: 'details', type: 'string' },
-                'Mapped Scale': { field: 'scale', type: 'string' },
+                'Depletion (Early 21st C.)': { field: 'early21stc', type: 'number' },
+                'Depletion (Late 20th C.)': { field: 'late20thce', type: 'number' },
             }
         },
     ],
@@ -909,12 +912,16 @@ const hazardsDisplacementContoursReviewConfig: WMSLayerProps = {
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:hazards_displacement_contours_review`,
-            popupEnabled: false,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
-                'Name': { field: 'name', type: 'string' },
+                'Location': { field: 'location', type: 'string' },
                 'Type': { field: 'type', type: 'string' },
-                'Mapped Scale': { field: 'mappedscale', type: 'string' },
+                'Year': { field: 'year', type: 'string' },
+                'Period Start': { field: 'start_date', type: 'string' },
+                'Displacement (cm)': { field: 'value_cm', type: 'number' },
+                'Displacement (in)': { field: 'value_inch', type: 'number' },
+                'HUC': { field: 'huc', type: 'string' },
             }
         },
     ],

@@ -978,76 +978,11 @@ const soilHazardsConfig: LayerProps = {
     layers: [collapsibleSoilWMSConfig, corrosiveSoilRockWMSConfig, earthFissureWMSConfig, expansiveSoilRockWMSConfig, karstFeaturesWMSConfig, pipingAndErosionWMSConfig, radonSusceptibilityWMSConfig, saltTectonicsDeformationWMSConfig, shallowBedrockWMSConfig, solubleSoilAndRockWMSConfig, windBlownSandWMSConfig],
 };
 
-const aquifersCombinedConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Aquifers and Springs (Combined)',
-    visible: false,
-    sublayers: [
-        {
-            name: `${HAZARDS_WORKSPACE}:hazards_aquifers_combined_review`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'Name': { field: 'name', type: 'string' },
-                'Type': { field: 'type', type: 'string' },
-                'Mapped Scale': { field: 'mappedscale', type: 'string' },
-            }
-        },
-    ],
-};
-
-const aquiferDelineationConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Aquifer Delineation',
-    visible: false,
-    sublayers: [
-        {
-            name: `${HAZARDS_WORKSPACE}:hazards_aquifer_delineation_review`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'Name': { field: 'name', type: 'string' },
-                'Type': { field: 'type', type: 'string' },
-                'Mapped Scale': { field: 'mappedscale', type: 'string' },
-            }
-        },
-    ],
-};
-
-const displacementContoursConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Displacement Contours',
-    visible: false,
-    sublayers: [
-        {
-            name: `${HAZARDS_WORKSPACE}:hazards_displacement_contours_review`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'Name': { field: 'name', type: 'string' },
-                'Type': { field: 'type', type: 'string' },
-                'Mapped Scale': { field: 'mappedscale', type: 'string' },
-            }
-        },
-    ],
-};
-
-const extraLayersConfig: LayerProps = {
-    type: 'group',
-    title: 'Additional Layers (SAR Test)',
-    visible: false,
-    layers: [aquifersCombinedConfig, aquiferDelineationConfig, displacementContoursConfig],
-};
-
 const layersConfig: LayerProps[] = [
     earthquakesConfig,
     floodHazardsConfig,
     landslidesConfig,
     soilHazardsConfig,
-    extraLayersConfig,
     studyAreasWMSConfig,
     quads24kWMSConfig,
 ];
