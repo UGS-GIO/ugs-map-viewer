@@ -993,7 +993,6 @@ const soilHazardsConfig: LayerProps = {
     layers: [
         collapsibleSoilWMSConfig,
         corrosiveSoilRockWMSConfig,
-        earthFissureWMSConfig,
         expansiveSoilRockWMSConfig,
         karstFeaturesWMSConfig,
         pipingAndErosionWMSConfig,
@@ -1007,10 +1006,10 @@ const soilHazardsConfig: LayerProps = {
 
 const extraLayersConfig: LayerProps = {
         type: 'group',
-        title: 'Additional Layers for Review (Not Finalized)',
+        title: 'Land Subsidence',
         visible: false,
         alwaysShowInReview: true,
-        layers: [hazardsAquifersCombinedReviewConfig, hazardsAquifersDilineationReviewConfig, hazardsDisplacementContoursReviewConfig],
+        layers: [earthFissureWMSConfig, hazardsAquifersCombinedReviewConfig, hazardsAquifersDilineationReviewConfig, hazardsDisplacementContoursReviewConfig],
 };
 
 const layersConfig: LayerProps[] = [
@@ -1055,14 +1054,15 @@ export const hazardsDisplacementContoursReview: WMSLayerProps = { ...hazardsDisp
 export const floodHazardsReviewConfig: LayerProps = { ...floodHazardsConfig, layers: [shallowGroundwaterReviewConfig, erosionHazardZoneReviewConfig, alluvialFanReviewConfig] };
 export const earthquakesReviewConfig: LayerProps = { ...earthquakesConfig, layers: [qFaultsReviewConfig, surfaceFaultRuptureReviewConfig, liquefactionReviewConfig, groundshakingReviewConfig] };
 export const landslidesReviewConfig: LayerProps = { ...landslidesConfig, layers: [rockfallHazardReviewConfig, landslideInventoryReviewConfig, landslideSusceptibilityReviewConfig, landslideLegacyReviewConfig] };
-export const soilHazardsReviewConfig: LayerProps = { ...soilHazardsConfig, layers: [collapsibleSoilReviewConfig, corrosiveSoilRockReviewConfig, earthFissureReviewConfig, expansiveSoilRockReviewConfig, karstFeaturesReviewConfig, pipingAndErosionReviewConfig, radonSusceptibilityReviewConfig, saltTectonicsDeformationReviewConfig, shallowBedrockReviewConfig, solubleSoilAndRockReviewConfig, windBlownSandWMSConfig] };
-export const extraLayersReviewConfig: LayerProps = { 
-    ...extraLayersConfig, 
+export const soilHazardsReviewConfig: LayerProps = { ...soilHazardsConfig, layers: [collapsibleSoilReviewConfig, corrosiveSoilRockReviewConfig, expansiveSoilRockReviewConfig, karstFeaturesReviewConfig, pipingAndErosionReviewConfig, radonSusceptibilityReviewConfig, saltTectonicsDeformationReviewConfig, shallowBedrockReviewConfig, solubleSoilAndRockReviewConfig, windBlownSandWMSConfig] };
+export const extraLayersReviewConfig: LayerProps = {
+    ...extraLayersConfig,
     layers: [
-        hazardsAquifersCombinedReview, 
-        hazardsAquifersDilineationReview, 
+        earthFissureReviewConfig,
+        hazardsAquifersCombinedReview,
+        hazardsAquifersDilineationReview,
         hazardsDisplacementContoursReview
-    ] 
+    ]
 };
 // --- New, Separate Config Array for Review Layers ---
 export const reviewLayersConfig: LayerProps[] = [

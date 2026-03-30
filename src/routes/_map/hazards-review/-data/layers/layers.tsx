@@ -949,7 +949,7 @@ const soilHazardsConfig: LayerProps = {
     type: 'group',
     title: 'Problem Soil and Rock Hazards',
     visible: false,
-    layers: [collapsibleSoilWMSConfig, corrosiveSoilRockWMSConfig, earthFissureWMSConfig, expansiveSoilRockWMSConfig, karstFeaturesWMSConfig, pipingAndErosionWMSConfig, radonSusceptibilityWMSConfig, saltTectonicsDeformationWMSConfig, shallowBedrockWMSConfig, solubleSoilAndRockWMSConfig, windBlownSandWMSConfig],
+    layers: [collapsibleSoilWMSConfig, corrosiveSoilRockWMSConfig, expansiveSoilRockWMSConfig, karstFeaturesWMSConfig, pipingAndErosionWMSConfig, radonSusceptibilityWMSConfig, saltTectonicsDeformationWMSConfig, shallowBedrockWMSConfig, solubleSoilAndRockWMSConfig, windBlownSandWMSConfig],
 };
 
 const aquifersCombinedConfig: WMSLayerProps = {
@@ -1018,10 +1018,10 @@ const displacementContoursConfig: WMSLayerProps = {
 
 const extraLayersConfig: LayerProps = {
     type: 'group',
-    title: 'Additional Layers for Review (Not Finalized)',
+    title: 'Land Subsidence',
     visible: false,
     alwaysShowInReview: true,
-    layers: [aquifersCombinedConfig, aquiferDelineationConfig, displacementContoursConfig],
+    layers: [earthFissureWMSConfig, aquifersCombinedConfig, aquiferDelineationConfig, displacementContoursConfig],
 };
 
 const layersConfig: LayerProps[] = [
