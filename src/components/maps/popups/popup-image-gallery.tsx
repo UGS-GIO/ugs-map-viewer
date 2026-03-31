@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { Dialog, DialogClose, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext, type CarouselApi } from '@/components/ui/carousel'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
 import { ChevronDown, ChevronUp, LayoutGrid, ArrowLeft, X } from 'lucide-react'
+import { LoadingOverlay } from '@/components/ui/loading-spinner'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export interface GalleryImage {
     url: string
@@ -17,6 +19,20 @@ interface PopupImageGalleryProps {
 }
 
 const GRID_VISIBLE = 5 // show 5 images; 6th cell is overflow button
+
+function LoadingImage({ src, alt, className, placeholder = 'skeleton' }: { src: string; alt: string; className?: string; placeholder?: 'skeleton' | 'spinner' }) {
+    const [loaded, setLoaded] = useState(false)
+    const onLoad = useCallback(() => setLoaded(true), [])
+    return (
+        <div className="relative w-full h-full">
+            {!loaded && (placeholder === 'spinner'
+                ? <LoadingOverlay size="sm" backdrop={false} />
+                : <Skeleton className="absolute inset-0 rounded-none" />
+            )}
+            <img src={src} alt={alt} className={className} onLoad={onLoad} />
+        </div>
+    )
+}
 
 const focusRing = 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
 
@@ -102,12 +118,7 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
                             aria-label={img.label || `Open image ${i + 1}`}
                             className={`relative aspect-[4/3] rounded-md border border-border hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-shadow overflow-hidden ${focusRing}`}
                         >
-                            <img
-                                src={img.thumbnailUrl ?? img.url}
-                                alt=""
-                                className="w-full h-full object-cover"
-                                loading="lazy"
-                            />
+                            <LoadingImage src={img.thumbnailUrl ?? img.url} alt="" className="w-full h-full object-cover" />
                         </button>
                     </ImageTooltip>
                 ))}
@@ -119,12 +130,7 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
                         aria-label={`Show all ${images.length} photos`}
                         className={`relative aspect-[4/3] rounded-md border border-border hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-shadow overflow-hidden ${focusRing}`}
                     >
-                        <img
-                            src={images[GRID_VISIBLE].thumbnailUrl ?? images[GRID_VISIBLE].url}
-                            alt=""
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                        />
+                        <LoadingImage src={images[GRID_VISIBLE].thumbnailUrl ?? images[GRID_VISIBLE].url} alt="" className="w-full h-full object-cover" />
                         <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                             <span className="text-white text-sm font-semibold" aria-hidden>+{overflowCount}</span>
                         </div>
@@ -197,12 +203,7 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
                                                 aria-current={activeIndex === i ? 'true' : undefined}
                                                 className={`relative aspect-[4/3] rounded-md border transition-shadow overflow-hidden ${focusRing} ${activeIndex === i ? 'ring-2 ring-primary border-primary' : 'border-border hover:ring-2 hover:ring-primary hover:ring-offset-1 hover:ring-offset-background'}`}
                                             >
-                                                <img
-                                                    src={img.thumbnailUrl ?? img.url}
-                                                    alt=""
-                                                    className="w-full h-full object-cover"
-                                                    loading="lazy"
-                                                />
+                                                <LoadingImage src={img.thumbnailUrl ?? img.url} alt="" className="w-full h-full object-cover" />
                                                 {img.label && (
                                                     <div className="absolute bottom-0 inset-x-0 bg-black/50 px-1 py-0.5">
                                                         <p className="text-white text-[10px] truncate" aria-hidden>{img.label}</p>
@@ -226,11 +227,7 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
                                             {images.map((img, i) => (
                                                 <CarouselItem key={img.url} className="flex items-center justify-center">
                                                     <div className="flex flex-col items-center gap-2 p-4">
-                                                        <img
-                                                            src={img.url}
-                                                            alt={img.label || `Image ${i + 1}`}
-                                                            className="max-w-full max-h-[45svh] sm:max-h-[55svh] object-contain rounded"
-                                                        />
+                                                        <LoadingImage src={img.url} alt={img.label || `Image ${i + 1}`} className="max-w-full max-h-[45svh] sm:max-h-[55svh] object-contain rounded" placeholder="spinner" />
                                                     </div>
                                                 </CarouselItem>
                                             ))}
@@ -267,11 +264,7 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
                                                             aria-current={activeIndex === i ? 'true' : undefined}
                                                             className={`relative shrink-0 w-20 h-14 rounded-sm border transition-shadow overflow-hidden ${focusRing} ${activeIndex === i ? 'ring-2 ring-primary border-primary' : 'border-border hover:border-muted-foreground'}`}
                                                         >
-                                                            <img
-                                                                src={img.thumbnailUrl ?? img.url}
-                                                                alt=""
-                                                                className="w-full h-full object-cover"
-                                                            />
+                                                            <LoadingImage src={img.thumbnailUrl ?? img.url} alt="" className="w-full h-full object-cover" />
                                                         </button>
                                                     </ImageTooltip>
                                                 ))}
