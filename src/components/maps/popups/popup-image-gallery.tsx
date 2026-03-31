@@ -134,7 +134,7 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
 
             <Dialog open={lightboxIndex !== null} onOpenChange={(open) => { if (!open) handleClose() }}>
                 <DialogContent
-                    className="max-w-[95vw] sm:max-w-[90vw] max-h-[90svh] p-0 bg-background border-border overflow-hidden"
+                    className="max-w-[95vw] sm:max-w-[90vw] h-[90svh] p-0 bg-background border-border overflow-hidden"
                     onKeyDown={(e: React.KeyboardEvent) => {
                         if (gridView) return
                         if (e.key === 'ArrowLeft') apiRef.current?.scrollPrev()
