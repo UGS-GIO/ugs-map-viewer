@@ -172,6 +172,49 @@ const renderFieldContent = (
     return value ?? "N/A";
 };
 
+// --- Gallery Image Builder ---
+export function buildGalleryImages(
+    imageFields: ImageFieldConfig[] | undefined,
+    properties: GeoJsonProperties | null,
+    relatedTables: RelatedTable[] | undefined,
+    data: ProcessedRelatedData[][]
+): GalleryImage[] {
+    const fromImageFields: GalleryImage[] = (imageFields && properties)
+        ? imageFields.flatMap((cfg: ImageFieldConfig) => {
+            const value = properties[cfg.field]
+            if (!value) return []
+            const url = cfg.baseUrl ? `${cfg.baseUrl}/${encodeURIComponent(String(value))}` : String(value)
+            return [{ url, label: cfg.label || String(value) }]
+        })
+        : []
+
+    const fromRelatedTables: GalleryImage[] = (relatedTables ?? []).flatMap((table, tableIndex) => {
+        if (table.displayAs !== 'gallery' || !table.galleryUrlField) return []
+        const rows = data[tableIndex] ?? []
+        return rows.flatMap(row => {
+            const rawUrl = row[table.galleryUrlField!]
+            if (!rawUrl) return []
+            const url = table.galleryBaseUrl
+                ? `${table.galleryBaseUrl}/${encodeURIComponent(String(rawUrl))}`
+                : String(rawUrl)
+            const thumbnailUrl = table.galleryThumbnailField && row[table.galleryThumbnailField]
+                ? (table.galleryBaseUrl
+                    ? `${table.galleryBaseUrl}/${encodeURIComponent(String(row[table.galleryThumbnailField]))}`
+                    : String(row[table.galleryThumbnailField]))
+                : undefined
+            const label = table.galleryLabelField ? String(row[table.galleryLabelField] ?? '') : undefined
+            const metadata = table.galleryMetadataFields?.flatMap(({ field, label: metaLabel }) => {
+                const val = row[field]
+                if (val === null || val === undefined || val === '') return []
+                return [{ label: metaLabel, value: String(val) }]
+            })
+            return [{ url, thumbnailUrl, label, metadata }]
+        })
+    })
+
+    return [...fromImageFields, ...fromRelatedTables]
+}
+
 // --- Main Component ---
 const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: PopupContentDisplayProps) => {
     const { relatedTables, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
@@ -398,42 +441,10 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
     const regularContent = contentItems.filter(item => !item.isLongContent).sort((a, b) => a.originalIndex - b.originalIndex).map(item => item.content);
     const useGridLayout = layout === "grid" || regularContent.length > 5;
 
-    const galleryImages = useMemo((): GalleryImage[] => {
-        const fromImageFields: GalleryImage[] = (imageFields && properties)
-            ? imageFields.flatMap((cfg: ImageFieldConfig) => {
-                const value = properties[cfg.field]
-                if (!value) return []
-                const url = cfg.baseUrl ? `${cfg.baseUrl}/${encodeURIComponent(String(value))}` : String(value)
-                return [{ url, label: cfg.label || String(value) }]
-            })
-            : []
-
-        const fromRelatedTables: GalleryImage[] = (relatedTables ?? []).flatMap((table, tableIndex) => {
-            if (table.displayAs !== 'gallery' || !table.galleryUrlField) return []
-            const rows = data[tableIndex] ?? []
-            return rows.flatMap(row => {
-                const rawUrl = row[table.galleryUrlField!]
-                if (!rawUrl) return []
-                const url = table.galleryBaseUrl
-                    ? `${table.galleryBaseUrl}/${encodeURIComponent(String(rawUrl))}`
-                    : String(rawUrl)
-                const thumbnailUrl = table.galleryThumbnailField && row[table.galleryThumbnailField]
-                    ? (table.galleryBaseUrl
-                        ? `${table.galleryBaseUrl}/${encodeURIComponent(String(row[table.galleryThumbnailField]))}`
-                        : String(row[table.galleryThumbnailField]))
-                    : undefined
-                const label = table.galleryLabelField ? String(row[table.galleryLabelField] ?? '') : undefined
-                const metadata = table.galleryMetadataFields?.flatMap(({ field, label: metaLabel }) => {
-                    const val = row[field]
-                    if (val === null || val === undefined || val === '') return []
-                    return [{ label: metaLabel, value: String(val) }]
-                })
-                return [{ url, thumbnailUrl, label, metadata }]
-            })
-        })
-
-        return [...fromImageFields, ...fromRelatedTables]
-    }, [imageFields, properties, relatedTables, data])
+    const galleryImages = useMemo(
+        () => buildGalleryImages(imageFields, properties, relatedTables, data),
+        [imageFields, properties, relatedTables, data]
+    )
 
     return (
         <div className="space-y-2">
