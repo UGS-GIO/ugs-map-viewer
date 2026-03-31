@@ -272,10 +272,14 @@ export interface RelatedTable {
     galleryLabelField?: string;
     /** Optional base URL prepended to gallery URL field values */
     galleryBaseUrl?: string;
+    /** Optional metadata fields to display alongside the image in the lightbox */
+    galleryMetadataFields?: { field: string; label: string }[];
     /** Fetch mode: 'postgrest' (default) or 'wfs' for GeoServer WFS queries */
     fetchMode?: 'postgrest' | 'wfs';
     /** WFS typeName (required when fetchMode is 'wfs'), e.g. 'emp:sco2_with_grid' */
     wfsTypeName?: string;
+    /** Dev/test only: bypass fetch and use this data for every clicked feature */
+    mockData?: Record<string, unknown>[];
 }
 
 

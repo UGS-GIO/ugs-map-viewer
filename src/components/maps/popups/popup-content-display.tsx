@@ -423,7 +423,12 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
                         : String(row[table.galleryThumbnailField]))
                     : undefined
                 const label = table.galleryLabelField ? String(row[table.galleryLabelField] ?? '') : undefined
-                return [{ url, thumbnailUrl, label }]
+                const metadata = table.galleryMetadataFields?.flatMap(({ field, label: metaLabel }) => {
+                    const val = row[field]
+                    if (val === null || val === undefined || val === '') return []
+                    return [{ label: metaLabel, value: String(val) }]
+                })
+                return [{ url, thumbnailUrl, label, metadata }]
             })
         })
 
