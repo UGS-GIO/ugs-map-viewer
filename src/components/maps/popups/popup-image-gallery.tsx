@@ -51,6 +51,8 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
     const handleApiChange = (newApi: CarouselApi) => {
         if (!newApi) return
         apiRef.current = newApi
+        // Scroll to activeIndex on mount (handles returning from grid view)
+        newApi.scrollTo(activeIndex, true)
         setActiveIndex(newApi.selectedScrollSnap())
         newApi.on('select', () => setActiveIndex(newApi.selectedScrollSnap()))
     }
@@ -76,7 +78,6 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
         setActiveIndex(i)
         setMetaOpen(false)
         setGridView(false)
-        setTimeout(() => apiRef.current?.scrollTo(i, true), 0)
     }
 
     const handleClose = () => { setLightboxIndex(null); setMetaOpen(false); setGridView(false) }
