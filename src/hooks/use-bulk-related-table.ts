@@ -42,14 +42,6 @@ export function useBulkRelatedTable(
             const results = await Promise.all(
                 configs.map(async (config): Promise<RelatedDataMap> => {
                     try {
-                        if (config.mockData) {
-                            const map = new Map<string, PostgRESTRow[]>();
-                            for (const targetVal of uniqueValues) {
-                                map.set(targetVal, config.mockData as PostgRESTRow[]);
-                            }
-                            return map;
-                        }
-
                         let rows: PostgRESTRow[];
 
                         if (config.fetchMode === 'wfs' && config.wfsTypeName) {

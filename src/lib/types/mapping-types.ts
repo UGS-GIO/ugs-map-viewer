@@ -278,8 +278,6 @@ export interface RelatedTable {
     fetchMode?: 'postgrest' | 'wfs';
     /** WFS typeName (required when fetchMode is 'wfs'), e.g. 'emp:sco2_with_grid' */
     wfsTypeName?: string;
-    /** Dev/test only: bypass fetch and use this data for every clicked feature */
-    mockData?: Record<string, unknown>[];
 }
 
 

@@ -47,24 +47,6 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
                     displayAs: 'table'
                 },
                 {
-                    fieldLabel: 'Core Photos',
-                    matchingField: 'api',
-                    targetField: 'api',
-                    url: '',
-                    headers: {},
-                    displayAs: 'gallery',
-                    galleryUrlField: 'medium_url',
-                    galleryThumbnailField: 'thumb_url',
-                    galleryLabelField: 'label',
-                    galleryMetadataFields: [
-                        { field: 'photo_type_name', label: 'Type' },
-                        { field: 'top_depth', label: 'Top Depth (ft)' },
-                        { field: 'bottom_depth', label: 'Bottom Depth (ft)' },
-                        { field: 'date_taken', label: 'Date Taken' },
-                        { field: 'notes', label: 'Notes' },
-                    ],
-                },
-                {
                     fieldLabel: 'LAS File Information',
                     matchingField: 'display_api',
                     targetField: 'api',
