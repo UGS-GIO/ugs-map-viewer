@@ -859,6 +859,75 @@ const karstFeaturesWMSConfig: WMSLayerProps = {
 //     ],
 // }
 
+// hazards_aquifers_combined_review
+const hazardsAquifersCombinedReviewConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: 'Aquifer Combined (Source: Utah Geological Survey): Review',
+    visible: true,
+    sublayers: [
+        {
+            name: `${HAZARDS_WORKSPACE}:hazards_aquifers_combined_review`,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Name': { field: 'name', type: 'string' },
+                'Publication': { field: 'publication', type: 'string' },
+                'DOI': { field: 'doi', type: 'string' },
+                'Office': { field: 'office_1', type: 'string' },
+            }
+        },
+    ],
+}
+
+
+// hazards_aquifer_delineation_review
+const hazardsAquifersDilineationReviewConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: 'Aquifer Delineation (Source: Utah Geological Survey): Review',
+    visible: true,
+    sublayers: [
+        {
+            name: `${HAZARDS_WORKSPACE}:hazards_aquifer_delineation_review`,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Aquifer': { field: 'aquifer', type: 'string' },
+                'Broader Aquifer': { field: 'broader', type: 'string' },
+                'Details': { field: 'details', type: 'string' },
+                'Depletion (Early 21st C.)': { field: 'early21stc', type: 'number' },
+                'Depletion (Late 20th C.)': { field: 'late20thce', type: 'number' },
+            }
+        },
+    ],
+}
+
+// hazards_displacement_contours_review
+const hazardsDisplacementContoursReviewConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: 'Displacement Contours (Source: Utah Geological Survey): Review',
+    visible: true,
+    sublayers: [
+        {
+            name: `${HAZARDS_WORKSPACE}:hazards_displacement_contours_review`,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Location': { field: 'location', type: 'string' },
+                'Type': { field: 'type', type: 'string' },
+                'Year': { field: 'year', type: 'string' },
+                'Period Start': { field: 'start_date', type: 'string' },
+                'Displacement (cm)': { field: 'value_cm', type: 'number' },
+                'Displacement (in)': { field: 'value_inch', type: 'number' },
+                'HUC': { field: 'huc', type: 'string' },
+            }
+        },
+    ],
+}
+
+
 const studyAreasLayerName = 'studyareas_review';
 const studyAreasWMSTitle = 'Mapped Areas: Review';
 const studyAreasWMSConfig: WMSLayerProps = {
@@ -924,7 +993,6 @@ const soilHazardsConfig: LayerProps = {
     layers: [
         collapsibleSoilWMSConfig,
         corrosiveSoilRockWMSConfig,
-        earthFissureWMSConfig,
         expansiveSoilRockWMSConfig,
         karstFeaturesWMSConfig,
         pipingAndErosionWMSConfig,
@@ -936,7 +1004,16 @@ const soilHazardsConfig: LayerProps = {
     ],
 };
 
+const extraLayersConfig: LayerProps = {
+        type: 'group',
+        title: 'Land Subsidence',
+        visible: false,
+        alwaysShowInReview: true,
+        layers: [earthFissureWMSConfig, hazardsAquifersCombinedReviewConfig, hazardsAquifersDilineationReviewConfig, hazardsDisplacementContoursReviewConfig],
+};
+
 const layersConfig: LayerProps[] = [
+    extraLayersConfig,
     earthquakesConfig,
     floodHazardsConfig,
     landslidesConfig,
@@ -969,15 +1046,27 @@ export const earthFissureReviewConfig: WMSLayerProps = { ...earthFissureWMSConfi
 export const erosionHazardZoneReviewConfig: WMSLayerProps = { ...erosionHazardZoneWMSConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
 export const karstFeaturesReviewConfig: WMSLayerProps = { ...karstFeaturesWMSConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
 export const studyAreasReviewConfig: WMSLayerProps = { ...studyAreasWMSConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
+export const hazardsAquifersCombinedReview: WMSLayerProps = { ...hazardsAquifersCombinedReviewConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
+export const hazardsAquifersDilineationReview: WMSLayerProps = { ...hazardsAquifersDilineationReviewConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
+export const hazardsDisplacementContoursReview: WMSLayerProps = { ...hazardsDisplacementContoursReviewConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
 
 // --- New "Review" Groupings Using the Filtered Layers ---
 export const floodHazardsReviewConfig: LayerProps = { ...floodHazardsConfig, layers: [shallowGroundwaterReviewConfig, erosionHazardZoneReviewConfig, alluvialFanReviewConfig] };
 export const earthquakesReviewConfig: LayerProps = { ...earthquakesConfig, layers: [qFaultsReviewConfig, surfaceFaultRuptureReviewConfig, liquefactionReviewConfig, groundshakingReviewConfig] };
 export const landslidesReviewConfig: LayerProps = { ...landslidesConfig, layers: [rockfallHazardReviewConfig, landslideInventoryReviewConfig, landslideSusceptibilityReviewConfig, landslideLegacyReviewConfig] };
-export const soilHazardsReviewConfig: LayerProps = { ...soilHazardsConfig, layers: [collapsibleSoilReviewConfig, corrosiveSoilRockReviewConfig, earthFissureReviewConfig, expansiveSoilRockReviewConfig, karstFeaturesReviewConfig, pipingAndErosionReviewConfig, radonSusceptibilityReviewConfig, saltTectonicsDeformationReviewConfig, shallowBedrockReviewConfig, solubleSoilAndRockReviewConfig, windBlownSandWMSConfig] };
-
+export const soilHazardsReviewConfig: LayerProps = { ...soilHazardsConfig, layers: [collapsibleSoilReviewConfig, corrosiveSoilRockReviewConfig, expansiveSoilRockReviewConfig, karstFeaturesReviewConfig, pipingAndErosionReviewConfig, radonSusceptibilityReviewConfig, saltTectonicsDeformationReviewConfig, shallowBedrockReviewConfig, solubleSoilAndRockReviewConfig, windBlownSandWMSConfig] };
+export const extraLayersReviewConfig: LayerProps = {
+    ...extraLayersConfig,
+    layers: [
+        earthFissureReviewConfig,
+        hazardsAquifersCombinedReview,
+        hazardsAquifersDilineationReview,
+        hazardsDisplacementContoursReview
+    ]
+};
 // --- New, Separate Config Array for Review Layers ---
 export const reviewLayersConfig: LayerProps[] = [
+    extraLayersReviewConfig,
     earthquakesReviewConfig,
     floodHazardsReviewConfig,
     landslidesReviewConfig,
@@ -986,5 +1075,4 @@ export const reviewLayersConfig: LayerProps[] = [
     // quads24kWMSConfig, // This layer is for reference and does not have/need a filter
 ];
 
-// The original default export
 export default layersConfig;

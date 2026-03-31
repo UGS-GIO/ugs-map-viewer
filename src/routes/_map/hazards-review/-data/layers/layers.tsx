@@ -949,10 +949,83 @@ const soilHazardsConfig: LayerProps = {
     type: 'group',
     title: 'Problem Soil and Rock Hazards',
     visible: false,
-    layers: [collapsibleSoilWMSConfig, corrosiveSoilRockWMSConfig, earthFissureWMSConfig, expansiveSoilRockWMSConfig, karstFeaturesWMSConfig, pipingAndErosionWMSConfig, radonSusceptibilityWMSConfig, saltTectonicsDeformationWMSConfig, shallowBedrockWMSConfig, solubleSoilAndRockWMSConfig, windBlownSandWMSConfig],
+    layers: [collapsibleSoilWMSConfig, corrosiveSoilRockWMSConfig, expansiveSoilRockWMSConfig, karstFeaturesWMSConfig, pipingAndErosionWMSConfig, radonSusceptibilityWMSConfig, saltTectonicsDeformationWMSConfig, shallowBedrockWMSConfig, solubleSoilAndRockWMSConfig, windBlownSandWMSConfig],
+};
+
+const aquifersCombinedConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: 'Aquifer Combined (Source: Utah Geological Survey): Review',
+    visible: true,
+    sublayers: [
+        {
+            name: `${HAZARDS_WORKSPACE}:hazards_aquifers_combined_review`,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Name': { field: 'name', type: 'string' },
+                'Publication': { field: 'publication', type: 'string' },
+                'DOI': { field: 'doi', type: 'string' },
+                'Office': { field: 'office_1', type: 'string' },
+            }
+        },
+    ],
+};
+
+const aquiferDelineationConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: 'Aquifer Delineation (Source: Utah Geological Survey): Review',
+    visible: true,
+    sublayers: [
+        {
+            name: `${HAZARDS_WORKSPACE}:hazards_aquifer_delineation_review`,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Aquifer': { field: 'aquifer', type: 'string' },
+                'Broader Aquifer': { field: 'broader', type: 'string' },
+                'Details': { field: 'details', type: 'string' },
+                'Depletion (Early 21st C.)': { field: 'early21stc', type: 'number' },
+                'Depletion (Late 20th C.)': { field: 'late20thce', type: 'number' },
+            }
+        },
+    ],
+};
+
+const displacementContoursConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: 'Displacement Contours (Source: Utah Geological Survey): Review',
+    visible: true,
+    sublayers: [
+        {
+            name: `${HAZARDS_WORKSPACE}:hazards_displacement_contours_review`,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Location': { field: 'location', type: 'string' },
+                'Type': { field: 'type', type: 'string' },
+                'Year': { field: 'year', type: 'string' },
+                'Period': { field: 'start_date', type: 'string' },
+                'Displacement (cm)': { field: 'value_cm', type: 'number' },
+                'Displacement (in)': { field: 'value_inch', type: 'number' },
+                'HUC': { field: 'huc', type: 'string' },
+            }
+        },
+    ],
+};
+
+const extraLayersConfig: LayerProps = {
+    type: 'group',
+    title: 'Land Subsidence',
+    visible: false,
+    alwaysShowInReview: true,
+    layers: [earthFissureWMSConfig, aquifersCombinedConfig, aquiferDelineationConfig, displacementContoursConfig],
 };
 
 const layersConfig: LayerProps[] = [
+    extraLayersConfig,
     earthquakesConfig,
     floodHazardsConfig,
     landslidesConfig,
