@@ -265,7 +265,7 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
                                                             onClick={() => apiRef.current?.scrollTo(i)}
                                                             aria-label={img.label || `Go to image ${i + 1}`}
                                                             aria-current={activeIndex === i ? 'true' : undefined}
-                                                            className={`relative shrink-0 w-14 h-10 rounded-sm border transition-shadow overflow-hidden ${focusRing} ${activeIndex === i ? 'ring-2 ring-primary border-primary' : 'border-border hover:border-muted-foreground'}`}
+                                                            className={`relative shrink-0 w-20 h-14 rounded-sm border transition-shadow overflow-hidden ${focusRing} ${activeIndex === i ? 'ring-2 ring-primary border-primary' : 'border-border hover:border-muted-foreground'}`}
                                                         >
                                                             <img
                                                                 src={img.thumbnailUrl ?? img.url}
