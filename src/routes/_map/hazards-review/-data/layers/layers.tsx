@@ -1014,6 +1014,7 @@ const displacementContoursConfig: WMSLayerProps = {
             }
         },
     ],
+    customLayerParameters: { cql_filter: "type='Velocity'" },
 };
 
 const extraLayersConfig: LayerProps = {

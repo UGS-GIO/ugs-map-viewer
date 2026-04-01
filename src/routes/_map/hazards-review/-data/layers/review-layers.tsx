@@ -1012,15 +1012,6 @@ const extraLayersConfig: LayerProps = {
         layers: [earthFissureWMSConfig, hazardsAquifersCombinedReviewConfig, hazardsAquifersDilineationReviewConfig, hazardsDisplacementContoursReviewConfig],
 };
 
-const layersConfig: LayerProps[] = [
-    extraLayersConfig,
-    earthquakesConfig,
-    floodHazardsConfig,
-    landslidesConfig,
-    soilHazardsConfig,
-    studyAreasWMSConfig,
-    // quads24kWMSConfig,
-];
 
 // --- New "Review" Versions of Each Layer Config ---
 export const landslideLegacyReviewConfig: WMSLayerProps = { ...landslideLegacyWMSConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
@@ -1048,7 +1039,7 @@ export const karstFeaturesReviewConfig: WMSLayerProps = { ...karstFeaturesWMSCon
 export const studyAreasReviewConfig: WMSLayerProps = { ...studyAreasWMSConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
 export const hazardsAquifersCombinedReview: WMSLayerProps = { ...hazardsAquifersCombinedReviewConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
 export const hazardsAquifersDilineationReview: WMSLayerProps = { ...hazardsAquifersDilineationReviewConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
-export const hazardsDisplacementContoursReview: WMSLayerProps = { ...hazardsDisplacementContoursReviewConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
+export const hazardsDisplacementContoursReview: WMSLayerProps = { ...hazardsDisplacementContoursReviewConfig, customLayerParameters: { cql_filter: `${IS_REVIEW_CQL} AND type='Velocity'` } };
 
 // --- New "Review" Groupings Using the Filtered Layers ---
 export const floodHazardsReviewConfig: LayerProps = { ...floodHazardsConfig, layers: [shallowGroundwaterReviewConfig, erosionHazardZoneReviewConfig, alluvialFanReviewConfig] };
@@ -1075,4 +1066,4 @@ export const reviewLayersConfig: LayerProps[] = [
     // quads24kWMSConfig, // This layer is for reference and does not have/need a filter
 ];
 
-export default layersConfig;
+export default reviewLayersConfig;
