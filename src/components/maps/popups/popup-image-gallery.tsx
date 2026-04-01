@@ -254,7 +254,8 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
                                     {/* Thumbnail strip */}
                                     {images.length > 1 && (
                                         <div className="border-t border-border px-2 py-2 shrink-0">
-                                            <div className="flex gap-1.5 overflow-x-auto scrollbar-none">
+                                            <div className="flex justify-center overflow-x-auto scrollbar-none">
+                                            <div className="flex gap-1.5">
                                                 {images.map((img, i) => (
                                                     <ImageTooltip key={img.url} img={img}>
                                                         <button
@@ -268,6 +269,7 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
                                                         </button>
                                                     </ImageTooltip>
                                                 ))}
+                                            </div>
                                             </div>
                                         </div>
                                     )}
