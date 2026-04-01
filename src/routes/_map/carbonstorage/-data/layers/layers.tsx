@@ -590,7 +590,28 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
                         ];
                     }
                 }
-            }
+            },
+            relatedTables: [
+                {
+                    fieldLabel: 'Core Photos',
+                    matchingField: 'uwi',
+                    targetField: 'uwi',
+                    url: PROD_POSTGREST_URL + '/ucrc_photographs',
+                    headers: {
+                        'Accept-Profile': 'emp',
+                        'Accept': 'application/json',
+                    },
+                    displayAs: 'gallery',
+                    galleryUrlField: 'photo_url',
+                    galleryThumbnailField: 'thumb_url',
+                    galleryLabelField: 'filename',
+                    galleryMetadataFields: [
+                        { field: 'photo_type', label: 'Type' },
+                        { field: 'top_depth', label: 'Top (ft)' },
+                        { field: 'bottom_depth', label: 'Bottom (ft)' },
+                    ],
+                },
+            ],
         }
     ],
 };
