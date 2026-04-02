@@ -77,7 +77,14 @@ export function PopupImageGallery({ images, trigger, compact }: PopupImageGaller
     // Auto-scroll thumbnail strip to keep active thumb centered
     useEffect(() => {
         if (gridView) return
-        thumbRefs.current[activeIndex]?.scrollIntoView({ inline: 'center', behavior: 'smooth', block: 'nearest' })
+        const thumb = thumbRefs.current[activeIndex]
+        if (!thumb) return
+        const container = thumb.closest('.overflow-x-auto') as HTMLElement | null
+        if (!container) return
+        const thumbRect = thumb.getBoundingClientRect()
+        const containerRect = container.getBoundingClientRect()
+        const relativeLeft = thumbRect.left - containerRect.left + container.scrollLeft
+        container.scrollTo({ left: relativeLeft - container.clientWidth / 2 + thumb.offsetWidth / 2, behavior: 'smooth' })
     }, [activeIndex, gridView])
 
     // Manage focus when switching views
@@ -276,7 +283,7 @@ export function PopupImageGallery({ images, trigger, compact }: PopupImageGaller
                                     {/* Thumbnail strip */}
                                     {images.length > 1 && (
                                         <div className="border-t border-border px-2 py-2 shrink-0">
-                                            <div className="flex justify-center overflow-x-auto scrollbar-none">
+                                            <div className="overflow-x-auto scrollbar-none">
                                             <div className="flex gap-1.5">
                                                 {images.map((img, i) => (
                                                     <ImageTooltip key={img.url} img={img}>
