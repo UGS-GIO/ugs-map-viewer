@@ -1,7 +1,6 @@
 import { Link } from "@/components/ui/link";
 import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
-import { toTitleCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
 import { addThousandsSeparator } from "@/lib/utils";
 
