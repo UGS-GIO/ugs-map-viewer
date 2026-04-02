@@ -63,7 +63,7 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
     const sectionHeader = (
         <button
             onClick={() => setIsOpen(o => !o)}
-            className="flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors mb-2"
+            className="flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground hover:bg-muted/50 rounded px-1 -ml-1 transition-colors mb-2 w-full"
         >
             {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
             {relatedTable.fieldLabel}
