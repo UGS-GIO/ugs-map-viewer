@@ -16,6 +16,10 @@ export interface GalleryImage {
 
 interface PopupImageGalleryProps {
     images: GalleryImage[]
+    /** If provided, renders this node as a clickable trigger instead of the thumbnail grid. */
+    trigger?: React.ReactNode
+    /** Renders thumbnails as fixed-size tiles (w-48) instead of fluid grid columns. */
+    compact?: boolean
 }
 
 const GRID_VISIBLE = 5 // show 5 images; 6th cell is overflow button
@@ -54,7 +58,7 @@ function ImageTooltip({ img, children }: { img: GalleryImage; children: React.Re
     )
 }
 
-export function PopupImageGallery({ images }: PopupImageGalleryProps) {
+export function PopupImageGallery({ images, trigger, compact }: PopupImageGalleryProps) {
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
     const [activeIndex, setActiveIndex] = useState(0)
     const [metaOpen, setMetaOpen] = useState(false)
@@ -109,34 +113,55 @@ export function PopupImageGallery({ images }: PopupImageGalleryProps) {
 
     return (
         <TooltipProvider>
-            {/* Thumbnail grid — 2 rows × 3 cols */}
-            <div className="grid grid-cols-3 gap-1 p-0.5">
-                {gridImages.map((img, i) => (
-                    <ImageTooltip key={img.url} img={img}>
-                        <button
-                            onClick={() => openAt(i)}
-                            aria-label={img.label || `Open image ${i + 1}`}
-                            className={`relative aspect-[4/3] rounded-md border border-border hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-shadow overflow-hidden ${focusRing}`}
-                        >
-                            <LoadingImage src={img.thumbnailUrl ?? img.url} alt="" className="w-full h-full object-cover" />
-                        </button>
-                    </ImageTooltip>
-                ))}
+            {trigger ? (
+                <button onClick={() => openAt(0)} className={`inline-flex items-center text-xs text-primary underline-offset-4 hover:underline ${focusRing}`}>
+                    {trigger}
+                </button>
+            ) : compact ? (
+                    /* Compact: single scrollable row, one tile per photo, no overflow button */
+                    <div className="flex flex-nowrap overflow-x-auto scrollbar-none gap-1 p-0.5">
+                        {images.map((img, i) => (
+                            <ImageTooltip key={img.url} img={img}>
+                                <button
+                                    onClick={() => openAt(i)}
+                                    aria-label={img.label || `Open image ${i + 1}`}
+                                    className={`relative w-48 h-36 shrink-0 rounded-md border border-border hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-shadow overflow-hidden ${focusRing}`}
+                                >
+                                    <LoadingImage src={img.thumbnailUrl ?? img.url} alt="" className="w-full h-full object-cover" />
+                                </button>
+                            </ImageTooltip>
+                        ))}
+                    </div>
+            ) : (
+                    /* Default: 2-row × 3-col grid with overflow button */
+                    <div className="grid grid-cols-3 gap-1 p-0.5">
+                        {gridImages.map((img, i) => (
+                            <ImageTooltip key={img.url} img={img}>
+                                <button
+                                    onClick={() => openAt(i)}
+                                    aria-label={img.label || `Open image ${i + 1}`}
+                                    className={`relative aspect-[4/3] rounded-md border border-border hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-shadow overflow-hidden ${focusRing}`}
+                                >
+                                    <LoadingImage src={img.thumbnailUrl ?? img.url} alt="" className="w-full h-full object-cover" />
+                                </button>
+                            </ImageTooltip>
+                        ))}
 
-                {/* Overflow cell */}
-                {showOverflow && (
-                    <button
-                        onClick={() => openAt(GRID_VISIBLE)}
-                        aria-label={`Show all ${images.length} photos`}
-                        className={`relative aspect-[4/3] rounded-md border border-border hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-shadow overflow-hidden ${focusRing}`}
-                    >
-                        <LoadingImage src={images[GRID_VISIBLE].thumbnailUrl ?? images[GRID_VISIBLE].url} alt="" className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
-                            <span className="text-white text-sm font-semibold" aria-hidden>+{overflowCount}</span>
-                        </div>
-                    </button>
-                )}
-            </div>
+                        {/* Overflow cell */}
+                        {showOverflow && (
+                            <button
+                                onClick={() => openAt(GRID_VISIBLE)}
+                                aria-label={`Show all ${images.length} photos`}
+                                className={`relative aspect-[4/3] rounded-md border border-border hover:ring-2 hover:ring-primary hover:ring-offset-2 hover:ring-offset-background transition-shadow overflow-hidden ${focusRing}`}
+                            >
+                                <LoadingImage src={images[GRID_VISIBLE].thumbnailUrl ?? images[GRID_VISIBLE].url} alt="" className="w-full h-full object-cover" />
+                                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                                    <span className="text-white text-sm font-semibold" aria-hidden>+{overflowCount}</span>
+                                </div>
+                            </button>
+                        )}
+                    </div>
+            )}
 
             <Dialog open={lightboxIndex !== null} onOpenChange={(open) => { if (!open) handleClose() }}>
                 <DialogContent

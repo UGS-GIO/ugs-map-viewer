@@ -1,4 +1,5 @@
 import { Link } from "@/components/ui/link";
+import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
 import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { GeoJsonProperties } from "geojson";
@@ -460,7 +461,6 @@ const ucrcWellsConfig: WMSLayerProps = {
 
 
 // UCRC Wells Layer
-const UCRC_GCS_BASE_URL = 'https://ucrc-assets.geology.utah.gov';
 const ucrcWellsLayerName = 'enmin_ucrc_wells_django_test_current';
 export const ucrcWellsWMSTitle = 'UCRC Wells (Test)';
 const ucrcWellsWMSConfig: WMSLayerProps = {
@@ -494,12 +494,13 @@ const ucrcWellsWMSConfig: WMSLayerProps = {
                     headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
                     displayAs: 'table',
                     displayFields: [
-                        { field: 'id', label: 'Box ID' },
                         { field: 'box_number', label: 'Box #' },
                         { field: 'box_type', label: 'Type' },
                         { field: 'box_top_ft', label: 'Top (ft)', format: 'number' },
                         { field: 'box_bottom_ft', label: 'Bottom (ft)', format: 'number' },
                         { field: 'cored_formation', label: 'Formation' },
+                        { field: 'notes_public', label: 'Notes', transform: (v) => v || '—' },
+                        { field: 'pk', label: 'Photos', transform: (pk) => <BoxPhotosCell boxId={pk} /> },
                     ],
                     sortBy: 'box_number',
                     sortDirection: 'asc',
@@ -512,14 +513,13 @@ const ucrcWellsWMSConfig: WMSLayerProps = {
                     headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
                     displayAs: 'gallery',
                     galleryUrlField: 'gcs_path',
-                    galleryBaseUrl: UCRC_GCS_BASE_URL,
+                    galleryBaseUrl: 'https://ucrc-assets.geology.utah.gov',
                     galleryThumbnailTransform: (gcsPath: string) =>
                         gcsPath.startsWith('photos/')
                             ? `photos/_thumbs/200/${gcsPath.slice('photos/'.length)}`
                             : `_thumbs/200/${gcsPath}`,
                     galleryLabelField: 'filename',
                     galleryMetadataFields: [
-                        { field: 'core_box_id', label: 'Box ID' },
                         { field: 'photo_type', label: 'Type' },
                         { field: 'top_depth', label: 'Top (ft)' },
                         { field: 'bottom_depth', label: 'Bottom (ft)' },

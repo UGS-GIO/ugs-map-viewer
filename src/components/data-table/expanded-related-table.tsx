@@ -9,6 +9,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { PopupImageGallery, type GalleryImage } from '@/components/maps/popups/popup-image-gallery';
 
 interface ExpandedRelatedTableProps {
     relatedTable: RelatedTable;
@@ -16,16 +17,88 @@ interface ExpandedRelatedTableProps {
     colSpan: number;
 }
 
+const encodePathSegments = (p: string) => p.split('/').map(encodeURIComponent).join('/')
+
+/** Converts "0510370000S000_3_CORE" → "Box 3 · Core" */
+function formatBoxId(boxId: string): string {
+    if (boxId === 'Unassigned') return boxId
+    const parts = boxId.split('_')
+    if (parts.length < 3) return boxId
+    const num = parts[parts.length - 2]
+    const type = parts[parts.length - 1]
+    return `Box ${num} · ${type.charAt(0).toUpperCase()}${type.slice(1).toLowerCase()}`
+}
+
+function rowToGalleryImage(row: PostgRESTRow, relatedTable: RelatedTable): GalleryImage | null {
+    const rawUrl = row[relatedTable.galleryUrlField!]
+    if (!rawUrl) return null
+    const urlStr = String(rawUrl)
+    const url = relatedTable.galleryBaseUrl
+        ? `${relatedTable.galleryBaseUrl}/${encodePathSegments(urlStr)}`
+        : urlStr
+    const rawThumb = relatedTable.galleryThumbnailTransform
+        ? relatedTable.galleryThumbnailTransform(urlStr)
+        : (relatedTable.galleryThumbnailField ? String(row[relatedTable.galleryThumbnailField] ?? '') : undefined)
+    const thumbnailUrl = rawThumb
+        ? (relatedTable.galleryBaseUrl
+            ? `${relatedTable.galleryBaseUrl}/${encodePathSegments(rawThumb)}`
+            : rawThumb)
+        : undefined
+    const label = relatedTable.galleryLabelField ? String(row[relatedTable.galleryLabelField] ?? '') : undefined
+    const metadata = relatedTable.galleryMetadataFields?.flatMap(({ field, label: metaLabel }) => {
+        const val = row[field]
+        if (val == null || val === '') return []
+        return [{ label: metaLabel, value: String(val) }]
+    })
+    return { url, thumbnailUrl, label, metadata }
+}
+
 export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRelatedTableProps) {
     if (rows.length === 0) return null;
 
+    // Gallery display — group by box_id, sorted by box_pk
+    if (relatedTable.displayAs === 'gallery' && relatedTable.galleryUrlField) {
+        const grouped = new Map<string, { boxPk: number; rows: PostgRESTRow[] }>();
+        for (const row of rows) {
+            const boxId = String(row.box_id || 'Unassigned')
+            const boxPk = Number(row.box_pk ?? 0)
+            if (!grouped.has(boxId)) grouped.set(boxId, { boxPk, rows: [] })
+            grouped.get(boxId)!.rows.push(row)
+        }
+        const sorted = Array.from(grouped.entries()).sort((a, b) => a[1].boxPk - b[1].boxPk)
+
+        return (
+            <TableRow className="bg-muted/30">
+                <TableCell colSpan={colSpan} className="px-3 py-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{relatedTable.fieldLabel}</h4>
+                    <div className="space-y-2">
+                        {sorted.map(([boxId, { rows: boxRows }]) => {
+                            const images = boxRows
+                                .map(r => rowToGalleryImage(r, relatedTable))
+                                .filter((img): img is GalleryImage => img !== null)
+                            if (images.length === 0) return null
+                            const label = formatBoxId(boxId)
+                            return (
+                                <div key={boxId}>
+                                    <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
+                                    <PopupImageGallery images={images} compact />
+                                </div>
+                            )
+                        })}
+                    </div>
+                </TableCell>
+            </TableRow>
+        )
+    }
+
+    // Table display
     const headers = relatedTable.displayFields?.map(df => df.label || df.field) || [];
 
     return (
         <TableRow className="bg-muted/30">
-            <TableCell colSpan={colSpan} className="p-4">
+            <TableCell colSpan={colSpan} className="px-3 py-2">
                 <div>
-                    <h4 className="text-sm font-medium mb-2">{relatedTable.fieldLabel}</h4>
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{relatedTable.fieldLabel}</h4>
                     <Table>
                         <TableHeader>
                             <TableRow>
