@@ -494,6 +494,7 @@ const ucrcWellsWMSConfig: WMSLayerProps = {
                     headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
                     displayAs: 'table',
                     displayFields: [
+                        { field: 'id', label: 'Box ID' },
                         { field: 'box_number', label: 'Box #' },
                         { field: 'box_type', label: 'Type' },
                         { field: 'box_top_ft', label: 'Top (ft)', format: 'number' },
@@ -518,6 +519,7 @@ const ucrcWellsWMSConfig: WMSLayerProps = {
                             : `_thumbs/200/${gcsPath}`,
                     galleryLabelField: 'filename',
                     galleryMetadataFields: [
+                        { field: 'core_box_id', label: 'Box ID' },
                         { field: 'photo_type', label: 'Type' },
                         { field: 'top_depth', label: 'Top (ft)' },
                         { field: 'bottom_depth', label: 'Bottom (ft)' },
