@@ -450,7 +450,6 @@ const subsurfaceDataConfig: LayerProps = {
         oilGasFieldsWMSConfig,
         basinsWMSConfig,
         metalMiningDistrictsConfig,
-        coresAndCuttingsWMSConfig,
         wellWithTopsWMSConfig,
         nonpetrolWellsConfig,
     ]
