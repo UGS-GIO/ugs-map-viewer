@@ -10,7 +10,7 @@
     <UserStyle>
       <Title>Utah Counties</Title>
       <!-- Source: ArcGIS Core_Locations_Supporting_Data/FeatureServer/1 -->
-      <!-- NAME label field, black outline 1.5px, transparent fill -->
+      <!-- name label field, gray outline 1.5px, transparent fill -->
       <FeatureTypeStyle>
         <Rule>
           <PolygonSymbolizer>
@@ -24,7 +24,7 @@
           </PolygonSymbolizer>
           <TextSymbolizer>
             <Label>
-              <ogc:PropertyName>NAME</ogc:PropertyName>
+              <ogc:PropertyName>name</ogc:PropertyName>
             </Label>
             <Font>
               <CssParameter name="font-family">Arial</CssParameter>
