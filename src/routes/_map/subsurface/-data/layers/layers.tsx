@@ -101,58 +101,31 @@ const SITLAConfig: LayerProps = {
 
 
 // Utah counties
-const utCountiesayerName = 'enmin_ut_counties_current';
-const utCountiesTitle = 'Counties';
 const utCountiesConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
-    title: utCountiesTitle,
-    visible: false,
+    title: 'Utah Counties',
+    visible: true,
     crs: 'EPSG:3857',
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${utCountiesayerName }`,
-            popupEnabled: false,
-            queryable: true,
-        },
-    ],
+    sublayers: [{
+        name: `${ENERGY_MINERALS_WORKSPACE}:enmin_ut_counties_current`,
+        popupEnabled: false,
+        queryable: false,
+    }],
 };
 
-// Utah PLSS Grid
-const utPlssayerName = 'enmin_plss_sections_current';
-const utPlssTitle = 'PLSS Grid';
-const utPlssConfig: WMSLayerProps = {
+// Utah township & ranges
+const utTownshipRangesConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
-    title: utPlssTitle,
-    visible: false,
+    title: 'Utah Township & Ranges',
+    visible: true,
     crs: 'EPSG:3857',
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${utPlssayerName }`,
-            popupEnabled: false,
-            queryable: true,
-        },
-    ],
-};
-
-
-// utah township an range layer
-const townshpRngLayerName = 'enmin_plss_townshiprange_current';
-const townshpRngTitle = 'Utah Township & Ranges';
-const townshpRngConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: townshpRngTitle,
-    visible: false,
-    crs: 'EPSG:3857',
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${townshpRngLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-        },
-    ],
+    sublayers: [{
+        name: `${ENERGY_MINERALS_WORKSPACE}:enmin_plss_townshiprange_current`,
+        popupEnabled: false,
+        queryable: false,
+    }],
 };
 
 // Oil and Gas Fields WMS Layer
@@ -573,10 +546,9 @@ const infrastructureAndLandUseConfig: LayerProps = {
     visible: true,
     layers: [
         SITLAConfig,
-        pipelinesWMSConfig, 
+        pipelinesWMSConfig,
         utCountiesConfig,
-        townshpRngConfig,
-        utPlssConfig,          
+        utTownshipRangesConfig,
     ]
 }
 
