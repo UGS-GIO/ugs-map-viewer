@@ -68,14 +68,11 @@ export function PopupImageGallery({ images, trigger, compact }: PopupImageGaller
     const backBtnRef = useRef<HTMLButtonElement>(null)
     const gridBtnRef = useRef<HTMLButtonElement>(null)
 
-    const handleApiChange = (newApi: CarouselApi) => {
+    const handleApiChange = useCallback((newApi: CarouselApi) => {
         if (!newApi) return
         apiRef.current = newApi
-        // Scroll to activeIndex on mount (handles returning from grid view)
-        newApi.scrollTo(activeIndex, true)
-        setActiveIndex(newApi.selectedScrollSnap())
         newApi.on('select', () => setActiveIndex(newApi.selectedScrollSnap()))
-    }
+    }, [])
 
     // Auto-scroll thumbnail strip to keep active thumb centered
     useEffect(() => {
