@@ -60,7 +60,7 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
 
     if (rows.length === 0) return null;
 
-    const SectionHeader = () => (
+    const sectionHeader = (
         <button
             onClick={() => setIsOpen(o => !o)}
             className="flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors mb-2"
@@ -84,7 +84,7 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
         return (
             <TableRow className="bg-muted/30">
                 <TableCell colSpan={colSpan} className="px-3 py-2">
-                    <SectionHeader />
+                    {sectionHeader}
                     {isOpen && (
                         <div className="space-y-2">
                             {sorted.map(([boxId, { rows: boxRows }]) => {
@@ -113,7 +113,7 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
     return (
         <TableRow className="bg-muted/30">
             <TableCell colSpan={colSpan} className="px-3 py-2">
-                <SectionHeader />
+                {sectionHeader}
                 {isOpen && (
                     <Table>
                         <TableHeader>
