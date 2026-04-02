@@ -19,7 +19,7 @@
               <CssParameter name="fill-opacity">0</CssParameter>
             </Fill>
             <Stroke>
-              <CssParameter name="stroke">#FF7F7F</CssParameter>
+              <CssParameter name="stroke">#000000</CssParameter>
               <CssParameter name="stroke-width">1</CssParameter>
             </Stroke>
           </PolygonSymbolizer>
@@ -42,7 +42,7 @@
               </PointPlacement>
             </LabelPlacement>
             <Fill>
-              <CssParameter name="fill">#FF7F7F</CssParameter>
+              <CssParameter name="fill">#000000</CssParameter>
             </Fill>
           </TextSymbolizer>
         </Rule>
