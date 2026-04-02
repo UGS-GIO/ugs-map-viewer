@@ -25,7 +25,7 @@
           </PolygonSymbolizer>
           <TextSymbolizer>
             <Label>
-              <ogc:PropertyName>FRSTDIVLAB</ogc:PropertyName>
+              <ogc:PropertyName>frstdivlab</ogc:PropertyName>
             </Label>
             <Font>
               <CssParameter name="font-family">Arial</CssParameter>

@@ -25,7 +25,7 @@
           </PolygonSymbolizer>
           <TextSymbolizer>
             <Label>
-              <ogc:PropertyName>TWNSHPLAB</ogc:PropertyName>
+              <ogc:PropertyName>twnshplab</ogc:PropertyName>
             </Label>
             <Font>
               <CssParameter name="font-family">Arial</CssParameter>
