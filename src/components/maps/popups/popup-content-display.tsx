@@ -194,13 +194,17 @@ export function buildGalleryImages(
         return rows.flatMap(row => {
             const rawUrl = row[table.galleryUrlField!]
             if (!rawUrl) return []
+            const encodePathSegments = (p: string) => p.split('/').map(encodeURIComponent).join('/')
             const url = table.galleryBaseUrl
-                ? `${table.galleryBaseUrl}/${encodeURIComponent(String(rawUrl))}`
+                ? `${table.galleryBaseUrl}/${encodePathSegments(String(rawUrl))}`
                 : String(rawUrl)
-            const thumbnailUrl = table.galleryThumbnailField && row[table.galleryThumbnailField]
+            const rawThumb = table.galleryThumbnailTransform
+                ? table.galleryThumbnailTransform(String(rawUrl))
+                : (table.galleryThumbnailField ? row[table.galleryThumbnailField] : undefined)
+            const thumbnailUrl = rawThumb
                 ? (table.galleryBaseUrl
-                    ? `${table.galleryBaseUrl}/${encodeURIComponent(String(row[table.galleryThumbnailField]))}`
-                    : String(row[table.galleryThumbnailField]))
+                    ? `${table.galleryBaseUrl}/${encodePathSegments(String(rawThumb))}`
+                    : String(rawThumb))
                 : undefined
             const label = table.galleryLabelField ? String(row[table.galleryLabelField] ?? '') : undefined
             const metadata = table.galleryMetadataFields?.flatMap(({ field, label: metaLabel }) => {

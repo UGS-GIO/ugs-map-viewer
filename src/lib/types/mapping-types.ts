@@ -268,6 +268,8 @@ export interface RelatedTable {
     galleryUrlField?: string;
     /** Optional when displayAs is 'gallery'. Field name containing the thumbnail URL. Falls back to galleryUrlField if not set */
     galleryThumbnailField?: string;
+    /** Optional transform to derive thumbnail path from the galleryUrlField value. Takes precedence over galleryThumbnailField */
+    galleryThumbnailTransform?: (urlFieldValue: string) => string;
     /** Optional when displayAs is 'gallery'. Field name to use as the image caption/label */
     galleryLabelField?: string;
     /** Optional base URL prepended to gallery URL field values */

@@ -9,7 +9,7 @@ import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle } from './-data/layers/layers'
+import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, ucrcWellsWMSTitle } from './-data/layers/layers'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
@@ -34,6 +34,23 @@ const searchConfig: SearchSourceConfig[] = [
     params: {
       targetFields: ['api', 'wellname'],
       select: 'api,wellname,shape',
+    },
+    headers: {
+      'Accept-Profile': 'emp',
+      'Accept': 'application/geo+json',
+    },
+  },
+  {
+    type: 'postgREST',
+    url: `${PROD_POSTGREST_URL}/enmin_ucrc_wells_django_test_current`,
+    sourceName: 'UCRC Wells',
+    layerName: ucrcWellsWMSTitle,
+    crs: 'EPSG:3857',
+    displayField: 'well_name',
+    secondaryDisplayField: 'uwi',
+    params: {
+      targetFields: ['uwi', 'well_name'],
+      select: 'uwi,well_name,geom',
     },
     headers: {
       'Accept-Profile': 'emp',
@@ -101,6 +118,7 @@ export default function Map() {
   const LAYER_PARENT_GROUP: Record<string, string> = {
     [seamlessGeolunitsWMSTitle]: 'Geological Information',
     [wellWithTopsWMSTitle]: 'Subsurface Data',
+    [ucrcWellsWMSTitle]: 'Subsurface Data',
   }
 
   // Auto-select the associated layer and its parent group when a search result is picked
