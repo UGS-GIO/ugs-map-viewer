@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { RelatedTable } from '@/lib/types/mapping-types';
 import type { PostgRESTRow } from '@/lib/types/postgrest-types';
 import { formatNumeric } from '@/lib/utils';
@@ -54,7 +56,19 @@ function rowToGalleryImage(row: PostgRESTRow, relatedTable: RelatedTable): Galle
 }
 
 export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRelatedTableProps) {
+    const [isOpen, setIsOpen] = useState(true);
+
     if (rows.length === 0) return null;
+
+    const SectionHeader = () => (
+        <button
+            onClick={() => setIsOpen(o => !o)}
+            className="flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground transition-colors mb-2"
+        >
+            {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            {relatedTable.fieldLabel}
+        </button>
+    );
 
     // Gallery display — group by box_id, sorted by box_pk
     if (relatedTable.displayAs === 'gallery' && relatedTable.galleryUrlField) {
@@ -70,22 +84,24 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
         return (
             <TableRow className="bg-muted/30">
                 <TableCell colSpan={colSpan} className="px-3 py-2">
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{relatedTable.fieldLabel}</h4>
-                    <div className="space-y-2">
-                        {sorted.map(([boxId, { rows: boxRows }]) => {
-                            const images = boxRows
-                                .map(r => rowToGalleryImage(r, relatedTable))
-                                .filter((img): img is GalleryImage => img !== null)
-                            if (images.length === 0) return null
-                            const label = formatBoxId(boxId)
-                            return (
-                                <div key={boxId}>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
-                                    <PopupImageGallery images={images} compact />
-                                </div>
-                            )
-                        })}
-                    </div>
+                    <SectionHeader />
+                    {isOpen && (
+                        <div className="space-y-2">
+                            {sorted.map(([boxId, { rows: boxRows }]) => {
+                                const images = boxRows
+                                    .map(r => rowToGalleryImage(r, relatedTable))
+                                    .filter((img): img is GalleryImage => img !== null)
+                                if (images.length === 0) return null
+                                const label = formatBoxId(boxId)
+                                return (
+                                    <div key={boxId}>
+                                        <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
+                                        <PopupImageGallery images={images} compact />
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
                 </TableCell>
             </TableRow>
         )
@@ -97,8 +113,8 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
     return (
         <TableRow className="bg-muted/30">
             <TableCell colSpan={colSpan} className="px-3 py-2">
-                <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">{relatedTable.fieldLabel}</h4>
+                <SectionHeader />
+                {isOpen && (
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -126,7 +142,7 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
                             ))}
                         </TableBody>
                     </Table>
-                </div>
+                )}
             </TableCell>
         </TableRow>
     );
