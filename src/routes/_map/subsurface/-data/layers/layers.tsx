@@ -1,7 +1,6 @@
 import { Link } from "@/components/ui/link";
 import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
-import { toTitleCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
 import { addThousandsSeparator } from "@/lib/utils";
 
@@ -99,42 +98,60 @@ const SITLAConfig: LayerProps = {
     },
 };
 
+
 // Utah counties
-const utCountiesConfig: LayerProps = {
-    type: 'map-image',
-    url: 'https://services.arcgis.com/ZzrwjTRez6FJiOq4/ArcGIS/rest/services/Core_Locations_Supporting_Data/FeatureServer/1',
-    opacity: 0.5,
-    title: 'Utah Counties',
-    options: {
-        title: 'Utah Counties',
-        elevationInfo: [{ mode: 'on-the-ground' }],
-        visible: true,
-        sublayers: [{
-            id: 0,
-            visible: true,
-            crs: 'EPSG:26912',
-        }],
-    },
+const utCountiesayerName = 'enmin_ut_counties_current';
+const utCountiesTitle = 'Counties';
+const utCountiesConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: utCountiesTitle,
+    visible: false,
+    crs: 'EPSG:3857',
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${utCountiesayerName }`,
+            popupEnabled: false,
+            queryable: true,
+        },
+    ],
+};
+
+// Utah PLSS Grid
+const utPlssayerName = 'enmin_plss_sections_current';
+const utPlssTitle = 'PLSS Grid';
+const utPlssConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: utPlssTitle,
+    visible: false,
+    crs: 'EPSG:3857',
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${utPlssayerName }`,
+            popupEnabled: false,
+            queryable: true,
+        },
+    ],
 };
 
 
-
-// Utah township & ranges
-const utTownshipRangesConfig: LayerProps = {
-    type: 'map-image',
-    url: 'https://services.arcgis.com/ZzrwjTRez6FJiOq4/ArcGIS/rest/services/Core_Locations_Supporting_Data/FeatureServer/3',
-    opacity: 0.5,
-    title: 'Utah Township & Ranges',
-    options: {
-        title: 'Utah Township & Ranges',
-        elevationInfo: [{ mode: 'on-the-ground' }],
-        visible: true,
-        sublayers: [{
-            id: 0,
-            visible: true,
-            crs: 'EPSG:26912',
-        }],
-    },
+// utah township an range layer
+const townshpRngLayerName = 'enmin_plss_townshiprange_current';
+const townshpRngTitle = 'Utah Township & Ranges';
+const townshpRngConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: townshpRngTitle,
+    visible: false,
+    crs: 'EPSG:3857',
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${townshpRngLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+        },
+    ],
 };
 
 // Oil and Gas Fields WMS Layer
@@ -268,7 +285,7 @@ const nonpetrolWellsConfig: WMSLayerProps = {
 
 
 
-// Oil and Gas Fields WMS Layer
+// Metal mining districts layer
 const metalMiningDistrictsLayerName = 'metalmineralapp_mining_districts';
 const metalMiningDistrictsTitle = 'Metalliferous Mining Districts';
 const metalMiningDistrictsConfig: WMSLayerProps = {
@@ -285,8 +302,36 @@ const metalMiningDistrictsConfig: WMSLayerProps = {
             popupFields: {
                 'District': { field: 'district', type: 'string' },
                 'Commodity': { field: 'commodity', type: 'string' },
-                'Productive': { field: 'productive', type: 'string' }
+                'Productive': { field: 'productive', type: 'string' },
+                'Short Tons': { field: 'short_tons', type: 'string' },
+                'Total Dollar Value': {
+                    field: 'total_dollar_value',
+                    type: 'string',
+                    transform: (value: string | null) => {
+                        if (value === null) {
+                            return 'No Data';
+                        }
+                        return `$ ${addThousandsSeparator(value)}`;
+                    }
+                },
+                '': {
+                    field: 'synonym',
+                    type: 'custom',
+                    transform: (() => 'Data current through 2017')
+                },
             },
+            linkFields: {
+                'synonym': {
+                    transform: (value: string | null) => {
+                        return [
+                            {
+                                label: `${value}`,
+                                href: 'https://doi.org/10.34191/OFR-695'
+                            }
+                        ];
+                    }
+                }
+            }
         },
     ],
 };
@@ -361,101 +406,6 @@ const pipelinesWMSConfig: WMSLayerProps = {
 };
 
 
-const coresAndCuttingsLayerName = 'cores';
-const coresAndCuttingsWMSTitle = 'Cores and Cuttings';
-const coresAndCuttingsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: coresAndCuttingsWMSTitle,
-    visible: false,
-    crs: 'EPSG:26912',
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${coresAndCuttingsLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'API': { field: 'apishort', type: 'string' },
-                'UWI': { field: 'uwi', type: 'string' },
-                'Well Name': { field: 'well_name', type: 'string' },
-                'Sample Types': {
-                    field: 'all_types', type: 'string', transform: (value: string | null) => {
-                        if (!value) return 'No Data';
-                        const lower = value.toLowerCase();
-
-                        // Map raw sample types to simplified categories
-                        const coreTypes = /\b(core|butts?|slabs?|skeletonized core|sidewall)\b/;
-                        const cuttingsTypes = /\b(chips?|core chips?|cuttings?)\b/;
-                        const samplesTypes = /\b(samples?|outcrop samples?)\b/;
-                        const displayTypes = /\bdisplay\b/;
-
-                        const categories: string[] = [];
-                        if (coreTypes.test(lower)) categories.push('Core');
-                        if (cuttingsTypes.test(lower)) categories.push('Cuttings');
-                        if (samplesTypes.test(lower)) categories.push('Samples');
-                        if (displayTypes.test(lower)) categories.push('Display');
-
-                        return categories.length ? categories.join(', ') : toTitleCase(value.replace(/,/g, ', '));
-                    }
-                },
-                'Purpose': { field: 'purpose_description', type: 'string' },
-                'Operator': { field: 'operator', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
-                'Depth': {
-                    field: 'depth_display',
-                    type: 'custom',
-                    transform: (props: GeoJsonProperties | null | undefined) => {
-                        const top = props?.['top_ft'];
-                        const bottom = props?.['bottom_ft'];
-
-                        if (top == null || bottom == null) {
-                            return 'Depth N/A';
-                        }
-                        const topFt = addThousandsSeparator(top);
-                        const bottomFt = addThousandsSeparator(bottom);
-                        return `${topFt} - ${bottomFt} ft`;
-                    }
-                },
-                'Formation at TD': { field: 'form_td', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
-                'Cored Formations': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: (props: GeoJsonProperties | null | undefined) => {
-                        const formation = props?.['formation'] || '';
-                        const coredFormation = props?.['cored_formation'] || '';
-
-                        if (formation && coredFormation) {
-                            return `${formation}, ${coredFormation}`;
-                        } else if (formation) {
-                            return `${formation}`;
-                        } else if (coredFormation) {
-                            return `${coredFormation}`;
-                        } else {
-                            return '';
-                        }
-                    }
-                },
-                '': {
-                    field: 'inventory_link',
-                    type: 'custom',
-                    transform: (() => 'Utah Core Research Center Inventory')
-                },
-            },
-            linkFields: {
-                'inventory_link': {
-                    transform: (value: string | null) => {
-                        return [
-                            {
-                                label: `${value}`,
-                                href: 'https://geology.utah.gov/apps/subsurface/'
-                            }
-                        ];
-                    }
-                }
-            }
-        }
-    ],
-};
-
 const ucrcWellsName = 'ucrc_wells_current';
 const ucrcWellsTitle = 'Utah Core Research Center Inventory';
 const ucrcWellsConfig: WMSLayerProps = {
@@ -491,16 +441,16 @@ const ucrcWellsConfig: WMSLayerProps = {
 
 
 
-
-const infrastructureAndLandUseConfig: LayerProps = {
+const subsurfaceDataConfig: LayerProps = {
     type: 'group',
-    title: 'Infrastructure and Land Use',
-    visible: true,
+    title: 'Subsurface Data',
+    visible: false,
     layers: [
-        SITLAConfig,
-        utTownshipRangesConfig,
-        utCountiesConfig,
-        pipelinesWMSConfig,        
+        oilGasFieldsWMSConfig,
+        basinsWMSConfig,
+        metalMiningDistrictsConfig,
+        wellWithTopsWMSConfig,
+        nonpetrolWellsConfig,
     ]
 }
 
@@ -512,24 +462,23 @@ const geologicalInformationConfig: LayerProps = {
         seamlessGeolunitsWMSConfig,
     ]
 }
-const subsurfaceDataConfig: LayerProps = {
+
+const infrastructureAndLandUseConfig: LayerProps = {
     type: 'group',
-    title: 'Subsurface Data',
-    visible: false,
+    title: 'Infrastructure and Land Use',
+    visible: true,
     layers: [
-        ucrcWellsConfig,
-        oilGasFieldsWMSConfig,
-        basinsWMSConfig,
-        metalMiningDistrictsConfig,
-        coresAndCuttingsWMSConfig,
-        wellWithTopsWMSConfig,
-        nonpetrolWellsConfig,
+        SITLAConfig,
+        pipelinesWMSConfig, 
+        utCountiesConfig,
+        townshpRngConfig,
+        utPlssConfig,          
     ]
 }
 
 
-
 const layersConfig: LayerProps[] = [
+    ucrcWellsConfig,
     subsurfaceDataConfig,
     geologicalInformationConfig,
     infrastructureAndLandUseConfig
