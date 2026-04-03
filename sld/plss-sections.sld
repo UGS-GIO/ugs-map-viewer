@@ -44,6 +44,10 @@
             <Fill>
               <CssParameter name="fill">#000000</CssParameter>
             </Fill>
+            <VendorOption name="conflictResolution">true</VendorOption>
+            <VendorOption name="goodnessOfFit">0.3</VendorOption>
+            <VendorOption name="partials">false</VendorOption>
+            <VendorOption name="spaceAround">20</VendorOption>
           </TextSymbolizer>
         </Rule>
       </FeatureTypeStyle>
