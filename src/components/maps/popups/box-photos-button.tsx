@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PopupImageGallery, type GalleryImage } from './popup-image-gallery'
 import { PROD_POSTGREST_URL } from '@/lib/constants'
@@ -31,21 +31,25 @@ function toGalleryImage(row: PhotoRow): GalleryImage {
     }
 }
 
+const fetchBoxPhotos = async (boxId: string): Promise<GalleryImage[]> => {
+    const res = await fetch(
+        `${PROD_POSTGREST_URL}/enmin_ucrc_photos_django_test_current?box_pk=eq.${boxId}&order=top_depth.asc`,
+        { headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' } }
+    )
+    if (!res.ok) return []
+    const rows: PhotoRow[] = await res.json()
+    return rows.map(toGalleryImage)
+}
+
 export function BoxPhotosCell({ boxId }: { boxId: string }) {
-    const [images, setImages] = useState<GalleryImage[] | null>(null)
+    const { data: images, isLoading } = useQuery({
+        queryKey: ['ucrc-box-photos', boxId],
+        queryFn: () => fetchBoxPhotos(boxId),
+        staleTime: 1000 * 60 * 30,
+    })
 
-    useEffect(() => {
-        fetch(
-            `${PROD_POSTGREST_URL}/enmin_ucrc_photos_django_test_current?box_pk=eq.${boxId}&order=top_depth.asc`,
-            { headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' } }
-        )
-            .then(res => res.json())
-            .then((rows: PhotoRow[]) => setImages(rows.map(toGalleryImage)))
-            .catch(() => setImages([]))
-    }, [boxId])
-
-    if (images === null) return <Skeleton className="w-10 h-7 rounded-sm" />
-    if (images.length === 0) return <span className="text-muted-foreground">—</span>
+    if (isLoading) return <Skeleton className="w-10 h-7 rounded-sm" />
+    if (!images || images.length === 0) return <span className="text-muted-foreground">—</span>
 
     const thumb = images[0].thumbnailUrl ?? images[0].url
     return (
