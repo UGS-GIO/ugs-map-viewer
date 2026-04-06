@@ -16,9 +16,10 @@ import { TourAutoStart } from '@/components/tour-auto-start'
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, type SearchComboboxHandle } from '@/components/sidebar/filter/search-combobox'
 import { PROD_POSTGREST_URL } from '@/lib/constants'
 
-// Carbon Storage specific filter mapping
+// Layer filter mapping (URL filter key -> WMS layer title)
 const CCS_FILTER_MAPPING: Record<string, string> = {
   [wellWithTopsWMSTitle]: wellWithTopsWMSTitle,
+  [ucrcWellsWMSTitle]: ucrcWellsWMSTitle,
 }
 
 const searchConfig: SearchSourceConfig[] = [
@@ -88,9 +89,10 @@ export default function Map() {
   const { contextValue } = useMapContextState();
   const searchRef = useRef<SearchComboboxHandle>(null);
 
-  // Get URL filters
+  // Get URL filters and styles
   const searchParams = useSearch({ from: '/_map/subsurface/' })
   const filtersFromUrl = searchParams.filters ?? {}
+  const stylesFromUrl = searchParams.layer_styles ?? {}
 
   // Build CQL filters for layers
   const layerFilters = useMemo(() => {
@@ -103,6 +105,15 @@ export default function Map() {
     }
     return filters
   }, [filtersFromUrl])
+
+  // Build style overrides for WMS layers
+  const layerStyles = useMemo(() => {
+    const styles: Record<string, string> = {}
+    for (const [layerTitle, styleName] of Object.entries(stylesFromUrl)) {
+      if (styleName) styles[layerTitle] = styleName
+    }
+    return styles
+  }, [stylesFromUrl])
 
   // Auto-select layer when filter is applied
   useEffect(() => {
@@ -178,6 +189,7 @@ export default function Map() {
             <Layout.Body>
               <GenericMapContainer
                 layerFilters={layerFilters}
+                layerStyles={layerStyles}
                 onClearSearch={() => searchRef.current?.clear()}
               />
             </Layout.Body>

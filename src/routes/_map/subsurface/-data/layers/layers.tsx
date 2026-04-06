@@ -435,6 +435,7 @@ const ucrcWellsConfig: WMSLayerProps = {
 
 // UCRC Wells Layer
 const ucrcWellsLayerName = 'enmin_ucrc_wells_django_test_current';
+export const ucrcWellsQualifiedName = `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`;
 export const ucrcWellsWMSTitle = 'UCRC Wells (Test)';
 const ucrcWellsWMSConfig: WMSLayerProps = {
     type: 'wms',

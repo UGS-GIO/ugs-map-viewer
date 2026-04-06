@@ -207,6 +207,8 @@ async function fetchLegendDataForVisibleLayers(
 interface GenericMapContainerProps {
   /** Optional CQL filters for WMS layers, keyed by layer title */
   layerFilters?: Record<string, string>
+  /** Optional GeoServer style names for WMS layers, keyed by layer title */
+  layerStyles?: Record<string, string>
   /** Layer config key (default: 'layers') */
   layerConfigKey?: string
   /** Called when all selections are cleared (context menu, popup close, etc.) */
@@ -215,6 +217,7 @@ interface GenericMapContainerProps {
 
 export default function GenericMapContainer({
   layerFilters = {},
+  layerStyles = {},
   layerConfigKey = 'layers',
   onClearSearch,
 }: GenericMapContainerProps) {
@@ -511,6 +514,7 @@ export default function GenericMapContainer({
             onFeatureClick={(...args) => { setPopupCoords(null); handleFeatureClick(...args) }}
             onMoveEnd={setMapPosition}
             layerFilters={layerFilters}
+            layerStyles={layerStyles}
             onMapReady={handleMapReady}
             basemapId={basemap}
             clickBufferBounds={clickBufferBounds}
