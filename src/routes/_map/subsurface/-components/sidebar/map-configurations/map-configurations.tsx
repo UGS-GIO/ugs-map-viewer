@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -154,11 +154,12 @@ const useUCRCFilterManager = () => {
     const { value: cqlFilter, setValue: setCqlFilter } = useSearchParamRecord('filters', ucrcWellsWMSTitle);
 
     const filterState = useMemo(() => parseUCRCFilter(cqlFilter || undefined), [cqlFilter]);
-    const stateRef = useRef(filterState);
-    useEffect(() => { stateRef.current = filterState; }, [filterState]);
+    const cqlRef = useRef(cqlFilter);
+    cqlRef.current = cqlFilter;
 
     const update = useCallback((partial: Partial<UCRCFilterState>) => {
-        const next = { ...stateRef.current, ...partial };
+        const current = parseUCRCFilter(cqlRef.current || undefined);
+        const next = { ...current, ...partial };
         setCqlFilter(generateUCRCFilter(next));
     }, [setCqlFilter]);
 
@@ -323,11 +324,9 @@ const DepthRangeFilter = React.memo(({
     const rangeMin = range?.min ?? 0;
     const rangeMax = range?.max ?? 25000;
 
-    const [local, setLocal] = useState<[number, number]>([depthMin ?? rangeMin, depthMax ?? rangeMax]);
-
-    useEffect(() => {
-        setLocal([depthMin ?? rangeMin, depthMax ?? rangeMax]);
-    }, [depthMin, depthMax, rangeMin, rangeMax]);
+    // Local drag state — only used while pointer is down on the slider
+    const [dragValue, setDragValue] = useState<[number, number] | null>(null);
+    const display = dragValue ?? [depthMin ?? rangeMin, depthMax ?? rangeMax];
 
     return (
         <div>
@@ -335,12 +334,13 @@ const DepthRangeFilter = React.memo(({
                 Total Depth (ft)
             </Label>
             <DualRangeSlider
-                value={local}
+                value={display}
                 min={rangeMin}
                 max={rangeMax}
                 step={DEPTH_STEP}
-                onValueChange={([min, max]) => setLocal([min, max])}
+                onValueChange={([min, max]) => setDragValue([min, max])}
                 onValueCommit={([min, max]) => {
+                    setDragValue(null);
                     const newMin = min > rangeMin ? min : null;
                     const newMax = max < rangeMax ? max : null;
                     onChange(newMin, newMax);
@@ -348,8 +348,8 @@ const DepthRangeFilter = React.memo(({
                 className="mb-2"
             />
             <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{local[0].toLocaleString()} ft</span>
-                <span>{local[1].toLocaleString()} ft</span>
+                <span>{display[0].toLocaleString()} ft</span>
+                <span>{display[1].toLocaleString()} ft</span>
             </div>
         </div>
     );
