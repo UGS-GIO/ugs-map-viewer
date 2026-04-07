@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -17,6 +17,7 @@ import { PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from '@/lib/constants';
 import { MultiSelectCombobox } from '@/components/sidebar/filter/multi-select-combobox';
 import { BooleanFilter } from '@/components/sidebar/filter/boolean-filter';
 import type { YesNoAll } from '@/components/sidebar/filter/boolean-filter';
+import { escapeCqlLiteral } from '@/lib/cql-utils';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -46,13 +47,13 @@ interface UCRCFilterState {
 
 // ─── CQL Generation ──────────────────────────────────────────────────────────
 
-/** Extract all quoted values for a given CQL field, e.g. "county = 'FOO'" → ['FOO'] */
+/** Extract all quoted values for a given CQL field, e.g. "county = 'FOO'" → ['FOO']. Handles '' escapes. */
 const extractCqlValues = (cql: string, field: string): string[] => {
-    const pattern = new RegExp(`${field}\\s*=\\s*'([^']+)'`, 'g');
+    const pattern = new RegExp(`${field}\\s*=\\s*'((?:[^']|'')*)'`, 'g');
     const results: string[] = [];
     let match: RegExpExecArray | null;
     while ((match = pattern.exec(cql)) !== null) {
-        results.push(match[1]);
+        results.push(match[1].replace(/''/g, "'"));
     }
     return results;
 };
@@ -93,7 +94,7 @@ const parseUCRCFilter = (cql: string | null | undefined): UCRCFilterState => {
 /** Build a CQL OR clause for a multi-value field, e.g. "(county = 'A' OR county = 'B')" */
 const buildCqlOrClause = (field: string, values: string[]): string | null => {
     if (values.length === 0) return null;
-    const parts = values.map(v => `${field} = '${v}'`);
+    const parts = values.map(v => `${field} = '${escapeCqlLiteral(v)}'`);
     return parts.length === 1 ? parts[0] : `(${parts.join(' OR ')})`;
 };
 
@@ -154,14 +155,10 @@ const useUCRCFilterManager = () => {
     const { value: cqlFilter, setValue: setCqlFilter } = useSearchParamRecord('filters', ucrcWellsWMSTitle);
 
     const filterState = useMemo(() => parseUCRCFilter(cqlFilter || undefined), [cqlFilter]);
-    const cqlRef = useRef(cqlFilter);
-    cqlRef.current = cqlFilter;
 
     const update = useCallback((partial: Partial<UCRCFilterState>) => {
-        const current = parseUCRCFilter(cqlRef.current || undefined);
-        const next = { ...current, ...partial };
-        setCqlFilter(generateUCRCFilter(next));
-    }, [setCqlFilter]);
+        setCqlFilter(generateUCRCFilter({ ...filterState, ...partial }));
+    }, [filterState, setCqlFilter]);
 
     const clearAll = useCallback(() => setCqlFilter(''), [setCqlFilter]);
 
@@ -239,7 +236,7 @@ const COORD_OPTIONS = [
     { value: 'Degrees, Minutes, Seconds', id: 'dms' },
 ] as const;
 
-const CoordFormatToggle = React.memo(({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+const CoordFormatToggle = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
     <RadioGroup value={value} onValueChange={onChange} className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {COORD_OPTIONS.map(opt => (
             <div key={opt.id} className="flex">
@@ -248,9 +245,9 @@ const CoordFormatToggle = React.memo(({ value, onChange }: { value: string; onCh
             </div>
         ))}
     </RadioGroup>
-));
+);
 
-const PurposeFilter = React.memo(({
+const PurposeFilter = ({
     options,
     isLoading,
     selected,
@@ -283,7 +280,7 @@ const PurposeFilter = React.memo(({
             ))}
         </div>
     );
-});
+};
 
 const DEPTH_STEP = 100;
 
@@ -306,7 +303,7 @@ const fetchDepthRange = async (): Promise<{ min: number; max: number }> => {
     };
 };
 
-const DepthRangeFilter = React.memo(({
+const DepthRangeFilter = ({
     depthMin,
     depthMax,
     onChange,
@@ -353,7 +350,7 @@ const DepthRangeFilter = React.memo(({
             </div>
         </div>
     );
-});
+};
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
