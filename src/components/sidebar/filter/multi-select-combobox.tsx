@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ interface MultiSelectComboboxProps {
     onChange: (values: string[]) => void;
 }
 
-const MultiSelectCombobox = React.memo(({
+const MultiSelectCombobox = ({
     label,
     placeholder,
     queryKey,
@@ -109,6 +109,6 @@ const MultiSelectCombobox = React.memo(({
             </Popover>
         </div>
     );
-});
+};
 
 export { MultiSelectCombobox };

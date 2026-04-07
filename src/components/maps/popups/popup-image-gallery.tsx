@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback } from 'react'
 import { Dialog, DialogClose, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext, type CarouselApi } from '@/components/ui/carousel'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -65,43 +65,45 @@ export function PopupImageGallery({ images, trigger, compact }: PopupImageGaller
     const [gridView, setGridView] = useState(false)
     const apiRef = useRef<CarouselApi>(undefined)
     const thumbRefs = useRef<(HTMLButtonElement | null)[]>([])
-    const backBtnRef = useRef<HTMLButtonElement>(null)
     const gridBtnRef = useRef<HTMLButtonElement>(null)
+
+    const scrollThumbIntoView = useCallback((i: number) => {
+        // rAF so the thumb exists in the DOM after the state-driven render
+        requestAnimationFrame(() => {
+            thumbRefs.current[i]?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' })
+        })
+    }, [])
 
     const handleApiChange = useCallback((newApi: CarouselApi) => {
         if (!newApi) return
         apiRef.current = newApi
-        newApi.on('select', () => setActiveIndex(newApi.selectedScrollSnap()))
+        newApi.on('select', () => {
+            const idx = newApi.selectedScrollSnap()
+            setActiveIndex(idx)
+            scrollThumbIntoView(idx)
+        })
+    }, [scrollThumbIntoView])
+
+    // Callback ref: focuses the back button on mount, no effect required
+    const backBtnRefCb = useCallback((el: HTMLButtonElement | null) => {
+        el?.focus()
     }, [])
 
-    // Auto-scroll thumbnail strip to keep active thumb centered
-    useEffect(() => {
-        if (gridView) return
-        const thumb = thumbRefs.current[activeIndex]
-        if (!thumb) return
-        const container = thumb.closest('.overflow-x-auto') as HTMLElement | null
-        if (!container) return
-        const thumbRect = thumb.getBoundingClientRect()
-        const containerRect = container.getBoundingClientRect()
-        const relativeLeft = thumbRect.left - containerRect.left + container.scrollLeft
-        container.scrollTo({ left: relativeLeft - container.clientWidth / 2 + thumb.offsetWidth / 2, behavior: 'smooth' })
-    }, [activeIndex, gridView])
-
-    // Manage focus when switching views
-    useEffect(() => {
-        if (gridView) {
-            backBtnRef.current?.focus()
-        } else {
-            gridBtnRef.current?.focus()
-        }
-    }, [gridView])
-
-    const openAt = (i: number) => { setLightboxIndex(i); setActiveIndex(i); setMetaOpen(false); setGridView(false) }
+    const openAt = (i: number) => {
+        setLightboxIndex(i); setActiveIndex(i); setMetaOpen(false); setGridView(false)
+        scrollThumbIntoView(i)
+    }
 
     const selectFromGrid = (i: number) => {
         setActiveIndex(i)
         setMetaOpen(false)
         setGridView(false)
+        scrollThumbIntoView(i)
+    }
+
+    const closeGridView = () => {
+        setGridView(false)
+        gridBtnRef.current?.focus()
     }
 
     const handleClose = () => { setLightboxIndex(null); setMetaOpen(false); setGridView(false) }
@@ -188,8 +190,8 @@ export function PopupImageGallery({ images, trigger, compact }: PopupImageGaller
                         <div className="flex items-center justify-between px-3 py-2 border-b border-border shrink-0 gap-2">
                             {gridView ? (
                                 <button
-                                    ref={backBtnRef}
-                                    onClick={() => setGridView(false)}
+                                    ref={backBtnRefCb}
+                                    onClick={closeGridView}
                                     className={`inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-md px-1 ${focusRing}`}
                                 >
                                     <ArrowLeft className="h-4 w-4" />

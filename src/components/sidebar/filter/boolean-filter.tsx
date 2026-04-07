@@ -1,4 +1,3 @@
-import React from 'react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
@@ -13,7 +12,7 @@ interface BooleanFilterProps {
     disabledMessage?: string;
 }
 
-const BooleanFilter = React.memo(({
+const BooleanFilter = ({
     label: filterLabel,
     value,
     onChange,
@@ -50,7 +49,7 @@ const BooleanFilter = React.memo(({
             <p className="text-xs text-muted-foreground mt-1 italic">{disabledMessage}</p>
         )}
     </div>
-));
+);
 
 export { BooleanFilter };
 export type { YesNoAll };
