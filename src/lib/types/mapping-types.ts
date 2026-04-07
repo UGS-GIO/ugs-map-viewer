@@ -288,7 +288,8 @@ interface DisplayField {
     label?: string;
     /** Format numeric values: 'number' (thousands), 'currency' (USD), 'percent'. Applied before transform. */
     format?: 'number' | 'currency' | 'percent';
-    transform?: (value: string) => React.ReactNode;
+    /** `allRows` lets cell renderers share a bulk fetch via one react-query key. */
+    transform?: (value: string, row?: Record<string, unknown>, allRows?: Record<string, unknown>[]) => React.ReactNode;
 }
 
 // Interface for composite symbol results

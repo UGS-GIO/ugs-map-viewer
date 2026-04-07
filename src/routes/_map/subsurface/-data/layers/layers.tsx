@@ -474,7 +474,16 @@ const ucrcWellsWMSConfig: WMSLayerProps = {
                         { field: 'box_bottom_ft', label: 'Bottom (ft)', format: 'number' },
                         { field: 'cored_formation', label: 'Formation' },
                         { field: 'notes_public', label: 'Notes', transform: (v) => v || '—' },
-                        { field: 'pk', label: 'Photos', transform: (pk) => <BoxPhotosCell boxId={pk} /> },
+                        {
+                            field: 'pk',
+                            label: 'Photos',
+                            transform: (pk, _row, allRows) => (
+                                <BoxPhotosCell
+                                    boxId={pk}
+                                    allBoxIds={(allRows ?? []).map(r => String(r.pk))}
+                                />
+                            ),
+                        },
                     ],
                     sortBy: 'box_number',
                     sortDirection: 'asc',

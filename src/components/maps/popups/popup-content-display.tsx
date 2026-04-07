@@ -21,6 +21,7 @@ import {
     ImageFieldConfig,
 } from "@/lib/types/mapping-types";
 import { PopupImageGallery, type GalleryImage } from "@/components/maps/popups/popup-image-gallery";
+import { relatedRowToGalleryImage } from "@/lib/gallery-utils";
 import {
     isNumberField,
     isStringField,
@@ -189,30 +190,11 @@ export function buildGalleryImages(
         : []
 
     const fromRelatedTables: GalleryImage[] = (relatedTables ?? []).flatMap((table, tableIndex) => {
-        if (table.displayAs !== 'gallery' || !table.galleryUrlField) return []
+        if (table.displayAs !== 'gallery') return []
         const rows = data[tableIndex] ?? []
         return rows.flatMap(row => {
-            const rawUrl = row[table.galleryUrlField!]
-            if (!rawUrl) return []
-            const encodePathSegments = (p: string) => p.split('/').map(encodeURIComponent).join('/')
-            const url = table.galleryBaseUrl
-                ? `${table.galleryBaseUrl}/${encodePathSegments(String(rawUrl))}`
-                : String(rawUrl)
-            const rawThumb = table.galleryThumbnailTransform
-                ? table.galleryThumbnailTransform(String(rawUrl))
-                : (table.galleryThumbnailField ? row[table.galleryThumbnailField] : undefined)
-            const thumbnailUrl = rawThumb
-                ? (table.galleryBaseUrl
-                    ? `${table.galleryBaseUrl}/${encodePathSegments(String(rawThumb))}`
-                    : String(rawThumb))
-                : undefined
-            const label = table.galleryLabelField ? String(row[table.galleryLabelField] ?? '') : undefined
-            const metadata = table.galleryMetadataFields?.flatMap(({ field, label: metaLabel }) => {
-                const val = row[field]
-                if (val === null || val === undefined || val === '') return []
-                return [{ label: metaLabel, value: String(val) }]
-            })
-            return [{ url, thumbnailUrl, label, metadata }]
+            const img = relatedRowToGalleryImage(row, table)
+            return img ? [img] : []
         })
     })
 
@@ -260,7 +242,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
                         const rawValue = row[df.field];
                         // Apply format first (number/currency), then transform if exists
                         const formattedValue = formatNumeric(rawValue, df.format);
-                        const finalValue = df.transform ? df.transform(formattedValue) : formattedValue;
+                        const finalValue = df.transform ? df.transform(formattedValue, row, rows) : formattedValue;
                         return {
                             label: df.label,
                             value: finalValue || 'N/A'
@@ -467,8 +449,10 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
 };
 
 const PopupContentDisplay = memo(PopupContentDisplayInner, (prevProps, nextProps) => {
+    // Compare feature by reference — feature.id is frequently undefined on
+    // GeoJSON features, which would silently mask real changes.
     return (
-        prevProps.feature?.id === nextProps.feature?.id &&
+        prevProps.feature === nextProps.feature &&
         prevProps.layout === nextProps.layout &&
         prevProps.layer.sourceCRS === nextProps.layer.sourceCRS &&
         prevProps.layer.layerTitle === nextProps.layer.layerTitle &&

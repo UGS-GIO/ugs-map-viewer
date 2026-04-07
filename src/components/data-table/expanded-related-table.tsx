@@ -12,14 +12,13 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { PopupImageGallery, type GalleryImage } from '@/components/maps/popups/popup-image-gallery';
+import { relatedRowToGalleryImage } from '@/lib/gallery-utils';
 
 interface ExpandedRelatedTableProps {
     relatedTable: RelatedTable;
     rows: PostgRESTRow[];
     colSpan: number;
 }
-
-const encodePathSegments = (p: string) => p.split('/').map(encodeURIComponent).join('/')
 
 /** Converts "0510370000S000_3_CORE" → "Box 3 · Core" */
 function formatBoxId(boxId: string): string {
@@ -29,30 +28,6 @@ function formatBoxId(boxId: string): string {
     const num = parts[parts.length - 2]
     const type = parts[parts.length - 1]
     return `Box ${num} · ${type.charAt(0).toUpperCase()}${type.slice(1).toLowerCase()}`
-}
-
-function rowToGalleryImage(row: PostgRESTRow, relatedTable: RelatedTable): GalleryImage | null {
-    const rawUrl = row[relatedTable.galleryUrlField!]
-    if (!rawUrl) return null
-    const urlStr = String(rawUrl)
-    const url = relatedTable.galleryBaseUrl
-        ? `${relatedTable.galleryBaseUrl}/${encodePathSegments(urlStr)}`
-        : urlStr
-    const rawThumb = relatedTable.galleryThumbnailTransform
-        ? relatedTable.galleryThumbnailTransform(urlStr)
-        : (relatedTable.galleryThumbnailField ? String(row[relatedTable.galleryThumbnailField] ?? '') : undefined)
-    const thumbnailUrl = rawThumb
-        ? (relatedTable.galleryBaseUrl
-            ? `${relatedTable.galleryBaseUrl}/${encodePathSegments(rawThumb)}`
-            : rawThumb)
-        : undefined
-    const label = relatedTable.galleryLabelField ? String(row[relatedTable.galleryLabelField] ?? '') : undefined
-    const metadata = relatedTable.galleryMetadataFields?.flatMap(({ field, label: metaLabel }) => {
-        const val = row[field]
-        if (val == null || val === '') return []
-        return [{ label: metaLabel, value: String(val) }]
-    })
-    return { url, thumbnailUrl, label, metadata }
 }
 
 export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRelatedTableProps) {
@@ -89,7 +64,7 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
                         <div className="space-y-2">
                             {sorted.map(([boxId, { rows: boxRows }]) => {
                                 const images = boxRows
-                                    .map(r => rowToGalleryImage(r, relatedTable))
+                                    .map(r => relatedRowToGalleryImage(r, relatedTable))
                                     .filter((img): img is GalleryImage => img !== null)
                                 if (images.length === 0) return null
                                 const label = formatBoxId(boxId)
@@ -131,7 +106,7 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
                                     {relatedTable.displayFields?.map((df, j) => {
                                         const raw = r[df.field];
                                         const formatted = formatNumeric(raw, df.format);
-                                        const value = df.transform ? df.transform(formatted) : formatted;
+                                        const value = df.transform ? df.transform(formatted, r, rows) : formatted;
                                         return (
                                             <TableCell key={j} className="py-1.5 text-xs">
                                                 {value}
