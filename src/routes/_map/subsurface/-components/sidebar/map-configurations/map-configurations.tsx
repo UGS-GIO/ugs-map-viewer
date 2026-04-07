@@ -4,13 +4,11 @@ import { useQuery } from '@tanstack/react-query';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { BackToMenuButton } from '@/components/ui/back-to-menu-button';
 import { useMapCoordinates } from '@/hooks/use-map-coordinates';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DualRangeSlider } from '@/components/ui/dual-range-slider';
-import { ChevronsUpDown } from 'lucide-react';
 import { ucrcWellsWMSTitle, ucrcWellsQualifiedName } from '../../../-data/layers/layers';
 import { useWMSLegend } from '@/hooks/use-wms-legend';
 import { PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from '@/lib/constants';
@@ -58,6 +56,17 @@ const extractCqlValues = (cql: string, field: string): string[] => {
     return results;
 };
 
+/** Extract values from `${field} LIKE '%value%'` clauses (for comma-separated columns). */
+const extractCqlLikeValues = (cql: string, field: string): string[] => {
+    const pattern = new RegExp(`${field}\\s+LIKE\\s+'%((?:[^%']|'')*)%'`, 'g');
+    const results: string[] = [];
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(cql)) !== null) {
+        results.push(match[1].replace(/''/g, "'"));
+    }
+    return results;
+};
+
 const parseUCRCFilter = (cql: string | null | undefined): UCRCFilterState => {
     const state: UCRCFilterState = {
         purposes: new Set(),
@@ -77,7 +86,7 @@ const parseUCRCFilter = (cql: string | null | undefined): UCRCFilterState => {
     state.operators = extractCqlValues(cql, 'current_operator');
     state.fields = extractCqlValues(cql, 'field_name');
     state.formations = extractCqlValues(cql, 'producing_formation');
-    state.boxTypes = extractCqlValues(cql, 'box_type');
+    state.boxTypes = extractCqlLikeValues(cql, 'box_type_codes');
 
     const depthMinMatch = cql.match(/td_ft\s*>=\s*(\d+)/);
     if (depthMinMatch) state.depthMin = Number(depthMinMatch[1]);
@@ -98,6 +107,13 @@ const buildCqlOrClause = (field: string, values: string[]): string | null => {
     return parts.length === 1 ? parts[0] : `(${parts.join(' OR ')})`;
 };
 
+/** Build a CQL OR-of-LIKEs for a comma-separated text column, e.g. "(box_type_codes LIKE '%A%' OR ...)" */
+const buildCqlLikeAnyClause = (field: string, values: string[]): string | null => {
+    if (values.length === 0) return null;
+    const parts = values.map(v => `${field} LIKE '%${escapeCqlLiteral(v)}%'`);
+    return parts.length === 1 ? parts[0] : `(${parts.join(' OR ')})`;
+};
+
 const generateUCRCFilter = (state: UCRCFilterState): string => {
     const boolFilter = (field: string, value: YesNoAll): string | null => {
         if (value === 'yes') return `${field} = 'True'`;
@@ -114,7 +130,7 @@ const generateUCRCFilter = (state: UCRCFilterState): string => {
         state.depthMin != null ? `td_ft >= ${state.depthMin}` : null,
         state.depthMax != null ? `td_ft <= ${state.depthMax}` : null,
         boolFilter('has_photos', state.hasPhotos),
-        buildCqlOrClause('box_type', state.boxTypes),
+        buildCqlLikeAnyClause('box_type_codes', state.boxTypes),
     ];
 
     return parts.filter(Boolean).join(' AND ');
@@ -201,6 +217,25 @@ const fetchDistinctValues = async (field: string): Promise<string[]> => {
         }
     }
     return results;
+};
+
+/** box_type_codes is a comma-separated string column ("BUTTS,CUTTINGS"); split + dedupe. */
+const fetchDistinctBoxTypeCodes = async (): Promise<string[]> => {
+    const url = `${PROD_POSTGREST_URL}/enmin_ucrc_wells_django_test_current?select=box_type_codes&box_type_codes=not.is.null&box_type_codes=neq.`;
+    const res = await fetch(url, {
+        headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
+    });
+    if (!res.ok) throw new Error('Failed to fetch box_type_codes');
+    const data: { box_type_codes: string }[] = await res.json();
+    const seen = new Set<string>();
+    for (const row of data) {
+        if (typeof row.box_type_codes !== 'string') continue;
+        for (const code of row.box_type_codes.split(',')) {
+            const trimmed = code.trim();
+            if (trimmed) seen.add(trimmed);
+        }
+    }
+    return Array.from(seen).sort();
 };
 
 const usePurposeOptions = (): { options: PurposeOption[]; isLoading: boolean } => {
@@ -493,25 +528,17 @@ function MapConfigurations() {
                             value={filterState.hasPhotos}
                             onChange={() => {}}
                             disabled
-                            disabledMessage="Coming soon — requires pipeline update"
+                            disabledMessage="Coming soon — column not yet loaded"
                         />
 
-                        <div>
-                            <Label className="text-sm font-medium text-muted-foreground mb-2 block">
-                                Box Type
-                            </Label>
-                            <div className="relative">
-                                <Button
-                                    disabled
-                                    variant="outline"
-                                    className="w-full justify-between text-xs h-9 opacity-50"
-                                >
-                                    Select box types...
-                                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                                </Button>
-                                <p className="text-xs text-muted-foreground mt-1 italic">Coming soon — requires pipeline update</p>
-                            </div>
-                        </div>
+                        <MultiSelectCombobox
+                            label="Box Type"
+                            placeholder="Select box types..."
+                            queryKey="ucrc-distinct-box-type-codes"
+                            fetchOptions={fetchDistinctBoxTypeCodes}
+                            selected={filterState.boxTypes}
+                            onChange={(boxTypes) => update({ boxTypes })}
+                        />
                     </CardContent>
                 </Card>
             </div>
