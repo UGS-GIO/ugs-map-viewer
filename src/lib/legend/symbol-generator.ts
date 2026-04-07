@@ -14,13 +14,16 @@ import { CompositeSymbolResult, createCompositeLineSymbol } from "@/lib/legend/s
  */
 export function createSVGSymbol(symbolizers: Symbolizer[]): SVGSVGElement | CompositeSymbolResult {
     try {
-        if (symbolizers.every(symbolizer => symbolizer.Line)) {
-            const result = createCompositeLineSymbol(symbolizers);
-            return result;
-        } else if (symbolizers.every(symbolizer => symbolizer.Polygon)) {
-            return createPolygonSymbol(symbolizers);
-        } else if (symbolizers.every(symbolizer => symbolizer.Point)) {
-            return createPointSymbol(symbolizers);
+        const polygonSymbolizers = symbolizers.filter(s => s.Polygon);
+        const lineSymbolizers = symbolizers.filter(s => s.Line);
+        const pointSymbolizers = symbolizers.filter(s => s.Point);
+
+        if (lineSymbolizers.length > 0) {
+            return createCompositeLineSymbol(lineSymbolizers);
+        } else if (polygonSymbolizers.length > 0) {
+            return createPolygonSymbol(polygonSymbolizers);
+        } else if (pointSymbolizers.length > 0) {
+            return createPointSymbol(pointSymbolizers);
         } else {
             console.error("Unsupported symbol type:", symbolizers);
             return createEmptySVG();

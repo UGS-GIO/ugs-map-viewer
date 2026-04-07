@@ -76,10 +76,17 @@ export type FieldConfig = StringPopupFieldConfig | NumberPopupFieldConfig | Date
 
 export type ColorCodingMode = 'text' | 'background';
 
+export interface ImageFieldConfig {
+    field: string;
+    label?: string;
+    baseUrl?: string;
+}
+
 export type CustomSublayerProps = {
     popupFields?: Record<string, FieldConfig>; // Maps field labels to attribute names
     relatedTables?: RelatedTable[];
     linkFields?: LinkFields;
+    imageFields?: ImageFieldConfig[];
     colorCodingMap?: ColorCodingRecordFunction; // Maps field names to color coding functions
     colorCodingMode?: ColorCodingMode; // How to apply the color: 'text' (default) or 'background'
     rasterSource?: RasterSource;
@@ -255,8 +262,20 @@ export interface RelatedTable {
     logicalOperator?: string;
     sortBy?: string;
     sortDirection?: 'asc' | 'desc';
-    /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers */
-    displayAs?: 'list' | 'table';
+    /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers, 'gallery' renders a photo gallery */
+    displayAs?: 'list' | 'table' | 'gallery';
+    /** Required when displayAs is 'gallery'. Field name containing the full-size image URL */
+    galleryUrlField?: string;
+    /** Optional when displayAs is 'gallery'. Field name containing the thumbnail URL. Falls back to galleryUrlField if not set */
+    galleryThumbnailField?: string;
+    /** Optional transform to derive thumbnail path from the galleryUrlField value. Takes precedence over galleryThumbnailField */
+    galleryThumbnailTransform?: (urlFieldValue: string) => string;
+    /** Optional when displayAs is 'gallery'. Field name to use as the image caption/label */
+    galleryLabelField?: string;
+    /** Optional base URL prepended to gallery URL field values */
+    galleryBaseUrl?: string;
+    /** Optional metadata fields to display alongside the image in the lightbox */
+    galleryMetadataFields?: { field: string; label: string }[];
     /** Fetch mode: 'postgrest' (default) or 'wfs' for GeoServer WFS queries */
     fetchMode?: 'postgrest' | 'wfs';
     /** WFS typeName (required when fetchMode is 'wfs'), e.g. 'emp:sco2_with_grid' */
@@ -269,7 +288,8 @@ interface DisplayField {
     label?: string;
     /** Format numeric values: 'number' (thousands), 'currency' (USD), 'percent'. Applied before transform. */
     format?: 'number' | 'currency' | 'percent';
-    transform?: (value: string) => React.ReactNode;
+    /** `allRows` lets cell renderers share a bulk fetch via one react-query key. */
+    transform?: (value: string, row?: Record<string, unknown>, allRows?: Record<string, unknown>[]) => React.ReactNode;
 }
 
 // Interface for composite symbol results

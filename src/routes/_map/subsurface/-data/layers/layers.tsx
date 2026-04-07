@@ -1,4 +1,5 @@
 import { Link } from "@/components/ui/link";
+import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
 import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { GeoJsonProperties } from "geojson";
@@ -100,58 +101,31 @@ const SITLAConfig: LayerProps = {
 
 
 // Utah counties
-const utCountiesayerName = 'enmin_ut_counties_current';
-const utCountiesTitle = 'Counties';
 const utCountiesConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
-    title: utCountiesTitle,
-    visible: false,
+    title: 'Utah Counties',
+    visible: true,
     crs: 'EPSG:3857',
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${utCountiesayerName }`,
-            popupEnabled: false,
-            queryable: true,
-        },
-    ],
+    sublayers: [{
+        name: `${ENERGY_MINERALS_WORKSPACE}:enmin_ut_counties_current`,
+        popupEnabled: false,
+        queryable: false,
+    }],
 };
 
-// Utah PLSS Grid
-const utPlssayerName = 'enmin_plss_sections_current';
-const utPlssTitle = 'PLSS Grid';
-const utPlssConfig: WMSLayerProps = {
+// Utah township & ranges
+const utTownshipRangesConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
-    title: utPlssTitle,
-    visible: false,
+    title: 'Utah Township & Ranges',
+    visible: true,
     crs: 'EPSG:3857',
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${utPlssayerName }`,
-            popupEnabled: false,
-            queryable: true,
-        },
-    ],
-};
-
-
-// utah township an range layer
-const townshpRngLayerName = 'enmin_plss_townshiprange_current';
-const townshpRngTitle = 'Utah Township & Ranges';
-const townshpRngConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: townshpRngTitle,
-    visible: false,
-    crs: 'EPSG:3857',
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${townshpRngLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-        },
-    ],
+    sublayers: [{
+        name: `${ENERGY_MINERALS_WORKSPACE}:enmin_plss_townshiprange_current`,
+        popupEnabled: false,
+        queryable: false,
+    }],
 };
 
 // Oil and Gas Fields WMS Layer
@@ -434,11 +408,124 @@ const ucrcWellsConfig: WMSLayerProps = {
                 'Township':  { field: 'township',  type: 'string' },
                 'Range':  { field: 'range', type: 'string' },
                 'Section': { field: 'section', type: 'string' },
-            }
+            },
+            relatedTables: [
+                {
+                    fieldLabel: 'Core Boxes',
+                    matchingField: 'uwi',
+                    targetField: 'uwi',
+                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_boxes_django_test_current`,
+                    headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
+                    displayAs: 'table',
+                    displayFields: [
+                        { field: 'box_number', label: 'Box #' },
+                        { field: 'box_type', label: 'Box Type' },
+                        { field: 'box_top_ft', label: 'Top (ft)', format: 'number' },
+                        { field: 'box_bottom_ft', label: 'Bottom (ft)', format: 'number' },
+                        { field: 'cored_formation', label: 'Formation' },
+                    ],
+                    sortBy: 'box_number',
+                    sortDirection: 'asc',
+                },
+            ],
         }
     ]
 };
 
+
+// UCRC Wells Layer
+const ucrcWellsLayerName = 'enmin_ucrc_wells_django_test_current';
+export const ucrcWellsQualifiedName = `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`;
+export const ucrcWellsWMSTitle = 'UCRC Wells (Test)';
+const ucrcWellsWMSConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: ucrcWellsWMSTitle,
+    visible: false,
+    crs: 'EPSG:3857',
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'API Number': { field: 'api_number', type: 'string' },
+                'Well Name': { field: 'well_name', type: 'string' },
+                'County': { field: 'county', type: 'string' },
+                'Operator': { field: 'current_operator', type: 'string' },
+                'Field': { field: 'field_name', type: 'string' },
+                'Purpose': { field: 'purpose', type: 'string' },
+                'Producing Formation': { field: 'producing_formation', type: 'string' },
+                'TD (ft)': { field: 'td_ft', type: 'number' },
+                'Elevation (GL ft)': { field: 'elevation_gl', type: 'number' },
+            },
+            relatedTables: [
+                {
+                    fieldLabel: 'Core Boxes',
+                    matchingField: 'uwi',
+                    targetField: 'uwi',
+                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_boxes_django_test_current`,
+                    headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
+                    displayAs: 'table',
+                    displayFields: [
+                        { field: 'box_number', label: 'Box #' },
+                        { field: 'box_type', label: 'Type' },
+                        { field: 'box_top_ft', label: 'Top (ft)', format: 'number' },
+                        { field: 'box_bottom_ft', label: 'Bottom (ft)', format: 'number' },
+                        { field: 'cored_formation', label: 'Formation' },
+                        { field: 'notes_public', label: 'Notes', transform: (v) => v || '—' },
+                        {
+                            field: 'pk',
+                            label: 'Photos',
+                            transform: (pk, _row, allRows) => (
+                                <BoxPhotosCell
+                                    boxId={pk}
+                                    allBoxIds={(allRows ?? []).map(r => String(r.pk))}
+                                />
+                            ),
+                        },
+                    ],
+                    sortBy: 'box_number',
+                    sortDirection: 'asc',
+                },
+                {
+                    fieldLabel: 'Core Photos',
+                    matchingField: 'uwi',
+                    targetField: 'uwi',
+                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_photos_django_test_current`,
+                    headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
+                    displayAs: 'gallery',
+                    galleryUrlField: 'gcs_path',
+                    galleryBaseUrl: 'https://ucrc-assets.geology.utah.gov',
+                    galleryThumbnailTransform: (gcsPath: string) =>
+                        gcsPath.startsWith('photos/')
+                            ? `photos/_thumbs/200/${gcsPath.slice('photos/'.length)}`
+                            : `_thumbs/200/${gcsPath}`,
+                    galleryLabelField: 'filename',
+                    galleryMetadataFields: [
+                        { field: 'photo_type', label: 'Type' },
+                        { field: 'top_depth', label: 'Top (ft)' },
+                        { field: 'bottom_depth', label: 'Bottom (ft)' },
+                    ],
+                    sortBy: 'top_depth',
+                    sortDirection: 'asc',
+                },
+                {
+                    fieldLabel: 'Attachments',
+                    matchingField: 'uwi',
+                    targetField: 'uwi',
+                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_attachments_django_test_current`,
+                    headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
+                    displayAs: 'list',
+                    displayFields: [
+                        { field: 'filename', label: 'File' },
+                        { field: 'notes', label: 'Notes' },
+                    ],
+                },
+            ],
+        },
+    ],
+};
 
 
 const subsurfaceDataConfig: LayerProps = {
@@ -469,16 +556,16 @@ const infrastructureAndLandUseConfig: LayerProps = {
     visible: true,
     layers: [
         SITLAConfig,
-        pipelinesWMSConfig, 
+        pipelinesWMSConfig,
         utCountiesConfig,
-        townshpRngConfig,
-        utPlssConfig,          
+        utTownshipRangesConfig,
     ]
 }
 
 
 const layersConfig: LayerProps[] = [
     ucrcWellsConfig,
+    ucrcWellsWMSConfig,
     subsurfaceDataConfig,
     geologicalInformationConfig,
     infrastructureAndLandUseConfig

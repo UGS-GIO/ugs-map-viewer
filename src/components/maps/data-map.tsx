@@ -59,6 +59,7 @@ export default function DataMap({
   boxSelectBounds,
   onBoxSelectConfirm,
   layerFilters = {},
+  layerStyles = {},
   onMapReady,
   basemapId,
   clickBufferBounds,
@@ -553,12 +554,13 @@ export default function DataMap({
         {wmsDrawOrder.map((layer) => {
           const layerName = getWmsLayerName(layer)
           const cqlFilter = layerFilters[layer.title]
+          const styleName = layerStyles[layer.title]
           const layerWmsUrl = layer.url || wmsUrl
-          const tileUrl = buildWmsTileUrl(layerWmsUrl, layerName, cqlFilter, layer.customLayerParameters)
+          const tileUrl = buildWmsTileUrl(layerWmsUrl, layerName, cqlFilter, layer.customLayerParameters, styleName)
 
           return (
             <Source
-              key={`${layer.title}-${cqlFilter ?? ''}`}
+              key={`${layer.title}-${cqlFilter ?? ''}-${styleName ?? ''}`}
               id={`wms-${layer.title}`}
               type="raster"
               tiles={[tileUrl]}

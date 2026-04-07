@@ -95,13 +95,13 @@ export function parseWmsUrl(wmsUrl: string): ParsedWmsUrl | null {
 /**
  * Build a WMS GetMap tile URL for MapLibre
  */
-export function buildWmsTileUrl(baseUrl: string, layerName: string, cqlFilter?: string, customLayerParameters?: Record<string, string> | null): string {
+export function buildWmsTileUrl(baseUrl: string, layerName: string, cqlFilter?: string, customLayerParameters?: Record<string, string> | null, styleName?: string): string {
   const params = new URLSearchParams({
     service: 'WMS',
     version: '1.1.0',
     request: 'GetMap',
     layers: layerName,
-    styles: '',
+    styles: styleName || '',
     srs: 'EPSG:3857',
     width: '512',
     height: '512',

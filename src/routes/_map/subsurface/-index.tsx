@@ -9,16 +9,17 @@ import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle } from './-data/layers/layers'
+import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, ucrcWellsWMSTitle } from './-data/layers/layers'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, type SearchComboboxHandle } from '@/components/sidebar/filter/search-combobox'
 import { PROD_POSTGREST_URL } from '@/lib/constants'
 
-// Carbon Storage specific filter mapping
+// Layer filter mapping (URL filter key -> WMS layer title)
 const CCS_FILTER_MAPPING: Record<string, string> = {
   [wellWithTopsWMSTitle]: wellWithTopsWMSTitle,
+  [ucrcWellsWMSTitle]: ucrcWellsWMSTitle,
 }
 
 const searchConfig: SearchSourceConfig[] = [
@@ -34,6 +35,23 @@ const searchConfig: SearchSourceConfig[] = [
     params: {
       targetFields: ['api', 'wellname'],
       select: 'api,wellname,shape',
+    },
+    headers: {
+      'Accept-Profile': 'emp',
+      'Accept': 'application/geo+json',
+    },
+  },
+  {
+    type: 'postgREST',
+    url: `${PROD_POSTGREST_URL}/enmin_ucrc_wells_django_test_current`,
+    sourceName: 'UCRC Wells',
+    layerName: ucrcWellsWMSTitle,
+    crs: 'EPSG:3857',
+    displayField: 'well_name',
+    secondaryDisplayField: 'uwi',
+    params: {
+      targetFields: ['uwi', 'well_name'],
+      select: 'uwi,well_name,geom',
     },
     headers: {
       'Accept-Profile': 'emp',
@@ -71,9 +89,10 @@ export default function Map() {
   const { contextValue } = useMapContextState();
   const searchRef = useRef<SearchComboboxHandle>(null);
 
-  // Get URL filters
+  // Get URL filters and styles
   const searchParams = useSearch({ from: '/_map/subsurface/' })
   const filtersFromUrl = searchParams.filters ?? {}
+  const stylesFromUrl = searchParams.layer_styles ?? {}
 
   // Build CQL filters for layers
   const layerFilters = useMemo(() => {
@@ -86,6 +105,15 @@ export default function Map() {
     }
     return filters
   }, [filtersFromUrl])
+
+  // Build style overrides for WMS layers
+  const layerStyles = useMemo(() => {
+    const styles: Record<string, string> = {}
+    for (const [layerTitle, styleName] of Object.entries(stylesFromUrl)) {
+      if (styleName) styles[layerTitle] = styleName
+    }
+    return styles
+  }, [stylesFromUrl])
 
   // Auto-select layer when filter is applied
   useEffect(() => {
@@ -101,6 +129,7 @@ export default function Map() {
   const LAYER_PARENT_GROUP: Record<string, string> = {
     [seamlessGeolunitsWMSTitle]: 'Geological Information',
     [wellWithTopsWMSTitle]: 'Subsurface Data',
+    [ucrcWellsWMSTitle]: 'Subsurface Data',
   }
 
   // Auto-select the associated layer and its parent group when a search result is picked
@@ -160,6 +189,7 @@ export default function Map() {
             <Layout.Body>
               <GenericMapContainer
                 layerFilters={layerFilters}
+                layerStyles={layerStyles}
                 onClearSearch={() => searchRef.current?.clear()}
               />
             </Layout.Body>

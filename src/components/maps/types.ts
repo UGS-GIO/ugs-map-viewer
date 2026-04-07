@@ -62,6 +62,8 @@ export interface DataMapProps {
   onBoxSelectConfirm?: (bounds: BoundsBox) => void
   /** CQL filters for WMS layers, keyed by layer title */
   layerFilters?: Record<string, string>
+  /** GeoServer style names for WMS layers, keyed by layer title */
+  layerStyles?: Record<string, string>
   /** Callback when map is ready - exposes raw MapLibre map instance */
   onMapReady?: (map: maplibregl.Map) => void
   /** Basemap ID from URL */
