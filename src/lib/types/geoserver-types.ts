@@ -67,6 +67,26 @@ export interface Symbolizer {
     Line?: StrokeSymbolizer;
     Polygon?: PolygonSymbolizer; // Changed to use the new intersection type
     Point?: PointSymbolizer;
+    Raster?: RasterSymbolizer;
+}
+
+export interface RasterColormapEntry {
+    label?: string;
+    /** GeoServer serializes as a string. */
+    quantity: string;
+    color: string;
+    /** "0.0" = NoData. */
+    opacity?: string;
+}
+
+export interface RasterColormap {
+    type?: 'ramp' | 'intervals' | 'values';
+    entries: RasterColormapEntry[];
+}
+
+export interface RasterSymbolizer {
+    colormap?: RasterColormap;
+    opacity?: string;
 }
 
 /**
