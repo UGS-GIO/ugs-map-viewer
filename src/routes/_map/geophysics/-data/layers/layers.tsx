@@ -749,13 +749,13 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
     ],
 };
 
-// CGBA Gravity Anomalies Raster WMS Layer
+// CGBA Gravity Anomalies — continuous raster served via WMS.
 const cgbaRasterLayerName = 'enmin_geophysics_gravanomalyraster_current';
-const cgbaRasterWMSTitle = 'Complete Bouguer Gravity Anomaly';
-const cgbaRasterWMSConfig: WMSLayerProps = {
+const cgbaBouguerRasterTitle = 'Complete Bouguer Gravity Anomaly';
+const cgbaBouguerRasterConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
-    title: cgbaRasterWMSTitle,
+    title: cgbaBouguerRasterTitle,
     visible: false,
     opacity: 0.9,
     crs: 'EPSG:26912',
@@ -765,7 +765,7 @@ const cgbaRasterWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                // empty in favor of using the rasterSource
+                // empty in favor of using the rasterSource for popup values
             },
             rasterSource: {
                 url: `${PROD_GEOSERVER_URL}/wms`,
@@ -777,8 +777,7 @@ const cgbaRasterWMSConfig: WMSLayerProps = {
                 valueField: "GRAY_INDEX",
                 valueLabel: "Gravity Anomaly",
                 transform: (value: number) => `${value} mGal`,
-            }
-
+            },
         },
     ],
 };
@@ -792,7 +791,7 @@ const geophysicalDataConfig: LayerProps = {
         geothermalTEMLayerConfig,
         gravityStationsLayerConfig,
         pacesLegacyLayerConfig,
-        cgbaRasterWMSConfig
+        cgbaBouguerRasterConfig,
     ]
 }
 

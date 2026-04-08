@@ -120,6 +120,8 @@ export interface WMSLayerProps extends BaseLayerProps {
     sublayers: ExtendedSublayerProperties[];
     customLayerParameters?: Record<string, string> | null;
     crs?: string; // EPSG code (e.g., 'EPSG:26912', 'EPSG:3857') for WMS GetFeatureInfo requests
+    /** Set to enable min/max labels on the raster colorbar legend. Omit to render the bar without labels. */
+    legendUnit?: string;
 }
 
 export interface ArcGISMapServerLayerProps extends BaseLayerProps {

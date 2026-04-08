@@ -16,13 +16,13 @@ interface LayerControlsProps {
     handleOpacityCommit: (e: number) => void;
     title: string;
     description: string;
-    layerId: string;
     url: string;
     openLegend?: boolean;
     layerName?: string | null;
     customLegend?: React.ReactNode;
     bivariateLegend?: { xLabel: string; yLabel: string };
     arcgisUrl?: string;
+    legendUnit?: string;
 }
 
 const LayerControls: React.FC<LayerControlsProps> = ({
@@ -32,13 +32,13 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     handleOpacityCommit,
     description,
     title,
-    layerId,
     url,
     openLegend,
     layerName,
     customLegend,
     bivariateLegend,
     arcgisUrl,
+    legendUnit,
 }) => {
     // Sync activeTab with openLegend prop, but let the user toggle freely afterwards
     const [prevOpenLegend, setPrevOpenLegend] = useState(openLegend);
@@ -153,12 +153,12 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                 />
                 <LegendAccordion
                     isOpen={legendPressed}
-                    layerId={layerId}
                     url={url}
                     layerName={layerName}
                     customLegend={customLegend}
                     bivariateLegend={bivariateLegend}
                     arcgisUrl={arcgisUrl}
+                    legendUnit={legendUnit}
                 />
             </div>
         </div>
