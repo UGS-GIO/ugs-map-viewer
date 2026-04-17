@@ -15,6 +15,8 @@ import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, type SearchComboboxHandle } from '@/components/sidebar/filter/search-combobox'
 import { PROD_POSTGREST_URL } from '@/lib/constants'
+import { parseUCRCFilter, generateUCRCMaplibreFilter } from './-components/sidebar/map-configurations/ucrc-filter'
+import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
 
 // Layer filter mapping (URL filter key -> WMS layer title)
 const CCS_FILTER_MAPPING: Record<string, string> = {
@@ -93,6 +95,7 @@ export default function Map() {
   const searchParams = useSearch({ from: '/_map/subsurface/' })
   const filtersFromUrl = searchParams.filters ?? {}
   const stylesFromUrl = searchParams.layer_styles ?? {}
+  const vectorSymbologyFromUrl = searchParams.vector_symbology ?? {}
 
   // Build CQL filters for layers
   const layerFilters = useMemo(() => {
@@ -114,6 +117,17 @@ export default function Map() {
     }
     return styles
   }, [stylesFromUrl])
+
+  // Translate UCRC's stored CQL filter into a maplibre filter expression for the WFS vector layer
+  const vectorLayerFilters = useMemo(() => {
+    const ucrcCql = filtersFromUrl[ucrcWellsWMSTitle]
+    const result: Record<string, FilterSpecification> = {}
+    if (ucrcCql) {
+      const expr: ExpressionSpecification | null = generateUCRCMaplibreFilter(parseUCRCFilter(ucrcCql))
+      if (expr) result[ucrcWellsWMSTitle] = expr
+    }
+    return result
+  }, [filtersFromUrl])
 
   // Auto-select layer when filter is applied
   useEffect(() => {
@@ -190,6 +204,8 @@ export default function Map() {
               <GenericMapContainer
                 layerFilters={layerFilters}
                 layerStyles={layerStyles}
+                vectorLayerFilters={vectorLayerFilters}
+                vectorLayerSymbology={vectorSymbologyFromUrl}
                 onClearSearch={() => searchRef.current?.clear()}
               />
             </Layout.Body>

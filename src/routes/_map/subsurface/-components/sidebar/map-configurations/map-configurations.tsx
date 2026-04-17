@@ -10,157 +10,46 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DualRangeSlider } from '@/components/ui/dual-range-slider';
 import { ucrcWellsWMSTitle, ucrcWellsQualifiedName } from '../../../-data/layers/layers';
+import { BOX_TYPE_CODES, BOX_TYPE_COLORS } from '../../../-data/layers/box-type-sprites';
 import { useWMSLegend } from '@/hooks/use-wms-legend';
 import { PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from '@/lib/constants';
 import { MultiSelectCombobox } from '@/components/sidebar/filter/multi-select-combobox';
 import { BooleanFilter } from '@/components/sidebar/filter/boolean-filter';
-import type { YesNoAll } from '@/components/sidebar/filter/boolean-filter';
-import { escapeCqlLiteral } from '@/lib/cql-utils';
+import { parseUCRCFilter, generateUCRCFilter, type UCRCFilterState } from './ucrc-filter';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+const SYMBOLOGY_PURPOSE = '';      // empty/undefined treated as default purpose mode
+const SYMBOLOGY_BOX_TYPE = 'box-type';
 
 interface PurposeOption {
     label: string;
     color: string;
 }
 
-// GeoServer named styles for UCRC wells — must match styles uploaded to GeoServer
-const SYMBOLIZE_BY_OPTIONS = [
-    { value: '', label: 'Default' },
-    { value: 'ucrc-wells-purpose', label: 'Purpose' },
-    { value: 'ucrc-wells-box-type-placeholder', label: 'Box Type (placeholder)' },
-] as const;
-
-interface UCRCFilterState {
-    purposes: Set<string>;
-    counties: string[];
-    operators: string[];
-    fields: string[];
-    formations: string[];
-    depthMin: number | null;
-    depthMax: number | null;
-    hasPhotos: YesNoAll;
-    boxTypes: string[];
-}
-
-// ─── CQL Generation ──────────────────────────────────────────────────────────
-
-/** Extract all quoted values for a given CQL field, e.g. "county = 'FOO'" → ['FOO']. Handles '' escapes. */
-const extractCqlValues = (cql: string, field: string): string[] => {
-    const pattern = new RegExp(`${field}\\s*=\\s*'((?:[^']|'')*)'`, 'g');
-    const results: string[] = [];
-    let match: RegExpExecArray | null;
-    while ((match = pattern.exec(cql)) !== null) {
-        results.push(match[1].replace(/''/g, "'"));
-    }
-    return results;
-};
-
-/** Extract values from `${field} LIKE '%value%'` clauses (for comma-separated columns). */
-const extractCqlLikeValues = (cql: string, field: string): string[] => {
-    const pattern = new RegExp(`${field}\\s+LIKE\\s+'%((?:[^%']|'')*)%'`, 'g');
-    const results: string[] = [];
-    let match: RegExpExecArray | null;
-    while ((match = pattern.exec(cql)) !== null) {
-        results.push(match[1].replace(/''/g, "'"));
-    }
-    return results;
-};
-
-const parseUCRCFilter = (cql: string | null | undefined): UCRCFilterState => {
-    const state: UCRCFilterState = {
-        purposes: new Set(),
-        counties: [],
-        operators: [],
-        fields: [],
-        formations: [],
-        depthMin: null,
-        depthMax: null,
-        hasPhotos: 'all',
-        boxTypes: [],
-    };
-    if (!cql) return state;
-
-    state.purposes = new Set(extractCqlValues(cql, 'purpose'));
-    state.counties = extractCqlValues(cql, 'county');
-    state.operators = extractCqlValues(cql, 'current_operator');
-    state.fields = extractCqlValues(cql, 'field_name');
-    state.formations = extractCqlValues(cql, 'producing_formation');
-    state.boxTypes = extractCqlLikeValues(cql, 'box_type_codes');
-
-    const depthMinMatch = cql.match(/td_ft\s*>=\s*(\d+)/);
-    if (depthMinMatch) state.depthMin = Number(depthMinMatch[1]);
-
-    const depthMaxMatch = cql.match(/td_ft\s*<=\s*(\d+)/);
-    if (depthMaxMatch) state.depthMax = Number(depthMaxMatch[1]);
-
-    if (cql.includes("has_photos = 'True'")) state.hasPhotos = 'yes';
-    else if (cql.includes("has_photos = 'False'")) state.hasPhotos = 'no';
-
-    return state;
-};
-
-/** Build a CQL OR clause for a multi-value field, e.g. "(county = 'A' OR county = 'B')" */
-const buildCqlOrClause = (field: string, values: string[]): string | null => {
-    if (values.length === 0) return null;
-    const parts = values.map(v => `${field} = '${escapeCqlLiteral(v)}'`);
-    return parts.length === 1 ? parts[0] : `(${parts.join(' OR ')})`;
-};
-
-/** Build a CQL OR-of-LIKEs for a comma-separated text column, e.g. "(box_type_codes LIKE '%A%' OR ...)" */
-const buildCqlLikeAnyClause = (field: string, values: string[]): string | null => {
-    if (values.length === 0) return null;
-    const parts = values.map(v => `${field} LIKE '%${escapeCqlLiteral(v)}%'`);
-    return parts.length === 1 ? parts[0] : `(${parts.join(' OR ')})`;
-};
-
-const generateUCRCFilter = (state: UCRCFilterState): string => {
-    const boolFilter = (field: string, value: YesNoAll): string | null => {
-        if (value === 'yes') return `${field} = 'True'`;
-        if (value === 'no') return `${field} = 'False'`;
-        return null;
-    };
-
-    const parts: (string | null)[] = [
-        buildCqlOrClause('purpose', Array.from(state.purposes)),
-        buildCqlOrClause('county', state.counties),
-        buildCqlOrClause('current_operator', state.operators),
-        buildCqlOrClause('field_name', state.fields),
-        buildCqlOrClause('producing_formation', state.formations),
-        state.depthMin != null ? `td_ft >= ${state.depthMin}` : null,
-        state.depthMax != null ? `td_ft <= ${state.depthMax}` : null,
-        boolFilter('has_photos', state.hasPhotos),
-        buildCqlLikeAnyClause('box_type_codes', state.boxTypes),
-    ];
-
-    return parts.filter(Boolean).join(' AND ');
-};
-
 // ─── URL Search Param Helpers ─────────────────────────────────────────────────
 
-/** Update a keyed record in URL search params, removing the key (and parent) when value is empty */
-const useSearchParamRecord = (paramKey: 'filters' | 'layer_styles', recordKey: string) => {
+/** Read/write a single layer's CQL filter from the `filters` search param record */
+const useFilterParam = (recordKey: string) => {
     const navigate = useNavigate({ from: '/subsurface/' });
     const search = useSearch({ from: '/_map/subsurface/' });
 
-    const value = useMemo(() =>
-        (search[paramKey] as Record<string, string> | undefined)?.[recordKey] ?? '',
-        [search, paramKey, recordKey]
+    const value = useMemo(
+        () => (search.filters as Record<string, string> | undefined)?.[recordKey] ?? '',
+        [search.filters, recordKey],
     );
 
     const setValue = useCallback((newValue: string) => {
         navigate({
             search: (prev) => {
-                const current = (prev[paramKey] as Record<string, string> | undefined) || {};
+                const current = (prev.filters as Record<string, string> | undefined) || {};
                 if (newValue) {
-                    return { ...prev, [paramKey]: { ...current, [recordKey]: newValue } };
+                    return { ...prev, filters: { ...current, [recordKey]: newValue } };
                 }
                 const { [recordKey]: _, ...rest } = current;
-                return { ...prev, [paramKey]: Object.keys(rest).length > 0 ? rest : undefined };
+                return { ...prev, filters: Object.keys(rest).length > 0 ? rest : undefined };
             },
             replace: true,
         });
-    }, [navigate, paramKey, recordKey]);
+    }, [navigate, recordKey]);
 
     return { value, setValue };
 };
@@ -168,7 +57,7 @@ const useSearchParamRecord = (paramKey: 'filters' | 'layer_styles', recordKey: s
 // ─── Filter Manager Hook ─────────────────────────────────────────────────────
 
 const useUCRCFilterManager = () => {
-    const { value: cqlFilter, setValue: setCqlFilter } = useSearchParamRecord('filters', ucrcWellsWMSTitle);
+    const { value: cqlFilter, setValue: setCqlFilter } = useFilterParam(ucrcWellsWMSTitle);
 
     const filterState = useMemo(() => parseUCRCFilter(cqlFilter || undefined), [cqlFilter]);
 
@@ -191,11 +80,32 @@ const useUCRCFilterManager = () => {
     return { filterState, update, clearAll, hasAnyFilter };
 };
 
-// ─── Style Manager Hook ──────────────────────────────────────────────────────
+// ─── Vector symbology hook (URL-driven) ──────────────────────────────────────
 
-const useStyleManager = () => {
-    const { value: activeStyle, setValue: setStyle } = useSearchParamRecord('layer_styles', ucrcWellsWMSTitle);
-    return { activeStyle, setStyle };
+const useVectorSymbology = (layerTitle: string) => {
+    const navigate = useNavigate({ from: '/subsurface/' });
+    const search = useSearch({ from: '/_map/subsurface/' });
+
+    const value = useMemo(
+        () => (search.vector_symbology as Record<string, string> | undefined)?.[layerTitle] ?? SYMBOLOGY_PURPOSE,
+        [search.vector_symbology, layerTitle],
+    );
+
+    const setValue = useCallback((next: string) => {
+        navigate({
+            search: (prev) => {
+                const current = (prev.vector_symbology as Record<string, string> | undefined) || {};
+                if (next && next !== SYMBOLOGY_PURPOSE) {
+                    return { ...prev, vector_symbology: { ...current, [layerTitle]: next } };
+                }
+                const { [layerTitle]: _, ...rest } = current;
+                return { ...prev, vector_symbology: Object.keys(rest).length > 0 ? rest : undefined };
+            },
+            replace: true,
+        });
+    }, [navigate, layerTitle]);
+
+    return { value, setValue };
 };
 
 // ─── Data Fetching ───────────────────────────────────────────────────────────
@@ -393,7 +303,8 @@ function MapConfigurations() {
     const { setIsDecimalDegrees, locationCoordinateFormat } = useMapCoordinates();
     const { filterState, update, clearAll, hasAnyFilter } = useUCRCFilterManager();
     const { options: purposeOptions, isLoading: purposeLoading } = usePurposeOptions();
-    const { activeStyle, setStyle } = useStyleManager();
+    const { value: symbology, setValue: setSymbology } = useVectorSymbology(ucrcWellsWMSTitle);
+    const isBoxTypeMode = symbology === SYMBOLOGY_BOX_TYPE;
 
     const handleCoordFormatChange = (value: string) => {
         if (value && setIsDecimalDegrees) {
@@ -429,28 +340,39 @@ function MapConfigurations() {
 
                 <Card>
                     <CardHeader>
-                        <CardTitle>Symbolize By</CardTitle>
+                        <CardTitle>Symbolize UCRC Wells By</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                        <Select
-                            value={activeStyle || '_default'}
-                            onValueChange={(v) => setStyle(v === '_default' ? '' : v)}
-                        >
+                    <CardContent className="space-y-3">
+                        <Select value={symbology || 'purpose'} onValueChange={(v) => setSymbology(v === 'purpose' ? '' : v)}>
                             <SelectTrigger className="h-9 text-xs">
-                                <SelectValue placeholder="Default" />
+                                <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                {SYMBOLIZE_BY_OPTIONS.map(opt => (
-                                    <SelectItem
-                                        key={opt.value}
-                                        value={opt.value || '_default'}
-                                        className="text-xs"
-                                    >
-                                        {opt.label}
-                                    </SelectItem>
-                                ))}
+                                <SelectItem value="purpose" className="text-xs">Purpose</SelectItem>
+                                <SelectItem value={SYMBOLOGY_BOX_TYPE} className="text-xs">Box Type</SelectItem>
                             </SelectContent>
                         </Select>
+                        {isBoxTypeMode && (
+                            <div className="text-xs text-muted-foreground space-y-1">
+                                <div className="font-medium">Quadrant key</div>
+                                <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                                    {BOX_TYPE_CODES.map((code, i) => {
+                                        const positionLabel = ['Top-left', 'Top-right', 'Bottom-left', 'Bottom-right'][i];
+                                        return (
+                                            <div key={code} className="flex items-center gap-2">
+                                                <span
+                                                    className="inline-block w-3 h-3 rounded-sm border border-foreground/30 shrink-0"
+                                                    style={{ backgroundColor: BOX_TYPE_COLORS[code] }}
+                                                />
+                                                <span>{code}</span>
+                                                <span className="text-[10px] text-muted-foreground/70">({positionLabel})</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <p className="text-[11px] pt-1">Each well is a 2×2 square; quadrants are colored when the well has that box type.</p>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 

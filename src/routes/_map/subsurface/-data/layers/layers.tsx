@@ -1,7 +1,8 @@
 import { Link } from "@/components/ui/link";
 import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
 import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
-import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { LayerProps, WMSLayerProps, WFSLayerProps } from "@/lib/types/mapping-types";
+import { registerBoxTypeSprites } from "./box-type-sprites";
 import { GeoJsonProperties } from "geojson";
 import { addThousandsSeparator } from "@/lib/utils";
 
@@ -433,16 +434,83 @@ const ucrcWellsConfig: WMSLayerProps = {
 };
 
 
-// UCRC Wells Layer
+// UCRC Wells Layer — rendered client-side via WFS for instant filtering and richer symbology
 const ucrcWellsLayerName = 'enmin_ucrc_wells_django_test_current';
 export const ucrcWellsQualifiedName = `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`;
 export const ucrcWellsWMSTitle = 'UCRC Wells (Test)';
-const ucrcWellsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
+
+// Purpose colors mirror the GeoServer SLD for this layer (default style). Keep in sync if SLD changes.
+const UCRC_PURPOSE_COLORS: Record<string, string> = {
+    'Oil and Gas': '#2B83BA',
+    'Mining': '#D7191C',
+    'Tar Sands': '#4B3621',
+    'Water': '#41B6C4',
+    'Potash': '#E66101',
+    'Coal': '#333333',
+    'Stratigraphy': '#7B68EE',
+    'Building or Construction': '#FDB863',
+    'Oil Shale': '#8C6D31',
+    'Geothermal': '#E31A1C',
+    'Teaching': '#A6D854',
+    'Display': '#FF69B4',
+    'Other': '#BDBDBD',
+};
+const UCRC_PURPOSE_STROKES: Record<string, string> = {
+    'Oil and Gas': '#1A5276',
+    'Mining': '#922B21',
+    'Tar Sands': '#2C1F13',
+    'Water': '#2C7F8C',
+    'Potash': '#A04500',
+    'Coal': '#1A1A1A',
+    'Stratigraphy': '#5548A6',
+    'Building or Construction': '#B08045',
+    'Oil Shale': '#5E4921',
+    'Geothermal': '#9E1213',
+    'Teaching': '#74963B',
+    'Display': '#B3497E',
+    'Other': '#858585',
+};
+
+const ucrcWellsWFSConfig: WFSLayerProps = {
+    type: 'wfs',
+    wfsUrl: `${PROD_GEOSERVER_URL}/wfs`,
+    typeName: ucrcWellsQualifiedName,
     title: ucrcWellsWMSTitle,
     visible: false,
-    crs: 'EPSG:3857',
+    opacity: 0.85,
+    crs: 'EPSG:4326',
+    geometryType: 'point',
+    style: {
+        circleRadiusByZoom: [
+            [4, 1.5],
+            [7, 2.5],
+            [10, 4],
+            [13, 6],
+            [16, 8],
+        ],
+        circleStrokeWidth: 0.8,
+        circleColorMatch: {
+            field: 'purpose',
+            matches: UCRC_PURPOSE_COLORS,
+            defaultColor: UCRC_PURPOSE_COLORS.Other,
+        },
+        circleStrokeColorMatch: {
+            field: 'purpose',
+            matches: UCRC_PURPOSE_STROKES,
+            defaultColor: UCRC_PURPOSE_STROKES.Other,
+        },
+        // Box-type symbology: split-square sprite per well, gated by Symbolize By dropdown
+        iconSymbologyKey: 'box-type',
+        iconImageExpression: ['concat', 'box-type-', ['coalesce', ['get', 'box_type_codes'], '']],
+        iconSizeByZoom: [
+            [4, 0.45],
+            [7, 0.6],
+            [10, 0.85],
+            [13, 1.1],
+            [16, 1.35],
+        ],
+        registerSprites: registerBoxTypeSprites,
+    },
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`,
@@ -565,7 +633,7 @@ const infrastructureAndLandUseConfig: LayerProps = {
 
 const layersConfig: LayerProps[] = [
     ucrcWellsConfig,
-    ucrcWellsWMSConfig,
+    ucrcWellsWFSConfig,
     subsurfaceDataConfig,
     geologicalInformationConfig,
     infrastructureAndLandUseConfig

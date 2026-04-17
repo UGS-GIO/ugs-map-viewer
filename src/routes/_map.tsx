@@ -48,6 +48,8 @@ const mapSearchSchema = z.object({
     opacities: z.record(z.number()).optional(),
     // GeoServer named style overrides for WMS layers (format: Layer Title: style-name)
     layer_styles: z.record(z.string()).optional(),
+    // Active symbology mode for vector (WFS) layers (format: Layer Title: mode-key, e.g. 'box-type')
+    vector_symbology: z.record(z.string()).optional(),
 }).strip()
 
 export type MapSearchParams = z.infer<typeof mapSearchSchema>;
