@@ -8,6 +8,7 @@ import { Toggle } from '@/components/ui/toggle';
 import { LayerDescriptionAccordion } from '@/components/maps/layer-description-accordion';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
+import { ParquetDownloadMenu } from '@/components/maps/parquet-download-menu';
 
 interface LayerControlsProps {
     handleZoomToLayer: () => void;
@@ -23,6 +24,8 @@ interface LayerControlsProps {
     bivariateLegend?: { xLabel: string; yLabel: string };
     arcgisUrl?: string;
     legendUnit?: string;
+    /** GeoParquet URL for client-side export. When set, download dropdown is enabled. */
+    downloadParquetUrl?: string;
 }
 
 const LayerControls: React.FC<LayerControlsProps> = ({
@@ -39,6 +42,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     bivariateLegend,
     arcgisUrl,
     legendUnit,
+    downloadParquetUrl,
 }) => {
     // Sync activeTab with openLegend prop, but let the user toggle freely afterwards
     const [prevOpenLegend, setPrevOpenLegend] = useState(openLegend);
@@ -142,6 +146,10 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                             <TableOfContents className="h-5 w-5" />
                             <span className='text-xs'>Legend</span>
                         </Toggle>
+
+                        {downloadParquetUrl && (
+                            <ParquetDownloadMenu parquetUrl={downloadParquetUrl} layerTitle={title} />
+                        )}
                     </div>
                 </div>
             </div>

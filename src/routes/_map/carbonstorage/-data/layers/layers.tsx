@@ -821,6 +821,7 @@ const geochemWellSitesWMSConfig: WMSLayerProps = {
     title: geochemWellSitesWMSTitle,
     visible: false,
     crs: 'EPSG:3857',
+    downloadParquetUrl: 'https://maps-assets.geology.utah.gov/parquet/enmin_ccus_geochem_measu_test2/enmin_ccus_geochem_measu_test2_20260417.parquet',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geochemWellSitesLayerName}`,
