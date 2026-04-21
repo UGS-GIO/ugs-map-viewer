@@ -1,0 +1,568 @@
+	
+alluvialfan/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+alluvialfantest/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+boreholes_locations/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+boreholes_samples/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+boreholes_units/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+ccus_projects/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+collapsiblesoil/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+corrosivesoilrock/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+earthfissure/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_ccus_cbcounty/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_ccus_cbgeoregion/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_ccus_geochem_measu_test/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_ccus_geochem_measu_test2/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_ccus_geochem_measu_test3/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_ccus_geochemistry/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_ccus_geochemistry_measurements/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_ccus_georegions/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_ccus_scotgrids/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_geochemistry_fields/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_geophysics_mtstations/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_geophysics_pacesgravity/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_geophysics_tem/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_geophysics_ugsgravity/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_geothermal_ingenious_springchem/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_geothermal_ingenious_springfeatures/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_geothermal_ingenious_springtemps/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_geothermal_ingenious_wellchem/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_geothermal_ingenious_wellfeatures/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_geothermal_ingenious_welltemps/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_plss_sections/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_plss_townshiprange/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_ucrc_attachments_django_test/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_ucrc_basins/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_ucrc_boxes_django_test/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_ucrc_photos_django_test/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_ucrc_wells_django_test/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+enmin_ut_counties/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+erosionhazardzone/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+expansivesoilrock/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+floodanddebrisflow/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+geothermal_deepsedbasin/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+geothermal_kgra/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+geothermal_potentialresourcearea/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+geothermal_utgeothermaluses/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+groundshaking/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+hazards_qfaults/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+hazards_surfacefaultrupture/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+karstfeatures/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+landslideinventory/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+landslidelegacy/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+landslidesusceptibility/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+liquefaction/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+mart_geophysics_heatflowedwards_source/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+mart_geothermal_qfaults_ingenious/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+pipinganderosion/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+quaternaryfaults/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+radonsusceptibility/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+rockfall/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+rubidium_strontium/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+salttectonicsdeformation/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+seamlessgeolunits/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+shallowbedrock/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+shallowgroundwater/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+solublesoilandrock/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+studyareas/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+surfacefaultrupture/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+ucrc_core_box/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+ucrc_wells/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+unit_descriptions/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+unitdescriptions/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+wetlands_wetdash_flags/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+wetlands_wetdash_inverts/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+wetlands_wetdash_siteattributes/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+wetlands_wetdash_soil/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+wetlands_wetdash_soilparameters/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+wetlands_wetdash_water/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+wetlands_wetdash_waterparameters/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+wetlandsapp_non_riverine/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+wetlandsapp_riparian/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+wetlandsapp_riparian_metadata/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
+windblownsand/
+—	Folder	—	—	—	
+—
+—	—	—	
+—
+—
+—
