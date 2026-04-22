@@ -15,6 +15,7 @@ const georegionsWMSConfig: WMSLayerProps = {
     visible: true,
     opacity: 0.3,
     crs: 'EPSG:3857',
+    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_ccus_georegions/enmin_ccus_georegions.parquet`,
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${georegionsLayerName}`,
@@ -443,6 +444,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
     title: qFaultsWMSTitle,
     visible: false,
     crs: 'EPSG:26912',
+    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/hazards_qfaults/hazards_qfaults.parquet`,
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${qFaultsLayerName}`,
@@ -762,6 +764,7 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
     title: ccusProjectsWMSTitle,
     visible: true,
     crs: 'EPSG:3857',
+    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/ccus_projects/ccus_projects.parquet`,
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${ccusProjectsLayerName}`,
@@ -821,7 +824,7 @@ const geochemWellSitesWMSConfig: WMSLayerProps = {
     title: geochemWellSitesWMSTitle,
     visible: false,
     crs: 'EPSG:3857',
-    downloadParquetUrl: 'https://maps-assets.geology.utah.gov/parquet/enmin_ccus_geochem_measu_test2/enmin_ccus_geochem_measu_test2_20260417.parquet',
+    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_ccus_geochemistry/enmin_ccus_geochemistry.parquet`,
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geochemWellSitesLayerName}`,
@@ -889,6 +892,7 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalWellsJoinsTitle,
     visible: false,
+    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_geothermal_ingenious_wellfeatures/enmin_geothermal_ingenious_wellfeatures.parquet`,
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsJoinsName}`,
@@ -946,6 +950,7 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalSpringsJoinsTitle,
     visible: false,
+    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_geothermal_ingenious_springfeatures/enmin_geothermal_ingenious_springfeatures.parquet`,
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalSpringsJoinsName}`,

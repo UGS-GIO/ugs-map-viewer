@@ -1,3 +1,4 @@
+import { MAPS_ASSETS_CDN_URL } from "@/lib/constants";
 import { ArcGISMapServerLayerProps, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 
 export const PROD_GEOSERVER_URL = 'https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver';
@@ -61,6 +62,7 @@ const wetNonRiverineConfig: WMSLayerProps = {
     visible: true,
     opacity: 0.75,
     crs: 'EPSG:26912',
+    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/wetlandsapp_non_riverine/wetlandsapp_non_riverine.parquet`,
     sublayers: [
         {
             name: `${WETLANDS_WORKSPACE}:${wetNonRiverineLayerName}`,
@@ -139,6 +141,7 @@ const ripMetaConfig: WMSLayerProps = {
     visible: false,
     opacity: 0.75,
     crs: 'EPSG:26912',
+    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/wetlandsapp_riparian_metadata/wetlandsapp_riparian_metadata.parquet`,
     sublayers: [
         {
             name: `${WETLANDS_WORKSPACE}:${ripMetaLayerName}`,
@@ -179,6 +182,7 @@ const
         visible: true,
         opacity: 0.75,
     crs: 'EPSG:26912',
+        downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/wetlandsapp_riparian/wetlandsapp_riparian.parquet`,
         sublayers: [
             {
                 name: `${WETLANDS_WORKSPACE}:${ripDataLayerName}`,

@@ -1,6 +1,6 @@
 import { Link } from "@/components/ui/link";
 import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
-import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
+import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, MAPS_ASSETS_CDN_URL, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { GeoJsonProperties } from "geojson";
 import { addThousandsSeparator } from "@/lib/utils";
@@ -107,6 +107,7 @@ const utCountiesConfig: WMSLayerProps = {
     title: 'Utah Counties',
     visible: true,
     crs: 'EPSG:3857',
+    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_ut_counties/enmin_ut_counties.parquet`,
     sublayers: [{
         name: `${ENERGY_MINERALS_WORKSPACE}:enmin_ut_counties_current`,
         popupEnabled: false,
@@ -121,6 +122,7 @@ const utTownshipRangesConfig: WMSLayerProps = {
     title: 'Utah Township & Ranges',
     visible: true,
     crs: 'EPSG:3857',
+    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_plss_townshiprange/enmin_plss_townshiprange.parquet`,
     sublayers: [{
         name: `${ENERGY_MINERALS_WORKSPACE}:enmin_plss_townshiprange_current`,
         popupEnabled: false,
@@ -162,6 +164,7 @@ const basinsWMSConfig: WMSLayerProps = {
     title: basinsWMSTitle,
     visible: true,
     crs: 'EPSG:3857',
+    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_ucrc_basins/enmin_ucrc_basins.parquet`,
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${basinsLayerName}`,
@@ -389,6 +392,7 @@ const ucrcWellsConfig: WMSLayerProps = {
     visible: true,
     opacity: 0.6,
     crs: 'EPSG:26912',
+    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/ucrc_wells/ucrc_wells.parquet`,
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsName}`,
@@ -443,6 +447,7 @@ const ucrcWellsWMSConfig: WMSLayerProps = {
     title: ucrcWellsWMSTitle,
     visible: false,
     crs: 'EPSG:3857',
+    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_ucrc_wells_django_test/enmin_ucrc_wells_django_test.parquet`,
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`,
