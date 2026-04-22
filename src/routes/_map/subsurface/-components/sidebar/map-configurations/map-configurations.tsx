@@ -9,8 +9,7 @@ import { useMapCoordinates } from '@/hooks/use-map-coordinates';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DualRangeSlider } from '@/components/ui/dual-range-slider';
-import { ucrcWellsWMSTitle, ucrcWellsQualifiedName } from '../../../-data/layers/layers';
-import { BOX_TYPE_CODES, BOX_TYPE_COLORS } from '../../../-data/layers/box-type-sprites';
+import { ucrcWellsWMSTitle, ucrcWellsQualifiedName, UCRC_BOX_TYPE_CODES, UCRC_BOX_TYPE_COLORS } from '../../../-data/layers/layers';
 import { useWMSLegend } from '@/hooks/use-wms-legend';
 import { PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from '@/lib/constants';
 import { MultiSelectCombobox } from '@/components/sidebar/filter/multi-select-combobox';
@@ -354,23 +353,21 @@ function MapConfigurations() {
                         </Select>
                         {isBoxTypeMode && (
                             <div className="text-xs text-muted-foreground space-y-1">
-                                <div className="font-medium">Quadrant key</div>
+                                <div className="font-medium">Wedge key</div>
                                 <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                                    {BOX_TYPE_CODES.map((code, i) => {
-                                        const positionLabel = ['Top-left', 'Top-right', 'Bottom-left', 'Bottom-right'][i];
+                                    {UCRC_BOX_TYPE_CODES.map((code) => {
                                         return (
                                             <div key={code} className="flex items-center gap-2">
                                                 <span
                                                     className="inline-block w-3 h-3 rounded-sm border border-foreground/30 shrink-0"
-                                                    style={{ backgroundColor: BOX_TYPE_COLORS[code] }}
+                                                    style={{ backgroundColor: UCRC_BOX_TYPE_COLORS[code] }}
                                                 />
                                                 <span>{code}</span>
-                                                <span className="text-[10px] text-muted-foreground/70">({positionLabel})</span>
                                             </div>
                                         );
                                     })}
                                 </div>
-                                <p className="text-[11px] pt-1">Each well is a 2×2 square; quadrants are colored when the well has that box type.</p>
+                                <p className="text-[11px] pt-1">Each well is a pie split into equal wedges — one per box type present, drawn clockwise starting top-left.</p>
                             </div>
                         )}
                     </CardContent>

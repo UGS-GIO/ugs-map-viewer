@@ -208,6 +208,11 @@ export interface WFSLayerProps extends BaseLayerProps {
         iconSize?: number;
         /** Hook called once per data load to register sprites for the symbol layer */
         registerSprites?: (map: import('maplibre-gl').Map, features: import('geojson').Feature[]) => void;
+        /** Legend-facing metadata for the pie-wedge symbology mode. Codes order drives swatch order. */
+        pieGlyphLegend?: {
+            codes: readonly string[];
+            colors: Record<string, string>;
+        };
     };
     /** Optional sublayer config for popups/queries */
     sublayers?: ExtendedSublayerProperties[];

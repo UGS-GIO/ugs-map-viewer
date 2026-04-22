@@ -169,6 +169,7 @@ function WfsLayerSource({
       {styleConfig.iconImageExpression && (
         <Layer
           id={`${sourceId}-symbol`}
+          beforeId={beforeId}
           type="symbol"
           {...(layerFilter ? { filter: layerFilter } : {})}
           layout={{

@@ -2,7 +2,7 @@ import { Link } from "@/components/ui/link";
 import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
 import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps, WFSLayerProps } from "@/lib/types/mapping-types";
-import { registerBoxTypeSprites } from "./box-type-sprites";
+import { makePieWedgeSpriteRegistrar } from "@/lib/map/pie-wedge-sprites";
 import { GeoJsonProperties } from "geojson";
 import { addThousandsSeparator } from "@/lib/utils";
 
@@ -382,7 +382,7 @@ const pipelinesWMSConfig: WMSLayerProps = {
 
 
 const ucrcWellsName = 'ucrc_wells_current';
-const ucrcWellsTitle = 'Utah Core Research Center Inventory';
+const ucrcWellsTitle = 'Utah Core Research Center Inventory (WMS)';
 const ucrcWellsConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -471,6 +471,16 @@ const UCRC_PURPOSE_STROKES: Record<string, string> = {
     'Other': '#858585',
 };
 
+// Box-type pie-wedge symbology config (comma-delimited codes on each well).
+export const UCRC_BOX_TYPE_CODES = ['BUTTS', 'CORE', 'CUTTINGS', 'SLABS'] as const;
+export const UCRC_BOX_TYPE_COLORS: Record<string, string> = {
+    BUTTS: '#E66101',
+    CORE: '#5E3C99',
+    CUTTINGS: '#1A9641',
+    SLABS: '#0571B0',
+};
+const UCRC_BOX_TYPE_NAMESPACE = 'box-type';
+
 const ucrcWellsWFSConfig: WFSLayerProps = {
     type: 'wfs',
     wfsUrl: `${PROD_GEOSERVER_URL}/wfs`,
@@ -482,13 +492,13 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
     geometryType: 'point',
     style: {
         circleRadiusByZoom: [
-            [4, 1.5],
-            [7, 2.5],
-            [10, 4],
-            [13, 6],
-            [16, 8],
+            [4, 2],
+            [7, 4],
+            [10, 6],
+            [13, 8],
+            [16, 10],
         ],
-        circleStrokeWidth: 0.8,
+        circleStrokeWidth: 1,
         circleColorMatch: {
             field: 'purpose',
             matches: UCRC_PURPOSE_COLORS,
@@ -499,17 +509,26 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
             matches: UCRC_PURPOSE_STROKES,
             defaultColor: UCRC_PURPOSE_STROKES.Other,
         },
-        // Box-type symbology: split-square sprite per well, gated by Symbolize By dropdown
-        iconSymbologyKey: 'box-type',
-        iconImageExpression: ['concat', 'box-type-', ['coalesce', ['get', 'box_type_codes'], '']],
+        // Box-type pie-wedge symbology, gated by Symbolize By dropdown
+        iconSymbologyKey: UCRC_BOX_TYPE_NAMESPACE,
+        iconImageExpression: ['concat', `${UCRC_BOX_TYPE_NAMESPACE}-`, ['coalesce', ['get', 'box_type_codes'], '']],
         iconSizeByZoom: [
-            [4, 0.45],
-            [7, 0.6],
-            [10, 0.85],
-            [13, 1.1],
-            [16, 1.35],
+            [4, 0.1],
+            [7, 0.2],
+            [10, 0.3],
+            [13, 0.4],
+            [16, 0.5],
         ],
-        registerSprites: registerBoxTypeSprites,
+        registerSprites: makePieWedgeSpriteRegistrar({
+            field: 'box_type_codes',
+            codes: UCRC_BOX_TYPE_CODES,
+            colors: UCRC_BOX_TYPE_COLORS,
+            namespace: UCRC_BOX_TYPE_NAMESPACE,
+        }),
+        pieGlyphLegend: {
+            codes: UCRC_BOX_TYPE_CODES,
+            colors: UCRC_BOX_TYPE_COLORS,
+        },
     },
     sublayers: [
         {
