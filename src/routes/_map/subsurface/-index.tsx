@@ -15,7 +15,9 @@ import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, type SearchComboboxHandle } from '@/components/sidebar/filter/search-combobox'
 import { PROD_POSTGREST_URL } from '@/lib/constants'
-import { parseUCRCFilter, generateUCRCMaplibreFilter } from './-components/sidebar/map-configurations/ucrc-filter'
+import { ucrcFilterSchema } from './-data/layers/ucrc-schema'
+import { toMaplibreFilter } from '@/lib/filter/generators'
+import { fromCql } from '@/lib/filter/parse'
 import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
 
 // Layer filter mapping (URL filter key -> WMS layer title)
@@ -123,7 +125,7 @@ export default function Map() {
     const ucrcCql = filtersFromUrl[ucrcWellsWMSTitle]
     const result: Record<string, FilterSpecification> = {}
     if (ucrcCql) {
-      const expr: ExpressionSpecification | null = generateUCRCMaplibreFilter(parseUCRCFilter(ucrcCql))
+      const expr: ExpressionSpecification | null = toMaplibreFilter(ucrcFilterSchema, fromCql(ucrcFilterSchema, ucrcCql))
       if (expr) result[ucrcWellsWMSTitle] = expr
     }
     return result

@@ -440,7 +440,7 @@ export const ucrcWellsQualifiedName = `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsL
 export const ucrcWellsWMSTitle = 'UCRC Wells (Test)';
 
 // Purpose colors mirror the GeoServer SLD for this layer (default style). Keep in sync if SLD changes.
-const UCRC_PURPOSE_COLORS: Record<string, string> = {
+export const UCRC_PURPOSE_COLORS: Record<string, string> = {
     'Oil and Gas': '#2B83BA',
     'Mining': '#D7191C',
     'Tar Sands': '#4B3621',
@@ -455,7 +455,7 @@ const UCRC_PURPOSE_COLORS: Record<string, string> = {
     'Display': '#FF69B4',
     'Other': '#BDBDBD',
 };
-const UCRC_PURPOSE_STROKES: Record<string, string> = {
+export const UCRC_PURPOSE_STROKES: Record<string, string> = {
     'Oil and Gas': '#1A5276',
     'Mining': '#922B21',
     'Tar Sands': '#2C1F13',
