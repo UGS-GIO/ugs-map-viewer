@@ -6,10 +6,10 @@ const references = (
     <div>
         <ul className="list-disc ml-5 space-y-4">
             <li>
-                Lorem ipsum dolor sit amet, consectetur adipiscing elit:&nbsp;
-                <Link to="https://www.carbonsolutionsllc.com/sco%e2%82%82t%e1%b4%be%e1%b4%bf%e1%b4%bc-unlocking-the-nations-subsurface-to-support-the-energy-transition/">
-                    https://www.carbonsolutionsllc.com/sco₂tᴾᴿᴼ-unlocking-the-nations-subsurface-to-support-the-energy-transition/
-                </Link>, accessed January 2025.
+                Visit the Utah Geological Survey Core Research launch page for more information.&nbsp;
+                <Link to="https://geology.utah.gov/about-us/utah-core-research-center/">
+                    https://geology.utah.gov/about-us/utah-core-research-center/
+                </Link>
             </li>
         </ul>
     </div>
@@ -18,17 +18,16 @@ const references = (
 const acknowledgments = (
     <div className="space-y-2">
         <p>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip
-        </p>
-        <p>
-            <Link to="https://geology.utah.gov/">Utah Geological Survey</Link> project team: Dr. Gabriela St. Pierre, Dr. Eugene Szymanski, Michael Vanden Berg, Tara Tankersley
-        </p>
-        <p>
-            University of Utah project team:
+            the Utah Core Research Center (UCRC) works extensively in collaboration with other agencies, industry partners, and academic institutions. 
         </p>
         <p className="pl-4">
-            <Link to="https://egi.utah.edu/">Lorem</Link>: Prof. Nathan Moodie and Dr. Eric Edelman;
-
+            Ammon McDonald, UCRC Curator: <Link to="ammonmcdonald@utah.gov">ammonmcdonald@utah.gov</Link> 
+        </p>
+        <p className="pl-4">
+            Madeline Griem, UCRC Assistant Curator: <Link to="mgriem@utah.gov">mgriem@utah.gov</Link>
+        </p>
+        <p className="pl-4">
+            Michael Vanden Berg, Energy and Minerals Program Manager: <Link to="michaelvandenberg@utah.gov">michaelvandenberg@utah.gov</Link>
         </p>
     </div>
 )
@@ -51,6 +50,9 @@ const mapDetails = (
         </p>
         <p>
             <strong>Related Information:</strong>
+        </p>
+        <p>
+            <Link to="https://geology.utah.gov/docs/xls/ucrc_cores.xlsx">UCRC Inventory Database</Link> (xlsx)
         </p>
         <p>
             <Link to="https://geology.utah.gov/about-us/utah-core-research-center/">Utah Core Research Center</Link>
