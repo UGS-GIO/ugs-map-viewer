@@ -1,5 +1,5 @@
 import { isValidElement } from 'react';
-import type { RelatedTable } from '@/lib/types/mapping-types';
+import type { RelatedTable, FieldConfig } from '@/lib/types/mapping-types';
 import type { RelatedDataMap } from '@/hooks/use-bulk-related-table';
 import { downloadCSV, downloadGeoJSON, geojsonToWKT } from '@/lib/download-utils';
 import { formatFieldValue } from '@/lib/field-formatting';
@@ -12,43 +12,81 @@ interface ExportRow {
     relatedTableIndex: number | null;
 }
 
+interface MainColumn {
+    field: string;
+    label: string;
+    fieldConfig?: FieldConfig;
+}
+
 export interface TableExportParams {
     format: 'csv' | 'geojson';
     dataToExport: RowData[];
     layerTitle: string;
-    visibleConfigs: ColumnConfig[];
+    columnConfigs: ColumnConfig[];
     relatedTables: RelatedTable[];
     relatedDataMaps: RelatedDataMap[];
+}
+
+// Union of all property keys across rows, merged with configured labels/formatting.
+// Configured (popupField) columns come first in their declared order; remaining raw
+// property keys are appended alphabetically. Internal/_-prefixed keys are dropped.
+function buildMainColumns(data: RowData[], columnConfigs: ColumnConfig[]): MainColumn[] {
+    const cols: MainColumn[] = [];
+    const seen = new Set<string>();
+
+    for (const cfg of columnConfigs) {
+        if (cfg.fieldConfig?.type === 'custom') continue;
+        if (seen.has(cfg.field)) continue;
+        seen.add(cfg.field);
+        cols.push({ field: cfg.field, label: cfg.label, fieldConfig: cfg.fieldConfig });
+    }
+
+    const extras: string[] = [];
+    for (const row of data) {
+        for (const key of Object.keys(row.properties)) {
+            if (seen.has(key)) continue;
+            if (key === 'geometry' || key === 'bbox' || key.startsWith('_')) continue;
+            seen.add(key);
+            extras.push(key);
+        }
+    }
+    extras.sort();
+    for (const key of extras) {
+        cols.push({ field: key, label: key });
+    }
+
+    return cols;
 }
 
 export function exportTableData({
     format,
     dataToExport,
     layerTitle,
-    visibleConfigs,
+    columnConfigs,
     relatedTables,
     relatedDataMaps,
 }: TableExportParams): void {
     const timestamp = new Date().toISOString().split('T')[0];
     const layerName = (layerTitle || 'export').replace(/\s+/g, '-').toLowerCase();
     const filename = `${layerName}-${timestamp}`;
+    const mainColumns = buildMainColumns(dataToExport, columnConfigs);
 
     if (format === 'csv') {
-        exportAsCSV(dataToExport, filename, visibleConfigs, relatedTables, relatedDataMaps);
+        exportAsCSV(dataToExport, filename, mainColumns, relatedTables, relatedDataMaps);
     } else {
-        exportAsGeoJSON(dataToExport, filename, visibleConfigs);
+        exportAsGeoJSON(dataToExport, filename, mainColumns);
     }
 }
 
 function exportAsCSV(
     dataToExport: RowData[],
     filename: string,
-    visibleConfigs: ColumnConfig[],
+    mainColumns: MainColumn[],
     relatedTables: RelatedTable[],
     relatedDataMaps: RelatedDataMap[],
 ): void {
-    // Build headers: visible columns + related table columns + geometry
-    const mainHeaders = visibleConfigs.map(c => c.label);
+    const mainHeaders = mainColumns.map(c => c.label);
+    const columnByLabel = new Map(mainColumns.map(c => [c.label, c]));
     const relatedHeaders: string[] = [];
 
     relatedTables.forEach((table) => {
@@ -60,7 +98,6 @@ function exportAsCSV(
 
     const allHeaders = [...mainHeaders, ...relatedHeaders, 'geometry'];
 
-    // Build denormalized rows: one row per related record (or one row if no related data)
     const expandedRows: ExportRow[] = [];
 
     for (const row of dataToExport) {
@@ -91,14 +128,15 @@ function exportAsCSV(
             return geojsonToWKT(row.feature.geometry as Parameters<typeof geojsonToWKT>[0]) || '';
         }
 
-        // Check main columns
-        const config = visibleConfigs.find(c => c.label === header);
-        if (config) {
-            const rawValue = row.properties[config.field];
-            return formatFieldValue(config.fieldConfig, rawValue, row.properties);
+        const mainCol = columnByLabel.get(header);
+        if (mainCol) {
+            const rawValue = row.properties[mainCol.field];
+            if (mainCol.fieldConfig) {
+                return formatFieldValue(mainCol.fieldConfig, rawValue, row.properties);
+            }
+            return rawValue ?? '';
         }
 
-        // Check related tables
         for (let tableIndex = 0; tableIndex < relatedTables.length; tableIndex++) {
             const table = relatedTables[tableIndex];
             const prefix = `${table.fieldLabel || 'Related'}: `;
@@ -132,12 +170,12 @@ function exportAsCSV(
 function exportAsGeoJSON(
     dataToExport: RowData[],
     filename: string,
-    visibleConfigs: ColumnConfig[],
+    mainColumns: MainColumn[],
 ): void {
-    const visibleFields = new Set(visibleConfigs.map(c => c.field));
+    const includedFields = new Set(mainColumns.map(c => c.field));
     const geoData = dataToExport.map(row => {
         const filtered: Record<string, unknown> = {};
-        for (const field of visibleFields) {
+        for (const field of includedFields) {
             if (field in row.properties) filtered[field] = row.properties[field];
         }
         filtered.geometry = row.feature.geometry;

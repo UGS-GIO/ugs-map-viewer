@@ -250,18 +250,19 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         },
     });
 
-    // Uses TanStack's filtered model to match what's visible in the table
+    // Export emits all feature properties (not just popupFields/visible columns).
+    // Filter state determines row scope; column visibility is UI-only.
     const handleExport = useCallback((format: 'csv' | 'geojson') => {
         const filteredRows = table.getFilteredRowModel().rows.map(r => r.original);
         exportTableData({
             format,
             dataToExport: hasSelection ? selectedRows : filteredRows,
             layerTitle: selectedLayer?.layerTitle || '',
-            visibleConfigs: columnConfigs.filter(c => columnVisibility[c.id] !== false),
+            columnConfigs,
             relatedTables: selectedLayer?.relatedTables || [],
             relatedDataMaps,
         });
-    }, [hasSelection, selectedRows, table, selectedLayer, columnConfigs, columnVisibility, relatedDataMaps]);
+    }, [hasSelection, selectedRows, table, selectedLayer, columnConfigs, relatedDataMaps]);
 
     // Total count across all layers (includes raster-only as 1)
     const totalCount = layersWithData.reduce((sum, layer) => {
