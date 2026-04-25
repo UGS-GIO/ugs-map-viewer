@@ -6,16 +6,18 @@ import { formatFieldValue } from '@/lib/field-formatting';
 import { formatNumeric } from '@/lib/utils';
 import type { RowData, ColumnConfig } from './types';
 
-interface ExportRow {
-    feature: RowData;
-    relatedRecord: Record<string, unknown> | null;
-    relatedTableIndex: number | null;
-}
-
 interface MainColumn {
     field: string;
     label: string;
     fieldConfig?: FieldConfig;
+}
+
+type DisplayField = NonNullable<RelatedTable['displayFields']>[number];
+
+interface RelatedColumn {
+    header: string;
+    tableIndex: number;
+    displayField: DisplayField;
 }
 
 export interface TableExportParams {
@@ -25,6 +27,15 @@ export interface TableExportParams {
     columnConfigs: ColumnConfig[];
     relatedTables: RelatedTable[];
     relatedDataMaps: RelatedDataMap[];
+}
+
+const RELATED_VALUE_SEPARATOR = '; ';
+
+// Empty-string fieldLabel is intentional ("no prefix"). Only undefined gets the default.
+function relatedHeaderPrefix(fieldLabel: string | undefined): string {
+    if (fieldLabel === undefined) return 'Related: ';
+    if (fieldLabel === '') return '';
+    return `${fieldLabel}: `;
 }
 
 // Union of all property keys across rows, merged with configured labels/formatting.
@@ -58,6 +69,33 @@ function buildMainColumns(data: RowData[], columnConfigs: ColumnConfig[]): MainC
     return cols;
 }
 
+function buildRelatedColumns(relatedTables: RelatedTable[]): RelatedColumn[] {
+    const cols: RelatedColumn[] = [];
+    relatedTables.forEach((table, tableIndex) => {
+        const prefix = relatedHeaderPrefix(table.fieldLabel);
+        table.displayFields?.forEach(df => {
+            cols.push({
+                header: `${prefix}${df.label || df.field}`,
+                tableIndex,
+                displayField: df,
+            });
+        });
+    });
+    return cols;
+}
+
+function formatRelatedValue(record: Record<string, unknown>, df: DisplayField): string {
+    const raw = record[df.field];
+    const formatted = formatNumeric(raw, df.format);
+    if (!df.transform) return formatted;
+    const result = df.transform(formatted);
+    if (isValidElement(result)) {
+        const props = result.props as { to?: string; href?: string };
+        return props.to || props.href || formatted;
+    }
+    return result == null ? '' : String(result);
+}
+
 export function exportTableData({
     format,
     dataToExport,
@@ -87,43 +125,11 @@ function exportAsCSV(
 ): void {
     const mainHeaders = mainColumns.map(c => c.label);
     const columnByLabel = new Map(mainColumns.map(c => [c.label, c]));
-    const relatedHeaders: string[] = [];
+    const relatedColumns = buildRelatedColumns(relatedTables);
+    const relatedByHeader = new Map(relatedColumns.map(c => [c.header, c]));
+    const allHeaders = [...mainHeaders, ...relatedColumns.map(c => c.header), 'geometry'];
 
-    relatedTables.forEach((table) => {
-        const prefix = `${table.fieldLabel || 'Related'}: `;
-        table.displayFields?.forEach(df => {
-            relatedHeaders.push(`${prefix}${df.label || df.field}`);
-        });
-    });
-
-    const allHeaders = [...mainHeaders, ...relatedHeaders, 'geometry'];
-
-    const expandedRows: ExportRow[] = [];
-
-    for (const row of dataToExport) {
-        const allRelatedRecords: { record: Record<string, unknown>; tableIndex: number }[] = [];
-
-        relatedTables.forEach((table, tableIndex) => {
-            const targetValue = String(row.properties[table.targetField] ?? '');
-            const dataMap = relatedDataMaps[tableIndex];
-            const records = dataMap?.get(targetValue) || [];
-            records.forEach(record => {
-                allRelatedRecords.push({ record, tableIndex });
-            });
-        });
-
-        if (allRelatedRecords.length === 0) {
-            expandedRows.push({ feature: row, relatedRecord: null, relatedTableIndex: null });
-        } else {
-            for (const { record, tableIndex } of allRelatedRecords) {
-                expandedRows.push({ feature: row, relatedRecord: record, relatedTableIndex: tableIndex });
-            }
-        }
-    }
-
-    downloadCSV(expandedRows, filename, allHeaders, (exportRow, header) => {
-        const { feature: row, relatedRecord, relatedTableIndex } = exportRow;
-
+    downloadCSV(dataToExport, filename, allHeaders, (row, header) => {
         if (header === 'geometry') {
             return geojsonToWKT(row.feature.geometry as Parameters<typeof geojsonToWKT>[0]) || '';
         }
@@ -137,30 +143,15 @@ function exportAsCSV(
             return rawValue ?? '';
         }
 
-        for (let tableIndex = 0; tableIndex < relatedTables.length; tableIndex++) {
-            const table = relatedTables[tableIndex];
-            const prefix = `${table.fieldLabel || 'Related'}: `;
-
-            const displayField = table.displayFields?.find(
-                df => `${prefix}${df.label || df.field}` === header
-            );
-
-            if (displayField) {
-                if (relatedRecord && relatedTableIndex === tableIndex) {
-                    const raw = relatedRecord[displayField.field];
-                    const formatted = formatNumeric(raw, displayField.format);
-                    if (displayField.transform) {
-                        const result = displayField.transform(formatted);
-                        if (isValidElement(result)) {
-                            const props = result.props as { to?: string; href?: string };
-                            return props.to || props.href || formatted;
-                        }
-                        return result;
-                    }
-                    return formatted;
-                }
-                return '';
-            }
+        const relatedCol = relatedByHeader.get(header);
+        if (relatedCol) {
+            const table = relatedTables[relatedCol.tableIndex];
+            const targetValue = String(row.properties[table.targetField] ?? '');
+            const records = relatedDataMaps[relatedCol.tableIndex]?.get(targetValue) || [];
+            return records
+                .map(record => formatRelatedValue(record, relatedCol.displayField))
+                .filter(v => v !== '')
+                .join(RELATED_VALUE_SEPARATOR);
         }
 
         return '';
