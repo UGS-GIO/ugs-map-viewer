@@ -759,6 +759,9 @@ const cgbaBouguerRasterConfig: WMSLayerProps = {
     visible: false,
     opacity: 0.9,
     crs: 'EPSG:26912',
+    legendUnit: 'mGal',
+    // SLD stops are -310/-81 but WCS DescribeCoverage reports true extent -283/-107. Remove after COG migration.
+    legendRange: [-283, -107],
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${cgbaRasterLayerName}`,

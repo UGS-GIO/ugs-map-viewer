@@ -275,6 +275,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
                             bivariateLegend={layerConfig.bivariateLegend}
                             arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
                             legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}
+                            legendRange={isWMSLayer(layerConfig) ? layerConfig.legendRange : undefined}
                         />
                     </AccordionContent>
                 </AccordionItem>

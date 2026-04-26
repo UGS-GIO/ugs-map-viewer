@@ -11,6 +11,7 @@ interface LegendAccordionProps {
     bivariateLegend?: { xLabel: string; yLabel: string };
     arcgisUrl?: string;
     legendUnit?: string;
+    legendRange?: [number, number];
 }
 
 /** Callback ref that mounts a DOM node as the host's only child. Avoids dangerouslySetInnerHTML. */
@@ -41,9 +42,9 @@ function LegendItem({ item }: { item: PreviewItem }) {
     );
 }
 
-const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend, arcgisUrl, legendUnit }: LegendAccordionProps) => {
+const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend, arcgisUrl, legendUnit, legendRange }: LegendAccordionProps) => {
     const skipFetch = !!customLegend || !!bivariateLegend || !!arcgisUrl;
-    const { preview, isLoading, error } = useLegendPreview(url, layerName ?? undefined, skipFetch, legendUnit);
+    const { preview, isLoading, error } = useLegendPreview(url, layerName ?? undefined, skipFetch, legendUnit, legendRange);
     const { data: arcgisLegendItems, isLoading: arcgisLoading, error: arcgisError } = useArcGisLegend(arcgisUrl);
     // Use empty string instead of undefined to keep accordion controlled
     const accordionValue = isOpen ? "legend-accordion" : "";
