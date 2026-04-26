@@ -26,6 +26,9 @@ import {
     DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuCheckboxItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
     X,
@@ -77,6 +80,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
     const [expandedTables, setExpandedTables] = useState<Record<string, number | null>>({});
     const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 25 });
+    const [includeRelatedInExport, setIncludeRelatedInExport] = useState(true);
     const lastClickedRowRef = useRef<number | null>(null);
 
     // Clamp selectedLayerIndex if layersWithData shrinks
@@ -261,8 +265,11 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             columnConfigs,
             relatedTables: selectedLayer?.relatedTables || [],
             relatedDataMaps,
+            includeRelated: includeRelatedInExport,
         });
-    }, [hasSelection, selectedRows, table, selectedLayer, columnConfigs, relatedDataMaps]);
+    }, [hasSelection, selectedRows, table, selectedLayer, columnConfigs, relatedDataMaps, includeRelatedInExport]);
+
+    const hasRelatedTables = (selectedLayer?.relatedTables?.length ?? 0) > 0;
 
     // Total count across all layers (includes raster-only as 1)
     const totalCount = layersWithData.reduce((sum, layer) => {
@@ -417,6 +424,21 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                         <DropdownMenuItem onClick={() => handleExport('geojson')}>
                             GeoJSON
                         </DropdownMenuItem>
+                        {hasRelatedTables && (
+                            <>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                                    Options
+                                </DropdownMenuLabel>
+                                <DropdownMenuCheckboxItem
+                                    checked={includeRelatedInExport}
+                                    onCheckedChange={setIncludeRelatedInExport}
+                                    onSelect={(e) => e.preventDefault()}
+                                >
+                                    Include related data
+                                </DropdownMenuCheckboxItem>
+                            </>
+                        )}
                     </DropdownMenuContent>
                 </DropdownMenu>
 

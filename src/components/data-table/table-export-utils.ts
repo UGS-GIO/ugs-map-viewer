@@ -6,18 +6,16 @@ import { formatFieldValue } from '@/lib/field-formatting';
 import { formatNumeric } from '@/lib/utils';
 import type { RowData, ColumnConfig } from './types';
 
+interface ExportRow {
+    feature: RowData;
+    relatedRecord: Record<string, unknown> | null;
+    relatedTableIndex: number | null;
+}
+
 interface MainColumn {
     field: string;
     label: string;
     fieldConfig?: FieldConfig;
-}
-
-type DisplayField = NonNullable<RelatedTable['displayFields']>[number];
-
-interface RelatedColumn {
-    header: string;
-    tableIndex: number;
-    displayField: DisplayField;
 }
 
 export interface TableExportParams {
@@ -27,9 +25,9 @@ export interface TableExportParams {
     columnConfigs: ColumnConfig[];
     relatedTables: RelatedTable[];
     relatedDataMaps: RelatedDataMap[];
+    /** When false, related table data is dropped — emits one CSV row per feature. */
+    includeRelated: boolean;
 }
-
-const RELATED_VALUE_SEPARATOR = '; ';
 
 // Empty-string fieldLabel is intentional ("no prefix"). Only undefined gets the default.
 function relatedHeaderPrefix(fieldLabel: string | undefined): string {
@@ -69,33 +67,6 @@ function buildMainColumns(data: RowData[], columnConfigs: ColumnConfig[]): MainC
     return cols;
 }
 
-function buildRelatedColumns(relatedTables: RelatedTable[]): RelatedColumn[] {
-    const cols: RelatedColumn[] = [];
-    relatedTables.forEach((table, tableIndex) => {
-        const prefix = relatedHeaderPrefix(table.fieldLabel);
-        table.displayFields?.forEach(df => {
-            cols.push({
-                header: `${prefix}${df.label || df.field}`,
-                tableIndex,
-                displayField: df,
-            });
-        });
-    });
-    return cols;
-}
-
-function formatRelatedValue(record: Record<string, unknown>, df: DisplayField): string {
-    const raw = record[df.field];
-    const formatted = formatNumeric(raw, df.format);
-    if (!df.transform) return formatted;
-    const result = df.transform(formatted);
-    if (isValidElement(result)) {
-        const props = result.props as { to?: string; href?: string };
-        return props.to || props.href || formatted;
-    }
-    return result == null ? '' : String(result);
-}
-
 export function exportTableData({
     format,
     dataToExport,
@@ -103,14 +74,17 @@ export function exportTableData({
     columnConfigs,
     relatedTables,
     relatedDataMaps,
+    includeRelated,
 }: TableExportParams): void {
     const timestamp = new Date().toISOString().split('T')[0];
     const layerName = (layerTitle || 'export').replace(/\s+/g, '-').toLowerCase();
     const filename = `${layerName}-${timestamp}`;
     const mainColumns = buildMainColumns(dataToExport, columnConfigs);
+    const effectiveRelated = includeRelated ? relatedTables : [];
+    const effectiveDataMaps = includeRelated ? relatedDataMaps : [];
 
     if (format === 'csv') {
-        exportAsCSV(dataToExport, filename, mainColumns, relatedTables, relatedDataMaps);
+        exportAsCSV(dataToExport, filename, mainColumns, effectiveRelated, effectiveDataMaps);
     } else {
         exportAsGeoJSON(dataToExport, filename, mainColumns);
     }
@@ -125,11 +99,45 @@ function exportAsCSV(
 ): void {
     const mainHeaders = mainColumns.map(c => c.label);
     const columnByLabel = new Map(mainColumns.map(c => [c.label, c]));
-    const relatedColumns = buildRelatedColumns(relatedTables);
-    const relatedByHeader = new Map(relatedColumns.map(c => [c.header, c]));
-    const allHeaders = [...mainHeaders, ...relatedColumns.map(c => c.header), 'geometry'];
+    const relatedHeaders: string[] = [];
 
-    downloadCSV(dataToExport, filename, allHeaders, (row, header) => {
+    relatedTables.forEach((table) => {
+        const prefix = relatedHeaderPrefix(table.fieldLabel);
+        table.displayFields?.forEach(df => {
+            relatedHeaders.push(`${prefix}${df.label || df.field}`);
+        });
+    });
+
+    const allHeaders = [...mainHeaders, ...relatedHeaders, 'geometry'];
+
+    // Denormalized: one row per related record (or one row when no related data).
+    // Easier for downstream tools (Excel, pandas, QGIS) to filter/group than `; `-joined cells.
+    const expandedRows: ExportRow[] = [];
+
+    for (const row of dataToExport) {
+        const allRelatedRecords: { record: Record<string, unknown>; tableIndex: number }[] = [];
+
+        relatedTables.forEach((table, tableIndex) => {
+            const targetValue = String(row.properties[table.targetField] ?? '');
+            const dataMap = relatedDataMaps[tableIndex];
+            const records = dataMap?.get(targetValue) || [];
+            records.forEach(record => {
+                allRelatedRecords.push({ record, tableIndex });
+            });
+        });
+
+        if (allRelatedRecords.length === 0) {
+            expandedRows.push({ feature: row, relatedRecord: null, relatedTableIndex: null });
+        } else {
+            for (const { record, tableIndex } of allRelatedRecords) {
+                expandedRows.push({ feature: row, relatedRecord: record, relatedTableIndex: tableIndex });
+            }
+        }
+    }
+
+    downloadCSV(expandedRows, filename, allHeaders, (exportRow, header) => {
+        const { feature: row, relatedRecord, relatedTableIndex } = exportRow;
+
         if (header === 'geometry') {
             return geojsonToWKT(row.feature.geometry as Parameters<typeof geojsonToWKT>[0]) || '';
         }
@@ -143,15 +151,30 @@ function exportAsCSV(
             return rawValue ?? '';
         }
 
-        const relatedCol = relatedByHeader.get(header);
-        if (relatedCol) {
-            const table = relatedTables[relatedCol.tableIndex];
-            const targetValue = String(row.properties[table.targetField] ?? '');
-            const records = relatedDataMaps[relatedCol.tableIndex]?.get(targetValue) || [];
-            return records
-                .map(record => formatRelatedValue(record, relatedCol.displayField))
-                .filter(v => v !== '')
-                .join(RELATED_VALUE_SEPARATOR);
+        for (let tableIndex = 0; tableIndex < relatedTables.length; tableIndex++) {
+            const table = relatedTables[tableIndex];
+            const prefix = relatedHeaderPrefix(table.fieldLabel);
+
+            const displayField = table.displayFields?.find(
+                df => `${prefix}${df.label || df.field}` === header
+            );
+
+            if (displayField) {
+                if (relatedRecord && relatedTableIndex === tableIndex) {
+                    const raw = relatedRecord[displayField.field];
+                    const formatted = formatNumeric(raw, displayField.format);
+                    if (displayField.transform) {
+                        const result = displayField.transform(formatted);
+                        if (isValidElement(result)) {
+                            const props = result.props as { to?: string; href?: string };
+                            return props.to || props.href || formatted;
+                        }
+                        return result;
+                    }
+                    return formatted;
+                }
+                return '';
+            }
         }
 
         return '';
