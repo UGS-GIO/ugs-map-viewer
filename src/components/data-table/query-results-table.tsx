@@ -172,15 +172,6 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         onSelectedFeaturesChange?.([]);
     }, [onSelectedFeaturesChange]);
 
-    const selectedRows = useMemo(() => {
-        return Object.keys(rowSelection)
-            .filter(key => rowSelection[key])
-            .map(key => rowData[parseInt(key)])
-            .filter(Boolean);
-    }, [rowSelection, rowData]);
-
-    const hasSelection = selectedRows.length > 0;
-
     const handleRowSelectionChange = useCallback((updater: RowSelectionState | ((old: RowSelectionState) => RowSelectionState)) => {
         const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
         const selectedIndices = Object.keys(newSelection).filter(key => newSelection[key]).map(Number);
@@ -202,12 +193,6 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             }));
         onHighlightChange?.(highlights);
     }, [rowSelection, rowData, rowIndicesToFeatureRefs, onSelectedFeaturesChange, onHighlightChange]);
-
-    const handleZoomToSelected = useCallback(() => {
-        if (selectedRows.length === 0) return;
-        const features = selectedRows.map(r => r.feature);
-        zoomToAll(features, selectedRows[0].sourceCRS, { maxZoom: selectedRows[0].maxZoomLevel });
-    }, [selectedRows, zoomToAll]);
 
     const handleClearSelection = useCallback(() => {
         onSelectedFeaturesChange?.([]);
@@ -253,6 +238,18 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             relatedLoading,
         },
     });
+
+    const selectedRows = useMemo(
+        () => table.getSelectedRowModel().rows.map(r => r.original),
+        [table, rowSelection],
+    );
+    const hasSelection = selectedRows.length > 0;
+
+    const handleZoomToSelected = useCallback(() => {
+        if (selectedRows.length === 0) return;
+        const features = selectedRows.map(r => r.feature);
+        zoomToAll(features, selectedRows[0].sourceCRS, { maxZoom: selectedRows[0].maxZoomLevel });
+    }, [selectedRows, zoomToAll]);
 
     // Export emits all feature properties (not just popupFields/visible columns).
     // Filter state determines row scope; column visibility is UI-only.
