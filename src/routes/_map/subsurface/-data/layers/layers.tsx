@@ -2,7 +2,6 @@ import { Link } from "@/components/ui/link";
 import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
 import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
-import { GeoJsonProperties } from "geojson";
 import { addThousandsSeparator } from "@/lib/utils";
 
 
@@ -316,41 +315,19 @@ const seamlessGeolunitsLayerName = 'mapping_geolunits_500k';
 export const seamlessGeolunitsWMSTitle = 'Geologic Units (500k)';
 const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
+    url: `${PROD_GEOSERVER_URL}/mapping/wms`,
     title: seamlessGeolunitsWMSTitle,
     opacity: 0.5,
-    crs: 'EPSG:26912',
+    visible: true,
+    crs: 'EPSG:3857',
     sublayers: [
         {
             name: `${MAPPING_WORKSPACE}:${seamlessGeolunitsLayerName}`,
-            popupEnabled: true,
+            popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Unit': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: (props: GeoJsonProperties | null | undefined) => {
-                        const unitName = props?.['unit_name'];
-                        const unitSymbol = props?.['unit_symbol'];
-                        const value = `${unitName} (${unitSymbol})`;
-                        return value;
-                    }
-                },
-                'Unit Description': { field: 'unit_description', type: 'string' },
-                'Source': { field: 'series_id', type: 'string' },
+                'Unit Description': { field: 'unit_name', type: 'string' },
             },
-            linkFields: {
-                'series_id': {
-                    baseUrl: '',
-                    transform: (value: string) => {
-                        const transformedValues = {
-                            href: `https://doi.org/10.34191/${value}`,
-                            label: `${value}`
-                        };
-                        return [transformedValues];
-                    }
-                }
-            }
         },
     ],
 };
