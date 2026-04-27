@@ -9,6 +9,7 @@ import type { FilterSchema, FilterState, FilterFieldValue } from '@/lib/filter/t
 import { isFilterEmpty } from '@/lib/filter/types';
 import { toCql } from '@/lib/filter/generators';
 import { fromCql } from '@/lib/filter/parse';
+import { useMap } from '@/hooks/use-map';
 
 export interface LayerFilterManager {
     schema: FilterSchema;
@@ -22,6 +23,7 @@ export interface LayerFilterManager {
 export const useLayerFilter = (schema: FilterSchema): LayerFilterManager => {
     const navigate = useNavigate();
     const search = useSearch({ strict: false });
+    const { onLayerTurnedOff } = useMap();
 
     const cql = useMemo(() => {
         const filters = search.filters;
@@ -58,9 +60,14 @@ export const useLayerFilter = (schema: FilterSchema): LayerFilterManager => {
     const setField = useCallback((field: string, value: FilterFieldValue) => {
         const nextState = { ...state, [field]: value };
         writeCql(toCql(schema, nextState));
-    }, [state, schema, writeCql]);
+        // Filtered-out features may have been selected — clear stale selections for this layer.
+        onLayerTurnedOff(schema.recordKey);
+    }, [state, schema, writeCql, onLayerTurnedOff]);
 
-    const clearAll = useCallback(() => writeCql(''), [writeCql]);
+    const clearAll = useCallback(() => {
+        writeCql('');
+        onLayerTurnedOff(schema.recordKey);
+    }, [writeCql, onLayerTurnedOff, schema.recordKey]);
 
     return {
         schema,

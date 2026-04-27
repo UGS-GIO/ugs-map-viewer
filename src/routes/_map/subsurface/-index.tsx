@@ -139,6 +139,10 @@ export default function Map() {
         updateLayerSelection(layerTitle, true)
       }
     }
+    // UCRC filter is keyed by the layer title itself, not in CCS_FILTER_MAPPING.
+    if (filtersFromUrl[ucrcWellsWMSTitle] && !selectedLayerTitles.has(ucrcWellsWMSTitle)) {
+      updateLayerSelection(ucrcWellsWMSTitle, true)
+    }
   }, [filtersFromUrl, selectedLayerTitles, updateLayerSelection])
 
   // Map child layers to their parent group for auto-visibility
