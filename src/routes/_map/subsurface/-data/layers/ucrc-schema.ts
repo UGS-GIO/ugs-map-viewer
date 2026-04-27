@@ -22,7 +22,7 @@ export const ucrcFilterSchema: FilterSchema = {
         { kind: 'multiSelect', field: 'county', label: 'County', placeholder: 'Select counties...' },
         { kind: 'multiSelect', field: 'current_operator', label: 'Operator', placeholder: 'Select operators...' },
         { kind: 'multiSelect', field: 'field_name', label: 'Field', placeholder: 'Select fields...' },
-        { kind: 'multiSelect', field: 'producing_formation', label: 'Producing Formation', placeholder: 'Select formations...' },
+        { kind: 'multiSelect', field: 'cored_formations', label: 'Cored Formation', placeholder: 'Select formations...' },
         { kind: 'range', field: 'td_ft', label: 'Total Depth', units: 'ft', step: 100, snapStep: 100 },
         {
             kind: 'boolean',

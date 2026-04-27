@@ -96,8 +96,9 @@ const fieldToMaplibre = (field: FilterFieldKind, state: FilterState): Expr | nul
         }
         case 'boolean': {
             if (v.kind !== 'boolean' || v.value === 'all') return null;
-            const lit = v.value === 'yes' ? field.trueValue ?? 'True' : field.falseValue ?? 'False';
-            return ['==', ['get', field.field], lit];
+            // GeoJSON boolean fields come back as real booleans; field.trueValue/falseValue
+            // are for PostgREST URL formatting, not maplibre comparisons.
+            return ['==', ['get', field.field], v.value === 'yes'];
         }
     }
 };
