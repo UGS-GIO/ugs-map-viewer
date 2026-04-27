@@ -8,7 +8,7 @@ import {
 
 export const ucrcFilterSchema: FilterSchema = {
     recordKey: ucrcWellsWMSTitle,
-    tableUrl: `${PROD_POSTGREST_URL}/enmin_ucrc_wells_django_test_current`,
+    tableUrl: `${PROD_POSTGREST_URL}/enmin_ucrc_wells_current`,
     tableHeaders: { 'Accept-Profile': 'emp' },
     fields: [
         {
@@ -30,7 +30,6 @@ export const ucrcFilterSchema: FilterSchema = {
             label: 'Has Core Photos',
             trueValue: 'True',
             falseValue: 'False',
-            disabled: { message: 'Coming soon — column not yet loaded' },
         },
         { kind: 'containsAny', field: 'box_type_codes', label: 'Box Type', placeholder: 'Select box types...' },
     ],

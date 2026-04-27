@@ -65,7 +65,7 @@ function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<
 }
 
 function MultiSelectComboboxField({ schema, state, field, onChange }: FieldProps<Extract<FilterFieldKind, { kind: 'multiSelect' | 'containsAny' }>>) {
-    const { data: options = [] } = useDistinctFieldOptions({
+    const { data: options = [], isLoading } = useDistinctFieldOptions({
         schema,
         state,
         field,
@@ -78,8 +78,8 @@ function MultiSelectComboboxField({ schema, state, field, onChange }: FieldProps
         <MultiSelectCombobox
             label={field.label}
             placeholder={field.placeholder ?? `Select ${field.label.toLowerCase()}...`}
-            queryKey={`${schema.recordKey}-${field.field}-options`}
-            fetchOptions={async () => options}
+            options={options}
+            isLoading={isLoading}
             selected={selected}
             onChange={(values) => onChange({ kind: field.kind, values })}
         />

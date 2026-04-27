@@ -47,7 +47,7 @@ const searchConfig: SearchSourceConfig[] = [
   },
   {
     type: 'postgREST',
-    url: `${PROD_POSTGREST_URL}/enmin_ucrc_wells_django_test_current`,
+    url: `${PROD_POSTGREST_URL}/enmin_ucrc_wells_current`,
     sourceName: 'UCRC Wells',
     layerName: ucrcWellsWMSTitle,
     crs: 'EPSG:3857',

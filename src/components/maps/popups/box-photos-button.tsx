@@ -37,7 +37,7 @@ const fetchBoxPhotosBulk = async (boxIds: string[]): Promise<Map<string, Gallery
     if (boxIds.length === 0) return map
     const inList = boxIds.join(',')
     const res = await fetch(
-        `${PROD_POSTGREST_URL}/enmin_ucrc_photos_django_test_current?box_pk=in.(${inList})&order=top_depth.asc`,
+        `${PROD_POSTGREST_URL}/enmin_ucrc_photos_current?box_pk=in.(${inList})&order=top_depth.asc`,
         { headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' } },
     )
     if (!res.ok) return map

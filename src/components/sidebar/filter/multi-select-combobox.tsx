@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,8 +12,8 @@ import { cn } from '@/lib/utils';
 interface MultiSelectComboboxProps {
     label: string;
     placeholder: string;
-    queryKey: string;
-    fetchOptions: () => Promise<string[]>;
+    options: string[];
+    isLoading?: boolean;
     selected: string[];
     onChange: (values: string[]) => void;
 }
@@ -22,18 +21,12 @@ interface MultiSelectComboboxProps {
 const MultiSelectCombobox = ({
     label,
     placeholder,
-    queryKey,
-    fetchOptions,
+    options,
+    isLoading = false,
     selected,
     onChange,
 }: MultiSelectComboboxProps) => {
     const [open, setOpen] = useState(false);
-
-    const { data: options = [], isLoading } = useQuery({
-        queryKey: [queryKey],
-        queryFn: fetchOptions,
-        staleTime: 1000 * 60 * 60,
-    });
 
     const handleSelect = useCallback((value: string) => {
         if (selected.includes(value)) {

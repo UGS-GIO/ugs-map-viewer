@@ -483,7 +483,7 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
                     fieldLabel: 'Core Boxes',
                     matchingField: 'uwi',
                     targetField: 'uwi',
-                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_boxes_django_test_current`,
+                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_boxes_current`,
                     headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
                     displayAs: 'table',
                     displayFields: [
@@ -511,7 +511,7 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
                     fieldLabel: 'Core Photos',
                     matchingField: 'uwi',
                     targetField: 'uwi',
-                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_photos_django_test_current`,
+                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_photos_current`,
                     headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
                     displayAs: 'gallery',
                     galleryUrlField: 'gcs_path',
@@ -533,7 +533,7 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
                     fieldLabel: 'Attachments',
                     matchingField: 'uwi',
                     targetField: 'uwi',
-                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_attachments_django_test_current`,
+                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_attachments_current`,
                     headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
                     displayAs: 'list',
                     displayFields: [
