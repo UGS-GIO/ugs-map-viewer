@@ -361,7 +361,7 @@ const pipelinesWMSConfig: WMSLayerProps = {
 // UCRC Wells Layer — rendered client-side via WFS for instant filtering and richer symbology
 const ucrcWellsLayerName = 'enmin_ucrc_wells_current';
 export const ucrcWellsQualifiedName = `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`;
-export const ucrcWellsWMSTitle = 'UCRC Wells';
+export const ucrcWellsWMSTitle = 'Utah Core Research Center Inventory';
 
 // Purpose colors mirror the GeoServer SLD for this layer (default style). Keep in sync if SLD changes.
 export const UCRC_PURPOSE_COLORS: Record<string, string> = {
@@ -514,7 +514,7 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
                     url: `${PROD_POSTGREST_URL}/enmin_ucrc_photos_current`,
                     headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
                     displayAs: 'gallery',
-                    galleryUrlField: 'gcs_path',
+                    galleryUrlField: 'storage_path',
                     galleryBaseUrl: 'https://ucrc-assets.geology.utah.gov',
                     galleryThumbnailTransform: (gcsPath: string) =>
                         gcsPath.startsWith('photos/')
