@@ -435,9 +435,9 @@ const ucrcWellsConfig: WMSLayerProps = {
 
 
 // UCRC Wells Layer — rendered client-side via WFS for instant filtering and richer symbology
-const ucrcWellsLayerName = 'enmin_ucrc_wells_django_test_current';
+const ucrcWellsLayerName = 'enmin_ucrc_wells_current';
 export const ucrcWellsQualifiedName = `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`;
-export const ucrcWellsWMSTitle = 'UCRC Wells (Test)';
+export const ucrcWellsWMSTitle = 'UCRC Wells';
 
 // Purpose colors mirror the GeoServer SLD for this layer (default style). Keep in sync if SLD changes.
 export const UCRC_PURPOSE_COLORS: Record<string, string> = {
