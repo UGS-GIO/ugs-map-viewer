@@ -24,7 +24,8 @@ const SVG_HEIGHT_BARE = 16
 let gradientCounter = 0
 
 function formatQuantity(n: number): string {
-    return Math.abs(n) >= 1000 ? n.toLocaleString() : String(n)
+    const rounded = Math.round(n)
+    return Math.abs(rounded) >= 1000 ? rounded.toLocaleString() : String(rounded)
 }
 
 function isVisibleEntry(e: RasterColormapEntry): boolean {

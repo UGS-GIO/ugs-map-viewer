@@ -2,6 +2,7 @@ import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/acco
 import { BivariateLegend } from '@/components/maps/bivariate-legend';
 import useLegendPreview, { type PreviewItem } from '@/hooks/use-legend-preview';
 import { useArcGisLegend } from '@/hooks/use-arcgis-legend';
+import { mountDomNode } from '@/lib/legend/mount-dom-node';
 
 interface LegendAccordionProps {
     url: string;
@@ -12,13 +13,6 @@ interface LegendAccordionProps {
     arcgisUrl?: string;
     legendUnit?: string;
     legendRange?: [number, number];
-}
-
-/** Callback ref that mounts a DOM node as the host's only child. Avoids dangerouslySetInnerHTML. */
-function mountDomNode(node: Node) {
-    return (host: HTMLElement | null) => {
-        if (host) host.replaceChildren(node.cloneNode(true));
-    };
 }
 
 function LegendItem({ item }: { item: PreviewItem }) {

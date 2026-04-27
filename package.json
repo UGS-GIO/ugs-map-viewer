@@ -14,6 +14,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@geomatico/maplibre-cog-protocol": "^0.8.0",
     "@maplibre/maplibre-gl-style-spec": "^24.3.1",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",

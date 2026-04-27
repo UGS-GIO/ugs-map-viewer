@@ -4,6 +4,8 @@ import { Shrink } from "lucide-react"
 import { PopupContentDisplay } from "@/components/maps/popups/popup-content-display"
 import { useGetPopupButtons } from "@/hooks/use-get-popup-buttons"
 import { useZoomToFeature } from "@/hooks/use-zoom-to-feature"
+import { loadCogMetadata, computeCogPixelPolygon } from "@/hooks/use-cog-metadata"
+import { HIGHLIGHT_COLORS } from "@/lib/map/cog/setup"
 import type { HighlightFeature } from "@/components/maps/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
@@ -33,6 +35,7 @@ PopupButtons.displayName = 'PopupButtons';
 interface PopupContentWithPaginationProps {
     layerContent: LayerContentProps[]
     onHighlightChange?: (features: HighlightFeature[]) => void
+    clickPoint?: { lng: number; lat: number } | null
 }
 
 const FeatureCard = memo(({
@@ -69,8 +72,16 @@ const FeatureCard = memo(({
 });
 FeatureCard.displayName = 'FeatureCard';
 
-// Raster-only card for layers with no vector features but with raster data
-const RasterOnlyCard = memo(({ layer }: { layer: LayerContentProps }) => {
+// Raster-only card for layers with no vector features but with raster data.
+// COG layers get a "Zoom to Pixel" button — snaps the click to the COG's grid and zooms to that cell.
+const RasterOnlyCard = memo(({
+    layer, clickPoint, onZoomToPixel,
+}: {
+    layer: LayerContentProps
+    clickPoint?: { lng: number; lat: number } | null
+    onZoomToPixel?: (layer: LayerContentProps, clickPoint: { lng: number; lat: number }) => void
+}) => {
+    const showZoomButton = layer.sourceKind === 'cog' && clickPoint && onZoomToPixel
     return (
         <div className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
             <PopupContentDisplay
@@ -78,13 +89,36 @@ const RasterOnlyCard = memo(({ layer }: { layer: LayerContentProps }) => {
                 feature={undefined}
                 layout="stacked"
             />
+            {showZoomButton && (
+                <Button variant="ghost" onClick={() => onZoomToPixel(layer, clickPoint)} className="flex gap-x-2">
+                    <Shrink className="h-5 w-5" />
+                    <span className="hidden md:flex">Zoom to Pixel</span>
+                    <span className="md:hidden">Zoom</span>
+                </Button>
+            )}
         </div>
     )
 });
 RasterOnlyCard.displayName = 'RasterOnlyCard';
 
-const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange }: PopupContentWithPaginationProps) => {
+const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clickPoint }: PopupContentWithPaginationProps) => {
     const { zoomTo } = useZoomToFeature({ onHighlightChange })
+
+    const handleZoomToPixel = useCallback(async (layer: LayerContentProps, point: { lng: number; lat: number }) => {
+        const cogUrl = layer.rasterSource?.url
+        if (!cogUrl) return
+        const metadata = await loadCogMetadata(cogUrl)
+        if (!metadata) return
+        const polygon = computeCogPixelPolygon(point, metadata)
+        if (!polygon) return
+        zoomTo({
+            type: 'Feature',
+            id: `${layer.layerTitle}-pixel`,
+            geometry: polygon,
+            properties: {},
+            namespace: layer.layerTitle,
+        }, 'EPSG:4326', { maxZoom: 16 })
+    }, [zoomTo])
     const buttons = useGetPopupButtons()
     // -1 = "All", 0+ = specific layer index
     const [selectedLayerIndex, setSelectedLayerIndex] = useState(-1)
@@ -236,8 +270,16 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange }: Po
 
                         return (
                             <div key={`${layer.groupLayerTitle}-${layer.layerTitle}-${layerIdx}`}>
-                                {/* Layer header */}
-                                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">
+                                {/* Layer header — yellow swatch only on COG items, matching the on-map pixel highlight. */}
+                                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1 flex items-center gap-2">
+                                    {layer.sourceKind === 'cog' && (
+                                        <span
+                                            aria-hidden
+                                            title="Sampled COG pixel"
+                                            className="inline-block h-2.5 w-2.5 rounded-sm border border-black/30"
+                                            style={{ backgroundColor: HIGHLIGHT_COLORS.cog }}
+                                        />
+                                    )}
                                     {layer.layerTitle || layer.groupLayerTitle}
                                 </div>
                                 {/* Features or raster-only content */}
@@ -254,7 +296,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange }: Po
                                             />
                                         ))
                                     ) : hasRaster ? (
-                                        <RasterOnlyCard layer={layer} />
+                                        <RasterOnlyCard layer={layer} clickPoint={clickPoint} onZoomToPixel={handleZoomToPixel} />
                                     ) : null}
                                 </div>
                             </div>
@@ -275,7 +317,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange }: Po
                                 />
                             ))
                         ) : hasRasterData(selectedLayer) ? (
-                            <RasterOnlyCard layer={selectedLayer} />
+                            <RasterOnlyCard layer={selectedLayer} clickPoint={clickPoint} onZoomToPixel={handleZoomToPixel} />
                         ) : null}
                     </div>
                 ) : null}
