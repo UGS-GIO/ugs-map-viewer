@@ -84,17 +84,14 @@ const dataSources = (
 
         <div className="space-y-2">
             <p>
-                <strong>Lorem ipsum dolor</strong> - Lorem ipsum dolor
+                <strong>Carbon Solutions Data </strong> - SCO2TPRO geospatial siting tool and database.
             </p>
             <span><Link to="https://www.carbonsolutionsllc.com/sco%e2%82%82t%e1%b4%be%e1%b4%bf%e1%b4%bc-unlocking-the-nations-subsurface-to-support-the-energy-transition/">View website</Link></span>
 
             <p>
                 <strong>GeoRegions</strong> - Utah Geological Survey
             </p>
-            <span>Report coming soon</span>
-            <p>
-                <strong>Lorem ipsum dolor</strong> - Lorem ipsum dolor
-            </p>
+            <span>Contact us for report information.</span>
         </div>
 
         <p className="text-lg font-semibold underline mt-4">
