@@ -358,59 +358,6 @@ const pipelinesWMSConfig: WMSLayerProps = {
 };
 
 
-const ucrcWellsName = 'ucrc_wells_current';
-const ucrcWellsTitle = 'Utah Core Research Center Inventory (WMS)';
-const ucrcWellsConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: ucrcWellsTitle,
-    visible: true,
-    opacity: 0.6,
-    crs: 'EPSG:26912',
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'API': { field: 'api_number',       type: 'string' },
-                'UWI': { field: 'uwi', type: 'string' },
-                'Well Name': { field: 'well_name',  type: 'string' },
-                'Operator': { field: 'current_operator', type: 'string' },
-                'Purpose': { field: 'purpose',  type: 'string' },
-                'County':  { field: 'county',  type: 'string' },
-                'Latitude': { field: 'latitude', type: 'number' },
-                'Longitude': { field: 'longitude', type: 'number' },
-                'Easting (NAD83)':  { field: 'easting',  type: 'number' },
-                'Northing (NAD83)': { field: 'northing',  type: 'number' },
-                'Township':  { field: 'township',  type: 'string' },
-                'Range':  { field: 'range', type: 'string' },
-                'Section': { field: 'section', type: 'string' },
-            },
-            relatedTables: [
-                {
-                    fieldLabel: 'Core Boxes',
-                    matchingField: 'uwi',
-                    targetField: 'uwi',
-                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_boxes_django_test_current`,
-                    headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
-                    displayAs: 'table',
-                    displayFields: [
-                        { field: 'box_number', label: 'Box #' },
-                        { field: 'box_type', label: 'Box Type' },
-                        { field: 'box_top_ft', label: 'Top (ft)', format: 'number' },
-                        { field: 'box_bottom_ft', label: 'Bottom (ft)', format: 'number' },
-                        { field: 'cored_formation', label: 'Formation' },
-                    ],
-                    sortBy: 'box_number',
-                    sortDirection: 'asc',
-                },
-            ],
-        }
-    ]
-};
-
-
 // UCRC Wells Layer — rendered client-side via WFS for instant filtering and richer symbology
 const ucrcWellsLayerName = 'enmin_ucrc_wells_current';
 export const ucrcWellsQualifiedName = `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`;
@@ -514,6 +461,7 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
             queryable: true,
             popupFields: {
                 'API Number': { field: 'api_number', type: 'string' },
+                'UWI': { field: 'uwi', type: 'string' },
                 'Well Name': { field: 'well_name', type: 'string' },
                 'County': { field: 'county', type: 'string' },
                 'Operator': { field: 'current_operator', type: 'string' },
@@ -522,6 +470,13 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
                 'Producing Formation': { field: 'producing_formation', type: 'string' },
                 'TD (ft)': { field: 'td_ft', type: 'number' },
                 'Elevation (GL ft)': { field: 'elevation_gl', type: 'number' },
+                'Latitude': { field: 'latitude', type: 'number' },
+                'Longitude': { field: 'longitude', type: 'number' },
+                'Easting (NAD83)': { field: 'easting', type: 'number' },
+                'Northing (NAD83)': { field: 'northing', type: 'number' },
+                'Township': { field: 'township', type: 'string' },
+                'Range': { field: 'range', type: 'string' },
+                'Section': { field: 'section', type: 'string' },
             },
             relatedTables: [
                 {
@@ -628,7 +583,6 @@ const infrastructureAndLandUseConfig: LayerProps = {
 
 
 const layersConfig: LayerProps[] = [
-    ucrcWellsConfig,
     ucrcWellsWFSConfig,
     subsurfaceDataConfig,
     geologicalInformationConfig,
