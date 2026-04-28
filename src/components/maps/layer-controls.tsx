@@ -1,4 +1,4 @@
-import { Info, Shrink, TableOfContents } from 'lucide-react';
+import { Download, Info, Shrink, TableOfContents } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -26,6 +26,8 @@ interface LayerControlsProps {
     legendUnit?: string;
     /** GeoParquet URL for client-side export. When set, download dropdown is enabled. */
     downloadParquetUrl?: string;
+    /** When true, hide format-conversion dropdown and offer only a direct parquet download. Used for apps that require unmodified source data. */
+    disableExport?: boolean;
 }
 
 const LayerControls: React.FC<LayerControlsProps> = ({
@@ -43,6 +45,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     arcgisUrl,
     legendUnit,
     downloadParquetUrl,
+    disableExport = false,
 }) => {
     // Sync activeTab with openLegend prop, but let the user toggle freely afterwards
     const [prevOpenLegend, setPrevOpenLegend] = useState(openLegend);
@@ -148,7 +151,27 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         </Toggle>
 
                         {downloadParquetUrl && (
-                            <ParquetDownloadMenu parquetUrl={downloadParquetUrl} layerTitle={title} />
+                            disableExport ? (
+                                <Button
+                                    asChild
+                                    variant="ghost"
+                                    size="stacked"
+                                    className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
+                                >
+                                    <a
+                                        href={downloadParquetUrl}
+                                        download
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        aria-label={`Download ${title} dataset`}
+                                    >
+                                        <Download className="h-5 w-5" />
+                                        <span className="text-xs">Download</span>
+                                    </a>
+                                </Button>
+                            ) : (
+                                <ParquetDownloadMenu parquetUrl={downloadParquetUrl} layerTitle={title} />
+                            )
                         )}
                     </div>
                 </div>
