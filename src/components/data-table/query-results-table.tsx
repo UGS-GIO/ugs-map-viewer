@@ -60,11 +60,13 @@ interface QueryResultsTableProps {
     selectedFeatureRefs?: SelectedFeatureRef[];
     onSelectedFeaturesChange?: (refs: SelectedFeatureRef[]) => void;
     onHighlightChange?: (features: HighlightFeature[]) => void;
+    /** When true, hide the export dropdown. Stakeholder request for apps that require unmodified source data. */
+    disableExport?: boolean;
 }
 
 const EMPTY_COLUMN_FILTERS: { id: string; value: string }[] = [];
 
-export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeChange, selectedFeatureRefs = [], onSelectedFeaturesChange, onHighlightChange }: QueryResultsTableProps) {
+export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeChange, selectedFeatureRefs = [], onSelectedFeaturesChange, onHighlightChange, disableExport = false }: QueryResultsTableProps) {
     const { zoomTo, zoomToAll } = useZoomToFeature({ onHighlightChange });
 
     const layersWithData = useMemo(() =>
@@ -403,41 +405,43 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                     </>
                 )}
 
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-xs text-muted-foreground"
-                            title={hasSelection ? `Export ${selectedRows.length} selected` : 'Export all'}
-                        >
-                            <Download className="h-3 w-3" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleExport('csv')}>
-                            CSV
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleExport('geojson')}>
-                            GeoJSON
-                        </DropdownMenuItem>
-                        {hasRelatedTables && (
-                            <>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-                                    Options
-                                </DropdownMenuLabel>
-                                <DropdownMenuCheckboxItem
-                                    checked={includeRelatedInExport}
-                                    onCheckedChange={setIncludeRelatedInExport}
-                                    onSelect={(e) => e.preventDefault()}
-                                >
-                                    Include related data
-                                </DropdownMenuCheckboxItem>
-                            </>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                {!disableExport && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs text-muted-foreground"
+                                title={hasSelection ? `Export ${selectedRows.length} selected` : 'Export all'}
+                            >
+                                <Download className="h-3 w-3" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleExport('csv')}>
+                                CSV
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExport('geojson')}>
+                                GeoJSON
+                            </DropdownMenuItem>
+                            {hasRelatedTables && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                                        Options
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuCheckboxItem
+                                        checked={includeRelatedInExport}
+                                        onCheckedChange={setIncludeRelatedInExport}
+                                        onSelect={(e) => e.preventDefault()}
+                                    >
+                                        Include related data
+                                    </DropdownMenuCheckboxItem>
+                                </>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>

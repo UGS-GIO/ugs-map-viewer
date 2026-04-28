@@ -217,6 +217,8 @@ interface GenericMapContainerProps {
   layerConfigKey?: string
   /** Called when all selections are cleared (context menu, popup close, etc.) */
   onClearSearch?: () => void
+  /** Hide attribute table CSV/GeoJSON + per-layer parquet downloads. Used by apps that require unmodified source data only. */
+  disableExport?: boolean
 }
 
 export default function GenericMapContainer({
@@ -226,6 +228,7 @@ export default function GenericMapContainer({
   vectorLayerSymbology = {},
   layerConfigKey = 'layers',
   onClearSearch,
+  disableExport = false,
 }: GenericMapContainerProps) {
   const isMobile = useIsMobile()
   const currentPage = useGetCurrentPage()
@@ -646,6 +649,7 @@ export default function GenericMapContainer({
             selectedFeatureRefs={selectedFeatureRefs}
             onSelectedFeaturesChange={setSelectedFeatureRefs}
             onHighlightChange={handleHighlightChange}
+            disableExport={disableExport}
           />
         )}
       </div>
