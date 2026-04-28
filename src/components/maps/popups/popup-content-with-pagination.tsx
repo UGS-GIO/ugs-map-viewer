@@ -1,6 +1,6 @@
 import { useMemo, useState, memo, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Shrink } from "lucide-react"
+import { Shrink, ChevronLeft, ChevronRight } from "lucide-react"
 import { PopupContentDisplay } from "@/components/maps/popups/popup-content-display"
 import { useGetPopupButtons } from "@/hooks/use-get-popup-buttons"
 import { useZoomToFeature } from "@/hooks/use-zoom-to-feature"
@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { useBulkRelatedTable, RelatedDataMap } from "@/hooks/use-bulk-related-table"
 import { ExtendedFeature, LayerContentProps, hasRasterData, getLayerCountText } from "./types"
+
+const POPUP_PAGE_SIZE = 10
 
 interface PopupButtonsProps {
     feature: ExtendedFeature;
@@ -68,6 +70,73 @@ const FeatureCard = memo(({
     )
 });
 FeatureCard.displayName = 'FeatureCard';
+
+// Renders a layer's features with internal pagination so popup DOM stays small
+// even when layer.features has thousands of entries (cap is 10k per WFS query).
+const PaginatedFeatureList = memo(({
+    layer,
+    buttons,
+    handleZoomToFeature,
+    bulkRelatedData,
+}: {
+    layer: LayerContentProps,
+    buttons: React.ReactNode[] | null,
+    handleZoomToFeature: (feature: ExtendedFeature, sourceCRS: string, maxZoomLevel?: number) => void,
+    bulkRelatedData?: RelatedDataMap[],
+}) => {
+    const [page, setPage] = useState(0)
+    const total = layer.features.length
+    const totalPages = Math.max(1, Math.ceil(total / POPUP_PAGE_SIZE))
+    const safePage = Math.min(page, totalPages - 1)
+    const start = safePage * POPUP_PAGE_SIZE
+    const end = Math.min(start + POPUP_PAGE_SIZE, total)
+    const slice = useMemo(() => layer.features.slice(start, end), [layer.features, start, end])
+    const showPager = total > POPUP_PAGE_SIZE
+
+    return (
+        <>
+            {showPager && (
+                <div className="flex items-center justify-between text-xs text-muted-foreground px-1 pb-1">
+                    <span>{start + 1}–{end} of {total}</span>
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            disabled={safePage === 0}
+                            onClick={() => setPage(p => Math.max(0, p - 1))}
+                            aria-label="Previous page"
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span>{safePage + 1}/{totalPages}</span>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            disabled={safePage >= totalPages - 1}
+                            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                            aria-label="Next page"
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
+            )}
+            {slice.map((feature, idx) => (
+                <FeatureCard
+                    key={`${feature.id ?? start + idx}`}
+                    layer={layer}
+                    feature={feature}
+                    buttons={buttons}
+                    handleZoomToFeature={handleZoomToFeature}
+                    bulkRelatedData={bulkRelatedData}
+                />
+            ))}
+        </>
+    )
+})
+PaginatedFeatureList.displayName = 'PaginatedFeatureList'
 
 // Raster-only card for layers with no vector features but with raster data
 const RasterOnlyCard = memo(({ layer }: { layer: LayerContentProps }) => {
@@ -243,16 +312,12 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange }: Po
                                 {/* Features or raster-only content */}
                                 <div className="space-y-2">
                                     {hasFeatures ? (
-                                        layer.features.map((feature, featureIdx) => (
-                                            <FeatureCard
-                                                key={`${feature.id || featureIdx}`}
-                                                layer={layer}
-                                                feature={feature}
-                                                buttons={buttons}
-                                                handleZoomToFeature={handleZoomToFeature}
-                                                bulkRelatedData={layer.relatedTables?.length ? bulkRelatedData : undefined}
-                                            />
-                                        ))
+                                        <PaginatedFeatureList
+                                            layer={layer}
+                                            buttons={buttons}
+                                            handleZoomToFeature={handleZoomToFeature}
+                                            bulkRelatedData={layer.relatedTables?.length ? bulkRelatedData : undefined}
+                                        />
                                     ) : hasRaster ? (
                                         <RasterOnlyCard layer={layer} />
                                     ) : null}
@@ -261,19 +326,14 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange }: Po
                         );
                     })
                 ) : selectedLayer ? (
-                    // Show features from selected layer only
                     <div className="space-y-2">
                         {selectedLayer.features.length > 0 ? (
-                            selectedLayer.features.map((feature, featureIdx) => (
-                                <FeatureCard
-                                    key={`${feature.id || featureIdx}`}
-                                    layer={selectedLayer}
-                                    feature={feature}
-                                    buttons={buttons}
-                                    handleZoomToFeature={handleZoomToFeature}
-                                    bulkRelatedData={selectedLayer.relatedTables?.length ? bulkRelatedData : undefined}
-                                />
-                            ))
+                            <PaginatedFeatureList
+                                layer={selectedLayer}
+                                buttons={buttons}
+                                handleZoomToFeature={handleZoomToFeature}
+                                bulkRelatedData={selectedLayer.relatedTables?.length ? bulkRelatedData : undefined}
+                            />
                         ) : hasRasterData(selectedLayer) ? (
                             <RasterOnlyCard layer={selectedLayer} />
                         ) : null}
