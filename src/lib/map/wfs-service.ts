@@ -22,25 +22,30 @@ type Bounds = {
 // =============================================================================
 
 interface CacheEntry {
-  field: string
+  geometryField: string
+  /** First non-geometry attribute, used as sortBy for paginated WFS requests */
+  sortField: string | null
   timestamp: number
 }
 
-const geometryFieldCache = new Map<string, CacheEntry>()
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours
+const featureTypeCache = new Map<string, CacheEntry>()
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 
 /**
- * Detect the geometry field name for a layer via DescribeFeatureType
+ * Detect geometry field + a sortable attribute via DescribeFeatureType.
+ * GeoServer requires sortBy when paginating tables/views without a PK.
  */
-async function getGeometryField(wfsUrl: string, typeName: string): Promise<string> {
+async function describeFeatureType(wfsUrl: string, typeName: string): Promise<{ geometryField: string; sortField: string | null }> {
   const cacheKey = `${wfsUrl}:${typeName}`
   const now = Date.now()
 
-  // Check cache
-  const cached = geometryFieldCache.get(cacheKey)
+  const cached = featureTypeCache.get(cacheKey)
   if (cached && (now - cached.timestamp) < CACHE_TTL_MS) {
-    return cached.field
+    return { geometryField: cached.geometryField, sortField: cached.sortField }
   }
+
+  let geometryField = 'shape'
+  let sortField: string | null = null
 
   try {
     const url = new URL(wfsUrl)
@@ -54,24 +59,26 @@ async function getGeometryField(wfsUrl: string, typeName: string): Promise<strin
     if (response.ok) {
       const data = await response.json()
       const geometryTypes = ['MultiPolygon', 'Polygon', 'MultiLineString', 'LineString', 'Point', 'MultiPoint', 'Geometry']
+      const props = data.featureTypes?.[0]?.properties || []
 
-      if (data.featureTypes?.[0]?.properties) {
-        for (const prop of data.featureTypes[0].properties) {
-          if (prop.type?.startsWith('gml:') && geometryTypes.includes(prop.localType)) {
-            geometryFieldCache.set(cacheKey, { field: prop.name, timestamp: now })
-            return prop.name
-          }
+      for (const prop of props) {
+        const isGeom = prop.type?.startsWith('gml:') && geometryTypes.includes(prop.localType)
+        if (isGeom && geometryField === 'shape') {
+          geometryField = prop.name
+        } else if (!isGeom && !sortField && prop.name) {
+          sortField = prop.name
         }
+        if (geometryField !== 'shape' && sortField) break
       }
     }
   } catch (err) {
-    console.warn('[WFS] Failed to detect geometry field:', err)
+    console.warn('[WFS] DescribeFeatureType failed:', err)
   }
 
-  // Fallback to 'shape'
-  geometryFieldCache.set(cacheKey, { field: 'shape', timestamp: now })
-  return 'shape'
+  featureTypeCache.set(cacheKey, { geometryField, sortField, timestamp: now })
+  return { geometryField, sortField }
 }
+
 
 /**
  * Convert GeoJSON Polygon to WKT with SRID prefix.
@@ -105,6 +112,8 @@ export interface WfsQueryOptions {
   count?: number
   /** Starting index for pagination */
   startIndex?: number
+  /** Sort attribute (required for stable startIndex pagination on GeoServer tables w/o PK) */
+  sortBy?: string
 }
 
 /**
@@ -122,6 +131,7 @@ function buildWfsUrl(options: WfsQueryOptions): string {
     crs = 'EPSG:4326',
     count,
     startIndex,
+    sortBy,
   } = options
 
   const url = new URL(wfsUrl)
@@ -158,6 +168,7 @@ function buildWfsUrl(options: WfsQueryOptions): string {
   // WFS 1.1.0 uses maxFeatures instead of count
   if (count) url.searchParams.set('maxFeatures', String(count))
   if (startIndex) url.searchParams.set('startIndex', String(startIndex))
+  if (sortBy) url.searchParams.set('sortBy', `${sortBy} A`)
 
   return url.toString()
 }
@@ -198,19 +209,26 @@ export interface QueryOptions {
   maxFeatures?: number
 }
 
+export interface WfsQueryResult {
+  features: Feature[]
+  /** True when paginated query stopped at maxFeatures with more available */
+  truncated: boolean
+}
+
 export async function queryWfs(
   options: WfsQueryOptions,
   queryOptions: QueryOptions = {}
-): Promise<Feature[]> {
+): Promise<WfsQueryResult> {
   const { paginate = false, pageSize = 50, maxFeatures = 10000 } = queryOptions
 
   if (!paginate) {
-    return fetchWfsPage({ ...options, count: options.count || pageSize })
+    const features = await fetchWfsPage({ ...options, count: options.count || pageSize })
+    return { features, truncated: false }
   }
 
-  // Paginated query
   const allFeatures: Feature[] = []
   let startIndex = 0
+  let truncated = false
 
   while (allFeatures.length < maxFeatures) {
     const features = await fetchWfsPage({
@@ -223,9 +241,15 @@ export async function queryWfs(
 
     if (features.length < pageSize) break
     startIndex += pageSize
+
+    if (allFeatures.length >= maxFeatures) {
+      // Hit cap; last page was full so likely more available server-side
+      truncated = true
+      break
+    }
   }
 
-  return allFeatures
+  return { features: allFeatures.slice(0, maxFeatures), truncated }
 }
 
 // =============================================================================
@@ -255,6 +279,12 @@ export interface BoxSelectQueryParams {
   layerFilters?: Record<string, string>
 }
 
+export interface VisibleLayersResult {
+  features: WfsFeature[]
+  /** True if any layer hit its maxFeatures cap */
+  truncated: boolean
+}
+
 /**
  * Query visible layers within bounds, returning simplified features
  * Uses parallel individual queries with INTERSECTS for accuracy
@@ -265,11 +295,9 @@ async function queryVisibleLayers(
   wmsUrl: string,
   options: QueryOptions = {},
   layerFilters?: Record<string, string>
-): Promise<WfsFeature[]> {
-  // Build list of all sublayers to query, with per-layer WFS URL
+): Promise<VisibleLayersResult> {
   const queries: Array<{ typeName: string; layerTitle: string; wfsUrl: string; attributeFilter?: string }> = []
   for (const layer of visibleLayers) {
-    // Use layer's own URL when present, fall back to global wmsUrl
     const layerWfsUrl = (layer.url || wmsUrl).replace(/\/wms\/?$/, '/wfs')
     const dynamicFilter = layerFilters?.[layer.title]
     const staticFilter = layer.customLayerParameters?.cql_filter
@@ -284,35 +312,41 @@ async function queryVisibleLayers(
     }
   }
 
-  if (queries.length === 0) return []
+  if (queries.length === 0) return { features: [], truncated: false }
 
-  // Query all layers in parallel
   const results = await Promise.all(
     queries.map(async ({ typeName, layerTitle, wfsUrl: layerWfsUrl, attributeFilter }) => {
       try {
-        const geometryField = await getGeometryField(layerWfsUrl, typeName)
-        const features = await queryWfs({
+        const { geometryField, sortField } = await describeFeatureType(layerWfsUrl, typeName)
+        const { features, truncated } = await queryWfs({
           wfsUrl: layerWfsUrl,
           typeName,
           geometryField,
           spatialFilter,
           attributeFilter,
+          sortBy: options.paginate ? (sortField ?? undefined) : undefined,
         }, options)
 
-        return features.map(f => ({
-          id: f.id || f.properties?.ogc_fid || 0,
-          properties: (f.properties || {}) as Record<string, unknown>,
-          geometry: f.geometry,
-          layerTitle,
-        }))
+        return {
+          features: features.map(f => ({
+            id: f.id || f.properties?.ogc_fid || 0,
+            properties: (f.properties || {}) as Record<string, unknown>,
+            geometry: f.geometry,
+            layerTitle,
+          })),
+          truncated,
+        }
       } catch (err) {
         console.warn(`[WFS] Failed to query layer ${typeName}:`, err)
-        return []
+        return { features: [] as WfsFeature[], truncated: false }
       }
     })
   )
 
-  return results.flat()
+  return {
+    features: results.flatMap(r => r.features),
+    truncated: results.some(r => r.truncated),
+  }
 }
 
 /**
@@ -336,13 +370,14 @@ export async function queryWFSFeatures(params: ClickQueryParams): Promise<WfsFea
     ]],
   }
 
-  return queryVisibleLayers(visibleLayers, clickPolygon, wmsUrl, { pageSize: 50 }, layerFilters)
+  const { features } = await queryVisibleLayers(visibleLayers, clickPolygon, wmsUrl, { pageSize: 50 }, layerFilters)
+  return features
 }
 
 /**
  * Query features in box select area with pagination
  */
-export async function queryBoxSelectFeatures(params: BoxSelectQueryParams): Promise<WfsFeature[]> {
+export async function queryBoxSelectFeatures(params: BoxSelectQueryParams): Promise<VisibleLayersResult> {
   const { visibleLayers, mapInstance, containerRect, boxSize, pageSize, wmsUrl, layerFilters } = params
 
   const centerX = containerRect.width / 2
@@ -369,7 +404,7 @@ export interface PolygonQueryParams {
   layerFilters?: Record<string, string>
 }
 
-export async function queryPolygonFeatures(params: PolygonQueryParams): Promise<WfsFeature[]> {
-  const { polygon, visibleLayers, wmsUrl, pageSize = 100, layerFilters } = params
+export async function queryPolygonFeatures(params: PolygonQueryParams): Promise<VisibleLayersResult> {
+  const { polygon, visibleLayers, wmsUrl, pageSize = 1000, layerFilters } = params
   return queryVisibleLayers(visibleLayers, polygon, wmsUrl, { paginate: true, pageSize }, layerFilters)
 }
