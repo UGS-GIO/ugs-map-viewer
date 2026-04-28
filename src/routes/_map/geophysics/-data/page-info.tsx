@@ -98,7 +98,7 @@ const dataSources = (
             <Link to="https://geology.utah.gov/publication-details/?pub%3DM-179dm">Access data</Link>
         </li>
         <li>Geological Units (500k) - Utah Geological Survey <br />
-            <Link to="https://geology.utah.gov/publication-details/?pub%3DM-179dm">Access data</Link>
+            <Link to="https://geology.utah.gov/publication-details/?pub=M-179dm">Access data</Link>
         </li>
     </ul>
 </p>     
