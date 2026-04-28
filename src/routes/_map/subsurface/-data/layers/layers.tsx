@@ -1,7 +1,8 @@
 import { Link } from "@/components/ui/link";
 import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
 import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
-import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { LayerProps, WMSLayerProps, WFSLayerProps } from "@/lib/types/mapping-types";
+import { makePieWedgeSpriteRegistrar } from "@/lib/map/pie-wedge-sprites";
 import { addThousandsSeparator } from "@/lib/utils";
 
 
@@ -357,69 +358,102 @@ const pipelinesWMSConfig: WMSLayerProps = {
 };
 
 
-const ucrcWellsName = 'ucrc_wells_current';
-const ucrcWellsTitle = 'Utah Core Research Center Inventory';
-const ucrcWellsConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: ucrcWellsTitle,
-    visible: true,
-    opacity: 0.6,
-    crs: 'EPSG:26912',
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'API': { field: 'api_number',       type: 'string' },
-                'UWI': { field: 'uwi', type: 'string' },
-                'Well Name': { field: 'well_name',  type: 'string' },
-                'Operator': { field: 'current_operator', type: 'string' },
-                'Purpose': { field: 'purpose',  type: 'string' },
-                'County':  { field: 'county',  type: 'string' },
-                'Latitude': { field: 'latitude', type: 'number' },
-                'Longitude': { field: 'longitude', type: 'number' },
-                'Easting (NAD83)':  { field: 'easting',  type: 'number' },
-                'Northing (NAD83)': { field: 'northing',  type: 'number' },
-                'Township':  { field: 'township',  type: 'string' },
-                'Range':  { field: 'range', type: 'string' },
-                'Section': { field: 'section', type: 'string' },
-            },
-            relatedTables: [
-                {
-                    fieldLabel: 'Core Boxes',
-                    matchingField: 'uwi',
-                    targetField: 'uwi',
-                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_boxes_django_test_current`,
-                    headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
-                    displayAs: 'table',
-                    displayFields: [
-                        { field: 'box_number', label: 'Box #' },
-                        { field: 'box_type', label: 'Box Type' },
-                        { field: 'box_top_ft', label: 'Top (ft)', format: 'number' },
-                        { field: 'box_bottom_ft', label: 'Bottom (ft)', format: 'number' },
-                        { field: 'cored_formation', label: 'Formation' },
-                    ],
-                    sortBy: 'box_number',
-                    sortDirection: 'asc',
-                },
-            ],
-        }
-    ]
+// UCRC Wells Layer — rendered client-side via WFS for instant filtering and richer symbology
+const ucrcWellsLayerName = 'enmin_ucrc_wells_current';
+export const ucrcWellsQualifiedName = `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`;
+export const ucrcWellsWMSTitle = 'Utah Core Research Center Inventory';
+
+// Purpose colors mirror the GeoServer SLD for this layer (default style). Keep in sync if SLD changes.
+export const UCRC_PURPOSE_COLORS: Record<string, string> = {
+    'Oil and Gas': '#2B83BA',
+    'Mining': '#D7191C',
+    'Tar Sands': '#4B3621',
+    'Water': '#41B6C4',
+    'Potash': '#E66101',
+    'Coal': '#333333',
+    'Stratigraphy': '#7B68EE',
+    'Building or Construction': '#FDB863',
+    'Oil Shale': '#8C6D31',
+    'Geothermal': '#E31A1C',
+    'Teaching': '#A6D854',
+    'Display': '#FF69B4',
+    'Other': '#BDBDBD',
+};
+export const UCRC_PURPOSE_STROKES: Record<string, string> = {
+    'Oil and Gas': '#1A5276',
+    'Mining': '#922B21',
+    'Tar Sands': '#2C1F13',
+    'Water': '#2C7F8C',
+    'Potash': '#A04500',
+    'Coal': '#1A1A1A',
+    'Stratigraphy': '#5548A6',
+    'Building or Construction': '#B08045',
+    'Oil Shale': '#5E4921',
+    'Geothermal': '#9E1213',
+    'Teaching': '#74963B',
+    'Display': '#B3497E',
+    'Other': '#858585',
 };
 
+// Box-type pie-wedge symbology config (comma-delimited codes on each well).
+export const UCRC_BOX_TYPE_CODES = ['BUTTS', 'CORE', 'CUTTINGS', 'SLABS'] as const;
+export const UCRC_BOX_TYPE_COLORS: Record<string, string> = {
+    BUTTS: '#E66101',
+    CORE: '#5E3C99',
+    CUTTINGS: '#1A9641',
+    SLABS: '#0571B0',
+};
+const UCRC_BOX_TYPE_NAMESPACE = 'box-type';
 
-// UCRC Wells Layer
-const ucrcWellsLayerName = 'enmin_ucrc_wells_django_test_current';
-export const ucrcWellsQualifiedName = `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`;
-export const ucrcWellsWMSTitle = 'UCRC Wells (Test)';
-const ucrcWellsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
+const ucrcWellsWFSConfig: WFSLayerProps = {
+    type: 'wfs',
+    wfsUrl: `${PROD_GEOSERVER_URL}/wfs`,
+    typeName: ucrcWellsQualifiedName,
     title: ucrcWellsWMSTitle,
     visible: false,
-    crs: 'EPSG:3857',
+    opacity: 0.85,
+    crs: 'EPSG:4326',
+    geometryType: 'point',
+    style: {
+        circleRadiusByZoom: [
+            [4, 2],
+            [7, 4],
+            [10, 6],
+            [13, 8],
+            [16, 10],
+        ],
+        circleStrokeWidth: 1,
+        circleColorMatch: {
+            field: 'purpose',
+            matches: UCRC_PURPOSE_COLORS,
+            defaultColor: UCRC_PURPOSE_COLORS.Other,
+        },
+        circleStrokeColorMatch: {
+            field: 'purpose',
+            matches: UCRC_PURPOSE_STROKES,
+            defaultColor: UCRC_PURPOSE_STROKES.Other,
+        },
+        // Box-type pie-wedge symbology, gated by Symbolize By dropdown
+        iconSymbologyKey: UCRC_BOX_TYPE_NAMESPACE,
+        iconImageExpression: ['concat', `${UCRC_BOX_TYPE_NAMESPACE}-`, ['coalesce', ['get', 'box_type_codes'], '']],
+        iconSizeByZoom: [
+            [4, 0.1],
+            [7, 0.2],
+            [10, 0.3],
+            [13, 0.4],
+            [16, 0.5],
+        ],
+        registerSprites: makePieWedgeSpriteRegistrar({
+            field: 'box_type_codes',
+            codes: UCRC_BOX_TYPE_CODES,
+            colors: UCRC_BOX_TYPE_COLORS,
+            namespace: UCRC_BOX_TYPE_NAMESPACE,
+        }),
+        pieGlyphLegend: {
+            codes: UCRC_BOX_TYPE_CODES,
+            colors: UCRC_BOX_TYPE_COLORS,
+        },
+    },
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`,
@@ -427,6 +461,7 @@ const ucrcWellsWMSConfig: WMSLayerProps = {
             queryable: true,
             popupFields: {
                 'API Number': { field: 'api_number', type: 'string' },
+                'UWI': { field: 'uwi', type: 'string' },
                 'Well Name': { field: 'well_name', type: 'string' },
                 'County': { field: 'county', type: 'string' },
                 'Operator': { field: 'current_operator', type: 'string' },
@@ -435,13 +470,20 @@ const ucrcWellsWMSConfig: WMSLayerProps = {
                 'Producing Formation': { field: 'producing_formation', type: 'string' },
                 'TD (ft)': { field: 'td_ft', type: 'number' },
                 'Elevation (GL ft)': { field: 'elevation_gl', type: 'number' },
+                'Latitude': { field: 'latitude', type: 'number' },
+                'Longitude': { field: 'longitude', type: 'number' },
+                'Easting (NAD83)': { field: 'easting', type: 'number' },
+                'Northing (NAD83)': { field: 'northing', type: 'number' },
+                'Township': { field: 'township', type: 'string' },
+                'Range': { field: 'range', type: 'string' },
+                'Section': { field: 'section', type: 'string' },
             },
             relatedTables: [
                 {
                     fieldLabel: 'Core Boxes',
                     matchingField: 'uwi',
                     targetField: 'uwi',
-                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_boxes_django_test_current`,
+                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_boxes_current`,
                     headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
                     displayAs: 'table',
                     displayFields: [
@@ -469,10 +511,10 @@ const ucrcWellsWMSConfig: WMSLayerProps = {
                     fieldLabel: 'Core Photos',
                     matchingField: 'uwi',
                     targetField: 'uwi',
-                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_photos_django_test_current`,
+                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_photos_current`,
                     headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
                     displayAs: 'gallery',
-                    galleryUrlField: 'gcs_path',
+                    galleryUrlField: 'storage_path',
                     galleryBaseUrl: 'https://ucrc-assets.geology.utah.gov',
                     galleryThumbnailTransform: (gcsPath: string) =>
                         gcsPath.startsWith('photos/')
@@ -491,7 +533,7 @@ const ucrcWellsWMSConfig: WMSLayerProps = {
                     fieldLabel: 'Attachments',
                     matchingField: 'uwi',
                     targetField: 'uwi',
-                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_attachments_django_test_current`,
+                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_attachments_current`,
                     headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
                     displayAs: 'list',
                     displayFields: [
@@ -541,8 +583,7 @@ const infrastructureAndLandUseConfig: LayerProps = {
 
 
 const layersConfig: LayerProps[] = [
-    ucrcWellsConfig,
-    ucrcWellsWMSConfig,
+    ucrcWellsWFSConfig,
     subsurfaceDataConfig,
     geologicalInformationConfig,
     infrastructureAndLandUseConfig

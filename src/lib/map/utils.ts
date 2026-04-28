@@ -119,6 +119,11 @@ class MapLibreLayerProxy {
         if (this.map && typeof this.map.setPaintProperty === 'function') {
             const opacityProp = this.getOpacityProperty();
             this.map.setPaintProperty(this.layerId, opacityProp, value);
+            // Circle layers also have a separate stroke-opacity that must track the fill,
+            // otherwise strokes stay solid while the fill fades during a slider drag.
+            if (this._layerType === 'circle') {
+                this.map.setPaintProperty(this.layerId, 'circle-stroke-opacity', value);
+            }
         }
     }
 

@@ -209,6 +209,10 @@ interface GenericMapContainerProps {
   layerFilters?: Record<string, string>
   /** Optional GeoServer style names for WMS layers, keyed by layer title */
   layerStyles?: Record<string, string>
+  /** Optional MapLibre filter expressions for vector (WFS) layers, keyed by layer title */
+  vectorLayerFilters?: Record<string, maplibregl.FilterSpecification>
+  /** Optional active symbology mode key for vector layers, keyed by layer title */
+  vectorLayerSymbology?: Record<string, string>
   /** Layer config key (default: 'layers') */
   layerConfigKey?: string
   /** Called when all selections are cleared (context menu, popup close, etc.) */
@@ -218,6 +222,8 @@ interface GenericMapContainerProps {
 export default function GenericMapContainer({
   layerFilters = {},
   layerStyles = {},
+  vectorLayerFilters = {},
+  vectorLayerSymbology = {},
   layerConfigKey = 'layers',
   onClearSearch,
 }: GenericMapContainerProps) {
@@ -515,6 +521,8 @@ export default function GenericMapContainer({
             onMoveEnd={setMapPosition}
             layerFilters={layerFilters}
             layerStyles={layerStyles}
+            vectorLayerFilters={vectorLayerFilters}
+            vectorLayerSymbology={vectorLayerSymbology}
             onMapReady={handleMapReady}
             basemapId={basemap}
             clickBufferBounds={clickBufferBounds}
