@@ -27,7 +27,7 @@ import { useFeatureQuery } from '@/hooks/use-feature-query'
 import type { ClickedFeature, DataMapProps } from './types'
 import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps } from './types'
@@ -298,15 +298,12 @@ export default function DataMap({
   // Ref to store WFS features from polygon query (populated before WMS query completes)
   const polygonWfsLayerFeaturesRef = useRef<WfsLayerFeature[]>([])
 
-  const { toast } = useToast()
-
   const notifyTruncated = useCallback(() => {
-    toast({
-      title: 'Result limit reached',
+    toast.warning('Result limit reached', {
       description: 'Showing first 10,000 features. Narrow your selection for the rest.',
-      variant: 'destructive',
+      duration: 8000,
     })
-  }, [toast])
+  }, [])
 
   const { clickQuery, boxSelectQuery, polygonQuery, isLoading: queryLoading } = useFeatureQuery({
     onPolygonQuerySuccess: ({ features: wmsFeatures, truncated }) => {
