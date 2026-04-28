@@ -769,8 +769,8 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
             queryable: true,
             popupFields: {
                 'Project Name': { field: 'generalregionname', type: 'string' },
-                'Timeline': { field: 'timeline', type: 'string' },
                 'Project Summary': { field: 'projectsummary', type: 'string' },
+                'Timeline': { field: 'timeline', type: 'string' },
                 'Reservoir Investigated': { field: 'reservoirinvestigated', type: 'string' },
                 '': { field: 'link', type: 'string', transform: (value: string | null) => value },
             },
@@ -1073,6 +1073,34 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
     ],
 };
 
+// Utah counties
+const utCountiesConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: 'Utah Counties',
+    visible: false,
+    crs: 'EPSG:3857',
+    sublayers: [{
+        name: `${ENERGY_MINERALS_WORKSPACE}:enmin_ut_counties_current`,
+        popupEnabled: false,
+        queryable: false,
+    }],
+};
+
+// Utah township & ranges
+const utTownshipRangesConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: 'Utah Township & Ranges',
+    visible: false,
+    crs: 'EPSG:3857',
+    sublayers: [{
+        name: `${ENERGY_MINERALS_WORKSPACE}:enmin_plss_townshiprange_current`,
+        popupEnabled: false,
+        queryable: false,
+    }],
+};
+
 // Non-Petroleum Well Catalogue Data
 /*
 const nonPetroleumCatLayerName = 'nwpd_nonpetroleumwellcatalogwells';
@@ -1142,6 +1170,8 @@ const infrastructureAndLandUseConfig: LayerProps = {
         transmissionLinesWMSConfig,
         wildernessStudyAreasWMSConfig,
         SITLAConfig,
+        utCountiesConfig,
+        utTownshipRangesConfig,
     ]
 }
 
