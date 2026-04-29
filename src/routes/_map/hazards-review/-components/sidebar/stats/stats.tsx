@@ -273,19 +273,19 @@ export function Stats() {
 
             <div className="px-2 text-foreground">
                 <h3 className="text-sm font-medium mb-2">Top Basins by Max Rate</h3>
-                <div className="h-56 w-full">
+                <div className="h-72 w-full">
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
                     <ResponsiveContainer>
-                        <BarChart data={topBasins} layout="vertical" margin={{ left: 60 }}>
-                            <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
+                        <BarChart data={topBasins} layout="vertical" margin={{ top: 4, right: 24, bottom: 4, left: 4 }}>
+                            <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" horizontal={false} />
                             <XAxis type="number" stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} unit=" ft/yr" />
-                            <YAxis type="category" dataKey="location" stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} width={80} />
+                            <YAxis type="category" dataKey="location" stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} width={110} interval={0} />
                             <Tooltip
                                 contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--popover-foreground))' }}
                                 labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
                                 cursor={{ fill: 'currentColor', fillOpacity: 0.05 }}
                             />
-                            <Bar dataKey="max" fill="#3b82f6" />
+                            <Bar dataKey="max" fill="#3b82f6" barSize={18} radius={[0, 3, 3, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                     )}
