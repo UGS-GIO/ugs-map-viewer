@@ -273,23 +273,25 @@ export function Stats() {
 
             <div className="px-2 text-foreground">
                 <h3 className="text-sm font-medium mb-2">Top Basins by Max Rate</h3>
-                <div className="h-72 w-full">
-                    {isLoading ? <Skeleton className="h-full w-full" /> : (
-                    <ResponsiveContainer>
-                        <BarChart data={topBasins} layout="vertical" margin={{ top: 4, right: 24, bottom: 4, left: 4 }}>
-                            <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" horizontal={false} />
-                            <XAxis type="number" stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} unit=" ft/yr" />
-                            <YAxis type="category" dataKey="location" stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} width={110} interval={0} />
-                            <Tooltip
-                                contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--popover-foreground))' }}
-                                labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                                cursor={{ fill: 'currentColor', fillOpacity: 0.05 }}
-                            />
-                            <Bar dataKey="max" fill="#3b82f6" barSize={18} radius={[0, 3, 3, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                    )}
-                </div>
+                {isLoading ? <Skeleton className="h-72 w-full" /> : topBasins.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No basins meet the current filter.</p>
+                ) : (
+                    <div className="space-y-1.5">
+                        {topBasins.map(b => {
+                            const max = topBasins[0].max
+                            const pct = max > 0 ? (b.max / max) * 100 : 0
+                            return (
+                                <div key={b.location} className="grid grid-cols-[5.5rem_1fr_4.5rem] items-center gap-2 text-xs">
+                                    <span className="truncate" title={b.location}>{b.location}</span>
+                                    <div className="h-3 rounded-sm bg-muted overflow-hidden">
+                                        <div className="h-full rounded-sm bg-primary" style={{ width: `${pct}%` }} />
+                                    </div>
+                                    <span className="text-right tabular-nums text-muted-foreground">{b.max} ft/yr</span>
+                                </div>
+                            )
+                        })}
+                    </div>
+                )}
             </div>
         </div>
     )
