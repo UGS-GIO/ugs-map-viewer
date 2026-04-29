@@ -881,28 +881,6 @@ const hazardsAquifersCombinedReviewConfig: WMSLayerProps = {
 }
 
 
-// hazards_aquifer_delineation_review
-const hazardsAquifersDilineationReviewConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Aquifer Delineation (Source: Utah Geological Survey): Review',
-    visible: true,
-    sublayers: [
-        {
-            name: `${HAZARDS_WORKSPACE}:hazards_aquifer_delineation_review`,
-            popupEnabled: true,
-            queryable: true,
-            popupFields: {
-                'Aquifer': { field: 'aquifer', type: 'string' },
-                'Broader Aquifer': { field: 'broader', type: 'string' },
-                'Details': { field: 'details', type: 'string' },
-                'Depletion (Early 21st C.)': { field: 'early21stc', type: 'number' },
-                'Depletion (Late 20th C.)': { field: 'late20thce', type: 'number' },
-            }
-        },
-    ],
-}
-
 // hazards_displacement_contours_review (split by `type` into 4 sub-layers)
 const DISPLACEMENT_CONTOURS_REVIEW_LAYER = `${HAZARDS_WORKSPACE}:hazards_displacement_contours_review`;
 const displacementReviewPopupFields = {
@@ -1023,7 +1001,6 @@ const extraLayersConfig: LayerProps = {
         layers: [
             earthFissureWMSConfig,
             hazardsAquifersCombinedReviewConfig,
-            hazardsAquifersDilineationReviewConfig,
             hazardsDisplacementCumulativeReviewConfig,
             hazardsDisplacementYearlyReviewConfig,
             hazardsDisplacementVelocityReviewConfig,
@@ -1066,7 +1043,6 @@ export const erosionHazardZoneReviewConfig: WMSLayerProps = { ...erosionHazardZo
 export const karstFeaturesReviewConfig: WMSLayerProps = { ...karstFeaturesWMSConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
 export const studyAreasReviewConfig: WMSLayerProps = { ...studyAreasWMSConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
 export const hazardsAquifersCombinedReview: WMSLayerProps = { ...hazardsAquifersCombinedReviewConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
-export const hazardsAquifersDilineationReview: WMSLayerProps = { ...hazardsAquifersDilineationReviewConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
 export const hazardsDisplacementCumulativeReview = hazardsDisplacementCumulativeReviewConfig;
 export const hazardsDisplacementYearlyReview = hazardsDisplacementYearlyReviewConfig;
 export const hazardsDisplacementVelocityReview = hazardsDisplacementVelocityReviewConfig;
@@ -1082,7 +1058,6 @@ export const extraLayersReviewConfig: LayerProps = {
     layers: [
         earthFissureReviewConfig,
         hazardsAquifersCombinedReview,
-        hazardsAquifersDilineationReview,
         hazardsDisplacementCumulativeReview,
         hazardsDisplacementYearlyReview,
         hazardsDisplacementVelocityReview,

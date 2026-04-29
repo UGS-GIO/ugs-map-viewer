@@ -972,27 +972,6 @@ const aquifersCombinedConfig: WMSLayerProps = {
     ],
 };
 
-const aquiferDelineationConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Aquifer Delineation (Source: Utah Geological Survey): Review',
-    visible: true,
-    sublayers: [
-        {
-            name: `${HAZARDS_WORKSPACE}:hazards_aquifer_delineation_review`,
-            popupEnabled: true,
-            queryable: true,
-            popupFields: {
-                'Aquifer': { field: 'aquifer', type: 'string' },
-                'Broader Aquifer': { field: 'broader', type: 'string' },
-                'Details': { field: 'details', type: 'string' },
-                'Depletion (Early 21st C.)': { field: 'early21stc', type: 'number' },
-                'Depletion (Late 20th C.)': { field: 'late20thce', type: 'number' },
-            }
-        },
-    ],
-};
-
 const DISPLACEMENT_CONTOURS_LAYER = `${HAZARDS_WORKSPACE}:hazards_displacement_contours_review`;
 const displacementPopupFields = {
     'Location': { field: 'location', type: 'string' },
@@ -1035,7 +1014,6 @@ const extraLayersConfig: LayerProps = {
     layers: [
         earthFissureWMSConfig,
         aquifersCombinedConfig,
-        aquiferDelineationConfig,
         displacementCumulativeConfig,
         displacementYearlyConfig,
         displacementVelocityConfig,
