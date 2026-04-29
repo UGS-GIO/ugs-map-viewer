@@ -181,7 +181,6 @@ export function Insights() {
             .slice(0, 10)
     }, [filtered, thresholdFt])
 
-    if (isLoading) return <InsightsSkeleton />
     if (isError) return <div className="p-4 text-sm text-destructive">Failed to load displacement data.</div>
 
     return (
@@ -232,16 +231,17 @@ export function Insights() {
             </div>
 
             <div className="grid grid-cols-2 gap-3 px-2">
-                <KPI label="Subsiding Area" value={`${totalAreaSqMi.toFixed(1)} mi²`} sub={`|rate| ≥ ${thresholdFt} ft/yr`} />
-                <KPI label="Max Rate" value={`${(maxDisplacement * CM_TO_FT).toFixed(2)} ft/yr`} sub={selectedType} />
-                <KPI label="Basins" value={String(distinctBasins)} sub="distinct in filter" />
-                <KPI label="Period" value={period ? `${period.from} – ${period.to}` : '—'} sub="years covered" />
+                <KPI label="Subsiding Area" value={isLoading ? '—' : `${totalAreaSqMi.toFixed(1)} mi²`} sub={`|rate| ≥ ${thresholdFt} ft/yr`} />
+                <KPI label="Max Rate" value={isLoading ? '—' : `${(maxDisplacement * CM_TO_FT).toFixed(2)} ft/yr`} sub={selectedType} />
+                <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
+                <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
             </div>
 
             <div className="px-2 text-foreground">
                 <h3 className="text-sm font-medium mb-2">Subsiding Area by Year ({selectedType})</h3>
                 <p className="text-xs text-muted-foreground mb-2">Stacked by rate category (ft/yr). Year filter does not apply.</p>
                 <div className="h-72 w-full">
+                    {isLoading ? <Skeleton className="h-full w-full" /> : (
                     <ResponsiveContainer>
                         <BarChart data={stackedAreaByYear}>
                             <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
@@ -257,6 +257,7 @@ export function Insights() {
                             ))}
                         </BarChart>
                     </ResponsiveContainer>
+                    )}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-foreground">
                     {visibleBins.map(bin => (
@@ -275,6 +276,7 @@ export function Insights() {
             <div className="px-2 text-foreground">
                 <h3 className="text-sm font-medium mb-2">Top Basins by Max Rate</h3>
                 <div className="h-56 w-full">
+                    {isLoading ? <Skeleton className="h-full w-full" /> : (
                     <ResponsiveContainer>
                         <BarChart data={topBasins} layout="vertical" margin={{ left: 60 }}>
                             <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
@@ -288,41 +290,8 @@ export function Insights() {
                             <Bar dataKey="max" fill="#3b82f6" />
                         </BarChart>
                     </ResponsiveContainer>
+                    )}
                 </div>
-            </div>
-        </div>
-    )
-}
-
-function InsightsSkeleton() {
-    return (
-        <div className="flex flex-col gap-4 p-2">
-            <BackToMenuButton />
-            <h2 className="text-lg font-semibold px-2">Insights — Land Subsidence</h2>
-
-            <div className="grid grid-cols-2 gap-3 px-2">
-                {Array.from({ length: 4 }, (_, i) => (
-                    <div key={i} className="flex flex-col gap-1">
-                        <Skeleton className="h-3 w-12" />
-                        <Skeleton className="h-9 w-full" />
-                    </div>
-                ))}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 px-2">
-                {Array.from({ length: 4 }, (_, i) => (
-                    <Skeleton key={i} className="h-20 w-full" />
-                ))}
-            </div>
-
-            <div className="px-2 space-y-2">
-                <Skeleton className="h-4 w-48" />
-                <Skeleton className="h-72 w-full" />
-            </div>
-
-            <div className="px-2 space-y-2">
-                <Skeleton className="h-4 w-44" />
-                <Skeleton className="h-56 w-full" />
             </div>
         </div>
     )
