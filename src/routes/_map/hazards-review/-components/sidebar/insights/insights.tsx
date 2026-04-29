@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import area from '@turf/area'
 import { bbox as turfBbox } from '@turf/bbox'
@@ -10,14 +10,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BackToMenuButton } from '@/components/ui/back-to-menu-button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useInsightsFilters } from './insights-filter-context'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
 const TYPE_NAME = 'hazards:hazards_displacement_contours_review'
 const SQM_TO_SQMI = 1 / 2_589_988.110336
 const CM_TO_FT = 0.0328084
-const TYPES = ['Cumulative', 'Yearly', 'Velocity', 'Annual amplitude'] as const
-type DisplacementType = typeof TYPES[number]
+import { DISPLACEMENT_TYPES as TYPES, type DisplacementType } from './insights-filter-context'
 
 // CA DWR-style 8-bin warm ramp on |rate| (ft/yr); upper-exclusive
 const RATE_BINS = [
@@ -70,10 +70,7 @@ export function Insights() {
         staleTime: 10 * 60 * 1000,
     })
 
-    const [year, setYear] = useState<string>('all')
-    const [basin, setBasin] = useState<string>('all')
-    const [selectedType, setSelectedType] = useState<DisplacementType>('Velocity')
-    const [thresholdFt, setThresholdFt] = useState<number>(0.1) // CA DWR convention
+    const { type: selectedType, year, basin, thresholdFt, setType: setSelectedType, setYear, setBasin, setThresholdFt } = useInsightsFilters()
     const thresholdCm = thresholdFt / CM_TO_FT
     const { map } = useMap()
 
@@ -191,7 +188,7 @@ export function Insights() {
             <div className="grid grid-cols-2 gap-3 px-2">
                 <div className="flex flex-col gap-1">
                     <Label className="text-xs">Type</Label>
-                    <Select value={selectedType} onValueChange={(v) => setSelectedType(v as DisplacementType)}>
+                    <Select disabled={isLoading} value={selectedType} onValueChange={(v) => setSelectedType(v as DisplacementType)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
@@ -200,7 +197,7 @@ export function Insights() {
                 </div>
                 <div className="flex flex-col gap-1">
                     <Label className="text-xs">Water Year</Label>
-                    <Select value={effectiveYear} onValueChange={setYear}>
+                    <Select disabled={isLoading} value={effectiveYear} onValueChange={setYear}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All years</SelectItem>
@@ -210,7 +207,7 @@ export function Insights() {
                 </div>
                 <div className="flex flex-col gap-1">
                     <Label className="text-xs">Basin</Label>
-                    <Select value={effectiveBasin} onValueChange={handleBasinChange}>
+                    <Select disabled={isLoading} value={effectiveBasin} onValueChange={handleBasinChange}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All basins</SelectItem>
@@ -224,6 +221,7 @@ export function Insights() {
                         type="number"
                         step="0.05"
                         min="0"
+                        disabled={isLoading}
                         value={thresholdFt}
                         onChange={(e) => setThresholdFt(Number(e.target.value) || 0)}
                     />

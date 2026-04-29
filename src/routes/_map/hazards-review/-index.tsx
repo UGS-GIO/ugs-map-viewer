@@ -23,6 +23,7 @@ import { LogOut, User } from 'lucide-react';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { useMapContextState } from '@/hooks/use-map-context-state';
 import { MapContext } from '@/context/map-context';
+import { InsightsFilterProvider, useInsightsFilters, buildDisplacementLayerFilters } from './-components/sidebar/insights/insights-filter-context';
 import { TourAutoStart } from '@/components/tour-auto-start';
 
 export default function Map() {
@@ -48,6 +49,7 @@ export default function Map() {
 
   return (
     <MapContext.Provider value={contextValue}>
+    <InsightsFilterProvider>
       <TourAutoStart route="hazards" />
       <div className="relative h-svh overflow-hidden bg-background">
         <AlertDialog open={showWelcomeDialog} onOpenChange={setShowWelcomeDialog}>
@@ -134,13 +136,20 @@ export default function Map() {
           </Layout.Header>
 
           <Layout.Body>
-            <GenericMapContainer />
+            <FilteredMapContainer />
           </Layout.Body>
 
           <Layout.Footer className={cn('hidden md:flex z-20')} dynamicContent={<MapFooter />} />
         </Layout>
       </main>
     </div>
+    </InsightsFilterProvider>
     </MapContext.Provider>
   )
+}
+
+function FilteredMapContainer() {
+  const filters = useInsightsFilters()
+  const layerFilters = buildDisplacementLayerFilters(filters)
+  return <GenericMapContainer layerFilters={layerFilters} />
 }
