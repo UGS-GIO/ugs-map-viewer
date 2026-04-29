@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import area from '@turf/area'
+import { bbox as turfBbox } from '@turf/bbox'
 import type { Feature, FeatureCollection, Polygon, MultiPolygon } from 'geojson'
+import { useMap } from '@/hooks/use-map'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
@@ -72,19 +74,49 @@ export function Insights() {
     const [selectedType, setSelectedType] = useState<DisplacementType>('Velocity')
     const [thresholdFt, setThresholdFt] = useState<number>(0.1) // CA DWR convention
     const thresholdCm = thresholdFt / CM_TO_FT
+    const { map } = useMap()
 
-    const years = useMemo(() => uniqueSorted(features.map(f => f.properties.year)), [features])
-    const basins = useMemo(() => uniqueSorted(features.map(f => f.properties.location)), [features])
+    function handleBasinChange(value: string) {
+        setBasin(value)
+        if (value === 'all' || !map) return
+        const matches = features.filter(f => f.properties.location === value)
+        if (matches.length === 0) return
+        const [minX, minY, maxX, maxY] = turfBbox({ type: 'FeatureCollection', features: matches })
+        map.fitBounds([[minX, minY], [maxX, maxY]], { padding: 60, maxZoom: 12, duration: 600 })
+    }
+
+    // Cross-filtered facets: each dropdown's options reflect the OTHER filters but exclude its own.
+    const years = useMemo(() => {
+        const matches = features.filter(f => {
+            if (f.properties.type !== selectedType) return false
+            if (basin !== 'all' && f.properties.location !== basin) return false
+            return true
+        })
+        return uniqueSorted(matches.map(f => f.properties.year))
+    }, [features, selectedType, basin])
+
+    const basins = useMemo(() => {
+        const matches = features.filter(f => {
+            if (f.properties.type !== selectedType) return false
+            if (year !== 'all' && f.properties.year !== year) return false
+            return true
+        })
+        return uniqueSorted(matches.map(f => f.properties.location))
+    }, [features, selectedType, year])
+
+    // Clamp stale selections against facet availability without storing the clamp.
+    const effectiveYear = year === 'all' || years.includes(year) ? year : 'all'
+    const effectiveBasin = basin === 'all' || basins.includes(basin) ? basin : 'all'
 
     const filtered = useMemo(() => {
         return features.filter(f => {
             const p = f.properties
             if (p.type !== selectedType) return false
-            if (year !== 'all' && p.year !== year) return false
-            if (basin !== 'all' && p.location !== basin) return false
+            if (effectiveYear !== 'all' && p.year !== effectiveYear) return false
+            if (effectiveBasin !== 'all' && p.location !== effectiveBasin) return false
             return true
         })
-    }, [features, selectedType, year, basin])
+    }, [features, selectedType, effectiveYear, effectiveBasin])
 
     const overThreshold = useMemo(
         () => filtered.filter(f => Math.abs(f.properties.value_cm) >= thresholdCm),
@@ -114,13 +146,16 @@ export function Insights() {
     }, [filtered])
 
     // Stacked bar: sq mi per year × rate-bin. Ignores year filter so users see full timeseries.
+    // Threshold filters out features below the floor and clips bins entirely below it.
+    const visibleBins = useMemo(() => RATE_BINS.filter(b => b.max > thresholdFt), [thresholdFt])
     const stackedAreaByYear = useMemo(() => {
         const yearToBins = new Map<string, Record<string, number>>()
         for (const f of features) {
             if (f.properties.type !== selectedType) continue
-            if (basin !== 'all' && f.properties.location !== basin) continue
+            if (effectiveBasin !== 'all' && f.properties.location !== effectiveBasin) continue
             const ft = Math.abs(f.properties.value_cm) * CM_TO_FT
-            const bin = RATE_BINS.find(b => ft >= b.min && ft < b.max)
+            if (ft < thresholdFt) continue
+            const bin = visibleBins.find(b => ft >= b.min && ft < b.max)
             if (!bin) continue
             const y = f.properties.year
             if (!yearToBins.has(y)) yearToBins.set(y, {})
@@ -130,7 +165,7 @@ export function Insights() {
         }
         return Array.from(yearToBins, ([year, bins]) => ({ year, ...bins }))
             .sort((a, b) => a.year.localeCompare(b.year))
-    }, [features, selectedType, basin])
+    }, [features, selectedType, effectiveBasin, thresholdFt, visibleBins])
 
     const topBasins = useMemo(() => {
         const grouped = new Map<string, number>()
@@ -140,9 +175,10 @@ export function Insights() {
             if (v > cur) grouped.set(f.properties.location, v)
         }
         return Array.from(grouped, ([loc, max]) => ({ location: loc, max: Number((max * CM_TO_FT).toFixed(3)) }))
+            .filter(b => b.max >= thresholdFt)
             .sort((a, b) => b.max - a.max)
             .slice(0, 10)
-    }, [filtered])
+    }, [filtered, thresholdFt])
 
     if (isLoading) return <div className="p-4 text-sm text-muted-foreground">Loading insights…</div>
     if (isError) return <div className="p-4 text-sm text-destructive">Failed to load displacement data.</div>
@@ -164,7 +200,7 @@ export function Insights() {
                 </div>
                 <div className="flex flex-col gap-1">
                     <Label className="text-xs">Water Year</Label>
-                    <Select value={year} onValueChange={setYear}>
+                    <Select value={effectiveYear} onValueChange={setYear}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All years</SelectItem>
@@ -174,7 +210,7 @@ export function Insights() {
                 </div>
                 <div className="flex flex-col gap-1">
                     <Label className="text-xs">Basin</Label>
-                    <Select value={basin} onValueChange={setBasin}>
+                    <Select value={effectiveBasin} onValueChange={handleBasinChange}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All basins</SelectItem>
@@ -216,7 +252,7 @@ export function Insights() {
                                 cursor={{ fill: 'currentColor', fillOpacity: 0.05 }}
                             />
                             <Legend wrapperStyle={{ fontSize: 11, color: 'currentColor' }} />
-                            {RATE_BINS.map(bin => (
+                            {visibleBins.map(bin => (
                                 <Bar key={bin.key} dataKey={bin.key} stackId="rate" fill={bin.color} />
                             ))}
                         </BarChart>
