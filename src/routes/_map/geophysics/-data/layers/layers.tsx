@@ -3,6 +3,26 @@ import { ArcGISMapServerLayerProps, LayerProps, WMSLayerProps } from "@/lib/type
 import { GeoJsonProperties } from "geojson";
 import { toTitleCase, toSentenceCase } from "@/lib/utils";
 
+// Private to this file — won't affect other map projects
+function formatDateField(value: string | null | undefined): string {
+    if (!value) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+    const ddmmyy = value.match(/^(\d{2})-(\d{2})-(\d{2})$/);
+    if (ddmmyy) {
+        const [, dd, mm, yy] = ddmmyy;
+        const fullYear = parseInt(yy) <= 30 ? `20${yy}` : `19${yy}`;
+        return `${fullYear}-${mm}-${dd}`;
+    }
+    const ddmmyyyy = value.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if (ddmmyyyy) {
+        const [, dd, mm, yyyy] = ddmmyyyy;
+        return `${yyyy}-${mm}-${dd}`;
+    }
+    const parsed = new Date(value);
+    if (!isNaN(parsed.getTime())) return parsed.toISOString().split('T')[0];
+    return value;
+}
+
 // Roads WMS Layer
 const roadsLayerName = 'ccus_majorroads';
 const roadsWMSTitle = 'Major Roads';
@@ -317,7 +337,7 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                         return `${utmStart} - ${utmEnd}`;
                     }
                 },
-                'Date': { field: 'date', type: 'date' },
+                'Date': { field: 'custom', type: 'custom', transform: (props) => formatDateField(props?.['date']) },
                 'Reference': { field: 'reference', type: 'string' },
                 'PH': { field: 'ph', type: 'string' },
                 'Conductivity (microsiemens)': { field: 'cond', type: 'string' },
@@ -590,7 +610,7 @@ const geothermalTEMLayerConfig: WMSLayerProps = {
                     }
                 },
                 'Site Name': { field: 'station', type: 'string' },
-                'Date': { field: 'date', type: 'date' },
+                'Date': { field: 'custom', type: 'custom', transform: (props) => formatDateField(props?.['date']) },
                 'Archive Link': { field: 'archivelink', type: 'string' },
             },
         },
