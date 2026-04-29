@@ -299,9 +299,6 @@ function InsightsSkeleton() {
         <div className="flex flex-col gap-4 p-2">
             <BackToMenuButton />
             <h2 className="text-lg font-semibold px-2">Insights — Land Subsidence</h2>
-            <p className="text-xs text-muted-foreground px-2">
-                Loading displacement features… large payload over WFS today; pending move to a pre-aggregated endpoint.
-            </p>
 
             <div className="grid grid-cols-2 gap-3 px-2">
                 {Array.from({ length: 4 }, (_, i) => (
