@@ -903,29 +903,40 @@ const hazardsAquifersDilineationReviewConfig: WMSLayerProps = {
     ],
 }
 
-// hazards_displacement_contours_review
-const hazardsDisplacementContoursReviewConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Displacement Contours (Source: Utah Geological Survey): Review',
-    visible: true,
-    sublayers: [
-        {
-            name: `${HAZARDS_WORKSPACE}:hazards_displacement_contours_review`,
-            popupEnabled: true,
-            queryable: true,
-            popupFields: {
-                'Location': { field: 'location', type: 'string' },
-                'Type': { field: 'type', type: 'string' },
-                'Year': { field: 'year', type: 'string' },
-                'Period Start': { field: 'start_date', type: 'string' },
-                'Displacement (cm)': { field: 'value_cm', type: 'number' },
-                'Displacement (in)': { field: 'value_inch', type: 'number' },
-                'HUC': { field: 'huc', type: 'string' },
-            }
-        },
-    ],
+// hazards_displacement_contours_review (split by `type` into 4 sub-layers)
+const DISPLACEMENT_CONTOURS_REVIEW_LAYER = `${HAZARDS_WORKSPACE}:hazards_displacement_contours_review`;
+const displacementReviewPopupFields = {
+    'Location': { field: 'location', type: 'string' },
+    'Type': { field: 'type', type: 'string' },
+    'Year': { field: 'year', type: 'string' },
+    'Period Start': { field: 'start_date', type: 'string' },
+    'Displacement (cm)': { field: 'value_cm', type: 'number' },
+    'Displacement (in)': { field: 'value_inch', type: 'number' },
+    'HUC': { field: 'huc', type: 'string' },
+} as const;
+
+function makeDisplacementContoursReviewConfig(title: string, typeValue: string): WMSLayerProps {
+    return {
+        type: 'wms',
+        url: `${PROD_GEOSERVER_URL}/wms`,
+        title,
+        visible: true,
+        customLayerParameters: { cql_filter: `type='${typeValue}' AND ${IS_REVIEW_CQL}` },
+        sublayers: [
+            {
+                name: DISPLACEMENT_CONTOURS_REVIEW_LAYER,
+                popupEnabled: true,
+                queryable: true,
+                popupFields: displacementReviewPopupFields,
+            },
+        ],
+    };
 }
+
+const hazardsDisplacementCumulativeReviewConfig = makeDisplacementContoursReviewConfig('Displacement Contours - Cumulative: Review', 'Cumulative');
+const hazardsDisplacementYearlyReviewConfig = makeDisplacementContoursReviewConfig('Displacement Contours - Yearly: Review', 'Yearly');
+const hazardsDisplacementVelocityReviewConfig = makeDisplacementContoursReviewConfig('Displacement Contours - Velocity: Review', 'Velocity');
+const hazardsDisplacementAnnualAmplitudeReviewConfig = makeDisplacementContoursReviewConfig('Displacement Contours - Annual Amplitude: Review', 'Annual amplitude');
 
 
 const studyAreasLayerName = 'studyareas_review';
@@ -1009,7 +1020,15 @@ const extraLayersConfig: LayerProps = {
         title: 'Land Subsidence',
         visible: false,
         alwaysShowInReview: true,
-        layers: [earthFissureWMSConfig, hazardsAquifersCombinedReviewConfig, hazardsAquifersDilineationReviewConfig, hazardsDisplacementContoursReviewConfig],
+        layers: [
+            earthFissureWMSConfig,
+            hazardsAquifersCombinedReviewConfig,
+            hazardsAquifersDilineationReviewConfig,
+            hazardsDisplacementCumulativeReviewConfig,
+            hazardsDisplacementYearlyReviewConfig,
+            hazardsDisplacementVelocityReviewConfig,
+            hazardsDisplacementAnnualAmplitudeReviewConfig,
+        ],
 };
 
 const layersConfig: LayerProps[] = [
@@ -1048,7 +1067,10 @@ export const karstFeaturesReviewConfig: WMSLayerProps = { ...karstFeaturesWMSCon
 export const studyAreasReviewConfig: WMSLayerProps = { ...studyAreasWMSConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
 export const hazardsAquifersCombinedReview: WMSLayerProps = { ...hazardsAquifersCombinedReviewConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
 export const hazardsAquifersDilineationReview: WMSLayerProps = { ...hazardsAquifersDilineationReviewConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
-export const hazardsDisplacementContoursReview: WMSLayerProps = { ...hazardsDisplacementContoursReviewConfig, customLayerParameters: { cql_filter: IS_REVIEW_CQL } };
+export const hazardsDisplacementCumulativeReview = hazardsDisplacementCumulativeReviewConfig;
+export const hazardsDisplacementYearlyReview = hazardsDisplacementYearlyReviewConfig;
+export const hazardsDisplacementVelocityReview = hazardsDisplacementVelocityReviewConfig;
+export const hazardsDisplacementAnnualAmplitudeReview = hazardsDisplacementAnnualAmplitudeReviewConfig;
 
 // --- New "Review" Groupings Using the Filtered Layers ---
 export const floodHazardsReviewConfig: LayerProps = { ...floodHazardsConfig, layers: [shallowGroundwaterReviewConfig, erosionHazardZoneReviewConfig, alluvialFanReviewConfig] };
@@ -1061,7 +1083,10 @@ export const extraLayersReviewConfig: LayerProps = {
         earthFissureReviewConfig,
         hazardsAquifersCombinedReview,
         hazardsAquifersDilineationReview,
-        hazardsDisplacementContoursReview
+        hazardsDisplacementCumulativeReview,
+        hazardsDisplacementYearlyReview,
+        hazardsDisplacementVelocityReview,
+        hazardsDisplacementAnnualAmplitudeReview,
     ]
 };
 // --- New, Separate Config Array for Review Layers ---

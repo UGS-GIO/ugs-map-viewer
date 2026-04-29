@@ -993,35 +993,54 @@ const aquiferDelineationConfig: WMSLayerProps = {
     ],
 };
 
-const displacementContoursConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Displacement Contours (Source: Utah Geological Survey): Review',
-    visible: true,
-    sublayers: [
-        {
-            name: `${HAZARDS_WORKSPACE}:hazards_displacement_contours_review`,
-            popupEnabled: true,
-            queryable: true,
-            popupFields: {
-                'Location': { field: 'location', type: 'string' },
-                'Type': { field: 'type', type: 'string' },
-                'Year': { field: 'year', type: 'string' },
-                'Period': { field: 'start_date', type: 'string' },
-                'Displacement (cm)': { field: 'value_cm', type: 'number' },
-                'Displacement (in)': { field: 'value_inch', type: 'number' },
-                'HUC': { field: 'huc', type: 'string' },
-            }
-        },
-    ],
-};
+const DISPLACEMENT_CONTOURS_LAYER = `${HAZARDS_WORKSPACE}:hazards_displacement_contours_review`;
+const displacementPopupFields = {
+    'Location': { field: 'location', type: 'string' },
+    'Type': { field: 'type', type: 'string' },
+    'Year': { field: 'year', type: 'string' },
+    'Period': { field: 'start_date', type: 'string' },
+    'Displacement (cm)': { field: 'value_cm', type: 'number' },
+    'Displacement (in)': { field: 'value_inch', type: 'number' },
+    'HUC': { field: 'huc', type: 'string' },
+} as const;
+
+function makeDisplacementContoursConfig(title: string, typeValue: string): WMSLayerProps {
+    return {
+        type: 'wms',
+        url: `${PROD_GEOSERVER_URL}/wms`,
+        title,
+        visible: true,
+        customLayerParameters: { cql_filter: `type='${typeValue}'` },
+        sublayers: [
+            {
+                name: DISPLACEMENT_CONTOURS_LAYER,
+                popupEnabled: true,
+                queryable: true,
+                popupFields: displacementPopupFields,
+            },
+        ],
+    };
+}
+
+const displacementCumulativeConfig = makeDisplacementContoursConfig('Displacement Contours - Cumulative', 'Cumulative');
+const displacementYearlyConfig = makeDisplacementContoursConfig('Displacement Contours - Yearly', 'Yearly');
+const displacementVelocityConfig = makeDisplacementContoursConfig('Displacement Contours - Velocity', 'Velocity');
+const displacementAnnualAmplitudeConfig = makeDisplacementContoursConfig('Displacement Contours - Annual Amplitude', 'Annual amplitude');
 
 const extraLayersConfig: LayerProps = {
     type: 'group',
     title: 'Land Subsidence',
     visible: false,
     alwaysShowInReview: true,
-    layers: [earthFissureWMSConfig, aquifersCombinedConfig, aquiferDelineationConfig, displacementContoursConfig],
+    layers: [
+        earthFissureWMSConfig,
+        aquifersCombinedConfig,
+        aquiferDelineationConfig,
+        displacementCumulativeConfig,
+        displacementYearlyConfig,
+        displacementVelocityConfig,
+        displacementAnnualAmplitudeConfig,
+    ],
 };
 
 const layersConfig: LayerProps[] = [
