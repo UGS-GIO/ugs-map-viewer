@@ -261,7 +261,7 @@ export function Stats() {
                     {visibleBins.map(bin => (
                         <div key={bin.key} className="flex items-center gap-1.5">
                             <span
-                                className="inline-block h-3 w-3 rounded-sm border border-border"
+                                className="inline-block h-3.5 w-3.5 ring-1 ring-foreground/40"
                                 style={{ background: bin.color }}
                                 aria-hidden
                             />
@@ -285,7 +285,7 @@ export function Stats() {
                             return (
                                 <div key={b.location} className="grid grid-cols-[5.5rem_1fr_4.5rem] items-center gap-2 text-xs">
                                     <span className="truncate" title={b.location}>{b.location}</span>
-                                    <div className="h-3 bg-muted overflow-hidden border border-border">
+                                    <div className="h-3 bg-muted overflow-hidden ring-1 ring-foreground/40">
                                         <div className="h-full" style={{ width: `${pct}%`, background: color }} />
                                     </div>
                                     <span className="text-right tabular-nums text-muted-foreground">{b.max} ft/yr</span>
