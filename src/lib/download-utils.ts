@@ -1,6 +1,43 @@
 import { stringify as geojsonToWKT } from 'wellknown'
+import { zipSync, strToU8 } from 'fflate'
 
 export { geojsonToWKT }
+
+/**
+ * Build CSV string from rows + headers without triggering a download.
+ * Use when bundling multiple CSVs into a zip.
+ */
+export function buildCSV<T>(
+  data: T[],
+  headers: string[],
+  getValue: (row: T, key: string) => unknown,
+): string {
+  return [
+    headers.join(','),
+    ...data.map((row) =>
+      headers
+        .map((h) => {
+          const val = getValue(row, h)
+          if (val == null) return ''
+          const str = typeof val === 'object' ? JSON.stringify(val) : String(val)
+          if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return `"${str.replace(/"/g, '""')}"`
+          }
+          return str
+        })
+        .join(',')
+    ),
+  ].join('\n')
+}
+
+function triggerDownload(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
 
 /**
  * Download data as CSV file
@@ -11,32 +48,33 @@ export function downloadCSV<T>(
   headers: string[],
   getValue: (row: T, key: string) => unknown
 ) {
-  const csv = [
-    headers.join(','),
-    ...data.map((row) =>
-      headers
-        .map((h) => {
-          const val = getValue(row, h)
-          if (val == null) return ''
-          // Handle objects/arrays by converting to JSON to avoid [object Object]
-          const str = typeof val === 'object' ? JSON.stringify(val) : String(val)
-          // Escape quotes and wrap in quotes if contains comma/quote/newline
-          if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-            return `"${str.replace(/"/g, '""')}"`
-          }
-          return str
-        })
-        .join(',')
-    ),
-  ].join('\n')
+  downloadCsvString(buildCSV(data, headers, getValue), filename)
+}
 
+/**
+ * Trigger a CSV download from a pre-built string. Use when the CSV is built
+ * elsewhere (e.g., via buildCSV when bundling into a zip but bailing on bundle).
+ */
+export function downloadCsvString(csv: string, filename: string): void {
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename.endsWith('.csv') ? filename : `${filename}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
+  triggerDownload(blob, filename.endsWith('.csv') ? filename : `${filename}.csv`)
+}
+
+/**
+ * Download a set of named files bundled into a single zip.
+ * Files are entries keyed by name (e.g., 'main.csv', 'related-wells.csv').
+ */
+export function downloadZip(files: Record<string, string>, filename: string): void {
+  const entries: Record<string, Uint8Array> = {}
+  for (const [name, content] of Object.entries(files)) {
+    entries[name] = strToU8(content)
+  }
+  const zipped = zipSync(entries)
+  // Copy into a fresh ArrayBuffer to satisfy the Blob constructor's BlobPart typing
+  // (some TS configs reject Uint8Array<ArrayBufferLike> directly).
+  const buf = new Uint8Array(zipped).buffer
+  const blob = new Blob([buf], { type: 'application/zip' })
+  triggerDownload(blob, filename.endsWith('.zip') ? filename : `${filename}.zip`)
 }
 
 /**

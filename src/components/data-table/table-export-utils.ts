@@ -1,144 +1,199 @@
 import { isValidElement } from 'react';
-import type { RelatedTable } from '@/lib/types/mapping-types';
+import type { RelatedTable, FieldConfig } from '@/lib/types/mapping-types';
 import type { RelatedDataMap } from '@/hooks/use-bulk-related-table';
-import { downloadCSV, downloadGeoJSON, geojsonToWKT } from '@/lib/download-utils';
+import { buildCSV, downloadCsvString, downloadGeoJSON, downloadZip, geojsonToWKT } from '@/lib/download-utils';
 import { formatFieldValue } from '@/lib/field-formatting';
 import { formatNumeric } from '@/lib/utils';
 import type { RowData, ColumnConfig } from './types';
 
-interface ExportRow {
-    feature: RowData;
-    relatedRecord: Record<string, unknown> | null;
-    relatedTableIndex: number | null;
+interface MainColumn {
+    field: string;
+    label: string;
+    fieldConfig?: FieldConfig;
 }
 
 export interface TableExportParams {
     format: 'csv' | 'geojson';
     dataToExport: RowData[];
     layerTitle: string;
-    visibleConfigs: ColumnConfig[];
+    columnConfigs: ColumnConfig[];
     relatedTables: RelatedTable[];
     relatedDataMaps: RelatedDataMap[];
+    /** When false, related table data is dropped — single CSV with main features only. */
+    includeRelated: boolean;
+}
+
+function safeName(s: string): string {
+    return s.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'related';
+}
+
+// Union of all property keys across rows, merged with configured labels/formatting.
+// Configured (popupField) columns come first in their declared order; remaining raw
+// property keys are appended alphabetically. Internal/_-prefixed keys are dropped.
+function buildMainColumns(data: RowData[], columnConfigs: ColumnConfig[]): MainColumn[] {
+    const cols: MainColumn[] = [];
+    const seen = new Set<string>();
+
+    for (const cfg of columnConfigs) {
+        if (cfg.fieldConfig?.type === 'custom') continue;
+        if (seen.has(cfg.field)) continue;
+        seen.add(cfg.field);
+        cols.push({ field: cfg.field, label: cfg.label, fieldConfig: cfg.fieldConfig });
+    }
+
+    const extras: string[] = [];
+    for (const row of data) {
+        for (const key of Object.keys(row.properties)) {
+            if (seen.has(key)) continue;
+            if (key === 'geometry' || key === 'bbox' || key.startsWith('_')) continue;
+            seen.add(key);
+            extras.push(key);
+        }
+    }
+    extras.sort();
+    for (const key of extras) {
+        cols.push({ field: key, label: key });
+    }
+
+    return cols;
 }
 
 export function exportTableData({
     format,
     dataToExport,
     layerTitle,
-    visibleConfigs,
+    columnConfigs,
     relatedTables,
     relatedDataMaps,
+    includeRelated,
 }: TableExportParams): void {
     const timestamp = new Date().toISOString().split('T')[0];
     const layerName = (layerTitle || 'export').replace(/\s+/g, '-').toLowerCase();
     const filename = `${layerName}-${timestamp}`;
+    const mainColumns = buildMainColumns(dataToExport, columnConfigs);
+    const effectiveRelated = includeRelated ? relatedTables : [];
+    const effectiveDataMaps = includeRelated ? relatedDataMaps : [];
 
     if (format === 'csv') {
-        exportAsCSV(dataToExport, filename, visibleConfigs, relatedTables, relatedDataMaps);
+        exportAsCSV(dataToExport, filename, mainColumns, effectiveRelated, effectiveDataMaps);
     } else {
-        exportAsGeoJSON(dataToExport, filename, visibleConfigs);
+        exportAsGeoJSON(dataToExport, filename, mainColumns, effectiveRelated, effectiveDataMaps);
     }
+}
+
+const FEATURE_KEY_HEADER = '_feature_key';
+
+function buildMainCsv(dataToExport: RowData[], mainColumns: MainColumn[], relatedTables: RelatedTable[]): string {
+    const headers = [...mainColumns.map(c => c.label), 'geometry'];
+    // Append a feature_key column when related tables exist so per-table CSVs can join back.
+    if (relatedTables.length > 0) headers.push(FEATURE_KEY_HEADER);
+
+    return buildCSV(dataToExport, headers, (row, header) => {
+        if (header === 'geometry') {
+            return geojsonToWKT(row.feature.geometry as Parameters<typeof geojsonToWKT>[0]) || '';
+        }
+        if (header === FEATURE_KEY_HEADER) {
+            return featureKey(row, relatedTables);
+        }
+        const col = mainColumns.find(c => c.label === header);
+        if (!col) return '';
+        const rawValue = row.properties[col.field];
+        if (col.fieldConfig) return formatFieldValue(col.fieldConfig, rawValue, row.properties);
+        return rawValue ?? '';
+    });
+}
+
+function buildRelatedCsv(
+    dataToExport: RowData[],
+    table: RelatedTable,
+    dataMap: RelatedDataMap | undefined,
+): string {
+    const displayFields = table.displayFields || [];
+    const headers = [FEATURE_KEY_HEADER, ...displayFields.map(df => df.label || df.field)];
+
+    const rows: { key: string; record: Record<string, unknown> }[] = [];
+    for (const row of dataToExport) {
+        const targetValue = String(row.properties[table.targetField] ?? '');
+        const records = dataMap?.get(targetValue) || [];
+        const key = String(row.properties[table.targetField] ?? row.feature.id ?? '');
+        for (const record of records) {
+            rows.push({ key, record });
+        }
+    }
+
+    return buildCSV(rows, headers, (row, header) => {
+        if (header === FEATURE_KEY_HEADER) return row.key;
+        const df = displayFields.find(d => (d.label || d.field) === header);
+        if (!df) return '';
+        const raw = row.record[df.field];
+        const formatted = formatNumeric(raw, df.format);
+        if (df.transform) {
+            const result = df.transform(formatted);
+            if (isValidElement(result)) {
+                const props = result.props as { to?: string; href?: string };
+                return props.to || props.href || formatted;
+            }
+            return result;
+        }
+        return formatted;
+    });
+}
+
+/**
+ * Pick a stable key per feature so per-table CSVs can rejoin to main.
+ * Prefers the targetField of the first related table (since that's what the
+ * related tables themselves index by). Falls back to feature id.
+ */
+function featureKey(row: RowData, relatedTables: RelatedTable[]): string {
+    const target = relatedTables[0]?.targetField;
+    if (target && row.properties[target] != null) return String(row.properties[target]);
+    return String(row.feature.id ?? '');
 }
 
 function exportAsCSV(
     dataToExport: RowData[],
     filename: string,
-    visibleConfigs: ColumnConfig[],
+    mainColumns: MainColumn[],
     relatedTables: RelatedTable[],
     relatedDataMaps: RelatedDataMap[],
 ): void {
-    // Build headers: visible columns + related table columns + geometry
-    const mainHeaders = visibleConfigs.map(c => c.label);
-    const relatedHeaders: string[] = [];
+    const mainCsv = buildMainCsv(dataToExport, mainColumns, relatedTables);
 
-    relatedTables.forEach((table) => {
-        const prefix = `${table.fieldLabel || 'Related'}: `;
-        table.displayFields?.forEach(df => {
-            relatedHeaders.push(`${prefix}${df.label || df.field}`);
-        });
-    });
-
-    const allHeaders = [...mainHeaders, ...relatedHeaders, 'geometry'];
-
-    // Build denormalized rows: one row per related record (or one row if no related data)
-    const expandedRows: ExportRow[] = [];
-
-    for (const row of dataToExport) {
-        const allRelatedRecords: { record: Record<string, unknown>; tableIndex: number }[] = [];
-
-        relatedTables.forEach((table, tableIndex) => {
-            const targetValue = String(row.properties[table.targetField] ?? '');
-            const dataMap = relatedDataMaps[tableIndex];
-            const records = dataMap?.get(targetValue) || [];
-            records.forEach(record => {
-                allRelatedRecords.push({ record, tableIndex });
-            });
-        });
-
-        if (allRelatedRecords.length === 0) {
-            expandedRows.push({ feature: row, relatedRecord: null, relatedTableIndex: null });
-        } else {
-            for (const { record, tableIndex } of allRelatedRecords) {
-                expandedRows.push({ feature: row, relatedRecord: record, relatedTableIndex: tableIndex });
-            }
-        }
+    if (relatedTables.length === 0) {
+        downloadCsvString(mainCsv, filename);
+        return;
     }
 
-    downloadCSV(expandedRows, filename, allHeaders, (exportRow, header) => {
-        const { feature: row, relatedRecord, relatedTableIndex } = exportRow;
-
-        if (header === 'geometry') {
-            return geojsonToWKT(row.feature.geometry as Parameters<typeof geojsonToWKT>[0]) || '';
-        }
-
-        // Check main columns
-        const config = visibleConfigs.find(c => c.label === header);
-        if (config) {
-            const rawValue = row.properties[config.field];
-            return formatFieldValue(config.fieldConfig, rawValue, row.properties);
-        }
-
-        // Check related tables
-        for (let tableIndex = 0; tableIndex < relatedTables.length; tableIndex++) {
-            const table = relatedTables[tableIndex];
-            const prefix = `${table.fieldLabel || 'Related'}: `;
-
-            const displayField = table.displayFields?.find(
-                df => `${prefix}${df.label || df.field}` === header
-            );
-
-            if (displayField) {
-                if (relatedRecord && relatedTableIndex === tableIndex) {
-                    const raw = relatedRecord[displayField.field];
-                    const formatted = formatNumeric(raw, displayField.format);
-                    if (displayField.transform) {
-                        const result = displayField.transform(formatted);
-                        if (isValidElement(result)) {
-                            const props = result.props as { to?: string; href?: string };
-                            return props.to || props.href || formatted;
-                        }
-                        return result;
-                    }
-                    return formatted;
-                }
-                return '';
-            }
-        }
-
-        return '';
+    const files: Record<string, string> = { 'main.csv': mainCsv };
+    relatedTables.forEach((table, idx) => {
+        const name = safeName(table.fieldLabel || `table-${idx + 1}`);
+        files[`related-${name}.csv`] = buildRelatedCsv(dataToExport, table, relatedDataMaps[idx]);
     });
+    downloadZip(files, filename);
 }
 
 function exportAsGeoJSON(
     dataToExport: RowData[],
     filename: string,
-    visibleConfigs: ColumnConfig[],
+    mainColumns: MainColumn[],
+    relatedTables: RelatedTable[],
+    relatedDataMaps: RelatedDataMap[],
 ): void {
-    const visibleFields = new Set(visibleConfigs.map(c => c.field));
+    const includedFields = new Set(mainColumns.map(c => c.field));
     const geoData = dataToExport.map(row => {
         const filtered: Record<string, unknown> = {};
-        for (const field of visibleFields) {
+        for (const field of includedFields) {
             if (field in row.properties) filtered[field] = row.properties[field];
+        }
+        if (relatedTables.length > 0) {
+            const related: Record<string, Record<string, unknown>[]> = {};
+            relatedTables.forEach((table, idx) => {
+                const targetValue = String(row.properties[table.targetField] ?? '');
+                const records = relatedDataMaps[idx]?.get(targetValue) || [];
+                const key = table.fieldLabel || `table-${idx + 1}`;
+                related[key] = records;
+            });
+            filtered.related = related;
         }
         filtered.geometry = row.feature.geometry;
         return filtered;

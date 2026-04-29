@@ -27,6 +27,7 @@ import { useFeatureQuery } from '@/hooks/use-feature-query'
 import type { ClickedFeature, DataMapProps } from './types'
 import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
+import { toast } from 'sonner'
 
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps } from './types'
@@ -297,15 +298,21 @@ export default function DataMap({
   // Ref to store WFS features from polygon query (populated before WMS query completes)
   const polygonWfsLayerFeaturesRef = useRef<WfsLayerFeature[]>([])
 
-  // Feature query mutations
+  const notifyTruncated = useCallback(() => {
+    toast.warning('Result limit reached', {
+      description: 'Showing first 10,000 features. Narrow your selection for the rest.',
+      duration: 8000,
+    })
+  }, [])
+
   const { clickQuery, boxSelectQuery, polygonQuery, isLoading: queryLoading } = useFeatureQuery({
-    onPolygonQuerySuccess: (wmsFeatures) => {
-      // Merge WMS results with pre-queried WFS features
+    onPolygonQuerySuccess: ({ features: wmsFeatures, truncated }) => {
       const allFeatures = [...wmsFeatures, ...polygonWfsLayerFeaturesRef.current]
-      polygonWfsLayerFeaturesRef.current = [] // Clear for next query
+      polygonWfsLayerFeaturesRef.current = []
       if (onFeatureClick && allFeatures.length > 0) {
         onFeatureClick(allFeatures, { additive: false })
       }
+      if (truncated) notifyTruncated()
     },
   })
 
@@ -556,8 +563,9 @@ export default function DataMap({
         layerFilters,
       },
       {
-        onSuccess: (wmsFeatures) => {
+        onSuccess: ({ features: wmsFeatures, truncated }) => {
           dispatchFeatures([...wmsFeatures, ...wfsFeatures], isAdditiveMode)
+          if (truncated) notifyTruncated()
         },
       }
     )
