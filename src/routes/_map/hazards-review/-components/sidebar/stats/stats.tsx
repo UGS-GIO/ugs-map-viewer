@@ -10,14 +10,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BackToMenuButton } from '@/components/ui/back-to-menu-button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useInsightsFilters } from './insights-filter-context'
+import { useStatsFilters } from './stats-filter-context'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
 const TYPE_NAME = 'hazards:hazards_displacement_contours_review'
 const SQM_TO_SQMI = 1 / 2_589_988.110336
 const CM_TO_FT = 0.0328084
-import { DISPLACEMENT_TYPES as TYPES, type DisplacementType } from './insights-filter-context'
+import { DISPLACEMENT_TYPES as TYPES, type DisplacementType } from './stats-filter-context'
 
 // CA DWR-style 8-bin warm ramp on |rate| (ft/yr); upper-exclusive
 const RATE_BINS = [
@@ -63,14 +63,14 @@ function uniqueSorted<T>(values: T[]): T[] {
     return Array.from(new Set(values)).sort()
 }
 
-export function Insights() {
+export function Stats() {
     const { data: features = [], isLoading, isError } = useQuery({
-        queryKey: ['insights', 'displacement-contours-review'],
+        queryKey: ['stats', 'displacement-contours-review'],
         queryFn: fetchAllDisplacement,
         staleTime: 10 * 60 * 1000,
     })
 
-    const { type: selectedType, year, basin, thresholdFt, setType: setSelectedType, setYear, setBasin, setThresholdFt } = useInsightsFilters()
+    const { type: selectedType, year, basin, thresholdFt, setType: setSelectedType, setYear, setBasin, setThresholdFt } = useStatsFilters()
     const thresholdCm = thresholdFt / CM_TO_FT
     const { map } = useMap()
 
@@ -183,7 +183,7 @@ export function Insights() {
     return (
         <div className="flex flex-col gap-4 p-2 max-h-[calc(100vh-100px)] overflow-y-auto">
             <BackToMenuButton />
-            <h2 className="text-lg font-semibold px-2">Insights — Land Subsidence</h2>
+            <h2 className="text-lg font-semibold px-2">Land Subsidence Stats</h2>
 
             <div className="grid grid-cols-2 gap-3 px-2">
                 <div className="flex flex-col gap-1">

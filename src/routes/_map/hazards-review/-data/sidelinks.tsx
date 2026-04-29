@@ -2,7 +2,7 @@ import { House, Info as InfoIcon, Layers as LayersIcon, Settings, BarChart3 } fr
 import Info from '@/components/sidebar/info'
 import MapConfigurations from '../-components/sidebar/map-configurations/map-configurations'
 import { LayersWithReview } from '../-components/sidebar/layers/layers-with-review'
-import { Insights } from '../-components/sidebar/insights/insights'
+import { Stats } from '../-components/sidebar/stats/stats'
 export interface NavLink {
   title: string
   label?: string
@@ -36,10 +36,10 @@ export const sidelinks: SideLink[] = [
     component: LayersWithReview, // Direct component reference
   },
   {
-    title: 'Insights',
+    title: 'Stats',
     label: '',
     icon: <BarChart3 className='stroke-foreground' />,
-    component: Insights,
+    component: Stats,
   },
   {
     title: 'Map Configurations',
