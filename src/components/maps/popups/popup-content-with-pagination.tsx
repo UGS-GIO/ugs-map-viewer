@@ -1,6 +1,7 @@
 import { useMemo, useState, memo, useCallback, useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Shrink, ChevronLeft, ChevronRight } from "lucide-react"
+import { Shrink } from "lucide-react"
+import { Pager } from "@/components/ui/pager"
 import { PopupContentDisplay } from "@/components/maps/popups/popup-content-display"
 import { useGetPopupButtons } from "@/hooks/use-get-popup-buttons"
 import { useZoomToFeature } from "@/hooks/use-zoom-to-feature"
@@ -91,38 +92,17 @@ const PaginatedFeatureList = memo(({
     const start = safePage * POPUP_PAGE_SIZE
     const end = Math.min(start + POPUP_PAGE_SIZE, total)
     const slice = useMemo(() => layer.features.slice(start, end), [layer.features, start, end])
-    const showPager = total > POPUP_PAGE_SIZE
 
     return (
         <>
-            {showPager && (
-                <div className="flex items-center justify-between text-xs text-muted-foreground px-1 pb-1">
-                    <span>{start + 1}–{end} of {total}</span>
-                    <div className="flex items-center gap-1">
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            disabled={safePage === 0}
-                            onClick={() => setPage(p => Math.max(0, p - 1))}
-                            aria-label="Previous page"
-                        >
-                            <ChevronLeft className="h-4 w-4" />
-                        </Button>
-                        <span>{safePage + 1}/{totalPages}</span>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0"
-                            disabled={safePage >= totalPages - 1}
-                            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-                            aria-label="Next page"
-                        >
-                            <ChevronRight className="h-4 w-4" />
-                        </Button>
-                    </div>
-                </div>
-            )}
+            <Pager
+                page={safePage}
+                totalPages={totalPages}
+                total={total}
+                pageSize={POPUP_PAGE_SIZE}
+                onPageChange={setPage}
+                className="pb-1"
+            />
             {slice.map((feature, idx) => (
                 <FeatureCard
                     key={`${feature.id ?? start + idx}`}
