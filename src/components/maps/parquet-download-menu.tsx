@@ -9,7 +9,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useMutation } from '@tanstack/react-query';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { useParquetSchema } from '@/hooks/use-parquet-schema';
 import { EXPORT_FORMATS, availableFormats, type ExportFormat } from '@/lib/export-formats';
 
@@ -21,7 +21,6 @@ interface ParquetDownloadMenuProps {
 }
 
 export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parquetUrl, layerTitle }) => {
-    const { toast } = useToast();
     const { data: schema, isLoading: schemaLoading, isError: schemaError } = useParquetSchema(parquetUrl);
 
     const download = useMutation({
@@ -40,10 +39,8 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
             });
         },
         onError: (err) => {
-            toast({
-                title: 'Download failed',
+            toast.error('Download failed', {
                 description: err instanceof Error ? err.message : String(err),
-                variant: 'destructive',
             });
         },
     });
