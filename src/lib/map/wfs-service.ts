@@ -197,15 +197,21 @@ async function fetchWfsPage(options: WfsQueryOptions): Promise<Feature[]> {
   }
 }
 
+// Pagination defaults — also surface to callers that want to tune.
+export const DEFAULT_WFS_PAGE_SIZE = 50
+export const DEFAULT_WFS_MAX_FEATURES = 10000
+const CLICK_PAGE_SIZE = 50
+const POLYGON_PAGE_SIZE = 1000
+
 /**
  * Query WFS with optional pagination
  */
 export interface QueryOptions {
   /** Enable pagination for large result sets */
   paginate?: boolean
-  /** Page size (default: 50) */
+  /** Page size */
   pageSize?: number
-  /** Max total features (default: 10000) */
+  /** Max total features */
   maxFeatures?: number
 }
 
@@ -219,7 +225,7 @@ export async function queryWfs(
   options: WfsQueryOptions,
   queryOptions: QueryOptions = {}
 ): Promise<WfsQueryResult> {
-  const { paginate = false, pageSize = 50, maxFeatures = 10000 } = queryOptions
+  const { paginate = false, pageSize = DEFAULT_WFS_PAGE_SIZE, maxFeatures = DEFAULT_WFS_MAX_FEATURES } = queryOptions
 
   if (!paginate) {
     const features = await fetchWfsPage({ ...options, count: options.count || pageSize })
@@ -370,7 +376,7 @@ export async function queryWFSFeatures(params: ClickQueryParams): Promise<WfsFea
     ]],
   }
 
-  const { features } = await queryVisibleLayers(visibleLayers, clickPolygon, wmsUrl, { pageSize: 50 }, layerFilters)
+  const { features } = await queryVisibleLayers(visibleLayers, clickPolygon, wmsUrl, { pageSize: CLICK_PAGE_SIZE }, layerFilters)
   return features
 }
 
@@ -405,6 +411,6 @@ export interface PolygonQueryParams {
 }
 
 export async function queryPolygonFeatures(params: PolygonQueryParams): Promise<VisibleLayersResult> {
-  const { polygon, visibleLayers, wmsUrl, pageSize = 1000, layerFilters } = params
+  const { polygon, visibleLayers, wmsUrl, pageSize = POLYGON_PAGE_SIZE, layerFilters } = params
   return queryVisibleLayers(visibleLayers, polygon, wmsUrl, { paginate: true, pageSize }, layerFilters)
 }
