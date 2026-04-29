@@ -1,7 +1,8 @@
-import { House, Info as InfoIcon, Layers as LayersIcon, Settings } from 'lucide-react'
+import { House, Info as InfoIcon, Layers as LayersIcon, Settings, BarChart3 } from 'lucide-react'
 import Info from '@/components/sidebar/info'
 import MapConfigurations from '../-components/sidebar/map-configurations/map-configurations'
 import { LayersWithReview } from '../-components/sidebar/layers/layers-with-review'
+import { Insights } from '../-components/sidebar/insights/insights'
 export interface NavLink {
   title: string
   label?: string
@@ -33,6 +34,12 @@ export const sidelinks: SideLink[] = [
     label: '',
     icon: <LayersIcon className='stroke-foreground' />,
     component: LayersWithReview, // Direct component reference
+  },
+  {
+    title: 'Insights',
+    label: '',
+    icon: <BarChart3 className='stroke-foreground' />,
+    component: Insights,
   },
   {
     title: 'Map Configurations',

@@ -69,6 +69,7 @@
     "react-map-gl": "^8.1.0",
     "react-resizable-panels": "^4.0.15",
     "react-to-print": "^3.2.0",
+    "recharts": "^3.8.1",
     "sonner": "^2.0.7",
     "tailwind-merge": "^2.2.2",
     "tailwindcss-animate": "^1.0.7",
