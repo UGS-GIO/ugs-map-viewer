@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BackToMenuButton } from '@/components/ui/back-to-menu-button'
+import { Skeleton } from '@/components/ui/skeleton'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
 const TYPE_NAME = 'hazards:hazards_displacement_contours_review'
 const SQM_TO_SQMI = 1 / 2_589_988.110336
@@ -180,7 +181,7 @@ export function Insights() {
             .slice(0, 10)
     }, [filtered, thresholdFt])
 
-    if (isLoading) return <div className="p-4 text-sm text-muted-foreground">Loading insights…</div>
+    if (isLoading) return <InsightsSkeleton />
     if (isError) return <div className="p-4 text-sm text-destructive">Failed to load displacement data.</div>
 
     return (
@@ -251,12 +252,23 @@ export function Insights() {
                                 labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
                                 cursor={{ fill: 'currentColor', fillOpacity: 0.05 }}
                             />
-                            <Legend wrapperStyle={{ fontSize: 11, color: 'currentColor' }} />
                             {visibleBins.map(bin => (
                                 <Bar key={bin.key} dataKey={bin.key} stackId="rate" fill={bin.color} />
                             ))}
                         </BarChart>
                     </ResponsiveContainer>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-foreground">
+                    {visibleBins.map(bin => (
+                        <div key={bin.key} className="flex items-center gap-1.5">
+                            <span
+                                className="inline-block h-3 w-3 rounded-sm border border-border"
+                                style={{ background: bin.color }}
+                                aria-hidden
+                            />
+                            <span>{bin.key} ft/yr</span>
+                        </div>
+                    ))}
                 </div>
             </div>
 
@@ -277,6 +289,43 @@ export function Insights() {
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
+            </div>
+        </div>
+    )
+}
+
+function InsightsSkeleton() {
+    return (
+        <div className="flex flex-col gap-4 p-2">
+            <BackToMenuButton />
+            <h2 className="text-lg font-semibold px-2">Insights — Land Subsidence</h2>
+            <p className="text-xs text-muted-foreground px-2">
+                Loading displacement features… large payload over WFS today; pending move to a pre-aggregated endpoint.
+            </p>
+
+            <div className="grid grid-cols-2 gap-3 px-2">
+                {Array.from({ length: 4 }, (_, i) => (
+                    <div key={i} className="flex flex-col gap-1">
+                        <Skeleton className="h-3 w-12" />
+                        <Skeleton className="h-9 w-full" />
+                    </div>
+                ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 px-2">
+                {Array.from({ length: 4 }, (_, i) => (
+                    <Skeleton key={i} className="h-20 w-full" />
+                ))}
+            </div>
+
+            <div className="px-2 space-y-2">
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-72 w-full" />
+            </div>
+
+            <div className="px-2 space-y-2">
+                <Skeleton className="h-4 w-44" />
+                <Skeleton className="h-56 w-full" />
             </div>
         </div>
     )
