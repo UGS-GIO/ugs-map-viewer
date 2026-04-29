@@ -1,4 +1,5 @@
 import type { Geometry, Polygon } from 'geojson'
+import type maplibregl from 'maplibre-gl'
 import type { LayerProps } from '@/lib/types/mapping-types'
 import type { WfsFeature } from '@/lib/map/wfs-service'
 
@@ -64,6 +65,10 @@ export interface DataMapProps {
   layerFilters?: Record<string, string>
   /** GeoServer style names for WMS layers, keyed by layer title */
   layerStyles?: Record<string, string>
+  /** MapLibre filter expressions for vector (WFS/GeoJSON) layers, keyed by layer title */
+  vectorLayerFilters?: Record<string, maplibregl.FilterSpecification>
+  /** Active symbology mode key for vector layers (e.g. 'box-type'); empty/undefined = default circle styling. */
+  vectorLayerSymbology?: Record<string, string>
   /** Callback when map is ready - exposes raw MapLibre map instance */
   onMapReady?: (map: maplibregl.Map) => void
   /** Basemap ID from URL */

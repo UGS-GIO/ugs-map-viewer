@@ -12,7 +12,7 @@ const buildThumbnailPath = (gcsPath: string) =>
 
 type PhotoRow = {
     box_pk: number
-    gcs_path: string
+    storage_path: string
     filename?: string
     photo_type?: string
     top_depth?: number | null
@@ -21,8 +21,8 @@ type PhotoRow = {
 
 function toGalleryImage(row: PhotoRow): GalleryImage {
     return {
-        url: `${UCRC_GCS_BASE_URL}/${encodePathSegments(row.gcs_path)}`,
-        thumbnailUrl: `${UCRC_GCS_BASE_URL}/${encodePathSegments(buildThumbnailPath(row.gcs_path))}`,
+        url: `${UCRC_GCS_BASE_URL}/${encodePathSegments(row.storage_path)}`,
+        thumbnailUrl: `${UCRC_GCS_BASE_URL}/${encodePathSegments(buildThumbnailPath(row.storage_path))}`,
         label: row.filename,
         metadata: [
             ...(row.photo_type ? [{ label: 'Type', value: row.photo_type }] : []),
@@ -37,7 +37,7 @@ const fetchBoxPhotosBulk = async (boxIds: string[]): Promise<Map<string, Gallery
     if (boxIds.length === 0) return map
     const inList = boxIds.join(',')
     const res = await fetch(
-        `${PROD_POSTGREST_URL}/enmin_ucrc_photos_django_test_current?box_pk=in.(${inList})&order=top_depth.asc`,
+        `${PROD_POSTGREST_URL}/enmin_ucrc_photos_current?box_pk=in.(${inList})&order=top_depth.asc`,
         { headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' } },
     )
     if (!res.ok) return map

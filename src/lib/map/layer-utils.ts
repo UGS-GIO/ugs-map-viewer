@@ -50,6 +50,12 @@ export const flattenWfsLayers = (layers: LayerProps[]) =>
 export const flattenArcGisLayers = (layers: LayerProps[]) =>
   flattenVisibleLayers(layers, isArcGISMapServerLayer)
 
+export const isDataLayer = (layer: LayerProps): layer is WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps =>
+  isWMSLayer(layer) || isWFSLayer(layer) || isArcGISMapServerLayer(layer)
+
+export const flattenVisibleDataLayers = (layers: LayerProps[]) =>
+  flattenVisibleLayers(layers, isDataLayer)
+
 // ── Layer search ─────────────────────────────────────────────────────
 
 /**
