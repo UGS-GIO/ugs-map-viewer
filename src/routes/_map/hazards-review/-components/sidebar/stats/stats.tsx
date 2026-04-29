@@ -285,8 +285,8 @@ export function Stats() {
                             return (
                                 <div key={b.location} className="grid grid-cols-[5.5rem_1fr_4.5rem] items-center gap-2 text-xs">
                                     <span className="truncate" title={b.location}>{b.location}</span>
-                                    <div className="h-3 rounded-sm bg-muted overflow-hidden">
-                                        <div className="h-full rounded-sm" style={{ width: `${pct}%`, background: color }} />
+                                    <div className="h-3 bg-muted overflow-hidden border border-border">
+                                        <div className="h-full" style={{ width: `${pct}%`, background: color }} />
                                     </div>
                                     <span className="text-right tabular-nums text-muted-foreground">{b.max} ft/yr</span>
                                 </div>
