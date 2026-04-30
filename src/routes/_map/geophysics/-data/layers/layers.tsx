@@ -271,6 +271,15 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
+                'Type': {
+                    field: 'type',
+                    type: 'string',
+                    transform: (value) => {
+                        if (value === 'W') return 'Well'
+                        if (value === 'S') return 'Spring'
+                        return value
+                    }
+                },
                 'Map Number': { field: 'mapno', type: 'string' },
                 'Region': {
                     field: 'custom',
@@ -295,7 +304,6 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                 },
                 'Well/Spring Name': { field: 'source', type: 'string' },
                 'UGS Name': { field: 'idname', type: 'string' },
-                'Type': { field: 'type', type: 'string' },
                 'Temperature': {
                     field: 'custom',
                     type: 'custom',
@@ -581,7 +589,7 @@ const geothermalTEMLayerConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalTEMLayerTitle,
     visible: true,
-    customLayerParameters: { cql_filter: "dataquality <> '3'" },
+    customLayerParameters: { cql_filter: "dataquality IN ('1','2')" },
     downloadParquetUrl: parquetUrl("enmin_geophysics_tem"),
     sublayers: [
         {
