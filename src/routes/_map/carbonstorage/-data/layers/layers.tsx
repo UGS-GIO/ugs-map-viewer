@@ -1,6 +1,6 @@
 import { Link } from "@/components/ui/link";
 import { MAPS_ASSETS_CDN_URL, ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
-import { ArcGISMapServerLayerProps, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { ArcGISMapServerLayerProps, LayerProps, WFSLayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
 
@@ -616,19 +616,48 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
     ],
 };
 
-// CO2 Sources WMS Layer
+// CO2 Sources WFS Layer (vector — avoids WMS tile-edge clipping of symbols)
 const co2SourcesLayerName = 'ccus_co2_sources';
-const co2SourcesWMSTitle = 'CO₂ Sources';
-const co2SourcesWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: co2SourcesWMSTitle,
+const co2SourcesWFSTitle = 'CO₂ Sources';
+const CO2_SOURCE_COLORS: Record<string, string> = {
+    'Agriculture': '#7F1D1D',
+    'Cement/lime plant': '#0B6623',
+    'Coal power plant': '#5B2C6F',
+    'Landfill': '#FFEB3B',
+    'Manufacturing': '#000000',
+    'Military': '#1F77B4',
+    'Natural resources extraction': '#F39C12',
+    'NG pipeline compressor station': '#7F8C8D',
+    'NG power plant': '#F5F5F5',
+    'NG processing': '#F5F5F5',
+    'Refinery': '#5DADE2',
+    'University': '#52BE80',
+};
+const co2SourcesWFSConfig: WFSLayerProps = {
+    type: 'wfs',
+    wfsUrl: `${PROD_GEOSERVER_URL}/wfs`,
+    typeName: `${ENERGY_MINERALS_WORKSPACE}:${co2SourcesLayerName}`,
+    title: co2SourcesWFSTitle,
     visible: false,
-    crs: 'EPSG:26912',
+    crs: 'EPSG:4326',
+    geometryType: 'point',
+    style: {
+        circleRadiusProperty: {
+            field: 'ghg_quantity__metric_tons_co2e_',
+            stops: [400, 4, 4_500_000, 16],
+        },
+        circleColorMatch: {
+            field: 'description',
+            matches: CO2_SOURCE_COLORS,
+            defaultColor: '#888',
+        },
+        circleStrokeColor: '#222',
+        circleStrokeWidth: 1,
+    },
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${co2SourcesLayerName}`,
-            popupEnabled: false,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
                 'Facility Name': { field: 'facility_name', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
@@ -715,7 +744,16 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
                     }
                 },
                 'Description': { field: 'description', type: 'string' },
-                'Report': { field: 'linktoreport', type: 'string', transform: () => 'Coming Soon' },
+                'Report': { field: 'linktoreport', type: 'string' },
+            },
+            linkFields: {
+                'linktoreport': {
+                    transform: (value: unknown) => {
+                        const str = String(value ?? '');
+                        if (!str || !str.startsWith('http')) return [];
+                        return [{ label: 'View Report', href: str }];
+                    },
+                },
             },
             colorCodingMap: {
                 'ranking': (value: string | number) => {
@@ -1158,7 +1196,7 @@ const ccsResourcesConfig: LayerProps = {
     layers: [
         sco2GridSummaryWMSConfig,
         georegionsWMSConfig,
-        co2SourcesWMSConfig,
+        co2SourcesWFSConfig,
         sitlaReportsWMSConfig,
         ccsExclusionAreasWMSConfig,
         ccusProjectsWMSConfig
