@@ -274,8 +274,8 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                     field: 'type',
                     type: 'string',
                     transform: (value) => {
-                        if (value === 'W') return 'well'
-                        if (value === 'S') return 'spring'
+                        if (value === 'W') return 'Well'
+                        if (value === 'S') return 'Spring'
                         return value
                     }
                 },
