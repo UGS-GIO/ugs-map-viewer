@@ -56,7 +56,7 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
                     variant="ghost"
                     size="stacked"
                     disabled={disabled}
-                    className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
+                    className="flex flex-col items-center px-3 py-2 min-w-[80px] flex-1 gap-1"
                     aria-label="Download layer data"
                 >
                     {(isDownloading || schemaLoading)

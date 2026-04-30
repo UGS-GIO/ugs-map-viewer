@@ -1,6 +1,5 @@
-import { Download, Info, Shrink, TableOfContents } from 'lucide-react';
-import { Button, buttonVariants } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { Info, Shrink, TableOfContents } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { LegendAccordion } from '@/components/maps/legend-accordion';
@@ -121,7 +120,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         <Toggle
                             aria-label="Toggle info"
                             size="stacked"
-                            className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
+                            className="flex flex-col items-center px-3 py-2 min-w-[80px] flex-1 gap-1"
                             pressed={infoPressed}
                             onPressedChange={() => handleToggle('info')}
                         >
@@ -132,7 +131,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         <Button
                             variant="ghost"
                             size="stacked"
-                            className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
+                            className="flex flex-col items-center px-3 py-2 min-w-[80px] flex-1 gap-1"
                             onClick={handleZoomToLayer}
                         >
                             <Shrink className="h-5 w-5" />
@@ -142,7 +141,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         <Toggle
                             aria-label="Toggle legend"
                             size="stacked"
-                            className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
+                            className="flex flex-col items-center px-3 py-2 min-w-[80px] flex-1 gap-1"
                             pressed={legendPressed}
                             onPressedChange={() => handleToggle('legend')}
                             data-tour="layer-legend"
@@ -151,25 +150,8 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                             <span className='text-xs'>Legend</span>
                         </Toggle>
 
-                        {downloadParquetUrl && (
-                            disableExport ? (
-                                <a
-                                    href={downloadParquetUrl}
-                                    download
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    aria-label={`Download ${title} dataset`}
-                                    className={cn(
-                                        buttonVariants({ variant: 'ghost', size: 'stacked' }),
-                                        'flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1'
-                                    )}
-                                >
-                                    <Download className="h-5 w-5" />
-                                    <span className="text-xs">Download</span>
-                                </a>
-                            ) : (
-                                <ParquetDownloadMenu parquetUrl={downloadParquetUrl} layerTitle={title} />
-                            )
+                        {!disableExport && downloadParquetUrl && (
+                            <ParquetDownloadMenu parquetUrl={downloadParquetUrl} layerTitle={title} />
                         )}
                     </div>
                 </div>
