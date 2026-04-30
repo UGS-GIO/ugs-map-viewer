@@ -1,0 +1,150 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e7]:
+          - link "Utah Geological Survey Logo" [ref=e8] [cursor=pointer]:
+            - /url: https://geology.utah.gov/
+            - img "Utah Geological Survey Logo" [ref=e9]
+          - generic [ref=e10]:
+            - generic [ref=e11]: Carbon Storage Portal
+            - generic [ref=e12]: Utah Geological Survey
+        - generic [ref=e13]:
+          - generic [ref=e14]:
+            - button "Home" [ref=e15] [cursor=pointer]:
+              - img
+            - button "Info" [ref=e16] [cursor=pointer]:
+              - img
+            - button "Layers" [ref=e17] [cursor=pointer]:
+              - img
+            - button "Map Configurations" [ref=e18] [cursor=pointer]:
+              - img
+            - link [ref=e19] [cursor=pointer]:
+              - /url: https://geology.utah.gov/energy-minerals/ccus/
+              - img
+            - link [ref=e20] [cursor=pointer]:
+              - /url: https://docs.google.com/forms/d/e/1FAIpQLSca4G-LogxiNrJUTTtlxyqMutgFVyh2jtNB-tozlQ4D4QOvPA/viewform
+              - img
+            - generic [ref=e21]:
+              - button "Start tour" [ref=e22] [cursor=pointer]:
+                - img
+              - button [ref=e23] [cursor=pointer]:
+                - img
+          - generic [ref=e27]:
+            - generic [ref=e28]:
+              - generic [ref=e31]:
+                - heading "Map Details" [level=3] [ref=e32]:
+                  - button "Map Details" [expanded] [ref=e33] [cursor=pointer]:
+                    - heading "Map Details" [level=3] [ref=e35]
+                  - button [expanded] [ref=e36] [cursor=pointer]:
+                    - img [ref=e37]
+                - region "Map Details" [ref=e39]:
+                  - generic [ref=e41]:
+                    - paragraph [ref=e42]: This web application is a tool for the public, scientists, and industry professionals interested in carbon capture, utilization, and storage (CCUS). It provides access to spatial data and technical resources to support site selection, storage resource assessment, and project planning. The visualization is intended to assist in evaluating geologic carbon storage potential options and make informed decisions based on current information.
+                    - paragraph [ref=e43]:
+                      - text: "About CCUS: CCUS involves collecting carbon dioxide (CO₂) from the atmosphere or industrial sources and either using it in commercial processes or storing it underground in geologic reservoir rock. Successful geologic carbon storage requires porous rock reservoirs capped by non-porous seals to trap the CO₂. Utah's unique geology offers many suitable sites for CO₂ storage, often located near major emission sources like power plants and refineries."
+                      - link "Learn More" [ref=e44] [cursor=pointer]:
+                        - /url: https://geology.utah.gov/energy-minerals/ccus/
+                      - text: .
+              - generic [ref=e45]:
+                - heading "Data Sources" [level=3] [ref=e48]:
+                  - button "Data Sources" [ref=e49] [cursor=pointer]:
+                    - heading "Data Sources" [level=3] [ref=e51]
+                  - button [ref=e52] [cursor=pointer]:
+                    - img [ref=e53]
+                - paragraph [ref=e56]: Data for the Carbon Storage Portal was collected from a variety of authoritative sources including the Utah Geological Survey, Utah Division of Oil, Gas and Mining, Utah State and Institutional Trust Lands Administration, and federal agencies...
+              - generic [ref=e57]:
+                - button "References" [ref=e58] [cursor=pointer]
+                - button "Acknowledgments" [ref=e59] [cursor=pointer]
+                - button "Contact Webmaster" [ref=e60] [cursor=pointer]:
+                  - text: Contact Webmaster
+                  - img
+            - generic [ref=e62]:
+              - button "Start Exploring" [ref=e63] [cursor=pointer]
+              - button "Open Data Disclaimer" [ref=e64] [cursor=pointer]
+        - generic "Click to collapse, drag to resize" [ref=e65]:
+          - img
+    - main [ref=e66]:
+      - generic [ref=e67]:
+        - generic [ref=e68]:
+          - navigation [ref=e70]:
+            - button "Streets" [ref=e71] [cursor=pointer]
+            - button "Satellite" [ref=e72] [cursor=pointer]
+            - button "Lite" [ref=e73] [cursor=pointer]
+            - button "Terrain" [ref=e74] [cursor=pointer]
+            - button "More" [ref=e75] [cursor=pointer]
+          - combobox "Search..." [ref=e79] [cursor=pointer]:
+            - generic [ref=e80]: Search...
+            - generic [ref=e81]:
+              - img
+        - generic [ref=e87]:
+          - region "Map" [ref=e88] [cursor=pointer]
+          - generic:
+            - generic [ref=e89]:
+              - button "Zoom in" [ref=e90] [cursor=pointer]
+              - button "Zoom out" [ref=e92] [cursor=pointer]
+              - button "Reset bearing to north" [ref=e94]
+            - generic:
+              - generic [ref=e97]:
+                - button "Map view" [ref=e98] [cursor=pointer]:
+                  - img [ref=e99]
+                - button "Select features on the map first" [disabled] [ref=e101]:
+                  - img [ref=e102]
+                - button "Select features on the map first" [disabled] [ref=e104]:
+                  - img [ref=e105]
+              - generic [ref=e108]:
+                - button "Draw rectangle filter" [ref=e109] [cursor=pointer]:
+                  - img [ref=e110]
+                - button "Draw polygon filter" [ref=e112] [cursor=pointer]:
+                  - img [ref=e113]
+                - button "Box select mode" [ref=e115] [cursor=pointer]:
+                  - img [ref=e116]
+                - button "Multi-select OFF (click or hold Shift)" [ref=e118] [cursor=pointer]:
+                  - img [ref=e119]
+            - group [ref=e122]:
+              - generic "Toggle attribution" [ref=e123] [cursor=pointer]
+              - link "MapLibre" [ref=e125] [cursor=pointer]:
+                - /url: https://maplibre.org/
+        - generic [ref=e129]:
+          - generic [ref=e130]:
+            - generic [ref=e131]:
+              - link "Facebook" [ref=e132] [cursor=pointer]:
+                - /url: https://www.facebook.com/pages/Utah-Geological-Survey/251490738585
+                - img [ref=e133]
+                - generic [ref=e135]: Facebook
+              - link "X" [ref=e136] [cursor=pointer]:
+                - /url: https://x.com/utahgeological
+                - img [ref=e137]
+                - generic [ref=e141]: X
+              - link "Instagram" [ref=e142] [cursor=pointer]:
+                - /url: https://www.instagram.com/utahgeologicalsurvey/
+                - img [ref=e143]
+                - generic [ref=e146]: Instagram
+              - link "LinkedIn" [ref=e147] [cursor=pointer]:
+                - /url: http://www.linkedin.com/company/utah-geological-survey
+                - img [ref=e148]
+                - generic [ref=e152]: LinkedIn
+              - link "GitHub" [ref=e153] [cursor=pointer]:
+                - /url: https://github.com/UGS-GIO/ugs-map-viewer
+                - img [ref=e154]
+                - generic [ref=e157]: GitHub
+            - link "Utah Map Store" [ref=e158] [cursor=pointer]:
+              - /url: https://utahmapstore.com/
+              - generic [ref=e159]: Utah Map Store
+              - img [ref=e160]
+          - generic [ref=e165]:
+            - generic [ref=e166]: "Lat:"
+            - generic [ref=e167]: "Lon:"
+            - generic [ref=e168]: DD
+            - switch "Toggle coordinate format" [ref=e169] [cursor=pointer]
+            - generic [ref=e170]: DMS
+            - generic [ref=e172]: "Scale: 1:0"
+  - generic:
+    - contentinfo:
+      - button "Open TanStack Router Devtools" [ref=e173] [cursor=pointer]:
+        - generic [ref=e174]:
+          - img [ref=e176]
+          - img [ref=e211]
+        - generic [ref=e245]: "-"
+        - generic [ref=e246]: TanStack Router
+  - region "Notifications alt+T"

@@ -639,13 +639,13 @@ const co2SourcesWFSConfig: WFSLayerProps = {
     typeName: `${ENERGY_MINERALS_WORKSPACE}:${co2SourcesLayerName}`,
     title: co2SourcesWFSTitle,
     visible: false,
-    opacity: 0.8,
+    opacity: 0.6,
     crs: 'EPSG:4326',
     geometryType: 'point',
     style: {
         circleRadiusProperty: {
             field: 'ghg_quantity__metric_tons_co2e_',
-            stops: [400, 4, 4_500_000, 16],
+            stops: [400, 3, 4_500_000, 11],
         },
         circleColorMatch: {
             field: 'description',
