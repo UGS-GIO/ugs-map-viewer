@@ -1,7 +1,7 @@
 import { ENERGY_MINERALS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL } from "@/lib/constants";
 import { ArcGISMapServerLayerProps, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { GeoJsonProperties } from "geojson";
-import { toTitleCase, toSentenceCase } from "@/lib/utils";
+import { toTitleCase, toSentenceCase, toISO8601Date} from "@/lib/utils";
 
 // Roads WMS Layer
 const roadsLayerName = 'ccus_majorroads';
@@ -317,7 +317,7 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                         return `${utmStart} - ${utmEnd}`;
                     }
                 },
-                'Date': { field: 'date', type: 'date' },
+                'Date': { field: 'custom', type: 'custom', transform: (props) => toISO8601Date(props?.['date']) },
                 'Reference': { field: 'reference', type: 'string' },
                 'PH': { field: 'ph', type: 'string' },
                 'Conductivity (microsiemens)': { field: 'cond', type: 'string' },
@@ -590,7 +590,7 @@ const geothermalTEMLayerConfig: WMSLayerProps = {
                     }
                 },
                 'Site Name': { field: 'station', type: 'string' },
-                'Date': { field: 'date', type: 'date' },
+                'Date': { field: 'custom', type: 'custom', transform: (props) => toISO8601Date(props?.['date']) },
                 'Archive Link': { field: 'archivelink', type: 'string' },
             },
         },
