@@ -715,7 +715,16 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
                     }
                 },
                 'Description': { field: 'description', type: 'string' },
-                'Report': { field: 'linktoreport', type: 'string', transform: () => 'Coming Soon' },
+                'Report': { field: 'linktoreport', type: 'string' },
+            },
+            linkFields: {
+                'linktoreport': {
+                    transform: (value: unknown) => {
+                        const str = String(value ?? '');
+                        if (!str || !str.startsWith('http')) return [];
+                        return [{ label: 'View Report', href: str }];
+                    },
+                },
             },
             colorCodingMap: {
                 'ranking': (value: string | number) => {
