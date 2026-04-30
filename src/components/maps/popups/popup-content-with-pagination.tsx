@@ -286,8 +286,8 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange }: Po
                         return (
                             <div key={`${layer.groupLayerTitle}-${layer.layerTitle}-${layerIdx}`}>
                                 {/* Layer header */}
-                                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1">
-                                    {layer.layerTitle || layer.groupLayerTitle}
+                                <div className="text-base font-bold text-primary uppercase tracking-wide mb-2 px-1">
+                                    Layer: {layer.layerTitle || layer.groupLayerTitle}
                                 </div>
                                 {/* Features or raster-only content */}
                                 <div className="space-y-2">

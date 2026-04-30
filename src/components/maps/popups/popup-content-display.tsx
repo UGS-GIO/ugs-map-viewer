@@ -266,8 +266,8 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         return (
             <div className="space-y-4">
                 <div className="flex flex-col">
-                    <p className="font-bold underline text-primary">{rasterSource.valueLabel}</p>
-                    <p className="break-words">{displayValue}</p>
+                    <p className="font-bold underline text-foreground">{rasterSource.valueLabel}</p>
+                    <p className="break-words text-foreground/80">{displayValue}</p>
                 </div>
             </div>
         );
@@ -348,8 +348,8 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         ) : label;
         const content = (
             <div key={`feature-item-${label}-${index}`} className="flex flex-col">
-                <p className="font-bold underline text-primary">{labelContent}</p>
-                <div className="break-words">
+                <p className="font-bold underline text-foreground">{labelContent}</p>
+                <div className="break-words text-foreground/80">
                     {hasColorStyling ? (
                         <span className={colorStyle.className} style={colorStyle.style}>
                             {renderFieldContent(finalDisplayValue, fieldKey, properties, linkFields, urlPattern)}
