@@ -26,4 +26,4 @@ dist-ssr
 
 .firebase/
 .tanstack/
-scripts/output/
+scripts/output/.playwright-mcp/
