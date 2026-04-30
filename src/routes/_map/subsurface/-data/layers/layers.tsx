@@ -1,6 +1,6 @@
 import { Link } from "@/components/ui/link";
 import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
-import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, MAPS_ASSETS_CDN_URL, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
+import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps, WFSLayerProps } from "@/lib/types/mapping-types";
 import { makePieWedgeSpriteRegistrar } from "@/lib/map/pie-wedge-sprites";
 import { addThousandsSeparator } from "@/lib/utils";
@@ -107,7 +107,7 @@ const utCountiesConfig: WMSLayerProps = {
     title: 'Utah Counties',
     visible: true,
     crs: 'EPSG:3857',
-    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_ut_counties/enmin_ut_counties.parquet`,
+    downloadParquetUrl: parquetUrl("enmin_ut_counties"),
     sublayers: [{
         name: `${ENERGY_MINERALS_WORKSPACE}:enmin_ut_counties_current`,
         popupEnabled: false,
@@ -122,7 +122,7 @@ const utTownshipRangesConfig: WMSLayerProps = {
     title: 'Utah Township & Ranges',
     visible: true,
     crs: 'EPSG:3857',
-    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_plss_townshiprange/enmin_plss_townshiprange.parquet`,
+    downloadParquetUrl: parquetUrl("enmin_plss_townshiprange"),
     sublayers: [{
         name: `${ENERGY_MINERALS_WORKSPACE}:enmin_plss_townshiprange_current`,
         popupEnabled: false,
@@ -164,7 +164,7 @@ const basinsWMSConfig: WMSLayerProps = {
     title: basinsWMSTitle,
     visible: true,
     crs: 'EPSG:3857',
-    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_ucrc_basins/enmin_ucrc_basins.parquet`,
+    downloadParquetUrl: parquetUrl("enmin_ucrc_basins"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${basinsLayerName}`,
@@ -417,7 +417,7 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
     opacity: 0.85,
     crs: 'EPSG:4326',
     geometryType: 'point',
-    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_ucrc_wells/enmin_ucrc_wells.parquet`,
+    downloadParquetUrl: parquetUrl("enmin_ucrc_wells"),
     style: {
         circleRadiusByZoom: [
             [4, 2],

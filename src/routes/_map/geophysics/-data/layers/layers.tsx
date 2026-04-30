@@ -1,4 +1,4 @@
-import { ENERGY_MINERALS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, MAPS_ASSETS_CDN_URL, PROD_GEOSERVER_URL } from "@/lib/constants";
+import { ENERGY_MINERALS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL } from "@/lib/constants";
 import { ArcGISMapServerLayerProps, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { GeoJsonProperties } from "geojson";
 import { toTitleCase, toSentenceCase } from "@/lib/utils";
@@ -175,7 +175,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: qFaultsWMSTitle,
     visible: false,
-    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/hazards_qfaults/hazards_qfaults.parquet`,
+    downloadParquetUrl: parquetUrl("hazards_qfaults"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${qFaultsLayerName}`,
@@ -347,7 +347,7 @@ const heatflowLayerConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: heatflowLayeTitle,
     visible: true,
-    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/mart_geophysics_heatflowedwards_source/mart_geophysics_heatflowedwards_source.parquet`,
+    downloadParquetUrl: parquetUrl("mart_geophysics_heatflowedwards_source"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${heatflowLayeName}`,
@@ -411,7 +411,7 @@ const geothermalUseLayerConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalUseLayeTitle,
     visible: true,
-    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/geothermal_utgeothermaluses/geothermal_utgeothermaluses.parquet`,
+    downloadParquetUrl: parquetUrl("geothermal_utgeothermaluses"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalUseLayeName}`,
@@ -450,7 +450,7 @@ const deepSedimentaryBasinsLayerConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: deepSedimentaryBasinsLayerTitle,
     visible: true,
-    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/geothermal_deepsedbasin/geothermal_deepsedbasin.parquet`,
+    downloadParquetUrl: parquetUrl("geothermal_deepsedbasin"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${deepSedimentaryBasinsLayerName}`,
@@ -471,7 +471,7 @@ const potentialResourcesLayerConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: potentialResourcesLayerTitle,
     visible: true,
-    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/geothermal_potentialresourcearea/geothermal_potentialresourcearea.parquet`,
+    downloadParquetUrl: parquetUrl("geothermal_potentialresourcearea"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${potentialResourcesLayerName}`,
@@ -492,7 +492,7 @@ const geothermalKgraLayerConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalKgraLayerTitle,
     visible: true,
-    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/geothermal_kgra/geothermal_kgra.parquet`,
+    downloadParquetUrl: parquetUrl("geothermal_kgra"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalKgraLayerName}`,
@@ -513,7 +513,7 @@ const gravityStationsLayerConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: gravityStationsLayeTitle,
     visible: true,
-    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_geophysics_ugsgravity/enmin_geophysics_ugsgravity.parquet`,
+    downloadParquetUrl: parquetUrl("enmin_geophysics_ugsgravity"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${gravityStationsLayeName}`,
@@ -550,7 +550,7 @@ const pacesLegacyLayerConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: pacesLegacyLayerTitle,
     visible: false,
-    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_geophysics_pacesgravity/enmin_geophysics_pacesgravity.parquet`,
+    downloadParquetUrl: parquetUrl("enmin_geophysics_pacesgravity"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${pacesLegacyLayerName}`,
@@ -582,7 +582,7 @@ const geothermalTEMLayerConfig: WMSLayerProps = {
     title: geothermalTEMLayerTitle,
     visible: true,
     customLayerParameters: { cql_filter: "dataquality <> '3'" },
-    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_geophysics_tem/enmin_geophysics_tem.parquet`,
+    downloadParquetUrl: parquetUrl("enmin_geophysics_tem"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalTEMLayerName}`,
@@ -614,7 +614,7 @@ const mtStationsLayerConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: mtStationsLayerTitle,
     visible: true,
-    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_geophysics_mtstations/enmin_geophysics_mtstations.parquet`,
+    downloadParquetUrl: parquetUrl("enmin_geophysics_mtstations"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${mtStationsLayerName}`,
@@ -657,7 +657,7 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalWellsJoinsTitle,
     visible: false,
-    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_geothermal_ingenious_wellfeatures/enmin_geothermal_ingenious_wellfeatures.parquet`,
+    downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_wellfeatures"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsJoinsName}`,
@@ -715,7 +715,7 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalSpringsJoinsTitle,
     visible: false,
-    downloadParquetUrl: `${MAPS_ASSETS_CDN_URL}/parquet/enmin_geothermal_ingenious_springfeatures/enmin_geothermal_ingenious_springfeatures.parquet`,
+    downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_springfeatures"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalSpringsJoinsName}`,
