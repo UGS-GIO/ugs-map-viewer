@@ -1004,6 +1004,15 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
+                'Type': {
+                    field: 'type',
+                    type: 'string',
+                    transform: (value) => {
+                        if (value === 'W') return 'well'
+                        if (value === 'S') return 'spring'
+                        return value
+                    }
+                },
                 'Map Number': { field: 'mapno', type: 'string' },
                 'Region': {
                     field: 'custom',
@@ -1029,7 +1038,6 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                 },
                 'Well/Spring Name': { field: 'source', type: 'string' },
                 'UGS Name': { field: 'idname', type: 'string' },
-                'Type': { field: 'type', type: 'string' },
                 'Temperature': {
                     field: 'custom',
                     type: 'custom',
