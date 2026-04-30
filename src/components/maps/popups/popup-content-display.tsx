@@ -7,7 +7,7 @@ import type { LayerContentProps } from "@/components/maps/popups/types";
 import { Link } from "@/components/ui/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatNumeric } from "@/lib/utils";
-import { memo, useMemo, useState, ReactNode } from "react";
+import { memo, useMemo, useState, useId, ReactNode } from "react";
 import {
     FieldConfig,
     StringPopupFieldConfig,
@@ -203,21 +203,29 @@ export function buildGalleryImages(
 
 function CollapsibleSection({ label, count, children }: { label: string; count?: number; children: ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
+    const contentId = useId();
     return (
         <div className="flex flex-col space-y-2">
             <button
                 onClick={() => setIsOpen(o => !o)}
-                className="flex items-center gap-1 font-bold text-foreground hover:text-foreground/80 hover:bg-muted/50 rounded px-1 -ml-1 transition-colors w-full"
+                aria-expanded={isOpen}
+                aria-controls={contentId}
+                className="flex items-center gap-1 font-bold text-foreground hover:text-foreground/80 hover:bg-muted/50 rounded px-1 -ml-1 transition-colors w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-                {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+                {isOpen
+                    ? <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                    : <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />}
                 <span className="underline">{label}</span>
                 {count !== undefined && (
-                    <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground no-underline">
+                    <span
+                        aria-label={`${count} item${count === 1 ? '' : 's'}`}
+                        className="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground no-underline"
+                    >
                         {count}
                     </span>
                 )}
             </button>
-            {isOpen && children}
+            {isOpen && <div id={contentId}>{children}</div>}
         </div>
     );
 }
