@@ -1,5 +1,6 @@
 import { Download, Info, Shrink, TableOfContents } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { LegendAccordion } from '@/components/maps/legend-accordion';
@@ -152,23 +153,20 @@ const LayerControls: React.FC<LayerControlsProps> = ({
 
                         {downloadParquetUrl && (
                             disableExport ? (
-                                <Button
-                                    asChild
-                                    variant="ghost"
-                                    size="stacked"
-                                    className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
+                                <a
+                                    href={downloadParquetUrl}
+                                    download
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label={`Download ${title} dataset`}
+                                    className={cn(
+                                        buttonVariants({ variant: 'ghost', size: 'stacked' }),
+                                        'flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1'
+                                    )}
                                 >
-                                    <a
-                                        href={downloadParquetUrl}
-                                        download
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        aria-label={`Download ${title} dataset`}
-                                    >
-                                        <Download className="h-5 w-5" />
-                                        <span className="text-xs">Download</span>
-                                    </a>
-                                </Button>
+                                    <Download className="h-5 w-5" />
+                                    <span className="text-xs">Download</span>
+                                </a>
                             ) : (
                                 <ParquetDownloadMenu parquetUrl={downloadParquetUrl} layerTitle={title} />
                             )
