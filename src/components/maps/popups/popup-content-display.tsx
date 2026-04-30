@@ -207,7 +207,7 @@ function CollapsibleSection({ label, children }: { label: string; children: Reac
         <div className="flex flex-col space-y-2">
             <button
                 onClick={() => setIsOpen(o => !o)}
-                className="flex items-center gap-1 font-bold text-primary hover:text-primary/80 hover:bg-muted/50 rounded px-1 -ml-1 transition-colors w-full"
+                className="flex items-center gap-1 font-bold text-foreground hover:text-foreground/80 hover:bg-muted/50 rounded px-1 -ml-1 transition-colors w-full"
             >
                 {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
                 <span className="underline">{label}</span>
