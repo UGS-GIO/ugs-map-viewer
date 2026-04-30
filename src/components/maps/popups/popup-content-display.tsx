@@ -201,7 +201,7 @@ export function buildGalleryImages(
     return [...fromImageFields, ...fromRelatedTables]
 }
 
-function CollapsibleSection({ label, children }: { label: string; children: ReactNode }) {
+function CollapsibleSection({ label, count, children }: { label: string; count?: number; children: ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
     return (
         <div className="flex flex-col space-y-2">
@@ -211,6 +211,11 @@ function CollapsibleSection({ label, children }: { label: string; children: Reac
             >
                 {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
                 <span className="underline">{label}</span>
+                {count !== undefined && (
+                    <span className="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground no-underline">
+                        {count}
+                    </span>
+                )}
             </button>
             {isOpen && children}
         </div>
@@ -384,7 +389,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         if (useTableFormat) {
             const headers = table.displayFields!.map(df => df.label || df.field);
             relatedContent = (
-                <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel}>
+                <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel} count={groupedValues.length}>
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -409,7 +414,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
             );
         } else {
             relatedContent = (
-                <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel}>
+                <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel} count={groupedValues.length}>
                     {groupedValues.map((group, groupIdx) => (
                         <div key={`group-${groupIdx}`} className="flex flex-col">
                             {group.map((valueItem, valueIdx) => (
