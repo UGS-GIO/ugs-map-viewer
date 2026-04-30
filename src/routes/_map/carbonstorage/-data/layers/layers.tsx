@@ -639,7 +639,7 @@ const co2SourcesWFSConfig: WFSLayerProps = {
     typeName: `${ENERGY_MINERALS_WORKSPACE}:${co2SourcesLayerName}`,
     title: co2SourcesWFSTitle,
     visible: false,
-    opacity: 0.6,
+    opacity: 0.8,
     crs: 'EPSG:4326',
     geometryType: 'point',
     style: {
