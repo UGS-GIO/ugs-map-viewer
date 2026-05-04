@@ -33,7 +33,7 @@ export const sidelinks: SideLink[] = [
     title: 'Layers',
     label: '',
     icon: <LayersIcon className='stroke-foreground' />,
-    component: Layers, // Direct component reference
+    component: () => <Layers disableExport />,
   },
   {
     title: 'Map Configurations',

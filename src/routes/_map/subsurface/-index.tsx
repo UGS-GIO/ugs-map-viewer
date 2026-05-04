@@ -9,16 +9,21 @@ import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle } from './-data/layers/layers'
+import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, ucrcWellsWMSTitle } from './-data/layers/layers'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, type SearchComboboxHandle } from '@/components/sidebar/filter/search-combobox'
 import { PROD_POSTGREST_URL } from '@/lib/constants'
+import { ucrcFilterSchema } from './-data/layers/ucrc-schema'
+import { toMaplibreFilter } from '@/lib/filter/generators'
+import { fromCql } from '@/lib/filter/parse'
+import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
 
-// Carbon Storage specific filter mapping
+// Layer filter mapping (URL filter key -> WMS layer title)
 const CCS_FILTER_MAPPING: Record<string, string> = {
   [wellWithTopsWMSTitle]: wellWithTopsWMSTitle,
+  [ucrcWellsWMSTitle]: ucrcWellsWMSTitle,
 }
 
 const searchConfig: SearchSourceConfig[] = [
@@ -34,6 +39,23 @@ const searchConfig: SearchSourceConfig[] = [
     params: {
       targetFields: ['api', 'wellname'],
       select: 'api,wellname,shape',
+    },
+    headers: {
+      'Accept-Profile': 'emp',
+      'Accept': 'application/geo+json',
+    },
+  },
+  {
+    type: 'postgREST',
+    url: `${PROD_POSTGREST_URL}/enmin_ucrc_wells_current`,
+    sourceName: 'UCRC Wells',
+    layerName: ucrcWellsWMSTitle,
+    crs: 'EPSG:3857',
+    displayField: 'well_name',
+    secondaryDisplayField: 'uwi',
+    params: {
+      targetFields: ['uwi', 'well_name'],
+      select: 'uwi,well_name,geom',
     },
     headers: {
       'Accept-Profile': 'emp',
@@ -71,9 +93,11 @@ export default function Map() {
   const { contextValue } = useMapContextState();
   const searchRef = useRef<SearchComboboxHandle>(null);
 
-  // Get URL filters
+  // Get URL filters and styles
   const searchParams = useSearch({ from: '/_map/subsurface/' })
   const filtersFromUrl = searchParams.filters ?? {}
+  const stylesFromUrl = searchParams.layer_styles ?? {}
+  const vectorSymbologyFromUrl = searchParams.vector_symbology ?? {}
 
   // Build CQL filters for layers
   const layerFilters = useMemo(() => {
@@ -87,6 +111,26 @@ export default function Map() {
     return filters
   }, [filtersFromUrl])
 
+  // Build style overrides for WMS layers
+  const layerStyles = useMemo(() => {
+    const styles: Record<string, string> = {}
+    for (const [layerTitle, styleName] of Object.entries(stylesFromUrl)) {
+      if (styleName) styles[layerTitle] = styleName
+    }
+    return styles
+  }, [stylesFromUrl])
+
+  // Translate UCRC's stored CQL filter into a maplibre filter expression for the WFS vector layer
+  const vectorLayerFilters = useMemo(() => {
+    const ucrcCql = filtersFromUrl[ucrcWellsWMSTitle]
+    const result: Record<string, FilterSpecification> = {}
+    if (ucrcCql) {
+      const expr: ExpressionSpecification | null = toMaplibreFilter(ucrcFilterSchema, fromCql(ucrcFilterSchema, ucrcCql))
+      if (expr) result[ucrcWellsWMSTitle] = expr
+    }
+    return result
+  }, [filtersFromUrl])
+
   // Auto-select layer when filter is applied
   useEffect(() => {
     for (const [filterKey, layerTitle] of Object.entries(CCS_FILTER_MAPPING)) {
@@ -95,12 +139,17 @@ export default function Map() {
         updateLayerSelection(layerTitle, true)
       }
     }
+    // UCRC filter is keyed by the layer title itself, not in CCS_FILTER_MAPPING.
+    if (filtersFromUrl[ucrcWellsWMSTitle] && !selectedLayerTitles.has(ucrcWellsWMSTitle)) {
+      updateLayerSelection(ucrcWellsWMSTitle, true)
+    }
   }, [filtersFromUrl, selectedLayerTitles, updateLayerSelection])
 
   // Map child layers to their parent group for auto-visibility
   const LAYER_PARENT_GROUP: Record<string, string> = {
     [seamlessGeolunitsWMSTitle]: 'Geological Information',
     [wellWithTopsWMSTitle]: 'Subsurface Data',
+    [ucrcWellsWMSTitle]: 'Subsurface Data',
   }
 
   // Auto-select the associated layer and its parent group when a search result is picked
@@ -160,6 +209,9 @@ export default function Map() {
             <Layout.Body>
               <GenericMapContainer
                 layerFilters={layerFilters}
+                layerStyles={layerStyles}
+                vectorLayerFilters={vectorLayerFilters}
+                vectorLayerSymbology={vectorSymbologyFromUrl}
                 onClearSearch={() => searchRef.current?.clear()}
               />
             </Layout.Body>

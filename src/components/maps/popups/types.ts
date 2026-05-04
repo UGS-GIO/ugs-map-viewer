@@ -9,6 +9,7 @@ import type {
     LinkFields,
     ColorCodingRecordFunction,
     ColorCodingMode,
+    ImageFieldConfig,
 } from '@/lib/types/mapping-types'
 
 /**
@@ -29,6 +30,7 @@ export interface LayerContentProps {
     popupFields?: Record<string, FieldConfig>
     relatedTables?: RelatedTable[]
     linkFields?: LinkFields
+    imageFields?: ImageFieldConfig[]
     colorCodingMap?: ColorCodingRecordFunction
     colorCodingMode?: ColorCodingMode
     customLayerParameters?: Record<string, string> | null

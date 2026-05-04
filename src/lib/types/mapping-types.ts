@@ -76,10 +76,17 @@ export type FieldConfig = StringPopupFieldConfig | NumberPopupFieldConfig | Date
 
 export type ColorCodingMode = 'text' | 'background';
 
+export interface ImageFieldConfig {
+    field: string;
+    label?: string;
+    baseUrl?: string;
+}
+
 export type CustomSublayerProps = {
     popupFields?: Record<string, FieldConfig>; // Maps field labels to attribute names
     relatedTables?: RelatedTable[];
     linkFields?: LinkFields;
+    imageFields?: ImageFieldConfig[];
     colorCodingMap?: ColorCodingRecordFunction; // Maps field names to color coding functions
     colorCodingMode?: ColorCodingMode; // How to apply the color: 'text' (default) or 'background'
     rasterSource?: RasterSource;
@@ -106,6 +113,8 @@ interface BaseLayerProps {
     customLegend?: React.ReactNode;
     /** Structured bivariate legend config — works in both sidebar and print export */
     bivariateLegend?: { xLabel: string; yLabel: string };
+    /** GeoParquet URL for client-side export. When set, download button in layer controls is enabled. */
+    downloadParquetUrl?: string;
 }
 
 export interface WMSLayerProps extends BaseLayerProps {
@@ -113,6 +122,8 @@ export interface WMSLayerProps extends BaseLayerProps {
     sublayers: ExtendedSublayerProperties[];
     customLayerParameters?: Record<string, string> | null;
     crs?: string; // EPSG code (e.g., 'EPSG:26912', 'EPSG:3857') for WMS GetFeatureInfo requests
+    /** Set to enable min/max labels on the raster colorbar legend. Omit to render the bar without labels. */
+    legendUnit?: string;
 }
 
 export interface ArcGISMapServerLayerProps extends BaseLayerProps {
@@ -147,6 +158,8 @@ export interface WFSLayerProps extends BaseLayerProps {
     style?: {
         /** Circle radius for point features (default: 6) */
         circleRadius?: number;
+        /** Zoom-interpolated circle radius: [[zoom, radius], ...] sorted ascending by zoom */
+        circleRadiusByZoom?: Array<[number, number]>;
         /** Max circle radius cap to prevent overlap (default: none) */
         maxCircleRadius?: number;
         /** Data-driven circle radius based on feature property */
@@ -165,6 +178,18 @@ export interface WFSLayerProps extends BaseLayerProps {
             /** Default color for values below first threshold */
             defaultColor: string;
         };
+        /** Categorical color match: pick a color based on a string-valued field (maplibre `match` expression) */
+        circleColorMatch?: {
+            field: string;
+            matches: Record<string, string>;
+            defaultColor: string;
+        };
+        /** Categorical stroke color match (parallels circleColorMatch) */
+        circleStrokeColorMatch?: {
+            field: string;
+            matches: Record<string, string>;
+            defaultColor: string;
+        };
         /** Circle stroke color (default: '#fff') */
         circleStrokeColor?: string;
         /** Circle stroke width (default: 1) */
@@ -175,6 +200,21 @@ export interface WFSLayerProps extends BaseLayerProps {
         lineColor?: string;
         /** Line width (default: 2) */
         lineWidth?: number;
+        /** Renders an additional symbol layer driven by an icon-image expression. When set, a SymbolLayer is created alongside the circle layer; visibility is toggled via the vectorLayerSymbology prop. */
+        iconImageExpression?: unknown[];
+        /** Symbology mode key this icon represents (e.g. 'box-type'). Used to gate visibility against vectorLayerSymbology. */
+        iconSymbologyKey?: string;
+        /** Zoom-interpolated icon size, [[zoom, size], ...] */
+        iconSizeByZoom?: Array<[number, number]>;
+        /** Static icon size (used if iconSizeByZoom not set) */
+        iconSize?: number;
+        /** Hook called once per data load to register sprites for the symbol layer */
+        registerSprites?: (map: import('maplibre-gl').Map, features: import('geojson').Feature[]) => void;
+        /** Legend-facing metadata for the pie-wedge symbology mode. Codes order drives swatch order. */
+        pieGlyphLegend?: {
+            codes: readonly string[];
+            colors: Record<string, string>;
+        };
     };
     /** Optional sublayer config for popups/queries */
     sublayers?: ExtendedSublayerProperties[];
@@ -183,6 +223,8 @@ export interface WFSLayerProps extends BaseLayerProps {
 export interface GroupLayerProps extends BaseLayerProps {
     type: 'group';
     layers?: LayerProps[];
+    /** Always show this group in the review layer list, bypassing the reviewable-names DB filter */
+    alwaysShowInReview?: boolean;
 }
 
 
@@ -253,8 +295,20 @@ export interface RelatedTable {
     logicalOperator?: string;
     sortBy?: string;
     sortDirection?: 'asc' | 'desc';
-    /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers */
-    displayAs?: 'list' | 'table';
+    /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers, 'gallery' renders a photo gallery */
+    displayAs?: 'list' | 'table' | 'gallery';
+    /** Required when displayAs is 'gallery'. Field name containing the full-size image URL */
+    galleryUrlField?: string;
+    /** Optional when displayAs is 'gallery'. Field name containing the thumbnail URL. Falls back to galleryUrlField if not set */
+    galleryThumbnailField?: string;
+    /** Optional transform to derive thumbnail path from the galleryUrlField value. Takes precedence over galleryThumbnailField */
+    galleryThumbnailTransform?: (urlFieldValue: string) => string;
+    /** Optional when displayAs is 'gallery'. Field name to use as the image caption/label */
+    galleryLabelField?: string;
+    /** Optional base URL prepended to gallery URL field values */
+    galleryBaseUrl?: string;
+    /** Optional metadata fields to display alongside the image in the lightbox */
+    galleryMetadataFields?: { field: string; label: string }[];
     /** Fetch mode: 'postgrest' (default) or 'wfs' for GeoServer WFS queries */
     fetchMode?: 'postgrest' | 'wfs';
     /** WFS typeName (required when fetchMode is 'wfs'), e.g. 'emp:sco2_with_grid' */
@@ -267,7 +321,8 @@ interface DisplayField {
     label?: string;
     /** Format numeric values: 'number' (thousands), 'currency' (USD), 'percent'. Applied before transform. */
     format?: 'number' | 'currency' | 'percent';
-    transform?: (value: string) => React.ReactNode;
+    /** `allRows` lets cell renderers share a bulk fetch via one react-query key. */
+    transform?: (value: string, row?: Record<string, unknown>, allRows?: Record<string, unknown>[]) => React.ReactNode;
 }
 
 // Interface for composite symbol results

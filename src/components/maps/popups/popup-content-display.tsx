@@ -1,13 +1,13 @@
 import { Button } from "@/components/ui/button";
 import { RelatedDataMap, EMPTY_RELATED_DATA_MAP } from "@/hooks/use-bulk-related-table";
 import { Feature, Geometry, GeoJsonProperties } from "geojson";
-import { ExternalLink, Info } from "lucide-react";
+import { ChevronDown, ChevronRight, ExternalLink, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { LayerContentProps } from "@/components/maps/popups/types";
 import { Link } from "@/components/ui/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatNumeric } from "@/lib/utils";
-import { memo, useMemo, ReactNode } from "react";
+import { memo, useMemo, useState, useId, ReactNode } from "react";
 import {
     FieldConfig,
     StringPopupFieldConfig,
@@ -17,8 +17,11 @@ import {
     ColorCodingMode,
     RelatedTable,
     LinkConfig,
-    LinkDefinition
+    LinkDefinition,
+    ImageFieldConfig,
 } from "@/lib/types/mapping-types";
+import { PopupImageGallery, type GalleryImage } from "@/components/maps/popups/popup-image-gallery";
+import { relatedRowToGalleryImage } from "@/lib/gallery-utils";
 import {
     isNumberField,
     isStringField,
@@ -170,9 +173,66 @@ const renderFieldContent = (
     return value ?? "N/A";
 };
 
+// --- Gallery Image Builder ---
+export function buildGalleryImages(
+    imageFields: ImageFieldConfig[] | undefined,
+    properties: GeoJsonProperties | null,
+    relatedTables: RelatedTable[] | undefined,
+    data: ProcessedRelatedData[][]
+): GalleryImage[] {
+    const fromImageFields: GalleryImage[] = (imageFields && properties)
+        ? imageFields.flatMap((cfg: ImageFieldConfig) => {
+            const value = properties[cfg.field]
+            if (!value) return []
+            const url = cfg.baseUrl ? `${cfg.baseUrl}/${encodeURIComponent(String(value))}` : String(value)
+            return [{ url, label: cfg.label || String(value) }]
+        })
+        : []
+
+    const fromRelatedTables: GalleryImage[] = (relatedTables ?? []).flatMap((table, tableIndex) => {
+        if (table.displayAs !== 'gallery') return []
+        const rows = data[tableIndex] ?? []
+        return rows.flatMap(row => {
+            const img = relatedRowToGalleryImage(row, table)
+            return img ? [img] : []
+        })
+    })
+
+    return [...fromImageFields, ...fromRelatedTables]
+}
+
+function CollapsibleSection({ label, count, children }: { label: string; count?: number; children: ReactNode }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const contentId = useId();
+    return (
+        <div className="flex flex-col space-y-2">
+            <button
+                onClick={() => setIsOpen(o => !o)}
+                aria-expanded={isOpen}
+                aria-controls={contentId}
+                className="flex items-center gap-1 font-bold text-foreground hover:text-foreground/80 hover:bg-muted/50 rounded px-1 -ml-1 transition-colors w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+                {isOpen
+                    ? <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                    : <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />}
+                <span className="underline">{label}</span>
+                {count !== undefined && (
+                    <span
+                        aria-label={`${count} item${count === 1 ? '' : 's'}`}
+                        className="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground no-underline"
+                    >
+                        {count}
+                    </span>
+                )}
+            </button>
+            {isOpen && <div id={contentId}>{children}</div>}
+        </div>
+    );
+}
+
 // --- Main Component ---
 const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: PopupContentDisplayProps) => {
-    const { relatedTables, popupFields, linkFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
+    const { relatedTables, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
 
     // Convert bulk data to the format expected by getRelatedTableValues
     const data = useMemo((): ProcessedRelatedData[][] => {
@@ -195,7 +255,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
                         const rawValue = row[df.field];
                         // Apply format first (number/currency), then transform if exists
                         const formattedValue = formatNumeric(rawValue, df.format);
-                        const finalValue = df.transform ? df.transform(formattedValue) : formattedValue;
+                        const finalValue = df.transform ? df.transform(formattedValue, row, rows) : formattedValue;
                         return {
                             label: df.label,
                             value: finalValue || 'N/A'
@@ -219,8 +279,8 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         return (
             <div className="space-y-4">
                 <div className="flex flex-col">
-                    <p className="font-bold underline text-primary">{rasterSource.valueLabel}</p>
-                    <p className="break-words">{displayValue}</p>
+                    <p className="font-bold underline text-foreground">{rasterSource.valueLabel}</p>
+                    <p className="break-words text-foreground/80">{displayValue}</p>
                 </div>
             </div>
         );
@@ -301,8 +361,8 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         ) : label;
         const content = (
             <div key={`feature-item-${label}-${index}`} className="flex flex-col">
-                <p className="font-bold underline text-primary">{labelContent}</p>
-                <div className="break-words">
+                <p className="font-bold underline text-foreground">{labelContent}</p>
+                <div className="break-words text-foreground/80">
                     {hasColorStyling ? (
                         <span className={colorStyle.className} style={colorStyle.style}>
                             {renderFieldContent(finalDisplayValue, fieldKey, properties, linkFields, urlPattern)}
@@ -332,22 +392,17 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
 
         let relatedContent: JSX.Element;
 
-        if (useTableFormat) {
-            // Get column headers from displayFields
-            const headers = table.displayFields!.map(df => df.label || df.field);
+        const sectionLabel = String(properties[table.fieldLabel] || table.fieldLabel);
 
+        if (useTableFormat) {
+            const headers = table.displayFields!.map(df => df.label || df.field);
             relatedContent = (
-                <div key={`related-${table.fieldLabel}-${tableIndex}`} className="flex flex-col space-y-2">
-                    <p className="font-bold underline text-primary">
-                        {properties[table.fieldLabel] || table.fieldLabel}
-                    </p>
+                <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel} count={groupedValues.length}>
                     <Table>
                         <TableHeader>
                             <TableRow>
                                 {headers.map((header, idx) => (
-                                    <TableHead key={idx} className="h-8 text-xs">
-                                        {header}
-                                    </TableHead>
+                                    <TableHead key={idx} className="h-8 text-xs">{header}</TableHead>
                                 ))}
                             </TableRow>
                         </TableHeader>
@@ -363,15 +418,11 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
                             ))}
                         </TableBody>
                     </Table>
-                </div>
+                </CollapsibleSection>
             );
         } else {
-            // Original simple format for single values or description-only fields
             relatedContent = (
-                <div key={`related-${table.fieldLabel}-${tableIndex}`} className="flex flex-col space-y-2">
-                    <p className="font-bold underline text-primary">
-                        {properties[table.fieldLabel] || table.fieldLabel}
-                    </p>
+                <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel} count={groupedValues.length}>
                     {groupedValues.map((group, groupIdx) => (
                         <div key={`group-${groupIdx}`} className="flex flex-col">
                             {group.map((valueItem, valueIdx) => (
@@ -382,7 +433,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
                             ))}
                         </div>
                     ))}
-                </div>
+                </CollapsibleSection>
             );
         }
 
@@ -396,8 +447,14 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
     const regularContent = contentItems.filter(item => !item.isLongContent).sort((a, b) => a.originalIndex - b.originalIndex).map(item => item.content);
     const useGridLayout = layout === "grid" || regularContent.length > 5;
 
+    const galleryImages = useMemo(
+        () => buildGalleryImages(imageFields, properties, relatedTables, data),
+        [imageFields, properties, relatedTables, data]
+    )
+
     return (
         <div className="space-y-2">
+            {galleryImages.length > 0 && <PopupImageGallery images={galleryImages} />}
             {longContent.length > 0 && <div className="space-y-2 col-span-full">{longContent}</div>}
             <div className={useGridLayout ? "grid grid-cols-2 gap-2" : "space-y-2"}>{regularContent}</div>
         </div>
@@ -405,8 +462,10 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
 };
 
 const PopupContentDisplay = memo(PopupContentDisplayInner, (prevProps, nextProps) => {
+    // Compare feature by reference — feature.id is frequently undefined on
+    // GeoJSON features, which would silently mask real changes.
     return (
-        prevProps.feature?.id === nextProps.feature?.id &&
+        prevProps.feature === nextProps.feature &&
         prevProps.layout === nextProps.layout &&
         prevProps.layer.sourceCRS === nextProps.layer.sourceCRS &&
         prevProps.layer.layerTitle === nextProps.layer.layerTitle &&

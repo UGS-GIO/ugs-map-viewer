@@ -51,10 +51,10 @@ export function queryWfsLayersInScreenBbox(
 ): WfsLayerFeature[] {
   if (wfsLayers.length === 0) return []
 
-  // Query both point (-circle) and polygon (-fill) layer IDs, filtering to those that exist
+  // Query point (-circle), symbol (-symbol), and polygon (-fill) layer IDs, filtering to those that exist
   const wfsLayerIds = wfsLayers.flatMap(layer => {
     const sourceId = getWfsSourceId(layer)
-    return [`${sourceId}-circle`, `${sourceId}-fill`].filter(id => map.getLayer(id))
+    return [`${sourceId}-circle`, `${sourceId}-symbol`, `${sourceId}-fill`].filter(id => map.getLayer(id))
   })
   if (wfsLayerIds.length === 0) return []
   const features = map.queryRenderedFeatures(bbox, { layers: wfsLayerIds })

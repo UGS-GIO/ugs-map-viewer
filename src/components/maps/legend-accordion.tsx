@@ -1,21 +1,49 @@
 import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/accordion';
 import { BivariateLegend } from '@/components/maps/bivariate-legend';
-import useLegendPreview from '@/hooks/use-legend-preview';
+import useLegendPreview, { type PreviewItem } from '@/hooks/use-legend-preview';
 import { useArcGisLegend } from '@/hooks/use-arcgis-legend';
 
 interface LegendAccordionProps {
-    layerId: string;
     url: string;
     isOpen: boolean;
     layerName?: string | null;
     customLegend?: React.ReactNode;
     bivariateLegend?: { xLabel: string; yLabel: string };
     arcgisUrl?: string;
+    legendUnit?: string;
 }
 
-const LegendAccordion = ({ layerId, url, isOpen, layerName, customLegend, bivariateLegend, arcgisUrl }: LegendAccordionProps) => {
+/** Callback ref that mounts a DOM node as the host's only child. Avoids dangerouslySetInnerHTML. */
+function mountDomNode(node: Node) {
+    return (host: HTMLElement | null) => {
+        if (host) host.replaceChildren(node.cloneNode(true));
+    };
+}
+
+function LegendItem({ item }: { item: PreviewItem }) {
+    const html = item.html;
+    if (!html) return null;
+
+    // Symbolizers can opt into a full-width layout via `data-fullwidth="true"`.
+    if (html.dataset?.fullwidth === 'true') {
+        return <span className="block px-0.5 py-1" ref={mountDomNode(html)} />;
+    }
+
+    return (
+        <div className="flex items-center space-x-2 py-1">
+            <span
+                className="flex items-center justify-center w-8 min-w-8"
+                aria-hidden
+                ref={mountDomNode(html)}
+            />
+            <span>{item.label}</span>
+        </div>
+    );
+}
+
+const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend, arcgisUrl, legendUnit }: LegendAccordionProps) => {
     const skipFetch = !!customLegend || !!bivariateLegend || !!arcgisUrl;
-    const { preview, isLoading, error } = useLegendPreview(layerId, url, layerName ?? undefined, skipFetch);
+    const { preview, isLoading, error } = useLegendPreview(url, layerName ?? undefined, skipFetch, legendUnit);
     const { data: arcgisLegendItems, isLoading: arcgisLoading, error: arcgisError } = useArcGisLegend(arcgisUrl);
     // Use empty string instead of undefined to keep accordion controlled
     const accordionValue = isOpen ? "legend-accordion" : "";
@@ -55,24 +83,10 @@ const LegendAccordion = ({ layerId, url, isOpen, layerName, customLegend, bivari
             );
         }
 
-        return (
-            <>
-                {isLoading && <div>Loading legend...</div>}
-                {error && <div>Error loading legend: {error.message}</div>}
-                {preview?.map((previewItem, index) => (
-                    <div key={index} className="flex items-center space-x-2 py-1">
-                        {previewItem?.html &&
-                            <span
-                                className="flex items-center justify-center w-8 min-w-8"
-                                aria-hidden="true"
-                                dangerouslySetInnerHTML={{ __html: previewItem?.html?.outerHTML || '' }}
-                            />
-                        }
-                        <span>{previewItem?.label}</span>
-                    </div>
-                ))}
-            </>
-        );
+        if (isLoading) return <div>Loading legend...</div>;
+        if (error) return <div>Error loading legend: {error.message}</div>;
+
+        return <>{preview?.map((item, i) => <LegendItem key={i} item={item} />)}</>;
     };
 
     return (

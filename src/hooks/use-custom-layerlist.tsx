@@ -11,6 +11,7 @@ import { useLayerExtent, UseLayerExtentOptions } from '@/hooks/use-layer-extent'
 import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions';
 import { useSidebar } from '@/hooks/use-sidebar';
 import LayerControls from '@/components/maps/layer-controls';
+import { WfsVectorLegend } from '@/components/maps/wfs-vector-legend';
 import { useIsMobile } from './use-mobile';
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from '@/lib/constants';
 import { useLayerUrl } from '@/context/layer-url-provider';
@@ -27,9 +28,10 @@ interface LayerAccordionItemProps {
     layerConfig: LayerProps;
     isTopLevel: boolean;
     parentGroupTitle?: string;
+    disableExport?: boolean;
 }
 
-const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: LayerAccordionItemProps) => {
+const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disableExport }: LayerAccordionItemProps) => {
     const {
         isSelected,
         handleToggleSelection,
@@ -213,6 +215,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
                             {childLayers.map((child) => (
                                 <div className="ml-4" key={child.title}>
                                     <LayerAccordionItem
+                                        disableExport={disableExport}
                                         layerConfig={child}
                                         isTopLevel={false}
                                         parentGroupTitle={layerConfig.title}
@@ -225,6 +228,11 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
             </div>
         );
     }
+
+    // WFS layers get a client-rendered legend by default (swatches driven by layer.style +
+    // current symbology mode). Explicit `customLegend` on the config always wins.
+    const resolvedCustomLegend =
+        layerConfig.customLegend ?? (isWFSLayer(layerConfig) ? <WfsVectorLegend layer={layerConfig} /> : undefined);
 
     // --- Single Layer Rendering ---
     return (
@@ -268,13 +276,15 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
                             title={layerConfig.title || ''}
                             description={layerDescriptions ? layerDescriptions[layerConfig.title || ''] : ''}
                             handleZoomToLayer={handleZoomToLayer}
-                            layerId={layerConfig.title || ''}
                             url={extentOptions.type === 'wms' ? extentOptions.wmsUrl || '' : ''}
                             openLegend={isUserExpanded}
                             layerName={extentOptions.type === 'wms' ? extentOptions.layerName : null}
-                            customLegend={layerConfig.customLegend}
+                            customLegend={resolvedCustomLegend}
                             bivariateLegend={layerConfig.bivariateLegend}
                             arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
+                            legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}
+                            downloadParquetUrl={layerConfig.downloadParquetUrl}
+                            disableExport={disableExport}
                         />
                     </AccordionContent>
                 </AccordionItem>
@@ -284,7 +294,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
 };
 
 
-export const useCustomLayerList = ({ config }: { config: LayerProps[] | null }) => {
+export const useCustomLayerList = ({ config, disableExport }: { config: LayerProps[] | null; disableExport?: boolean }) => {
 
     const layerList = useMemo(() => {
         if (!config) return [];
@@ -294,10 +304,11 @@ export const useCustomLayerList = ({ config }: { config: LayerProps[] | null }) 
                     key={layer.title}
                     layerConfig={layer}
                     isTopLevel={true}
+                    disableExport={disableExport}
                 />
             )
         });
-    }, [config]);
+    }, [config, disableExport]);
 
     return layerList;
 };

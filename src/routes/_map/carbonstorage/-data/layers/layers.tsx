@@ -1,5 +1,5 @@
 import { Link } from "@/components/ui/link";
-import { MAPS_ASSETS_CDN_URL, ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
+import { MAPS_ASSETS_CDN_URL, parquetUrl, ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { ArcGISMapServerLayerProps, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
@@ -15,6 +15,7 @@ const georegionsWMSConfig: WMSLayerProps = {
     visible: true,
     opacity: 0.3,
     crs: 'EPSG:3857',
+    downloadParquetUrl: parquetUrl("enmin_ccus_georegions"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${georegionsLayerName}`,
@@ -26,23 +27,11 @@ const georegionsWMSConfig: WMSLayerProps = {
                 'Key Reservoirs': { field: 'keyreservoirs', type: 'string' },
                 'Key Caprocks': { field: 'keycaprocks', type: 'string' },
                 'Description': { field: 'description', type: 'string' },
-                'Geo-region Map': { field: 'georegionmap', type: 'string' },
-                'Stratigraphic Column': { field: 'stratcolumn', type: 'string' },
             },
-            linkFields: {
-                'georegionmap': {
-                    transform: (value: string) => {
-                        if (!value) return [{ label: 'Not available', href: null }];
-                        return [{ label: 'View Image', href: `${CCUS_IMAGE_BASE_URL}/georegionmaps/${encodeURIComponent(value)}` }];
-                    }
-                },
-                'stratcolumn': {
-                    transform: (value: string) => {
-                        if (!value) return [{ label: 'Not available', href: null }];
-                        return [{ label: 'View Image', href: `${CCUS_IMAGE_BASE_URL}/stratcolumns/${encodeURIComponent(value)}` }];
-                    }
-                },
-            },
+            imageFields: [
+                { field: 'georegionmap', label: 'Geo-region Map', baseUrl: `${CCUS_IMAGE_BASE_URL}/georegionmaps` },
+                { field: 'stratcolumn', label: 'Stratigraphic Column', baseUrl: `${CCUS_IMAGE_BASE_URL}/stratcolumns` },
+            ],
             colorCodingMap: {
                 'ranking': (value: string | number) => {
                     const strValue = String(value).toLowerCase();
@@ -455,6 +444,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
     title: qFaultsWMSTitle,
     visible: false,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("hazards_qfaults"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${qFaultsLayerName}`,
@@ -602,7 +592,28 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
                         ];
                     }
                 }
-            }
+            },
+            relatedTables: [
+                {
+                    fieldLabel: 'Core Photos',
+                    matchingField: 'uwi',
+                    targetField: 'uwi',
+                    url: PROD_POSTGREST_URL + '/ucrc_photographs',
+                    headers: {
+                        'Accept-Profile': 'emp',
+                        'Accept': 'application/json',
+                    },
+                    displayAs: 'gallery',
+                    galleryUrlField: 'photo_url',
+                    galleryThumbnailField: 'thumb_url',
+                    galleryLabelField: 'filename',
+                    galleryMetadataFields: [
+                        { field: 'photo_type', label: 'Type' },
+                        { field: 'top_depth', label: 'Top (ft)' },
+                        { field: 'bottom_depth', label: 'Bottom (ft)' },
+                    ],
+                },
+            ],
         }
     ],
 };
@@ -706,7 +717,16 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
                     }
                 },
                 'Description': { field: 'description', type: 'string' },
-                'Report': { field: 'linktoreport', type: 'string', transform: () => 'Coming Soon' },
+                'Report': { field: 'linktoreport', type: 'string' },
+            },
+            linkFields: {
+                'linktoreport': {
+                    transform: (value: unknown) => {
+                        const str = String(value ?? '');
+                        if (!str || !str.startsWith('http')) return [];
+                        return [{ label: 'View Report', href: str }];
+                    },
+                },
             },
             colorCodingMap: {
                 'ranking': (value: string | number) => {
@@ -753,6 +773,7 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
     title: ccusProjectsWMSTitle,
     visible: true,
     crs: 'EPSG:3857',
+    downloadParquetUrl: parquetUrl("ccus_projects"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${ccusProjectsLayerName}`,
@@ -760,8 +781,8 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
             queryable: true,
             popupFields: {
                 'Project Name': { field: 'generalregionname', type: 'string' },
-                'Timeline': { field: 'timeline', type: 'string' },
                 'Project Summary': { field: 'projectsummary', type: 'string' },
+                'Timeline': { field: 'timeline', type: 'string' },
                 'Reservoir Investigated': { field: 'reservoirinvestigated', type: 'string' },
                 '': { field: 'link', type: 'string', transform: (value: string | null) => value },
             },
@@ -812,6 +833,7 @@ const geochemWellSitesWMSConfig: WMSLayerProps = {
     title: geochemWellSitesWMSTitle,
     visible: false,
     crs: 'EPSG:3857',
+    downloadParquetUrl: parquetUrl("enmin_ccus_geochemistry"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geochemWellSitesLayerName}`,
@@ -879,6 +901,7 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalWellsJoinsTitle,
     visible: false,
+    downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_wellfeatures"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsJoinsName}`,
@@ -936,6 +959,7 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalSpringsJoinsTitle,
     visible: false,
+    downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_springfeatures"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalSpringsJoinsName}`,
@@ -995,6 +1019,15 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
+                'Type': {
+                    field: 'type',
+                    type: 'string',
+                    transform: (value) => {
+                        if (value === 'W') return 'Well'
+                        if (value === 'S') return 'Spring'
+                        return value
+                    }
+                },
                 'Map Number': { field: 'mapno', type: 'string' },
                 'Region': {
                     field: 'custom',
@@ -1020,7 +1053,6 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                 },
                 'Well/Spring Name': { field: 'source', type: 'string' },
                 'UGS Name': { field: 'idname', type: 'string' },
-                'Type': { field: 'type', type: 'string' },
                 'Temperature': {
                     field: 'custom',
                     type: 'custom',
@@ -1062,6 +1094,34 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
             },
         },
     ],
+};
+
+// Utah counties
+const utCountiesConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: 'Utah Counties',
+    visible: false,
+    crs: 'EPSG:3857',
+    sublayers: [{
+        name: `${ENERGY_MINERALS_WORKSPACE}:enmin_ut_counties_current`,
+        popupEnabled: false,
+        queryable: false,
+    }],
+};
+
+// Utah township & ranges
+const utTownshipRangesConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: 'Utah Township & Ranges',
+    visible: false,
+    crs: 'EPSG:3857',
+    sublayers: [{
+        name: `${ENERGY_MINERALS_WORKSPACE}:enmin_plss_townshiprange_current`,
+        popupEnabled: false,
+        queryable: false,
+    }],
 };
 
 // Non-Petroleum Well Catalogue Data
@@ -1133,6 +1193,8 @@ const infrastructureAndLandUseConfig: LayerProps = {
         transmissionLinesWMSConfig,
         wildernessStudyAreasWMSConfig,
         SITLAConfig,
+        utCountiesConfig,
+        utTownshipRangesConfig,
     ]
 }
 

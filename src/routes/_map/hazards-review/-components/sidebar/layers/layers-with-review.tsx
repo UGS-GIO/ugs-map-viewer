@@ -21,6 +21,7 @@ const getFilteredLayers = (
             }
 
             if (isGroupLayer(layer)) {
+                if (layer.alwaysShowInReview) return layer;
                 const nestedLayers = layer.layers ? getFilteredLayers(layer.layers, reviewableNames) : [];
                 return nestedLayers.length ? { ...layer, layers: nestedLayers } : null;
             }

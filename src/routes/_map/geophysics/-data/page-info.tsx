@@ -89,16 +89,16 @@ const dataSources = (
     <strong><u>Geological Information</u></strong>
     <ul className="list-disc ml-5 space-y-4">
         <li>Hazardous (Quaternary Age) Faults - Utah Geological Survey <br />
-            <Link to="https://opendata.gis.utah.gov/datasets/utahDNR::utah-quaternary-faults/Linkbout">Access data</Link>
+            <Link to="https://opendata.gis.utah.gov/datasets/utahDNR::utah-quaternary-faults/about">Access data</Link>
         </li>
         <li>Great Basin Faults (INGENIOUS Project) - Geothermal Data Repository <br />
             <Link to="https://gdr.openei.org/submissions/1391">Access data</Link>
         </li>
         <li>Utah Faults - Utah Geological Survey <br />
-            <Link to="https://geology.utah.gov/publication-details/?pub%3DM-179dm">Access data</Link>
+            <Link to="https://geology.utah.gov/publication-details/?pub=M-179dm">Access data</Link>
         </li>
         <li>Geological Units (500k) - Utah Geological Survey <br />
-            <Link to="https://geology.utah.gov/publication-details/?pub%3DM-179dm">Access data</Link>
+            <Link to="https://geology.utah.gov/publication-details/?pub=M-179dm">Access data</Link>
         </li>
     </ul>
 </p>     
@@ -107,16 +107,16 @@ const dataSources = (
     <ul className="list-disc ml-5 space-y-4">
         <li>Geothermal Power Plants - Utah Geological Survey</li>
         <li>Utah Roads - Local data stewards, UDOT, and UGRC <br />
-            <Link to="https://opendata.gis.utah.gov/datasets/utah-roads/Linkbout">Access data</Link>
+            <Link to="https://opendata.gis.utah.gov/datasets/utah-roads/about">Access data</Link>
         </li>
         <li>Utah Railroads - UGRC <br />
-            <Link to="https://opendata.gis.utah.gov/datasets/utah-railroads/Linkbout">Access data</Link>
+            <Link to="https://opendata.gis.utah.gov/datasets/utah-railroads/about">Access data</Link>
         </li>
         <li>Transmission Lines - UGRC <br />
-            <Link to="https://opendata.gis.utah.gov/datasets/utah::utah-transmission-lines/Linkbout">Access data</Link>
+            <Link to="https://opendata.gis.utah.gov/datasets/utah::utah-transmission-lines/about">Access data</Link>
         </li>
         <li>Utah Land Ownership - School and Institutional Trust Lands Administration (SITLA), BLM, and Partners <br />
-            <Link to="https://opendata.gis.utah.gov/datasets/SITLA::land-ownership/Linkbout">Access data</Link>
+            <Link to="https://opendata.gis.utah.gov/datasets/SITLA::land-ownership/about">Access data</Link>
         </li>
     </ul>
     </p> 

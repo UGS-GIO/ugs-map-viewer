@@ -26,6 +26,9 @@ import {
     DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuCheckboxItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
     X,
@@ -57,11 +60,13 @@ interface QueryResultsTableProps {
     selectedFeatureRefs?: SelectedFeatureRef[];
     onSelectedFeaturesChange?: (refs: SelectedFeatureRef[]) => void;
     onHighlightChange?: (features: HighlightFeature[]) => void;
+    /** When true, hide the export dropdown. Stakeholder request for apps that require unmodified source data. */
+    disableExport?: boolean;
 }
 
 const EMPTY_COLUMN_FILTERS: { id: string; value: string }[] = [];
 
-export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeChange, selectedFeatureRefs = [], onSelectedFeaturesChange, onHighlightChange }: QueryResultsTableProps) {
+export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeChange, selectedFeatureRefs = [], onSelectedFeaturesChange, onHighlightChange, disableExport = false }: QueryResultsTableProps) {
     const { zoomTo, zoomToAll } = useZoomToFeature({ onHighlightChange });
 
     const layersWithData = useMemo(() =>
@@ -77,6 +82,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
     const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
     const [expandedTables, setExpandedTables] = useState<Record<string, number | null>>({});
     const [pagination, setPagination] = useState({ pageIndex: 0, pageSize: 25 });
+    const [includeRelatedInExport, setIncludeRelatedInExport] = useState(true);
     const lastClickedRowRef = useRef<number | null>(null);
 
     // Clamp selectedLayerIndex if layersWithData shrinks
@@ -168,15 +174,6 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         onSelectedFeaturesChange?.([]);
     }, [onSelectedFeaturesChange]);
 
-    const selectedRows = useMemo(() => {
-        return Object.keys(rowSelection)
-            .filter(key => rowSelection[key])
-            .map(key => rowData[parseInt(key)])
-            .filter(Boolean);
-    }, [rowSelection, rowData]);
-
-    const hasSelection = selectedRows.length > 0;
-
     const handleRowSelectionChange = useCallback((updater: RowSelectionState | ((old: RowSelectionState) => RowSelectionState)) => {
         const newSelection = typeof updater === 'function' ? updater(rowSelection) : updater;
         const selectedIndices = Object.keys(newSelection).filter(key => newSelection[key]).map(Number);
@@ -198,12 +195,6 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             }));
         onHighlightChange?.(highlights);
     }, [rowSelection, rowData, rowIndicesToFeatureRefs, onSelectedFeaturesChange, onHighlightChange]);
-
-    const handleZoomToSelected = useCallback(() => {
-        if (selectedRows.length === 0) return;
-        const features = selectedRows.map(r => r.feature);
-        zoomToAll(features, selectedRows[0].sourceCRS, { maxZoom: selectedRows[0].maxZoomLevel });
-    }, [selectedRows, zoomToAll]);
 
     const handleClearSelection = useCallback(() => {
         onSelectedFeaturesChange?.([]);
@@ -250,18 +241,34 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         },
     });
 
-    // Uses TanStack's filtered model to match what's visible in the table
+    const selectedRows = useMemo(
+        () => table.getSelectedRowModel().rows.map(r => r.original),
+        [table, rowSelection],
+    );
+    const hasSelection = selectedRows.length > 0;
+
+    const handleZoomToSelected = useCallback(() => {
+        if (selectedRows.length === 0) return;
+        const features = selectedRows.map(r => r.feature);
+        zoomToAll(features, selectedRows[0].sourceCRS, { maxZoom: selectedRows[0].maxZoomLevel });
+    }, [selectedRows, zoomToAll]);
+
+    // Export emits all feature properties (not just popupFields/visible columns).
+    // Filter state determines row scope; column visibility is UI-only.
     const handleExport = useCallback((format: 'csv' | 'geojson') => {
         const filteredRows = table.getFilteredRowModel().rows.map(r => r.original);
         exportTableData({
             format,
             dataToExport: hasSelection ? selectedRows : filteredRows,
             layerTitle: selectedLayer?.layerTitle || '',
-            visibleConfigs: columnConfigs.filter(c => columnVisibility[c.id] !== false),
+            columnConfigs,
             relatedTables: selectedLayer?.relatedTables || [],
             relatedDataMaps,
+            includeRelated: includeRelatedInExport,
         });
-    }, [hasSelection, selectedRows, table, selectedLayer, columnConfigs, columnVisibility, relatedDataMaps]);
+    }, [hasSelection, selectedRows, table, selectedLayer, columnConfigs, relatedDataMaps, includeRelatedInExport]);
+
+    const hasRelatedTables = (selectedLayer?.relatedTables?.length ?? 0) > 0;
 
     // Total count across all layers (includes raster-only as 1)
     const totalCount = layersWithData.reduce((sum, layer) => {
@@ -398,26 +405,43 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                     </>
                 )}
 
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-xs text-muted-foreground"
-                            title={hasSelection ? `Export ${selectedRows.length} selected` : 'Export all'}
-                        >
-                            <Download className="h-3 w-3" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleExport('csv')}>
-                            CSV
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleExport('geojson')}>
-                            GeoJSON
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                {!disableExport && (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs text-muted-foreground"
+                                title={hasSelection ? `Export ${selectedRows.length} selected` : 'Export all'}
+                            >
+                                <Download className="h-3 w-3" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleExport('csv')}>
+                                CSV
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleExport('geojson')}>
+                                GeoJSON
+                            </DropdownMenuItem>
+                            {hasRelatedTables && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                                        Options
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuCheckboxItem
+                                        checked={includeRelatedInExport}
+                                        onCheckedChange={setIncludeRelatedInExport}
+                                        onSelect={(e) => e.preventDefault()}
+                                    >
+                                        Include related data
+                                    </DropdownMenuCheckboxItem>
+                                </>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                )}
 
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>

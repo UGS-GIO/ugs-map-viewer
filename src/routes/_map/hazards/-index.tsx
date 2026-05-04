@@ -71,6 +71,7 @@ export default function Map() {
             <Layout.Body>
               <GenericMapContainer
                 onClearSearch={() => searchRef.current?.clear()}
+                disableExport
               />
             </Layout.Body>
 
