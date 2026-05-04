@@ -12,6 +12,7 @@ import { useLayerExtent, UseLayerExtentOptions } from '@/hooks/use-layer-extent'
 import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions';
 import { useSidebar } from '@/hooks/use-sidebar';
 import LayerControls from '@/components/maps/layer-controls';
+import { WfsVectorLegend } from '@/components/maps/wfs-vector-legend';
 import { useIsMobile } from './use-mobile';
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from '@/lib/constants';
 import { useLayerUrl } from '@/context/layer-url-provider';
@@ -227,6 +228,14 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
         );
     }
 
+    // WFS layers get a client-rendered legend by default (swatches driven by layer.style +
+    // current symbology mode). COG layers render a colorbar from raster stats. Explicit
+    // `customLegend` on the config always wins.
+    const resolvedCustomLegend =
+        layerConfig.customLegend
+        ?? (isCOGLayer(layerConfig) ? <CogLegend layer={layerConfig} /> : undefined)
+        ?? (isWFSLayer(layerConfig) ? <WfsVectorLegend layer={layerConfig} /> : undefined);
+
     // --- Single Layer Rendering ---
     return (
         <div className={`mr-2 my-1 ${isTopLevel ? 'border border-secondary rounded' : ''}`}>
@@ -272,7 +281,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
                             url={extentOptions.type === 'wms' ? extentOptions.wmsUrl || '' : ''}
                             openLegend={isUserExpanded}
                             layerName={extentOptions.type === 'wms' ? extentOptions.layerName : null}
-                            customLegend={isCOGLayer(layerConfig) ? <CogLegend layer={layerConfig} /> : layerConfig.customLegend}
+                            customLegend={resolvedCustomLegend}
                             bivariateLegend={layerConfig.bivariateLegend}
                             arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
                             legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}

@@ -7,10 +7,11 @@ import {
   type BoxSelectQueryParams,
   type PolygonQueryParams,
   type WfsFeature as ClickedFeature,
+  type VisibleLayersResult,
 } from '@/lib/map/wfs-service'
 
 interface UseFeatureQueryOptions {
-  onPolygonQuerySuccess?: (features: ClickedFeature[]) => void
+  onPolygonQuerySuccess?: (result: VisibleLayersResult) => void
 }
 
 /**
@@ -38,8 +39,8 @@ export function useFeatureQuery(options: UseFeatureQueryOptions = {}) {
   const polygonQuery = useMutation({
     mutationFn: queryPolygonFeatures,
     scope: { id: 'polygon-query' },
-    onSuccess: (features) => {
-      onPolygonQuerySuccess?.(features)
+    onSuccess: (result) => {
+      onPolygonQuerySuccess?.(result)
     },
   })
 

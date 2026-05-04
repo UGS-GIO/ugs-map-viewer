@@ -30,6 +30,7 @@ import { useFeatureQuery } from '@/hooks/use-feature-query'
 import type { ClickedFeature, DataMapProps } from './types'
 import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
+import { toast } from 'sonner'
 
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps } from './types'
@@ -101,16 +102,23 @@ function ArcGisLayerSource({ layer, beforeId }: { layer: ArcGISMapServerLayerPro
 }
 
 function WfsLayerSource({
-  layer, geojson, beforeId,
+  layer, geojson, beforeId, layerFilter, activeSymbology,
 }: {
   layer: WFSLayerProps
   geojson: FeatureCollection
   beforeId: string | undefined
+  layerFilter?: maplibregl.FilterSpecification
+  activeSymbology?: string
 }) {
   const sourceId = getWfsSourceId(layer)
   const styleConfig = layer.style || {}
 
   let circleRadius: number | maplibregl.ExpressionSpecification = styleConfig.circleRadius || 6
+  if (styleConfig.circleRadiusByZoom && styleConfig.circleRadiusByZoom.length >= 2) {
+    const stops = styleConfig.circleRadiusByZoom
+    const expr: unknown[] = ['interpolate', ['linear'], ['zoom'], ...stops.flat()]
+    circleRadius = expr as maplibregl.ExpressionSpecification
+  }
   if (styleConfig.circleRadiusProperty) {
     const { field, stops } = styleConfig.circleRadiusProperty
     const [minVal, minRadius, maxVal, maxRadius] = stops
@@ -132,6 +140,29 @@ function WfsLayerSource({
   if (styleConfig.circleColorProperty) {
     const { field, stops, defaultColor } = styleConfig.circleColorProperty
     circleColor = ['step', ['coalesce', ['get', field], -Infinity], defaultColor, ...stops.flat()]
+  } else if (styleConfig.circleColorMatch) {
+    const { field, matches, defaultColor } = styleConfig.circleColorMatch
+    const expr: unknown[] = ['match', ['coalesce', ['get', field], ''], ...Object.entries(matches).flat(), defaultColor]
+    circleColor = expr as maplibregl.ExpressionSpecification
+  }
+
+  let circleStrokeColor: string | maplibregl.ExpressionSpecification = styleConfig.circleStrokeColor || '#fff'
+  if (styleConfig.circleStrokeColorMatch) {
+    const { field, matches, defaultColor } = styleConfig.circleStrokeColorMatch
+    const expr: unknown[] = ['match', ['coalesce', ['get', field], ''], ...Object.entries(matches).flat(), defaultColor]
+    circleStrokeColor = expr as maplibregl.ExpressionSpecification
+  }
+
+  const symbolKey = styleConfig.iconSymbologyKey || ''
+  const symbolActive = !!symbolKey && activeSymbology === symbolKey
+  const circleVisibility = symbolActive ? 'none' : 'visible'
+  const symbolVisibility = symbolActive ? 'visible' : 'none'
+
+  let iconSize: number | maplibregl.ExpressionSpecification = styleConfig.iconSize ?? 1
+  if (styleConfig.iconSizeByZoom && styleConfig.iconSizeByZoom.length >= 2) {
+    const stops = styleConfig.iconSizeByZoom
+    const expr: unknown[] = ['interpolate', ['linear'], ['zoom'], ...stops.flat()]
+    iconSize = expr as maplibregl.ExpressionSpecification
   }
 
   return (
@@ -140,12 +171,15 @@ function WfsLayerSource({
         id={`${sourceId}-circle`}
         beforeId={beforeId}
         type="circle"
+        {...(layerFilter ? { filter: layerFilter } : {})}
+        layout={{ visibility: circleVisibility }}
         paint={{
           'circle-radius': circleRadius,
           'circle-color': circleColor,
-          'circle-stroke-color': styleConfig.circleStrokeColor || '#fff',
+          'circle-stroke-color': circleStrokeColor,
           'circle-stroke-width': styleConfig.circleStrokeWidth || 1,
-          'circle-opacity': layer.opacity || 1,
+          'circle-opacity': layer.opacity ?? 1,
+          'circle-stroke-opacity': layer.opacity ?? 1,
         }}
         metadata={{
           title: layer.title,
@@ -154,6 +188,30 @@ function WfsLayerSource({
           wfsSourceId: sourceId,
         }}
       />
+      {styleConfig.iconImageExpression && (
+        <Layer
+          id={`${sourceId}-symbol`}
+          beforeId={beforeId}
+          type="symbol"
+          {...(layerFilter ? { filter: layerFilter } : {})}
+          layout={{
+            visibility: symbolVisibility,
+            'icon-image': styleConfig.iconImageExpression as maplibregl.ExpressionSpecification,
+            'icon-size': iconSize,
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true,
+          }}
+          paint={{
+            'icon-opacity': layer.opacity ?? 1,
+          }}
+          metadata={{
+            title: layer.title,
+            wfsLayer: true,
+            wfsTypeName: layer.typeName,
+            wfsSourceId: sourceId,
+          }}
+        />
+      )}
     </Source>
   )
 }
@@ -189,6 +247,8 @@ export default function DataMap({
   onBoxSelectConfirm,
   layerFilters = {},
   layerStyles = {},
+  vectorLayerFilters = {},
+  vectorLayerSymbology = {},
   onMapReady,
   basemapId,
   clickBufferBounds,
@@ -247,6 +307,21 @@ export default function DataMap({
     return visibleLayers.filter(l => !isWFSLayer(l) || wfsLayerData.get(getWfsSourceId(l)) !== undefined)
   }, [visibleLayers, wfsLayerData])
 
+  // After data lands and the map style is loaded, run any per-layer sprite registration hooks.
+  // Idempotent: each hook checks map.hasImage before adding.
+  useEffect(() => {
+    if (!styleLoaded) return
+    const map = mapRef.current?.getMap()
+    if (!map) return
+    for (const layer of visibleWfsLayers) {
+      const register = layer.style?.registerSprites
+      if (!register) continue
+      const sourceId = getWfsSourceId(layer)
+      const data = wfsLayerData.get(sourceId)
+      if (data) register(map, data.features)
+    }
+  }, [styleLoaded, wfsLayerData, visibleWfsLayers])
+
   // Refs for stable access to layers in callbacks (prevents TerraDraw reinit)
   const visibleWmsLayersRef = useRef(visibleWmsLayers)
   visibleWmsLayersRef.current = visibleWmsLayers
@@ -256,15 +331,21 @@ export default function DataMap({
   // Ref to store WFS features from polygon query (populated before WMS query completes)
   const polygonWfsLayerFeaturesRef = useRef<WfsLayerFeature[]>([])
 
-  // Feature query mutations
+  const notifyTruncated = useCallback(() => {
+    toast.warning('Result limit reached', {
+      description: 'Showing first 10,000 features. Narrow your selection for the rest.',
+      duration: 8000,
+    })
+  }, [])
+
   const { clickQuery, boxSelectQuery, polygonQuery, isLoading: queryLoading } = useFeatureQuery({
-    onPolygonQuerySuccess: (wmsFeatures) => {
-      // Merge WMS results with pre-queried WFS features
+    onPolygonQuerySuccess: ({ features: wmsFeatures, truncated }) => {
       const allFeatures = [...wmsFeatures, ...polygonWfsLayerFeaturesRef.current]
-      polygonWfsLayerFeaturesRef.current = [] // Clear for next query
+      polygonWfsLayerFeaturesRef.current = []
       if (onFeatureClick && allFeatures.length > 0) {
         onFeatureClick(allFeatures, { additive: false })
       }
+      if (truncated) notifyTruncated()
     },
   })
 
@@ -515,8 +596,9 @@ export default function DataMap({
         layerFilters,
       },
       {
-        onSuccess: (wmsFeatures) => {
+        onSuccess: ({ features: wmsFeatures, truncated }) => {
           dispatchFeatures([...wmsFeatures, ...wfsFeatures], isAdditiveMode)
+          if (truncated) notifyTruncated()
         },
       }
     )
@@ -691,7 +773,16 @@ export default function DataMap({
           if (isWFSLayer(layer)) {
             const sourceId = getWfsSourceId(layer)
             const geojson = wfsLayerData.get(sourceId)!
-            return <WfsLayerSource key={sourceId} layer={layer} geojson={geojson} beforeId={beforeId} />
+            return (
+              <WfsLayerSource
+                key={sourceId}
+                layer={layer}
+                geojson={geojson}
+                beforeId={beforeId}
+                layerFilter={vectorLayerFilters[layer.title]}
+                activeSymbology={vectorLayerSymbology[layer.title] || ''}
+              />
+            )
           }
           if (isArcGISMapServerLayer(layer)) {
             return <ArcGisLayerSource key={layer.title} layer={layer} beforeId={beforeId} />

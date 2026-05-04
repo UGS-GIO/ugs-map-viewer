@@ -180,6 +180,8 @@ export interface WFSLayerProps extends BaseLayerProps {
     style?: {
         /** Circle radius for point features (default: 6) */
         circleRadius?: number;
+        /** Zoom-interpolated circle radius: [[zoom, radius], ...] sorted ascending by zoom */
+        circleRadiusByZoom?: Array<[number, number]>;
         /** Max circle radius cap to prevent overlap (default: none) */
         maxCircleRadius?: number;
         /** Data-driven circle radius based on feature property */
@@ -198,6 +200,18 @@ export interface WFSLayerProps extends BaseLayerProps {
             /** Default color for values below first threshold */
             defaultColor: string;
         };
+        /** Categorical color match: pick a color based on a string-valued field (maplibre `match` expression) */
+        circleColorMatch?: {
+            field: string;
+            matches: Record<string, string>;
+            defaultColor: string;
+        };
+        /** Categorical stroke color match (parallels circleColorMatch) */
+        circleStrokeColorMatch?: {
+            field: string;
+            matches: Record<string, string>;
+            defaultColor: string;
+        };
         /** Circle stroke color (default: '#fff') */
         circleStrokeColor?: string;
         /** Circle stroke width (default: 1) */
@@ -208,6 +222,21 @@ export interface WFSLayerProps extends BaseLayerProps {
         lineColor?: string;
         /** Line width (default: 2) */
         lineWidth?: number;
+        /** Renders an additional symbol layer driven by an icon-image expression. When set, a SymbolLayer is created alongside the circle layer; visibility is toggled via the vectorLayerSymbology prop. */
+        iconImageExpression?: unknown[];
+        /** Symbology mode key this icon represents (e.g. 'box-type'). Used to gate visibility against vectorLayerSymbology. */
+        iconSymbologyKey?: string;
+        /** Zoom-interpolated icon size, [[zoom, size], ...] */
+        iconSizeByZoom?: Array<[number, number]>;
+        /** Static icon size (used if iconSizeByZoom not set) */
+        iconSize?: number;
+        /** Hook called once per data load to register sprites for the symbol layer */
+        registerSprites?: (map: import('maplibre-gl').Map, features: import('geojson').Feature[]) => void;
+        /** Legend-facing metadata for the pie-wedge symbology mode. Codes order drives swatch order. */
+        pieGlyphLegend?: {
+            codes: readonly string[];
+            colors: Record<string, string>;
+        };
     };
     /** Optional sublayer config for popups/queries */
     sublayers?: ExtendedSublayerProperties[];
