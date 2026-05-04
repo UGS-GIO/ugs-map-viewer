@@ -14,6 +14,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.33.1-dev45.0",
     "@maplibre/maplibre-gl-style-spec": "^24.3.1",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.15",
@@ -58,6 +59,7 @@
     "fast-xml-parser": "^5.3.7",
     "fflate": "^0.8.2",
     "firebase": "^12.3.0",
+    "hyparquet": "^1.25.6",
     "jspdf": "^4.2.0",
     "lucide-react": "^0.544.0",
     "maplibre-gl": "^5.12.0",
