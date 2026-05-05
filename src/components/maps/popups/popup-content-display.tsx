@@ -7,7 +7,7 @@ import type { LayerContentProps } from "@/components/maps/popups/types";
 import { Link } from "@/components/ui/link";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatNumeric } from "@/lib/utils";
-import { memo, useMemo, useState, ReactNode } from "react";
+import { memo, useMemo, useState, useId, ReactNode } from "react";
 import {
     FieldConfig,
     StringPopupFieldConfig,
@@ -201,18 +201,31 @@ export function buildGalleryImages(
     return [...fromImageFields, ...fromRelatedTables]
 }
 
-function CollapsibleSection({ label, children }: { label: string; children: ReactNode }) {
+function CollapsibleSection({ label, count, children }: { label: string; count?: number; children: ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
+    const contentId = useId();
     return (
         <div className="flex flex-col space-y-2">
             <button
                 onClick={() => setIsOpen(o => !o)}
-                className="flex items-center gap-1 font-bold text-primary hover:text-primary/80 hover:bg-muted/50 rounded px-1 -ml-1 transition-colors w-full"
+                aria-expanded={isOpen}
+                aria-controls={contentId}
+                className="flex items-center gap-1 font-bold text-foreground hover:text-foreground/80 hover:bg-muted/50 rounded px-1 -ml-1 transition-colors w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-                {isOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+                {isOpen
+                    ? <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                    : <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />}
                 <span className="underline">{label}</span>
+                {count !== undefined && (
+                    <span
+                        aria-label={`${count} item${count === 1 ? '' : 's'}`}
+                        className="ml-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground no-underline"
+                    >
+                        {count}
+                    </span>
+                )}
             </button>
-            {isOpen && children}
+            {isOpen && <div id={contentId}>{children}</div>}
         </div>
     );
 }
@@ -266,8 +279,8 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         return (
             <div className="space-y-4">
                 <div className="flex flex-col">
-                    <p className="font-bold underline text-primary">{rasterSource.valueLabel}</p>
-                    <p className="break-words">{displayValue}</p>
+                    <p className="font-bold underline text-foreground">{rasterSource.valueLabel}</p>
+                    <p className="break-words text-foreground/80">{displayValue}</p>
                 </div>
             </div>
         );
@@ -348,8 +361,8 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         ) : label;
         const content = (
             <div key={`feature-item-${label}-${index}`} className="flex flex-col">
-                <p className="font-bold underline text-primary">{labelContent}</p>
-                <div className="break-words">
+                <p className="font-bold underline text-foreground">{labelContent}</p>
+                <div className="break-words text-foreground/80">
                     {hasColorStyling ? (
                         <span className={colorStyle.className} style={colorStyle.style}>
                             {renderFieldContent(finalDisplayValue, fieldKey, properties, linkFields, urlPattern)}
@@ -384,7 +397,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         if (useTableFormat) {
             const headers = table.displayFields!.map(df => df.label || df.field);
             relatedContent = (
-                <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel}>
+                <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel} count={groupedValues.length}>
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -409,7 +422,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
             );
         } else {
             relatedContent = (
-                <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel}>
+                <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel} count={groupedValues.length}>
                     {groupedValues.map((group, groupIdx) => (
                         <div key={`group-${groupIdx}`} className="flex flex-col">
                             {group.map((valueItem, valueIdx) => (

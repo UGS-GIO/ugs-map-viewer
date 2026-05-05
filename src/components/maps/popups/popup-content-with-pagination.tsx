@@ -320,7 +320,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                         return (
                             <div key={`${layer.groupLayerTitle}-${layer.layerTitle}-${layerIdx}`}>
                                 {/* Layer header — yellow swatch only on COG items, matching the on-map pixel highlight. */}
-                                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 px-1 flex items-center gap-2">
+                                <div className="text-base font-bold text-primary mb-2 px-1 flex items-center gap-2">
                                     {layer.sourceKind === 'cog' && (
                                         <span
                                             aria-hidden
@@ -329,7 +329,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                                             style={{ backgroundColor: HIGHLIGHT_COLORS.cog }}
                                         />
                                     )}
-                                    {layer.layerTitle || layer.groupLayerTitle}
+                                    <span><span className="uppercase tracking-wide">Layer:</span> <span className="capitalize">{layer.layerTitle || layer.groupLayerTitle}</span></span>
                                 </div>
                                 {/* Features or raster-only content */}
                                 <div className="space-y-2">

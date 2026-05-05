@@ -29,9 +29,10 @@ interface LayerAccordionItemProps {
     layerConfig: LayerProps;
     isTopLevel: boolean;
     parentGroupTitle?: string;
+    disableExport?: boolean;
 }
 
-const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: LayerAccordionItemProps) => {
+const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disableExport }: LayerAccordionItemProps) => {
     const {
         isSelected,
         handleToggleSelection,
@@ -215,6 +216,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
                             {childLayers.map((child) => (
                                 <div className="ml-4" key={child.title}>
                                     <LayerAccordionItem
+                                        disableExport={disableExport}
                                         layerConfig={child}
                                         isTopLevel={false}
                                         parentGroupTitle={layerConfig.title}
@@ -286,6 +288,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
                             arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
                             legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}
                             legendRange={isWMSLayer(layerConfig) ? layerConfig.legendRange : undefined}
+                            downloadParquetUrl={layerConfig.downloadParquetUrl}
+                            disableExport={disableExport}
                         />
                     </AccordionContent>
                 </AccordionItem>
@@ -295,7 +299,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle }: Layer
 };
 
 
-export const useCustomLayerList = ({ config }: { config: LayerProps[] | null }) => {
+export const useCustomLayerList = ({ config, disableExport }: { config: LayerProps[] | null; disableExport?: boolean }) => {
 
     const layerList = useMemo(() => {
         if (!config) return [];
@@ -305,10 +309,11 @@ export const useCustomLayerList = ({ config }: { config: LayerProps[] | null }) 
                     key={layer.title}
                     layerConfig={layer}
                     isTopLevel={true}
+                    disableExport={disableExport}
                 />
             )
         });
-    }, [config]);
+    }, [config, disableExport]);
 
     return layerList;
 };

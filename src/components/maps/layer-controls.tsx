@@ -8,6 +8,7 @@ import { Toggle } from '@/components/ui/toggle';
 import { LayerDescriptionAccordion } from '@/components/maps/layer-description-accordion';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
+import { ParquetDownloadMenu } from '@/components/maps/parquet-download-menu';
 
 interface LayerControlsProps {
     handleZoomToLayer: () => void;
@@ -24,6 +25,10 @@ interface LayerControlsProps {
     arcgisUrl?: string;
     legendUnit?: string;
     legendRange?: [number, number];
+    /** GeoParquet URL for client-side export. When set, download dropdown is enabled. */
+    downloadParquetUrl?: string;
+    /** When true, hide format-conversion dropdown and offer only a direct parquet download. Used for apps that require unmodified source data. */
+    disableExport?: boolean;
 }
 
 const LayerControls: React.FC<LayerControlsProps> = ({
@@ -41,6 +46,8 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     arcgisUrl,
     legendUnit,
     legendRange,
+    downloadParquetUrl,
+    disableExport = false,
 }) => {
     // Sync activeTab with openLegend prop, but let the user toggle freely afterwards
     const [prevOpenLegend, setPrevOpenLegend] = useState(openLegend);
@@ -115,7 +122,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         <Toggle
                             aria-label="Toggle info"
                             size="stacked"
-                            className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
+                            className="flex flex-col items-center px-3 py-2 min-w-[80px] flex-1 gap-1"
                             pressed={infoPressed}
                             onPressedChange={() => handleToggle('info')}
                         >
@@ -126,7 +133,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         <Button
                             variant="ghost"
                             size="stacked"
-                            className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
+                            className="flex flex-col items-center px-3 py-2 min-w-[80px] flex-1 gap-1"
                             onClick={handleZoomToLayer}
                         >
                             <Shrink className="h-5 w-5" />
@@ -136,7 +143,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         <Toggle
                             aria-label="Toggle legend"
                             size="stacked"
-                            className="flex flex-col items-center p-2 min-w-[70px] flex-1 gap-1"
+                            className="flex flex-col items-center px-3 py-2 min-w-[80px] flex-1 gap-1"
                             pressed={legendPressed}
                             onPressedChange={() => handleToggle('legend')}
                             data-tour="layer-legend"
@@ -144,6 +151,10 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                             <TableOfContents className="h-5 w-5" />
                             <span className='text-xs'>Legend</span>
                         </Toggle>
+
+                        {!disableExport && downloadParquetUrl && (
+                            <ParquetDownloadMenu parquetUrl={downloadParquetUrl} layerTitle={title} />
+                        )}
                     </div>
                 </div>
             </div>
