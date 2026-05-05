@@ -5,6 +5,7 @@ import {
   isPMTilesLayer,
   isGroupLayer,
   isArcGISMapServerLayer,
+  isCOGLayer,
   flattenVisibleLayers,
   flattenWmsLayers,
   flattenWfsLayers,
@@ -17,6 +18,7 @@ import type {
   PMTilesLayerProps,
   GroupLayerProps,
   ArcGISMapServerLayerProps,
+  COGLayerProps,
 } from '@/lib/types/mapping-types'
 
 // ── Fixtures ─────────────────────────────────────────────────────────
@@ -52,6 +54,15 @@ const arcgisLayer: ArcGISMapServerLayerProps = {
   visible: true,
 }
 
+const cogLayer: COGLayerProps = {
+  type: 'cog',
+  title: 'COG Layer',
+  cogUrl: 'https://example.com/raster.tif',
+  colorStops: ['#000', '#fff'],
+  range: [0, 100],
+  visible: true,
+}
+
 const hiddenWms: WMSLayerProps = { ...wmsLayer, title: 'Hidden WMS', visible: false }
 const hiddenArcgis: ArcGISMapServerLayerProps = { ...arcgisLayer, title: 'Hidden ArcGIS', visible: false }
 
@@ -64,13 +75,14 @@ const group: GroupLayerProps = {
 // ── Type guards ──────────────────────────────────────────────────────
 
 describe('type guards', () => {
-  const layers: LayerProps[] = [wmsLayer, wfsLayer, pmtilesLayer, arcgisLayer, group]
+  const layers: LayerProps[] = [wmsLayer, wfsLayer, pmtilesLayer, arcgisLayer, cogLayer, group]
 
   it.each([
     ['isWMSLayer', isWMSLayer, 'WMS Layer'],
     ['isWFSLayer', isWFSLayer, 'WFS Layer'],
     ['isPMTilesLayer', isPMTilesLayer, 'PMTiles Layer'],
     ['isArcGISMapServerLayer', isArcGISMapServerLayer, 'ArcGIS Layer'],
+    ['isCOGLayer', isCOGLayer, 'COG Layer'],
     ['isGroupLayer', isGroupLayer, 'Group'],
   ])('%s matches only its own type', (_name, guard, expectedTitle) => {
     const matches = layers.filter(guard)
