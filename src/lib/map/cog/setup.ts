@@ -27,8 +27,8 @@ export function buildCogProtocolUrl(layer: COGLayerProps, range: [number, number
 
 /** Highlight colors used to visually link map shapes (buffer / pixel) with popup item swatches. */
 export const HIGHLIGHT_COLORS = {
-    /** COG pixel cell highlight (yellow). */
-    cog: '#ffeb3b',
-    /** Vector click buffer (green). */
-    vector: '#00ff00',
+    /** COG pixel cell highlight (amber) — emphasised because it marks the actual sampled data cell. */
+    cog: '#fbbf24',
+    /** Vector click buffer outline (neutral) — secondary, just shows the search radius. */
+    vector: '#525252',
 } as const;

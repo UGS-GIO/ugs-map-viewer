@@ -62,16 +62,10 @@ export function ClickBufferLayer({ bounds }: ClickBufferLayerProps) {
       }}
     >
       <Layer
-        id="click-buffer-fill"
-        type="fill"
-        source="click-buffer-source"
-        paint={{ 'fill-color': HIGHLIGHT_COLORS.vector, 'fill-opacity': 0.2 }}
-      />
-      <Layer
         id="click-buffer-outline"
         type="line"
         source="click-buffer-source"
-        paint={{ 'line-color': HIGHLIGHT_COLORS.vector, 'line-width': 2, 'line-dasharray': [3, 2] }}
+        paint={{ 'line-color': HIGHLIGHT_COLORS.vector, 'line-width': 1.5, 'line-dasharray': [3, 2], 'line-opacity': 0.7 }}
       />
     </Source>
   )
