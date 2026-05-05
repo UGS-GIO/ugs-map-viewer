@@ -115,6 +115,8 @@ interface BaseLayerProps {
     bivariateLegend?: { xLabel: string; yLabel: string };
     /** GeoParquet URL for client-side export. When set, download button in layer controls is enabled. */
     downloadParquetUrl?: string;
+    /** Zoom range [min, max] where this layer renders. Out-of-range → UI shows "Zoom in to see" hint. Auto-resolved from WMS GetCapabilities or PMTiles header if omitted. */
+    visibleZoomRange?: [number, number];
 }
 
 export interface WMSLayerProps extends BaseLayerProps {

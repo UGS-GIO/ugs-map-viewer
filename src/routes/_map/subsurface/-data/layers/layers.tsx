@@ -122,6 +122,7 @@ const utTownshipRangesConfig: WMSLayerProps = {
     title: 'Utah Township & Ranges',
     visible: true,
     crs: 'EPSG:3857',
+    visibleZoomRange: [11, 22],
     downloadParquetUrl: parquetUrl("enmin_plss_townshiprange"),
     sublayers: [{
         name: `${ENERGY_MINERALS_WORKSPACE}:enmin_plss_townshiprange_current`,
