@@ -113,6 +113,8 @@ interface BaseLayerProps {
     customLegend?: React.ReactNode;
     /** Structured bivariate legend config — works in both sidebar and print export */
     bivariateLegend?: { xLabel: string; yLabel: string };
+    /** GeoParquet URL for client-side export. When set, download button in layer controls is enabled. */
+    downloadParquetUrl?: string;
 }
 
 export interface WMSLayerProps extends BaseLayerProps {

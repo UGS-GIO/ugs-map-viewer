@@ -1,5 +1,5 @@
 import { Link } from "@/components/ui/link";
-import { MAPS_ASSETS_CDN_URL, ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
+import { MAPS_ASSETS_CDN_URL, parquetUrl, ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { ArcGISMapServerLayerProps, LayerProps, WFSLayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
@@ -15,6 +15,7 @@ const georegionsWMSConfig: WMSLayerProps = {
     visible: true,
     opacity: 0.3,
     crs: 'EPSG:3857',
+    downloadParquetUrl: parquetUrl("enmin_ccus_georegions"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${georegionsLayerName}`,
@@ -443,6 +444,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
     title: qFaultsWMSTitle,
     visible: false,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("hazards_qfaults"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${qFaultsLayerName}`,
@@ -801,6 +803,7 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
     title: ccusProjectsWMSTitle,
     visible: true,
     crs: 'EPSG:3857',
+    downloadParquetUrl: parquetUrl("ccus_projects"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${ccusProjectsLayerName}`,
@@ -860,6 +863,7 @@ const geochemWellSitesWMSConfig: WMSLayerProps = {
     title: geochemWellSitesWMSTitle,
     visible: false,
     crs: 'EPSG:3857',
+    downloadParquetUrl: parquetUrl("enmin_ccus_geochemistry"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geochemWellSitesLayerName}`,
@@ -927,6 +931,7 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalWellsJoinsTitle,
     visible: false,
+    downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_wellfeatures"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsJoinsName}`,
@@ -984,6 +989,7 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalSpringsJoinsTitle,
     visible: false,
+    downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_springfeatures"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalSpringsJoinsName}`,

@@ -66,6 +66,7 @@ export const queryKeys = {
   modules: {
     all: ['modules'] as const,
     dompurify: () => [...queryKeys.modules.all, 'dompurify'] as const,
+    parquetSchema: (url: string) => [...queryKeys.modules.all, 'parquet-schema', url] as const,
   },
 
   // Carbon storage specific queries

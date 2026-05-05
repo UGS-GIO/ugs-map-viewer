@@ -1,4 +1,4 @@
-import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE, PROD_POSTGREST_URL, GEN_GIS_WORKSPACE } from "@/lib/constants";
+import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE, parquetUrl, PROD_POSTGREST_URL, GEN_GIS_WORKSPACE } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { GeoJsonProperties } from "geojson";
 import GeoJSON from "geojson";
@@ -12,6 +12,7 @@ const landslideLegacyWMSConfig: WMSLayerProps = {
     visible: false,
     opacity: 0.75,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("landslidelegacy"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${landslideLegacyLayerName}`,
@@ -45,6 +46,7 @@ const landslideInventoryWMSConfig: WMSLayerProps = {
     visible: false,
     opacity: 0.75,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("landslideinventory"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${landslideInventoryLayerName}`,
@@ -90,6 +92,7 @@ const landslideSusceptibilityWMSConfig: WMSLayerProps = {
     visible: false,
     opacity: 0.75,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("landslidesusceptibility"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${landslideSusceptibilityLayerName}`,
@@ -129,6 +132,7 @@ const liquefactionWMSConfig: WMSLayerProps = {
     visible: false,
     opacity: 0.75,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("liquefaction"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${liquefactionLayerName}`,
@@ -168,6 +172,7 @@ const groundshakingWMSConfig: WMSLayerProps = {
     visible: false,
     opacity: 0.5,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("groundshaking"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${groundshakingLayerName}`,
@@ -209,6 +214,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
     visible: true,
     opacity: 1,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("hazards_qfaults"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${qFaultsLayerName}`,
@@ -276,6 +282,7 @@ const surfaceFaultRuptureWMSConfig: WMSLayerProps = {
     visible: false,
     opacity: 0.75,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("hazards_surfacefaultrupture"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${surfaceFaultRuptureLayerName}`,
@@ -313,6 +320,7 @@ const windBlownSandWMSConfig: WMSLayerProps = {
     opacity: 0.75,
     visible: false,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("windblownsand"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${windBlownSandLayerName}`,
@@ -348,6 +356,7 @@ const saltTectonicsDeformationWMSConfig: WMSLayerProps = {
     opacity: 0.75,
     visible: false,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("salttectonicsdeformation"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${saltTectonicsDeformationLayerName}`,
@@ -385,6 +394,7 @@ const shallowBedrockWMSConfig: WMSLayerProps = {
     opacity: 0.75,
     visible: false,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("shallowbedrock"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${shallowBedrockLayerName}`,
@@ -422,6 +432,7 @@ const rockfallHazardWMSConfig: WMSLayerProps = {
     visible: false,
     crs: 'EPSG:26912',
     opacity: 0.75,
+    downloadParquetUrl: parquetUrl("rockfall"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${rockfallHazardLayerName}`,
@@ -459,6 +470,7 @@ const pipingAndErosionWMSConfig: WMSLayerProps = {
     opacity: 0.75,
     visible: false,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("pipinganderosion"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${pipingAndErosionLayerName}`,
@@ -496,6 +508,7 @@ const expansiveSoilRockWMSConfig: WMSLayerProps = {
     opacity: 0.75,
     visible: false,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("expansivesoilrock"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${expansiveSoilRockLayerName}`,
@@ -533,6 +546,7 @@ const shallowGroundwaterWMSConfig: WMSLayerProps = {
     visible: false,
     crs: 'EPSG:26912',
     opacity: 0.75,
+    downloadParquetUrl: parquetUrl("shallowgroundwater"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${shallowGroundwaterLayerName}`,
@@ -571,6 +585,7 @@ const radonSusceptibilityWMSConfig: WMSLayerProps = {
     opacity: 0.75,
     visible: false,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("radonsusceptibility"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${radonSusceptibilityLayerName}`,
@@ -608,6 +623,7 @@ const corrosiveSoilRockWMSConfig: WMSLayerProps = {
     opacity: 0.75,
     visible: false,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("corrosivesoilrock"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${corrosiveSoilRockLayerName}`,
@@ -645,6 +661,7 @@ const collapsibleSoilWMSConfig: WMSLayerProps = {
     opacity: 0.75,
     visible: false,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("collapsiblesoil"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${collapsibleSoilLayerName}`,
@@ -682,6 +699,7 @@ const solubleSoilAndRockWMSConfig: WMSLayerProps = {
     opacity: 0.75,
     visible: false,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("solublesoilandrock"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${solubleSoilAndRockLayerName}`,
@@ -719,6 +737,7 @@ const alluvialFanWMSConfig: WMSLayerProps = {
     visible: false,
     crs: 'EPSG:26912',
     opacity: 0.75,
+    downloadParquetUrl: parquetUrl("alluvialfan"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${alluvialFanLayerName}`,
@@ -756,6 +775,7 @@ const floodAndDebrisWMSConfig: WMSLayerProps = {
     opacity: 0.75,
     visible: false,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("floodanddebrisflow"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${floodAndDebrisLayerName}`,
@@ -792,6 +812,7 @@ const earthFissureWMSConfig: WMSLayerProps = {
     title: earthFissureWMSTitle,
     visible: false,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("earthfissure"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${earthFissureLayerName}`,
@@ -829,6 +850,7 @@ const erosionHazardZoneWMSConfig: WMSLayerProps = {
     opacity: 0.75,
     visible: false,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("erosionhazardzone"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${erosionHazardZoneLayerName}`,
@@ -865,6 +887,7 @@ const karstFeaturesWMSConfig: WMSLayerProps = {
     title: karstFeaturesWMSTitle,
     visible: false,
     crs: 'EPSG:26912',
+    downloadParquetUrl: parquetUrl("karstfeatures"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${karstFeaturesLayerName}`,
@@ -918,6 +941,7 @@ const studyAreasWMSConfig: WMSLayerProps = {
     title: studyAreasWMSTitle,
     visible: true,
     crs: 'EPSG:26912', // Utah State Plane North
+    downloadParquetUrl: parquetUrl("studyareas"),
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${studyAreasLayerName}`,
