@@ -1147,6 +1147,7 @@ const utTownshipRangesConfig: WMSLayerProps = {
     title: 'Utah Township & Ranges',
     visible: false,
     crs: 'EPSG:3857',
+    visibleZoomRange: [11, 22],
     sublayers: [{
         name: `${ENERGY_MINERALS_WORKSPACE}:enmin_plss_townshiprange_current`,
         popupEnabled: false,
