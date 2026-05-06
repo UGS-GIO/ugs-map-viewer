@@ -142,8 +142,6 @@ export interface COGLayerProps extends BaseLayerProps {
     stretchMode?: 'minmax' | 'sigma';
     /** Viridis-like hex color stops, low → high. */
     colorStops: string[];
-    /** Stretch range [min, max] mapped to colorStops [0, 1]. Used as fallback when no stacUrl/stretchMode. */
-    range: [number, number];
     /** Linear interpolation between stops; false = stepped. */
     continuous?: boolean;
     /** Reverse color order. */

@@ -59,7 +59,6 @@ const cogLayer: COGLayerProps = {
   title: 'COG Layer',
   cogUrl: 'https://example.com/raster.tif',
   colorStops: ['#000', '#fff'],
-  range: [0, 100],
   visible: true,
 }
 

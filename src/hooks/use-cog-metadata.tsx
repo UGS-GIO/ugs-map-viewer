@@ -39,10 +39,11 @@ export function useCogMetadata(cogUrl?: string, stacFallbackUrl?: string) {
     })
 }
 
-/** Resolves a COG layer's render range — dynamic from metadata when stretchMode set, else static fallback. */
-export function useCogRange(layer: COGLayerProps): [number, number] {
-    const { data } = useCogMetadata(layer.stretchMode ? layer.cogUrl : undefined, layer.stacUrl)
-    return (layer.stretchMode && data) ? deriveRange(data, layer.stretchMode) : layer.range
+/** Resolves a COG layer's render range from embedded stats / STAC. Returns undefined while loading or on fetch failure. */
+export function useCogRange(layer: COGLayerProps): [number, number] | undefined {
+    const { data } = useCogMetadata(layer.cogUrl, layer.stacUrl)
+    if (!data) return undefined
+    return deriveRange(data, layer.stretchMode ?? 'minmax')
 }
 
 // Module-level cache so repeated fromUrl(cogUrl) calls share a parsed GeoTIFF instance

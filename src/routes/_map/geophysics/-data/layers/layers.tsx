@@ -779,7 +779,6 @@ const cgbaBouguerCOGConfig: COGLayerProps = {
     stacUrl: 'https://maps-assets.geology.utah.gov/geophysics/cbgaras.stac.json',
     stretchMode: 'minmax',
     colorStops: ['#440154', '#31688e', '#35b779', '#c8e020', '#fde725'],
-    range: [-310, -85], // fallback if STAC fetch fails
     continuous: true,
     legendUnit: 'mGal',
     popupValueLabel: 'Gravity Anomaly',

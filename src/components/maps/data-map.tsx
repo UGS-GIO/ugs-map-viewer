@@ -48,6 +48,7 @@ function getLayerId(layer: DataLayer): string {
 function CogLayerSource({ layer, beforeId }: { layer: COGLayerProps; beforeId: string | undefined }) {
   // Dynamic stretch from COG-embedded stats (gdal_edit -stats); STAC URL is fallback.
   const range = useCogRange(layer)
+  if (!range) return null
   const tileUrl = buildCogProtocolUrl(layer, range)
   return (
     <Source id={`cog-${layer.title}`} type="raster" url={tileUrl} tileSize={256}>
