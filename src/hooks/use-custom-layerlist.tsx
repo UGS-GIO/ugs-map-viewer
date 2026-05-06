@@ -287,7 +287,6 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
                             bivariateLegend={layerConfig.bivariateLegend}
                             arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
                             legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}
-                            legendRange={isWMSLayer(layerConfig) ? layerConfig.legendRange : undefined}
                             downloadParquetUrl={layerConfig.downloadParquetUrl}
                             disableExport={disableExport}
                         />

@@ -769,43 +769,10 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
     ],
 };
 
-// CGBA Gravity Anomalies — WMS (legacy, GeoServer-backed). Kept side-by-side with COG for comparison.
-const cgbaRasterLayerName = 'enmin_geophysics_gravanomalyraster_current';
-const cgbaBouguerRasterTitle = 'Complete Bouguer Gravity Anomaly (WMS)';
-const cgbaBouguerRasterConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: cgbaBouguerRasterTitle,
-    visible: false,
-    opacity: 0.9,
-    crs: 'EPSG:26912',
-    legendUnit: 'mGal',
-    legendRange: [-283, -107],
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${cgbaRasterLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {},
-            rasterSource: {
-                url: `${PROD_GEOSERVER_URL}/wms`,
-                headers: {
-                    "Accept": "application/json",
-                    "Cache-Control": "no-cache",
-                },
-                layerName: `${ENERGY_MINERALS_WORKSPACE}:${cgbaRasterLayerName}`,
-                valueField: "GRAY_INDEX",
-                valueLabel: "Gravity Anomaly",
-                transform: (value: number) => `${value} mGal`,
-            },
-        },
-    ],
-};
-
 // CGBA Gravity Anomalies — COG via CDN. Stretch derived dynamically from STAC raster:bands stats.
 const cgbaBouguerCOGConfig: COGLayerProps = {
     type: 'cog',
-    title: 'Complete Bouguer Gravity Anomaly (COG)',
+    title: 'Complete Bouguer Gravity Anomaly',
     visible: false,
     opacity: 0.9,
     cogUrl: 'https://maps-assets.geology.utah.gov/geophysics/cbgaras-cog.tif',
@@ -827,7 +794,6 @@ const geophysicalDataConfig: LayerProps = {
         geothermalTEMLayerConfig,
         gravityStationsLayerConfig,
         pacesLegacyLayerConfig,
-        cgbaBouguerRasterConfig,
         cgbaBouguerCOGConfig,
     ]
 }

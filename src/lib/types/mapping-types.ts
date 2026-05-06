@@ -124,8 +124,6 @@ export interface WMSLayerProps extends BaseLayerProps {
     crs?: string; // EPSG code (e.g., 'EPSG:26912', 'EPSG:3857') for WMS GetFeatureInfo requests
     /** Set to enable min/max labels on the raster colorbar legend. Omit to render the bar without labels. */
     legendUnit?: string;
-    /** Override derived min/max from SLD stops when they don't match the true data extent. */
-    legendRange?: [number, number];
 }
 
 export interface ArcGISMapServerLayerProps extends BaseLayerProps {
@@ -150,7 +148,7 @@ export interface COGLayerProps extends BaseLayerProps {
     continuous?: boolean;
     /** Reverse color order. */
     reverse?: boolean;
-    /** Unit for legend labels (e.g. 'mGal'). Reuses legendRange path. */
+    /** Unit for legend labels (e.g. 'mGal'). */
     legendUnit?: string;
     /** Human-readable label for the sampled pixel value in popups (e.g. 'Gravity Anomaly'). */
     popupValueLabel?: string;

@@ -1,4 +1,5 @@
 import type { Symbolizer, RasterColormapEntry } from '@/lib/types/geoserver-types'
+import { formatToSigFigs } from '@/lib/utils'
 
 export interface RasterSymbolOptions {
     /** Setting this enables min/max labels on the bar. Omit for a label-less colorbar. */
@@ -24,8 +25,7 @@ const SVG_HEIGHT_BARE = 16
 let gradientCounter = 0
 
 function formatQuantity(n: number): string {
-    const rounded = Math.round(n)
-    return Math.abs(rounded) >= 1000 ? rounded.toLocaleString() : String(rounded)
+    return formatToSigFigs(n, 3)
 }
 
 function isVisibleEntry(e: RasterColormapEntry): boolean {

@@ -24,7 +24,6 @@ interface LayerControlsProps {
     bivariateLegend?: { xLabel: string; yLabel: string };
     arcgisUrl?: string;
     legendUnit?: string;
-    legendRange?: [number, number];
     /** GeoParquet URL for client-side export. When set, download dropdown is enabled. */
     downloadParquetUrl?: string;
     /** When true, hide format-conversion dropdown and offer only a direct parquet download. Used for apps that require unmodified source data. */
@@ -45,7 +44,6 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     bivariateLegend,
     arcgisUrl,
     legendUnit,
-    legendRange,
     downloadParquetUrl,
     disableExport = false,
 }) => {
@@ -172,7 +170,6 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     bivariateLegend={bivariateLegend}
                     arcgisUrl={arcgisUrl}
                     legendUnit={legendUnit}
-                    legendRange={legendRange}
                 />
             </div>
         </div>

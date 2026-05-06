@@ -34,7 +34,7 @@ export type PreviewItem = {
 };
 
 /** Fetches GeoServer GetLegendGraphic JSON and converts each rule into a preview item. */
-const useLegendPreview = (url: string, layerName?: string, skip?: boolean, legendUnit?: string, legendRange?: [number, number]) => {
+const useLegendPreview = (url: string, layerName?: string, skip?: boolean, legendUnit?: string) => {
     const fetchLegendData = async (): Promise<PreviewItem[]> => {
         if (!url || !layerName) {
             return [];
@@ -67,7 +67,7 @@ const useLegendPreview = (url: string, layerName?: string, skip?: boolean, legen
             // Raster: bypass RendererFactory (would crush the bar to a 32×22 swatch).
             const rasterRule = findRasterRule(rules);
             if (rasterRule) {
-                const html = createRasterSymbol(rasterRule.symbolizers, { unit: legendUnit, range: legendRange });
+                const html = createRasterSymbol(rasterRule.symbolizers, { unit: legendUnit });
                 return [{ html }];
             }
 
