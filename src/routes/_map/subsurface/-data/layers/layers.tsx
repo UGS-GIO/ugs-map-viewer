@@ -3,8 +3,7 @@ import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
 import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps, WFSLayerProps } from "@/lib/types/mapping-types";
 import { makePieWedgeSpriteRegistrar } from "@/lib/map/pie-wedge-sprites";
-import { addThousandsSeparator } from "@/lib/utils";
-import { GeoJsonProperties } from "geojson";
+import { formatNumeric } from "@/lib/utils";
 
 
 export const wellWithTopsLayerName = 'wellswithtops_hascore';
@@ -334,7 +333,7 @@ const metalMiningDistrictsConfig: WMSLayerProps = {
                         if (value === null) {
                             return 'No Data';
                         }
-                        return `$ ${addThousandsSeparator(value)}`;
+                        return `$ ${formatNumeric(value)}`;
                     }
                 },
                 '': {
