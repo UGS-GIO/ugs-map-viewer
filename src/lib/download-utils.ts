@@ -1,5 +1,6 @@
 import { stringify as geojsonToWKT } from 'wellknown'
 import { zipSync, strToU8 } from 'fflate'
+import { downloadZip as clientStreamingZip } from 'client-zip'
 
 export { geojsonToWKT }
 
@@ -61,13 +62,20 @@ export function downloadCsvString(csv: string, filename: string): void {
 }
 
 /**
- * Download a set of named files bundled into a single zip.
- * Files are entries keyed by name (e.g., 'main.csv', 'related-wells.csv').
+ * Strip filesystem-unsafe chars while preserving readable separators (`_.-`).
+ * Use for download filenames built from user-facing labels.
  */
-export function downloadZip(files: Record<string, string>, filename: string): void {
+export const sanitizeFilename = (input: string): string =>
+  input.replace(/[^a-z0-9._-]+/gi, '_').replace(/^_+|_+$/g, '')
+
+/**
+ * Download a set of named files bundled into a single zip.
+ * Values may be strings (encoded UTF-8) or raw bytes.
+ */
+export function downloadZip(files: Record<string, string | Uint8Array>, filename: string): void {
   const entries: Record<string, Uint8Array> = {}
   for (const [name, content] of Object.entries(files)) {
-    entries[name] = strToU8(content)
+    entries[name] = typeof content === 'string' ? strToU8(content) : content
   }
   const zipped = zipSync(entries)
   // Copy into a fresh ArrayBuffer to satisfy the Blob constructor's BlobPart typing
@@ -75,6 +83,43 @@ export function downloadZip(files: Record<string, string>, filename: string): vo
   const buf = new Uint8Array(zipped).buffer
   const blob = new Blob([buf], { type: 'application/zip' })
   triggerDownload(blob, filename.endsWith('.zip') ? filename : `${filename}.zip`)
+}
+
+interface StreamZipEntry {
+  name: string
+  fetch: () => Promise<Response>
+}
+
+/**
+ * Stream a ZIP to disk via client-zip. Uses File System Access API when
+ * available (Chromium/Edge) — bytes pipe straight to disk, never aggregate
+ * in RAM. Falls back to a buffered Blob download on Firefox/Safari.
+ */
+export async function streamZipDownload(entries: StreamZipEntry[], filename: string): Promise<void> {
+  const safeName = filename.endsWith('.zip') ? filename : `${filename}.zip`
+  const responses = await Promise.all(entries.map(async e => {
+    const r = await e.fetch()
+    if (!r.ok) throw new Error(`HTTP ${r.status} for ${e.name}`)
+    return { name: e.name, input: r }
+  }))
+  const stream = clientStreamingZip(responses).body
+  if (!stream) throw new Error('client-zip returned no stream')
+
+  if ('showSaveFilePicker' in window) {
+    const handle = await (window as unknown as {
+      showSaveFilePicker: (opts: { suggestedName: string; types: unknown[] }) => Promise<FileSystemFileHandle>
+    }).showSaveFilePicker({
+      suggestedName: safeName,
+      types: [{ description: 'ZIP archive', accept: { 'application/zip': ['.zip'] } }],
+    })
+    const writable = await handle.createWritable()
+    await stream.pipeTo(writable)
+    return
+  }
+
+  // Fallback: buffer the whole stream into a Blob, then trigger anchor download.
+  const blob = await new Response(stream).blob()
+  triggerDownload(blob, safeName)
 }
 
 /**

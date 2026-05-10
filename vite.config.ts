@@ -43,4 +43,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      '/ucrc-assets': {
+        target: 'https://ucrc-assets.geology.utah.gov',
+        changeOrigin: true,
+        rewrite: p => p.replace(/^\/ucrc-assets/, ''),
+      },
+    },
+  },
 })
