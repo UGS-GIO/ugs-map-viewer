@@ -49,7 +49,7 @@ const georegionsWMSConfig: WMSLayerProps = {
 
 // Oil and Gas Fields WMS Layer
 const oilGasFieldsLayerName = 'oilgasfields';
-const oilGasFieldsWMSTitle = 'Oil and Gas Fields';
+const oilGasFieldsWMSTitle = 'Oil and Gas Fields (Source: Utah Division of Oil, Gas and Mining)';
 const oilGasFieldsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
