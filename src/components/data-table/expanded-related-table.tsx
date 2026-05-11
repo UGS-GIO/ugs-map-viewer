@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/table';
 import { PopupImageGallery, type GalleryImage } from '@/components/maps/popups/popup-image-gallery';
 import { relatedRowToGalleryImage } from '@/lib/gallery-utils';
+import { sanitizeFilename } from '@/lib/download-utils';
 
 interface ExpandedRelatedTableProps {
     relatedTable: RelatedTable;
@@ -71,7 +72,7 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
                                 return (
                                     <div key={boxId}>
                                         <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
-                                        <PopupImageGallery images={images} compact />
+                                        <PopupImageGallery images={images} compact downloadName={`${sanitizeFilename(`box-${boxId}`)}-photos.zip`} />
                                     </div>
                                 )
                             })}

@@ -7,6 +7,10 @@ export const MAPPING_WORKSPACE = 'mapping';
 export const GEOCODE_PROXY_FUNCTION_URL = 'http://127.0.0.1:5001/ut-dnr-ugs-maps-dev/us-central1/geocodeProxy';
 export const MASQUERADE_GEOCODER_URL = 'https://masquerade.ugrc.utah.gov/arcgis/rest/services/UtahLocator/GeocodeServer';
 export const MAPS_ASSETS_CDN_URL = 'https://maps-assets.geology.utah.gov';
+/** UCRC core photo CDN. In dev, swapped to a Vite proxy path so cross-origin fetches work without prod CORS. */
+export const UCRC_ASSETS_CDN_URL = import.meta.env.DEV
+    ? '/ucrc-assets'
+    : 'https://ucrc-assets.geology.utah.gov';
 
 /**
  * Build a CDN URL for a layer's GeoParquet file. Layers follow the convention

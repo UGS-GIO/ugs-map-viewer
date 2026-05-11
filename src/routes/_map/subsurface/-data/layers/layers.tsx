@@ -1,6 +1,6 @@
 import { Link } from "@/components/ui/link";
 import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
-import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
+import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL, UCRC_ASSETS_CDN_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps, WFSLayerProps } from "@/lib/types/mapping-types";
 import { makePieWedgeSpriteRegistrar } from "@/lib/map/pie-wedge-sprites";
 import { addThousandsSeparator } from "@/lib/utils";
@@ -501,10 +501,11 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
                         {
                             field: 'pk',
                             label: 'Photos',
-                            transform: (pk, _row, allRows) => (
+                            transform: (pk, row, allRows) => (
                                 <BoxPhotosCell
                                     boxId={pk}
                                     allBoxIds={(allRows ?? []).map(r => String(r.pk))}
+                                    boxLabel={`${row?.uwi ?? 'core'}_box${row?.box_number ?? pk}_${row?.box_top_ft ?? '?'}-${row?.box_bottom_ft ?? '?'}ft`}
                                 />
                             ),
                         },
@@ -520,7 +521,7 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
                     headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
                     displayAs: 'gallery',
                     galleryUrlField: 'storage_path',
-                    galleryBaseUrl: 'https://ucrc-assets.geology.utah.gov',
+                    galleryBaseUrl: UCRC_ASSETS_CDN_URL,
                     galleryThumbnailTransform: (gcsPath: string) =>
                         gcsPath.startsWith('photos/')
                             ? `photos/_thumbs/200/${gcsPath.slice('photos/'.length)}`

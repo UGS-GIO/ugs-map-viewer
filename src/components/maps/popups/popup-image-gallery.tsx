@@ -1,9 +1,12 @@
 import { useRef, useState, useCallback } from 'react'
+import { useMutation } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import { sanitizeFilename, streamZipDownload } from '@/lib/download-utils'
 import { Dialog, DialogClose, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Carousel, CarouselContent, CarouselItem, CarouselPrevious, CarouselNext, type CarouselApi } from '@/components/ui/carousel'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden'
-import { ChevronDown, ChevronUp, LayoutGrid, ArrowLeft, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, LayoutGrid, ArrowLeft, X, Download, Loader2 } from 'lucide-react'
 import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -20,6 +23,8 @@ interface PopupImageGalleryProps {
     trigger?: React.ReactNode
     /** Renders thumbnails as fixed-size tiles (w-48) instead of fluid grid columns. */
     compact?: boolean
+    /** Enables a "Download all" button in the lightbox header that streams images into a zip with this filename. */
+    downloadName?: string
 }
 
 const GRID_VISIBLE = 5 // show 5 images; 6th cell is overflow button
@@ -58,7 +63,7 @@ function ImageTooltip({ img, children }: { img: GalleryImage; children: React.Re
     )
 }
 
-export function PopupImageGallery({ images, trigger, compact }: PopupImageGalleryProps) {
+export function PopupImageGallery({ images, trigger, compact, downloadName }: PopupImageGalleryProps) {
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
     const [activeIndex, setActiveIndex] = useState(0)
     const [metaOpen, setMetaOpen] = useState(false)
@@ -107,6 +112,28 @@ export function PopupImageGallery({ images, trigger, compact }: PopupImageGaller
     }
 
     const handleClose = () => { setLightboxIndex(null); setMetaOpen(false); setGridView(false) }
+
+    const downloadAll = useMutation({
+        mutationFn: async (filename: string) => {
+            const used = new Set<string>()
+            const entries = images.map((img, i) => {
+                const base = sanitizeFilename(img.label || `photo-${i + 1}.jpg`)
+                let name = base
+                let n = 1
+                while (used.has(name)) name = base.replace(/(\.[^.]+)?$/, `-${n++}$1`)
+                used.add(name)
+                return { name, fetch: () => fetch(img.url) }
+            })
+            await streamZipDownload(entries, filename)
+        },
+        onError: err => {
+            // User cancel of save dialog throws AbortError — silent.
+            if (err instanceof DOMException && err.name === 'AbortError') return
+            toast.error('Photo download failed', {
+                description: err instanceof Error ? err.message : String(err),
+            })
+        },
+    })
 
     if (images.length === 0) return null
 
@@ -204,6 +231,19 @@ export function PopupImageGallery({ images, trigger, compact }: PopupImageGaller
                                 </span>
                             )}
                             <div className="flex items-center gap-1 ml-auto">
+                                {downloadName && (
+                                    <button
+                                        onClick={() => downloadAll.mutate(downloadName)}
+                                        disabled={downloadAll.isPending}
+                                        aria-label={downloadAll.isPending ? 'Preparing download' : `Download all ${images.length} photos as zip`}
+                                        className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium border border-border text-muted-foreground hover:text-foreground hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${focusRing}`}
+                                    >
+                                        {downloadAll.isPending
+                                            ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                            : <Download className="h-3.5 w-3.5" />}
+                                        <span>{downloadAll.isPending ? 'Zipping…' : `Download all (${images.length})`}</span>
+                                    </button>
+                                )}
                                 {images.length > 1 && (
                                     <button
                                         ref={gridBtnRef}
