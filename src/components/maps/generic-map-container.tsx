@@ -25,9 +25,11 @@ import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
 import { usePopupData } from '@/hooks/use-popup-data'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
-import type { LayerProps, WMSLayerProps } from '@/lib/types/mapping-types'
+import type { LayerProps, WMSLayerProps, COGLayerProps } from '@/lib/types/mapping-types'
 import { createSVGSymbol } from '@/lib/legend/symbol-generator'
-import type { Legend } from '@/lib/types/geoserver-types'
+import { createRasterSymbol } from '@/lib/legend/symbolizers/raster'
+import { loadCogMetadata, deriveRange } from '@/hooks/use-cog-metadata'
+import type { Legend, Symbolizer } from '@/lib/types/geoserver-types'
 
 interface MapBounds {
   west: number
@@ -82,7 +84,20 @@ async function fetchLegendDataForVisibleLayers(
     return visible
   }
 
+  const getVisibleCogLayers = (layerArray: LayerProps[]): COGLayerProps[] => {
+    const visible: COGLayerProps[] = []
+    for (const layer of layerArray) {
+      if (layer.type === 'group' && 'layers' in layer) {
+        visible.push(...getVisibleCogLayers(layer.layers || []))
+      } else if (layer.type === 'cog' && layer.visible) {
+        visible.push(layer as COGLayerProps)
+      }
+    }
+    return visible
+  }
+
   const visibleLayers = getVisibleWmsLayers(layers)
+  const visibleCogLayers = getVisibleCogLayers(layers)
 
   // Fetch legend for each visible layer
   for (const layer of visibleLayers) {
@@ -198,6 +213,43 @@ async function fetchLegendDataForVisibleLayers(
       }
     } catch (e) {
       console.warn(`Failed to fetch legend for ${layer.layerName}:`, e)
+    }
+  }
+
+  // COG raster colorbars — fetch embedded stats / STAC stats, build a horizontal ramp
+  for (const cogLayer of visibleCogLayers) {
+    try {
+      const meta = await loadCogMetadata(cogLayer.cogUrl, cogLayer.stacUrl)
+      if (!meta) continue
+      const range = deriveRange(meta, cogLayer.stretchMode ?? 'minmax')
+      const n = cogLayer.colorStops.length
+      const [rmin, rmax] = range
+      const symbolizers: Symbolizer[] = [{
+        Raster: {
+          colormap: {
+            type: 'ramp',
+            entries: cogLayer.colorStops.map((color, i) => ({
+              color,
+              quantity: String(rmin + ((rmax - rmin) * i) / (n - 1)),
+              opacity: '1',
+              label: '',
+            })),
+          },
+        },
+      }]
+      const svg = createRasterSymbol(symbolizers, { unit: cogLayer.legendUnit, range })
+      const svgHeight = parseFloat(svg.getAttribute('height') ?? '40') || 40
+      // Drop the `width="100%"` attribute — svgToImage rasterizes the SVG standalone, so a percentage
+      // width has no parent to resolve against. Without an explicit width the colorbar collapses.
+      svg.setAttribute('width', '240')
+      svg.setAttribute('preserveAspectRatio', 'none')
+      results.push({
+        layerTitle: cogLayer.title,
+        symbols: [],
+        raster: { svgHtml: svg.outerHTML, svgHeight },
+      })
+    } catch (e) {
+      console.warn(`Failed to build legend for COG layer ${cogLayer.title}:`, e)
     }
   }
 
