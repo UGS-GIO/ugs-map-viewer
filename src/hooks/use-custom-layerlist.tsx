@@ -6,7 +6,8 @@ import { useLayerItemState } from '@/hooks/use-layer-item-state';
 import { LayerProps } from '@/lib/types/mapping-types';
 import { useMap } from '@/hooks/use-map';
 import { findLayerByTitle } from '@/lib/map/utils';
-import { isWMSLayer, isWFSLayer, isPMTilesLayer, isArcGISMapServerLayer } from '@/lib/map/layer-utils';
+import { isWMSLayer, isWFSLayer, isPMTilesLayer, isArcGISMapServerLayer, isCOGLayer } from '@/lib/map/layer-utils';
+import { CogLegend } from '@/components/maps/cog-legend';
 import { useLayerExtent, UseLayerExtentOptions } from '@/hooks/use-layer-extent';
 import { useMapZoom, getZoomHint } from '@/hooks/use-map-zoom';
 import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions';
@@ -243,9 +244,12 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
     }
 
     // WFS layers get a client-rendered legend by default (swatches driven by layer.style +
-    // current symbology mode). Explicit `customLegend` on the config always wins.
+    // current symbology mode). COG layers render a colorbar from raster stats. Explicit
+    // `customLegend` on the config always wins.
     const resolvedCustomLegend =
-        layerConfig.customLegend ?? (isWFSLayer(layerConfig) ? <WfsVectorLegend layer={layerConfig} /> : undefined);
+        layerConfig.customLegend
+        ?? (isCOGLayer(layerConfig) ? <CogLegend layer={layerConfig} /> : undefined)
+        ?? (isWFSLayer(layerConfig) ? <WfsVectorLegend layer={layerConfig} /> : undefined);
 
     // --- Single Layer Rendering ---
     return (

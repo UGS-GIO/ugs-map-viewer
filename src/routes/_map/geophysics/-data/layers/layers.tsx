@@ -1,5 +1,5 @@
 import { ENERGY_MINERALS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL } from "@/lib/constants";
-import { ArcGISMapServerLayerProps, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { ArcGISMapServerLayerProps, COGLayerProps, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { GeoJsonProperties } from "geojson";
 import { toTitleCase, toSentenceCase } from "@/lib/utils";
 
@@ -769,37 +769,19 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
     ],
 };
 
-// CGBA Gravity Anomalies — continuous raster served via WMS.
-const cgbaRasterLayerName = 'enmin_geophysics_gravanomalyraster_current';
-const cgbaBouguerRasterTitle = 'Complete Bouguer Gravity Anomaly';
-const cgbaBouguerRasterConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: cgbaBouguerRasterTitle,
+// CGBA Gravity Anomalies — COG via CDN. Stretch derived dynamically from STAC raster:bands stats.
+const cgbaBouguerCOGConfig: COGLayerProps = {
+    type: 'cog',
+    title: 'Complete Bouguer Gravity Anomaly',
     visible: false,
     opacity: 0.9,
-    crs: 'EPSG:26912',
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${cgbaRasterLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                // empty in favor of using the rasterSource for popup values
-            },
-            rasterSource: {
-                url: `${PROD_GEOSERVER_URL}/wms`,
-                headers: {
-                    "Accept": "application/json",
-                    "Cache-Control": "no-cache",
-                },
-                layerName: `${ENERGY_MINERALS_WORKSPACE}:${cgbaRasterLayerName}`,
-                valueField: "GRAY_INDEX",
-                valueLabel: "Gravity Anomaly",
-                transform: (value: number) => `${value} mGal`,
-            },
-        },
-    ],
+    cogUrl: 'https://maps-assets.geology.utah.gov/geophysics/cbgaras-cog.tif',
+    stacUrl: 'https://maps-assets.geology.utah.gov/geophysics/cbgaras.stac.json',
+    stretchMode: 'minmax',
+    colorStops: ['#440154', '#31688e', '#35b779', '#c8e020', '#fde725'],
+    continuous: true,
+    legendUnit: 'mGal',
+    popupValueLabel: 'Gravity Anomaly',
 };
 
 const geophysicalDataConfig: LayerProps = {
@@ -811,7 +793,7 @@ const geophysicalDataConfig: LayerProps = {
         geothermalTEMLayerConfig,
         gravityStationsLayerConfig,
         pacesLegacyLayerConfig,
-        cgbaBouguerRasterConfig,
+        cgbaBouguerCOGConfig,
     ]
 }
 

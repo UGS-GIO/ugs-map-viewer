@@ -103,7 +103,7 @@ export type ExtendedSublayerProperties = {
 
 
 interface BaseLayerProps {
-    type: 'feature' | 'tile' | 'map-image' | 'geojson' | 'imagery' | 'wms' | 'group' | 'pmtiles' | 'wfs';
+    type: 'feature' | 'tile' | 'map-image' | 'geojson' | 'imagery' | 'wms' | 'group' | 'pmtiles' | 'cog' | 'wfs';
     title: string;
     url?: string;
     visible?: boolean;
@@ -132,6 +132,26 @@ export interface ArcGISMapServerLayerProps extends BaseLayerProps {
     type: 'map-image';
     /** Base ArcGIS MapServer URL (e.g., .../MapServer — no /export, no /0) */
     url: string;
+}
+
+export interface COGLayerProps extends BaseLayerProps {
+    type: 'cog';
+    /** HTTP(S) URL to the COG file. */
+    cogUrl: string;
+    /** Optional STAC item URL. Used as fallback if COG has no embedded stats (gdal_edit -stats). */
+    stacUrl?: string;
+    /** Dynamic stretch from COG-embedded stats (or STAC fallback). 'minmax' = [min, max]. 'sigma' = mean ± 2σ. */
+    stretchMode?: 'minmax' | 'sigma';
+    /** Viridis-like hex color stops, low → high. */
+    colorStops: string[];
+    /** Linear interpolation between stops; false = stepped. */
+    continuous?: boolean;
+    /** Reverse color order. */
+    reverse?: boolean;
+    /** Unit for legend labels (e.g. 'mGal'). */
+    legendUnit?: string;
+    /** Human-readable label for the sampled pixel value in popups (e.g. 'Gravity Anomaly'). */
+    popupValueLabel?: string;
 }
 
 export interface PMTilesLayerProps extends BaseLayerProps {
@@ -230,7 +250,7 @@ export interface GroupLayerProps extends BaseLayerProps {
 }
 
 
-export type LayerProps = WMSLayerProps | PMTilesLayerProps | WFSLayerProps | GroupLayerProps | ArcGISMapServerLayerProps | BaseLayerProps;
+export type LayerProps = WMSLayerProps | PMTilesLayerProps | COGLayerProps | WFSLayerProps | GroupLayerProps | ArcGISMapServerLayerProps | BaseLayerProps;
 
 export type MapImageLayerRenderer = {
     type: 'map-image-renderer';

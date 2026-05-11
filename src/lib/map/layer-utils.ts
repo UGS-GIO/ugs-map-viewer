@@ -1,7 +1,7 @@
 /**
  * Layer type guards, traversal, and URL parsing utilities
  */
-import type { LayerProps, WMSLayerProps, WFSLayerProps, PMTilesLayerProps, GroupLayerProps, ArcGISMapServerLayerProps } from '@/lib/types/mapping-types'
+import type { LayerProps, WMSLayerProps, WFSLayerProps, PMTilesLayerProps, COGLayerProps, GroupLayerProps, ArcGISMapServerLayerProps } from '@/lib/types/mapping-types'
 
 // ── Type guards ──────────────────────────────────────────────────────
 
@@ -13,6 +13,9 @@ export const isWFSLayer = (layer: LayerProps): layer is WFSLayerProps =>
 
 export const isPMTilesLayer = (layer: LayerProps): layer is PMTilesLayerProps =>
   layer.type === 'pmtiles'
+
+export const isCOGLayer = (layer: LayerProps): layer is COGLayerProps =>
+  layer.type === 'cog'
 
 export const isGroupLayer = (layer: LayerProps): layer is GroupLayerProps =>
   layer.type === 'group'
@@ -50,8 +53,8 @@ export const flattenWfsLayers = (layers: LayerProps[]) =>
 export const flattenArcGisLayers = (layers: LayerProps[]) =>
   flattenVisibleLayers(layers, isArcGISMapServerLayer)
 
-export const isDataLayer = (layer: LayerProps): layer is WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps =>
-  isWMSLayer(layer) || isWFSLayer(layer) || isArcGISMapServerLayer(layer)
+export const isDataLayer = (layer: LayerProps): layer is WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps =>
+  isWMSLayer(layer) || isWFSLayer(layer) || isArcGISMapServerLayer(layer) || isCOGLayer(layer)
 
 export const flattenVisibleDataLayers = (layers: LayerProps[]) =>
   flattenVisibleLayers(layers, isDataLayer)

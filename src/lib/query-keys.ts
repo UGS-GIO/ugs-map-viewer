@@ -75,6 +75,16 @@ export const queryKeys = {
     formations: () => [...queryKeys.carbonStorage.all, 'formations'] as const,
   },
 
+  // COG (Cloud Optimized GeoTIFF) queries — pixel metadata + sampled values
+  cog: {
+    all: ['cog'] as const,
+    metadata: (cogUrl?: string, stacUrl?: string) =>
+      [...queryKeys.cog.all, 'metadata', cogUrl, stacUrl] as const,
+    /** lng/lat are rounded to 5 decimals (~1m) so near-duplicate clicks share the cache. */
+    value: (layerName: string, lng: number, lat: number) =>
+      [...queryKeys.cog.all, 'value', layerName, Math.round(lng * 1e5) / 1e5, Math.round(lat * 1e5) / 1e5] as const,
+  },
+
   // Hazards queries
   hazards: {
     all: ['hazards'] as const,

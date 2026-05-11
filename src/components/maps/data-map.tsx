@@ -13,11 +13,14 @@ import {
 import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
-import { flattenVisibleDataLayers, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
-import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps } from '@/lib/types/mapping-types'
+import { flattenVisibleDataLayers, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
+import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps } from '@/lib/types/mapping-types'
 import type maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 
+import { useCogRange } from '@/hooks/use-cog-metadata'
+import { CogPixelHighlight } from '@/components/maps/cog-pixel-highlight'
+import { buildCogProtocolUrl } from '@/lib/map/cog/setup'
 import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
 import { useTerraDraw } from '@/hooks/use-terra-draw'
@@ -32,13 +35,32 @@ import { toast } from 'sonner'
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps } from './types'
 
-type DataLayer = WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps
+type DataLayer = WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps
 
 // MapLibre layer id used for z-order lookups. Keep prefixes stable — popup/query code greps for them.
 function getLayerId(layer: DataLayer): string {
   if (isWMSLayer(layer)) return `wms-layer-${layer.title}`
   if (isWFSLayer(layer)) return `${getWfsSourceId(layer)}-circle`
+  if (isCOGLayer(layer)) return `cog-layer-${layer.title}`
   return `arcgis-layer-${layer.title}`
+}
+
+function CogLayerSource({ layer, beforeId }: { layer: COGLayerProps; beforeId: string | undefined }) {
+  // Dynamic stretch from COG-embedded stats (gdal_edit -stats); STAC URL is fallback.
+  const range = useCogRange(layer)
+  if (!range) return null
+  const tileUrl = buildCogProtocolUrl(layer, range)
+  return (
+    <Source id={`cog-${layer.title}`} type="raster" url={tileUrl} tileSize={256}>
+      <Layer
+        id={`cog-layer-${layer.title}`}
+        beforeId={beforeId}
+        type="raster"
+        paint={{ 'raster-opacity': layer.opacity ?? 0.9 }}
+        metadata={{ title: layer.title, cogUrl: layer.cogUrl }}
+      />
+    </Source>
+  )
 }
 
 function WmsLayerSource({
@@ -264,6 +286,18 @@ export default function DataMap({
   const visibleLayers = useMemo(() => flattenVisibleDataLayers(layers), [layers])
   const visibleWmsLayers = useMemo(() => visibleLayers.filter(isWMSLayer), [visibleLayers])
   const visibleWfsLayers = useMemo(() => visibleLayers.filter(isWFSLayer), [visibleLayers])
+  const visibleCogLayers = useMemo(() => visibleLayers.filter(isCOGLayer), [visibleLayers])
+  // Vector buffer box is meaningful only when a vector layer is the click target; raster sampling alone uses the pixel highlight.
+  const hasVectorClickTarget = useMemo(() => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0, [visibleWmsLayers, visibleWfsLayers])
+  // Any clickable layer (WMS / WFS / COG) gates the click handler + URL-state restore.
+  const hasClickableLayers = useMemo(
+    () => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visibleCogLayers.length > 0,
+    [visibleWmsLayers, visibleWfsLayers, visibleCogLayers]
+  )
+  const cogClickPoint = useMemo(
+    () => clickBufferBounds ? getBboxCenter(clickBufferBounds) : null,
+    [clickBufferBounds]
+  )
 
   // Fetch WFS layer data using TanStack Query (automatic caching, retries, deduplication)
   const { data: wfsLayerData } = useWfsLayerData(visibleWfsLayers)
@@ -492,7 +526,7 @@ export default function DataMap({
       justFinishedDrawingRef.current = false
       return
     }
-    if (!onFeatureClick || (visibleWmsLayers.length === 0 && visibleWfsLayers.length === 0)) return
+    if (!onFeatureClick || !hasClickableLayers) return
 
     const map = mapRef.current?.getMap()
     if (!map) return
@@ -507,7 +541,7 @@ export default function DataMap({
 
     const isAdditive = isAdditiveMode || (e.originalEvent?.shiftKey ?? false)
     queryAtPoint(map, e.point, clickTolerance, isAdditive, { extractBbox: true, clearOnEmpty: true })
-  }, [onFeatureClick, visibleWmsLayers, visibleWfsLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, activeDrawShape, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange, layerFilters])
+  }, [onFeatureClick, hasClickableLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, activeDrawShape, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange, layerFilters])
 
   // Handle map move end - track zoom only (box select now uses click-to-confirm)
   const handleMoveEnd = useCallback(() => {
@@ -579,8 +613,7 @@ export default function DataMap({
       onMapReady?.(map)
 
       // Restore query from URL if clickBufferBounds exists
-      const hasLayers = visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0
-      if (!hasRestoredRef.current && clickBufferBounds && onFeatureClick && hasLayers) {
+      if (!hasRestoredRef.current && clickBufferBounds && onFeatureClick && hasClickableLayers) {
         hasRestoredRef.current = true
 
         const center = getBboxCenter(clickBufferBounds)
@@ -594,7 +627,7 @@ export default function DataMap({
         queryAtPoint(map, centerPoint, tolerance || clickTolerance, false)
       }
     }
-  }, [onMapReady, clickBufferBounds, onFeatureClick, visibleWmsLayers, visibleWfsLayers, clickTolerance, clickQuery, wmsUrl, layerFilters, onClickBufferChange])
+  }, [onMapReady, clickBufferBounds, onFeatureClick, hasClickableLayers, clickTolerance, clickQuery, wmsUrl, layerFilters, onClickBufferChange])
 
   // Combine loading states
   const showLoading = isLoading || queryLoading
@@ -632,7 +665,7 @@ export default function DataMap({
 
   const handleQueryHere = useCallback((coords: { lng: number; lat: number }) => {
     const map = mapRef.current?.getMap()
-    if (!map || !onFeatureClick || (visibleWmsLayers.length === 0 && visibleWfsLayers.length === 0)) return
+    if (!map || !onFeatureClick || !hasClickableLayers) return
 
     const point = map.project([coords.lng, coords.lat])
 
@@ -642,7 +675,7 @@ export default function DataMap({
     onClickBufferChange?.({ sw: [sw.lng, sw.lat], ne: [ne.lng, ne.lat] })
 
     queryAtPoint(map, point, clickTolerance, false)
-  }, [visibleWmsLayers, visibleWfsLayers, clickTolerance, clickQuery, wmsUrl, onFeatureClick, onClickBufferChange, layerFilters])
+  }, [hasClickableLayers, clickTolerance, clickQuery, wmsUrl, onFeatureClick, onClickBufferChange, layerFilters])
 
   const handleZoomIn = useCallback((coords: { lng: number; lat: number }) => {
     const map = mapRef.current?.getMap()
@@ -755,6 +788,9 @@ export default function DataMap({
           if (isArcGISMapServerLayer(layer)) {
             return <ArcGisLayerSource key={layer.title} layer={layer} beforeId={beforeId} />
           }
+          if (isCOGLayer(layer)) {
+            return <CogLayerSource key={layer.title} layer={layer} beforeId={beforeId} />
+          }
           return null
         })}
 
@@ -764,8 +800,13 @@ export default function DataMap({
         {/* Spatial filter visualization */}
         <SpatialFilterLayer filter={spatialFilter} />
 
-        {/* Click buffer visualization */}
-        {clickBufferBounds && <ClickBufferLayer bounds={clickBufferBounds} />}
+        {/* Click buffer visualization — vector click tolerance area; suppressed when only raster active */}
+        {clickBufferBounds && hasVectorClickTarget && <ClickBufferLayer bounds={clickBufferBounds} />}
+
+        {/* Pixel cell highlight per visible COG layer — shows actual sampled pixel */}
+        {visibleCogLayers.map(layer => (
+          <CogPixelHighlight key={`pixel-${layer.title}`} layer={layer} clickPoint={cogClickPoint} />
+        ))}
 
         {/* Frozen box select bounds visualization */}
         {boxSelectBounds && <ClickBufferLayer bounds={boxSelectBounds} />}
