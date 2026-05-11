@@ -276,7 +276,6 @@ const nonpetrolWellsConfig: WMSLayerProps = {
                         },
                     ],
                     sortDirection: 'asc',
-                    //displayAs: 'table'
                 },
                 {
                     fieldLabel: 'Well Analyses Files',
@@ -299,7 +298,6 @@ const nonpetrolWellsConfig: WMSLayerProps = {
                             }
                         },
                     ],
-                    //displayAs: 'table'
                 }]
         },
   ]
