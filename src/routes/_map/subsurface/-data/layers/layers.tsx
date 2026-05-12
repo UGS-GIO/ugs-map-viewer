@@ -3,7 +3,7 @@ import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
 import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL, UCRC_ASSETS_CDN_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps, WFSLayerProps } from "@/lib/types/mapping-types";
 import { makePieWedgeSpriteRegistrar } from "@/lib/map/pie-wedge-sprites";
-import { addThousandsSeparator } from "@/lib/utils";
+import { formatNumeric } from "@/lib/utils";
 
 
 export const wellWithTopsLayerName = 'wellswithtops_hascore';
@@ -255,9 +255,55 @@ const nonpetrolWellsConfig: WMSLayerProps = {
             if (value === 'N') return 'None';
             return 'Unknown';
           }
-        }
-      }
-    }
+        },
+      },
+      relatedTables: [
+                {
+                    fieldLabel: 'Well Log Files',
+                    matchingField: 'well_id',
+                    targetField: 'uwi',
+                    url: PROD_POSTGREST_URL + '/nwpd_welllogs',
+                    headers: {
+                        "Accept-Profile": 'emp',
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    displayFields: [
+                        {
+                            field: 'filename',
+                            label: '',
+                            transform: (value: string | null, row) => {
+                                const path = row?.['full_path'];
+                                if (!path) return value || 'No link available';
+                                return <Link to={String('http://maps-assets.geology.utah.gov/' + path)}>{value || 'View File'}</Link>;
+                            }
+                        },
+                    ],
+                    sortDirection: 'asc',
+                },
+                {
+                    fieldLabel: 'Well Analyses Files',
+                    matchingField: 'well_id',
+                    targetField: 'uwi',
+                    url: PROD_POSTGREST_URL + '/nwpd_wellanalyses',
+                    headers: {
+                        "Accept-Profile": 'emp',
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    displayFields: [
+                        {
+                            field: 'filename',
+                            label: '',
+                            transform: (value: string | null, row) => {
+                                const path = row?.['full_path'];
+                                if (!path) return value || 'No link available';
+                                return <Link to={String('http://maps-assets.geology.utah.gov/' + path)}>{value || 'View File'}</Link>;
+                            }
+                        },
+                    ],
+                }]
+        },
   ]
 };
 
@@ -289,7 +335,7 @@ const metalMiningDistrictsConfig: WMSLayerProps = {
                         if (value === null) {
                             return 'No Data';
                         }
-                        return `$ ${addThousandsSeparator(value)}`;
+                        return `$ ${formatNumeric(value)}`;
                     }
                 },
                 '': {
@@ -569,7 +615,7 @@ const subsurfaceDataConfig: LayerProps = {
 const geologicalInformationConfig: LayerProps = {
     type: 'group',
     title: 'Geological Information',
-    visible: true,
+    visible: false,
     layers: [
         seamlessGeolunitsWMSConfig,
     ]
@@ -578,7 +624,7 @@ const geologicalInformationConfig: LayerProps = {
 const infrastructureAndLandUseConfig: LayerProps = {
     type: 'group',
     title: 'Infrastructure and Land Use',
-    visible: true,
+    visible: false,
     layers: [
         SITLAConfig,
         pipelinesWMSConfig,
