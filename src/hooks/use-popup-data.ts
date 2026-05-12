@@ -16,7 +16,7 @@ import type { LayerContentProps, ExtendedFeature } from '@/components/maps/popup
 import type { GeoServerGeoJSON } from '@/lib/types/geoserver-types'
 import { convertCoordinate } from '@/lib/map/conversion-utils'
 import { createPointBufferBbox } from '@/lib/map/utils'
-import { findLayerByTitle, flattenWmsLayers, flattenVisibleLayers, isCOGLayer } from '@/lib/map/layer-utils'
+import { findLayerByTitle, flattenWmsLayers, flattenLeaves, isCOGLayer } from '@/lib/map/layer-utils'
 import { locationValues } from '@geomatico/maplibre-cog-protocol'
 import { queryKeys } from '@/lib/query-keys'
 import type { COGLayerProps } from '@/lib/types/mapping-types'
@@ -140,7 +140,7 @@ function cogLayerToRasterSource(layer: COGLayerProps): RasterSource {
 
 function getCogLayersForPopup(layers: LayerProps[]): Map<string, { layer: COGLayerProps; rasterSource: RasterSource }> {
   const result = new Map<string, { layer: COGLayerProps; rasterSource: RasterSource }>()
-  for (const cog of flattenVisibleLayers(layers, isCOGLayer)) {
+  for (const cog of flattenLeaves(layers, isCOGLayer)) {
     if (cog.title) result.set(cog.title, { layer: cog, rasterSource: cogLayerToRasterSource(cog) })
   }
   return result

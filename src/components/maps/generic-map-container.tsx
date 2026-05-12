@@ -11,7 +11,7 @@ import { PopupSheet, PopupSheetRef } from '@/components/maps/popups/popup-sheet'
 import { QueryResultsTable } from '@/components/data-table/query-results-table'
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { useLayerVisibility } from '@/hooks/use-layer-visibility'
+import { flattenDataLayersWithParent, resolveLeafVisibility } from '@/lib/map/layer-utils'
 import { useMapUrlSync, type ViewMode } from '@/hooks/use-map-url-sync'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useSidebar } from '@/hooks/use-sidebar'
@@ -55,20 +55,21 @@ interface VisibleWmsLayer {
   bivariateLegend?: { xLabel: string; yLabel: string }
 }
 
-// Helper to fetch legend data for visible WMS layers (filtered by map extent)
+// Helper to fetch legend data for currently-displayed WMS layers (filtered by map extent).
+// "Displayed" = leaf checkbox on AND parent group toggle on, computed from URL state.
 async function fetchLegendDataForVisibleLayers(
   layers: LayerProps[],
+  displayedTitles: Set<string>,
   bounds?: MapBounds
 ): Promise<LegendItem[]> {
   const results: LegendItem[] = []
 
-  // Extract visible WMS layers
   const getVisibleWmsLayers = (layerArray: LayerProps[]): VisibleWmsLayer[] => {
     const visible: VisibleWmsLayer[] = []
     for (const layer of layerArray) {
       if (layer.type === 'group' && 'layers' in layer) {
         visible.push(...getVisibleWmsLayers(layer.layers || []))
-      } else if (layer.type === 'wms' && layer.visible) {
+      } else if (layer.type === 'wms' && displayedTitles.has(layer.title || '')) {
         const wmsLayer = layer as WMSLayerProps
         const sublayer = wmsLayer.sublayers?.[0]
         if (sublayer?.name) {
@@ -288,14 +289,29 @@ export default function GenericMapContainer({
   const { viewMode, setViewMode, center, zoom, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
   const { setNavOpened } = useSidebar()
   const rawLayersConfig = useGetLayerConfigsData(layerConfigKey)
-  const { selectedLayerTitles, isInitialized, groupVisibility, layerOpacity } = useLayerUrl()
-  const layersConfig = useLayerVisibility(rawLayersConfig || [], selectedLayerTitles, isInitialized, groupVisibility, layerOpacity)
+  const { selectedLayerTitles, groupVisibility } = useLayerUrl()
+  const layersConfig = rawLayersConfig || []
   const popupSheetRef = useRef<PopupSheetRef>(null)
   const sheetTriggerRef = useRef<HTMLButtonElement>(null)
 
-  // Ref to hold current layers config for export control legend callback
+  // Currently-displayed titles: leaf is checked AND its parent group toggle is on.
+  // Used by the legend fetcher to filter WMS layers without re-deriving runtime state.
+  const displayedTitles = useMemo(() => {
+    const s = new Set<string>()
+    for (const { layer, parentGroupTitle } of flattenDataLayersWithParent(layersConfig)) {
+      const { displayed } = resolveLeafVisibility(
+        layer.title, parentGroupTitle, selectedLayerTitles, groupVisibility,
+      )
+      if (displayed && layer.title) s.add(layer.title)
+    }
+    return s
+  }, [layersConfig, selectedLayerTitles, groupVisibility])
+
+  // Refs for export control legend callback (stable identity across renders).
   const layersConfigRef = useRef<LayerProps[]>(layersConfig)
   layersConfigRef.current = layersConfig
+  const displayedTitlesRef = useRef<Set<string>>(displayedTitles)
+  displayedTitlesRef.current = displayedTitles
 
   // Read draw lifecycle + registrations from context (owned by useMapContextState)
   const {
@@ -382,7 +398,7 @@ export default function GenericMapContainer({
         format: 'png',
         dpi: 300,
         filename: 'ugs-map',
-        getLegendData: (bounds) => fetchLegendDataForVisibleLayers(layersConfigRef.current, bounds)
+        getLegendData: (bounds) => fetchLegendDataForVisibleLayers(layersConfigRef.current, displayedTitlesRef.current, bounds)
       })
       mapInstance.addControl(exportControl, 'top-left')
       controls.push(exportControl)

@@ -13,7 +13,8 @@ import {
 import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
-import { flattenVisibleDataLayers, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
+import { flattenDataLayersWithParent, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
+import { useLayerUrl } from '@/context/layer-url-provider'
 import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps } from '@/lib/types/mapping-types'
 import type maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
@@ -45,7 +46,7 @@ function getLayerId(layer: DataLayer): string {
   return `arcgis-layer-${layer.title}`
 }
 
-function CogLayerSource({ layer, beforeId }: { layer: COGLayerProps; beforeId: string | undefined }) {
+function CogLayerSource({ layer, beforeId, hidden, opacity }: { layer: COGLayerProps; beforeId: string | undefined; hidden?: boolean; opacity?: number }) {
   // Dynamic stretch from COG-embedded stats (gdal_edit -stats); STAC URL is fallback.
   const range = useCogRange(layer)
   if (!range) return null
@@ -56,7 +57,8 @@ function CogLayerSource({ layer, beforeId }: { layer: COGLayerProps; beforeId: s
         id={`cog-layer-${layer.title}`}
         beforeId={beforeId}
         type="raster"
-        paint={{ 'raster-opacity': layer.opacity ?? 0.9 }}
+        layout={{ visibility: hidden ? 'none' : 'visible' }}
+        paint={{ 'raster-opacity': opacity ?? layer.opacity ?? 0.9 }}
         metadata={{ title: layer.title, cogUrl: layer.cogUrl }}
       />
     </Source>
@@ -64,13 +66,15 @@ function CogLayerSource({ layer, beforeId }: { layer: COGLayerProps; beforeId: s
 }
 
 function WmsLayerSource({
-  layer, wmsUrl, cqlFilter, styleName, beforeId,
+  layer, wmsUrl, cqlFilter, styleName, beforeId, hidden, opacity,
 }: {
   layer: WMSLayerProps
   wmsUrl: string
   cqlFilter: string | undefined
   styleName: string | undefined
   beforeId: string | undefined
+  hidden?: boolean
+  opacity?: number
 }) {
   const layerName = getWmsLayerName(layer)
   const layerWmsUrl = layer.url || wmsUrl
@@ -81,21 +85,23 @@ function WmsLayerSource({
         id={`wms-layer-${layer.title}`}
         beforeId={beforeId}
         type="raster"
-        paint={{ 'raster-opacity': layer.opacity ?? 0.8 }}
+        layout={{ visibility: hidden ? 'none' : 'visible' }}
+        paint={{ 'raster-opacity': opacity ?? layer.opacity ?? 0.8 }}
         metadata={{ title: layer.title, 'wms-url': layerWmsUrl, 'wms-layer': layerName }}
       />
     </Source>
   )
 }
 
-function ArcGisLayerSource({ layer, beforeId }: { layer: ArcGISMapServerLayerProps; beforeId: string | undefined }) {
+function ArcGisLayerSource({ layer, beforeId, hidden, opacity }: { layer: ArcGISMapServerLayerProps; beforeId: string | undefined; hidden?: boolean; opacity?: number }) {
   return (
     <Source id={`arcgis-${layer.title}`} type="raster" tiles={[buildArcGisExportUrl(layer.url)]} tileSize={512}>
       <Layer
         id={`arcgis-layer-${layer.title}`}
         beforeId={beforeId}
         type="raster"
-        paint={{ 'raster-opacity': layer.opacity ?? 0.8 }}
+        layout={{ visibility: hidden ? 'none' : 'visible' }}
+        paint={{ 'raster-opacity': opacity ?? layer.opacity ?? 0.8 }}
         metadata={{ title: layer.title, 'arcgis-url': layer.url }}
       />
     </Source>
@@ -103,13 +109,15 @@ function ArcGisLayerSource({ layer, beforeId }: { layer: ArcGISMapServerLayerPro
 }
 
 function WfsLayerSource({
-  layer, geojson, beforeId, layerFilter, activeSymbology,
+  layer, geojson, beforeId, layerFilter, activeSymbology, hidden, opacity,
 }: {
   layer: WFSLayerProps
   geojson: FeatureCollection
   beforeId: string | undefined
   layerFilter?: maplibregl.FilterSpecification
   activeSymbology?: string
+  hidden?: boolean
+  opacity?: number
 }) {
   const sourceId = getWfsSourceId(layer)
   const styleConfig = layer.style || {}
@@ -156,8 +164,9 @@ function WfsLayerSource({
 
   const symbolKey = styleConfig.iconSymbologyKey || ''
   const symbolActive = !!symbolKey && activeSymbology === symbolKey
-  const circleVisibility = symbolActive ? 'none' : 'visible'
-  const symbolVisibility = symbolActive ? 'visible' : 'none'
+  // `hidden` (group toggle off) wins — both circle + symbol go invisible.
+  const circleVisibility = hidden ? 'none' : (symbolActive ? 'none' : 'visible')
+  const symbolVisibility = hidden ? 'none' : (symbolActive ? 'visible' : 'none')
 
   let iconSize: number | maplibregl.ExpressionSpecification = styleConfig.iconSize ?? 1
   if (styleConfig.iconSizeByZoom && styleConfig.iconSizeByZoom.length >= 2) {
@@ -179,8 +188,8 @@ function WfsLayerSource({
           'circle-color': circleColor,
           'circle-stroke-color': circleStrokeColor,
           'circle-stroke-width': styleConfig.circleStrokeWidth || 1,
-          'circle-opacity': layer.opacity ?? 1,
-          'circle-stroke-opacity': layer.opacity ?? 1,
+          'circle-opacity': opacity ?? layer.opacity ?? 1,
+          'circle-stroke-opacity': opacity ?? layer.opacity ?? 1,
         }}
         metadata={{
           title: layer.title,
@@ -203,7 +212,7 @@ function WfsLayerSource({
             'icon-ignore-placement': true,
           }}
           paint={{
-            'icon-opacity': layer.opacity ?? 1,
+            'icon-opacity': opacity ?? layer.opacity ?? 1,
           }}
           metadata={{
             title: layer.title,
@@ -281,32 +290,70 @@ export default function DataMap({
   // Get the raw map instance (memoized to avoid recreating on every render)
   const mapInstance = mapRef.current?.getMap() ?? null
 
-  // Flat list of visible data layers in config order (top of sidebar = first).
-  // Drives both rendering and type-specific query callbacks below.
-  const visibleLayers = useMemo(() => flattenVisibleDataLayers(layers), [layers])
-  const visibleWmsLayers = useMemo(() => visibleLayers.filter(isWMSLayer), [visibleLayers])
-  const visibleWfsLayers = useMemo(() => visibleLayers.filter(isWFSLayer), [visibleLayers])
-  const visibleCogLayers = useMemo(() => visibleLayers.filter(isCOGLayer), [visibleLayers])
+  // URL state is the source of truth for runtime visibility and opacity overrides.
+  // The config tree is never mutated — we compute mount/display per leaf at render time.
+  const { selectedLayerTitles, groupVisibility, layerOpacity } = useLayerUrl()
+
+  // Flat list of data leaves in config order (top of sidebar = first), tagged with parent group.
+  const dataLeaves = useMemo(() => flattenDataLayersWithParent(layers), [layers])
+
+  // `mounted` = checkbox state → drives `<Source>` presence.
+  // `displayed` = mounted && group toggle on → drives `<Layer layout.visibility>` and queryability.
+  const renderEntries = useMemo(() => {
+    return dataLeaves.map(({ layer, parentGroupTitle }) => {
+      const { mounted, displayed } = resolveLeafVisibility(
+        layer.title, parentGroupTitle, selectedLayerTitles, groupVisibility,
+      )
+      return { layer, mounted, displayed }
+    })
+  }, [dataLeaves, selectedLayerTitles, groupVisibility])
+
+  // Mounted-only subset (Sources present). WFS layers also need their geojson before they can
+  // be rendered (handled below). Drives rendering and click-query layer lists.
+  const mountedLayers = useMemo(() => renderEntries.filter(e => e.mounted), [renderEntries])
+  const displayedTitles = useMemo(() => {
+    const s = new Set<string>()
+    for (const e of renderEntries) if (e.displayed && e.layer.title) s.add(e.layer.title)
+    return s
+  }, [renderEntries])
+
+  const mountedLayerList = useMemo(() => mountedLayers.map(e => e.layer), [mountedLayers])
+  const mountedWfsLayers = useMemo(() => mountedLayerList.filter(isWFSLayer), [mountedLayerList])
+
+  // Click queries skip hidden layers — user can't click what they can't see.
+  const visibleWmsLayers = useMemo(
+    () => mountedLayerList.filter(isWMSLayer).filter(l => displayedTitles.has(l.title)),
+    [mountedLayerList, displayedTitles],
+  )
+  const visibleWfsLayers = useMemo(
+    () => mountedWfsLayers.filter(l => displayedTitles.has(l.title)),
+    [mountedWfsLayers, displayedTitles],
+  )
+  const visibleCogLayers = useMemo(
+    () => mountedLayerList.filter(isCOGLayer).filter(l => displayedTitles.has(l.title)),
+    [mountedLayerList, displayedTitles],
+  )
   // Vector buffer box is meaningful only when a vector layer is the click target; raster sampling alone uses the pixel highlight.
   const hasVectorClickTarget = useMemo(() => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0, [visibleWmsLayers, visibleWfsLayers])
   // Any clickable layer (WMS / WFS / COG) gates the click handler + URL-state restore.
   const hasClickableLayers = useMemo(
     () => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visibleCogLayers.length > 0,
-    [visibleWmsLayers, visibleWfsLayers, visibleCogLayers]
+    [visibleWmsLayers, visibleWfsLayers, visibleCogLayers],
   )
   const cogClickPoint = useMemo(
     () => clickBufferBounds ? getBboxCenter(clickBufferBounds) : null,
-    [clickBufferBounds]
+    [clickBufferBounds],
   )
 
-  // Fetch WFS layer data using TanStack Query (automatic caching, retries, deduplication)
-  const { data: wfsLayerData } = useWfsLayerData(visibleWfsLayers)
+  // Fetch WFS data for any mounted WFS layer (group toggle off shouldn't drop tiles).
+  const { data: wfsLayerData } = useWfsLayerData(mountedWfsLayers)
 
-  // Renderable subset: WFS layers are skipped until their geojson resolves. Drives draw order
-  // so each layer's `beforeId` points to an already-mounted neighbor (no missing-layer warnings).
-  const renderableLayers = useMemo(() => {
-    return visibleLayers.filter(l => !isWFSLayer(l) || wfsLayerData.get(getWfsSourceId(l)) !== undefined)
-  }, [visibleLayers, wfsLayerData])
+  // Renderable entries: WFS layers wait for geojson before mounting `<Source>`.
+  const renderableEntries = useMemo(() => {
+    return mountedLayers.filter(e =>
+      !isWFSLayer(e.layer) || wfsLayerData.get(getWfsSourceId(e.layer)) !== undefined
+    )
+  }, [mountedLayers, wfsLayerData])
 
   // After data lands and the map style is loaded, run any per-layer sprite registration hooks.
   // Idempotent: each hook checks map.hasImage before adding.
@@ -314,14 +361,14 @@ export default function DataMap({
     if (!styleLoaded) return
     const map = mapRef.current?.getMap()
     if (!map) return
-    for (const layer of visibleWfsLayers) {
+    for (const layer of mountedWfsLayers) {
       const register = layer.style?.registerSprites
       if (!register) continue
       const sourceId = getWfsSourceId(layer)
       const data = wfsLayerData.get(sourceId)
       if (data) register(map, data.features)
     }
-  }, [styleLoaded, wfsLayerData, visibleWfsLayers])
+  }, [styleLoaded, wfsLayerData, mountedWfsLayers])
 
   // Refs for stable access to layers in callbacks (prevents TerraDraw reinit)
   const visibleWmsLayersRef = useRef(visibleWmsLayers)
@@ -755,8 +802,11 @@ export default function DataMap({
 
         {/* Data layers in sidebar/config order. First = top of stack.
             Render order = top → bottom so each `beforeId` references an already-mounted layer. */}
-        {renderableLayers.map((layer, i) => {
-          const beforeId = i > 0 ? getLayerId(renderableLayers[i - 1]) : undefined
+        {renderableEntries.map((entry, i) => {
+          const { layer, displayed } = entry
+          const hidden = !displayed
+          const opacity = layerOpacity.get(layer.title || '')
+          const beforeId = i > 0 ? getLayerId(renderableEntries[i - 1].layer) : undefined
           if (isWMSLayer(layer)) {
             const cqlFilter = layerFilters[layer.title]
             const styleName = layerStyles[layer.title]
@@ -768,6 +818,8 @@ export default function DataMap({
                 cqlFilter={cqlFilter}
                 styleName={styleName}
                 beforeId={beforeId}
+                hidden={hidden}
+                opacity={opacity}
               />
             )
           }
@@ -782,14 +834,16 @@ export default function DataMap({
                 beforeId={beforeId}
                 layerFilter={vectorLayerFilters[layer.title]}
                 activeSymbology={vectorLayerSymbology[layer.title] || ''}
+                hidden={hidden}
+                opacity={opacity}
               />
             )
           }
           if (isArcGISMapServerLayer(layer)) {
-            return <ArcGisLayerSource key={layer.title} layer={layer} beforeId={beforeId} />
+            return <ArcGisLayerSource key={layer.title} layer={layer} beforeId={beforeId} hidden={hidden} opacity={opacity} />
           }
           if (isCOGLayer(layer)) {
-            return <CogLayerSource key={layer.title} layer={layer} beforeId={beforeId} />
+            return <CogLayerSource key={layer.title} layer={layer} beforeId={beforeId} hidden={hidden} opacity={opacity} />
           }
           return null
         })}

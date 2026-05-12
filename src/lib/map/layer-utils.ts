@@ -26,18 +26,19 @@ export const isArcGISMapServerLayer = (layer: LayerProps): layer is ArcGISMapSer
 // ── Generic layer flattening ─────────────────────────────────────────
 
 /**
- * Recursively flatten layer groups into a flat array of visible layers
- * matching the given type guard.
+ * Recursively flatten layer groups into a flat array of leaves matching the
+ * given type guard. Does NOT filter by `visible` — runtime visibility lives in
+ * URL state and is applied by the consumer.
  */
-export function flattenVisibleLayers<T extends LayerProps>(
+export function flattenLeaves<T extends LayerProps>(
   layers: LayerProps[],
   guard: (layer: LayerProps) => layer is T,
 ): T[] {
   const result: T[] = []
   for (const layer of layers) {
     if (isGroupLayer(layer) && layer.layers) {
-      result.push(...flattenVisibleLayers(layer.layers, guard))
-    } else if (guard(layer) && layer.visible === true) {
+      result.push(...flattenLeaves(layer.layers, guard))
+    } else if (guard(layer)) {
       result.push(layer)
     }
   }
@@ -45,19 +46,63 @@ export function flattenVisibleLayers<T extends LayerProps>(
 }
 
 export const flattenWmsLayers = (layers: LayerProps[]) =>
-  flattenVisibleLayers(layers, isWMSLayer)
+  flattenLeaves(layers, isWMSLayer)
 
 export const flattenWfsLayers = (layers: LayerProps[]) =>
-  flattenVisibleLayers(layers, isWFSLayer)
+  flattenLeaves(layers, isWFSLayer)
 
 export const flattenArcGisLayers = (layers: LayerProps[]) =>
-  flattenVisibleLayers(layers, isArcGISMapServerLayer)
+  flattenLeaves(layers, isArcGISMapServerLayer)
 
 export const isDataLayer = (layer: LayerProps): layer is WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps =>
   isWMSLayer(layer) || isWFSLayer(layer) || isArcGISMapServerLayer(layer) || isCOGLayer(layer)
 
-export const flattenVisibleDataLayers = (layers: LayerProps[]) =>
-  flattenVisibleLayers(layers, isDataLayer)
+export const flattenDataLayers = (layers: LayerProps[]) =>
+  flattenLeaves(layers, isDataLayer)
+
+/**
+ * Flatten data leaves and tag each with its enclosing group title (or null for
+ * top-level layers). Used to compute display visibility against group toggle
+ * state from the URL.
+ */
+export interface DataLeafWithParent {
+  layer: WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps
+  parentGroupTitle: string | null
+}
+
+export function flattenDataLayersWithParent(layers: LayerProps[]): DataLeafWithParent[] {
+  const result: DataLeafWithParent[] = []
+  const walk = (arr: LayerProps[], parent: string | null) => {
+    for (const layer of arr) {
+      if (isGroupLayer(layer) && layer.layers) {
+        walk(layer.layers, layer.title ?? parent)
+      } else if (isDataLayer(layer)) {
+        result.push({ layer, parentGroupTitle: parent })
+      }
+    }
+  }
+  walk(layers, null)
+  return result
+}
+
+/**
+ * Resolve a leaf's runtime visibility against URL state.
+ * - `mounted` = checkbox is on (drives `<Source>` presence).
+ * - `displayed` = mounted AND parent group toggle on (drives `layout.visibility`).
+ * Root-level leaves (no parent group) default to displayed when mounted.
+ */
+export function resolveLeafVisibility(
+  title: string | undefined,
+  parentGroupTitle: string | null,
+  selectedTitles: Set<string>,
+  groupVisibility: Map<string, boolean>,
+): { mounted: boolean; displayed: boolean } {
+  const mounted = !!title && selectedTitles.has(title)
+  const groupOn = parentGroupTitle === null
+    ? true
+    : (groupVisibility.get(parentGroupTitle) ?? true)
+  return { mounted, displayed: mounted && groupOn }
+}
 
 // ── Layer search ─────────────────────────────────────────────────────
 
