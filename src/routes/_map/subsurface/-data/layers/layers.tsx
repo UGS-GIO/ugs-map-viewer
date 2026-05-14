@@ -460,7 +460,7 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
     wfsUrl: `${PROD_GEOSERVER_URL}/wfs`,
     typeName: ucrcWellsQualifiedName,
     title: ucrcWellsWMSTitle,
-    visible: false,
+    visible: true,
     opacity: 0.85,
     crs: 'EPSG:4326',
     geometryType: 'point',
