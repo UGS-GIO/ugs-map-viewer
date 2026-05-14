@@ -9,10 +9,14 @@ const wmsLayer = (title: string, visible = false): LayerProps => ({
   sublayers: [],
 });
 
-const group = (title: string, layers: LayerProps[]): GroupLayerProps => ({
+const group = (
+  title: string,
+  layers: LayerProps[],
+  visible: boolean | undefined = undefined,
+): GroupLayerProps => ({
   type: 'group',
   title,
-  visible: true,
+  visible,
   layers,
 });
 
@@ -41,21 +45,35 @@ describe('hasActiveChildren', () => {
 });
 
 describe('getDefaultGroupVisibility', () => {
-  it('sets group visible when child is config-default visible', () => {
+  // Implicit (no group.visible set) → falls back to hasActiveChildren
+  it('derives from children when group.visible is undefined and a child is config-default visible', () => {
     const layers = [group('G1', [wmsLayer('A', true), wmsLayer('B')])];
     const result = getDefaultGroupVisibility(layers, new Set());
     expect(result.get('G1')).toBe(true);
   });
 
-  it('sets group hidden when no children are active', () => {
+  it('derives hidden when group.visible is undefined and no children are active', () => {
     const layers = [group('G1', [wmsLayer('A'), wmsLayer('B')])];
     const result = getDefaultGroupVisibility(layers, new Set());
     expect(result.get('G1')).toBe(false);
   });
 
-  it('sets group visible when child is URL-selected', () => {
+  it('derives visible when child is URL-selected and group.visible is undefined', () => {
     const layers = [group('G1', [wmsLayer('A'), wmsLayer('B')])];
     const result = getDefaultGroupVisibility(layers, new Set(['A']));
+    expect(result.get('G1')).toBe(true);
+  });
+
+  // Explicit group.visible wins over derived state
+  it('honors explicit group.visible: false even when children are selected', () => {
+    const layers = [group('G1', [wmsLayer('A', true)], false)];
+    const result = getDefaultGroupVisibility(layers, new Set(['A']));
+    expect(result.get('G1')).toBe(false);
+  });
+
+  it('honors explicit group.visible: true even when no children are active', () => {
+    const layers = [group('G1', [wmsLayer('A')], true)];
+    const result = getDefaultGroupVisibility(layers, new Set());
     expect(result.get('G1')).toBe(true);
   });
 
