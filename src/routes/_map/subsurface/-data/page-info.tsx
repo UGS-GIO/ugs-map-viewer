@@ -18,16 +18,16 @@ const references = (
 const acknowledgments = (
     <div className="space-y-2">
         <p>
-            the Utah Core Research Center (UCRC) works extensively in collaboration with other agencies, industry partners, and academic institutions. 
+            This web application is a digital library representing the rock materials housed at the Utah Core Research Center (UCRC) in Salt Lake City, Utah. The original web application was developed in-house in the early 2010s, and in 2026, with a comprehensive inventory and data cleaning by UCRC staff and database restructuring, the web application was upgraded to support more functionality for the users and offer more modern data export options. The inventory of the UCRC is continuously updated as materials are donated, analyses and reports are conducted, and boxes are photographed.
         </p>
         <p className="pl-4">
-            Ammon McDonald, UCRC Curator: <Link to="ammonmcdonald@utah.gov">ammonmcdonald@utah.gov</Link> 
+            <b>Inventory Management and Data Curation: </b>Ammon McDonald <Link to="ammonmcdonald@utah.gov">(ammonmcdonald@utah.gov)</Link>,  Madeline Griem, <Link to="mgriem@utah.gov">(mgriem@utah.gov)</Link>
         </p>
         <p className="pl-4">
-            Madeline Griem, UCRC Assistant Curator: <Link to="mgriem@utah.gov">mgriem@utah.gov</Link>
+           <b>Energy & Minerals Program Manager: </b>Michael Vanden Berg <Link to="michaelvandenberg@utah.gov">(michaelvandenberg@utah.gov)</Link>
         </p>
         <p className="pl-4">
-            Michael Vanden Berg, Energy and Minerals Program Manager: <Link to="michaelvandenberg@utah.gov">michaelvandenberg@utah.gov</Link>
+            <b>Database Infrastructure and Application Development: </b>Marshall Robinson, Lance Weaver, Clinton Lunn, Nathan Payne 
         </p>
     </div>
 )
@@ -77,32 +77,36 @@ const dataSources = (
         <p>
             Data for the Subsurface Data Portal was collected from a variety of authoritative sources including the Utah Geological Survey, Utah Division of Oil, Gas and Mining, Utah State and Institutional Trust Lands Administration, and federal agencies.
         </p>
-
-        <p className="text-lg font-semibold underline">
-            Subsurface Resources
-        </p>
-
-        <div className="space-y-2">
             <p>
-                <strong>Carbon Solutions Data </strong> - SCO2TPRO geospatial siting tool and database.
+                <strong>Utah Core Research Inventory Data</strong> - Utah Geological Survey
             </p>
-            <span><Link to="https://www.carbonsolutionsllc.com/sco%e2%82%82t%e1%b4%be%e1%b4%bf%e1%b4%bc-unlocking-the-nations-subsurface-to-support-the-energy-transition/">View website</Link></span>
 
-            <p>
-                <strong>GeoRegions</strong> - Utah Geological Survey
-            </p>
-            <span>Contact us for report information.</span>
-        </div>
+
 
         <p className="text-lg font-semibold underline mt-4">
             Subsurface Data
         </p>
 
         <div className="space-y-2">
+            
+            <p>
+                <strong>Oil & Gas Fields</strong> - Utah Geological Survey
+            </p>
+            <span><Link to="https://gis.utah.gov/products/sgid/energy/oil-gas-wells/">Access data</Link></span>
+            <p>
+                <strong>Basins</strong> - Utah Geological Survey
+            </p>
+            <p>
+                <strong>Metalliferous Mining Districts</strong> - Utah Geological Survey
+            </p>
+            <span><Link to="https://doi.org/10.34191/OFR-695">Access data</Link></span>
             <p>
                 <strong>Wells Database</strong> - Utah Division of Oil, Gas and Mining
             </p>
-
+            <p>
+                <strong>Non-Petroleum Well Data</strong> - Utah Geological Survey
+            </p>
+            
         </div>
 
         <p className="text-lg font-semibold underline mt-4">
@@ -110,16 +114,6 @@ const dataSources = (
         </p>
 
         <div className="space-y-2">
-            <p>
-                <strong>Hazardous (Quaternary age) Faults</strong> - Utah Geological Survey
-            </p>
-            <span><Link to="https://maps.geology.utah.gov/hazards">Access data</Link></span>
-
-            <p>
-                <strong>Utah Faults</strong> - Utah Geological Survey
-            </p>
-            <span><Link to="https://geology.utah.gov/publication-details/?pub=M-179dm">Access data</Link></span>
-
             <p>
                 <strong>Geological Units (500k)</strong> - Utah Geological Survey
             </p>
@@ -131,25 +125,23 @@ const dataSources = (
         </p>
 
         <div className="space-y-2">
-            <p>
-                <strong>Utah Roads</strong> - Local data stewards & UDOT & UGRC
-            </p>
-            <span><Link to="https://opendata.gis.utah.gov/datasets/utah-roads/about">Access data</Link></span>
-
-            <p>
-                <strong>Wilderness Study Areas</strong> - U.S. Bureau of Land Management
-            </p>
-            <span><Link to="https://gbp-blm-egis.hub.arcgis.com/maps/0ae90ebbc1f54f77b80b76a6148ab83d/about">Access data</Link></span>
-
-            <p>
-                <strong>Major Rivers</strong> - UGRC
-            </p>
-            <span><Link to="https://opendata.gis.utah.gov/datasets/utah-major-rivers-polygons/about">Access data</Link></span>
 
             <p>
                 <strong>Utah Land Ownership</strong> - School and Institutional Trust Lands Administration (SITLA) & BLM & Partners
             </p>
             <span><Link to="https://opendata.gis.utah.gov/datasets/SITLA::land-ownership/about">Access data</Link></span>
+            <p>
+                <strong>Pipelines </strong> - Utah Geological Survey
+            </p>
+            <p>
+                <strong>Utah Counties</strong> - UGRC
+            </p>
+            <span><Link to="https://gis.utah.gov/products/sgid/boundaries/county/">Access data</Link></span>
+            <p>
+                <strong>Utah Township & Ranges</strong> - UGRC
+            </p>
+            <span><Link to="https://gis.utah.gov/products/sgid/cadastre/plss-sections/">Access data</Link></span>
+
         </div>
     </div>
 )

@@ -1,4 +1,4 @@
-import { House, Info as InfoIcon, Layers as LayersIcon, Settings, ExternalLink, MessageSquare } from 'lucide-react'
+import { House, Info as InfoIcon, Layers as LayersIcon, Settings, ExternalLink } from 'lucide-react'
 import Info from '@/components/sidebar/info'
 import Layers from '@/components/sidebar/layers'
 import MapConfigurations from '../-components/sidebar/map-configurations/map-configurations'
@@ -44,14 +44,8 @@ export const sidelinks: SideLink[] = [
   {
     title: 'Learn More',
     label: '',
-    href: 'https://geology.utah.gov/energy-minerals/ccus/',
+    href: 'https://geology.utah.gov/about-us/utah-core-research-center/',
     icon: <ExternalLink className='stroke-foreground' />,
     // This link is external and does not need a component
-  },
-  {
-    title: 'Feedback',
-    label: '',
-    href: 'https://docs.google.com/forms/d/e/1FAIpQLSca4G-LogxiNrJUTTtlxyqMutgFVyh2jtNB-tozlQ4D4QOvPA/viewform',
-    icon: <MessageSquare className='text-ring' />,
   }
 ];
