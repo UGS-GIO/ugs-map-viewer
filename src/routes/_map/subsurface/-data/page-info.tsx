@@ -18,16 +18,16 @@ const references = (
 const acknowledgments = (
     <div className="space-y-2">
         <p>
-            the Utah Core Research Center (UCRC) works extensively in collaboration with other agencies, industry partners, and academic institutions. 
+            This web application is a digital library representing the rock materials housed at the Utah Core Research Center (UCRC) in Salt Lake City, Utah. The original web application was developed in-house in the early 2010s, and in 2026, with a comprehensive inventory and data cleaning by UCRC staff and database restructuring, the web application was upgraded to support more functionality for the users and offer more modern data export options. The inventory of the UCRC is continuously updated as materials are donated, analyses and reports are conducted, and boxes are photographed.
         </p>
         <p className="pl-4">
-            Ammon McDonald, UCRC Curator: <Link to="ammonmcdonald@utah.gov">ammonmcdonald@utah.gov</Link> 
+            <b>Inventory Management and Data Curation: </b>Ammon McDonald <Link to="ammonmcdonald@utah.gov">(ammonmcdonald@utah.gov)</Link>,  Madeline Griem, <Link to="mgriem@utah.gov">(mgriem@utah.gov)</Link>
         </p>
         <p className="pl-4">
-            Madeline Griem, UCRC Assistant Curator: <Link to="mgriem@utah.gov">mgriem@utah.gov</Link>
+           <b>Energy & Minerals Program Manager: </b>Michael Vanden Berg <Link to="michaelvandenberg@utah.gov">(michaelvandenberg@utah.gov)</Link>
         </p>
         <p className="pl-4">
-            Michael Vanden Berg, Energy and Minerals Program Manager: <Link to="michaelvandenberg@utah.gov">michaelvandenberg@utah.gov</Link>
+            <b>Database Infrastructure and Application Development: </b>Marshall Robinson, Lance Weaver, Clinton Lunn, Nathan Payne 
         </p>
     </div>
 )
@@ -77,6 +77,10 @@ const dataSources = (
         <p>
             Data for the Subsurface Data Portal was collected from a variety of authoritative sources including the Utah Geological Survey, Utah Division of Oil, Gas and Mining, Utah State and Institutional Trust Lands Administration, and federal agencies.
         </p>
+            <p>
+                <strong>Utah Core Research Inventory Data</strong> - Utah Geological Survey
+            </p>
+
 
 
         <p className="text-lg font-semibold underline mt-4">
@@ -84,22 +88,25 @@ const dataSources = (
         </p>
 
         <div className="space-y-2">
+            
+            <p>
+                <strong>Oil & Gas Fields</strong> - Utah Geological Survey
+            </p>
+            <span><Link to="https://gis.utah.gov/products/sgid/energy/oil-gas-wells/">Access data</Link></span>
+            <p>
+                <strong>Basins</strong> - Utah Geological Survey
+            </p>
+            <p>
+                <strong>Metalliferous Mining Districts</strong> - Utah Geological Survey
+            </p>
+            <span><Link to="https://doi.org/10.34191/OFR-695">Access data</Link></span>
             <p>
                 <strong>Wells Database</strong> - Utah Division of Oil, Gas and Mining
             </p>
             <p>
-                <strong>Oil & Gas Fields</strong> - Utah Geological Survey
-            </p>
-            <span><Link to="https://geology.utah.gov/oil-and-gas-fields-map-of-utah/">Access data</Link></span>
-            <p>
-                <strong>Utah Mining Districts</strong> - Utah Geological Survey
-            </p>
-            <span><Link to="https://ugspub.nr.utah.gov/publications/open_file_reports/ofr-695.pdf">Access data</Link></span>
-            <p>
                 <strong>Non-Petroleum Well Data</strong> - Utah Geological Survey
             </p>
-            <span><Link to="https://geology.utah.gov/map-pub/maps/interactive-maps/npwd/">Access data</Link></span>
-
+            
         </div>
 
         <p className="text-lg font-semibold underline mt-4">
@@ -120,25 +127,18 @@ const dataSources = (
         <div className="space-y-2">
 
             <p>
-                <strong>Wilderness Study Areas</strong> - U.S. Bureau of Land Management
-            </p>
-            <span><Link to="https://gbp-blm-egis.hub.arcgis.com/maps/0ae90ebbc1f54f77b80b76a6148ab83d/about">Access data</Link></span>
-
-
-            <p>
                 <strong>Utah Land Ownership</strong> - School and Institutional Trust Lands Administration (SITLA) & BLM & Partners
             </p>
             <span><Link to="https://opendata.gis.utah.gov/datasets/SITLA::land-ownership/about">Access data</Link></span>
             <p>
-                <strong>Utah Oil & Gas Pipeline Data</strong> - Utah Geological Survey
+                <strong>Pipelines </strong> - Utah Geological Survey
             </p>
-            <span><Link to="https://ugspub.nr.utah.gov/publications/public_information/pi-22.pdf">Access data</Link></span>
             <p>
-                <strong>Utah County Data</strong> - UGRC
+                <strong>Utah Counties</strong> - UGRC
             </p>
             <span><Link to="https://gis.utah.gov/products/sgid/boundaries/county/">Access data</Link></span>
             <p>
-                <strong>Utah PLSS Data</strong> - UGRC
+                <strong>Utah Township & Ranges</strong> - UGRC
             </p>
             <span><Link to="https://gis.utah.gov/products/sgid/cadastre/plss-sections/">Access data</Link></span>
 
