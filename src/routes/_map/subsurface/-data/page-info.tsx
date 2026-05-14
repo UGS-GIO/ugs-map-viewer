@@ -78,21 +78,6 @@ const dataSources = (
             Data for the Subsurface Data Portal was collected from a variety of authoritative sources including the Utah Geological Survey, Utah Division of Oil, Gas and Mining, Utah State and Institutional Trust Lands Administration, and federal agencies.
         </p>
 
-        <p className="text-lg font-semibold underline">
-            Subsurface Resources
-        </p>
-
-        <div className="space-y-2">
-            <p>
-                <strong>Carbon Solutions Data </strong> - SCO2TPRO geospatial siting tool and database.
-            </p>
-            <span><Link to="https://www.carbonsolutionsllc.com/sco%e2%82%82t%e1%b4%be%e1%b4%bf%e1%b4%bc-unlocking-the-nations-subsurface-to-support-the-energy-transition/">View website</Link></span>
-
-            <p>
-                <strong>GeoRegions</strong> - Utah Geological Survey
-            </p>
-            <span>Contact us for report information.</span>
-        </div>
 
         <p className="text-lg font-semibold underline mt-4">
             Subsurface Data
@@ -102,6 +87,18 @@ const dataSources = (
             <p>
                 <strong>Wells Database</strong> - Utah Division of Oil, Gas and Mining
             </p>
+            <p>
+                <strong>Oil & Gas Fields</strong> - Utah Geological Survey
+            </p>
+            <span><Link to="https://geology.utah.gov/oil-and-gas-fields-map-of-utah/">Access data</Link></span>
+            <p>
+                <strong>Utah Mining Districts</strong> - Utah Geological Survey
+            </p>
+            <span><Link to="https://ugspub.nr.utah.gov/publications/open_file_reports/ofr-695.pdf">Access data</Link></span>
+            <p>
+                <strong>Non-Petroleum Well Data</strong> - Utah Geological Survey
+            </p>
+            <span><Link to="https://geology.utah.gov/map-pub/maps/interactive-maps/npwd/">Access data</Link></span>
 
         </div>
 
@@ -110,16 +107,6 @@ const dataSources = (
         </p>
 
         <div className="space-y-2">
-            <p>
-                <strong>Hazardous (Quaternary age) Faults</strong> - Utah Geological Survey
-            </p>
-            <span><Link to="https://maps.geology.utah.gov/hazards">Access data</Link></span>
-
-            <p>
-                <strong>Utah Faults</strong> - Utah Geological Survey
-            </p>
-            <span><Link to="https://geology.utah.gov/publication-details/?pub=M-179dm">Access data</Link></span>
-
             <p>
                 <strong>Geological Units (500k)</strong> - Utah Geological Survey
             </p>
@@ -131,25 +118,30 @@ const dataSources = (
         </p>
 
         <div className="space-y-2">
-            <p>
-                <strong>Utah Roads</strong> - Local data stewards & UDOT & UGRC
-            </p>
-            <span><Link to="https://opendata.gis.utah.gov/datasets/utah-roads/about">Access data</Link></span>
 
             <p>
                 <strong>Wilderness Study Areas</strong> - U.S. Bureau of Land Management
             </p>
             <span><Link to="https://gbp-blm-egis.hub.arcgis.com/maps/0ae90ebbc1f54f77b80b76a6148ab83d/about">Access data</Link></span>
 
-            <p>
-                <strong>Major Rivers</strong> - UGRC
-            </p>
-            <span><Link to="https://opendata.gis.utah.gov/datasets/utah-major-rivers-polygons/about">Access data</Link></span>
 
             <p>
                 <strong>Utah Land Ownership</strong> - School and Institutional Trust Lands Administration (SITLA) & BLM & Partners
             </p>
             <span><Link to="https://opendata.gis.utah.gov/datasets/SITLA::land-ownership/about">Access data</Link></span>
+            <p>
+                <strong>Utah Oil & Gas Pipeline Data</strong> - Utah Geological Survey
+            </p>
+            <span><Link to="https://ugspub.nr.utah.gov/publications/public_information/pi-22.pdf">Access data</Link></span>
+            <p>
+                <strong>Utah County Data</strong> - UGRC
+            </p>
+            <span><Link to="https://gis.utah.gov/products/sgid/boundaries/county/">Access data</Link></span>
+            <p>
+                <strong>Utah PLSS Data</strong> - UGRC
+            </p>
+            <span><Link to="https://gis.utah.gov/products/sgid/cadastre/plss-sections/">Access data</Link></span>
+
         </div>
     </div>
 )
