@@ -132,7 +132,7 @@ const utTownshipRangesConfig: WMSLayerProps = {
 };
 
 // Oil and Gas Fields WMS Layer
-const oilGasFieldsLayerName = 'oilgasfields';
+const oilGasFieldsLayerName = 'enmin_oilgasfields_ogm_current';
 const oilGasFieldsWMSTitle = 'Oil and Gas Fields';
 const oilGasFieldsWMSConfig: WMSLayerProps = {
     type: 'wms',
@@ -146,11 +146,14 @@ const oilGasFieldsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Field Name': { field: 'field_name', type: 'string' },
-                'Field Type': { field: 'field_type', type: 'string' },
-                'Producing Formations': { field: 'prod_formations', type: 'string' },
-                'Reservoir Age': { field: 'reservoir_rocks', type: 'string' },
-                'Status': { field: 'status', type: 'string' }
+                'Field Name': { field: 'fieldname', type: 'string' },
+                'Producing Formation': { field: 'prod_form', type: 'string' },
+                'Status': { field: 'status', type: 'string' },
+                'County': { field: 'county', type: 'string' },
+                'Discovery Well': { field: 'disc_well', type: 'string' },
+                'Date': { field: 'date', type: 'string' },
+                'Quad Name': { field: 'quad_name', type: 'string' },
+                'Comments': { field: 'comments', type: 'string' },
             },
         },
     ],
