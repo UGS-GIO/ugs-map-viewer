@@ -1,9 +1,9 @@
 import { Link } from "@/components/ui/link";
 import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
-import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
+import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL, UCRC_ASSETS_CDN_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps, WFSLayerProps } from "@/lib/types/mapping-types";
 import { makePieWedgeSpriteRegistrar } from "@/lib/map/pie-wedge-sprites";
-import { addThousandsSeparator } from "@/lib/utils";
+import { formatNumeric } from "@/lib/utils";
 
 
 export const wellWithTopsLayerName = 'wellswithtops_hascore';
@@ -12,7 +12,7 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: wellWithTopsWMSTitle,
-    visible: true,
+    visible: false,
     crs: 'EPSG:26912',
     sublayers: [
         {
@@ -93,7 +93,7 @@ const SITLAConfig: LayerProps = {
         visible: false,
         sublayers: [{
             id: 0,
-            visible: true,
+            visible: false,
             crs: 'EPSG:26912',
         }],
     },
@@ -105,7 +105,7 @@ const utCountiesConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: 'Utah Counties',
-    visible: true,
+    visible: false,
     crs: 'EPSG:3857',
     downloadParquetUrl: parquetUrl("enmin_ut_counties"),
     sublayers: [{
@@ -120,8 +120,9 @@ const utTownshipRangesConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: 'Utah Township & Ranges',
-    visible: true,
+    visible: false,
     crs: 'EPSG:3857',
+    visibleZoomRange: [11, 22],
     downloadParquetUrl: parquetUrl("enmin_plss_townshiprange"),
     sublayers: [{
         name: `${ENERGY_MINERALS_WORKSPACE}:enmin_plss_townshiprange_current`,
@@ -137,7 +138,7 @@ const oilGasFieldsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: oilGasFieldsWMSTitle,
-    visible: true,
+    visible: false,
     crs: 'EPSG:3857',
     sublayers: [
         {
@@ -162,7 +163,7 @@ const basinsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: basinsWMSTitle,
-    visible: true,
+    visible: false,
     crs: 'EPSG:3857',
     downloadParquetUrl: parquetUrl("enmin_ucrc_basins"),
     sublayers: [
@@ -185,7 +186,7 @@ const nonpetrolWellsConfig: WMSLayerProps = {
   type: 'wms',
   url: `${PROD_GEOSERVER_URL}/wms`,
   title: nonpetrolWellsTitle,
-  visible: true,
+  visible: false,
   crs: 'EPSG:3857',
   sublayers: [
     {
@@ -254,9 +255,55 @@ const nonpetrolWellsConfig: WMSLayerProps = {
             if (value === 'N') return 'None';
             return 'Unknown';
           }
-        }
-      }
-    }
+        },
+      },
+      relatedTables: [
+                {
+                    fieldLabel: 'Well Log Files',
+                    matchingField: 'well_id',
+                    targetField: 'uwi',
+                    url: PROD_POSTGREST_URL + '/nwpd_welllogs',
+                    headers: {
+                        "Accept-Profile": 'emp',
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    displayFields: [
+                        {
+                            field: 'filename',
+                            label: '',
+                            transform: (value: string | null, row) => {
+                                const path = row?.['full_path'];
+                                if (!path) return value || 'No link available';
+                                return <Link to={String('http://maps-assets.geology.utah.gov/' + path)}>{value || 'View File'}</Link>;
+                            }
+                        },
+                    ],
+                    sortDirection: 'asc',
+                },
+                {
+                    fieldLabel: 'Well Analyses Files',
+                    matchingField: 'well_id',
+                    targetField: 'uwi',
+                    url: PROD_POSTGREST_URL + '/nwpd_wellanalyses',
+                    headers: {
+                        "Accept-Profile": 'emp',
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    displayFields: [
+                        {
+                            field: 'filename',
+                            label: '',
+                            transform: (value: string | null, row) => {
+                                const path = row?.['full_path'];
+                                if (!path) return value || 'No link available';
+                                return <Link to={String('http://maps-assets.geology.utah.gov/' + path)}>{value || 'View File'}</Link>;
+                            }
+                        },
+                    ],
+                }]
+        },
   ]
 };
 
@@ -269,7 +316,7 @@ const metalMiningDistrictsConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: metalMiningDistrictsTitle,
-    visible: true,
+    visible: false,
     crs: 'EPSG:3857',
     sublayers: [
         {
@@ -288,7 +335,7 @@ const metalMiningDistrictsConfig: WMSLayerProps = {
                         if (value === null) {
                             return 'No Data';
                         }
-                        return `$ ${addThousandsSeparator(value)}`;
+                        return `$ ${formatNumeric(value)}`;
                     }
                 },
                 '': {
@@ -322,7 +369,7 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/mapping/wms`,
     title: seamlessGeolunitsWMSTitle,
     opacity: 0.5,
-    visible: true,
+    visible: false,
     crs: 'EPSG:3857',
     sublayers: [
         {
@@ -343,7 +390,7 @@ const pipelinesWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: pipelinesWMSTitle,
-    visible: true,
+    visible: false,
     crs: 'EPSG:3857',
     sublayers: [
         {
@@ -413,7 +460,7 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
     wfsUrl: `${PROD_GEOSERVER_URL}/wfs`,
     typeName: ucrcWellsQualifiedName,
     title: ucrcWellsWMSTitle,
-    visible: false,
+    visible: true,
     opacity: 0.85,
     crs: 'EPSG:4326',
     geometryType: 'point',
@@ -500,10 +547,11 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
                         {
                             field: 'pk',
                             label: 'Photos',
-                            transform: (pk, _row, allRows) => (
+                            transform: (pk, row, allRows) => (
                                 <BoxPhotosCell
                                     boxId={pk}
                                     allBoxIds={(allRows ?? []).map(r => String(r.pk))}
+                                    boxLabel={`${row?.uwi ?? 'core'}_box${row?.box_number ?? pk}_${row?.box_top_ft ?? '?'}-${row?.box_bottom_ft ?? '?'}ft`}
                                 />
                             ),
                         },
@@ -519,7 +567,7 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
                     headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
                     displayAs: 'gallery',
                     galleryUrlField: 'storage_path',
-                    galleryBaseUrl: 'https://ucrc-assets.geology.utah.gov',
+                    galleryBaseUrl: UCRC_ASSETS_CDN_URL,
                     galleryThumbnailTransform: (gcsPath: string) =>
                         gcsPath.startsWith('photos/')
                             ? `photos/_thumbs/200/${gcsPath.slice('photos/'.length)}`
@@ -567,7 +615,7 @@ const subsurfaceDataConfig: LayerProps = {
 const geologicalInformationConfig: LayerProps = {
     type: 'group',
     title: 'Geological Information',
-    visible: true,
+    visible: false,
     layers: [
         seamlessGeolunitsWMSConfig,
     ]
@@ -576,7 +624,7 @@ const geologicalInformationConfig: LayerProps = {
 const infrastructureAndLandUseConfig: LayerProps = {
     type: 'group',
     title: 'Infrastructure and Land Use',
-    visible: true,
+    visible: false,
     layers: [
         SITLAConfig,
         pipelinesWMSConfig,

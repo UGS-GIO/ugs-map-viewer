@@ -31,6 +31,14 @@ const numericFormatters: Record<string, (n: number) => string> = {
   percent: (n) => n.toLocaleString('en-US', { style: 'percent', minimumFractionDigits: 1 }),
 };
 
+/** Round to N significant figures and stringify without scientific notation (1234 → "1,230", 12.34 → "12.3"). */
+export function formatToSigFigs(n: number, sigFigs: number): string {
+  if (!Number.isFinite(n)) return String(n);
+  if (n === 0) return '0';
+  const rounded = Number(n.toPrecision(sigFigs));
+  return Math.abs(rounded) >= 1000 ? rounded.toLocaleString('en-US') : String(rounded);
+}
+
 export function formatNumeric(value: unknown, format?: string): string {
   if (value === null || value === undefined || value === '') return '';
 

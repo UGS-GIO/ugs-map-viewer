@@ -6,12 +6,15 @@ import { useLayerItemState } from '@/hooks/use-layer-item-state';
 import { LayerProps } from '@/lib/types/mapping-types';
 import { useMap } from '@/hooks/use-map';
 import { findLayerByTitle } from '@/lib/map/utils';
-import { isWMSLayer, isWFSLayer, isPMTilesLayer, isArcGISMapServerLayer } from '@/lib/map/layer-utils';
+import { isWMSLayer, isWFSLayer, isPMTilesLayer, isArcGISMapServerLayer, isCOGLayer } from '@/lib/map/layer-utils';
+import { CogLegend } from '@/components/maps/cog-legend';
 import { useLayerExtent, UseLayerExtentOptions } from '@/hooks/use-layer-extent';
+import { useMapZoom, getZoomHint } from '@/hooks/use-map-zoom';
 import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions';
 import { useSidebar } from '@/hooks/use-sidebar';
 import LayerControls from '@/components/maps/layer-controls';
 import { WfsVectorLegend } from '@/components/maps/wfs-vector-legend';
+import { ZoomHintPill } from '@/components/maps/zoom-hint-pill';
 import { useIsMobile } from './use-mobile';
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from '@/lib/constants';
 import { useLayerUrl } from '@/context/layer-url-provider';
@@ -112,6 +115,17 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
     }, [layerConfig]);
 
     const { refetch: fetchExtent, data: cachedExtent } = useLayerExtent(extentOptions);
+
+    const currentZoom = useMapZoom();
+    const visibleZoomRange = layerConfig.visibleZoomRange ?? null;
+    const zoomHint = isSelected ? getZoomHint(currentZoom, visibleZoomRange) : null;
+
+    const handleZoomToVisibleRange = () => {
+        if (!map || !visibleZoomRange) return;
+        const [minZ, maxZ] = visibleZoomRange;
+        const target = currentZoom !== null && currentZoom > maxZ ? maxZ : minZ;
+        map.flyTo({ zoom: target });
+    };
 
     const handleOpacityChange = useCallback((value: number) => {
         // Continuously updates, so don't update url with this
@@ -230,9 +244,12 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
     }
 
     // WFS layers get a client-rendered legend by default (swatches driven by layer.style +
-    // current symbology mode). Explicit `customLegend` on the config always wins.
+    // current symbology mode). COG layers render a colorbar from raster stats. Explicit
+    // `customLegend` on the config always wins.
     const resolvedCustomLegend =
-        layerConfig.customLegend ?? (isWFSLayer(layerConfig) ? <WfsVectorLegend layer={layerConfig} /> : undefined);
+        layerConfig.customLegend
+        ?? (isCOGLayer(layerConfig) ? <CogLegend layer={layerConfig} /> : undefined)
+        ?? (isWFSLayer(layerConfig) ? <WfsVectorLegend layer={layerConfig} /> : undefined);
 
     // --- Single Layer Rendering ---
     return (
@@ -263,11 +280,22 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
                             />
                         )}
                         <AccordionTrigger>
-                            <h3 className="text-md font-medium text-left">
+                            <h3
+                                className={`text-md font-medium text-left ${zoomHint ? 'text-muted-foreground italic' : ''}`}
+                            >
                                 {layerConfig.title}
                             </h3>
                         </AccordionTrigger>
                     </AccordionHeader>
+                    {zoomHint && visibleZoomRange && (
+                        <div className="px-2 pb-2 -mt-1">
+                            <ZoomHintPill
+                                direction={zoomHint}
+                                range={visibleZoomRange}
+                                onClick={handleZoomToVisibleRange}
+                            />
+                        </div>
+                    )}
                     <AccordionContent>
                         <LayerControls
                             layerOpacity={isSelected ? (layerOpacityMap.get(layerConfig.title || '') ?? layerConfig.opacity ?? 0.8) : null}

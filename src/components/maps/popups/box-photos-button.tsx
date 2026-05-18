@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PopupImageGallery, type GalleryImage } from './popup-image-gallery'
-import { PROD_POSTGREST_URL } from '@/lib/constants'
+import { PROD_POSTGREST_URL, UCRC_ASSETS_CDN_URL } from '@/lib/constants'
 import { encodePathSegments } from '@/lib/gallery-utils'
+import { sanitizeFilename } from '@/lib/download-utils'
 
-const UCRC_GCS_BASE_URL = 'https://ucrc-assets.geology.utah.gov'
 const buildThumbnailPath = (gcsPath: string) =>
     gcsPath.startsWith('photos/')
         ? `photos/_thumbs/200/${gcsPath.slice('photos/'.length)}`
@@ -21,8 +21,8 @@ type PhotoRow = {
 
 function toGalleryImage(row: PhotoRow): GalleryImage {
     return {
-        url: `${UCRC_GCS_BASE_URL}/${encodePathSegments(row.storage_path)}`,
-        thumbnailUrl: `${UCRC_GCS_BASE_URL}/${encodePathSegments(buildThumbnailPath(row.storage_path))}`,
+        url: `${UCRC_ASSETS_CDN_URL}/${encodePathSegments(row.storage_path)}`,
+        thumbnailUrl: `${UCRC_ASSETS_CDN_URL}/${encodePathSegments(buildThumbnailPath(row.storage_path))}`,
         label: row.filename,
         metadata: [
             ...(row.photo_type ? [{ label: 'Type', value: row.photo_type }] : []),
@@ -55,7 +55,7 @@ const fetchBoxPhotosBulk = async (boxIds: string[]): Promise<Map<string, Gallery
  * Renders the photo thumbnail/gallery for a single box. All instances mounted
  * with the same `allBoxIds` share one bulk fetch via react-query dedup.
  */
-export function BoxPhotosCell({ boxId, allBoxIds }: { boxId: string; allBoxIds: string[] }) {
+export function BoxPhotosCell({ boxId, allBoxIds, boxLabel }: { boxId: string; allBoxIds: string[]; boxLabel?: string }) {
     // Sorted key so sibling cells share one query regardless of row order
     const sortedKey = [...allBoxIds].sort().join(',')
 
@@ -75,6 +75,7 @@ export function BoxPhotosCell({ boxId, allBoxIds }: { boxId: string; allBoxIds: 
     return (
         <PopupImageGallery
             images={images}
+            downloadName={`${sanitizeFilename(boxLabel ?? `box-${boxId}`)}-photos.zip`}
             trigger={
                 <div className="relative w-10 h-7">
                     <img src={thumb} alt="box photos" className="w-full h-full object-cover rounded-sm border border-border" />

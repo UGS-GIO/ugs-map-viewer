@@ -16,7 +16,10 @@ import type { LayerContentProps, ExtendedFeature } from '@/components/maps/popup
 import type { GeoServerGeoJSON } from '@/lib/types/geoserver-types'
 import { convertCoordinate } from '@/lib/map/conversion-utils'
 import { createPointBufferBbox } from '@/lib/map/utils'
-import { findLayerByTitle, flattenWmsLayers } from '@/lib/map/layer-utils'
+import { findLayerByTitle, flattenWmsLayers, flattenLeaves, isCOGLayer } from '@/lib/map/layer-utils'
+import { locationValues } from '@geomatico/maplibre-cog-protocol'
+import { queryKeys } from '@/lib/query-keys'
+import type { COGLayerProps } from '@/lib/types/mapping-types'
 
 interface UsePopupDataOptions {
   /** Vector features from WFS query */
@@ -123,6 +126,49 @@ function getLayersWithRasterSource(layers: LayerProps[]): Map<string, RasterSour
   return result
 }
 
+/** Synthesize a RasterSource shape from a COG layer so it flows through the same popup pipeline. */
+function cogLayerToRasterSource(layer: COGLayerProps): RasterSource {
+  const unit = layer.legendUnit ?? ''
+  return {
+    url: layer.cogUrl,
+    layerName: layer.title,
+    valueField: 'value',
+    valueLabel: layer.popupValueLabel ?? 'Value',
+    transform: (n: number) => `${Math.round(n * 100) / 100}${unit ? ` ${unit}` : ''}`,
+  }
+}
+
+function getCogLayersForPopup(layers: LayerProps[]): Map<string, { layer: COGLayerProps; rasterSource: RasterSource }> {
+  const result = new Map<string, { layer: COGLayerProps; rasterSource: RasterSource }>()
+  for (const cog of flattenLeaves(layers, isCOGLayer)) {
+    if (cog.title) result.set(cog.title, { layer: cog, rasterSource: cogLayerToRasterSource(cog) })
+  }
+  return result
+}
+
+/** Sample COG pixel value at click point via geotiff.js (range-read, no server). */
+async function fetchCogValue(
+  cogUrl: string,
+  point: { lng: number; lat: number },
+  valueField: string,
+): Promise<GeoServerGeoJSON | null> {
+  try {
+    const values = await locationValues(cogUrl, { latitude: point.lat, longitude: point.lng })
+    const v = values?.[0]
+    if (v === undefined || !Number.isFinite(v)) return null
+    return {
+      type: 'FeatureCollection',
+      features: [{
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [point.lng, point.lat] },
+        properties: { [valueField]: v },
+      }],
+    } as GeoServerGeoJSON
+  } catch {
+    return null
+  }
+}
+
 /**
  * Hook that prepares popup data from WFS results and fetches raster values
  */
@@ -146,28 +192,36 @@ export function usePopupData({
     return grouped
   }, [vectorFeatures])
 
-  // Get all layers with rasterSource config
+  // Get all layers with rasterSource config (WMS) and visible COG layers (sampled client-side)
   const layersWithRaster = useMemo(() => getLayersWithRasterSource(layersConfig), [layersConfig])
+  const cogLayers = useMemo(() => getCogLayersForPopup(layersConfig), [layersConfig])
 
-  // Determine which layers need raster fetching
-  // Include layers that have rasterSource, regardless of whether they have vector features
-  const rasterQueries = useMemo((): RasterQueryConfig[] => {
+  // Determine which layers need raster fetching. Tagged 'wms' or 'cog' to dispatch query path.
+  const rasterQueries = useMemo((): Array<RasterQueryConfig & { kind: 'wms' | 'cog' }> => {
     if (!clickPoint) return []
 
-    const queries: RasterQueryConfig[] = []
+    const queries: Array<RasterQueryConfig & { kind: 'wms' | 'cog' }> = []
     for (const [layerTitle, rasterSource] of layersWithRaster) {
-      queries.push({ layerTitle, rasterSource })
+      queries.push({ layerTitle, rasterSource, kind: 'wms' })
+    }
+    for (const [layerTitle, { rasterSource }] of cogLayers) {
+      queries.push({ layerTitle, rasterSource, kind: 'cog' })
     }
     return queries
-  }, [clickPoint, layersWithRaster])
+  }, [clickPoint, layersWithRaster, cogLayers])
 
-  // Fetch raster values for all layers in parallel
+  // Fetch raster values for all layers in parallel.
+  // COG values use queryKeys.cog.value() — coords are rounded so near-duplicate clicks share cache.
   const rasterResults = useQueries({
-    queries: rasterQueries.map(({ layerTitle, rasterSource }) => ({
-      queryKey: ['rasterValue', rasterSource.layerName, clickPoint?.lng, clickPoint?.lat],
+    queries: rasterQueries.map(({ layerTitle, rasterSource, kind }) => ({
+      queryKey: kind === 'cog'
+        ? queryKeys.cog.value(rasterSource.layerName, clickPoint?.lng ?? 0, clickPoint?.lat ?? 0)
+        : ['rasterValue', rasterSource.layerName, clickPoint?.lng, clickPoint?.lat] as const,
       queryFn: async () => {
         if (!clickPoint) return null
-        const data = await fetchRasterValue(rasterSource, clickPoint, clickBbox)
+        const data = kind === 'cog'
+          ? await fetchCogValue(rasterSource.url, clickPoint, rasterSource.valueField)
+          : await fetchRasterValue(rasterSource, clickPoint, clickBbox)
         return { layerTitle, rasterSource, data }
       },
       enabled: !!clickPoint,
@@ -219,6 +273,10 @@ export function usePopupData({
       // Skip if no features AND no raster data
       if (features.length === 0 && !processedRasterSource) continue
 
+      const sourceKind: LayerContentProps['sourceKind'] = layer && isCOGLayer(layer)
+        ? 'cog'
+        : (processedRasterSource ? 'wms-raster' : 'vector')
+
       result.push({
         groupLayerTitle: title,
         layerTitle: title,
@@ -231,6 +289,7 @@ export function usePopupData({
         colorCodingMap: sublayerConfig?.colorCodingMap,
         colorCodingMode: sublayerConfig?.colorCodingMode,
         rasterSource: processedRasterSource,
+        sourceKind,
         maxZoomLevel: layer?.maxZoomLevel,
         features: features.map((f): ExtendedFeature => ({
           type: 'Feature',

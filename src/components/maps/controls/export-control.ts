@@ -28,6 +28,11 @@ export interface LegendItem {
         yTicks: string[];
         noData?: { color: string; opacity: number; label: string };
     };
+    /** Full-width raster colorbar (e.g. COG layers). svgHeight is the SVG's intrinsic height in px. */
+    raster?: {
+        svgHtml: string;
+        svgHeight: number;
+    };
 }
 
 export interface MapBounds {
@@ -619,6 +624,7 @@ export class ExportControl implements maplibregl.IControl {
 
         const hasBivariate = legendData.some(l => l.bivariate);
         const bivariateCellSize = 30 * scale;
+        const rasterBottomGap = 4 * scale;
 
         // Calculate total height needed
         let totalHeight = padding * 2;
@@ -628,6 +634,8 @@ export class ExportControl implements maplibregl.IControl {
                 const bvRows = layer.bivariate.colors.length;
                 // axis label + grid + tick labels + optional nodata
                 totalHeight += 14 * scale + bvRows * bivariateCellSize + 14 * scale + (layer.bivariate.noData ? 16 * scale : 0);
+            } else if (layer.raster) {
+                totalHeight += layer.raster.svgHeight * scale + rasterBottomGap;
             } else {
                 totalHeight += layer.symbols.length * rowHeight;
             }
@@ -637,8 +645,9 @@ export class ExportControl implements maplibregl.IControl {
         const maxHeight = canvasHeight - margin - 60 * scale - 100 * scale;
         const constrainedHeight = Math.min(totalHeight, maxHeight);
 
-        // Position in bottom-left, above scale bar — wider panel when bivariate content is present
-        const maxWidth = (hasBivariate ? 260 : 200) * scale;
+        // Position in bottom-left, above scale bar — wider panel for bivariate / raster colorbar content
+        const hasRaster = legendData.some(l => l.raster);
+        const maxWidth = (hasBivariate ? 260 : hasRaster ? 240 : 200) * scale;
         const x = margin;
         const y = canvasHeight - margin - constrainedHeight - 60 * scale;
 
@@ -673,6 +682,17 @@ export class ExportControl implements maplibregl.IControl {
 
             if (layer.bivariate) {
                 currentY += this.drawBivariateLegend(ctx, x + padding, currentY, maxWidth - padding * 2, scale, layer.bivariate);
+            } else if (layer.raster) {
+                const barW = maxWidth - padding * 2;
+                const barH = layer.raster.svgHeight * scale;
+                try {
+                    const img = await this.svgToImage(layer.raster.svgHtml, barW, barH);
+                    ctx.drawImage(img, x + padding, currentY, barW, barH);
+                } catch {
+                    ctx.fillStyle = '#ccc';
+                    ctx.fillRect(x + padding, currentY, barW, barH);
+                }
+                currentY += barH + rasterBottomGap;
             } else {
                 // Symbols
                 ctx.font = `${10 * scale}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
@@ -853,7 +873,11 @@ export class ExportControl implements maplibregl.IControl {
         let totalHeight = padding * 2;
         for (const layer of legendData) {
             totalHeight += titleHeight + layerGap;
-            totalHeight += layer.symbols.length * rowHeight;
+            if (layer.raster) {
+                totalHeight += layer.raster.svgHeight * scale + 4 * scale;
+            } else {
+                totalHeight += layer.symbols.length * rowHeight;
+            }
         }
 
         const canvas = document.createElement('canvas');
@@ -877,21 +901,34 @@ export class ExportControl implements maplibregl.IControl {
             ctx.fillText(layer.layerTitle, padding, currentY, maxWidth - padding * 2);
             currentY += titleHeight;
 
-            // Symbols
-            ctx.font = `${12 * scale}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-            for (const symbol of layer.symbols) {
+            if (layer.raster) {
+                const barW = maxWidth - padding * 2;
+                const barH = layer.raster.svgHeight * scale;
                 try {
-                    const img = await this.svgToImage(symbol.svgHtml, symbolSize, symbolSize);
-                    ctx.drawImage(img, padding, currentY, symbolSize, rowHeight - 4 * scale);
+                    const img = await this.svgToImage(layer.raster.svgHtml, barW, barH);
+                    ctx.drawImage(img, padding, currentY, barW, barH);
                 } catch {
                     ctx.fillStyle = '#ccc';
-                    ctx.fillRect(padding, currentY + 2 * scale, symbolSize, rowHeight - 4 * scale);
+                    ctx.fillRect(padding, currentY, barW, barH);
                 }
+                currentY += barH + 4 * scale;
+            } else {
+                // Symbols
+                ctx.font = `${12 * scale}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+                for (const symbol of layer.symbols) {
+                    try {
+                        const img = await this.svgToImage(symbol.svgHtml, symbolSize, symbolSize);
+                        ctx.drawImage(img, padding, currentY, symbolSize, rowHeight - 4 * scale);
+                    } catch {
+                        ctx.fillStyle = '#ccc';
+                        ctx.fillRect(padding, currentY + 2 * scale, symbolSize, rowHeight - 4 * scale);
+                    }
 
-                ctx.fillStyle = '#333';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(symbol.label, padding + symbolSize + 8 * scale, currentY + rowHeight / 2, maxWidth - padding * 2 - symbolSize - 12 * scale);
-                currentY += rowHeight;
+                    ctx.fillStyle = '#333';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(symbol.label, padding + symbolSize + 8 * scale, currentY + rowHeight / 2, maxWidth - padding * 2 - symbolSize - 12 * scale);
+                    currentY += rowHeight;
+                }
             }
 
             currentY += layerGap;

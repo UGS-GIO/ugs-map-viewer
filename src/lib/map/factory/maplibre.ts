@@ -319,6 +319,7 @@ export class MapLibreMapFactory implements MapFactory {
     } else if (layerConfig.type === 'wfs') {
       await this.addWFSLayer(map, layerConfig as WFSLayerProps);
     }
+    // Note: 'cog' layers render via <CogLayerSource> in data-map.tsx (react-map-gl path)
   }
 
   private async addWMSLayer(map: maplibregl.Map, layerConfig: WMSLayerProps): Promise<void> {
@@ -522,6 +523,7 @@ export class MapLibreMapFactory implements MapFactory {
       }
     }
   }
+
   /**
    * Fetch GeoJSON from a WFS service and add as vector layer
    * Uses queryRenderedFeatures for click detection (respects symbol bounds)

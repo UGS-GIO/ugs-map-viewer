@@ -22,6 +22,7 @@ import {
 } from "@/lib/types/mapping-types";
 import { PopupImageGallery, type GalleryImage } from "@/components/maps/popups/popup-image-gallery";
 import { relatedRowToGalleryImage } from "@/lib/gallery-utils";
+import { sanitizeFilename } from "@/lib/download-utils";
 import {
     isNumberField,
     isStringField,
@@ -452,9 +453,12 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         [imageFields, properties, relatedTables, data]
     )
 
+    const galleryId = properties?.id ?? properties?.pk ?? properties?.ogc_fid ?? feature?.id ?? 'photos'
+    const galleryDownloadName = `${sanitizeFilename(`${layer.layerTitle ?? 'feature'}-${galleryId}`)}-photos.zip`
+
     return (
         <div className="space-y-2">
-            {galleryImages.length > 0 && <PopupImageGallery images={galleryImages} />}
+            {galleryImages.length > 0 && <PopupImageGallery images={galleryImages} downloadName={galleryDownloadName} />}
             {longContent.length > 0 && <div className="space-y-2 col-span-full">{longContent}</div>}
             <div className={useGridLayout ? "grid grid-cols-2 gap-2" : "space-y-2"}>{regularContent}</div>
         </div>

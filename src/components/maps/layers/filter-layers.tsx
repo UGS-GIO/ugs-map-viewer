@@ -1,4 +1,5 @@
 import { Source, Layer } from 'react-map-gl/maplibre'
+import { HIGHLIGHT_COLORS } from '@/lib/map/cog/setup'
 import type { SpatialFilter, BoundsBox } from '../types'
 
 interface SpatialFilterLayerProps {
@@ -61,16 +62,10 @@ export function ClickBufferLayer({ bounds }: ClickBufferLayerProps) {
       }}
     >
       <Layer
-        id="click-buffer-fill"
-        type="fill"
-        source="click-buffer-source"
-        paint={{ 'fill-color': '#00ff00', 'fill-opacity': 0.2 }}
-      />
-      <Layer
         id="click-buffer-outline"
         type="line"
         source="click-buffer-source"
-        paint={{ 'line-color': '#00ff00', 'line-width': 2 }}
+        paint={{ 'line-color': HIGHLIGHT_COLORS.vector, 'line-width': 1.5, 'line-dasharray': [3, 2], 'line-opacity': 0.7 }}
       />
     </Source>
   )

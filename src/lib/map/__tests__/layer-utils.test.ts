@@ -5,10 +5,14 @@ import {
   isPMTilesLayer,
   isGroupLayer,
   isArcGISMapServerLayer,
-  flattenVisibleLayers,
+  isCOGLayer,
+  flattenLeaves,
   flattenWmsLayers,
   flattenWfsLayers,
   flattenArcGisLayers,
+  flattenDataLayers,
+  flattenDataLayersWithParent,
+  resolveLeafVisibility,
 } from '../layer-utils'
 import type {
   LayerProps,
@@ -17,6 +21,7 @@ import type {
   PMTilesLayerProps,
   GroupLayerProps,
   ArcGISMapServerLayerProps,
+  COGLayerProps,
 } from '@/lib/types/mapping-types'
 
 // ── Fixtures ─────────────────────────────────────────────────────────
@@ -52,6 +57,14 @@ const arcgisLayer: ArcGISMapServerLayerProps = {
   visible: true,
 }
 
+const cogLayer: COGLayerProps = {
+  type: 'cog',
+  title: 'COG Layer',
+  cogUrl: 'https://example.com/raster.tif',
+  colorStops: ['#000', '#fff'],
+  visible: true,
+}
+
 const hiddenWms: WMSLayerProps = { ...wmsLayer, title: 'Hidden WMS', visible: false }
 const hiddenArcgis: ArcGISMapServerLayerProps = { ...arcgisLayer, title: 'Hidden ArcGIS', visible: false }
 
@@ -64,13 +77,14 @@ const group: GroupLayerProps = {
 // ── Type guards ──────────────────────────────────────────────────────
 
 describe('type guards', () => {
-  const layers: LayerProps[] = [wmsLayer, wfsLayer, pmtilesLayer, arcgisLayer, group]
+  const layers: LayerProps[] = [wmsLayer, wfsLayer, pmtilesLayer, arcgisLayer, cogLayer, group]
 
   it.each([
     ['isWMSLayer', isWMSLayer, 'WMS Layer'],
     ['isWFSLayer', isWFSLayer, 'WFS Layer'],
     ['isPMTilesLayer', isPMTilesLayer, 'PMTiles Layer'],
     ['isArcGISMapServerLayer', isArcGISMapServerLayer, 'ArcGIS Layer'],
+    ['isCOGLayer', isCOGLayer, 'COG Layer'],
     ['isGroupLayer', isGroupLayer, 'Group'],
   ])('%s matches only its own type', (_name, guard, expectedTitle) => {
     const matches = layers.filter(guard)
@@ -79,17 +93,17 @@ describe('type guards', () => {
   })
 })
 
-// ── flattenVisibleLayers ─────────────────────────────────────────────
+// ── flattenLeaves ────────────────────────────────────────────────────
 
-describe('flattenVisibleLayers', () => {
+describe('flattenLeaves', () => {
   it('returns empty array for empty input', () => {
-    expect(flattenVisibleLayers([], isWMSLayer)).toEqual([])
+    expect(flattenLeaves([], isWMSLayer)).toEqual([])
   })
 
-  it('returns only visible layers matching the guard', () => {
+  it('returns all leaves matching the guard regardless of `visible`', () => {
     const layers: LayerProps[] = [wmsLayer, hiddenWms, wfsLayer, arcgisLayer]
-    const result = flattenVisibleLayers(layers, isWMSLayer)
-    expect(result).toEqual([wmsLayer])
+    const result = flattenLeaves(layers, isWMSLayer)
+    expect(result.map(l => l.title)).toEqual(['WMS Layer', 'Hidden WMS'])
   })
 
   it('recurses into groups', () => {
@@ -98,14 +112,9 @@ describe('flattenVisibleLayers', () => {
       title: 'Outer',
       layers: [group, hiddenArcgis, arcgisLayer],
     }
-    const result = flattenVisibleLayers([nested], isArcGISMapServerLayer)
-    expect(result).toHaveLength(2)
-    expect(result.map(l => l.title)).toEqual(['ArcGIS Layer', 'ArcGIS Layer'])
-  })
-
-  it('skips hidden layers inside groups', () => {
-    const result = flattenVisibleLayers([group], isWMSLayer)
-    expect(result).toEqual([wmsLayer])
+    const result = flattenLeaves([nested], isArcGISMapServerLayer)
+    expect(result).toHaveLength(3)
+    expect(result.map(l => l.title)).toEqual(['ArcGIS Layer', 'Hidden ArcGIS', 'ArcGIS Layer'])
   })
 })
 
@@ -114,15 +123,76 @@ describe('flattenVisibleLayers', () => {
 describe('convenience flatten wrappers', () => {
   const layers: LayerProps[] = [group, pmtilesLayer, hiddenArcgis]
 
-  it('flattenWmsLayers returns only visible WMS', () => {
-    expect(flattenWmsLayers(layers).map(l => l.title)).toEqual(['WMS Layer'])
+  it('flattenWmsLayers returns all WMS leaves (visibility-agnostic)', () => {
+    expect(flattenWmsLayers(layers).map(l => l.title)).toEqual(['WMS Layer', 'Hidden WMS'])
   })
 
-  it('flattenWfsLayers returns only visible WFS', () => {
+  it('flattenWfsLayers returns all WFS leaves', () => {
     expect(flattenWfsLayers(layers).map(l => l.title)).toEqual(['WFS Layer'])
   })
 
-  it('flattenArcGisLayers returns only visible ArcGIS', () => {
-    expect(flattenArcGisLayers(layers).map(l => l.title)).toEqual(['ArcGIS Layer'])
+  it('flattenArcGisLayers returns all ArcGIS leaves', () => {
+    expect(flattenArcGisLayers(layers).map(l => l.title)).toEqual(['ArcGIS Layer', 'Hidden ArcGIS'])
+  })
+
+  it('flattenDataLayers returns all WMS/WFS/ArcGIS leaves', () => {
+    const result = flattenDataLayers(layers)
+    expect(result.map(l => l.title)).toEqual(['WMS Layer', 'Hidden WMS', 'WFS Layer', 'ArcGIS Layer', 'Hidden ArcGIS'])
+  })
+})
+
+// ── flattenDataLayersWithParent ──────────────────────────────────────
+
+describe('flattenDataLayersWithParent', () => {
+  it('tags top-level layers with null parent', () => {
+    const result = flattenDataLayersWithParent([wmsLayer, arcgisLayer])
+    expect(result).toEqual([
+      { layer: wmsLayer, parentGroupTitle: null },
+      { layer: arcgisLayer, parentGroupTitle: null },
+    ])
+  })
+
+  it('tags grouped layers with their group title', () => {
+    const result = flattenDataLayersWithParent([group])
+    expect(result).toHaveLength(4)
+    expect(result.every(r => r.parentGroupTitle === 'Group')).toBe(true)
+    expect(result.map(r => r.layer.title)).toEqual(['WMS Layer', 'Hidden WMS', 'WFS Layer', 'ArcGIS Layer'])
+  })
+
+  it('innermost group wins for nested groups', () => {
+    const inner: GroupLayerProps = { type: 'group', title: 'Inner', layers: [wmsLayer] }
+    const outer: GroupLayerProps = { type: 'group', title: 'Outer', layers: [inner] }
+    const result = flattenDataLayersWithParent([outer])
+    expect(result).toEqual([{ layer: wmsLayer, parentGroupTitle: 'Inner' }])
+  })
+})
+
+// ── resolveLeafVisibility ────────────────────────────────────────────
+
+describe('resolveLeafVisibility', () => {
+  it('unchecked leaf is neither mounted nor displayed', () => {
+    expect(resolveLeafVisibility('A', null, new Set(), new Map())).toEqual({ mounted: false, displayed: false })
+  })
+
+  it('checked top-level leaf is mounted and displayed', () => {
+    expect(resolveLeafVisibility('A', null, new Set(['A']), new Map())).toEqual({ mounted: true, displayed: true })
+  })
+
+  it('checked grouped leaf with group toggle on is mounted and displayed', () => {
+    const groupVis = new Map([['G', true]])
+    expect(resolveLeafVisibility('A', 'G', new Set(['A']), groupVis)).toEqual({ mounted: true, displayed: true })
+  })
+
+  it('checked grouped leaf with group toggle off is mounted but not displayed', () => {
+    const groupVis = new Map([['G', false]])
+    expect(resolveLeafVisibility('A', 'G', new Set(['A']), groupVis)).toEqual({ mounted: true, displayed: false })
+  })
+
+  it('grouped leaf defaults to displayed when group has no toggle entry', () => {
+    expect(resolveLeafVisibility('A', 'G', new Set(['A']), new Map())).toEqual({ mounted: true, displayed: true })
+  })
+
+  it('undefined title is never mounted', () => {
+    expect(resolveLeafVisibility(undefined, null, new Set(['A']), new Map())).toEqual({ mounted: false, displayed: false })
   })
 })

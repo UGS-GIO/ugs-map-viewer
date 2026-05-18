@@ -62,12 +62,19 @@ export const hasActiveChildren = (layers: LayerProps[], selectedTitles: Set<stri
         return layer.visible === true || selectedTitles.has(layer.title || '');
     });
 
-// Get default group visibility based on config defaults AND URL selection
+// Default group toggle state. Explicit `visible` on group wins; otherwise derive from
+// whether any child is selected/default-visible. Group `visible: false` lets a config
+// author start a group collapsed-off without unselecting its children.
 export const getDefaultGroupVisibility = (layers: LayerProps[], selectedTitles: Set<string>): Map<string, boolean> => {
     const visibility = new Map<string, boolean>();
     layers.forEach(layer => {
         if (layer.type === 'group' && layer.title && 'layers' in layer && layer.layers) {
-            visibility.set(layer.title, hasActiveChildren(layer.layers, selectedTitles));
+            visibility.set(
+                layer.title,
+                layer.visible !== undefined
+                    ? layer.visible
+                    : hasActiveChildren(layer.layers, selectedTitles)
+            );
             // Recurse for nested groups
             getDefaultGroupVisibility(layer.layers, selectedTitles).forEach((v, k) => visibility.set(k, v));
         }
@@ -106,6 +113,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         const defaultSelected = getDefaultSelected(layersConfig);
 
         let finalLayers: { selected?: string[] } | undefined = urlLayers;
+        let finalVisibility = urlVisibility;
         let finalFilters = urlFilters;
         let needsUpdate = false;
 
@@ -117,17 +125,29 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
             }
         }
 
-        // Only set defaults if layers param is completely missing from URL
-        // If user explicitly sets layers.selected = [], respect that (empty map)
-        if (!urlLayers || urlLayers.selected === undefined) {
+        // Only set defaults if layers param is completely missing from URL.
+        // Empty selection (user turned everything off) is respected.
+        const isFreshLoad = !urlLayers || urlLayers.selected === undefined;
+        if (isFreshLoad) {
             finalLayers = { selected: defaultSelected };
             needsUpdate = true;
         } else {
-            // Validate existing selection - remove any invalid layer titles
-            const currentSelected = urlLayers.selected;
+            const currentSelected = urlLayers!.selected!;
             const validSelected = currentSelected.filter((title: string) => allValidLayerTitles.has(title));
             if (validSelected.length !== currentSelected.length) {
                 finalLayers = { selected: validSelected };
+                needsUpdate = true;
+            }
+        }
+
+        // On a fresh load, seed `?visibility=` from config defaults so shared URLs are
+        // self-contained and durable across config edits. If the URL already has visibility,
+        // leave it alone.
+        if (isFreshLoad && !urlVisibility) {
+            const seededSelected = new Set<string>(finalLayers?.selected || []);
+            const seededVisibility = getDefaultGroupVisibility(layersConfig, seededSelected);
+            if (seededVisibility.size > 0) {
+                finalVisibility = Object.fromEntries(seededVisibility);
                 needsUpdate = true;
             }
         }
@@ -140,14 +160,19 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
 
             navigate({
                 to: '.',
-                search: (prev) => ({ ...prev, layers: dedupedLayers, filters: finalFilters }),
-                replace: true
+                search: (prev) => ({
+                    ...prev,
+                    layers: dedupedLayers,
+                    visibility: finalVisibility,
+                    filters: finalFilters,
+                }),
+                replace: true,
             });
         }
 
         hasInitializedForPath.current = location.pathname;
 
-    }, [layersConfig, navigate, urlLayers, urlFilters, location.pathname]);
+    }, [layersConfig, navigate, urlLayers, urlVisibility, urlFilters, location.pathname]);
 
     // structuralSharing on useSearch guarantees stable references for unchanged values
     const selectedLayerTitles = useMemo(

@@ -1,8 +1,11 @@
 import type { Symbolizer, RasterColormapEntry } from '@/lib/types/geoserver-types'
+import { formatToSigFigs } from '@/lib/utils'
 
 export interface RasterSymbolOptions {
     /** Setting this enables min/max labels on the bar. Omit for a label-less colorbar. */
     unit?: string
+    /** Override derived min/max from SLD stops. Use when SLD stops don't match true data extent. */
+    range?: [number, number]
 }
 
 const SVG_NS = 'http://www.w3.org/2000/svg'
@@ -22,7 +25,7 @@ const SVG_HEIGHT_BARE = 16
 let gradientCounter = 0
 
 function formatQuantity(n: number): string {
-    return Math.abs(n) >= 1000 ? n.toLocaleString() : String(n)
+    return formatToSigFigs(n, 3)
 }
 
 function isVisibleEntry(e: RasterColormapEntry): boolean {
@@ -74,8 +77,10 @@ export function createRasterSymbol(symbolizers: Symbolizer[], opts?: RasterSymbo
     if (colormap?.type === 'values') return svg
     if (stops.length === 0) return svg
 
-    const min = Math.min(...stops.map(s => s.value))
-    const max = Math.max(...stops.map(s => s.value))
+    const [min, max] = opts?.range ?? [
+        Math.min(...stops.map(s => s.value)),
+        Math.max(...stops.map(s => s.value)),
+    ]
     const range = max - min || 1
 
     const gradientId = `raster-gradient-${++gradientCounter}`

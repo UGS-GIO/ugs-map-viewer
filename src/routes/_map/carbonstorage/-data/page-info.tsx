@@ -142,7 +142,7 @@ const dataSources = (
             </p>
 
             <p>
-                <strong>Oil and Gas Fields</strong> - Utah Geological Survey
+                <strong>Oil and Gas Fields</strong> - Utah Division of Oil, Gas and Mining
             </p>
         </div>
 

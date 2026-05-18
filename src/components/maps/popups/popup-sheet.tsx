@@ -22,6 +22,8 @@ interface PopupSheetProps {
     onWidthChange?: (width: number) => void;
     /** Controlled open state from parent */
     isOpen?: boolean;
+    /** Click point (WGS84) — used by raster popup cards to snap to COG pixel grid for zoom-to. */
+    clickPoint?: { lng: number; lat: number } | null;
 }
 
 export interface PopupSheetRef {
@@ -43,6 +45,7 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
     width = DEFAULT_WIDTH,
     onWidthChange,
     isOpen: controlledOpen,
+    clickPoint,
 }, ref) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const floatingCloseRef = useRef<HTMLDivElement>(null);
@@ -187,6 +190,7 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
                                 key={contentKey}
                                 layerContent={popupContent}
                                 onHighlightChange={onHighlightChange}
+                                clickPoint={clickPoint}
                             />
                         </div>
                     </div>

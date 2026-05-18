@@ -35,6 +35,8 @@ export interface LayerContentProps {
     colorCodingMode?: ColorCodingMode
     customLayerParameters?: Record<string, string> | null
     rasterSource?: ProcessedRasterSource
+    /** 'cog' = client-side pixel sample (yellow); 'wms-raster' or 'vector' use the buffer (green). */
+    sourceKind?: 'cog' | 'wms-raster' | 'vector'
     visible: boolean
     queryable?: boolean
     schema?: string
