@@ -1,23 +1,60 @@
 /**
- * Single source of truth for the displacement contour layer titles and how each
- * maps to the `type` property value in the WFS source. Used by:
- *   - buildDisplacementLayerFilters: keys → cql_filter targets
- *   - DisplacementLayerCharts: title → type for per-layer scoping
- *   - DisplacementFiltersPanel: title-prefix check to gate filter visibility
+ * Single source of truth for displacement layers used by the data-reviewer
+ * popup + sidebar widgets. One place to update when the WFS source rename
+ * lands, when GeoServer style names change, or when new displacement types
+ * appear.
  */
-export const DISPLACEMENT_LAYER_TYPES = {
-    'Displacement Contours - Cumulative': 'Cumulative',
-    'Displacement Contours - Yearly': 'Yearly',
-    'Displacement Contours - Vertical Displacement Rate': 'Vertical Displacement Rate',
-    'Displacement Contours - Cumulative: Review': 'Cumulative',
-    'Displacement Contours - Yearly: Review': 'Yearly',
-    'Displacement Contours - Vertical Displacement Rate: Review': 'Vertical Displacement Rate',
-} as const
 
-export type DisplacementLayerTitle = keyof typeof DISPLACEMENT_LAYER_TYPES
-export type DisplacementType = typeof DISPLACEMENT_LAYER_TYPES[DisplacementLayerTitle]
+// Fully-qualified WFS feature type name backing every displacement layer.
+// The `test_all` suffix is provisional; rename here when the backend table
+// gets its permanent name and every consumer follows.
+export const DISPLACEMENT_TYPE_NAME = 'hazards:merged_displacement_contours_test_all'
 
-export function isDisplacementLayerTitle(title: string): title is DisplacementLayerTitle {
-    return title in DISPLACEMENT_LAYER_TYPES
+// Title of the layer-tree group containing all displacement layers. Used by
+// HazardsReviewLayers to attach the group-level filter slot.
+export const LAND_SUBSIDENCE_GROUP_TITLE = 'Land Subsidence'
+
+interface DisplacementLayerEntry {
+    type: DisplacementTypeValue
+    styleName: string
 }
 
+type DisplacementTypeValue = 'Cumulative' | 'Yearly' | 'Vertical Displacement Rate'
+
+// Per-title metadata: the `type` cql value to filter the merged source by, and
+// the GeoServer SLD that styles the layer's tiles (mirrored to the layer-list
+// legend via WMSLayerProps.styleName).
+export const DISPLACEMENT_LAYERS = {
+    'Displacement Contours - Cumulative': { type: 'Cumulative', styleName: 'hazards_insar_displacement_cumulative' },
+    'Displacement Contours - Yearly': { type: 'Yearly', styleName: 'hazards_insar_displacement_yearly' },
+    'Displacement Contours - Vertical Displacement Rate': { type: 'Vertical Displacement Rate', styleName: 'hazards_insar_displacement_velocity' },
+    'Displacement Contours - Cumulative: Review': { type: 'Cumulative', styleName: 'hazards_insar_displacement_cumulative' },
+    'Displacement Contours - Yearly: Review': { type: 'Yearly', styleName: 'hazards_insar_displacement_yearly' },
+    'Displacement Contours - Vertical Displacement Rate: Review': { type: 'Vertical Displacement Rate', styleName: 'hazards_insar_displacement_velocity' },
+} as const satisfies Record<string, DisplacementLayerEntry>
+
+export type DisplacementLayerTitle = keyof typeof DISPLACEMENT_LAYERS
+export type DisplacementType = typeof DISPLACEMENT_LAYERS[DisplacementLayerTitle]['type']
+
+export function isDisplacementLayerTitle(title: string): title is DisplacementLayerTitle {
+    return title in DISPLACEMENT_LAYERS
+}
+
+// Convenience accessors derived from DISPLACEMENT_LAYERS so callers don't carry
+// their own duplicate maps.
+export const DISPLACEMENT_LAYER_TYPES: Record<DisplacementLayerTitle, DisplacementType> = Object.fromEntries(
+    (Object.entries(DISPLACEMENT_LAYERS) as [DisplacementLayerTitle, DisplacementLayerEntry][])
+        .map(([title, entry]) => [title, entry.type])
+) as Record<DisplacementLayerTitle, DisplacementType>
+
+export const DISPLACEMENT_LAYER_STYLES: Record<DisplacementLayerTitle, string> = Object.fromEntries(
+    (Object.entries(DISPLACEMENT_LAYERS) as [DisplacementLayerTitle, DisplacementLayerEntry][])
+        .map(([title, entry]) => [title, entry.styleName])
+) as Record<DisplacementLayerTitle, string>
+
+export function getStyleNameForType(type: DisplacementType): string | undefined {
+    for (const entry of Object.values(DISPLACEMENT_LAYERS) as DisplacementLayerEntry[]) {
+        if (entry.type === type) return entry.styleName
+    }
+    return undefined
+}

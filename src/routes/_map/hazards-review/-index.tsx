@@ -23,7 +23,7 @@ import { LogOut, User } from 'lucide-react';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { useMapContextState } from '@/hooks/use-map-context-state';
 import { MapContext } from '@/context/map-context';
-import { DisplacementFilterProvider, useDisplacementFilters, buildDisplacementLayerFilters } from './-components/popups/displacement-filter-context';
+import { DisplacementFilterProvider, useDisplacementFilters, useDisplacementLayerFilters } from './-components/popups/displacement-filter-context';
 import { renderDisplacementLayerHeader } from './-components/popups/displacement-layer-charts';
 import { renderDisplacementFeatureChart } from './-components/popups/displacement-feature-chart';
 import { makeDisplacementPopupFeatureFilter } from './-components/popups/displacement-popup-filter';
@@ -153,7 +153,7 @@ export default function Map() {
 
 function FilteredMapContainer() {
   const filters = useDisplacementFilters()
-  const layerFilters = buildDisplacementLayerFilters(filters)
+  const layerFilters = useDisplacementLayerFilters()
   const popupFeatureFilter = makeDisplacementPopupFeatureFilter(filters)
   return (
     <GenericMapContainer

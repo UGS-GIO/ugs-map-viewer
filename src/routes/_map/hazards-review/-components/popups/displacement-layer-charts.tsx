@@ -7,15 +7,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Label as RechartsLabel } from 'recharts'
 import type { LayerContentProps } from '@/components/maps/popups/types'
-import { useDisplacementFilters, CHARTED_TYPES, type ChartedType } from './displacement-filter-context'
-import { DISPLACEMENT_LAYER_TYPES, isDisplacementLayerTitle, type DisplacementType } from './displacement-layers'
+import { useDisplacementFilters, useEffectiveThresholdsIn, isChartedType, type ChartedType } from './displacement-filter-context'
+import { DISPLACEMENT_LAYER_TYPES, DISPLACEMENT_TYPE_NAME, getStyleNameForType, isDisplacementLayerTitle, type DisplacementType } from './displacement-layers'
 import { fetchDisplacementSldBins, type SldBin } from './displacement-sld-legend'
 
-function isChartedType(t: DisplacementType): t is ChartedType {
-    return (CHARTED_TYPES as readonly string[]).includes(t)
-}
 
-const TYPE_NAME = 'hazards:merged_displacement_contours_test_all'
 const SQM_TO_SQMI = 1 / 2_589_988.110336
 
 // Round to 1 decimal place for popup display.
@@ -23,11 +19,12 @@ const fmt1 = (n: number): string => n.toFixed(1)
 
 export const DISPLACEMENT_QUERY_KEY = ['stats', 'displacement-contours-review'] as const
 
-// Map each charted DisplacementType to the GeoServer SLD that styles its
-// tiles. Used to fetch the matching legend so chart bins/colors match the map.
-export const STYLE_BY_TYPE: Record<ChartedType, string> = {
-    'Cumulative': 'hazards_insar_displacement_cumulative',
-    'Yearly': 'hazards_insar_displacement_yearly',
+// Resolve a charted type to its SLD style. Wraps getStyleNameForType so chart
+// code can stay strict about charted types without falling back at every call.
+function getChartedStyleName(type: ChartedType): string {
+    const name = getStyleNameForType(type)
+    if (!name) throw new Error(`No SLD style registered for charted type "${type}"`)
+    return name
 }
 
 interface DisplacementProps {
@@ -54,7 +51,7 @@ export async function fetchAllDisplacement(): Promise<DisplacementFeature[]> {
     url.searchParams.set('service', 'WFS')
     url.searchParams.set('version', '2.0.0')
     url.searchParams.set('request', 'GetFeature')
-    url.searchParams.set('typeNames', TYPE_NAME)
+    url.searchParams.set('typeNames', DISPLACEMENT_TYPE_NAME)
     url.searchParams.set('outputFormat', 'application/json')
     url.searchParams.set('srsName', 'EPSG:4326')
     url.searchParams.set('count', '20000')
@@ -114,9 +111,10 @@ export function findBin(bins: SldBin[], v: number): SldBin | undefined {
 }
 
 function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
-    const { year, thresholdsIn } = useDisplacementFilters()
-    const thresholdIn = thresholdsIn[typeValue]
-    const styleName = STYLE_BY_TYPE[typeValue]
+    const { year } = useDisplacementFilters()
+    const effective = useEffectiveThresholdsIn()
+    const thresholdIn = effective[typeValue]
+    const styleName = getChartedStyleName(typeValue)
 
     const { data: features = [], isLoading: featuresLoading, isError } = useQuery({
         queryKey: DISPLACEMENT_QUERY_KEY,

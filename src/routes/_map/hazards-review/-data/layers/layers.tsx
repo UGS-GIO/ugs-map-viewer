@@ -1,5 +1,11 @@
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE, PROD_POSTGREST_URL, GEN_GIS_WORKSPACE } from "@/lib/constants";
 import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import {
+    DISPLACEMENT_LAYERS,
+    DISPLACEMENT_TYPE_NAME,
+    LAND_SUBSIDENCE_GROUP_TITLE,
+    type DisplacementLayerTitle,
+} from "../../-components/popups/displacement-layers";
 import GeoJSON from "geojson";
 
 export const landslideLegacyLayerName = 'landslidelegacy_current';
@@ -992,7 +998,9 @@ const aquifersCombinedConfig: WMSLayerProps = {
     ],
 };
 
-const DISPLACEMENT_CONTOURS_LAYER = `${HAZARDS_WORKSPACE}:merged_displacement_contours_test_all`;
+// The registry already provides the workspace-qualified type name and per-title
+// type + style metadata, so layer configs just look up what they need.
+const DISPLACEMENT_CONTOURS_LAYER = DISPLACEMENT_TYPE_NAME;
 const displacementPopupFields = {
     'Location': { field: 'location', type: 'string' },
     'Type': { field: 'type', type: 'string' },
@@ -1003,7 +1011,8 @@ const displacementPopupFields = {
     'Displacement (in)': { field: 'value_inch', type: 'number', format: 'oneDecimal' },
 } as const;
 
-function makeDisplacementContoursConfig(title: string, typeValue: string, styleName: string): WMSLayerProps {
+function makeDisplacementContoursConfig(title: DisplacementLayerTitle): WMSLayerProps {
+    const { type: typeValue, styleName } = DISPLACEMENT_LAYERS[title];
     return {
         type: 'wms',
         url: `${PROD_GEOSERVER_URL}/wms`,
@@ -1022,13 +1031,13 @@ function makeDisplacementContoursConfig(title: string, typeValue: string, styleN
     };
 }
 
-const displacementCumulativeConfig = makeDisplacementContoursConfig('Displacement Contours - Cumulative', 'Cumulative', 'hazards_insar_displacement_cumulative');
-const displacementYearlyConfig = makeDisplacementContoursConfig('Displacement Contours - Yearly', 'Yearly', 'hazards_insar_displacement_yearly');
-const displacementVerticalDisplacementRateConfig = makeDisplacementContoursConfig('Displacement Contours - Vertical Displacement Rate', 'Vertical Displacement Rate', 'hazards_insar_displacement_velocity');
+const displacementCumulativeConfig = makeDisplacementContoursConfig('Displacement Contours - Cumulative');
+const displacementYearlyConfig = makeDisplacementContoursConfig('Displacement Contours - Yearly');
+const displacementVerticalDisplacementRateConfig = makeDisplacementContoursConfig('Displacement Contours - Vertical Displacement Rate');
 
 const extraLayersConfig: LayerProps = {
     type: 'group',
-    title: 'Land Subsidence',
+    title: LAND_SUBSIDENCE_GROUP_TITLE,
     visible: false,
     layers: [
         earthFissureWMSConfig,

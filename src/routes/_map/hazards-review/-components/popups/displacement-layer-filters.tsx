@@ -4,12 +4,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { useDisplacementFilters, CHARTED_TYPES, DEFAULT_THRESHOLDS_IN, type ChartedType } from './displacement-filter-context'
+import { useDisplacementFilters, useEffectiveThresholdsIn, isChartedType } from './displacement-filter-context'
 import { DISPLACEMENT_LAYER_TYPES, isDisplacementLayerTitle, type DisplacementType } from './displacement-layers'
 import { DISPLACEMENT_QUERY_KEY, fetchAllDisplacement, getBucketYear } from './displacement-layer-charts'
-
-const isChartedType = (t: DisplacementType): t is ChartedType =>
-    (CHARTED_TYPES as readonly string[]).includes(t)
 
 // Cumulative + Vertical Displacement Rate carry null `year` so the year filter
 // can't apply — only Yearly exposes a Water Year selector.
@@ -34,6 +31,7 @@ function DisplacementLayerFilters({
     hasThreshold: boolean
 }) {
     const { year, thresholdsIn, setYear, setThresholdIn } = useDisplacementFilters()
+    const effective = useEffectiveThresholdsIn()
 
     const { data: features = [] } = useQuery({
         queryKey: DISPLACEMENT_QUERY_KEY,
@@ -54,13 +52,17 @@ function DisplacementLayerFilters({
 
     const displayYear = year === 'all' || years.includes(year) ? year : 'all'
     const isCharted = hasThreshold && isChartedType(typeValue)
-    const thresholdIn = isCharted ? thresholdsIn[typeValue] : 0
-    const defaultThresholdIn = isCharted ? DEFAULT_THRESHOLDS_IN[typeValue] : 0
-    const isDirty = (hasYear && year !== 'all') || (isCharted && thresholdIn !== defaultThresholdIn)
+    // Display the effective threshold (state value OR SLD-derived default) so
+    // reviewers always see the number actually filtering the map.
+    const thresholdIn = isCharted ? effective[typeValue] : 0
+    // "Dirty" means the user explicitly overrode the SLD-derived default — i.e.
+    // raw state is non-null. Reset wipes back to null so SLD default takes over.
+    const rawThreshold = isCharted ? thresholdsIn[typeValue] : null
+    const isDirty = (hasYear && year !== 'all') || rawThreshold !== null
 
     function resetLocal() {
         if (hasYear) setYear('all')
-        if (isCharted) setThresholdIn(typeValue, defaultThresholdIn)
+        if (isCharted) setThresholdIn(typeValue, null)
     }
 
     return (
@@ -80,7 +82,12 @@ function DisplacementLayerFilters({
 
             {isCharted && (
                 <div className="flex flex-col gap-1">
-                    <Label className="text-xs">Threshold (|in|)</Label>
+                    <Label className="text-xs">
+                        Threshold (|in|)
+                        {rawThreshold === null && (
+                            <span className="ml-1 text-muted-foreground">· auto (SLD)</span>
+                        )}
+                    </Label>
                     <Input
                         type="number"
                         step="0.1"

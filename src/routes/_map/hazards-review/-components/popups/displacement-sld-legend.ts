@@ -1,4 +1,5 @@
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
+import { DISPLACEMENT_TYPE_NAME } from './displacement-layers'
 
 /**
  * Bin derived from a single rule in a WMS GetLegendGraphic response. Mirrors
@@ -49,7 +50,7 @@ export async function fetchDisplacementSldBins(styleName: string): Promise<SldBi
     url.searchParams.set('service', 'WMS')
     url.searchParams.set('request', 'GetLegendGraphic')
     url.searchParams.set('format', 'application/json')
-    url.searchParams.set('layer', 'hazards:merged_displacement_contours_test_all')
+    url.searchParams.set('layer', DISPLACEMENT_TYPE_NAME)
     url.searchParams.set('style', styleName)
     const res = await fetch(url.toString())
     if (!res.ok) throw new Error(`WMS legend ${res.status}`)

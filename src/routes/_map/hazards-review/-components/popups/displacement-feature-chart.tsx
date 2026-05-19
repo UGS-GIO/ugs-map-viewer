@@ -5,7 +5,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import type { LayerContentProps, ExtendedFeature } from '@/components/maps/popups/types'
 import { isDisplacementLayerTitle, DISPLACEMENT_LAYER_TYPES, type DisplacementType } from './displacement-layers'
 import { CHARTED_TYPES, type ChartedType } from './displacement-filter-context'
-import { DISPLACEMENT_QUERY_KEY, STYLE_BY_TYPE, fetchAllDisplacement, findBin, getBucketYear } from './displacement-layer-charts'
+import { DISPLACEMENT_QUERY_KEY, fetchAllDisplacement, findBin, getBucketYear } from './displacement-layer-charts'
+import { getStyleNameForType } from './displacement-layers'
 import { fetchDisplacementSldBins } from './displacement-sld-legend'
 
 const fmt1 = (n: number): string => n.toFixed(1)
@@ -46,7 +47,7 @@ function DisplacementFeatureChart({
     typeValue: ChartedType
     currentYear?: string
 }) {
-    const styleName = STYLE_BY_TYPE[typeValue]
+    const styleName = getStyleNameForType(typeValue) ?? ''
 
     const { data: features = [], isLoading: featuresLoading, isError } = useQuery({
         queryKey: DISPLACEMENT_QUERY_KEY,
