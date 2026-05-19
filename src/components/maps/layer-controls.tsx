@@ -32,6 +32,8 @@ interface LayerControlsProps {
     filtersContent?: React.ReactNode;
     /** Optional layer-scoped stats / charts UI. When provided, adds a Stats toggle to the button row and a collapsible panel below. */
     statsContent?: React.ReactNode;
+    /** Optional SLD style name forwarded to the legend so it matches the styled map tiles. */
+    styleName?: string;
 }
 
 const LayerControls: React.FC<LayerControlsProps> = ({
@@ -52,6 +54,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     disableExport = false,
     filtersContent,
     statsContent,
+    styleName,
 }) => {
     // Info + Legend remain a single-select pair (mutually exclusive — they both
     // describe the layer and stacking them is redundant). Filters + Stats each
@@ -207,12 +210,13 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     bivariateLegend={bivariateLegend}
                     arcgisUrl={arcgisUrl}
                     legendUnit={legendUnit}
+                    styleName={styleName}
                 />
                 {filtersContent && (
                     <div
                         className={`overflow-hidden transition-[max-height] duration-200 ease-out ${filtersOpen ? 'max-h-[1000px]' : 'max-h-0'}`}
                     >
-                        <div className="mt-1 mb-2 mx-1 px-1.5 pt-2 border-t border-border/60">
+                        <div className="mx-2 mt-2 mb-2 rounded border border-border bg-muted/40 p-2">
                             {filtersContent}
                         </div>
                     </div>
@@ -221,8 +225,8 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     <div
                         className={`overflow-hidden transition-[max-height] duration-200 ease-out ${statsOpen ? 'max-h-[2000px]' : 'max-h-0'}`}
                     >
-                        <div className="mt-1 mb-2 mx-1 px-1.5 pt-2 border-t border-border/60">
-                            {statsOpen && statsContent}
+                        <div className="mx-2 mt-2 mb-2 rounded border border-border bg-muted/40 p-2">
+                            {statsContent}
                         </div>
                     </div>
                 )}

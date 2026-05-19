@@ -128,6 +128,8 @@ export interface WMSLayerProps extends BaseLayerProps {
     crs?: string; // EPSG code (e.g., 'EPSG:26912', 'EPSG:3857') for WMS GetFeatureInfo requests
     /** Set to enable min/max labels on the raster colorbar legend. Omit to render the bar without labels. */
     legendUnit?: string;
+    /** GeoServer SLD style name. When set, both map tiles and the layer-list legend request this style instead of the layer's default. */
+    styleName?: string;
 }
 
 export interface ArcGISMapServerLayerProps extends BaseLayerProps {
@@ -283,8 +285,6 @@ export interface WFSLayerProps extends BaseLayerProps {
 export interface GroupLayerProps extends BaseLayerProps {
     type: 'group';
     layers?: LayerProps[];
-    /** Always show this group in the review layer list, bypassing the reviewable-names DB filter */
-    alwaysShowInReview?: boolean;
 }
 
 

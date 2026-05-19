@@ -24,7 +24,6 @@ export const queryKeys = {
       [...queryKeys.layers.all, 'wms-legend', layerName, wmsUrl] as const,
     extent: (url: string, layerName: string) =>
       [...queryKeys.layers.all, 'extent', url, layerName] as const,
-    reviewable: (config: unknown) => [...queryKeys.layers.all, 'reviewable', config] as const,
     wfsData: (wfsUrl: string, typeName: string) =>
       [...queryKeys.layers.all, 'wfs-data', wfsUrl, typeName] as const,
   },

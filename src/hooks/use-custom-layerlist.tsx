@@ -354,6 +354,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
                             disableExport={disableExport}
                             filtersContent={layerConfig.title ? layerExtrasRender?.(layerConfig.title) : undefined}
                             statsContent={layerConfig.title ? layerStatsRender?.(layerConfig.title) : undefined}
+                            styleName={isWMSLayer(layerConfig) ? layerConfig.styleName : undefined}
                         />
                     </AccordionContent>
                 </AccordionItem>

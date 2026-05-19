@@ -8,6 +8,7 @@ import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import maplibregl from 'maplibre-gl'
 import DataMap, { HighlightFeature, DrawMode, SpatialFilter } from '@/components/maps/data-map'
 import { PopupSheet, PopupSheetRef } from '@/components/maps/popups/popup-sheet'
+import type { LayerContentProps, ExtendedFeature } from '@/components/maps/popups/types'
 import { QueryResultsTable } from '@/components/data-table/query-results-table'
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs'
 import { useLayerUrl } from '@/context/layer-url-provider'
@@ -272,6 +273,14 @@ interface GenericMapContainerProps {
   onClearSearch?: () => void
   /** Hide attribute table CSV/GeoJSON + per-layer parquet downloads. Used by apps that require unmodified source data only. */
   disableExport?: boolean
+  /** Optional render-prop for content shown in the popup sheet header */
+  popupHeaderRender?: (popupContent: LayerContentProps[]) => React.ReactNode
+  /** Optional render-prop for content shown under each layer's heading in the popup */
+  popupLayerHeaderRender?: (layer: LayerContentProps) => React.ReactNode
+  /** Optional render-prop for content shown inside each feature card in the popup */
+  popupFeatureRender?: (feature: ExtendedFeature, layer: LayerContentProps) => React.ReactNode
+  /** Optional predicate; features for which it returns false are hidden from the popup */
+  popupFeatureFilter?: (feature: ExtendedFeature, layer: LayerContentProps) => boolean
 }
 
 export default function GenericMapContainer({
@@ -282,6 +291,10 @@ export default function GenericMapContainer({
   layerConfigKey = 'layers',
   onClearSearch,
   disableExport = false,
+  popupHeaderRender,
+  popupLayerHeaderRender,
+  popupFeatureRender,
+  popupFeatureFilter,
 }: GenericMapContainerProps) {
   const isMobile = useIsMobile()
   const currentPage = useGetCurrentPage()
@@ -535,13 +548,24 @@ export default function GenericMapContainer({
   }, [clickBufferBounds])
 
   // Unified popup data: groups features by layer + fetches raster values
-  const { popupData: popupContent, isLoadingRaster } = usePopupData({
+  const { popupData: rawPopupContent, isLoadingRaster } = usePopupData({
     vectorFeatures: selectedFeatures,
     clickPoint,
     clickBbox: clickBufferBounds,
     layersConfig,
     displayedTitles,
   })
+
+  // Apply optional per-feature filter so map cql changes (e.g. a year filter) also
+  // hide non-matching feature cards from the popup. Layers without vector features
+  // pass through untouched.
+  const popupContent = useMemo(() => {
+    if (!popupFeatureFilter) return rawPopupContent
+    return rawPopupContent.map(layer => ({
+      ...layer,
+      features: layer.features.filter(f => popupFeatureFilter(f, layer)),
+    }))
+  }, [rawPopupContent, popupFeatureFilter])
 
   // Derived: has results (includes raster-only layers)
   const hasResults = useMemo(() => popupContent.length > 0, [popupContent])
@@ -656,6 +680,9 @@ export default function GenericMapContainer({
               onWidthChange={(width) => setPanelState(prev => ({ ...prev, sheetWidth: width }))}
               isOpen={panelState.isSheetOpen}
               clickPoint={clickPoint}
+              headerExtras={popupHeaderRender?.(popupContent)}
+              layerHeaderExtras={popupLayerHeaderRender}
+              featureExtras={popupFeatureRender}
             />
           </div>
         )}
@@ -680,6 +707,9 @@ export default function GenericMapContainer({
               onHighlightChange={handleHighlightChange}
               isOpen={panelState.isSheetOpen}
               clickPoint={clickPoint}
+              headerExtras={popupHeaderRender?.(popupContent)}
+              layerHeaderExtras={popupLayerHeaderRender}
+              featureExtras={popupFeatureRender}
             />
           </div>
         )}

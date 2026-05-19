@@ -992,56 +992,51 @@ const aquifersCombinedConfig: WMSLayerProps = {
     ],
 };
 
-const aquiferDelineationConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Aquifer Delineation (Source: Utah Geological Survey): Review',
-    visible: true,
-    sublayers: [
-        {
-            name: `${HAZARDS_WORKSPACE}:hazards_aquifer_delineation_review`,
-            popupEnabled: true,
-            queryable: true,
-            popupFields: {
-                'Aquifer': { field: 'aquifer', type: 'string' },
-                'Broader Aquifer': { field: 'broader', type: 'string' },
-                'Details': { field: 'details', type: 'string' },
-                'Depletion (Early 21st C.)': { field: 'early21stc', type: 'number' },
-                'Depletion (Late 20th C.)': { field: 'late20thce', type: 'number' },
-            }
-        },
-    ],
-};
+const DISPLACEMENT_CONTOURS_LAYER = `${HAZARDS_WORKSPACE}:merged_displacement_contours_test_all`;
+const displacementPopupFields = {
+    'Location': { field: 'location', type: 'string' },
+    'Type': { field: 'type', type: 'string' },
+    'Year': { field: 'year', type: 'string' },
+    'Period': { field: 'period', type: 'string' },
+    'Period Start': { field: 'start_date', type: 'string' },
+    'Period End': { field: 'end_date', type: 'string' },
+    'Displacement (in)': { field: 'value_inch', type: 'number', format: 'oneDecimal' },
+} as const;
 
-const displacementContoursConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Displacement Contours (Source: Utah Geological Survey): Review',
-    visible: true,
-    sublayers: [
-        {
-            name: `${HAZARDS_WORKSPACE}:hazards_displacement_contours_review`,
-            popupEnabled: true,
-            queryable: true,
-            popupFields: {
-                'Location': { field: 'location', type: 'string' },
-                'Type': { field: 'type', type: 'string' },
-                'Year': { field: 'year', type: 'string' },
-                'Period': { field: 'start_date', type: 'string' },
-                'Displacement (cm)': { field: 'value_cm', type: 'number' },
-                'Displacement (in)': { field: 'value_inch', type: 'number' },
-                'HUC': { field: 'huc', type: 'string' },
-            }
-        },
-    ],
-};
+function makeDisplacementContoursConfig(title: string, typeValue: string, styleName: string): WMSLayerProps {
+    return {
+        type: 'wms',
+        url: `${PROD_GEOSERVER_URL}/wms`,
+        title,
+        visible: true,
+        styleName,
+        customLayerParameters: { cql_filter: `type='${typeValue}'` },
+        sublayers: [
+            {
+                name: DISPLACEMENT_CONTOURS_LAYER,
+                popupEnabled: true,
+                queryable: true,
+                popupFields: displacementPopupFields,
+            },
+        ],
+    };
+}
+
+const displacementCumulativeConfig = makeDisplacementContoursConfig('Displacement Contours - Cumulative', 'Cumulative', 'hazards_insar_displacement_cumulative');
+const displacementYearlyConfig = makeDisplacementContoursConfig('Displacement Contours - Yearly', 'Yearly', 'hazards_insar_displacement_yearly');
+const displacementVerticalDisplacementRateConfig = makeDisplacementContoursConfig('Displacement Contours - Vertical Displacement Rate', 'Vertical Displacement Rate', 'hazards_insar_displacement_velocity');
 
 const extraLayersConfig: LayerProps = {
     type: 'group',
     title: 'Land Subsidence',
     visible: false,
-    alwaysShowInReview: true,
-    layers: [earthFissureWMSConfig, aquifersCombinedConfig, aquiferDelineationConfig, displacementContoursConfig],
+    layers: [
+        earthFissureWMSConfig,
+        aquifersCombinedConfig,
+        displacementCumulativeConfig,
+        displacementYearlyConfig,
+        displacementVerticalDisplacementRateConfig,
+    ],
 };
 
 const layersConfig: LayerProps[] = [
