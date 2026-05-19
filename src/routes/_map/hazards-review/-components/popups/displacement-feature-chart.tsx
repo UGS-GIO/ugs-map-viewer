@@ -5,7 +5,8 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGri
 import type { LayerContentProps, ExtendedFeature } from '@/components/maps/popups/types'
 import { isDisplacementLayerTitle, DISPLACEMENT_LAYER_TYPES, type DisplacementType } from './displacement-layers'
 import { CHARTED_TYPES, type ChartedType } from './displacement-filter-context'
-import { DISPLACEMENT_QUERY_KEY, fetchAllDisplacement, getBucketYear } from './displacement-layer-charts'
+import { DISPLACEMENT_QUERY_KEY, STYLE_BY_TYPE, fetchAllDisplacement, findBin, getBucketYear } from './displacement-layer-charts'
+import { fetchDisplacementSldBins } from './displacement-sld-legend'
 
 const fmt1 = (n: number): string => n.toFixed(1)
 
@@ -42,31 +43,46 @@ function DisplacementFeatureChart({
     currentYear,
 }: {
     location: string
-    typeValue: string
+    typeValue: ChartedType
     currentYear?: string
 }) {
-    const { data: features = [], isLoading, isError } = useQuery({
+    const styleName = STYLE_BY_TYPE[typeValue]
+
+    const { data: features = [], isLoading: featuresLoading, isError } = useQuery({
         queryKey: DISPLACEMENT_QUERY_KEY,
         queryFn: fetchAllDisplacement,
         staleTime: 10 * 60 * 1000,
     })
 
+    // Same SLD bins as the layer-wide chart, so per-feature bars share the
+    // map's color ramp instead of an ad-hoc highlight palette.
+    const { data: sldBins = [], isLoading: binsLoading } = useQuery({
+        queryKey: ['sld-bins', styleName],
+        queryFn: () => fetchDisplacementSldBins(styleName),
+        staleTime: 60 * 60 * 1000,
+    })
+    const isLoading = featuresLoading || binsLoading
+
     const series = useMemo(() => {
         const matches = features.filter(f =>
             f.properties.type === typeValue && f.properties.location === location
         )
-        // Pick max |value| per bucket year so duplicates don't double-plot.
-        // Cumulative buckets by period end year; Yearly by water year.
-        const byYear = new Map<string, number>()
+        // Per bucket year, keep the feature with the largest |value| and remember
+        // its signed magnitude so bin lookup picks up subsidence vs uplift correctly.
+        const byYear = new Map<string, { signed: number; abs: number }>()
         for (const f of matches) {
             const bucketYear = getBucketYear(f.properties)
             if (!bucketYear) continue
-            const v = Math.abs(f.properties.value_inch)
-            const cur = byYear.get(bucketYear) ?? 0
-            if (v > cur) byYear.set(bucketYear, v)
+            const v = f.properties.value_inch
+            const a = Math.abs(v)
+            const cur = byYear.get(bucketYear)
+            if (!cur || a > cur.abs) byYear.set(bucketYear, { signed: v, abs: a })
         }
-        return Array.from(byYear, ([year, value]) => ({ year, value: Number(fmt1(value)) }))
-            .sort((a, b) => a.year.localeCompare(b.year))
+        return Array.from(byYear, ([year, { signed, abs }]) => ({
+            year,
+            value: Number(fmt1(abs)),
+            signed,
+        })).sort((a, b) => a.year.localeCompare(b.year))
     }, [features, location, typeValue])
 
     if (isError || (!isLoading && series.length < 2)) return null
@@ -93,9 +109,22 @@ function DisplacementFeatureChart({
                                 formatter={(v) => [`${typeof v === 'number' ? fmt1(v) : v} in`, '|displacement|']}
                             />
                             <Bar dataKey="value">
-                                {series.map(d => (
-                                    <Cell key={d.year} fill={d.year === currentYear ? '#BD0026' : '#FEB24C'} />
-                                ))}
+                                {series.map(d => {
+                                    const bin = findBin(sldBins, d.signed)
+                                    const fill = bin?.color ?? 'hsl(var(--muted-foreground))'
+                                    // Highlight the clicked feature's year with a stroke
+                                    // ring instead of swapping the fill so colors still
+                                    // read against the SLD legend.
+                                    const isCurrent = d.year === currentYear
+                                    return (
+                                        <Cell
+                                            key={d.year}
+                                            fill={fill}
+                                            stroke={isCurrent ? 'hsl(var(--foreground))' : 'transparent'}
+                                            strokeWidth={isCurrent ? 2 : 0}
+                                        />
+                                    )
+                                })}
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>

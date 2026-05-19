@@ -25,7 +25,7 @@ export const DISPLACEMENT_QUERY_KEY = ['stats', 'displacement-contours-review'] 
 
 // Map each charted DisplacementType to the GeoServer SLD that styles its
 // tiles. Used to fetch the matching legend so chart bins/colors match the map.
-const STYLE_BY_TYPE: Record<ChartedType, string> = {
+export const STYLE_BY_TYPE: Record<ChartedType, string> = {
     'Cumulative': 'hazards_insar_displacement_cumulative',
     'Yearly': 'hazards_insar_displacement_yearly',
 }
@@ -109,7 +109,7 @@ export function renderDisplacementLayerStats(layerTitle: string): React.ReactNod
 // Locate which SldBin a feature's signed value_inch falls into. Half-open on the
 // upper bound matches the SLD's "value_inch < X" semantics so each feature
 // resolves to exactly one bin.
-function findBin(bins: SldBin[], v: number): SldBin | undefined {
+export function findBin(bins: SldBin[], v: number): SldBin | undefined {
     return bins.find(b => v >= b.min && v < b.max)
 }
 
