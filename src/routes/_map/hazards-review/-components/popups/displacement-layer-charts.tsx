@@ -225,11 +225,11 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     }, [scoped, thresholdIn, plotBins])
 
     // Per-basin worst subsidence: deepest |value_inch| contour above threshold
-    // per location. Bar color tracks the SLD bin so depth context survives.
-    // All basins included, sorted by depth descending so the worst surface first.
+    // per location. Honors year filter via `filtered` so the worst-basin list
+    // stays in sync with the KPI tiles above when a Water Year is picked.
     const basinsByDepth = useMemo(() => {
         const byLocation = new Map<string, { signed: number; abs: number; features: DisplacementFeature[] }>()
-        for (const f of scoped) {
+        for (const f of filtered) {
             const loc = f.properties.location
             if (!loc) continue
             const v = f.properties.value_inch
@@ -252,7 +252,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             features: locFeatures,
             bin: findBin(plotBins, signed),
         })).sort((a, b) => b.abs - a.abs)
-    }, [scoped, plotBins, thresholdIn])
+    }, [filtered, plotBins, thresholdIn])
 
     const worstDepth = basinsByDepth[0]?.abs ?? 0
 

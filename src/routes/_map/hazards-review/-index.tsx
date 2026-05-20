@@ -25,7 +25,6 @@ import { useMapContextState } from '@/hooks/use-map-context-state';
 import { MapContext } from '@/context/map-context';
 import { DisplacementFilterProvider, useDisplacementFilters, useDisplacementLayerFilters } from './-components/popups/displacement-filter-context';
 import { renderDisplacementLayerHeader } from './-components/popups/displacement-layer-charts';
-import { renderDisplacementFeatureChart } from './-components/popups/displacement-feature-chart';
 import { makeDisplacementPopupFeatureFilter } from './-components/popups/displacement-popup-filter';
 import { TourAutoStart } from '@/components/tour-auto-start';
 
@@ -159,7 +158,6 @@ function FilteredMapContainer() {
     <GenericMapContainer
       layerFilters={layerFilters}
       popupLayerHeaderRender={renderDisplacementLayerHeader}
-      popupFeatureRender={renderDisplacementFeatureChart}
       popupFeatureFilter={popupFeatureFilter}
     />
   )
