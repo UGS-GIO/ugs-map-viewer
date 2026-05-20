@@ -4,6 +4,7 @@ import {
     DISPLACEMENT_LAYERS,
     DISPLACEMENT_TYPE_NAME,
     LAND_SUBSIDENCE_GROUP_TITLE,
+    getUnitsLabelForType,
     type DisplacementLayerTitle,
 } from "../../-components/popups/displacement-layers";
 import GeoJSON from "geojson";
@@ -1019,6 +1020,7 @@ function makeDisplacementContoursConfig(title: DisplacementLayerTitle): WMSLayer
         title,
         visible: true,
         styleName,
+        legendUnit: getUnitsLabelForType(typeValue),
         customLayerParameters: { cql_filter: `type='${typeValue}'` },
         sublayers: [
             {

@@ -78,3 +78,18 @@ const PERIOD_KEYED_TYPES: ReadonlySet<DisplacementType> = new Set(['Cumulative',
 export function isPeriodKeyedType(t: DisplacementType): boolean {
     return PERIOD_KEYED_TYPES.has(t)
 }
+
+// Human-readable units for each type's value_inch column. Cumulative + VDR
+// readings span a window (start_date → end_date) so the unit reads "per time
+// period"; Yearly is a per-year measurement, so the unit is unqualified.
+// Surfaced on the sidebar legend (via WMSLayerProps.legendUnit) and the chart
+// legend caption so reviewers see one consistent unit string everywhere.
+const DISPLACEMENT_UNITS_LABEL: Record<DisplacementType, string> = {
+    'Cumulative': 'inches of vertical displacement per time period',
+    'Yearly': 'inches of vertical displacement',
+    'Vertical Displacement Rate': 'inches of vertical displacement per time period',
+}
+
+export function getUnitsLabelForType(type: DisplacementType): string {
+    return DISPLACEMENT_UNITS_LABEL[type]
+}

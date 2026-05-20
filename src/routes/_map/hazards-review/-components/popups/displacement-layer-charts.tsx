@@ -9,7 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { ChevronRightIcon } from 'lucide-react'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import { useMap } from '@/hooks/use-map'
-import { DISPLACEMENT_LAYER_TYPES, getStyleNameForType, isChartedType, isDisplacementLayerTitle, type ChartedType, type DisplacementType } from './displacement-layers'
+import { DISPLACEMENT_LAYER_TYPES, getStyleNameForType, getUnitsLabelForType, isChartedType, isDisplacementLayerTitle, type ChartedType, type DisplacementType } from './displacement-layers'
 import { getZeroBound, type SldBin } from './displacement-sld-legend'
 import {
     getBucketYear,
@@ -434,6 +434,9 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                     <SignedLegendGroup label="Subsidence (below zero)" bins={subsidenceBins} />
                     <SignedLegendGroup label="Uplift (above zero)" bins={upliftBins} />
                 </div>
+                <p className="mt-1 px-2 text-[10px] italic text-muted-foreground">
+                    Bin values: {getUnitsLabelForType(typeValue)}.
+                </p>
             </div>
 
             <BasinList
