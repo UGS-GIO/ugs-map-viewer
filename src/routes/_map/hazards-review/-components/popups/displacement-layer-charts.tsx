@@ -8,6 +8,7 @@ import { PROD_GEOSERVER_URL } from '@/lib/constants'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Label as RechartsLabel } from 'recharts'
 import type { LayerContentProps } from '@/components/maps/popups/types'
 import { useDisplacementFilters, useEffectiveThresholdsIn, isChartedType, type ChartedType } from './displacement-filter-context'
+import { useMap } from '@/hooks/use-map'
 import { DISPLACEMENT_LAYER_TYPES, DISPLACEMENT_TYPE_NAME, getStyleNameForType, isDisplacementLayerTitle, type DisplacementType } from './displacement-layers'
 import { fetchDisplacementSldBins, type SldBin } from './displacement-sld-legend'
 
@@ -110,6 +111,27 @@ export function findBin(bins: SldBin[], v: number): SldBin | undefined {
     return bins.find(b => v >= b.min && v < b.max)
 }
 
+// Compute [minLng, minLat, maxLng, maxLat] across a feature collection without
+// pulling in turf. Walks Polygon/MultiPolygon coordinate trees recursively.
+function combinedBbox(features: DisplacementFeature[]): [number, number, number, number] | null {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    const visit = (node: unknown): void => {
+        if (Array.isArray(node) && typeof node[0] === 'number' && typeof node[1] === 'number') {
+            const x = node[0], y = node[1]
+            if (x < minX) minX = x
+            if (x > maxX) maxX = x
+            if (y < minY) minY = y
+            if (y > maxY) maxY = y
+        } else if (Array.isArray(node)) {
+            for (const child of node) visit(child)
+        }
+    }
+    for (const f of features) {
+        if (f.geometry?.coordinates) visit(f.geometry.coordinates)
+    }
+    return Number.isFinite(minX) ? [minX, minY, maxX, maxY] : null
+}
+
 function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     const { year, basinsByType } = useDisplacementFilters()
     const effective = useEffectiveThresholdsIn()
@@ -202,6 +224,50 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             .sort((a, b) => a.year.localeCompare(b.year))
     }, [scoped, thresholdIn, plotBins])
 
+    // Top Basins: rank by max |value_inch| per location among `scoped` features.
+    // Color each row by the SLD bin its max value falls into so visual sorting
+    // tracks subsidence depth.
+    const topBasins = useMemo(() => {
+        const byLocation = new Map<string, { signed: number; abs: number; features: DisplacementFeature[] }>()
+        for (const f of scoped) {
+            const loc = f.properties.location
+            if (!loc) continue
+            const v = f.properties.value_inch
+            const a = Math.abs(v)
+            const cur = byLocation.get(loc)
+            if (!cur) {
+                byLocation.set(loc, { signed: v, abs: a, features: [f] })
+            } else {
+                cur.features.push(f)
+                if (a > cur.abs) {
+                    cur.signed = v
+                    cur.abs = a
+                }
+            }
+        }
+        return Array.from(byLocation, ([location, { signed, abs, features: locFeatures }]) => ({
+            location,
+            signed,
+            abs,
+            features: locFeatures,
+            bin: findBin(plotBins, signed),
+        }))
+            .filter(b => b.abs >= thresholdIn)
+            .sort((a, b) => b.abs - a.abs)
+            .slice(0, 10)
+    }, [scoped, plotBins, thresholdIn])
+
+    const topAbs = topBasins[0]?.abs ?? 0
+
+    const { map } = useMap()
+    function zoomToBasin(features: DisplacementFeature[]) {
+        if (!map || features.length === 0) return
+        const bb = combinedBbox(features)
+        if (!bb) return
+        const [minX, minY, maxX, maxY] = bb
+        map.fitBounds([[minX, minY], [maxX, maxY]], { padding: 60, maxZoom: 12, duration: 600 })
+    }
+
     if (isError) return <div className="text-xs text-destructive mb-2">Failed to load stats.</div>
 
     return (
@@ -251,6 +317,40 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                         </div>
                     ))}
                 </div>
+            </div>
+
+            <div>
+                <h4 className="text-xs font-medium mb-1">Top Basins by Max |displacement|</h4>
+                <p className="text-[10px] text-muted-foreground mb-2">Rows colored by the SLD bin of each basin's deepest contour. Click to zoom the map to that basin.</p>
+                {isLoading ? (
+                    <Skeleton className="h-40 w-full" />
+                ) : topBasins.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground">No basins above threshold.</p>
+                ) : (
+                    <div className="flex flex-col gap-1">
+                        {topBasins.map(b => {
+                            const pct = topAbs > 0 ? (b.abs / topAbs) * 100 : 0
+                            const color = b.bin?.color ?? 'hsl(var(--muted-foreground))'
+                            return (
+                                <button
+                                    key={b.location}
+                                    type="button"
+                                    onClick={() => zoomToBasin(b.features)}
+                                    className="group grid grid-cols-[1fr_auto] items-center gap-2 rounded px-1.5 py-1 hover:bg-muted/60 text-left"
+                                    title={`Zoom to ${b.location}`}
+                                >
+                                    <div className="flex flex-col gap-1 min-w-0">
+                                        <span className="truncate text-[11px] text-foreground group-hover:text-primary">{b.location}</span>
+                                        <div className="h-2 w-full rounded bg-muted overflow-hidden ring-1 ring-foreground/20">
+                                            <div className="h-full" style={{ width: `${pct}%`, background: color }} />
+                                        </div>
+                                    </div>
+                                    <span className="tabular-nums text-[11px] text-muted-foreground whitespace-nowrap">{fmt1(b.abs)} in</span>
+                                </button>
+                            )
+                        })}
+                    </div>
+                )}
             </div>
         </div>
     )
