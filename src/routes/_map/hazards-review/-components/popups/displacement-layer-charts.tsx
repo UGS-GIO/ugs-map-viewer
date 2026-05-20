@@ -5,7 +5,7 @@ import type { Feature, FeatureCollection, Polygon, MultiPolygon } from 'geojson'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Label as RechartsLabel } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell, Label as RechartsLabel } from 'recharts'
 import type { LayerContentProps } from '@/components/maps/popups/types'
 import { useDisplacementFilters, useEffectiveThresholdsIn, isChartedType, type ChartedType } from './displacement-filter-context'
 import { useMap } from '@/hooks/use-map'
@@ -224,20 +224,24 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             .sort((a, b) => a.year.localeCompare(b.year))
     }, [scoped, thresholdIn, plotBins])
 
-    // Top Basins: rank by max |value_inch| per location among `scoped` features.
-    // Color each row by the SLD bin its max value falls into so visual sorting
-    // tracks subsidence depth.
-    const topBasins = useMemo(() => {
-        const byLocation = new Map<string, { signed: number; abs: number; features: DisplacementFeature[] }>()
+    // Per-basin total subsiding area: sum mi² of features above threshold per
+    // location. Tracks each basin's deepest contour so the bar can be colored
+    // by the SLD bin that matches the map. All basins included, sorted by area
+    // descending so the worst basins surface first on the X axis.
+    const basinAreas = useMemo(() => {
+        const byLocation = new Map<string, { area: number; signed: number; abs: number; features: DisplacementFeature[] }>()
         for (const f of scoped) {
             const loc = f.properties.location
             if (!loc) continue
             const v = f.properties.value_inch
             const a = Math.abs(v)
+            if (a < thresholdIn) continue
+            const sqMi = area(f) * SQM_TO_SQMI
             const cur = byLocation.get(loc)
             if (!cur) {
-                byLocation.set(loc, { signed: v, abs: a, features: [f] })
+                byLocation.set(loc, { area: sqMi, signed: v, abs: a, features: [f] })
             } else {
+                cur.area += sqMi
                 cur.features.push(f)
                 if (a > cur.abs) {
                     cur.signed = v
@@ -245,19 +249,13 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                 }
             }
         }
-        return Array.from(byLocation, ([location, { signed, abs, features: locFeatures }]) => ({
+        return Array.from(byLocation, ([location, { area: areaSqMi, signed, features: locFeatures }]) => ({
             location,
-            signed,
-            abs,
+            area: Number(fmt1(areaSqMi)),
             features: locFeatures,
             bin: findBin(plotBins, signed),
-        }))
-            .filter(b => b.abs >= thresholdIn)
-            .sort((a, b) => b.abs - a.abs)
-            .slice(0, 10)
+        })).sort((a, b) => b.area - a.area)
     }, [scoped, plotBins, thresholdIn])
-
-    const topAbs = topBasins[0]?.abs ?? 0
 
     const { map } = useMap()
     function zoomToBasin(features: DisplacementFeature[]) {
@@ -320,37 +318,43 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             </div>
 
             <div>
-                <h4 className="text-xs font-medium mb-1">Top Basins by Max |displacement|</h4>
-                <p className="text-[10px] text-muted-foreground mb-2">Rows colored by the SLD bin of each basin's deepest contour. Click to zoom the map to that basin.</p>
-                {isLoading ? (
-                    <Skeleton className="h-40 w-full" />
-                ) : topBasins.length === 0 ? (
-                    <p className="text-[11px] text-muted-foreground">No basins above threshold.</p>
-                ) : (
-                    <div className="flex flex-col gap-1">
-                        {topBasins.map(b => {
-                            const pct = topAbs > 0 ? (b.abs / topAbs) * 100 : 0
-                            const color = b.bin?.color ?? 'hsl(var(--muted-foreground))'
-                            return (
-                                <button
-                                    key={b.location}
-                                    type="button"
-                                    onClick={() => zoomToBasin(b.features)}
-                                    className="group grid grid-cols-[1fr_auto] items-center gap-2 rounded px-1.5 py-1 hover:bg-muted/60 text-left"
-                                    title={`Zoom to ${b.location}`}
-                                >
-                                    <div className="flex flex-col gap-1 min-w-0">
-                                        <span className="truncate text-[11px] text-foreground group-hover:text-primary">{b.location}</span>
-                                        <div className="h-2 w-full rounded bg-muted overflow-hidden ring-1 ring-foreground/20">
-                                            <div className="h-full" style={{ width: `${pct}%`, background: color }} />
-                                        </div>
-                                    </div>
-                                    <span className="tabular-nums text-[11px] text-muted-foreground whitespace-nowrap">{fmt1(b.abs)} in</span>
-                                </button>
-                            )
-                        })}
-                    </div>
-                )}
+                <h4 className="text-xs font-medium mb-1">Subsiding Area by Basin</h4>
+                <p className="text-[10px] text-muted-foreground mb-1">Each bar is one basin's total area above threshold. Colored by the SLD bin of that basin's deepest contour. Click a bar to zoom the map to that basin.</p>
+                <div className="h-56 w-full">
+                    {isLoading ? <Skeleton className="h-full w-full" /> : basinAreas.length === 0 ? (
+                        <p className="text-[11px] text-muted-foreground">No basins above threshold.</p>
+                    ) : (
+                        <ResponsiveContainer>
+                            <BarChart data={basinAreas} margin={{ top: 4, right: 4, bottom: 48, left: 0 }}>
+                                <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
+                                <XAxis
+                                    dataKey="location"
+                                    stroke="currentColor"
+                                    tick={{ fill: 'currentColor', fontSize: 10 }}
+                                    interval={0}
+                                    angle={-35}
+                                    textAnchor="end"
+                                    height={56}
+                                />
+                                <YAxis stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} unit=" mi²" width={75} tickMargin={4}>
+                                    <RechartsLabel value="Subsiding Area (mi²)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
+                                </YAxis>
+                                <Tooltip
+                                    contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--popover-foreground))' }}
+                                    labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                                    itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                                    cursor={{ fill: 'currentColor', fillOpacity: 0.05 }}
+                                    formatter={(v) => [`${typeof v === 'number' ? fmt1(v) : v} mi²`, 'subsiding area']}
+                                />
+                                <Bar dataKey="area" onClick={(_, idx) => zoomToBasin(basinAreas[idx].features)} style={{ cursor: 'pointer' }}>
+                                    {basinAreas.map(b => (
+                                        <Cell key={b.location} fill={b.bin?.color ?? 'hsl(var(--muted-foreground))'} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
+                        </ResponsiveContainer>
+                    )}
+                </div>
             </div>
         </div>
     )
