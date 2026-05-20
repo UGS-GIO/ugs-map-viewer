@@ -112,12 +112,14 @@ export function findBin(bins: SldBin[], v: number): SldBin | undefined {
 }
 
 // Compute [minLng, minLat, maxLng, maxLat] across a feature collection without
-// pulling in turf. Walks Polygon/MultiPolygon coordinate trees recursively.
+// pulling in turf. Walks Polygon/MultiPolygon coordinate trees recursively and
+// skips non-finite numbers so a single bad coord pair can't poison fitBounds.
 function combinedBbox(features: DisplacementFeature[]): [number, number, number, number] | null {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
     const visit = (node: unknown): void => {
         if (Array.isArray(node) && typeof node[0] === 'number' && typeof node[1] === 'number') {
             const x = node[0], y = node[1]
+            if (!Number.isFinite(x) || !Number.isFinite(y)) return
             if (x < minX) minX = x
             if (x > maxX) maxX = x
             if (y < minY) minY = y
@@ -129,7 +131,9 @@ function combinedBbox(features: DisplacementFeature[]): [number, number, number,
     for (const f of features) {
         if (f.geometry?.coordinates) visit(f.geometry.coordinates)
     }
-    return Number.isFinite(minX) ? [minX, minY, maxX, maxY] : null
+    if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) return null
+    if (minX > maxX || minY > maxY) return null
+    return [minX, minY, maxX, maxY]
 }
 
 function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
@@ -262,7 +266,13 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
         const bb = combinedBbox(features)
         if (!bb) return
         const [minX, minY, maxX, maxY] = bb
-        map.fitBounds([[minX, minY], [maxX, maxY]], { padding: 60, maxZoom: 12, duration: 600 })
+        try {
+            map.fitBounds([[minX, minY], [maxX, maxY]], { padding: 60, maxZoom: 12, duration: 600 })
+        } catch (err) {
+            // MapLibre throws on degenerate bounds (single point, NaN, etc.).
+            // Log and bail rather than crash the whole popup.
+            console.warn('zoomToBasin: fitBounds failed', err, { minX, minY, maxX, maxY })
+        }
     }
 
     if (isError) return <div className="text-xs text-destructive mb-2">Failed to load stats.</div>
