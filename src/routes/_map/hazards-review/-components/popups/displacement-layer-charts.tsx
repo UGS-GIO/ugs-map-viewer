@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import area from '@turf/area'
 import type { Feature, FeatureCollection, Polygon, MultiPolygon } from 'geojson'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
@@ -137,11 +138,12 @@ function combinedBbox(features: DisplacementFeature[]): [number, number, number,
 }
 
 function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
-    const { year, basinsByType, addBasin } = useDisplacementFilters()
+    const { year, basinsByType, addBasin, setYear, clearBasins } = useDisplacementFilters()
     const effective = useEffectiveThresholdsIn()
     const thresholdIn = effective[typeValue]
     const styleName = getChartedStyleName(typeValue)
     const selectedBasins = basinsByType[typeValue]
+    const basinFilterActive = selectedBasins.size > 0
 
     const { data: features = [], isLoading: featuresLoading, isError } = useQuery({
         queryKey: DISPLACEMENT_QUERY_KEY,
@@ -228,12 +230,18 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             .sort((a, b) => a.year.localeCompare(b.year))
     }, [scoped, thresholdIn, plotBins])
 
-    // Per-basin worst subsidence: deepest |value_inch| contour above threshold
-    // per location. Honors year filter via `filtered` so the worst-basin list
-    // stays in sync with the KPI tiles above when a Water Year is picked.
+    // Worst-basin list considers ALL basins (skips the basin filter) so the
+    // ranking stays complete; non-selected rows render greyed out when a
+    // basin filter is active. Still honors year + threshold + type scope.
     const basinsByDepth = useMemo(() => {
+        const yearMatched = (f: DisplacementFeature) => {
+            if (year === 'all') return true
+            return getBucketYear(f.properties) === year
+        }
         const byLocation = new Map<string, { signed: number; abs: number; features: DisplacementFeature[] }>()
-        for (const f of filtered) {
+        for (const f of features) {
+            if (f.properties.type !== typeValue) continue
+            if (!yearMatched(f)) continue
             const loc = f.properties.location
             if (!loc) continue
             const v = f.properties.value_inch
@@ -256,7 +264,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             features: locFeatures,
             bin: findBin(plotBins, signed),
         })).sort((a, b) => b.abs - a.abs)
-    }, [filtered, plotBins, thresholdIn])
+    }, [features, typeValue, year, thresholdIn, plotBins])
 
     const worstDepth = basinsByDepth[0]?.abs ?? 0
 
@@ -287,12 +295,27 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             </div>
 
             <div>
-                <h4 className="text-xs font-medium mb-1">Subsiding Area by {yearAxisLabel}</h4>
-                <p className="text-[10px] text-muted-foreground mb-1">Stacked by SLD bin (in). Bin breaks + colors match the map's {styleName} style. Year filter does not apply.</p>
+                <div className="flex items-center justify-between mb-1">
+                    <h4 className="text-xs font-medium">Subsiding Area by {yearAxisLabel}</h4>
+                    {year !== 'all' && (
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => setYear('all')}>
+                            Clear year
+                        </Button>
+                    )}
+                </div>
+                <p className="text-[10px] text-muted-foreground mb-1">Stacked by SLD bin (in). Bin breaks + colors match the map. Click a year column to filter to that year.</p>
                 <div className="h-56 w-full">
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
                         <ResponsiveContainer>
-                            <BarChart data={stackedAreaByYear} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                            <BarChart
+                                data={stackedAreaByYear}
+                                margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
+                                onClick={(state) => {
+                                    const label = state?.activeLabel
+                                    if (typeof label === 'string' && label) setYear(label)
+                                }}
+                                style={{ cursor: 'pointer' }}
+                            >
                                 <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
                                 <XAxis dataKey="year" stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} height={20} />
                                 <YAxis stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} unit=" mi²" width={75} tickMargin={4}>
@@ -327,8 +350,20 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             </div>
 
             <div>
-                <h4 className="text-xs font-medium mb-1">Worst Subsidence per Basin</h4>
-                <p className="text-[10px] text-muted-foreground mb-2">Basins ranked by their deepest contour value. Click a row to zoom to that basin.</p>
+                <div className="flex items-center justify-between mb-1">
+                    <h4 className="text-xs font-medium">Worst Subsidence per Basin</h4>
+                    {basinFilterActive && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-[10px]"
+                            onClick={() => clearBasins(typeValue)}
+                        >
+                            Clear filter
+                        </Button>
+                    )}
+                </div>
+                <p className="text-[10px] text-muted-foreground mb-2">Basins ranked by their deepest contour value. Click a row to zoom + filter to that basin. Unselected basins grey out when a filter is active.</p>
                 {isLoading ? (
                     <Skeleton className="h-40 w-full" />
                 ) : basinsByDepth.length === 0 ? (
@@ -338,6 +373,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                         {basinsByDepth.map(b => {
                             const pct = worstDepth > 0 ? (b.abs / worstDepth) * 100 : 0
                             const color = b.bin?.color ?? 'hsl(var(--muted-foreground))'
+                            const inFilter = !basinFilterActive || selectedBasins.has(b.location)
                             return (
                                 <button
                                     key={b.location}
@@ -346,8 +382,8 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                                         addBasin(typeValue, b.location)
                                         zoomToBasin(b.features)
                                     }}
-                                    className="group grid grid-cols-[1fr_auto] items-center gap-2 rounded px-1.5 py-1 hover:bg-muted/60 text-left"
-                                    title={`Zoom to ${b.location}`}
+                                    className={`group grid grid-cols-[1fr_auto] items-center gap-2 rounded px-1.5 py-1 hover:bg-muted/60 text-left transition-opacity ${inFilter ? '' : 'opacity-30 hover:opacity-100'}`}
+                                    title={`Zoom + filter to ${b.location}`}
                                 >
                                     <div className="flex flex-col gap-1 min-w-0">
                                         <span className="truncate text-[11px] text-foreground group-hover:text-primary">{b.location}</span>
