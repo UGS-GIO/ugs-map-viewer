@@ -300,13 +300,19 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
         if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) return
         if (minX > maxX || minY > maxY) return
         try {
-            // Cancel any in-flight camera animation first; otherwise rapid toggles
-            // queue overlapping fitBounds calls and MapLibre throws inside its
-            // requestAnimationFrame callback (map briefly unusable until reload).
-            map.stop()
-            map.fitBounds([[minX, minY], [maxX, maxY]], { padding: 60, maxZoom: 12, duration: 600 })
+            // Defer fitBounds to the next frame so it never lands inside an
+            // in-flight render. animate:false skips the camera tween entirely,
+            // sidestepping MapLibre's 'transition already running' errors when
+            // rapid basin toggles queue overlapping fitBounds calls.
+            requestAnimationFrame(() => {
+                try {
+                    map.fitBounds([[minX, minY], [maxX, maxY]], { padding: 60, maxZoom: 12, animate: false })
+                } catch (err) {
+                    console.warn('zoomToBboxes: fitBounds failed', err, { minX, minY, maxX, maxY })
+                }
+            })
         } catch (err) {
-            console.warn('zoomToBboxes: fitBounds failed', err, { minX, minY, maxX, maxY })
+            console.warn('zoomToBboxes: scheduling failed', err)
         }
     }
 
