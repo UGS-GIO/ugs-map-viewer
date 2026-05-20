@@ -171,15 +171,15 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
         [features, typeValue, selectedBasins]
     )
 
-    // Cumulative features have no `year` (period-keyed instead); skip year filter
-    // for that type so its KPIs/chart aren't zeroed out by a year selection.
-    const ignoreYear = typeValue === 'Cumulative'
+    // Year filter resolution: Yearly matches `year`; Cumulative matches the
+    // year of `end_date` (so picking 2024 narrows to the 2017-2024 window etc.).
     const filtered = useMemo(() => {
+        if (year === 'all') return scoped
         return scoped.filter(f => {
-            if (!ignoreYear && year !== 'all' && f.properties.year !== year) return false
-            return true
+            const bucket = getBucketYear(f.properties)
+            return bucket === year
         })
-    }, [scoped, year, ignoreYear])
+    }, [scoped, year])
 
     const yearAxisLabel = typeValue === 'Cumulative' ? 'Period End Year' : 'Water Year'
 

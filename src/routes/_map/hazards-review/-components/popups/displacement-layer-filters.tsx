@@ -5,13 +5,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import { useDisplacementFilters, useEffectiveThresholdsIn, isChartedType } from './displacement-filter-context'
+import { useDisplacementFilters, useEffectiveThresholdsIn, isChartedType, isPeriodKeyedType } from './displacement-filter-context'
 import { DISPLACEMENT_LAYER_TYPES, isDisplacementLayerTitle, type DisplacementType } from './displacement-layers'
 import { DISPLACEMENT_QUERY_KEY, fetchAllDisplacement, getBucketYear } from './displacement-layer-charts'
 
-// Cumulative + Vertical Displacement Rate carry null `year` so the year filter
-// can't apply — only Yearly exposes a Water Year selector.
-const TYPES_WITH_YEAR: ReadonlySet<DisplacementType> = new Set(['Yearly'])
+// Label the year dropdown by type semantics: 'Water Year' for Yearly,
+// 'Period End Year' for Cumulative + Vertical Displacement Rate.
+function yearLabelFor(type: DisplacementType): string {
+    return isPeriodKeyedType(type) ? 'Period End Year' : 'Water Year'
+}
 
 export function renderDisplacementLayerFilters(layerTitle: string): React.ReactNode {
     if (!isDisplacementLayerTitle(layerTitle)) return null
@@ -23,7 +25,6 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
     const { year, thresholdsIn, basinsByType, setYear, setThresholdIn, addBasin, removeBasin, clearBasins } = useDisplacementFilters()
     const effective = useEffectiveThresholdsIn()
 
-    const hasYear = TYPES_WITH_YEAR.has(typeValue)
     const isCharted = isChartedType(typeValue)
 
     const { data: features = [] } = useQuery({
@@ -32,8 +33,10 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
         staleTime: 10 * 60 * 1000,
     })
 
+    // Year options come from getBucketYear: water year for Yearly, end_date
+    // year for period-keyed types. hasYear flips on once any years exist for
+    // this type so the dropdown stays hidden if there's nothing to pick.
     const years = useMemo(() => {
-        if (!hasYear) return []
         const ys = new Set<string>()
         for (const f of features) {
             if (f.properties.type !== typeValue) continue
@@ -41,7 +44,8 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
             if (y) ys.add(y)
         }
         return Array.from(ys).sort()
-    }, [features, typeValue, hasYear])
+    }, [features, typeValue])
+    const hasYear = years.length > 0
 
     // All basins present for this type. Drives the "add basin" dropdown so it
     // only offers locations that actually have features.
@@ -75,7 +79,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
         <div className="flex flex-col gap-2">
             {hasYear && (
                 <div className="flex flex-col gap-1">
-                    <Label className="text-xs">Water Year</Label>
+                    <Label className="text-xs">{yearLabelFor(typeValue)}</Label>
                     <Select value={displayYear} onValueChange={setYear}>
                         <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                         <SelectContent>

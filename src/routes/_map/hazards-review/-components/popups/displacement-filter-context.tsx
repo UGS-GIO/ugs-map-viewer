@@ -81,9 +81,14 @@ export function useDisplacementFilters(): DisplacementFilterState {
     return ctx
 }
 
-// Types whose features have null `year` (period-keyed) — Cumulative and Vertical
-// Displacement Rate both summarize a multi-year period instead of a single year.
-const TYPES_WITHOUT_YEAR: ReadonlySet<DisplacementType> = new Set(['Cumulative', 'Vertical Displacement Rate'])
+// Types whose features have null `year` (period-keyed). Year filter still
+// applies but resolves against `end_date` (the year that closes each
+// observation window) instead of the per-feature `year` column.
+const PERIOD_KEYED_TYPES: ReadonlySet<DisplacementType> = new Set(['Cumulative', 'Vertical Displacement Rate'])
+
+export function isPeriodKeyedType(t: DisplacementType): boolean {
+    return PERIOD_KEYED_TYPES.has(t)
+}
 
 export function isChartedType(t: DisplacementType): t is ChartedType {
     return (CHARTED_TYPES as readonly string[]).includes(t)
@@ -143,8 +148,15 @@ export function useDisplacementLayerFilters(): Record<string, string> {
         const out: Record<DisplacementLayerTitle, string> = {} as Record<DisplacementLayerTitle, string>
         for (const [title, typeValue] of Object.entries(DISPLACEMENT_LAYER_TYPES) as [DisplacementLayerTitle, DisplacementType][]) {
             const clauses: string[] = []
-            if (year !== 'all' && !TYPES_WITHOUT_YEAR.has(typeValue)) {
-                clauses.push(`year='${year}'`)
+            if (year !== 'all') {
+                if (PERIOD_KEYED_TYPES.has(typeValue)) {
+                    // Period-keyed types (Cumulative, Vertical Displacement Rate) match
+                    // by end_date year — picks the observation window closing in that year.
+                    clauses.push(`end_date LIKE '${year}%'`)
+                } else {
+                    // Year-keyed types (Yearly) match the water year column directly.
+                    clauses.push(`year='${year}'`)
+                }
             }
             if (isChartedType(typeValue)) {
                 const thresholdIn = effective[typeValue]

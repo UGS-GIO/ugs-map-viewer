@@ -1,20 +1,17 @@
 import type { ExtendedFeature, LayerContentProps } from '@/components/maps/popups/types'
 import { DISPLACEMENT_LAYER_TYPES, isDisplacementLayerTitle, type DisplacementType } from './displacement-layers'
+import { isPeriodKeyedType } from './displacement-filter-context'
 
 interface FilterState {
     year: string
     basinsByType: Record<DisplacementType, ReadonlySet<string>>
 }
 
-// Types whose features carry null `year` (period-keyed). Year selector can't
-// meaningfully include or exclude them, so they always pass through.
-const TYPES_WITHOUT_YEAR = new Set(['Cumulative', 'Vertical Displacement Rate'])
-
 /**
  * Returns a predicate that mirrors the year + basin cql clauses on the popup
  * side, so feature cards for non-matching years or unselected basins are hidden
- * inline with the map tiles. Non-displacement layers always pass through;
- * period-keyed types pass through the year check.
+ * inline with the map tiles. Year filter matches the water year column for
+ * Yearly, and the end_date year for period-keyed types (Cumulative + VDR).
  */
 export function makeDisplacementPopupFeatureFilter(state: FilterState) {
     const yearActive = state.year !== 'all'
@@ -30,10 +27,15 @@ export function makeDisplacementPopupFeatureFilter(state: FilterState) {
         const title = layer.layerTitle || layer.groupLayerTitle || ''
         if (!isDisplacementLayerTitle(title)) return true
         const typeValue = DISPLACEMENT_LAYER_TYPES[title]
-        const props = feature.properties as { year?: string; location?: string } | undefined
+        const props = feature.properties as { year?: string; location?: string; end_date?: string } | undefined
 
-        if (yearActive && !TYPES_WITHOUT_YEAR.has(typeValue)) {
-            if (props?.year !== state.year) return false
+        if (yearActive) {
+            if (isPeriodKeyedType(typeValue)) {
+                const endYear = props?.end_date?.slice(0, 4)
+                if (endYear !== state.year) return false
+            } else {
+                if (props?.year !== state.year) return false
+            }
         }
         if (basinActiveByType[typeValue]) {
             const loc = props?.location
