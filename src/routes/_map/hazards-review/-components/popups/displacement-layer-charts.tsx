@@ -328,7 +328,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
 
             <div>
                 <h4 className="text-xs font-medium mb-1">Worst Subsidence per Basin</h4>
-                <p className="text-[10px] text-muted-foreground mb-2">Basins ranked by their deepest contour value. Bar color tracks the SLD bin so depth and color match the map. Click a row to zoom to that basin.</p>
+                <p className="text-[10px] text-muted-foreground mb-2">Basins ranked by their deepest contour value. Click a row to zoom to that basin.</p>
                 {isLoading ? (
                     <Skeleton className="h-40 w-full" />
                 ) : basinsByDepth.length === 0 ? (
