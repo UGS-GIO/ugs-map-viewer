@@ -138,7 +138,7 @@ function combinedBbox(features: DisplacementFeature[]): [number, number, number,
 }
 
 function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
-    const { year, basinsByType, addBasin, setYear, clearBasins } = useDisplacementFilters()
+    const { year, basinsByType, addBasin, removeBasin, setYear, clearBasins } = useDisplacementFilters()
     const effective = useEffectiveThresholdsIn()
     const thresholdIn = effective[typeValue]
     const styleName = getChartedStyleName(typeValue)
@@ -383,19 +383,27 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                                     key={b.location}
                                     type="button"
                                     onClick={() => {
-                                        addBasin(typeValue, b.location)
-                                        // Zoom to the union of all selected basins after this click,
-                                        // not just the row you tapped — so multi-select keeps every
-                                        // selected basin in view.
+                                        // Toggle: click an already-selected basin to remove it.
+                                        const wasSelected = selectedBasins.has(b.location)
                                         const nextSelected = new Set(selectedBasins)
-                                        nextSelected.add(b.location)
+                                        if (wasSelected) {
+                                            removeBasin(typeValue, b.location)
+                                            nextSelected.delete(b.location)
+                                        } else {
+                                            addBasin(typeValue, b.location)
+                                            nextSelected.add(b.location)
+                                        }
+                                        // Zoom to the union of whatever's selected after the toggle.
+                                        // Empty selection (last basin removed) leaves the map where it is.
+                                        if (nextSelected.size === 0) return
                                         const unionFeatures = basinsByDepth
                                             .filter(x => nextSelected.has(x.location))
                                             .flatMap(x => x.features)
-                                        zoomToBasin(unionFeatures.length > 0 ? unionFeatures : b.features)
+                                        zoomToBasin(unionFeatures)
                                     }}
                                     className={`group grid grid-cols-[1fr_auto] items-center gap-2 rounded px-1.5 py-1 hover:bg-muted/60 text-left transition-opacity ${inFilter ? '' : 'opacity-30 hover:opacity-100'}`}
-                                    title={`Zoom + filter to ${b.location}`}
+                                    title={selectedBasins.has(b.location) ? `Remove ${b.location} from filter` : `Zoom + filter to ${b.location}`}
+                                    aria-pressed={selectedBasins.has(b.location)}
                                 >
                                     <div className="flex flex-col gap-1 min-w-0">
                                         <span className="truncate text-[11px] text-foreground group-hover:text-primary">{b.location}</span>
