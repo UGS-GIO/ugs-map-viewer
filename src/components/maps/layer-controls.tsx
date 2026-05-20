@@ -216,7 +216,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     <div
                         className={`overflow-hidden transition-[max-height] duration-200 ease-out ${filtersOpen ? 'max-h-[1000px]' : 'max-h-0'}`}
                     >
-                        <div className="mx-1 mt-2 mb-2 rounded border border-border bg-muted/40 p-1.5">
+                        <div className="mt-2 mb-2 rounded border border-border bg-muted/40 p-1">
                             {filtersContent}
                         </div>
                     </div>
@@ -225,7 +225,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     <div
                         className={`overflow-hidden transition-[max-height] duration-200 ease-out ${statsOpen ? 'max-h-[2000px]' : 'max-h-0'}`}
                     >
-                        <div className="mx-1 mt-2 mb-2 rounded border border-border bg-muted/40 p-1.5">
+                        <div className="mt-2 mb-2 rounded border border-border bg-muted/40 p-1">
                             {statsContent}
                         </div>
                     </div>
