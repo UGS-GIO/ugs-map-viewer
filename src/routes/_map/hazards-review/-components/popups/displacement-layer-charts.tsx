@@ -262,6 +262,10 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             location,
             abs,
             features: locFeatures,
+            // Precompute bbox once per basin so multi-select zooming combines
+            // pre-baked numbers instead of re-walking thousands of coordinates
+            // on every click — was tanking the main thread on busy basins.
+            bbox: combinedBbox(locFeatures),
             bin: findBin(plotBins, signed),
         })).sort((a, b) => b.abs - a.abs)
     }, [features, typeValue, year, thresholdIn, plotBins])
@@ -282,17 +286,27 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     const worstDepth = globalWorstDepth
 
     const { map } = useMap()
-    function zoomToBasin(features: DisplacementFeature[]) {
-        if (!map || features.length === 0) return
-        const bb = combinedBbox(features)
-        if (!bb) return
-        const [minX, minY, maxX, maxY] = bb
+    // Combine precomputed basin bboxes (cheap min/max math) and pan once.
+    function zoomToBboxes(bboxes: ([number, number, number, number] | null)[]) {
+        if (!map) return
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+        for (const bb of bboxes) {
+            if (!bb) continue
+            if (bb[0] < minX) minX = bb[0]
+            if (bb[1] < minY) minY = bb[1]
+            if (bb[2] > maxX) maxX = bb[2]
+            if (bb[3] > maxY) maxY = bb[3]
+        }
+        if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) return
+        if (minX > maxX || minY > maxY) return
         try {
+            // Cancel any in-flight camera animation first; otherwise rapid toggles
+            // queue overlapping fitBounds calls and MapLibre throws inside its
+            // requestAnimationFrame callback (map briefly unusable until reload).
+            map.stop()
             map.fitBounds([[minX, minY], [maxX, maxY]], { padding: 60, maxZoom: 12, duration: 600 })
         } catch (err) {
-            // MapLibre throws on degenerate bounds (single point, NaN, etc.).
-            // Log and bail rather than crash the whole popup.
-            console.warn('zoomToBasin: fitBounds failed', err, { minX, minY, maxX, maxY })
+            console.warn('zoomToBboxes: fitBounds failed', err, { minX, minY, maxX, maxY })
         }
     }
 
@@ -406,13 +420,11 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                                             addBasin(typeValue, b.location)
                                             nextSelected.add(b.location)
                                         }
-                                        // Zoom to the union of whatever's selected after the toggle.
-                                        // Empty selection (last basin removed) leaves the map where it is.
                                         if (nextSelected.size === 0) return
-                                        const unionFeatures = basinsByDepth
+                                        const bboxes = basinsByDepth
                                             .filter(x => nextSelected.has(x.location))
-                                            .flatMap(x => x.features)
-                                        zoomToBasin(unionFeatures)
+                                            .map(x => x.bbox)
+                                        zoomToBboxes(bboxes)
                                     }}
                                     className={`group grid grid-cols-[1fr_auto] items-center gap-2 rounded px-1.5 py-1 hover:bg-muted/60 text-left transition-opacity ${inFilter ? '' : 'opacity-30 hover:opacity-100'}`}
                                     title={selectedBasins.has(b.location) ? `Remove ${b.location} from filter` : `Zoom + filter to ${b.location}`}
