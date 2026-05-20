@@ -21,8 +21,13 @@ type ThresholdState = number | null
 interface DisplacementFilterState {
     year: string  // 'all' or a 4-digit year
     thresholdsIn: Record<ChartedType, ThresholdState>
+    /** Selected basin locations per displacement type. Empty set = no basin filter (all basins). */
+    basinsByType: Record<DisplacementType, ReadonlySet<string>>
     setYear: (y: string) => void
     setThresholdIn: (type: ChartedType, n: ThresholdState) => void
+    addBasin: (type: DisplacementType, location: string) => void
+    removeBasin: (type: DisplacementType, location: string) => void
+    clearBasins: (type: DisplacementType) => void
 }
 
 const DisplacementFilterContext = createContext<DisplacementFilterState | null>(null)
@@ -33,13 +38,38 @@ export function DisplacementFilterProvider({ children }: { children: ReactNode }
         'Cumulative': null,
         'Yearly': null,
     })
+    const [basinsByType, setBasinsByType] = useState<Record<DisplacementType, ReadonlySet<string>>>({
+        'Cumulative': new Set(),
+        'Yearly': new Set(),
+        'Vertical Displacement Rate': new Set(),
+    })
 
     function setThresholdIn(type: ChartedType, n: ThresholdState) {
         setThresholdsIn(prev => ({ ...prev, [type]: n }))
     }
 
+    function addBasin(type: DisplacementType, location: string) {
+        setBasinsByType(prev => {
+            const next = new Set(prev[type])
+            next.add(location)
+            return { ...prev, [type]: next }
+        })
+    }
+
+    function removeBasin(type: DisplacementType, location: string) {
+        setBasinsByType(prev => {
+            const next = new Set(prev[type])
+            next.delete(location)
+            return { ...prev, [type]: next }
+        })
+    }
+
+    function clearBasins(type: DisplacementType) {
+        setBasinsByType(prev => ({ ...prev, [type]: new Set() }))
+    }
+
     return (
-        <DisplacementFilterContext.Provider value={{ year, thresholdsIn, setYear, setThresholdIn }}>
+        <DisplacementFilterContext.Provider value={{ year, thresholdsIn, basinsByType, setYear, setThresholdIn, addBasin, removeBasin, clearBasins }}>
             {children}
         </DisplacementFilterContext.Provider>
     )
@@ -100,8 +130,14 @@ export function useEffectiveThresholdsIn(): Record<ChartedType, number> {
  * customLayerParameters — GeoServer concatenates these clauses. Only charted
  * types get a threshold clause (others have no threshold UI to tune it from).
  */
+// Escape single quotes per the SQL/CQL string-literal convention so basin names
+// containing apostrophes don't break the filter (e.g. "O'Brien Valley").
+function quoteCqlLiteral(value: string): string {
+    return `'${value.replace(/'/g, "''")}'`
+}
+
 export function useDisplacementLayerFilters(): Record<string, string> {
-    const { year } = useDisplacementFilters()
+    const { year, basinsByType } = useDisplacementFilters()
     const effective = useEffectiveThresholdsIn()
     return useMemo(() => {
         const out: Record<DisplacementLayerTitle, string> = {} as Record<DisplacementLayerTitle, string>
@@ -116,8 +152,13 @@ export function useDisplacementLayerFilters(): Record<string, string> {
                     clauses.push(`(value_inch >= ${thresholdIn} OR value_inch <= ${-thresholdIn})`)
                 }
             }
+            const basins = basinsByType[typeValue]
+            if (basins && basins.size > 0) {
+                const list = Array.from(basins).map(quoteCqlLiteral).join(', ')
+                clauses.push(`location IN (${list})`)
+            }
             if (clauses.length > 0) out[title] = clauses.join(' AND ')
         }
         return out
-    }, [year, effective])
+    }, [year, effective, basinsByType])
 }

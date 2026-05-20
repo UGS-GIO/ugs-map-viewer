@@ -111,10 +111,11 @@ export function findBin(bins: SldBin[], v: number): SldBin | undefined {
 }
 
 function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
-    const { year } = useDisplacementFilters()
+    const { year, basinsByType } = useDisplacementFilters()
     const effective = useEffectiveThresholdsIn()
     const thresholdIn = effective[typeValue]
     const styleName = getChartedStyleName(typeValue)
+    const selectedBasins = basinsByType[typeValue]
 
     const { data: features = [], isLoading: featuresLoading, isError } = useQuery({
         queryKey: DISPLACEMENT_QUERY_KEY,
@@ -134,9 +135,14 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     const plotBins = useMemo(() => sldBins.filter(b => !b.isZero), [sldBins])
     const isLoading = featuresLoading || binsLoading
 
+    // Scope to this type AND any selected basins. Empty basin set = all basins.
     const scoped = useMemo(
-        () => features.filter(f => f.properties.type === typeValue),
-        [features, typeValue]
+        () => features.filter(f => {
+            if (f.properties.type !== typeValue) return false
+            if (selectedBasins.size > 0 && !selectedBasins.has(f.properties.location)) return false
+            return true
+        }),
+        [features, typeValue, selectedBasins]
     )
 
     // Cumulative features have no `year` (period-keyed instead); skip year filter
@@ -224,7 +230,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                                     labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
                                     itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
                                     cursor={{ fill: 'currentColor', fillOpacity: 0.05 }}
-                                    formatter={(v) => [`${typeof v === 'number' ? fmt1(v) : v} mi²`]}
+                                    formatter={(v, name) => [`${typeof v === 'number' ? fmt1(v) : v} mi²`, name]}
                                 />
                                 {plotBins.map(bin => (
                                     <Bar key={bin.name} dataKey={bin.name} stackId="rate" fill={bin.color} name={bin.title} />
