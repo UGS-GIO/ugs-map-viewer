@@ -372,7 +372,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                         </ResponsiveContainer>
                     )}
                 </div>
-                <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 text-[10px] text-foreground">
+                <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 px-2 text-[10px] text-foreground">
                     {plotBins.map(bin => (
                         <div key={bin.name} className="flex items-center gap-1.5 min-w-0">
                             <span
