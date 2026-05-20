@@ -368,7 +368,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
 
             <div>
                 <div className="flex items-center justify-between mb-1">
-                    <h4 className="text-xs font-medium">Worst Subsidence per Basin</h4>
+                    <h4 className="text-xs font-medium">Subsidence by Basin</h4>
                     {basinFilterActive && (
                         <Button
                             variant="ghost"
