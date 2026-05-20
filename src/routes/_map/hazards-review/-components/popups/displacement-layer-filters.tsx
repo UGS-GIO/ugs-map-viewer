@@ -91,7 +91,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                     <Label className="text-xs">
                         Threshold (|in|)
                         {rawThreshold === null && (
-                            <span className="ml-1 text-muted-foreground">· auto (SLD)</span>
+                            <span className="ml-1 text-muted-foreground">· default</span>
                         )}
                     </Label>
                     <Input
