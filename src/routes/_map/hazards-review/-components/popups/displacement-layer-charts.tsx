@@ -384,7 +384,15 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                                     type="button"
                                     onClick={() => {
                                         addBasin(typeValue, b.location)
-                                        zoomToBasin(b.features)
+                                        // Zoom to the union of all selected basins after this click,
+                                        // not just the row you tapped — so multi-select keeps every
+                                        // selected basin in view.
+                                        const nextSelected = new Set(selectedBasins)
+                                        nextSelected.add(b.location)
+                                        const unionFeatures = basinsByDepth
+                                            .filter(x => nextSelected.has(x.location))
+                                            .flatMap(x => x.features)
+                                        zoomToBasin(unionFeatures.length > 0 ? unionFeatures : b.features)
                                     }}
                                     className={`group grid grid-cols-[1fr_auto] items-center gap-2 rounded px-1.5 py-1 hover:bg-muted/60 text-left transition-opacity ${inFilter ? '' : 'opacity-30 hover:opacity-100'}`}
                                     title={`Zoom + filter to ${b.location}`}
