@@ -137,7 +137,7 @@ function combinedBbox(features: DisplacementFeature[]): [number, number, number,
 }
 
 function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
-    const { year, basinsByType } = useDisplacementFilters()
+    const { year, basinsByType, addBasin } = useDisplacementFilters()
     const effective = useEffectiveThresholdsIn()
     const thresholdIn = effective[typeValue]
     const styleName = getChartedStyleName(typeValue)
@@ -342,7 +342,10 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                                 <button
                                     key={b.location}
                                     type="button"
-                                    onClick={() => zoomToBasin(b.features)}
+                                    onClick={() => {
+                                        addBasin(typeValue, b.location)
+                                        zoomToBasin(b.features)
+                                    }}
                                     className="group grid grid-cols-[1fr_auto] items-center gap-2 rounded px-1.5 py-1 hover:bg-muted/60 text-left"
                                     title={`Zoom to ${b.location}`}
                                 >
