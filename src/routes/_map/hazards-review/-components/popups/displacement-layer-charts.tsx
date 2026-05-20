@@ -266,7 +266,20 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
         })).sort((a, b) => b.abs - a.abs)
     }, [features, typeValue, year, thresholdIn, plotBins])
 
-    const worstDepth = basinsByDepth[0]?.abs ?? 0
+    // Use the global worst depth (across this type's entire dataset, ignoring
+    // year/threshold) as the row-bar denominator so a basin's bar width keeps
+    // the same physical meaning regardless of the active filter. Picking a
+    // calm year no longer makes mild basins look maxed out.
+    const globalWorstDepth = useMemo(() => {
+        let max = 0
+        for (const f of features) {
+            if (f.properties.type !== typeValue) continue
+            const a = Math.abs(f.properties.value_inch)
+            if (a > max) max = a
+        }
+        return max
+    }, [features, typeValue])
+    const worstDepth = globalWorstDepth
 
     const { map } = useMap()
     function zoomToBasin(features: DisplacementFeature[]) {
