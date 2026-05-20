@@ -1,4 +1,4 @@
-import { PROD_GEOSERVER_URL } from '@/lib/constants'
+import { buildGetLegendGraphicUrl } from '@/lib/legend/wms-legend-service'
 import { DISPLACEMENT_TYPE_NAME } from './displacement-layers'
 
 /**
@@ -46,13 +46,8 @@ function parseBoundsFromFilter(filter: string): { min: number; max: number } {
 }
 
 export async function fetchDisplacementSldBins(styleName: string): Promise<SldBin[]> {
-    const url = new URL(`${PROD_GEOSERVER_URL}/wms`)
-    url.searchParams.set('service', 'WMS')
-    url.searchParams.set('request', 'GetLegendGraphic')
-    url.searchParams.set('format', 'application/json')
-    url.searchParams.set('layer', DISPLACEMENT_TYPE_NAME)
-    url.searchParams.set('style', styleName)
-    const res = await fetch(url.toString())
+    const url = buildGetLegendGraphicUrl(DISPLACEMENT_TYPE_NAME, undefined, styleName)
+    const res = await fetch(url)
     if (!res.ok) throw new Error(`WMS legend ${res.status}`)
     const data = await res.json() as LegendResponse
     const rules = data.Legend?.[0]?.rules ?? []
@@ -72,4 +67,13 @@ export async function fetchDisplacementSldBins(styleName: string): Promise<SldBi
     // Sort by lower bound so stacked bars + legend swatches read left-to-right.
     bins.sort((a, b) => a.min - b.min)
     return bins
+}
+
+// Resolve the SLD's "Zero" deadband to a single positive bound — the magnitude
+// at or below which the SLD treats values as "within uncertainty". Used as the
+// default threshold so filter behavior tracks SLD changes automatically.
+export function getZeroBound(bins: SldBin[]): number | null {
+    const zero = bins.find(b => b.isZero)
+    if (!zero) return null
+    return Math.max(Math.abs(zero.min), Math.abs(zero.max))
 }

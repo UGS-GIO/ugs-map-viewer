@@ -1,9 +1,9 @@
 import type { ExtendedFeature, LayerContentProps } from '@/components/maps/popups/types'
-import { DISPLACEMENT_LAYER_TYPES, isDisplacementLayerTitle, type DisplacementType } from './displacement-layers'
-import { isPeriodKeyedType } from './displacement-filter-context'
+import { DISPLACEMENT_LAYER_TYPES, isDisplacementLayerTitle, isPeriodKeyedType, type DisplacementType } from './displacement-layers'
 
-interface FilterState {
-    year: string
+interface PopupFilterInputs {
+    /** Resolved per-type year (user override or latest from data). Null = still loading for that type. */
+    effectiveYearByType: Record<DisplacementType, string | null>
     basinsByType: Record<DisplacementType, ReadonlySet<string>>
 }
 
@@ -12,34 +12,31 @@ interface FilterState {
  * side, so feature cards for non-matching years or unselected basins are hidden
  * inline with the map tiles. Year filter matches the water year column for
  * Yearly, and the end_date year for period-keyed types (Cumulative + VDR).
+ *
+ * The year filter is mandatory now (no "all years" sentinel): if a type's
+ * effective year is null, features for that type are dropped entirely until
+ * the data finishes loading.
  */
-export function makeDisplacementPopupFeatureFilter(state: FilterState) {
-    const yearActive = state.year !== 'all'
-    const basinActiveByType: Record<DisplacementType, boolean> = {
-        'Cumulative': state.basinsByType['Cumulative']?.size > 0,
-        'Yearly': state.basinsByType['Yearly']?.size > 0,
-        'Vertical Displacement Rate': state.basinsByType['Vertical Displacement Rate']?.size > 0,
-    }
-    const anyActive = yearActive || basinActiveByType['Cumulative'] || basinActiveByType['Yearly'] || basinActiveByType['Vertical Displacement Rate']
-    if (!anyActive) return undefined
-
+export function makeDisplacementPopupFeatureFilter({ effectiveYearByType, basinsByType }: PopupFilterInputs) {
     return (feature: ExtendedFeature, layer: LayerContentProps): boolean => {
         const title = layer.layerTitle || layer.groupLayerTitle || ''
         if (!isDisplacementLayerTitle(title)) return true
         const typeValue = DISPLACEMENT_LAYER_TYPES[title]
         const props = feature.properties as { year?: string; location?: string; end_date?: string } | undefined
 
-        if (yearActive) {
-            if (isPeriodKeyedType(typeValue)) {
-                const endYear = props?.end_date?.slice(0, 4)
-                if (endYear !== state.year) return false
-            } else {
-                if (props?.year !== state.year) return false
-            }
+        const effectiveYear = effectiveYearByType[typeValue]
+        if (!effectiveYear) return false
+        if (isPeriodKeyedType(typeValue)) {
+            const endYear = props?.end_date?.slice(0, 4)
+            if (endYear !== effectiveYear) return false
+        } else {
+            if (props?.year !== effectiveYear) return false
         }
-        if (basinActiveByType[typeValue]) {
+
+        const basins = basinsByType[typeValue]
+        if (basins && basins.size > 0) {
             const loc = props?.location
-            if (!loc || !state.basinsByType[typeValue].has(loc)) return false
+            if (!loc || !basins.has(loc)) return false
         }
         return true
     }

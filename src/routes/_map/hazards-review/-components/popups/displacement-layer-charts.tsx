@@ -1,25 +1,32 @@
-import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
 import area from '@turf/area'
-import type { Feature, FeatureCollection, Polygon, MultiPolygon } from 'geojson'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { PROD_GEOSERVER_URL } from '@/lib/constants'
-import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Label as RechartsLabel } from 'recharts'
+import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label as RechartsLabel } from 'recharts'
 import type { LayerContentProps } from '@/components/maps/popups/types'
-import { useDisplacementFilters, useEffectiveThresholdsIn, isChartedType, type ChartedType } from './displacement-filter-context'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { ChevronRightIcon } from 'lucide-react'
+import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import { useMap } from '@/hooks/use-map'
-import { DISPLACEMENT_LAYER_TYPES, DISPLACEMENT_TYPE_NAME, getStyleNameForType, isDisplacementLayerTitle, type DisplacementType } from './displacement-layers'
-import { fetchDisplacementSldBins, type SldBin } from './displacement-sld-legend'
+import { DISPLACEMENT_LAYER_TYPES, getStyleNameForType, isChartedType, isDisplacementLayerTitle, type ChartedType, type DisplacementType } from './displacement-layers'
+import { getZeroBound, type SldBin } from './displacement-sld-legend'
+import {
+    getBucketYear,
+    useDisplacementFeaturesByType,
+    useDisplacementSldBins,
+    type DisplacementFeature,
+} from './use-displacement-queries'
 
+// Hard fallback when SLD's Zero deadband can't be resolved. Mirrors the value
+// in displacement-filter-context — defined locally so this file's KPI/metric
+// math doesn't depend on the threshold context's React-only export surface.
+const FALLBACK_THRESHOLD_IN = 1.2
 
 const SQM_TO_SQMI = 1 / 2_589_988.110336
 
 // Round to 1 decimal place for popup display.
 const fmt1 = (n: number): string => n.toFixed(1)
-
-export const DISPLACEMENT_QUERY_KEY = ['stats', 'displacement-contours-review'] as const
 
 // Resolve a charted type to its SLD style. Wraps getStyleNameForType so chart
 // code can stay strict about charted types without falling back at every call.
@@ -27,40 +34,6 @@ function getChartedStyleName(type: ChartedType): string {
     const name = getStyleNameForType(type)
     if (!name) throw new Error(`No SLD style registered for charted type "${type}"`)
     return name
-}
-
-interface DisplacementProps {
-    location: string
-    type: DisplacementType
-    year: string | null
-    end_date?: string | null
-    value_inch: number
-}
-
-export type DisplacementFeature = Feature<Polygon | MultiPolygon, DisplacementProps>
-
-// Cumulative features carry null `year` and a period like "2017-10-20 to 2021-10-11";
-// bucket them by the period's end year so the chart axis stays meaningful. Yearly
-// uses its native `year` field.
-export function getBucketYear(props: Pick<DisplacementProps, 'type' | 'year' | 'end_date'>): string | null {
-    if (props.type === 'Yearly') return props.year ?? null
-    if (props.type === 'Cumulative' && props.end_date) return props.end_date.slice(0, 4)
-    return null
-}
-
-export async function fetchAllDisplacement(): Promise<DisplacementFeature[]> {
-    const url = new URL(`${PROD_GEOSERVER_URL}/wfs`)
-    url.searchParams.set('service', 'WFS')
-    url.searchParams.set('version', '2.0.0')
-    url.searchParams.set('request', 'GetFeature')
-    url.searchParams.set('typeNames', DISPLACEMENT_TYPE_NAME)
-    url.searchParams.set('outputFormat', 'application/json')
-    url.searchParams.set('srsName', 'EPSG:4326')
-    url.searchParams.set('count', '20000')
-    const res = await fetch(url.toString())
-    if (!res.ok) throw new Error(`WFS ${res.status}`)
-    const data = await res.json() as FeatureCollection<Polygon | MultiPolygon, DisplacementProps>
-    return data.features
 }
 
 // Popup-side: tiny chip explaining filter applicability per layer. Used by
@@ -71,10 +44,7 @@ export function renderDisplacementLayerHeader(layer: LayerContentProps): React.R
 }
 
 function LayerHeaderChip({ layer }: { layer: LayerContentProps }) {
-    const { year } = useDisplacementFilters()
     const title = layer.layerTitle || layer.groupLayerTitle || ''
-    const yearActive = year !== 'all'
-    if (!yearActive) return null
 
     if (!isDisplacementLayerTitle(title)) {
         return (
@@ -138,45 +108,72 @@ function combinedBbox(features: DisplacementFeature[]): [number, number, number,
 }
 
 function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
-    const { year, basinsByType, addBasin, removeBasin, setYear, clearBasins } = useDisplacementFilters()
+    const { yearOverride, basinsByType, thresholdsIn, addBasin, removeBasin, setYearOverride, clearBasins } = useDisplacementFilters()
     const effective = useEffectiveThresholdsIn()
-    const thresholdIn = effective[typeValue]
+    // Year is mandatory now (no "all years" sentinel): falls back to the
+    // latest available year for this type while the user hasn't picked one.
+    const year = useEffectiveYear(typeValue)
+    // `visualThreshold` is the user-tunable knob that drives ONLY the stacked
+    // bar (visual emphasis). Every KPI / metric / basin ranking uses
+    // `auditThreshold` — pinned to the SLD's Zero deadband — so reviewers
+    // can't quietly raise the bar and make subsidence "disappear" from the
+    // summary numbers.
+    const visualThreshold = effective[typeValue]
     const styleName = getChartedStyleName(typeValue)
     const selectedBasins = basinsByType[typeValue]
     const basinFilterActive = selectedBasins.size > 0
 
-    const { data: features = [], isLoading: featuresLoading, isError } = useQuery({
-        queryKey: DISPLACEMENT_QUERY_KEY,
-        queryFn: fetchAllDisplacement,
-        staleTime: 10 * 60 * 1000,
-    })
+    // Pre-sliced to this type via TanStack `select` so unrelated type updates
+    // don't churn this component.
+    const { data: features = [], isLoading: featuresLoading, isError } = useDisplacementFeaturesByType(typeValue)
 
     // Bins come from the SLD's own classification so the chart matches the map.
-    // Excluded the 'Zero' deadband for plotting since features in it aren't
-    // subsiding meaningfully — they're folded into the threshold filter logic.
-    const { data: sldBins = [], isLoading: binsLoading } = useQuery({
-        queryKey: ['sld-bins', styleName],
-        queryFn: () => fetchDisplacementSldBins(styleName),
-        staleTime: 60 * 60 * 1000,
-    })
+    // The 'Zero' deadband is excluded from plotBins below since features in it
+    // aren't subsiding meaningfully — they're folded into the threshold filter.
+    const { data: sldBins = [], isLoading: binsLoading } = useDisplacementSldBins(styleName)
 
     const plotBins = useMemo(() => sldBins.filter(b => !b.isZero), [sldBins])
+    const auditThreshold = useMemo(
+        () => getZeroBound(sldBins) ?? FALLBACK_THRESHOLD_IN,
+        [sldBins],
+    )
+    const rawUserThreshold = thresholdsIn[typeValue]
+    const thresholdDirty = rawUserThreshold !== null && Math.abs(visualThreshold - auditThreshold) > 1e-6
+
+    // Split SLD bins by sign and order each side so the stack reads outward
+    // from zero: closest-to-zero bin first, deepest band last. Negative bins
+    // stack downward (subsidence) and positive bins upward (uplift) below.
+    const subsidenceBins = useMemo(
+        () => plotBins.filter(b => b.max <= 0).sort((a, b) => b.max - a.max),
+        [plotBins]
+    )
+    const upliftBins = useMemo(
+        () => plotBins.filter(b => b.min >= 0).sort((a, b) => a.min - b.min),
+        [plotBins]
+    )
+    // Stack declaration order: subsidence first (extends downward), then uplift
+    // (extends upward). Each Bar's segment lands further from zero than the
+    // last in its sign group.
+    const stackedBinOrder = useMemo(
+        () => [...subsidenceBins, ...upliftBins],
+        [subsidenceBins, upliftBins]
+    )
     const isLoading = featuresLoading || binsLoading
 
-    // Scope to this type AND any selected basins. Empty basin set = all basins.
+    // `features` is already typeValue-sliced by useDisplacementFeaturesByType.
+    // Empty basin set = all basins.
     const scoped = useMemo(
-        () => features.filter(f => {
-            if (f.properties.type !== typeValue) return false
-            if (selectedBasins.size > 0 && !selectedBasins.has(f.properties.location)) return false
-            return true
-        }),
-        [features, typeValue, selectedBasins]
+        () => selectedBasins.size === 0
+            ? features
+            : features.filter(f => selectedBasins.has(f.properties.location)),
+        [features, selectedBasins]
     )
 
     // Year filter resolution: Yearly matches `year`; Cumulative matches the
     // year of `end_date` (so picking 2024 narrows to the 2017-2024 window etc.).
+    // Null year means the features-query is still loading — render empty.
     const filtered = useMemo(() => {
-        if (year === 'all') return scoped
+        if (!year) return []
         return scoped.filter(f => {
             const bucket = getBucketYear(f.properties)
             return bucket === year
@@ -185,14 +182,34 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
 
     const yearAxisLabel = typeValue === 'Cumulative' ? 'Period End Year' : 'Water Year'
 
-    const overThreshold = useMemo(
-        () => filtered.filter(f => Math.abs(f.properties.value_inch) >= thresholdIn),
-        [filtered, thresholdIn]
+    // KPI + advanced metrics are pinned to auditThreshold (SLD Zero deadband)
+    // so they can't be tuned away by an over-cranked threshold setting.
+    const auditOverThreshold = useMemo(
+        () => filtered.filter(f => Math.abs(f.properties.value_inch) >= auditThreshold),
+        [filtered, auditThreshold]
     )
 
     const totalAreaSqMi = useMemo(
-        () => overThreshold.reduce((acc, f) => acc + area(f) * SQM_TO_SQMI, 0),
-        [overThreshold]
+        () => auditOverThreshold.reduce((acc, f) => acc + area(f) * SQM_TO_SQMI, 0),
+        [auditOverThreshold]
+    )
+
+    // Subsiding vs uplift area at the SLD-default bound. Used by the
+    // subsidence/uplift ratio metric and the areal-coverage breakdown.
+    const signedAreaSqMi = useMemo(() => {
+        let sub = 0, up = 0
+        for (const f of auditOverThreshold) {
+            const v = f.properties.value_inch
+            const a = area(f) * SQM_TO_SQMI
+            if (v < 0) sub += a
+            else if (v > 0) up += a
+        }
+        return { subsiding: sub, uplift: up }
+    }, [auditOverThreshold])
+
+    const totalFootprintSqMi = useMemo(
+        () => filtered.reduce((acc, f) => acc + area(f) * SQM_TO_SQMI, 0),
+        [filtered]
     )
 
     const maxDisplacement = useMemo(() => {
@@ -203,6 +220,15 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
         }
         return max
     }, [filtered])
+
+    // Median + p95 |value| over audit-bound features so reviewers see the
+    // distribution shape, not just the worst single contour.
+    const valueQuantiles = useMemo(() => {
+        const vals = auditOverThreshold.map(f => Math.abs(f.properties.value_inch)).sort((a, b) => a - b)
+        if (vals.length === 0) return { median: 0, p95: 0 }
+        const at = (q: number) => vals[Math.min(vals.length - 1, Math.floor(q * vals.length))]
+        return { median: at(0.5), p95: at(0.95) }
+    }, [auditOverThreshold])
 
     const distinctBasins = useMemo(() => new Set(filtered.map(f => f.properties.location)).size, [filtered])
 
@@ -216,37 +242,40 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
         const yearToBins = new Map<string, Record<string, number>>()
         for (const f of scoped) {
             const v = f.properties.value_inch
-            if (Math.abs(v) < thresholdIn) continue
+            if (Math.abs(v) < visualThreshold) continue
             const bin = findBin(plotBins, v)
             if (!bin) continue
             const y = getBucketYear(f.properties)
             if (!y) continue
             if (!yearToBins.has(y)) yearToBins.set(y, {})
-            const a = area(f) * SQM_TO_SQMI
+            // Negative-sign bins contribute area below zero so subsidence
+            // stacks down and uplift stacks up — the chart geometry itself
+            // encodes the direction of motion.
+            const signed = bin.max <= 0 ? -1 : 1
+            const a = area(f) * SQM_TO_SQMI * signed
             const buckets = yearToBins.get(y)!
             buckets[bin.name] = (buckets[bin.name] ?? 0) + a
         }
         return Array.from(yearToBins, ([year, b]) => ({ year, ...b }))
             .sort((a, b) => a.year.localeCompare(b.year))
-    }, [scoped, thresholdIn, plotBins])
+    }, [scoped, visualThreshold, plotBins])
 
     // Worst-basin list considers ALL basins (skips the basin filter) so the
     // ranking stays complete; non-selected rows render greyed out when a
     // basin filter is active. Still honors year + threshold + type scope.
     const basinsByDepth = useMemo(() => {
         const yearMatched = (f: DisplacementFeature) => {
-            if (year === 'all') return true
+            if (!year) return false
             return getBucketYear(f.properties) === year
         }
         const byLocation = new Map<string, { signed: number; abs: number; features: DisplacementFeature[] }>()
         for (const f of features) {
-            if (f.properties.type !== typeValue) continue
             if (!yearMatched(f)) continue
             const loc = f.properties.location
             if (!loc) continue
             const v = f.properties.value_inch
             const a = Math.abs(v)
-            if (a < thresholdIn) continue
+            if (a < auditThreshold) continue
             const cur = byLocation.get(loc)
             if (!cur) {
                 byLocation.set(loc, { signed: v, abs: a, features: [f] })
@@ -268,22 +297,20 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             bbox: combinedBbox(locFeatures),
             bin: findBin(plotBins, signed),
         })).sort((a, b) => b.abs - a.abs)
-    }, [features, typeValue, year, thresholdIn, plotBins])
+    }, [features, year, auditThreshold, plotBins])
 
     // Use the global worst depth (across this type's entire dataset, ignoring
     // year/threshold) as the row-bar denominator so a basin's bar width keeps
     // the same physical meaning regardless of the active filter. Picking a
     // calm year no longer makes mild basins look maxed out.
-    const globalWorstDepth = useMemo(() => {
+    const worstDepth = useMemo(() => {
         let max = 0
         for (const f of features) {
-            if (f.properties.type !== typeValue) continue
             const a = Math.abs(f.properties.value_inch)
             if (a > max) max = a
         }
         return max
-    }, [features, typeValue])
-    const worstDepth = globalWorstDepth
+    }, [features])
 
     const { map } = useMap()
     // Combine precomputed basin bboxes (cheap min/max math) and pan once.
@@ -321,93 +348,177 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     return (
         <div className="mb-3 flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-2">
-                <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={`|value| ≥ ${fmt1(thresholdIn)} in`} />
+                <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={`|value| ≥ ${fmt1(auditThreshold)} in (SLD default)`} />
                 <KPI label="Max |value|" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
                 <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
                 <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
             </div>
 
+            <AdvancedMetrics
+                isLoading={isLoading}
+                signedAreaSqMi={signedAreaSqMi}
+                totalFootprintSqMi={totalFootprintSqMi}
+                quantiles={valueQuantiles}
+                auditThreshold={auditThreshold}
+            />
+
             <div>
                 <div className="flex items-center justify-between mb-1">
-                    <h4 className="text-xs font-medium">Subsiding Area by {yearAxisLabel}</h4>
-                    {year !== 'all' && (
-                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => setYear('all')}>
-                            Clear year
+                    <h4 className="text-xs font-medium">Subsidence &amp; Uplift by {yearAxisLabel}</h4>
+                    {yearOverride !== null && (
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => setYearOverride(null)}>
+                            Reset to latest
                         </Button>
                     )}
                 </div>
-                <p className="text-[10px] text-muted-foreground mb-1">Stacked by SLD bin (in). Bin breaks + colors match the map. Click a year column to filter to that year.</p>
+                <p className="text-[10px] text-muted-foreground mb-1">Bars below zero = subsidence, above = uplift. Stacked by SLD bin (in); breaks + colors match the map. Click a year column to filter to that year.</p>
+                {thresholdDirty && (
+                    <p className="mb-1 text-[10px] text-amber-600 dark:text-amber-400">
+                        Visual threshold {fmt1(visualThreshold)} in differs from SLD default {fmt1(auditThreshold)} in — KPI &amp; metrics above stay pinned to the default.
+                    </p>
+                )}
                 <div className="h-56 w-full">
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
                         <ResponsiveContainer>
                             <BarChart
                                 data={stackedAreaByYear}
                                 margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
+                                stackOffset="sign"
                                 onClick={(state) => {
                                     const label = state?.activeLabel
-                                    if (typeof label === 'string' && label) setYear(label)
+                                    if (typeof label === 'string' && label) setYearOverride(label)
                                 }}
                                 style={{ cursor: 'pointer' }}
                             >
                                 <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
                                 <XAxis dataKey="year" stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} height={20} />
-                                <YAxis stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} unit=" mi²" width={60} tickMargin={2}>
-                                    <RechartsLabel value="Subsiding Area (mi²)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
+                                <YAxis
+                                    stroke="currentColor"
+                                    tick={{ fill: 'currentColor', fontSize: 11 }}
+                                    width={60}
+                                    tickMargin={2}
+                                    tickFormatter={(v: number) => `${fmt1(Math.abs(v))} mi²`}
+                                >
+                                    <RechartsLabel value="↑ Uplift · Subsidence ↓ (mi²)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
                                 </YAxis>
+                                <ReferenceLine y={0} stroke="currentColor" strokeOpacity={0.5} />
                                 <Tooltip
                                     cursor={{ fill: 'currentColor', fillOpacity: 0.05 }}
                                     content={<StackedBarTooltip />}
                                 />
-                                {plotBins.map(bin => (
+                                {stackedBinOrder.map(bin => (
                                     <Bar key={bin.name} dataKey={bin.name} stackId="rate" fill={bin.color} name={bin.title}>
-                                        {stackedAreaByYear.map(d => (
-                                            <Cell
-                                                key={d.year}
-                                                fillOpacity={year === 'all' || d.year === year ? 1 : 0.25}
-                                            />
-                                        ))}
+                                        {stackedAreaByYear.map(d => {
+                                            // Cumulative windows nest (2017→Y), so picking an end
+                                            // year highlights every bar at or before it to convey
+                                            // "this window covers everything up through Y". Yearly
+                                            // bars are independent buckets, so only the exact match
+                                            // stays lit.
+                                            const highlighted =
+                                                !year ||
+                                                (typeValue === 'Cumulative' ? d.year <= year : d.year === year)
+                                            return (
+                                                <Cell
+                                                    key={d.year}
+                                                    fillOpacity={highlighted ? 1 : 0.25}
+                                                />
+                                            )
+                                        })}
                                     </Bar>
                                 ))}
                             </BarChart>
                         </ResponsiveContainer>
                     )}
                 </div>
-                <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-0.5 px-2 text-[10px] text-foreground">
-                    {plotBins.map(bin => (
-                        <div key={bin.name} className="flex items-center gap-1.5 min-w-0">
-                            <span
-                                className="inline-block h-2.5 w-2.5 shrink-0 ring-1 ring-foreground/40"
-                                style={{ background: bin.color }}
-                                aria-hidden
-                            />
-                            <span className="truncate">{bin.title}</span>
-                        </div>
-                    ))}
+                <div className="mt-2 grid grid-cols-2 gap-x-3 px-2 text-[10px] text-foreground">
+                    <SignedLegendGroup label="Subsidence (below zero)" bins={subsidenceBins} />
+                    <SignedLegendGroup label="Uplift (above zero)" bins={upliftBins} />
                 </div>
             </div>
 
-            <div>
-                <div className="flex items-center justify-between mb-1">
-                    <h4 className="text-xs font-medium">Subsidence by Basin</h4>
-                    {basinFilterActive && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-[10px]"
-                            onClick={() => clearBasins(typeValue)}
-                        >
-                            Clear filter
-                        </Button>
-                    )}
-                </div>
-                <p className="text-[10px] text-muted-foreground mb-2">Basins ranked by their deepest contour value. Click a row to zoom + filter to that basin. Unselected basins grey out when a filter is active.</p>
-                {isLoading ? (
-                    <Skeleton className="h-40 w-full" />
-                ) : basinsByDepth.length === 0 ? (
-                    <p className="text-[11px] text-muted-foreground">No basins above threshold.</p>
-                ) : (
+            <BasinList
+                basinsByDepth={basinsByDepth}
+                basinFilterActive={basinFilterActive}
+                selectedBasins={selectedBasins}
+                typeValue={typeValue}
+                worstDepth={worstDepth}
+                isLoading={isLoading}
+                addBasin={addBasin}
+                removeBasin={removeBasin}
+                clearBasins={clearBasins}
+                zoomToBboxes={zoomToBboxes}
+            />
+        </div>
+    )
+}
+
+interface BasinListProps {
+    basinsByDepth: ReadonlyArray<{
+        location: string
+        abs: number
+        features: DisplacementFeature[]
+        bbox: [number, number, number, number] | null
+        bin: SldBin | undefined
+    }>
+    basinFilterActive: boolean
+    selectedBasins: ReadonlySet<string>
+    typeValue: ChartedType
+    worstDepth: number
+    isLoading: boolean
+    addBasin: (type: DisplacementType, location: string) => void
+    removeBasin: (type: DisplacementType, location: string) => void
+    clearBasins: (type: DisplacementType) => void
+    zoomToBboxes: (bboxes: ([number, number, number, number] | null)[]) => void
+}
+
+const BASIN_PAGE_SIZE = 10
+
+function BasinList({
+    basinsByDepth,
+    basinFilterActive,
+    selectedBasins,
+    typeValue,
+    worstDepth,
+    isLoading,
+    addBasin,
+    removeBasin,
+    clearBasins,
+    zoomToBboxes,
+}: BasinListProps) {
+    const [page, setPage] = useState(0)
+    const total = basinsByDepth.length
+    const pageCount = Math.max(1, Math.ceil(total / BASIN_PAGE_SIZE))
+    // Clamp on read so a shrinking list (filter / threshold change) can't leave
+    // the user stranded on an empty page — no effect, no extra render.
+    const safePage = Math.min(page, pageCount - 1)
+    const start = safePage * BASIN_PAGE_SIZE
+    const end = Math.min(total, start + BASIN_PAGE_SIZE)
+    const pageItems = useMemo(() => basinsByDepth.slice(start, end), [basinsByDepth, start, end])
+
+    return (
+        <div>
+            <div className="flex items-center justify-between mb-1">
+                <h4 className="text-xs font-medium">Subsidence by Basin</h4>
+                {basinFilterActive && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[10px]"
+                        onClick={() => clearBasins(typeValue)}
+                    >
+                        Clear filter
+                    </Button>
+                )}
+            </div>
+            <p className="text-[10px] text-muted-foreground mb-2">Basins ranked by their deepest contour value. Click a row to zoom + filter to that basin. Unselected basins grey out when a filter is active.</p>
+            {isLoading ? (
+                <Skeleton className="h-40 w-full" />
+            ) : total === 0 ? (
+                <p className="text-[11px] text-muted-foreground">No basins above threshold.</p>
+            ) : (
+                <>
                     <div className="flex flex-col gap-1">
-                        {basinsByDepth.map(b => {
+                        {pageItems.map(b => {
                             const pct = worstDepth > 0 ? (b.abs / worstDepth) * 100 : 0
                             const color = b.bin?.color ?? 'hsl(var(--muted-foreground))'
                             const inFilter = !basinFilterActive || selectedBasins.has(b.location)
@@ -447,8 +558,34 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                             )
                         })}
                     </div>
-                )}
-            </div>
+                    {pageCount > 1 && (
+                        <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+                            <span className="tabular-nums">{start + 1}–{end} of {total}</span>
+                            <div className="flex items-center gap-1">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-[10px]"
+                                    onClick={() => setPage(Math.max(0, safePage - 1))}
+                                    disabled={safePage === 0}
+                                >
+                                    Prev
+                                </Button>
+                                <span className="tabular-nums">Page {safePage + 1} / {pageCount}</span>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 px-2 text-[10px]"
+                                    onClick={() => setPage(Math.min(pageCount - 1, safePage + 1))}
+                                    disabled={safePage >= pageCount - 1}
+                                >
+                                    Next
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
         </div>
     )
 }
@@ -463,7 +600,10 @@ interface TooltipEntry {
 }
 function StackedBarTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipEntry[]; label?: string | number }) {
     if (!active || !payload || payload.length === 0) return null
-    const rows = payload.filter(p => typeof p.value === 'number' && (p.value as number) > 0)
+    // Signed values: subsidence rows arrive negative, uplift positive. Show
+    // unsigned magnitudes to the user — direction is already conveyed by which
+    // side of zero the bar sits on (and by the row's bin range in its name).
+    const rows = payload.filter(p => typeof p.value === 'number' && Math.abs(p.value as number) > 0)
     if (rows.length === 0) return null
     return (
         <div className="rounded border border-border bg-popover px-2 py-1.5 text-[11px] text-popover-foreground shadow-sm">
@@ -477,10 +617,29 @@ function StackedBarTooltip({ active, payload, label }: { active?: boolean; paylo
                             aria-hidden
                         />
                         <span className="flex-1">{r.name}</span>
-                        <span className="tabular-nums">{fmt1((r.value as number) ?? 0)} mi²</span>
+                        <span className="tabular-nums">{fmt1(Math.abs((r.value as number) ?? 0))} mi²</span>
                     </div>
                 ))}
             </div>
+        </div>
+    )
+}
+
+function SignedLegendGroup({ label, bins }: { label: string; bins: SldBin[] }) {
+    if (bins.length === 0) return <div />
+    return (
+        <div className="flex flex-col gap-0.5">
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+            {bins.map(bin => (
+                <div key={bin.name} className="flex items-center gap-1.5 min-w-0">
+                    <span
+                        className="inline-block h-2.5 w-2.5 shrink-0 ring-1 ring-foreground/40"
+                        style={{ background: bin.color }}
+                        aria-hidden
+                    />
+                    <span className="truncate">{bin.title}</span>
+                </div>
+            ))}
         </div>
     )
 }
@@ -496,5 +655,59 @@ function KPI({ label, value, sub }: { label: string; value: string; sub?: string
                 {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
             </CardContent>
         </Card>
+    )
+}
+
+interface AdvancedMetricsProps {
+    isLoading: boolean
+    signedAreaSqMi: { subsiding: number; uplift: number }
+    totalFootprintSqMi: number
+    quantiles: { median: number; p95: number }
+    auditThreshold: number
+}
+
+// Audit-bound deep-dive numbers. Collapsed by default — reviewers who only
+// need the headline KPIs can ignore the section, but anyone QA-ing a basin
+// has the distribution shape + asymmetry numbers one click away.
+function AdvancedMetrics({ isLoading, signedAreaSqMi, totalFootprintSqMi, quantiles, auditThreshold }: AdvancedMetricsProps) {
+    const ratio = signedAreaSqMi.uplift > 0
+        ? signedAreaSqMi.subsiding / signedAreaSqMi.uplift
+        : null
+    const coveragePct = totalFootprintSqMi > 0
+        ? (signedAreaSqMi.subsiding / totalFootprintSqMi) * 100
+        : 0
+    return (
+        <Collapsible>
+            <CollapsibleTrigger className="group flex w-full items-center justify-between rounded border border-border bg-muted/40 px-2 py-1 text-[11px] font-medium text-foreground hover:bg-muted/70">
+                <span>Advanced metrics</span>
+                <ChevronRightIcon className="h-3 w-3 transition-transform group-data-[state=open]:rotate-90" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                    <KPI
+                        label="Median |value|"
+                        value={isLoading ? '—' : `${fmt1(quantiles.median)} in`}
+                        sub={`audit ≥ ${fmt1(auditThreshold)} in`}
+                    />
+                    <KPI
+                        label="p95 |value|"
+                        value={isLoading ? '—' : `${fmt1(quantiles.p95)} in`}
+                        sub="distribution tail"
+                    />
+                    <KPI
+                        label="Subs / Uplift"
+                        value={isLoading
+                            ? '—'
+                            : (ratio === null ? '∞' : ratio.toFixed(2))}
+                        sub={`${fmt1(signedAreaSqMi.subsiding)} / ${fmt1(signedAreaSqMi.uplift)} mi²`}
+                    />
+                    <KPI
+                        label="Subsiding coverage"
+                        value={isLoading ? '—' : `${coveragePct.toFixed(1)}%`}
+                        sub="of feature footprint"
+                    />
+                </div>
+            </CollapsibleContent>
+        </Collapsible>
     )
 }

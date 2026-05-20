@@ -90,6 +90,11 @@ export const queryKeys = {
     reports: () => [...queryKeys.hazards.all, 'report'] as const,
     report: (polygon: string) => [...queryKeys.hazards.reports(), polygon] as const,
     quadNames: (polygon: string) => [...queryKeys.hazards.all, 'quad-names', polygon] as const,
+    /** Full WFS pull of merged displacement contours (Cumulative + Yearly + VDR). */
+    displacementFeatures: () => [...queryKeys.hazards.all, 'displacement-features'] as const,
+    /** Parsed SLD legend bins keyed by style name. */
+    displacementSldBins: (styleName: string) =>
+      [...queryKeys.hazards.all, 'displacement-sld-bins', styleName] as const,
   },
 } as const;
 

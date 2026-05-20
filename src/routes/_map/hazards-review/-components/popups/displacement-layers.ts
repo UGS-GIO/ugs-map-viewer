@@ -58,3 +58,23 @@ export function getStyleNameForType(type: DisplacementType): string | undefined 
     }
     return undefined
 }
+
+// Types whose features carry per-year value_inch and have year-driven analytics.
+// Anything outside this set renders on the map but doesn't get a chart card or
+// threshold input — `Vertical Displacement Rate` for example is a multi-year
+// period summary, not a per-year quantity.
+export const CHARTED_TYPES = ['Cumulative', 'Yearly'] as const
+export type ChartedType = typeof CHARTED_TYPES[number]
+
+export function isChartedType(t: DisplacementType): t is ChartedType {
+    return (CHARTED_TYPES as readonly string[]).includes(t)
+}
+
+// Types whose features have null `year` (period-keyed). Year filter still
+// applies but resolves against `end_date` (the year that closes each
+// observation window) instead of the per-feature `year` column.
+const PERIOD_KEYED_TYPES: ReadonlySet<DisplacementType> = new Set(['Cumulative', 'Vertical Displacement Rate'])
+
+export function isPeriodKeyedType(t: DisplacementType): boolean {
+    return PERIOD_KEYED_TYPES.has(t)
+}

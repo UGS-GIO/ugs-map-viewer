@@ -24,8 +24,10 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { useMapContextState } from '@/hooks/use-map-context-state';
 import { MapContext } from '@/context/map-context';
 import { DisplacementFilterProvider, useDisplacementFilters, useDisplacementLayerFilters } from './-components/popups/displacement-filter-context';
+import { useDisplacementLatestYearByType } from './-components/popups/use-displacement-queries';
 import { renderDisplacementLayerHeader } from './-components/popups/displacement-layer-charts';
 import { makeDisplacementPopupFeatureFilter } from './-components/popups/displacement-popup-filter';
+import type { DisplacementType } from './-components/popups/displacement-layers';
 import { TourAutoStart } from '@/components/tour-auto-start';
 
 export default function Map() {
@@ -151,9 +153,16 @@ export default function Map() {
 }
 
 function FilteredMapContainer() {
-  const filters = useDisplacementFilters()
+  const { yearOverride, basinsByType } = useDisplacementFilters()
+  const latestByType = useDisplacementLatestYearByType()
   const layerFilters = useDisplacementLayerFilters()
-  const popupFeatureFilter = makeDisplacementPopupFeatureFilter(filters)
+  // Build a per-type concrete year map: user pick wins, else latest from data.
+  const effectiveYearByType: Record<DisplacementType, string | null> = {
+    'Cumulative': yearOverride ?? latestByType['Cumulative'] ?? null,
+    'Yearly': yearOverride ?? latestByType['Yearly'] ?? null,
+    'Vertical Displacement Rate': yearOverride ?? latestByType['Vertical Displacement Rate'] ?? null,
+  }
+  const popupFeatureFilter = makeDisplacementPopupFeatureFilter({ effectiveYearByType, basinsByType })
   return (
     <GenericMapContainer
       layerFilters={layerFilters}
