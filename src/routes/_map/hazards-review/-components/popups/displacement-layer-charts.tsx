@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Label as RechartsLabel } from 'recharts'
+import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Label as RechartsLabel } from 'recharts'
 import type { LayerContentProps } from '@/components/maps/popups/types'
 import { useDisplacementFilters, useEffectiveThresholdsIn, isChartedType, type ChartedType } from './displacement-filter-context'
 import { useMap } from '@/hooks/use-map'
@@ -322,14 +322,18 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                                     <RechartsLabel value="Subsiding Area (mi²)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
                                 </YAxis>
                                 <Tooltip
-                                    contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--popover-foreground))' }}
-                                    labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                                    itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
                                     cursor={{ fill: 'currentColor', fillOpacity: 0.05 }}
-                                    formatter={(v, name) => [`${typeof v === 'number' ? fmt1(v) : v} mi²`, name]}
+                                    content={<StackedBarTooltip />}
                                 />
                                 {plotBins.map(bin => (
-                                    <Bar key={bin.name} dataKey={bin.name} stackId="rate" fill={bin.color} name={bin.title} />
+                                    <Bar key={bin.name} dataKey={bin.name} stackId="rate" fill={bin.color} name={bin.title}>
+                                        {stackedAreaByYear.map(d => (
+                                            <Cell
+                                                key={d.year}
+                                                fillOpacity={year === 'all' || d.year === year ? 1 : 0.25}
+                                            />
+                                        ))}
+                                    </Bar>
                                 ))}
                             </BarChart>
                         </ResponsiveContainer>
@@ -397,6 +401,38 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                         })}
                     </div>
                 )}
+            </div>
+        </div>
+    )
+}
+
+// Custom tooltip for the stacked-bar chart: shows the year as header, then a
+// colored swatch + bin title + mi² per non-zero stack segment so reviewers can
+// see which depth bins contributed to that year without leaving the chart.
+interface TooltipEntry {
+    name?: string
+    value?: number
+    color?: string
+}
+function StackedBarTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipEntry[]; label?: string | number }) {
+    if (!active || !payload || payload.length === 0) return null
+    const rows = payload.filter(p => typeof p.value === 'number' && (p.value as number) > 0)
+    if (rows.length === 0) return null
+    return (
+        <div className="rounded border border-border bg-popover px-2 py-1.5 text-[11px] text-popover-foreground shadow-sm">
+            <div className="font-medium mb-1">{label}</div>
+            <div className="flex flex-col gap-0.5">
+                {rows.map(r => (
+                    <div key={r.name} className="flex items-center gap-1.5">
+                        <span
+                            className="inline-block h-2.5 w-2.5 ring-1 ring-foreground/40"
+                            style={{ background: r.color }}
+                            aria-hidden
+                        />
+                        <span className="flex-1">{r.name}</span>
+                        <span className="tabular-nums">{fmt1((r.value as number) ?? 0)} mi²</span>
+                    </div>
+                ))}
             </div>
         </div>
     )
