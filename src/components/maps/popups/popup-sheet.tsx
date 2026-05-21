@@ -1,12 +1,14 @@
 import * as React from "react";
 import { useCallback, useMemo, useRef, useState, useImperativeHandle, forwardRef } from "react";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { LayerContentProps } from "@/components/maps/popups/types";
 import { PopupContentWithPagination } from "@/components/maps/popups/popup-content-with-pagination";
-import { XIcon } from "lucide-react";
+import { ExternalLinkIcon, XIcon } from "lucide-react";
 import type { HighlightFeature } from "@/components/maps/types";
+import { encodeSelection, type SelectionRef } from "@/routes/-summary/-utils/selection-url";
 
 interface PopupSheetProps {
     popupContent: LayerContentProps[];
@@ -162,8 +164,9 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
                     </div>
                 )}
 
-                <SheetHeader className="flex flex-row justify-between items-center py-2 px-3 relative border-b border-border bg-card">
-                    <SheetTitle className="flex-1">{popupTitle}</SheetTitle>
+                <SheetHeader className="flex flex-row justify-between items-center gap-1 py-2 px-3 relative border-b border-border bg-card">
+                    <SheetTitle className="flex-1 truncate">{popupTitle}</SheetTitle>
+                    <ExpandToSummaryLink popupContent={popupContent} />
                     <Button
                         onClick={handleCloseClick}
                         variant="ghost"
@@ -218,5 +221,52 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
 });
 
 PopupSheet.displayName = 'PopupSheet';
+
+// Surface a "Expand to summary" affordance whenever the popup carries at
+// least one identifiable feature. Selection refs are derived directly from
+// popupContent so every route inherits this for free — no per-route wiring.
+// We stash the full popupContent in sessionStorage so the summary page can
+// render rich content (fields, related tables, raster cards, photos) without
+// re-fetching by id; the URL keeps the minimal `features` param so the page
+// is still shareable / reloadable in a degraded read-only form.
+function ExpandToSummaryLink({ popupContent }: { popupContent: LayerContentProps[] }) {
+    const refs = useMemo<SelectionRef[]>(() => {
+        const out: SelectionRef[] = []
+        for (const layer of popupContent) {
+            for (const f of layer.features) {
+                const id = (f.properties as Record<string, unknown> | null | undefined)?.ogc_fid
+                    ?? f.id
+                if (id === null || id === undefined) continue
+                out.push({ layerTitle: layer.layerTitle, featureId: String(id) })
+            }
+        }
+        return out
+    }, [popupContent])
+
+    const handleClick = useCallback(() => {
+        try {
+            sessionStorage.setItem('summary:popup-content', JSON.stringify(popupContent))
+        } catch (err) {
+            console.warn('summary: failed to stash popup content', err)
+        }
+    }, [popupContent])
+
+    if (refs.length === 0) return null
+
+    // Avoid Button asChild + Link — Radix Slot's "single child" invariant
+    // intermittently misreads multi-child Link content. Style the Link directly
+    // to look like a ghost-button instead.
+    return (
+        <Link
+            to="/summary"
+            search={{ features: encodeSelection(refs) }}
+            onClick={handleClick}
+            className="inline-flex h-8 shrink-0 items-center gap-1 rounded-md px-2 text-[11px] text-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+            <ExternalLinkIcon className="h-3.5 w-3.5" />
+            <span>Expand</span>
+        </Link>
+    )
+}
 
 export { PopupSheet };

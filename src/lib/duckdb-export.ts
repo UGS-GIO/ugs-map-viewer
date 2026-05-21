@@ -12,6 +12,7 @@
 
 import * as duckdb from '@duckdb/duckdb-wasm';
 import { EXPORT_FORMATS, type ExportFormat } from '@/lib/export-formats';
+import { withConnection, loadSpatial, escapeSql } from '@/lib/duckdb';
 
 export type { ExportFormat } from '@/lib/export-formats';
 export { safeFilename } from '@/lib/export-formats';
@@ -33,48 +34,10 @@ export interface ExportOptions {
 
 // ── DuckDB singleton (lazy, module-scoped) ───────────────────────────────────
 
-let dbInstance: duckdb.AsyncDuckDB | null = null;
-let dbPromise: Promise<duckdb.AsyncDuckDB> | null = null;
-
-const initDuckDB = async (): Promise<duckdb.AsyncDuckDB> => {
-    if (dbInstance) return dbInstance;
-    if (dbPromise) return dbPromise;
-
-    dbPromise = (async () => {
-        const bundle = await duckdb.selectBundle(duckdb.getJsDelivrBundles());
-        const workerUrl = URL.createObjectURL(
-            new Blob([`importScripts("${bundle.mainWorker}");`], { type: 'text/javascript' }),
-        );
-        const worker = new Worker(workerUrl);
-        const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(), worker);
-        await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
-        URL.revokeObjectURL(workerUrl);
-        dbInstance = db;
-        return db;
-    })();
-
-    return dbPromise;
-};
-
-/** Open a DuckDB connection for the duration of `fn`, always close it. */
-const withConnection = async <T>(
-    fn: (conn: duckdb.AsyncDuckDBConnection, db: duckdb.AsyncDuckDB) => Promise<T>,
-): Promise<T> => {
-    const db = await initDuckDB();
-    const conn = await db.connect();
-    try { return await fn(conn, db); }
-    finally { await conn.close(); }
-};
-
-/** Load spatial extension on a connection. Idempotent. */
-const loadSpatial = async (conn: duckdb.AsyncDuckDBConnection): Promise<void> => {
-    await conn.query('INSTALL spatial');
-    await conn.query('LOAD spatial');
-};
+// initDuckDB / withConnection / loadSpatial / escapeSql moved to @/lib/duckdb
+// so the summary route can reuse the same singleton.
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-const escapeSql = (s: string): string => s.replace(/'/g, "''");
 
 const triggerDownload = (blob: Blob, filename: string): void => {
     const url = URL.createObjectURL(blob);

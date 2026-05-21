@@ -414,3 +414,43 @@ export async function queryPolygonFeatures(params: PolygonQueryParams): Promise<
   const { polygon, visibleLayers, wmsUrl, pageSize = POLYGON_PAGE_SIZE, layerFilters } = params
   return queryVisibleLayers(visibleLayers, polygon, wmsUrl, { paginate: true, pageSize }, layerFilters)
 }
+
+/**
+ * Attribute-only WFS GetFeature for a specific set of ogc_fid values. Used by
+ * the summary route to rehydrate a selection from URL refs without going
+ * through the spatial query path. Single round trip per layer; deduped by
+ * TanStack at the caller level.
+ *
+ * Returns the raw {@link Feature} list (geometry + properties) — the caller
+ * is responsible for wrapping into LayerContentProps with the right config.
+ */
+export async function fetchFeaturesByOgcFids(
+  wfsUrl: string,
+  typeName: string,
+  ogcFids: ReadonlyArray<string | number>,
+  opts: { crs?: string } = {},
+): Promise<Feature[]> {
+  if (ogcFids.length === 0) return []
+  const { crs = 'EPSG:4326' } = opts
+  const url = new URL(wfsUrl)
+  url.searchParams.set('service', 'WFS')
+  url.searchParams.set('version', '2.0.0')
+  url.searchParams.set('request', 'GetFeature')
+  url.searchParams.set('typeNames', typeName)
+  url.searchParams.set('outputFormat', 'application/json')
+  url.searchParams.set('srsName', crs)
+  url.searchParams.set('CQL_FILTER', `ogc_fid IN (${ogcFids.map(id => Number(id)).filter(n => Number.isFinite(n)).join(',')})`)
+  const response = await fetch(url.toString())
+  if (!response.ok) {
+    const text = await response.text()
+    console.error(`[WFS] fetchFeaturesByOgcFids failed for ${typeName}: ${response.status}`, text.slice(0, 500))
+    return []
+  }
+  try {
+    const data = await response.json() as { features?: Feature[] }
+    return data.features ?? []
+  } catch (err) {
+    console.error(`[WFS] Invalid JSON from fetchFeaturesByOgcFids for ${typeName}:`, err)
+    return []
+  }
+}

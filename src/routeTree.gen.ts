@@ -11,6 +11,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SummaryRouteImport } from './routes/summary'
 import { Route as MapRouteImport } from './routes/_map'
 import { Route as AuthRouteImport } from './routes/_auth'
 import { Route as SplatRouteImport } from './routes/$'
@@ -38,6 +39,11 @@ const ReportHazardsReportLazyRouteImport = createFileRoute(
   '/_report/hazards/report',
 )()
 
+const SummaryRoute = SummaryRouteImport.update({
+  id: '/summary',
+  path: '/summary',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MapRoute = MapRouteImport.update({
   id: '/_map',
   getParentRoute: () => rootRouteImport,
@@ -145,6 +151,7 @@ const ReportHazardsReportLazyRoute = ReportHazardsReportLazyRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/summary': typeof SummaryRoute
   '/hazards-review': typeof MapHazardsReviewRouteRouteWithChildren
   '/hazards': typeof ReportHazardsRouteRouteWithChildren
   '/login': typeof AuthLoginRoute
@@ -161,6 +168,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/summary': typeof SummaryRoute
   '/hazards': typeof MapHazardsIndexLazyRoute
   '/login': typeof AuthLoginRoute
   '/hazards/report': typeof ReportHazardsReportLazyRoute
@@ -179,6 +187,7 @@ export interface FileRoutesById {
   '/$': typeof SplatRoute
   '/_auth': typeof AuthRouteWithChildren
   '/_map': typeof MapRouteWithChildren
+  '/summary': typeof SummaryRoute
   '/_map/hazards-review': typeof MapHazardsReviewRouteRouteWithChildren
   '/_report/hazards': typeof ReportHazardsRouteRouteWithChildren
   '/_auth/login': typeof AuthLoginRoute
@@ -197,6 +206,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$'
+    | '/summary'
     | '/hazards-review'
     | '/hazards'
     | '/login'
@@ -213,6 +223,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$'
+    | '/summary'
     | '/hazards'
     | '/login'
     | '/hazards/report'
@@ -230,6 +241,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/_auth'
     | '/_map'
+    | '/summary'
     | '/_map/hazards-review'
     | '/_report/hazards'
     | '/_auth/login'
@@ -250,10 +262,18 @@ export interface RootRouteChildren {
   SplatRoute: typeof SplatRoute
   AuthRoute: typeof AuthRouteWithChildren
   MapRoute: typeof MapRouteWithChildren
+  SummaryRoute: typeof SummaryRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/summary': {
+      id: '/summary'
+      path: '/summary'
+      fullPath: '/summary'
+      preLoaderRoute: typeof SummaryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_map': {
       id: '/_map'
       path: ''
@@ -452,6 +472,7 @@ const rootRouteChildren: RootRouteChildren = {
   SplatRoute: SplatRoute,
   AuthRoute: AuthRouteWithChildren,
   MapRoute: MapRouteWithChildren,
+  SummaryRoute: SummaryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

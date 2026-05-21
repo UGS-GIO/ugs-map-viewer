@@ -92,6 +92,14 @@ export const queryKeys = {
     report: (polygon: string) => [...queryKeys.hazards.reports(), polygon] as const,
     quadNames: (polygon: string) => [...queryKeys.hazards.all, 'quad-names', polygon] as const,
   },
+
+  // Feature-summary route queries
+  summary: {
+    all: ['summary'] as const,
+    /** Hydrate a selection from URL refs. Sorted-joined key so ref order doesn't fragment the cache. */
+    byRefs: (refs: ReadonlyArray<{ layerTitle: string; featureId: string }>) =>
+      [...queryKeys.summary.all, 'byRefs', refs.map(r => `${r.layerTitle}:${r.featureId}`).sort().join(',')] as const,
+  },
 } as const;
 
 /**

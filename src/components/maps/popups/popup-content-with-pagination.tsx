@@ -39,9 +39,16 @@ interface PopupContentWithPaginationProps {
     layerContent: LayerContentProps[]
     onHighlightChange?: (features: HighlightFeature[]) => void
     clickPoint?: { lng: number; lat: number } | null
+    /**
+     * Notified when the layer dropdown selection changes. Receives the layer
+     * title for a specific selection, or `null` when "All" is chosen. Lets
+     * embedders (e.g. the summary route) drive a side map's visibility from
+     * the same dropdown the user already interacts with.
+     */
+    onSelectedLayerChange?: (layerTitle: string | null) => void
 }
 
-const FeatureCard = memo(({
+export const FeatureCard = memo(({
     layer,
     feature,
     buttons,
@@ -123,7 +130,7 @@ PaginatedFeatureList.displayName = 'PaginatedFeatureList'
 
 // Raster-only card for layers with no vector features but with raster data.
 // COG layers get a "Zoom to Pixel" button — snaps click to COG's grid and zooms to that cell.
-const RasterOnlyCard = memo(({
+export const RasterOnlyCard = memo(({
     layer, clickPoint, onZoomToPixel,
 }: {
     layer: LayerContentProps
@@ -150,7 +157,7 @@ const RasterOnlyCard = memo(({
 });
 RasterOnlyCard.displayName = 'RasterOnlyCard';
 
-const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clickPoint }: PopupContentWithPaginationProps) => {
+const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clickPoint, onSelectedLayerChange }: PopupContentWithPaginationProps) => {
     const { zoomTo } = useZoomToFeature({ onHighlightChange })
 
     const handleZoomToPixel = useCallback(async (layer: LayerContentProps, point: { lng: number; lat: number }) => {
@@ -245,6 +252,9 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
     // Handle layer change via dropdown
     const handleLayerChange = useCallback((index: number) => {
         setSelectedLayerIndex(index)
+        // Notify embedders so they can drive an external map / view.
+        const newTitle = index === -1 ? null : layerContent[index]?.layerTitle ?? null
+        onSelectedLayerChange?.(newTitle)
         // Highlight first feature of selected layer (or first layer if "All")
         const targetLayer = index === -1 ? layerContent[0] : layerContent[index]
         if (targetLayer?.features.length > 0 && targetLayer.features[0].geometry) {

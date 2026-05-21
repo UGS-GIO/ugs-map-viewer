@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import { LayerProps } from "@/lib/types/mapping-types";
-import { useGetCurrentPage } from "./use-get-current-page";
+import { useGetCurrentMapPage } from "./use-get-current-page";
 
 export interface LayerOrderConfig {
     layerName: string;
@@ -72,18 +72,47 @@ const loadSingleLayerConfig = async (currentPage: string, pageName: string): Pro
         throw new Error('No current page available');
     }
 
+    // Look up via the precomputed glob so a missing file (e.g. when the route
+    // isn't a `_map/*` page, like `/summary`) returns an empty config instead
+    // of a Vite "Unknown variable dynamic import" runtime error.
+    const allConfigs = import.meta.glob(`@/routes/_map/*/-data/layers/*.tsx`);
+    const expectedKey = `/src/routes/_map/${currentPage}/-data/layers/${pageName}.tsx`;
+    const loader = allConfigs[expectedKey];
+    if (!loader) return [];
+
     try {
-        const config = await import(`@/routes/_map/${currentPage}/-data/layers/${pageName}.tsx`) as { default: LayerProps[] };
+        const config = await loader() as { default: LayerProps[] };
         if (config.default && Array.isArray(config.default)) {
             return config.default;
-        } else {
-            throw new Error('Invalid config format');
         }
+        throw new Error('Invalid config format');
     } catch (error) {
         console.error(`Error loading layer configuration ${pageName}:`, error);
         throw error;
     }
 };
+
+/**
+ * Load layer configs across every page (no `currentPage` filter). Used by the
+ * summary route, which has to render features from any layer regardless of
+ * which page the user came from. Same vite `import.meta.glob` pattern as the
+ * per-page loader so adding a new page picks up automatically.
+ */
+const loadAllPagesLayerConfigs = async (): Promise<LayerProps[]> => {
+    const layerConfigPaths = import.meta.glob(`@/routes/_map/*/-data/layers/*.tsx`)
+    const allConfigs: LayerProps[] = []
+    for (const path of Object.keys(layerConfigPaths)) {
+        try {
+            const config = await layerConfigPaths[path]() as { default: LayerProps[] }
+            if (config.default && Array.isArray(config.default)) {
+                allConfigs.push(...config.default)
+            }
+        } catch (error) {
+            console.warn(`Failed to load layer config from ${path}:`, error)
+        }
+    }
+    return allConfigs
+}
 
 const loadAllLayerConfigs = async (currentPage: string): Promise<LayerProps[]> => {
     try {
@@ -118,9 +147,11 @@ const loadAllLayerConfigs = async (currentPage: string): Promise<LayerProps[]> =
     }
 };
 
-// Main hook that returns the full query object
+// Main hook that returns the full query object. Both single + all workflows
+// key on the validated map-page so off-map routes (e.g. /summary) don't
+// trigger dynamic imports against bogus paths.
 const useGetLayerConfigs = (pageName?: string, layerOrderConfigs?: LayerOrderConfig[]) => {
-    const currentPage = useGetCurrentPage();
+    const currentPage = useGetCurrentMapPage();
 
     // Memoize the layerOrderConfigs to prevent unnecessary re-renders
     const memoizedLayerOrderConfigs = useMemo(() => layerOrderConfigs, [JSON.stringify(layerOrderConfigs)]);
@@ -137,21 +168,21 @@ const useGetLayerConfigs = (pageName?: string, layerOrderConfigs?: LayerOrderCon
     const query = useQuery({
         queryKey,
         queryFn: async (): Promise<LayerProps[] | null> => {
+            // Off-map routes have no page-scoped config — return null instead
+            // of constructing a dynamic import that doesn't resolve.
+            if (!currentPage) return null;
             if (pageName) {
-                // Single config workflow
-                if (!currentPage) {
-                    return null;
-                }
                 const configs = await loadSingleLayerConfig(currentPage, pageName);
                 return applyLayerOrdering(configs, memoizedLayerOrderConfigs || []);
             } else {
-                // All configs workflow
                 const allConfigs = await loadAllLayerConfigs(currentPage);
                 const processedConfigs = applyLayerOrdering(allConfigs, memoizedLayerOrderConfigs || []);
                 return processedConfigs.length > 0 ? processedConfigs : null;
             }
         },
-        enabled: !pageName || !!currentPage, // Only run query if we have currentPage (for single config) or we're loading all configs
+        // Only fire when the current route is an actual map page; off-map
+        // routes (e.g. /summary) have no per-page config to fetch.
+        enabled: !!currentPage,
         staleTime: 5 * 60 * 1000, // 5 minutes
         gcTime: 10 * 60 * 1000, // 10 minutes (was cacheTime in v3)
         retry: 2,
@@ -176,4 +207,20 @@ const useGetLayerConfigsData = (pageName?: string, layerOrderConfigs?: LayerOrde
     return layerConfigs || null;
 };
 
-export { useGetLayerConfigs, useGetLayerConfigsData };
+/**
+ * TanStack-backed accessor for layer configs across every map page. Single
+ * `queryOptions`-style key (`['layerConfigs','allPages']`) so the cache is
+ * shared globally — the summary route and any future cross-page consumer
+ * subscribe to the same in-flight fetch.
+ */
+const useAllPagesLayerConfigs = (): UseQueryResult<LayerProps[], Error> => {
+    return useQuery({
+        queryKey: ['layerConfigs', 'allPages'],
+        queryFn: loadAllPagesLayerConfigs,
+        staleTime: 5 * 60 * 1000,
+        gcTime: 10 * 60 * 1000,
+        retry: 2,
+    }) as UseQueryResult<LayerProps[], Error>
+}
+
+export { useGetLayerConfigs, useGetLayerConfigsData, useAllPagesLayerConfigs };
