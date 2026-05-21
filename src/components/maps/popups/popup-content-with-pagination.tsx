@@ -11,7 +11,7 @@ import type { HighlightFeature } from "@/components/maps/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { useBulkRelatedTable, RelatedDataMap } from "@/hooks/use-bulk-related-table"
-import { ExtendedFeature, LayerContentProps, hasRasterData, getLayerCountText } from "./types"
+import { ExtendedFeature, LayerContentProps, hasRasterData, hasRenderableContent, getLayerCountText } from "./types"
 
 const POPUP_PAGE_SIZE = 10
 
@@ -150,7 +150,11 @@ const RasterOnlyCard = memo(({
 });
 RasterOnlyCard.displayName = 'RasterOnlyCard';
 
-const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clickPoint }: PopupContentWithPaginationProps) => {
+const PopupContentWithPaginationInner = ({ layerContent: rawLayerContent, onHighlightChange, clickPoint }: PopupContentWithPaginationProps) => {
+    // Defense-in-depth: the popup model already prunes empties, but anything
+    // that slips through (stale callers, future refactors) is dropped here so
+    // the sheet never paints a card with no features and no raster data.
+    const layerContent = useMemo(() => rawLayerContent.filter(hasRenderableContent), [rawLayerContent])
     const { zoomTo } = useZoomToFeature({ onHighlightChange })
 
     const handleZoomToPixel = useCallback(async (layer: LayerContentProps, point: { lng: number; lat: number }) => {

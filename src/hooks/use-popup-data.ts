@@ -21,7 +21,7 @@ import { locationValues } from '@geomatico/maplibre-cog-protocol'
 import { queryKeys } from '@/lib/query-keys'
 import type { COGLayerProps } from '@/lib/types/mapping-types'
 
-interface UsePopupDataOptions {
+export interface UsePopupDataOptions {
   /** Vector features from WFS query */
   vectorFeatures: WfsFeature[]
   /** Click point for raster queries (WGS84) */
@@ -270,8 +270,12 @@ export function usePopupData({
       const sublayerConfig = layer && 'sublayers' in layer ? layer.sublayers?.[0] : undefined
       const processedRasterSource = rasterDataByLayer.get(title)
 
-      // Skip if no features AND no raster data
-      if (features.length === 0 && !processedRasterSource) continue
+      // Skip if no features AND no real raster data. `processedRasterSource`
+      // existence alone isn't enough — a NoData click still produces a source
+      // record with empty/null data, which would otherwise leave a ghost layer
+      // card in the popup sheet.
+      const rasterHasFeatures = !!processedRasterSource?.data?.features?.length
+      if (features.length === 0 && !rasterHasFeatures) continue
 
       const sourceKind: LayerContentProps['sourceKind'] = layer && isCOGLayer(layer)
         ? 'cog'

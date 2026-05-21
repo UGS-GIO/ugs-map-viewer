@@ -40,15 +40,18 @@ function getFeatureKey(f: ClickedFeature): string {
  * Encapsulates selection logic including click handling, layer removal, and clearing
  */
 export function useFeatureSelection({
-  viewMode,
+  viewMode: _viewMode,
   selectedFeatureRefs: _selectedFeatureRefs,
   setSelectedFeatureRefs,
   setClickBufferBounds,
   setFeatureBbox,
-  popupSheetRef,
+  popupSheetRef: _popupSheetRef,
   onHighlightChange,
 }: UseFeatureSelectionOptions) {
-  // Note: _selectedFeatureRefs available for future URL restoration highlighting if needed
+  // viewMode + popupSheetRef are kept in the contract for back-compat with
+  // existing call sites — the imperative sheet-open path they enabled is gone
+  // now that sheet visibility is reactive on the popup model in the parent.
+  // selectedFeatureRefs is available for future URL-restoration highlighting.
   const [selectedFeatures, setSelectedFeatures] = useState<ClickedFeature[]>([])
 
   // Handle layer turned off - remove features from that layer
@@ -121,10 +124,10 @@ export function useFeatureSelection({
       return newSelection
     })
 
-    if (features.length > 0 && viewMode === 'map') {
-      requestAnimationFrame(() => popupSheetRef.current?.open())
-    }
-  }, [viewMode, popupSheetRef, onHighlightChange])
+    // Sheet open is reactive in the parent (popup model + dismissal flag);
+    // no imperative open needed here. Pull viewMode out of the deps since it
+    // no longer participates in the body.
+  }, [onHighlightChange])
 
   // Clear all selections
   const clearAllSelections = useCallback(() => {

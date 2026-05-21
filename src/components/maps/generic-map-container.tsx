@@ -23,7 +23,7 @@ import { useGetCurrentPage } from '@/hooks/use-get-current-page'
 import { HomeControl, DualScaleControl } from '@/components/maps/controls'
 import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
-import { usePopupData } from '@/hooks/use-popup-data'
+import { usePopupModel } from '@/hooks/use-popup-model'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
 import type { LayerProps, WMSLayerProps, COGLayerProps } from '@/lib/types/mapping-types'
 import { createSVGSymbol } from '@/lib/legend/symbol-generator'
@@ -354,13 +354,13 @@ export default function GenericMapContainer({
     onHighlightChange: handleHighlightChange,
   })
 
-  // Wrap setClickBufferBounds to also open the popup on click (handles raster-only layers)
+  // Wrap setClickBufferBounds. Sheet open/close is reactive now: clearing the
+  // dismissal flag is enough — once the model's `hasAny` flips true the sheet
+  // shows itself, with no race against in-flight raster queries.
   const handleClickBufferChange = useCallback((bounds: { sw: [number, number]; ne: [number, number] } | null) => {
     setClickBufferBounds(bounds)
-    if (bounds && viewMode === 'map') {
-      requestAnimationFrame(() => popupSheetRef.current?.open())
-    }
-  }, [setClickBufferBounds, viewMode])
+    if (bounds) setUserDismissedSheet(false)
+  }, [setClickBufferBounds])
 
   // Register layer turned off callback with parent context (safe - callback is stable)
   registerLayerTurnedOff(handleLayerTurnedOff)
@@ -413,12 +413,15 @@ export default function GenericMapContainer({
     }
   }, [mapInstance, isMobile])
 
-  // UI panel state
+  // UI panel state. `isSheetOpen` no longer lives here — it's a pure derivation
+  // of (popup model has content) && (user hasn't dismissed since last click).
   const [panelState, setPanelState] = useState({
     tablePanelSize: 50,
-    isSheetOpen: false,
     sheetWidth: 480,
   })
+  // The sheet closes only via explicit user action (close button, scrim, ESC).
+  // Each new click clears this so reopen is automatic once results land.
+  const [userDismissedSheet, setUserDismissedSheet] = useState(false)
 
   // Additive mode: toggled via button OR held via Shift key (only when no other mode active)
   const [additiveModeToggled, setAdditiveModeToggled] = useState(false)
@@ -515,13 +518,14 @@ export default function GenericMapContainer({
     setBoxSelectBounds(bounds)
   }, [])
 
-  // Clear highlights when selections are cleared
+  // Clear highlights when selections are cleared. Dismissal latches so the
+  // sheet stays closed even if the model briefly still has stale content.
   const handleClearAllSelections = useCallback(() => {
     setHighlightedFeatures([])
     clearAllSelections()
     setPopupCoords(null)
     onClearSearch?.()
-    setPanelState(prev => ({ ...prev, isSheetOpen: false }))
+    setUserDismissedSheet(true)
     setBoxSelectBounds(null)
   }, [clearAllSelections, setPopupCoords, onClearSearch])
 
@@ -531,23 +535,29 @@ export default function GenericMapContainer({
     return getBboxCenter(clickBufferBounds)
   }, [clickBufferBounds])
 
-  // Unified popup data: groups features by layer + fetches raster values
-  const { popupData: popupContent } = usePopupData({
+  // Popup model: groups vector features by layer, fetches raster values, and
+  // prunes any layer card that wouldn't render (empty features + empty raster).
+  // `hasAny` is the single predicate downstream consumers use.
+  const popupModel = usePopupModel({
     vectorFeatures: selectedFeatures,
     clickPoint,
     clickBbox: clickBufferBounds,
     layersConfig,
   })
+  const popupContent = popupModel.cards
+  const hasResults = popupModel.hasAny
 
-  // Derived: has results (includes raster-only layers)
-  const hasResults = useMemo(() => popupContent.length > 0, [popupContent])
+  // Sheet visibility is fully derived now: open iff the model has content,
+  // the user hasn't dismissed it since the last click, and we're in map mode.
+  // No more `popupSheetRef.current?.open()` race vs. raster-fetch timing.
+  const isSheetOpen = hasResults && !userDismissedSheet && viewMode === 'map'
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode)
-    if (mode === 'map' && hasResults) {
-      requestAnimationFrame(() => popupSheetRef.current?.open())
-    }
-  }, [setViewMode, hasResults])
+    // Switching back to map view should re-show the sheet for the still-live
+    // click results — clear the dismissal so the reactive derivation reopens.
+    if (mode === 'map') setUserDismissedSheet(false)
+  }, [setViewMode])
 
   const handleCloseTable = useCallback(() => {
     handleClearAllSelections()
@@ -560,11 +570,16 @@ export default function GenericMapContainer({
     setBoxSelectBounds(null)
   }, [handleClearAllSelections])
 
+  // The Sheet primitive controls open state via this callback (ESC, scrim,
+  // close button). Map close→dismissal; the reactive derivation above will
+  // then re-render the sheet closed. Open requests bypass dismissal since the
+  // primitive only emits them on legitimate user intent (e.g. trigger button).
   const handleSheetOpenChange = useCallback((open: boolean) => {
-    setPanelState(prev => ({ ...prev, isSheetOpen: open }))
+    if (!open) setUserDismissedSheet(true)
+    else setUserDismissedSheet(false)
   }, [])
 
-  const shouldShrinkMap = viewMode === 'map' && panelState.isSheetOpen && !isMobile
+  const shouldShrinkMap = viewMode === 'map' && isSheetOpen && !isMobile
 
   return (
     <div className="relative h-full w-full flex flex-col overflow-hidden">
@@ -627,7 +642,7 @@ export default function GenericMapContainer({
         {viewMode === 'map' && !isMobile && (
           <div
             className="h-full border-l bg-background overflow-hidden transition-[width] duration-200 ease-linear"
-            style={{ width: panelState.isSheetOpen ? `${panelState.sheetWidth}px` : 0 }}
+            style={{ width: isSheetOpen ? `${panelState.sheetWidth}px` : 0 }}
           >
             <PopupSheet
               ref={popupSheetRef}
@@ -639,7 +654,7 @@ export default function GenericMapContainer({
               onHighlightChange={handleHighlightChange}
               width={panelState.sheetWidth}
               onWidthChange={(width) => setPanelState(prev => ({ ...prev, sheetWidth: width }))}
-              isOpen={panelState.isSheetOpen}
+              isOpen={isSheetOpen}
               clickPoint={clickPoint}
             />
           </div>
@@ -651,7 +666,7 @@ export default function GenericMapContainer({
             className={cn(
               "absolute inset-x-0 bottom-0 z-50 bg-background border-t rounded-t-xl shadow-lg",
               "transition-transform duration-200 ease-linear",
-              panelState.isSheetOpen ? "translate-y-0" : "translate-y-full"
+              isSheetOpen ? "translate-y-0" : "translate-y-full"
             )}
             style={{ height: '70%' }}
           >
@@ -663,7 +678,7 @@ export default function GenericMapContainer({
               onClose={handleSheetClose}
               onOpenChange={handleSheetOpenChange}
               onHighlightChange={handleHighlightChange}
-              isOpen={panelState.isSheetOpen}
+              isOpen={isSheetOpen}
               clickPoint={clickPoint}
             />
           </div>

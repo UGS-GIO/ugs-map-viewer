@@ -54,6 +54,17 @@ export function hasRasterData(layer: LayerContentProps): boolean {
 }
 
 /**
+ * Single predicate for "is this layer card worth rendering?" — true when the
+ * layer carries at least one vector feature OR a non-empty raster payload.
+ * Used as the gate everywhere: the popup model prunes anything that doesn't
+ * pass, sheet open/close logic derives from the resulting card count, and the
+ * pagination view defends against any leftover empties.
+ */
+export function hasRenderableContent(layer: LayerContentProps): boolean {
+    return layer.features.length > 0 || hasRasterData(layer)
+}
+
+/**
  * Get display count text for a layer (accounts for raster-only layers)
  */
 export function getLayerCountText(layer: LayerContentProps): string {
