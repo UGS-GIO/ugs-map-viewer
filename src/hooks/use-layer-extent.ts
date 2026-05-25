@@ -1,105 +1,77 @@
 import { useQuery } from "@tanstack/react-query";
-import { XMLParser } from "fast-xml-parser";
 import { PMTiles } from "pmtiles";
 import { queryKeys } from '@/lib/query-keys';
 import { convertBbox } from '@/lib/map/conversion-utils';
 
 export type BoundingBox = [number, number, number, number]; // [minLng, minLat, maxLng, maxLat]
 
-interface WMSLayer {
-    Name?: string;
-    Layer?: WMSLayer | WMSLayer[];
-    BoundingBox?: WMSBoundingBox | WMSBoundingBox[];
-    EX_GeographicBoundingBox?: {
-        westBoundLongitude: string;
-        southBoundLatitude: string;
-        eastBoundLongitude: string;
-        northBoundLatitude: string;
-    };
-}
+const directChildren = (el: Element, name: string): Element[] =>
+    Array.from(el.children).filter((child) => child.localName === name);
 
-interface WMSBoundingBox {
-    '@_CRS'?: string;
-    '@_minx': string;
-    '@_miny': string;
-    '@_maxx': string;
-    '@_maxy': string;
-}
+const directChildText = (el: Element, name: string): string | null =>
+    directChildren(el, name)[0]?.textContent?.trim() ?? null;
 
-// Create parser once at module level to avoid recreation on every parse
-const xmlParser = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: '@_'
-});
-
-const parseCapabilitiesExtent = (xml: string, targetLayerName: string): BoundingBox | null => {
+export const parseCapabilitiesExtent = (xml: string, targetLayerName: string): BoundingBox | null => {
     try {
-        const parsed = xmlParser.parse(xml);
-        const capability = parsed.WMS_Capabilities?.Capability ||
-            parsed.WMT_MS_Capabilities?.Capability;
+        const doc = new DOMParser().parseFromString(xml, 'application/xml');
+        if (doc.querySelector('parsererror')) {
+            console.error('Error parsing GetCapabilities response: malformed XML');
+            return null;
+        }
 
-        if (!capability?.Layer) return null;
+        // Root is WMS_Capabilities (1.3.0) or WMT_MS_Capabilities (1.1.1)
+        const capability = directChildren(doc.documentElement, 'Capability')[0];
+        const rootLayer = capability && directChildren(capability, 'Layer')[0];
+        if (!rootLayer) return null;
 
-        // Helper function to find layer by name
-        const findLayerByName = (layer: WMSLayer, name: string): WMSLayer | null => {
-            if (layer.Name === name) return layer;
-            if (layer.Layer) {
-                if (Array.isArray(layer.Layer)) {
-                    for (const sublayer of layer.Layer) {
-                        const found = findLayerByName(sublayer, name);
-                        if (found) return found;
-                    }
-                } else {
-                    return findLayerByName(layer.Layer, name);
-                }
+        const findLayerByName = (layer: Element, name: string): Element | null => {
+            if (directChildText(layer, 'Name') === name) return layer;
+            for (const sublayer of directChildren(layer, 'Layer')) {
+                const found = findLayerByName(sublayer, name);
+                if (found) return found;
             }
             return null;
         };
 
-        const targetLayer = findLayerByName(capability.Layer, targetLayerName);
-
+        const targetLayer = findLayerByName(rootLayer, targetLayerName);
         if (!targetLayer) return null;
 
         // Try WMS 1.3.0 BoundingBox
         // IMPORTANT: Prefer CRS:84 over EPSG:4326 because WMS 1.3.0 uses lat/lon axis order
         // for EPSG:4326, while CRS:84 always uses lon/lat order
-        if (targetLayer.BoundingBox) {
-            const boxes = Array.isArray(targetLayer.BoundingBox)
-                ? targetLayer.BoundingBox
-                : [targetLayer.BoundingBox];
+        const boxes = directChildren(targetLayer, 'BoundingBox');
 
-            // First try CRS:84 (always lon/lat order)
-            const crs84Box = boxes.find((box: WMSBoundingBox) => box['@_CRS'] === 'CRS:84');
-            if (crs84Box) {
-                return [
-                    parseFloat(crs84Box['@_minx']),
-                    parseFloat(crs84Box['@_miny']),
-                    parseFloat(crs84Box['@_maxx']),
-                    parseFloat(crs84Box['@_maxy'])
-                ];
-            }
+        // First try CRS:84 (always lon/lat order)
+        const crs84Box = boxes.find((box) => box.getAttribute('CRS') === 'CRS:84');
+        if (crs84Box) {
+            return [
+                parseFloat(crs84Box.getAttribute('minx')!),
+                parseFloat(crs84Box.getAttribute('miny')!),
+                parseFloat(crs84Box.getAttribute('maxx')!),
+                parseFloat(crs84Box.getAttribute('maxy')!)
+            ];
+        }
 
-            // Fall back to EPSG:4326 but swap axes (WMS 1.3.0 uses lat/lon for 4326)
-            const epsg4326Box = boxes.find((box: WMSBoundingBox) => box['@_CRS'] === 'EPSG:4326');
-            if (epsg4326Box) {
-                // minx/maxx are lat, miny/maxy are lon in WMS 1.3.0 EPSG:4326
-                return [
-                    parseFloat(epsg4326Box['@_miny']), // lon
-                    parseFloat(epsg4326Box['@_minx']), // lat
-                    parseFloat(epsg4326Box['@_maxy']), // lon
-                    parseFloat(epsg4326Box['@_maxx'])  // lat
-                ];
-            }
+        // Fall back to EPSG:4326 but swap axes (WMS 1.3.0 uses lat/lon for 4326)
+        const epsg4326Box = boxes.find((box) => box.getAttribute('CRS') === 'EPSG:4326');
+        if (epsg4326Box) {
+            // minx/maxx are lat, miny/maxy are lon in WMS 1.3.0 EPSG:4326
+            return [
+                parseFloat(epsg4326Box.getAttribute('miny')!), // lon
+                parseFloat(epsg4326Box.getAttribute('minx')!), // lat
+                parseFloat(epsg4326Box.getAttribute('maxy')!), // lon
+                parseFloat(epsg4326Box.getAttribute('maxx')!)  // lat
+            ];
         }
 
         // Try WMS 1.3.0 EX_GeographicBoundingBox
-        if (targetLayer.EX_GeographicBoundingBox) {
-            const bbox = targetLayer.EX_GeographicBoundingBox;
+        const exBox = directChildren(targetLayer, 'EX_GeographicBoundingBox')[0];
+        if (exBox) {
             return [
-                parseFloat(bbox.westBoundLongitude),
-                parseFloat(bbox.southBoundLatitude),
-                parseFloat(bbox.eastBoundLongitude),
-                parseFloat(bbox.northBoundLatitude)
+                parseFloat(directChildText(exBox, 'westBoundLongitude')!),
+                parseFloat(directChildText(exBox, 'southBoundLatitude')!),
+                parseFloat(directChildText(exBox, 'eastBoundLongitude')!),
+                parseFloat(directChildText(exBox, 'northBoundLatitude')!)
             ];
         }
 
