@@ -1,6 +1,12 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { toGeoJSON, downloadCSV, downloadGeoJSON } from '../download-utils';
+
+// Restore document.createElement (and other spies) between tests so each
+// beforeEach rebinds the native impl instead of the previous test's spy.
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 // ── toGeoJSON ─────────────────────────────────────────────────────────
 
