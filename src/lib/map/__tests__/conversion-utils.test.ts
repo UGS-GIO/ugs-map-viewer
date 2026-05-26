@@ -351,9 +351,11 @@ describe('serializePolygonForUrl', () => {
     consoleSpy.mockRestore();
   });
 
-  it('defaults to EPSG:3857 when crs is missing', () => {
+  it('defaults to EPSG:4326 when crs is missing', () => {
+    // Default is now WGS84 (canonical storage projection); input ring is assumed
+    // already in 4326, so serialization is the identity transform.
     const polygon: PolygonGeometry = {
-      rings: [[[-12367126, 4871080]]]
+      rings: [[[-111.09, 40.76]]]
     };
     const result = serializePolygonForUrl(polygon);
 
@@ -361,12 +363,14 @@ describe('serializePolygonForUrl', () => {
     if (result) {
       const parsed = JSON.parse(result);
       expect(parsed.rings[0][0][0]).toBeCloseTo(-111.09, 1);
+      expect(parsed.rings[0][0][1]).toBeCloseTo(40.76, 1);
     }
   });
 });
 
 describe('deserializePolygonFromUrl', () => {
-  it('deserializes WGS84 polygon to Web Mercator', () => {
+  it('deserializes WGS84 polygon as WGS84 (identity)', () => {
+    // URL is WGS84; AOI is stored in WGS84 internally — no reprojection.
     const serialized = JSON.stringify({
       rings: [[[-111.09, 40.76], [-111.08, 40.75], [-111.09, 40.76]]]
     });
@@ -374,9 +378,9 @@ describe('deserializePolygonFromUrl', () => {
 
     expect(result).not.toBeNull();
     if (result) {
-      expect(result.crs).toBe('EPSG:3857');
-      expect(result.rings[0][0][0]).toBeCloseTo(-12366482, -1);
-      expect(result.rings[0][0][1]).toBeCloseTo(4977006, -1);
+      expect(result.crs).toBe('EPSG:4326');
+      expect(result.rings[0][0][0]).toBeCloseTo(-111.09, 2);
+      expect(result.rings[0][0][1]).toBeCloseTo(40.76, 2);
     }
   });
 
@@ -388,7 +392,7 @@ describe('deserializePolygonFromUrl', () => {
 
     expect(result).not.toBeNull();
     if (result) {
-      expect(result.crs).toBe('EPSG:3857');
+      expect(result.crs).toBe('EPSG:4326');
     }
   });
 

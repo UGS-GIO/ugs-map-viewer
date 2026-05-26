@@ -9,7 +9,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "@/components/ui/link";
-import proj4 from 'proj4';
 import turfArea from '@turf/area';
 import { polygon as turfPolygon } from '@turf/helpers';
 import { serializePolygonForUrl, PolygonGeometry } from '@/lib/map/conversion-utils';
@@ -23,13 +22,15 @@ type DialogType = 'areaTooLarge' | 'confirmation' | null;
 const SQ_METERS_PER_SQ_MILE = 2589988.11;
 const SQ_METERS_PER_SQ_KM = 1_000_000;
 
-/** Geodesic area from a Web Mercator polygon via @turf/area */
+// AOI extent limits in WGS84 degrees, sized to approximately 12 km × 18 km at Utah latitudes (~40°N).
+// Latitude degrees are uniform; longitude degrees vary ~3% across Utah, so the longitude limit
+// is approximate. 1° latitude ≈ 111,320 m everywhere; 1° longitude ≈ 85,300 m at 40°N.
+const MAX_AOI_LAT_EXTENT_DEG = 0.108;  // ≈12 km
+const MAX_AOI_LON_EXTENT_DEG = 0.211;  // ≈18 km at 40°N
+
+/** Geodesic area from a WGS84 polygon via @turf/area */
 function formatAoiArea(aoi: PolygonGeometry): string {
-    // Convert rings from Web Mercator to WGS84 for turf
-    const wgs84Rings = aoi.rings.map(ring =>
-        ring.map(([x, y]) => proj4('EPSG:3857', 'EPSG:4326', [x, y]))
-    );
-    const sqM = turfArea(turfPolygon(wgs84Rings));
+    const sqM = turfArea(turfPolygon(aoi.rings));
     const sqMi = (sqM / SQ_METERS_PER_SQ_MILE).toFixed(1);
     const sqKm = (sqM / SQ_METERS_PER_SQ_KM).toFixed(1);
 
@@ -62,42 +63,31 @@ function ReportGenerator() {
 
     // Handle draw completion from the shared TerraDraw instance
     const handleDrawComplete = (polygon: Polygon) => {
-        // Convert from WGS84 (GeoJSON) to Web Mercator for area check
+        // TerraDraw provides coordinates in WGS84 (GeoJSON spec)
         const rings = polygon.coordinates;
-        const mercatorRings: number[][][] = [];
 
+        // Calculate extent in WGS84 degrees directly
+        const allLng: number[] = [];
+        const allLat: number[] = [];
         for (const ring of rings) {
-            const mercatorRing: number[][] = [];
             for (const coord of ring) {
-                const [x, y] = proj4('EPSG:4326', 'EPSG:3857', [coord[0], coord[1]]);
-                mercatorRing.push([x, y]);
-            }
-            mercatorRings.push(mercatorRing);
-        }
-
-        // Calculate extent from Web Mercator coordinates
-        const allX: number[] = [];
-        const allY: number[] = [];
-        for (const ring of mercatorRings) {
-            for (const coord of ring) {
-                allX.push(coord[0]);
-                allY.push(coord[1]);
+                allLng.push(coord[0]);
+                allLat.push(coord[1]);
             }
         }
 
-        const minX = Math.min(...allX);
-        const maxX = Math.max(...allX);
-        const minY = Math.min(...allY);
-        const maxY = Math.max(...allY);
+        const minLng = Math.min(...allLng);
+        const maxLng = Math.max(...allLng);
+        const minLat = Math.min(...allLat);
+        const maxLat = Math.max(...allLat);
 
-        const areaWidth = maxX - minX;
-        const areaHeight = maxY - minY;
+        const areaWidth = maxLng - minLng;   // degrees longitude
+        const areaHeight = maxLat - minLat;  // degrees latitude
 
-        // Check if area is within limits (12000m x 18000m)
-        if (areaHeight < 12000 && areaWidth < 18000) {
+        if (areaHeight < MAX_AOI_LAT_EXTENT_DEG && areaWidth < MAX_AOI_LON_EXTENT_DEG) {
             const aoi: PolygonGeometry = {
-                rings: mercatorRings,
-                crs: 'EPSG:3857' // Web Mercator
+                rings,
+                crs: 'EPSG:4326'
             };
             setPendingAoi(aoi);
             setActiveDialog('confirmation');
@@ -186,26 +176,23 @@ function ReportGenerator() {
         const sw = bounds.getSouthWest();
         const ne = bounds.getNorthEast();
 
-        // Convert to Web Mercator for area calculation
-        const [swX, swY] = proj4('EPSG:4326', 'EPSG:3857', [sw.lng, sw.lat]);
-        const [neX, neY] = proj4('EPSG:4326', 'EPSG:3857', [ne.lng, ne.lat]);
+        // Area calculation in WGS84 degrees
+        const areaWidth = Math.abs(ne.lng - sw.lng);
+        const areaHeight = Math.abs(ne.lat - sw.lat);
 
-        const areaWidth = Math.abs(neX - swX);
-        const areaHeight = Math.abs(neY - swY);
-
-        if (areaHeight < 12000 && areaWidth < 18000) {
-            // Create polygon from bounds (in Web Mercator)
+        if (areaHeight < MAX_AOI_LAT_EXTENT_DEG && areaWidth < MAX_AOI_LON_EXTENT_DEG) {
+            // CCW winding per GeoJSON RFC 7946 (exterior ring)
             const rings = [[
-                [neX, neY],
-                [neX, swY],
-                [swX, swY],
-                [swX, neY],
-                [neX, neY]
+                [sw.lng, sw.lat],
+                [ne.lng, sw.lat],
+                [ne.lng, ne.lat],
+                [sw.lng, ne.lat],
+                [sw.lng, sw.lat],
             ]];
 
             const aoi: PolygonGeometry = {
-                rings: [rings[0]],
-                crs: 'EPSG:3857' // Web Mercator
+                rings,
+                crs: 'EPSG:4326'
             };
             handleNavigate(aoi);
         } else {
@@ -264,17 +251,14 @@ function ReportGenerator() {
         const sw = bounds.getSouthWest();
         const ne = bounds.getNorthEast();
 
-        // Convert to Web Mercator for area calculation
-        const [swX, swY] = proj4('EPSG:4326', 'EPSG:3857', [sw.lng, sw.lat]);
-        const [neX, neY] = proj4('EPSG:4326', 'EPSG:3857', [ne.lng, ne.lat]);
+        // Area calculation in WGS84 degrees
+        const areaWidth = Math.abs(ne.lng - sw.lng);
+        const areaHeight = Math.abs(ne.lat - sw.lat);
 
-        const areaWidth = Math.abs(neX - swX);
-        const areaHeight = Math.abs(neY - swY);
-
-        // Calculate scale factor needed to fit within limits (12000m x 18000m)
-        // Add a small buffer (0.95) to ensure we're comfortably within limits
-        const scaleX = (18000 * 0.95) / areaWidth;
-        const scaleY = (12000 * 0.95) / areaHeight;
+        // Calculate scale factor needed to fit within MAX_AOI extent.
+        // Add a small buffer (0.95) to ensure we're comfortably within limits.
+        const scaleX = (MAX_AOI_LON_EXTENT_DEG * 0.95) / areaWidth;
+        const scaleY = (MAX_AOI_LAT_EXTENT_DEG * 0.95) / areaHeight;
         const scaleFactor = Math.min(scaleX, scaleY);
 
         // Calculate zoom delta (each zoom level is 2x)

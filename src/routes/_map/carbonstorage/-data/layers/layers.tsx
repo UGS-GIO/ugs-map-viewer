@@ -14,7 +14,7 @@ const georegionsWMSConfig: WMSLayerProps = {
     title: georegionsWMSTitle,
     visible: true,
     opacity: 0.3,
-    crs: 'EPSG:3857',
+    crs: 'EPSG:4326',
     downloadParquetUrl: parquetUrl("enmin_ccus_georegions"),
     sublayers: [
         {
@@ -55,7 +55,7 @@ const oilGasFieldsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: oilGasFieldsWMSTitle,
     visible: false,
-    crs: 'EPSG:3857',
+    crs: 'EPSG:4326',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${oilGasFieldsLayerName}`,
@@ -80,7 +80,7 @@ const pipelinesWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: pipelinesWMSTitle,
     visible: false,
-    crs: 'EPSG:3857',
+    crs: 'EPSG:4326',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${pipelinesLayerName}`,
@@ -180,7 +180,7 @@ const riversWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: riversWMSTitle,
     visible: false,
-    crs: 'EPSG:3857',
+    crs: 'EPSG:4326',
     sublayers: [
         {
             name: `${GEN_GIS_WORKSPACE}:${riversLayerName}`,
@@ -202,7 +202,7 @@ const roadsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: roadsWMSTitle,
     visible: false,
-    crs: 'EPSG:3857',
+    crs: 'EPSG:4326',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${roadsLayerName}`,
@@ -802,7 +802,7 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: ccusProjectsWMSTitle,
     visible: true,
-    crs: 'EPSG:3857',
+    crs: 'EPSG:4326',
     downloadParquetUrl: parquetUrl("ccus_projects"),
     sublayers: [
         {
@@ -862,7 +862,7 @@ const geochemWellSitesWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geochemWellSitesWMSTitle,
     visible: false,
-    crs: 'EPSG:3857',
+    crs: 'EPSG:4326',
     downloadParquetUrl: parquetUrl("enmin_ccus_geochemistry"),
     sublayers: [
         {
@@ -1132,7 +1132,7 @@ const utCountiesConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: 'Utah Counties',
     visible: false,
-    crs: 'EPSG:3857',
+    crs: 'EPSG:4326',
     sublayers: [{
         name: `${ENERGY_MINERALS_WORKSPACE}:enmin_ut_counties_current`,
         popupEnabled: false,
@@ -1146,7 +1146,7 @@ const utTownshipRangesConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: 'Utah Township & Ranges',
     visible: false,
-    crs: 'EPSG:3857',
+    crs: 'EPSG:4326',
     visibleZoomRange: [11, 22],
     sublayers: [{
         name: `${ENERGY_MINERALS_WORKSPACE}:enmin_plss_townshiprange_current`,

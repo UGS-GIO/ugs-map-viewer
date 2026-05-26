@@ -45,9 +45,9 @@ const geometryFieldOverrides: Record<string, string> = {
 };
 
 // Native CRS per layer (default is EPSG:26912, override where different)
-// TODO: All layers will eventually migrate to EPSG:3857
+// TODO: All layers will eventually migrate to EPSG:4326
 const crsOverrides: Record<string, string> = {
-    [quaternaryFaultsHazardCode]: 'EPSG:3857',
+    [quaternaryFaultsHazardCode]: 'EPSG:4326',
 };
 
 /**
@@ -62,7 +62,7 @@ export function getGeometryField(hazardCode: string): string {
 /**
  * Get the native CRS for a hazard code
  * @param hazardCode - The hazard code (e.g., 'QFF', 'LQS')
- * @returns The EPSG code (e.g., 'EPSG:26912', 'EPSG:3857')
+ * @returns The EPSG code (e.g., 'EPSG:26912', 'EPSG:4326')
  */
 export function getLayerCRS(hazardCode: string): string {
     return crsOverrides[hazardCode] || 'EPSG:26912';

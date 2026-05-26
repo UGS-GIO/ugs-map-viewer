@@ -277,7 +277,7 @@ export function serializePolygonForUrl(polygon: PolygonGeometry | null): string 
         }
 
         const rings = polygon.rings;
-        const sourceCRS = polygon.crs || 'EPSG:3857'; // Default to Web Mercator
+        const sourceCRS = polygon.crs || 'EPSG:4326'; // Default to WGS84 (canonical storage projection)
 
         // Convert to WGS84 if needed for human-readable coordinates in URL
         let wgs84Rings = rings;
@@ -307,11 +307,11 @@ export function serializePolygonForUrl(polygon: PolygonGeometry | null): string 
 
 /**
  * Deserialize polygon from URL query parameter
- * Reconstructs polygon from compact WGS84 format
- * Converts coordinates back to Web Mercator (EPSG:3857)
+ * URL coordinates are in WGS84 (EPSG:4326); AOI is stored internally in WGS84 too,
+ * so no reprojection is needed.
  * Expects format: { "rings": [[[lng, lat], [lng, lat], ...]] }
- * - Coordinates are in WGS84 [longitude, latitude] order (human-readable)
- * - Returns PolygonGeometry in Web Mercator (EPSG:3857)
+ * - Coordinates are in WGS84 [longitude, latitude] order (GeoJSON-standard)
+ * - Returns PolygonGeometry in WGS84 (EPSG:4326)
  */
 export function deserializePolygonFromUrl(serialized: string): PolygonGeometry | null {
     try {
@@ -323,18 +323,9 @@ export function deserializePolygonFromUrl(serialized: string): PolygonGeometry |
             return null;
         }
 
-        // Convert from WGS84 back to Web Mercator
-        const webMercatorRings = compact.rings.map((ring: number[][]) =>
-            ring.map(([lng, lat]: number[]) => {
-                const [x, y] = convertCoordinate([lng, lat], 'EPSG:4326', 'EPSG:3857');
-                return [x, y];
-            })
-        );
-
-        // Return polygon geometry with EPSG code
         return {
-            rings: webMercatorRings, // rings: [[[x, y], [x, y], ...]] in Web Mercator
-            crs: 'EPSG:3857' // Web Mercator
+            rings: compact.rings, // rings: [[[lng, lat], [lng, lat], ...]] in WGS84
+            crs: 'EPSG:4326'
         };
     } catch (error) {
         console.error('Error deserializing polygon:', error);

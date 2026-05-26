@@ -83,8 +83,8 @@ async function describeFeatureType(wfsUrl: string, typeName: string): Promise<{ 
 /**
  * Convert GeoJSON Polygon to WKT with SRID prefix.
  * CQL INTERSECTS evaluates in the layer's native CRS, so we must declare
- * our polygon's CRS explicitly. Without this, layers stored in EPSG:3857
- * silently return 0 results when queried with EPSG:4326 coordinates.
+ * our polygon's CRS explicitly. Without this, layers stored in a CRS other
+ * than EPSG:4326 silently return 0 results when queried with our coordinates.
  */
 function polygonToWkt(polygon: Polygon): string {
   const ring = polygon.coordinates[0]

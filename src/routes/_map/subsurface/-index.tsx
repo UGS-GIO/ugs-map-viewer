@@ -50,7 +50,7 @@ const searchConfig: SearchSourceConfig[] = [
     url: `${PROD_POSTGREST_URL}/enmin_ucrc_wells_current`,
     sourceName: 'UCRC Wells',
     layerName: ucrcWellsWMSTitle,
-    crs: 'EPSG:3857',
+    crs: 'EPSG:4326',
     displayField: 'well_name',
     secondaryDisplayField: 'uwi',
     params: {

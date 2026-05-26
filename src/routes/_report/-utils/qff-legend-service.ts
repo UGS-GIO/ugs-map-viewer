@@ -18,7 +18,7 @@ export async function generateQFFLegendItems(polygon: string): Promise<CustomLeg
         wfsLayer: 'hazards:hazards_qfaults_current',
         wmsLayer: 'hazards:hazards_qfaults_current',
         geometryField: 'geom',
-        crs: 'EPSG:3857',
+        crs: 'EPSG:4326',
         properties: 'faultzone,faultname,sectionname,strandname,mappedscale,slipsense,faultage,sliprate,qffhazardunit',
         unitField: 'qffhazardunit',
         groupByField: 'faultzone',
