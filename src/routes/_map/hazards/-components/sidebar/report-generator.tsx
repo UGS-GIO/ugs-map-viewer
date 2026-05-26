@@ -22,11 +22,13 @@ type DialogType = 'areaTooLarge' | 'confirmation' | null;
 const SQ_METERS_PER_SQ_MILE = 2589988.11;
 const SQ_METERS_PER_SQ_KM = 1_000_000;
 
-// AOI extent limits in WGS84 degrees, sized to approximately 12 km × 18 km at Utah latitudes (~40°N).
-// Latitude degrees are uniform; longitude degrees vary ~3% across Utah, so the longitude limit
-// is approximate. 1° latitude ≈ 111,320 m everywhere; 1° longitude ≈ 85,300 m at 40°N.
-const MAX_AOI_LAT_EXTENT_DEG = 0.108;  // ≈12 km
-const MAX_AOI_LON_EXTENT_DEG = 0.211;  // ≈18 km at 40°N
+// AOI extent limits in WGS84 degrees. Calibrated to preserve the pre-migration cap: the old check
+// compared Web Mercator unit deltas against 12000/18000, which (with ~1.305× Mercator inflation at
+// 40°N) capped the true ground extent at ≈9.2 km lat × 13.8 km lon. These degree values reproduce
+// that same true extent at 40°N. Longitude degrees vary ~4% across Utah latitudes (approximate).
+// 1° latitude ≈ 111,320 m everywhere; 1° longitude ≈ 85,300 m at 40°N.
+const MAX_AOI_LAT_EXTENT_DEG = 0.0826;  // ≈9.2 km
+const MAX_AOI_LON_EXTENT_DEG = 0.162;   // ≈13.8 km at 40°N
 
 /** Geodesic area from a WGS84 polygon via @turf/area */
 function formatAoiArea(aoi: PolygonGeometry): string {
