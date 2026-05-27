@@ -283,6 +283,7 @@ export function usePopupData({
         sourceCRS: 'EPSG:4326',
         visible: true,
         popupFields: sublayerConfig?.popupFields,
+        popupFieldsTable: sublayerConfig?.popupFieldsTable,
         relatedTables: sublayerConfig?.relatedTables,
         linkFields: sublayerConfig?.linkFields,
         imageFields: sublayerConfig?.imageFields,
