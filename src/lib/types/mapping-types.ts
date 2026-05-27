@@ -84,6 +84,7 @@ export interface ImageFieldConfig {
 
 export type CustomSublayerProps = {
     popupFields?: Record<string, FieldConfig>; // Maps field labels to attribute names
+    popupFieldsTable?: PopupFieldsTableConfig[]; // Subsets of popupFields rendered as tables in collapsible dropdowns
     relatedTables?: RelatedTable[];
     linkFields?: LinkFields;
     imageFields?: ImageFieldConfig[];
@@ -345,6 +346,26 @@ interface DisplayField {
     format?: 'number' | 'currency' | 'percent';
     /** `allRows` lets cell renderers share a bulk fetch via one react-query key. */
     transform?: (value: string, row?: Record<string, unknown>, allRows?: Record<string, unknown>[]) => React.ReactNode;
+}
+
+/** A field displayed inside a popup fields table. Mirrors DisplayField but sources from feature properties. */
+export interface PopupFieldsTableField {
+    field: string;
+    label?: string;
+    /** Format numeric values: 'number' (thousands), 'currency' (USD), 'percent'. Applied before transform. */
+    format?: 'number' | 'currency' | 'percent';
+    /** Optional transform receives the raw property value and the full feature properties. */
+    transform?: (value: string, properties?: GeoJsonProperties) => React.ReactNode;
+}
+
+/** Configuration for rendering a subset of popup fields as a table inside a collapsible dropdown. */
+export interface PopupFieldsTableConfig {
+    /** Label shown on the collapsible section header. */
+    sectionLabel: string;
+    /** Must be 'table' — triggers table rendering in the popup. */
+    displayAs: 'table';
+    /** Fields to display as columns in the table. Key = column header, value = field config. */
+    fields: Record<string, FieldConfig>;
 }
 
 // Interface for composite symbol results

@@ -10,6 +10,7 @@ import type {
     ColorCodingRecordFunction,
     ColorCodingMode,
     ImageFieldConfig,
+    PopupFieldsTableConfig,
 } from '@/lib/types/mapping-types'
 
 /**
@@ -28,6 +29,7 @@ export interface LayerContentProps {
     features: ExtendedFeature[]
     sourceCRS: string
     popupFields?: Record<string, FieldConfig>
+    popupFieldsTable?: PopupFieldsTableConfig[]
     relatedTables?: RelatedTable[]
     linkFields?: LinkFields
     imageFields?: ImageFieldConfig[]

@@ -443,6 +443,53 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         contentItems.push({ content: relatedContent, isLongContent, originalIndex: 1000 + tableIndex });
     });
 
+    // Handle Popup Fields Tables (collapsible dropdown tables for subsets of popupFields)
+    (layer.popupFieldsTable || []).forEach((tableConfig, tableIndex) => {
+        const headers = Object.keys(tableConfig.fields);
+        const fieldConfigs = Object.values(tableConfig.fields);
+
+        const rowValues = fieldConfigs.map((fieldConfig) => {
+            const rawValue = properties[fieldConfig.field];
+            return formatFieldValue(fieldConfig, rawValue, properties) || 'N/A';
+        });
+
+        const hasRealData = rowValues.some(v => shouldDisplayValue(v) && v !== 'N/A');
+        if (!hasRealData) return;
+
+        const tableContent = (
+            <CollapsibleSection
+                key={`popup-fields-table-${tableIndex}`}
+                label={tableConfig.sectionLabel}
+                count={1}
+            >
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            {headers.map((header, idx) => (
+                                <TableHead key={idx} className="h-8 text-xs">{header}</TableHead>
+                            ))}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        <TableRow>
+                            {rowValues.map((value, idx) => (
+                                <TableCell key={idx} className="py-1.5 text-xs">
+                                    {value}
+                                </TableCell>
+                            ))}
+                        </TableRow>
+                    </TableBody>
+                </Table>
+            </CollapsibleSection>
+        );
+
+        contentItems.push({
+            content: tableContent,
+            isLongContent: true,
+            originalIndex: 2000 + tableIndex,
+        });
+    });
+
     // --- Layout Rendering ---
     const longContent = contentItems.filter(item => item.isLongContent).sort((a, b) => a.originalIndex - b.originalIndex).map(item => item.content);
     const regularContent = contentItems.filter(item => !item.isLongContent).sort((a, b) => a.originalIndex - b.originalIndex).map(item => item.content);
