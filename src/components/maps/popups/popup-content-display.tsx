@@ -21,6 +21,7 @@ import {
     ImageFieldConfig,
 } from "@/lib/types/mapping-types";
 import { PopupImageGallery, type GalleryImage } from "@/components/maps/popups/popup-image-gallery";
+import { PopupFieldTable } from "@/components/maps/popups/popup-field-table";
 import { relatedRowToGalleryImage } from "@/lib/gallery-utils";
 import { sanitizeFilename } from "@/lib/download-utils";
 import {
@@ -298,17 +299,26 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         return typeof value === 'object' && value !== null && 'type' in value && 'field' in value;
     };
 
-    const mappedFeatureEntries = popupFields
-        ? Object.entries(popupFields)
+    // Separate fields tagged with table: true from inline fields
+    const tableFieldEntries = popupFields
+        ? Object.entries(popupFields).filter(
+            ([, config]) => isFieldConfig(config) && config.table
+        )
+        : [];
+
+    const inlineEntries = popupFields
+        ? Object.entries(popupFields).filter(
+            ([, config]) => !isFieldConfig(config) || !config.table
+        )
         : Object.entries(properties);
 
     if (rasterValue !== null && rasterSource?.valueLabel) {
-        mappedFeatureEntries.push([rasterSource.valueLabel, rasterValue]);
+        inlineEntries.push([rasterSource.valueLabel, rasterValue]);
     }
 
     const contentItems: { content: JSX.Element; isLongContent: boolean; originalIndex: number; }[] = [];
 
-    mappedFeatureEntries.forEach(([label, entryData], index) => {
+    inlineEntries.forEach(([label, entryData], index) => {
         let currentConfig: FieldConfig | undefined = undefined;
         let isRasterEntry = false;
         let valueFromPropertiesDirectly: PropertyValue = undefined;
@@ -442,6 +452,37 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         const isLongContent = useTableFormat || totalWords > 20 || flatValues.length > 3;
         contentItems.push({ content: relatedContent, isLongContent, originalIndex: 1000 + tableIndex });
     });
+
+    // Handle Table-Designated Fields
+    if (tableFieldEntries.length > 0 && properties) {
+        const tableRows = tableFieldEntries.map(([label, entryData]) => {
+            let currentConfig: FieldConfig | undefined;
+            if (isFieldConfig(entryData)) {
+                currentConfig = entryData;
+            }
+
+            const rawValue = currentConfig
+                ? properties[currentConfig.field]
+                : properties[label];
+
+            const formattedValue = currentConfig
+                ? formatFieldValue(currentConfig, rawValue, properties)
+                : String(rawValue ?? '');
+
+            return {
+                label,
+                value: shouldDisplayValue(formattedValue) ? formattedValue : 'N/A',
+            };
+        }).filter(row => row.value !== 'N/A');
+
+        if (tableRows.length > 0) {
+            contentItems.push({
+                content: <PopupFieldTable rows={tableRows} />,
+                isLongContent: true,
+                originalIndex: 2000,
+            });
+        }
+    }
 
     // --- Layout Rendering ---
     const longContent = contentItems.filter(item => item.isLongContent).sort((a, b) => a.originalIndex - b.originalIndex).map(item => item.content);

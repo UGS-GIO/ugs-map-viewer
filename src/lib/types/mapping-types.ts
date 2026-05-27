@@ -43,6 +43,8 @@ interface BaseFieldConfig {
     description?: string;
     /** Whether this field is sortable in the table. Defaults to true for string/number/date, false for custom. */
     sortable?: boolean;
+    /** When true, this field renders in a table at the bottom of the popup instead of inline. */
+    table?: boolean;
 }
 
 // String-specific field configuration
