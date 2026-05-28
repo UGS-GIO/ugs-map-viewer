@@ -28,6 +28,23 @@ const CCS_FILTER_MAPPING: Record<string, string> = {
 
 const searchConfig: SearchSourceConfig[] = [
   defaultMasqueradeConfig,
+    {
+      type: 'postgREST',
+      url: `${PROD_POSTGREST_URL}/enmin_plss_townshiprange_current`,
+      sourceName: 'Utah Township & Ranges',
+      layerName: utTownshipRangesTitle,
+      crs: 'EPSG:26912',
+      displayField: 'twnshplab',
+      secondaryDisplayField: 'label',
+      params: {
+        targetFields: ['twnshplab', 'label'],
+        select: 'twnshplab,label,geom',
+      },
+      headers: {
+        'Accept-Profile': 'emp',
+        'Accept': 'application/geo+json',
+      },
+  },
   {
     type: 'postgREST',
     url: `${PROD_POSTGREST_URL}/wellswithtops_hascore`,
