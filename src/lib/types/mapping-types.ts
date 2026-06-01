@@ -350,18 +350,26 @@ interface DisplayField {
     transform?: (value: string, row?: Record<string, unknown>, allRows?: Record<string, unknown>[]) => React.ReactNode;
 }
 
+/** A single pivoted row in a popup fields table. */
+export interface PopupFieldsTableField {
+    /** Name shown in the label column. */
+    label: string;
+    /** Field config used to read and format the value. */
+    config: FieldConfig;
+    /** Unit appended to the formatted value in the measurement column, e.g. 'mg/l'. */
+    unit?: string;
+}
+
 /** Configuration for rendering a subset of popup fields as a table inside a collapsible dropdown. */
 export interface PopupFieldsTableConfig {
     /** Label shown on the collapsible section header. */
     sectionLabel: string;
-    /** Must be 'table' — triggers table rendering in the popup. */
-    displayAs: 'table';
     /** Header for the left (label) column. Omit to hide the header row. */
     labelHeader?: string;
     /** Header for the right (value) column. Omit to hide the header row. */
     valueHeader?: string;
-    /** Fields rendered as pivoted rows (label | value). Key = row label (bake units in here), value = field config. */
-    fields: Record<string, FieldConfig>;
+    /** Fields rendered as pivoted rows (label | value), in order. */
+    fields: PopupFieldsTableField[];
 }
 
 // Interface for composite symbol results

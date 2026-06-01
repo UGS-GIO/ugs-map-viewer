@@ -464,11 +464,14 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
     // Handle Popup Fields Tables (collapsible dropdown tables for subsets of popupFields).
     // Pivoted layout: one row per field (Measurement | Value) so wide field sets don't scroll sideways.
     (layer.popupFieldsTable || []).forEach((tableConfig, tableIndex) => {
-        const rows = Object.entries(tableConfig.fields)
-            .map(([header, fieldConfig]) => ({
-                header,
-                value: formatFieldValue(fieldConfig, properties[fieldConfig.field], properties),
-            }))
+        const rows = tableConfig.fields
+            .map((field) => {
+                const value = formatFieldValue(field.config, properties[field.config.field], properties);
+                return {
+                    header: field.label,
+                    value: field.unit && shouldDisplayValue(value) ? `${value} ${field.unit}` : value,
+                };
+            })
             .filter(row => shouldDisplayValue(row.value));
 
         if (rows.length === 0) return;
@@ -510,9 +513,12 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
     });
 
     // --- Layout Rendering ---
-    const longContent = contentItems.filter(item => item.isLongContent).sort((a, b) => a.originalIndex - b.originalIndex).map(item => item.content);
-    const regularContent = contentItems.filter(item => !item.isLongContent).sort((a, b) => a.originalIndex - b.originalIndex).map(item => item.content);
-    const useGridLayout = layout === "grid" || regularContent.length > 5;
+    // Render every item in config order (feature fields, then related tables, then popup
+    // tables). Full-width items (tables, long text) span all columns inline at their
+    // position rather than being hoisted to the top.
+    const orderedItems = contentItems.sort((a, b) => a.originalIndex - b.originalIndex);
+    const regularCount = orderedItems.filter(item => !item.isLongContent).length;
+    const useGridLayout = layout === "grid" || regularCount > 5;
 
     const galleryImages = useMemo(
         () => buildGalleryImages(imageFields, properties, relatedTables, data),
@@ -525,8 +531,15 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
     return (
         <div className="space-y-2">
             {galleryImages.length > 0 && <PopupImageGallery images={galleryImages} downloadName={galleryDownloadName} />}
-            {longContent.length > 0 && <div className="space-y-2 col-span-full">{longContent}</div>}
-            <div className={useGridLayout ? "grid grid-cols-2 gap-2" : "space-y-2"}>{regularContent}</div>
+            <div className={useGridLayout ? "grid grid-cols-2 gap-2" : "space-y-2"}>
+                {orderedItems.map((item, idx) =>
+                    useGridLayout && item.isLongContent ? (
+                        <div key={`full-width-${idx}`} className="col-span-full">{item.content}</div>
+                    ) : (
+                        item.content
+                    )
+                )}
+            </div>
         </div>
     );
 };
