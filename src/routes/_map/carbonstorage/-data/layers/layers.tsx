@@ -1141,15 +1141,17 @@ const utCountiesConfig: WMSLayerProps = {
 };
 
 // Utah township & ranges
+export const utTownshipRangesLayerName = 'enmin_plss_townshiprange_current';
+export const utTownshipRangesTitle = 'Utah Township & Ranges'; 
 const utTownshipRangesConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Utah Township & Ranges',
+    title: utTownshipRangesTitle,
     visible: false,
     crs: 'EPSG:3857',
     visibleZoomRange: [11, 22],
     sublayers: [{
-        name: `${ENERGY_MINERALS_WORKSPACE}:enmin_plss_townshiprange_current`,
+        name: `${ENERGY_MINERALS_WORKSPACE}:${utTownshipRangesLayerName}`,
         popupEnabled: false,
         queryable: false,
     }],

@@ -231,6 +231,15 @@ function CollapsibleSection({ label, count, children }: { label: string; count?:
     );
 }
 
+function InlineSection({ label, children }: { label?: string; children: ReactNode }) {
+    return (
+        <div className="flex flex-col space-y-2">
+            {label && <p className="font-bold underline text-foreground">{label}</p>}
+            <div>{children}</div>
+        </div>
+    );
+}
+
 // --- Main Component ---
 const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: PopupContentDisplayProps) => {
     const { relatedTables, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
@@ -391,39 +400,38 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         // Use explicit displayAs config (defaults to 'list')
         const useTableFormat = table.displayAs === 'table' && !!table.displayFields && table.displayFields.length > 0;
 
-        let relatedContent: JSX.Element;
-
         const sectionLabel = String(properties[table.fieldLabel] || table.fieldLabel);
+        const collapsible = table.collapsible ?? sectionLabel.trim() !== '';
+
+        let innerContent: JSX.Element;
 
         if (useTableFormat) {
             const headers = table.displayFields!.map(df => df.label || df.field);
-            relatedContent = (
-                <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel} count={groupedValues.length}>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                {headers.map((header, idx) => (
-                                    <TableHead key={idx} className="h-8 text-xs">{header}</TableHead>
+            innerContent = (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            {headers.map((header, idx) => (
+                                <TableHead key={idx} className="h-8 text-xs">{header}</TableHead>
+                            ))}
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {groupedValues.map((group, groupIdx) => (
+                            <TableRow key={`row-${groupIdx}`}>
+                                {group.map((valueItem, cellIdx) => (
+                                    <TableCell key={`cell-${cellIdx}`} className="py-1.5 text-xs">
+                                        {valueItem.value}
+                                    </TableCell>
                                 ))}
                             </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {groupedValues.map((group, groupIdx) => (
-                                <TableRow key={`row-${groupIdx}`}>
-                                    {group.map((valueItem, cellIdx) => (
-                                        <TableCell key={`cell-${cellIdx}`} className="py-1.5 text-xs">
-                                            {valueItem.value}
-                                        </TableCell>
-                                    ))}
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CollapsibleSection>
+                        ))}
+                    </TableBody>
+                </Table>
             );
         } else {
-            relatedContent = (
-                <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel} count={groupedValues.length}>
+            innerContent = (
+                <>
                     {groupedValues.map((group, groupIdx) => (
                         <div key={`group-${groupIdx}`} className="flex flex-col">
                             {group.map((valueItem, valueIdx) => (
@@ -434,9 +442,19 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
                             ))}
                         </div>
                     ))}
-                </CollapsibleSection>
+                </>
             );
         }
+
+        const relatedContent = collapsible ? (
+            <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel} count={groupedValues.length}>
+                {innerContent}
+            </CollapsibleSection>
+        ) : (
+            <InlineSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel || undefined}>
+                {innerContent}
+            </InlineSection>
+        );
 
         const totalWords = flatValues.map(v => String(v.value)).join(" ").split(/\s+/).length;
         const isLongContent = useTableFormat || totalWords > 20 || flatValues.length > 3;

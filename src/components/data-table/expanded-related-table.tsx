@@ -32,11 +32,12 @@ function formatBoxId(boxId: string): string {
 }
 
 export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRelatedTableProps) {
+    const collapsible = relatedTable.collapsible ?? relatedTable.fieldLabel.trim() !== '';
     const [isOpen, setIsOpen] = useState(true);
 
     if (rows.length === 0) return null;
 
-    const sectionHeader = (
+    const sectionHeader = collapsible ? (
         <button
             onClick={() => setIsOpen(o => !o)}
             className="flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground hover:bg-muted/50 rounded px-1 -ml-1 transition-colors mb-2 w-full"
@@ -44,7 +45,11 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
             {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
             {relatedTable.fieldLabel}
         </button>
-    );
+    ) : relatedTable.fieldLabel ? (
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+            {relatedTable.fieldLabel}
+        </p>
+    ) : null;
 
     // Gallery display — group by box_id, sorted by box_pk
     if (relatedTable.displayAs === 'gallery' && relatedTable.galleryUrlField) {

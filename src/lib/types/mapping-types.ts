@@ -320,6 +320,8 @@ export interface RelatedTable {
     sortDirection?: 'asc' | 'desc';
     /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers, 'gallery' renders a photo gallery */
     displayAs?: 'list' | 'table' | 'gallery';
+    /** Render in a collapsible accordion. Defaults to true when `fieldLabel` is set, else inline. */
+    collapsible?: boolean;
     /** Required when displayAs is 'gallery'. Field name containing the full-size image URL */
     galleryUrlField?: string;
     /** Optional when displayAs is 'gallery'. Field name containing the thumbnail URL. Falls back to galleryUrlField if not set */
