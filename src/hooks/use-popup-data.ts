@@ -285,6 +285,7 @@ export function usePopupData({
         popupFields: sublayerConfig?.popupFields,
         popupFieldsTable: sublayerConfig?.popupFieldsTable,
         relatedTables: sublayerConfig?.relatedTables,
+        relatedTablesPosition: sublayerConfig?.relatedTablesPosition,
         linkFields: sublayerConfig?.linkFields,
         imageFields: sublayerConfig?.imageFields,
         colorCodingMap: sublayerConfig?.colorCodingMap,

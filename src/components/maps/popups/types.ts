@@ -31,6 +31,7 @@ export interface LayerContentProps {
     popupFields?: Record<string, FieldConfig>
     popupFieldsTable?: PopupFieldsTableConfig[]
     relatedTables?: RelatedTable[]
+    relatedTablesPosition?: 'above' | 'below'
     linkFields?: LinkFields
     imageFields?: ImageFieldConfig[]
     colorCodingMap?: ColorCodingRecordFunction

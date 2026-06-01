@@ -242,7 +242,7 @@ function InlineSection({ label, children }: { label?: string; children: ReactNod
 
 // --- Main Component ---
 const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: PopupContentDisplayProps) => {
-    const { relatedTables, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
+    const { relatedTables, relatedTablesPosition, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
 
     // Convert bulk data to the format expected by getRelatedTableValues
     const data = useMemo((): ProcessedRelatedData[][] => {
@@ -458,7 +458,9 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
 
         const totalWords = flatValues.map(v => String(v.value)).join(" ").split(/\s+/).length;
         const isLongContent = useTableFormat || totalWords > 20 || flatValues.length > 3;
-        contentItems.push({ content: relatedContent, isLongContent, originalIndex: 1000 + tableIndex });
+        // 'above' sorts related tables before the feature fields (which start at 0); 'below' (default) after them.
+        const relatedIndex = (relatedTablesPosition === 'above' ? -1000 : 1000) + tableIndex;
+        contentItems.push({ content: relatedContent, isLongContent, originalIndex: relatedIndex });
     });
 
     // Handle Popup Fields Tables (collapsible dropdown tables for subsets of popupFields).
