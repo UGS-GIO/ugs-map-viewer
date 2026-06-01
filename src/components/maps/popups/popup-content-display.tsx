@@ -240,9 +240,37 @@ function InlineSection({ label, children }: { label?: string; children: ReactNod
     );
 }
 
+// Shared table used for both related tables and pivoted popup-fields tables. Centralizes the
+// header/cell styling so the two call sites can't drift apart. Pass `headers` to render a header
+// row; each row is an array of cell contents.
+function PopupTable({ headers, rows }: { headers?: ReactNode[]; rows: ReactNode[][] }) {
+    return (
+        <Table>
+            {headers && (
+                <TableHeader>
+                    <TableRow>
+                        {headers.map((header, idx) => (
+                            <TableHead key={idx} className="h-8 text-xs">{header}</TableHead>
+                        ))}
+                    </TableRow>
+                </TableHeader>
+            )}
+            <TableBody>
+                {rows.map((cells, rowIdx) => (
+                    <TableRow key={rowIdx}>
+                        {cells.map((cell, cellIdx) => (
+                            <TableCell key={cellIdx} className="py-1.5 text-xs">{cell}</TableCell>
+                        ))}
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    );
+}
+
 // --- Main Component ---
 const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: PopupContentDisplayProps) => {
-    const { relatedTables, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
+    const { relatedTables, relatedTablesPosition, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
 
     // Convert bulk data to the format expected by getRelatedTableValues
     const data = useMemo((): ProcessedRelatedData[][] => {
@@ -278,6 +306,13 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         });
     }, [bulkRelatedData, relatedTables, feature?.properties]);
 
+    // Hooks must run before any early return — keep these above the raster/no-feature guards.
+    const properties = useMemo(() => feature?.properties || {}, [feature]);
+    const galleryImages = useMemo(
+        () => buildGalleryImages(imageFields, properties, relatedTables, data),
+        [imageFields, properties, relatedTables, data]
+    );
+
     const rasterValue = getRasterFeatureValue(rasterSource);
 
     // Handle Raster-Only Display
@@ -298,7 +333,6 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
 
     if (!feature) return null;
 
-    const properties = feature.properties || {};
     const urlPattern = /https?:\/\/[^\s/$.?#].[^\s]*/;
 
     type PropertyValue = string | number | boolean | null | undefined;
@@ -408,26 +442,10 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         if (useTableFormat) {
             const headers = table.displayFields!.map(df => df.label || df.field);
             innerContent = (
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            {headers.map((header, idx) => (
-                                <TableHead key={idx} className="h-8 text-xs">{header}</TableHead>
-                            ))}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {groupedValues.map((group, groupIdx) => (
-                            <TableRow key={`row-${groupIdx}`}>
-                                {group.map((valueItem, cellIdx) => (
-                                    <TableCell key={`cell-${cellIdx}`} className="py-1.5 text-xs">
-                                        {valueItem.value}
-                                    </TableCell>
-                                ))}
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                <PopupTable
+                    headers={headers}
+                    rows={groupedValues.map(group => group.map(valueItem => valueItem.value))}
+                />
             );
         } else {
             innerContent = (
@@ -458,18 +476,55 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
 
         const totalWords = flatValues.map(v => String(v.value)).join(" ").split(/\s+/).length;
         const isLongContent = useTableFormat || totalWords > 20 || flatValues.length > 3;
-        contentItems.push({ content: relatedContent, isLongContent, originalIndex: 1000 + tableIndex });
+        // 'above' sorts related tables before the feature fields (which start at 0); 'below' (default) after them.
+        const relatedIndex = (relatedTablesPosition === 'above' ? -1000 : 1000) + tableIndex;
+        contentItems.push({ content: relatedContent, isLongContent, originalIndex: relatedIndex });
+    });
+
+    // Handle Popup Fields Tables (collapsible dropdown tables for subsets of popupFields).
+    // Pivoted layout: one row per field (Measurement | Value) so wide field sets don't scroll sideways.
+    (layer.popupFieldsTable || []).forEach((tableConfig, tableIndex) => {
+        const rows = tableConfig.fields
+            .map((field) => {
+                const value = formatFieldValue(field.config, properties[field.config.field], properties);
+                return { label: field.label, value, unit: field.unit };
+            })
+            .filter(row => shouldDisplayValue(row.value))
+            .map(row => [
+                <span className="font-medium">{row.label}</span>,
+                row.unit ? `${row.value} ${row.unit}` : row.value,
+            ]);
+
+        if (rows.length === 0) return;
+
+        const headers = (tableConfig.labelHeader || tableConfig.valueHeader)
+            ? [tableConfig.labelHeader, tableConfig.valueHeader]
+            : undefined;
+
+        const tableContent = (
+            <CollapsibleSection
+                key={`popup-fields-table-${tableIndex}`}
+                label={tableConfig.sectionLabel}
+                count={rows.length}
+            >
+                <PopupTable headers={headers} rows={rows} />
+            </CollapsibleSection>
+        );
+
+        contentItems.push({
+            content: tableContent,
+            isLongContent: true,
+            originalIndex: 2000 + tableIndex,
+        });
     });
 
     // --- Layout Rendering ---
-    const longContent = contentItems.filter(item => item.isLongContent).sort((a, b) => a.originalIndex - b.originalIndex).map(item => item.content);
-    const regularContent = contentItems.filter(item => !item.isLongContent).sort((a, b) => a.originalIndex - b.originalIndex).map(item => item.content);
-    const useGridLayout = layout === "grid" || regularContent.length > 5;
-
-    const galleryImages = useMemo(
-        () => buildGalleryImages(imageFields, properties, relatedTables, data),
-        [imageFields, properties, relatedTables, data]
-    )
+    // Render every item in config order (feature fields, then related tables, then popup
+    // tables). Full-width items (tables, long text) span all columns inline at their
+    // position rather than being hoisted to the top.
+    const orderedItems = contentItems.sort((a, b) => a.originalIndex - b.originalIndex);
+    const regularCount = orderedItems.filter(item => !item.isLongContent).length;
+    const useGridLayout = layout === "grid" || regularCount > 5;
 
     const galleryId = properties?.id ?? properties?.pk ?? properties?.ogc_fid ?? feature?.id ?? 'photos'
     const galleryDownloadName = `${sanitizeFilename(`${layer.layerTitle ?? 'feature'}-${galleryId}`)}-photos.zip`
@@ -477,8 +532,15 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
     return (
         <div className="space-y-2">
             {galleryImages.length > 0 && <PopupImageGallery images={galleryImages} downloadName={galleryDownloadName} />}
-            {longContent.length > 0 && <div className="space-y-2 col-span-full">{longContent}</div>}
-            <div className={useGridLayout ? "grid grid-cols-2 gap-2" : "space-y-2"}>{regularContent}</div>
+            <div className={useGridLayout ? "grid grid-cols-2 gap-2" : "space-y-2"}>
+                {orderedItems.map((item, idx) =>
+                    useGridLayout && item.isLongContent ? (
+                        <div key={`full-width-${idx}`} className="col-span-full">{item.content}</div>
+                    ) : (
+                        item.content
+                    )
+                )}
+            </div>
         </div>
     );
 };

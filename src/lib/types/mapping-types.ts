@@ -84,7 +84,9 @@ export interface ImageFieldConfig {
 
 export type CustomSublayerProps = {
     popupFields?: Record<string, FieldConfig>; // Maps field labels to attribute names
+    popupFieldsTable?: PopupFieldsTableConfig[]; // Subsets of popupFields rendered as tables in collapsible dropdowns
     relatedTables?: RelatedTable[];
+    relatedTablesPosition?: 'above' | 'below'; // Render related tables above or below the popup fields (default 'below')
     linkFields?: LinkFields;
     imageFields?: ImageFieldConfig[];
     colorCodingMap?: ColorCodingRecordFunction; // Maps field names to color coding functions
@@ -347,6 +349,28 @@ interface DisplayField {
     format?: 'number' | 'currency' | 'percent';
     /** `allRows` lets cell renderers share a bulk fetch via one react-query key. */
     transform?: (value: string, row?: Record<string, unknown>, allRows?: Record<string, unknown>[]) => React.ReactNode;
+}
+
+/** A single pivoted row in a popup fields table. */
+export interface PopupFieldsTableField {
+    /** Name shown in the label column. */
+    label: string;
+    /** Field config used to read and format the value. */
+    config: FieldConfig;
+    /** Unit appended to the formatted value in the measurement column, e.g. 'mg/l'. */
+    unit?: string;
+}
+
+/** Configuration for rendering a subset of popup fields as a table inside a collapsible dropdown. */
+export interface PopupFieldsTableConfig {
+    /** Label shown on the collapsible section header. */
+    sectionLabel: string;
+    /** Header for the left (label) column. Omit to hide the header row. */
+    labelHeader?: string;
+    /** Header for the right (value) column. Omit to hide the header row. */
+    valueHeader?: string;
+    /** Fields rendered as pivoted rows (label | value), in order. */
+    fields: PopupFieldsTableField[];
 }
 
 // Interface for composite symbol results

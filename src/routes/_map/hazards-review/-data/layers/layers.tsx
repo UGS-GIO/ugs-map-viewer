@@ -60,6 +60,7 @@ const landslideInventoryWMSConfig: WMSLayerProps = {
                 'Primary Geologic Unit Involved': { field: 'd_geologic_unit1', type: 'string' },
                 'Secondary Geologic Unit Involved': { field: 'd_geologic_unit2', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -99,6 +100,7 @@ const landslideSusceptibilityWMSConfig: WMSLayerProps = {
                 'Mapped Scale': { field: 'lssmappedscale', type: 'string' },
                 'Critical Angle': { field: 'lsscriticalangle', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -137,6 +139,7 @@ const liquefactionWMSConfig: WMSLayerProps = {
                 'Hazard': { field: 'hazard_symbology_text', type: 'string' },
                 'Mapped Scale': { field: 'lqsmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -262,6 +265,7 @@ const surfaceFaultRuptureWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Mapped Scale': { field: 'sfrmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -297,6 +301,7 @@ const windBlownSandWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: { 'Mapped Scale': { field: 'wssmappedscale', type: 'string' } },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -334,6 +339,7 @@ const saltTectonicsDeformationWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Mapped Scale': { field: 'sdhmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -371,6 +377,7 @@ const shallowBedrockWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Mapped Scale': { field: 'sbpmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -408,6 +415,7 @@ const rockfallHazardWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Mapped Scale': { field: 'rfhmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -445,6 +453,7 @@ const pipingAndErosionWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Mapped Scale': { field: 'pesmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -482,6 +491,7 @@ const expansiveSoilRockWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Mapped Scale': { field: 'exsmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -520,6 +530,7 @@ const shallowGroundwaterWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Mapped Scale': { field: 'sgsmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -557,6 +568,7 @@ const radonSusceptibilityWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Mapped Scale': { field: 'grsmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -594,6 +606,7 @@ const corrosiveSoilRockWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Mapped Scale': { field: 'crsmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -631,6 +644,7 @@ const collapsibleSoilWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Mapped Scale': { field: 'cssmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -668,6 +682,7 @@ const solubleSoilAndRockWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Mapped Scale': { field: 'slsmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -705,6 +720,7 @@ const alluvialFanWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Mapped Scale': { field: 'aafmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -741,6 +757,7 @@ const floodAndDebrisWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Mapped Scale': { field: 'flhmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: 'hazard_symbology_text',
@@ -774,6 +791,7 @@ const earthFissureWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Mapped Scale': { field: 'efhmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -811,6 +829,7 @@ const erosionHazardZoneWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Mapped Scale': { field: 'erzmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
@@ -847,6 +866,7 @@ const karstFeaturesWMSConfig: WMSLayerProps = {
             popupFields: {
                 'Mapped Scale': { field: 'mkfmappedscale', type: 'string' },
             },
+            relatedTablesPosition: 'above',
             relatedTables: [
                 {
                     fieldLabel: '',
