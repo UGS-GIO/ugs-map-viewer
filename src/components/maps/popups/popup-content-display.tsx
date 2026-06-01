@@ -306,6 +306,13 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         });
     }, [bulkRelatedData, relatedTables, feature?.properties]);
 
+    // Hooks must run before any early return — keep these above the raster/no-feature guards.
+    const properties = useMemo(() => feature?.properties || {}, [feature]);
+    const galleryImages = useMemo(
+        () => buildGalleryImages(imageFields, properties, relatedTables, data),
+        [imageFields, properties, relatedTables, data]
+    );
+
     const rasterValue = getRasterFeatureValue(rasterSource);
 
     // Handle Raster-Only Display
@@ -326,7 +333,6 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
 
     if (!feature) return null;
 
-    const properties = feature.properties || {};
     const urlPattern = /https?:\/\/[^\s/$.?#].[^\s]*/;
 
     type PropertyValue = string | number | boolean | null | undefined;
@@ -519,11 +525,6 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
     const orderedItems = contentItems.sort((a, b) => a.originalIndex - b.originalIndex);
     const regularCount = orderedItems.filter(item => !item.isLongContent).length;
     const useGridLayout = layout === "grid" || regularCount > 5;
-
-    const galleryImages = useMemo(
-        () => buildGalleryImages(imageFields, properties, relatedTables, data),
-        [imageFields, properties, relatedTables, data]
-    )
 
     const galleryId = properties?.id ?? properties?.pk ?? properties?.ogc_fid ?? feature?.id ?? 'photos'
     const galleryDownloadName = `${sanitizeFilename(`${layer.layerTitle ?? 'feature'}-${galleryId}`)}-photos.zip`
