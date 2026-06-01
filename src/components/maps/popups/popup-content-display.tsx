@@ -240,6 +240,34 @@ function InlineSection({ label, children }: { label?: string; children: ReactNod
     );
 }
 
+// Shared table used for both related tables and pivoted popup-fields tables. Centralizes the
+// header/cell styling so the two call sites can't drift apart. Pass `headers` to render a header
+// row; each row is an array of cell contents.
+function PopupTable({ headers, rows }: { headers?: ReactNode[]; rows: ReactNode[][] }) {
+    return (
+        <Table>
+            {headers && (
+                <TableHeader>
+                    <TableRow>
+                        {headers.map((header, idx) => (
+                            <TableHead key={idx} className="h-8 text-xs">{header}</TableHead>
+                        ))}
+                    </TableRow>
+                </TableHeader>
+            )}
+            <TableBody>
+                {rows.map((cells, rowIdx) => (
+                    <TableRow key={rowIdx}>
+                        {cells.map((cell, cellIdx) => (
+                            <TableCell key={cellIdx} className="py-1.5 text-xs">{cell}</TableCell>
+                        ))}
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    );
+}
+
 // --- Main Component ---
 const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: PopupContentDisplayProps) => {
     const { relatedTables, relatedTablesPosition, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
@@ -408,26 +436,10 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         if (useTableFormat) {
             const headers = table.displayFields!.map(df => df.label || df.field);
             innerContent = (
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            {headers.map((header, idx) => (
-                                <TableHead key={idx} className="h-8 text-xs">{header}</TableHead>
-                            ))}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {groupedValues.map((group, groupIdx) => (
-                            <TableRow key={`row-${groupIdx}`}>
-                                {group.map((valueItem, cellIdx) => (
-                                    <TableCell key={`cell-${cellIdx}`} className="py-1.5 text-xs">
-                                        {valueItem.value}
-                                    </TableCell>
-                                ))}
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                <PopupTable
+                    headers={headers}
+                    rows={groupedValues.map(group => group.map(valueItem => valueItem.value))}
+                />
             );
         } else {
             innerContent = (
@@ -469,16 +481,19 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         const rows = tableConfig.fields
             .map((field) => {
                 const value = formatFieldValue(field.config, properties[field.config.field], properties);
-                return {
-                    header: field.label,
-                    value: field.unit && shouldDisplayValue(value) ? `${value} ${field.unit}` : value,
-                };
+                return { label: field.label, value, unit: field.unit };
             })
-            .filter(row => shouldDisplayValue(row.value));
+            .filter(row => shouldDisplayValue(row.value))
+            .map(row => [
+                <span className="font-medium">{row.label}</span>,
+                row.unit ? `${row.value} ${row.unit}` : row.value,
+            ]);
 
         if (rows.length === 0) return;
 
-        const showHeader = !!(tableConfig.labelHeader || tableConfig.valueHeader);
+        const headers = (tableConfig.labelHeader || tableConfig.valueHeader)
+            ? [tableConfig.labelHeader, tableConfig.valueHeader]
+            : undefined;
 
         const tableContent = (
             <CollapsibleSection
@@ -486,24 +501,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
                 label={tableConfig.sectionLabel}
                 count={rows.length}
             >
-                <Table>
-                    {showHeader && (
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="h-8 text-xs">{tableConfig.labelHeader}</TableHead>
-                                <TableHead className="h-8 text-xs">{tableConfig.valueHeader}</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                    )}
-                    <TableBody>
-                        {rows.map((row, idx) => (
-                            <TableRow key={idx}>
-                                <TableCell className="py-1.5 text-xs font-medium">{row.header}</TableCell>
-                                <TableCell className="py-1.5 text-xs">{row.value}</TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                <PopupTable headers={headers} rows={rows} />
             </CollapsibleSection>
         );
 
