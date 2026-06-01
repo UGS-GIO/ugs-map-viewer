@@ -1121,7 +1121,7 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                 'TDS Measured (mg/l)': { field: 'tdsm', type: 'string' },
                 'TDS Calculated (mg/l)': { field: 'tdsc', type: 'string' },
                 'Cat/Anion Charge Balance': { field: 'chgbal', type: 'string' },
-                    },
+            },
         },
     ],
 };

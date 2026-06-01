@@ -328,14 +328,16 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                 },
                 'Date': { field: 'date', type: 'date' },
                 'Reference': { field: 'reference', type: 'string' },
-                'PH': { field: 'ph', type: 'string' },
                 'Conductivity (microsiemens)': { field: 'cond', type: 'string' },
-                },
-                popupFieldsTable: [
+            },
+            popupFieldsTable: [
                 {
                     sectionLabel: 'Water Chemistry',
                     displayAs: 'table',
+                    labelHeader: 'Chemical',
+                    valueHeader: 'Measurement',
                     fields: {
+                        'pH': { field: 'ph', type: 'string' },
                         'Sodium (mg/l)': { field: 'na', type: 'string' },
                         'Potassium (mg/l)': { field: 'k', type: 'string' },
                         'Calcium (mg/l)': { field: 'ca', type: 'string' },
@@ -348,7 +350,7 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                         'Bicarbonate (mg/l)': { field: 'hco3', type: 'string' },
                         'Sulfate (mg/l)': { field: 'so4', type: 'string' },
                         'Chlorine (mg/l)': { field: 'cl', type: 'string' },
-                        'Florine (mg/l)': { field: 'f', type: 'string' },
+                        'Fluorine (mg/l)': { field: 'f', type: 'string' },
                         'Arsenic (mg/l)': { field: 'as', type: 'string' },
                         'TDS Measured (mg/l)': { field: 'tdsm', type: 'string' },
                         'TDS Calculated (mg/l)': { field: 'tdsc', type: 'string' },

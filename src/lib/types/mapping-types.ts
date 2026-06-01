@@ -348,23 +348,17 @@ interface DisplayField {
     transform?: (value: string, row?: Record<string, unknown>, allRows?: Record<string, unknown>[]) => React.ReactNode;
 }
 
-/** A field displayed inside a popup fields table. Mirrors DisplayField but sources from feature properties. */
-export interface PopupFieldsTableField {
-    field: string;
-    label?: string;
-    /** Format numeric values: 'number' (thousands), 'currency' (USD), 'percent'. Applied before transform. */
-    format?: 'number' | 'currency' | 'percent';
-    /** Optional transform receives the raw property value and the full feature properties. */
-    transform?: (value: string, properties?: GeoJsonProperties) => React.ReactNode;
-}
-
 /** Configuration for rendering a subset of popup fields as a table inside a collapsible dropdown. */
 export interface PopupFieldsTableConfig {
     /** Label shown on the collapsible section header. */
     sectionLabel: string;
     /** Must be 'table' — triggers table rendering in the popup. */
     displayAs: 'table';
-    /** Fields to display as columns in the table. Key = column header, value = field config. */
+    /** Header for the left (label) column. Omit to hide the header row. */
+    labelHeader?: string;
+    /** Header for the right (value) column. Omit to hide the header row. */
+    valueHeader?: string;
+    /** Fields rendered as pivoted rows (label | value). Key = row label (bake units in here), value = field config. */
     fields: Record<string, FieldConfig>;
 }
 

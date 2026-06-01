@@ -443,41 +443,42 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         contentItems.push({ content: relatedContent, isLongContent, originalIndex: 1000 + tableIndex });
     });
 
-    // Handle Popup Fields Tables (collapsible dropdown tables for subsets of popupFields)
+    // Handle Popup Fields Tables (collapsible dropdown tables for subsets of popupFields).
+    // Pivoted layout: one row per field (Measurement | Value) so wide field sets don't scroll sideways.
     (layer.popupFieldsTable || []).forEach((tableConfig, tableIndex) => {
-        const headers = Object.keys(tableConfig.fields);
-        const fieldConfigs = Object.values(tableConfig.fields);
+        const rows = Object.entries(tableConfig.fields)
+            .map(([header, fieldConfig]) => ({
+                header,
+                value: formatFieldValue(fieldConfig, properties[fieldConfig.field], properties),
+            }))
+            .filter(row => shouldDisplayValue(row.value));
 
-        const rowValues = fieldConfigs.map((fieldConfig) => {
-            const rawValue = properties[fieldConfig.field];
-            return formatFieldValue(fieldConfig, rawValue, properties) || 'N/A';
-        });
+        if (rows.length === 0) return;
 
-        const hasRealData = rowValues.some(v => shouldDisplayValue(v) && v !== 'N/A');
-        if (!hasRealData) return;
+        const showHeader = !!(tableConfig.labelHeader || tableConfig.valueHeader);
 
         const tableContent = (
             <CollapsibleSection
                 key={`popup-fields-table-${tableIndex}`}
                 label={tableConfig.sectionLabel}
-                count={1}
+                count={rows.length}
             >
                 <Table>
-                    <TableHeader>
-                        <TableRow>
-                            {headers.map((header, idx) => (
-                                <TableHead key={idx} className="h-8 text-xs">{header}</TableHead>
-                            ))}
-                        </TableRow>
-                    </TableHeader>
+                    {showHeader && (
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="h-8 text-xs">{tableConfig.labelHeader}</TableHead>
+                                <TableHead className="h-8 text-xs">{tableConfig.valueHeader}</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                    )}
                     <TableBody>
-                        <TableRow>
-                            {rowValues.map((value, idx) => (
-                                <TableCell key={idx} className="py-1.5 text-xs">
-                                    {value}
-                                </TableCell>
-                            ))}
-                        </TableRow>
+                        {rows.map((row, idx) => (
+                            <TableRow key={idx}>
+                                <TableCell className="py-1.5 text-xs font-medium">{row.header}</TableCell>
+                                <TableCell className="py-1.5 text-xs">{row.value}</TableCell>
+                            </TableRow>
+                        ))}
                     </TableBody>
                 </Table>
             </CollapsibleSection>
