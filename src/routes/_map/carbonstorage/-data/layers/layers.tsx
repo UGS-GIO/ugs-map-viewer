@@ -900,7 +900,7 @@ const geochemWellSitesWMSConfig: WMSLayerProps = {
                     fieldLabel: 'Geochemistry Data',
                     matchingField: 'uwi',
                     targetField: 'uwi',
-                    url: PROD_POSTGREST_URL + '/ccus_geochem_data',
+                    url: PROD_POSTGREST_URL + '/enmin_ccus_geochemistry_measurements_current',
                     headers: {
                         "Accept-Profile": 'emp',
                         "Accept": "application/json",
@@ -912,6 +912,56 @@ const geochemWellSitesWMSConfig: WMSLayerProps = {
                         { field: 'porosity_percent', label: 'Porosity (%)' },
                         { field: 'perm_md_klink', label: 'Permeability (mD)' },
                         { field: 'salinity_ppm', label: 'Salinity (ppm)' },
+                    ],
+                    sortBy: 'depth_top_interval',
+                    sortDirection: 'asc',
+                    displayAs: 'table'
+                },
+            ],
+        },
+    ],
+};
+
+// Geochemistry Fields WMS Layer
+const geochemFieldsLayerName = 'enmin_ccus_geochemfieldpolys_current';
+const geochemFieldsWMSTitle = 'Geochemistry Fields';
+const geochemFieldsWMSConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: geochemFieldsWMSTitle,
+    visible: false,
+    crs: 'EPSG:3857',
+    downloadParquetUrl: parquetUrl("enmin_ccus_geochemfieldpolys"),
+    sublayers: [
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${geochemFieldsLayerName}`,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Field Name': { field: 'field', type: 'string' },
+                'Type': { field: 'type', type: 'string' },
+                'Status': { field: 'status', type: 'string' },
+                'Discovery Year': { field: 'date', type: 'string' },
+                'Producing Formations': { field: 'prodformations', type: 'string' },
+                'Reservoir Rocks': { field: 'reservoir_rocks', type: 'string' },
+            },
+            relatedTables: [
+                {
+                    fieldLabel: 'Geochemistry Data',
+                    matchingField: 'fieldnamejoin',
+                    targetField: 'field',
+                    url: PROD_POSTGREST_URL + '/enmin_geochemistry_fields_current',
+                    headers: {
+                        "Accept-Profile": 'emp',
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    displayFields: [
+                        { field: 'formation', label: 'Formation' },
+                        { field: 'depth_top_interval', label: 'Depth (ft)' },
+                        { field: 'porosity_percent', label: 'Porosity (%)' },
+                        { field: 'perm_md_klink', label: 'Permeability (mD)' },
+                        { field: 'lithology', label: 'Lithology' },
                     ],
                     sortBy: 'depth_top_interval',
                     sortDirection: 'asc',
@@ -1377,6 +1427,7 @@ const subsurfaceDataConfig: LayerProps = {
     layers: [
         wellWithTopsWMSConfig,
         geochemWellSitesWMSConfig,
+        geochemFieldsWMSConfig,
         coresAndCuttingsWMSConfig,
         oilGasFieldsWMSConfig,
         geothermalWellsWMSConfig,
