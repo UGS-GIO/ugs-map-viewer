@@ -856,7 +856,7 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
 
 // Geochemistry Well Sites WMS Layer
 const geochemWellSitesLayerName = 'enmin_ccus_geochemistry_current';
-const geochemWellSitesWMSTitle = 'Wells with Rock Property Data';
+const geochemWellSitesWMSTitle = 'Rock Property Data: Wells';
 const geochemWellSitesWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -924,7 +924,7 @@ const geochemWellSitesWMSConfig: WMSLayerProps = {
 
 // Geochemistry Fields WMS Layer
 const geochemFieldsLayerName = 'enmin_ccus_geochemfieldpolys_current';
-const geochemFieldsWMSTitle = 'Geochemistry Fields';
+const geochemFieldsWMSTitle = 'Rock Property Data: Fields';
 const geochemFieldsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
