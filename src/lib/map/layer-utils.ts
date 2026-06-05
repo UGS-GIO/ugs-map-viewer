@@ -187,9 +187,12 @@ export function buildWmsTileUrl(baseUrl: string, layerName: string, cqlFilter?: 
  * Sublayer name is already in workspace:layername format
  */
 export function getWmsLayerName(layer: WMSLayerProps): string {
-  const sublayerName = layer.sublayers?.[0]?.name
-  if (sublayerName) {
-    return sublayerName
+  // Join all sublayer names so GetMap renders every sublayer (comma-separated layers param).
+  // For single-sublayer layers this is just the one name. Legend code splits on the comma since
+  // GetLegendGraphic only accepts one layer per request.
+  const sublayerNames = (layer.sublayers?.map(s => s.name).filter(Boolean) ?? []) as string[]
+  if (sublayerNames.length > 0) {
+    return sublayerNames.join(',')
   }
   return layer.title
 }

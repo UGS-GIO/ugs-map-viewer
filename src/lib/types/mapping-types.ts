@@ -83,6 +83,9 @@ export interface ImageFieldConfig {
 }
 
 export type CustomSublayerProps = {
+    /** Popup section heading for this sublayer. Lets a multi-sublayer layer (e.g. points + polygons)
+     * label each geometry distinctly in the popup; defaults to the parent layer title. */
+    popupTitle?: string;
     popupFields?: Record<string, FieldConfig>; // Maps field labels to attribute names
     popupFieldsTable?: PopupFieldsTableConfig[]; // Subsets of popupFields rendered as tables in collapsible dropdowns
     relatedTables?: RelatedTable[];

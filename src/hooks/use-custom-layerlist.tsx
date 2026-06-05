@@ -116,6 +116,17 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
 
     const { refetch: fetchExtent, data: cachedExtent } = useLayerExtent(extentOptions);
 
+    // Legend uses ALL sublayer names (comma-separated) so a multi-sublayer layer shows every
+    // sublayer's swatches. Kept separate from extentOptions.layerName, which must stay a single
+    // name — fetchLayerExtent looks it up verbatim in GetCapabilities and a joined name won't match.
+    const legendLayerName = useMemo(() => {
+        if (isWMSLayer(layerConfig)) {
+            const names = (layerConfig.sublayers?.map(s => s.name).filter(Boolean) ?? []) as string[];
+            if (names.length > 0) return names.join(',');
+        }
+        return extentOptions.type === 'wms' ? extentOptions.layerName : null;
+    }, [layerConfig, extentOptions]);
+
     const currentZoom = useMapZoom();
     const visibleZoomRange = layerConfig.visibleZoomRange ?? null;
     const zoomHint = isSelected ? getZoomHint(currentZoom, visibleZoomRange) : null;
@@ -306,7 +317,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
                             handleZoomToLayer={handleZoomToLayer}
                             url={extentOptions.type === 'wms' ? extentOptions.wmsUrl || '' : ''}
                             openLegend={isUserExpanded}
-                            layerName={extentOptions.type === 'wms' ? extentOptions.layerName : null}
+                            layerName={extentOptions.type === 'wms' ? legendLayerName : null}
                             customLegend={resolvedCustomLegend}
                             bivariateLegend={layerConfig.bivariateLegend}
                             arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}

@@ -103,44 +103,49 @@ async function fetchLegendDataForVisibleLayers(
   // Fetch legend for each visible layer
   for (const layer of visibleLayers) {
     try {
-      // Build legend URL with optional BBOX filtering
-      const params = new URLSearchParams({
-        service: 'WMS',
-        request: 'GetLegendGraphic',
-        format: 'application/json',
-        layer: layer.layerName,
-        version: '1.3.0'
-      })
-
-      // Add extent parameters for content-dependent legend (GeoServer feature)
-      // Requires hideEmptyRules to actually filter out symbols with no features in view
-      // Skip for bivariate layers — we need the full grid regardless of viewport
-      if (bounds && !layer.bivariateLegend) {
-        params.set('BBOX', `${bounds.south},${bounds.west},${bounds.north},${bounds.east}`)
-        params.set('CRS', 'EPSG:4326')
-        params.set('WIDTH', String(Math.round(bounds.width)))
-        params.set('HEIGHT', String(Math.round(bounds.height)))
-        params.set('SRS', 'EPSG:4326')
-        params.set('SRCWIDTH', String(Math.round(bounds.width)))
-        params.set('SRCHEIGHT', String(Math.round(bounds.height)))
-        // GeoServer vendor option to hide legend rules with no matching features
-        params.set('LEGEND_OPTIONS', 'hideEmptyRules:true;countMatched:true')
+      // Build legend URL for a single GeoServer layer name, with optional BBOX filtering.
+      const buildLegendUrl = (ln: string) => {
+        const params = new URLSearchParams({
+          service: 'WMS',
+          request: 'GetLegendGraphic',
+          format: 'application/json',
+          layer: ln,
+          version: '1.3.0'
+        })
+        // Add extent parameters for content-dependent legend (GeoServer feature)
+        // Requires hideEmptyRules to actually filter out symbols with no features in view
+        // Skip for bivariate layers — we need the full grid regardless of viewport
+        if (bounds && !layer.bivariateLegend) {
+          params.set('BBOX', `${bounds.south},${bounds.west},${bounds.north},${bounds.east}`)
+          params.set('CRS', 'EPSG:4326')
+          params.set('WIDTH', String(Math.round(bounds.width)))
+          params.set('HEIGHT', String(Math.round(bounds.height)))
+          params.set('SRS', 'EPSG:4326')
+          params.set('SRCWIDTH', String(Math.round(bounds.width)))
+          params.set('SRCHEIGHT', String(Math.round(bounds.height)))
+          // GeoServer vendor option to hide legend rules with no matching features
+          params.set('LEGEND_OPTIONS', 'hideEmptyRules:true;countMatched:true')
+        }
+        return `${layer.url}?${params.toString()}`
       }
 
-      const legendUrl = `${layer.url}?${params.toString()}`
-      const response = await fetch(legendUrl)
-      if (!response.ok) continue
+      const fetchRules = async (ln: string) => {
+        const response = await fetch(buildLegendUrl(ln))
+        if (!response.ok) return []
+        const contentType = response.headers.get('content-type')
+        if (!contentType?.includes('application/json')) return []
+        const legendData: Legend = await response.json()
+        return legendData?.Legend?.[0]?.rules || []
+      }
 
-      const contentType = response.headers.get('content-type')
-      if (!contentType?.includes('application/json')) continue
-
-      const legendData: Legend = await response.json()
-      const rules = legendData?.Legend?.[0]?.rules || []
-
-      if (rules.length === 0) continue
+      // A WMS layer can bundle multiple GeoServer sublayers (comma-separated). GetLegendGraphic
+      // takes one layer per request, so fetch each and merge. Bivariate layers are single-sublayer.
+      const layerNames = String(layer.layerName).split(',').map(n => n.trim()).filter(Boolean)
 
       // Bivariate legend: parse grid from bivariate_R_C rule names
       if (layer.bivariateLegend) {
+        const rules = await fetchRules(layerNames[0])
+        if (rules.length === 0) continue
         const cells: { row: number; col: number; color: string; title: string }[] = []
         let noData: { color: string; opacity: number; label: string } | undefined
         for (const rule of rules) {
@@ -189,20 +194,23 @@ async function fetchLegendDataForVisibleLayers(
       }
 
       const symbols: LegendItem['symbols'] = []
-      for (const rule of rules) {
-        const label = rule.title || rule.name
-        const result = createSVGSymbol(rule.symbolizers)
-        // Handle both SVGSVGElement and CompositeSymbolResult
-        let svgHtml = ''
-        if ('outerHTML' in result) {
-          svgHtml = result.outerHTML
-        } else if (result.symbol) {
-          svgHtml = result.symbol.outerHTML
-        } else if (result.html && 'outerHTML' in result.html) {
-          svgHtml = result.html.outerHTML
-        }
-        if (svgHtml) {
-          symbols.push({ label, svgHtml })
+      for (const ln of layerNames) {
+        const rules = await fetchRules(ln)
+        for (const rule of rules) {
+          const label = rule.title || rule.name
+          const result = createSVGSymbol(rule.symbolizers)
+          // Handle both SVGSVGElement and CompositeSymbolResult
+          let svgHtml = ''
+          if ('outerHTML' in result) {
+            svgHtml = result.outerHTML
+          } else if (result.symbol) {
+            svgHtml = result.symbol.outerHTML
+          } else if (result.html && 'outerHTML' in result.html) {
+            svgHtml = result.html.outerHTML
+          }
+          if (svgHtml) {
+            symbols.push({ label, svgHtml })
+          }
         }
       }
 
