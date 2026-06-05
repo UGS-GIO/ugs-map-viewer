@@ -854,19 +854,23 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
     ],
 };
 
-// Geochemistry Well Sites WMS Layer
+// Rock Property Data WMS Layer — wells (points) + fields (polygons) bundled as one toggle.
+// Both sublayers render together; each keeps its own popup fields + related table, labelled via
+// popupTitle so Wells vs Fields stay obvious in the popup. (downloadParquetUrl is one URL per
+// layer, so the button serves the wells dataset.)
 const geochemWellSitesLayerName = 'enmin_ccus_geochemistry_current';
-const geochemWellSitesWMSTitle = 'Wells';
-const geochemWellSitesWMSConfig: WMSLayerProps = {
+const geochemFieldsLayerName = 'enmin_ccus_geochemfieldpolys_current';
+const rockPropertyDataWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
-    title: geochemWellSitesWMSTitle,
+    title: 'Rock Property Data',
     visible: false,
     crs: 'EPSG:3857',
     downloadParquetUrl: parquetUrl("enmin_ccus_geochemistry"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geochemWellSitesLayerName}`,
+            popupTitle: 'Wells',
             popupEnabled: true,
             queryable: true,
             popupFields: {
@@ -919,22 +923,9 @@ const geochemWellSitesWMSConfig: WMSLayerProps = {
                 },
             ],
         },
-    ],
-};
-
-// Geochemistry Fields WMS Layer
-const geochemFieldsLayerName = 'enmin_ccus_geochemfieldpolys_current';
-const geochemFieldsWMSTitle = 'Fields';
-const geochemFieldsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: geochemFieldsWMSTitle,
-    visible: false,
-    crs: 'EPSG:3857',
-    downloadParquetUrl: parquetUrl("enmin_ccus_geochemfieldpolys"),
-    sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geochemFieldsLayerName}`,
+            popupTitle: 'Fields',
             popupEnabled: true,
             queryable: true,
             popupFields: {
@@ -969,18 +960,6 @@ const geochemFieldsWMSConfig: WMSLayerProps = {
                 },
             ],
         },
-    ],
-};
-
-// Rock Property Data group — pairs the wells (points) and fields (polygons) datasets
-// under one heading while keeping each independently toggleable, legended, and downloadable.
-const rockPropertyDataGroupConfig: LayerProps = {
-    type: 'group',
-    title: 'Rock Property Data',
-    visible: false,
-    layers: [
-        geochemWellSitesWMSConfig,
-        geochemFieldsWMSConfig,
     ],
 };
 
@@ -1438,7 +1417,7 @@ const subsurfaceDataConfig: LayerProps = {
     visible: false,
     layers: [
         wellWithTopsWMSConfig,
-        rockPropertyDataGroupConfig,
+        rockPropertyDataWMSConfig,
         coresAndCuttingsWMSConfig,
         oilGasFieldsWMSConfig,
         geothermalWellsWMSConfig,
