@@ -127,6 +127,16 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
         return extentOptions.type === 'wms' ? extentOptions.layerName : null;
     }, [layerConfig, extentOptions]);
 
+    // Friendly heading per sublayer (its popupTitle), so a composite legend can label each group.
+    const legendLayerLabels = useMemo(() => {
+        if (!isWMSLayer(layerConfig)) return undefined;
+        const labels: Record<string, string> = {};
+        for (const sub of layerConfig.sublayers ?? []) {
+            if (sub.name && sub.popupTitle) labels[sub.name] = sub.popupTitle;
+        }
+        return Object.keys(labels).length > 0 ? labels : undefined;
+    }, [layerConfig]);
+
     const currentZoom = useMapZoom();
     const visibleZoomRange = layerConfig.visibleZoomRange ?? null;
     const zoomHint = isSelected ? getZoomHint(currentZoom, visibleZoomRange) : null;
@@ -318,6 +328,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
                             url={extentOptions.type === 'wms' ? extentOptions.wmsUrl || '' : ''}
                             openLegend={isUserExpanded}
                             layerName={extentOptions.type === 'wms' ? legendLayerName : null}
+                            layerLabels={legendLayerLabels}
                             customLegend={resolvedCustomLegend}
                             bivariateLegend={layerConfig.bivariateLegend}
                             arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}

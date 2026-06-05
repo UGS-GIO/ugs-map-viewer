@@ -31,10 +31,14 @@ export type PreviewItem = {
     label?: string;
     title?: string;
     isComposite?: boolean;
+    /** Group heading row (no swatch). Used to delineate sublayers in a merged multi-sublayer legend. */
+    sectionTitle?: string;
 };
 
-/** Fetches GeoServer GetLegendGraphic JSON and converts each rule into a preview item. */
-const useLegendPreview = (url: string, layerName?: string, skip?: boolean, legendUnit?: string) => {
+/** Fetches GeoServer GetLegendGraphic JSON and converts each rule into a preview item.
+ * `layerLabels` maps a GeoServer sublayer name to a friendly heading (e.g. 'Wells'); when the layer
+ * has more than one sublayer, each group's swatches are preceded by a sectionTitle row. */
+const useLegendPreview = (url: string, layerName?: string, skip?: boolean, legendUnit?: string, layerLabels?: Record<string, string>) => {
     const fetchLegendData = async (): Promise<PreviewItem[]> => {
         if (!url || !layerName) {
             return [];
@@ -43,6 +47,7 @@ const useLegendPreview = (url: string, layerName?: string, skip?: boolean, legen
         // A layer can bundle multiple GeoServer sublayers (comma-separated). GetLegendGraphic takes
         // one layer per request, so fetch each name and merge the rules into one preview list.
         const layerNames = String(layerName).split(',').map(n => n.trim()).filter(Boolean);
+        const showSectionHeaders = layerNames.length > 1;
         const allPreviews: PreviewItem[] = [];
 
         for (const ln of layerNames) {
@@ -68,6 +73,12 @@ const useLegendPreview = (url: string, layerName?: string, skip?: boolean, legen
 
                 if (rules.length === 0) {
                     continue;
+                }
+
+                // Delineate each sublayer's swatches in a merged legend with a heading row.
+                const sectionTitle = layerLabels?.[ln];
+                if (showSectionHeaders && sectionTitle) {
+                    allPreviews.push({ sectionTitle });
                 }
 
                 // Raster: bypass RendererFactory (would crush the bar to a 32×22 swatch).

@@ -24,6 +24,8 @@ interface LayerControlsProps {
     bivariateLegend?: { xLabel: string; yLabel: string };
     arcgisUrl?: string;
     legendUnit?: string;
+    /** Maps a GeoServer sublayer name to a friendly heading, for delineating sublayers in the legend. */
+    layerLabels?: Record<string, string>;
     /** GeoParquet URL for client-side export. When set, download dropdown is enabled. */
     downloadParquetUrl?: string;
     /** When true, hide format-conversion dropdown and offer only a direct parquet download. Used for apps that require unmodified source data. */
@@ -44,6 +46,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     bivariateLegend,
     arcgisUrl,
     legendUnit,
+    layerLabels,
     downloadParquetUrl,
     disableExport = false,
 }) => {
@@ -170,6 +173,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     bivariateLegend={bivariateLegend}
                     arcgisUrl={arcgisUrl}
                     legendUnit={legendUnit}
+                    layerLabels={layerLabels}
                 />
             </div>
         </div>
