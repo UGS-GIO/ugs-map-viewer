@@ -29,7 +29,8 @@ import type { LayerProps, WMSLayerProps, COGLayerProps } from '@/lib/types/mappi
 import { createSVGSymbol } from '@/lib/legend/symbol-generator'
 import { createRasterSymbol } from '@/lib/legend/symbolizers/raster'
 import { loadCogMetadata, deriveRange } from '@/hooks/use-cog-metadata'
-import type { Legend, Symbolizer } from '@/lib/types/geoserver-types'
+import type { Symbolizer } from '@/lib/types/geoserver-types'
+import { fetchLegendRulesBySublayer } from '@/lib/legend/wms-legend-service'
 
 interface MapBounds {
   west: number
@@ -103,48 +104,26 @@ async function fetchLegendDataForVisibleLayers(
   // Fetch legend for each visible layer
   for (const layer of visibleLayers) {
     try {
-      // Build legend URL for a single GeoServer layer name, with optional BBOX filtering.
-      const buildLegendUrl = (ln: string) => {
-        const params = new URLSearchParams({
-          service: 'WMS',
-          request: 'GetLegendGraphic',
-          format: 'application/json',
-          layer: ln,
-          version: '1.3.0'
-        })
-        // Add extent parameters for content-dependent legend (GeoServer feature)
-        // Requires hideEmptyRules to actually filter out symbols with no features in view
-        // Skip for bivariate layers — we need the full grid regardless of viewport
-        if (bounds && !layer.bivariateLegend) {
-          params.set('BBOX', `${bounds.south},${bounds.west},${bounds.north},${bounds.east}`)
-          params.set('CRS', 'EPSG:4326')
-          params.set('WIDTH', String(Math.round(bounds.width)))
-          params.set('HEIGHT', String(Math.round(bounds.height)))
-          params.set('SRS', 'EPSG:4326')
-          params.set('SRCWIDTH', String(Math.round(bounds.width)))
-          params.set('SRCHEIGHT', String(Math.round(bounds.height)))
-          // GeoServer vendor option to hide legend rules with no matching features
-          params.set('LEGEND_OPTIONS', 'hideEmptyRules:true;countMatched:true')
-        }
-        return `${layer.url}?${params.toString()}`
+      // Extent params for content-dependent legend (GeoServer feature). hideEmptyRules drops symbols
+      // with no features in view. Skip for bivariate layers — we need the full grid regardless.
+      const extraParams: Record<string, string> = {}
+      if (bounds && !layer.bivariateLegend) {
+        extraParams.BBOX = `${bounds.south},${bounds.west},${bounds.north},${bounds.east}`
+        extraParams.CRS = 'EPSG:4326'
+        extraParams.WIDTH = String(Math.round(bounds.width))
+        extraParams.HEIGHT = String(Math.round(bounds.height))
+        extraParams.SRS = 'EPSG:4326'
+        extraParams.SRCWIDTH = String(Math.round(bounds.width))
+        extraParams.SRCHEIGHT = String(Math.round(bounds.height))
+        extraParams.LEGEND_OPTIONS = 'hideEmptyRules:true;countMatched:true'
       }
 
-      const fetchRules = async (ln: string) => {
-        const response = await fetch(buildLegendUrl(ln))
-        if (!response.ok) return []
-        const contentType = response.headers.get('content-type')
-        if (!contentType?.includes('application/json')) return []
-        const legendData: Legend = await response.json()
-        return legendData?.Legend?.[0]?.rules || []
-      }
+      // A WMS layer can bundle multiple GeoServer sublayers; fetch each and merge.
+      const groups = await fetchLegendRulesBySublayer(layer.url, layer.layerName, extraParams)
 
-      // A WMS layer can bundle multiple GeoServer sublayers (comma-separated). GetLegendGraphic
-      // takes one layer per request, so fetch each and merge. Bivariate layers are single-sublayer.
-      const layerNames = String(layer.layerName).split(',').map(n => n.trim()).filter(Boolean)
-
-      // Bivariate legend: parse grid from bivariate_R_C rule names
+      // Bivariate legend: parse grid from bivariate_R_C rule names (always single-sublayer).
       if (layer.bivariateLegend) {
-        const rules = await fetchRules(layerNames[0])
+        const rules = groups[0]?.rules ?? []
         if (rules.length === 0) continue
         const cells: { row: number; col: number; color: string; title: string }[] = []
         let noData: { color: string; opacity: number; label: string } | undefined
@@ -194,8 +173,7 @@ async function fetchLegendDataForVisibleLayers(
       }
 
       const symbols: LegendItem['symbols'] = []
-      for (const ln of layerNames) {
-        const rules = await fetchRules(ln)
+      for (const { rules } of groups) {
         for (const rule of rules) {
           const label = rule.title || rule.name
           const result = createSVGSymbol(rule.symbolizers)
