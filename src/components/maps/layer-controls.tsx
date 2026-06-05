@@ -26,8 +26,9 @@ interface LayerControlsProps {
     legendUnit?: string;
     /** Maps a GeoServer sublayer name to a friendly heading, for delineating sublayers in the legend. */
     layerLabels?: Record<string, string>;
-    /** GeoParquet URL for client-side export. When set, download dropdown is enabled. */
-    downloadParquetUrl?: string;
+    /** Downloadable datasets for this layer. One entry per dataset (a multi-sublayer layer exposes one
+     * per sublayer); each renders its own labelled download menu. */
+    downloadEntries?: Array<{ label: string; url: string }>;
     /** When true, hide format-conversion dropdown and offer only a direct parquet download. Used for apps that require unmodified source data. */
     disableExport?: boolean;
 }
@@ -47,7 +48,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     arcgisUrl,
     legendUnit,
     layerLabels,
-    downloadParquetUrl,
+    downloadEntries = [],
     disableExport = false,
 }) => {
     // Sync activeTab with openLegend prop, but let the user toggle freely afterwards
@@ -153,9 +154,14 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                             <span className='text-xs'>Legend</span>
                         </Toggle>
 
-                        {!disableExport && downloadParquetUrl && (
-                            <ParquetDownloadMenu parquetUrl={downloadParquetUrl} layerTitle={title} />
-                        )}
+                        {!disableExport && downloadEntries.map(d => (
+                            <ParquetDownloadMenu
+                                key={d.url}
+                                parquetUrl={d.url}
+                                layerTitle={downloadEntries.length > 1 ? `${title}-${d.label}` : title}
+                                label={downloadEntries.length > 1 ? d.label : undefined}
+                            />
+                        ))}
                     </div>
                 </div>
             </div>

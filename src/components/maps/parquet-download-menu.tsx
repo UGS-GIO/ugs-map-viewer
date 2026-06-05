@@ -18,9 +18,12 @@ interface ParquetDownloadMenuProps {
     parquetUrl: string;
     /** Used as the download filename stem */
     layerTitle: string;
+    /** Trigger label. Defaults to "Download"; set per-dataset (e.g. "Wells") when a layer exposes
+     * multiple downloads so each button is distinguishable. */
+    label?: string;
 }
 
-export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parquetUrl, layerTitle }) => {
+export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parquetUrl, layerTitle, label }) => {
     const { data: schema, isLoading: schemaLoading, isError: schemaError } = useParquetSchema(parquetUrl);
 
     const download = useMutation({
@@ -63,7 +66,7 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
                         ? <Loader2 className="h-5 w-5 animate-spin" />
                         : <Download className="h-5 w-5" />}
                     <span className="text-xs">
-                        {isDownloading ? 'Exporting…' : schemaLoading ? 'Loading…' : 'Download'}
+                        {isDownloading ? 'Exporting…' : schemaLoading ? 'Loading…' : (label ?? 'Download')}
                     </span>
                 </Button>
             </DropdownMenuTrigger>

@@ -86,6 +86,9 @@ export type CustomSublayerProps = {
     /** Popup section heading for this sublayer. Lets a multi-sublayer layer (e.g. points + polygons)
      * label each geometry distinctly in the popup; defaults to the parent layer title. */
     popupTitle?: string;
+    /** GeoParquet URL for this sublayer's dataset. On a multi-sublayer layer, each sublayer with a
+     * URL gets its own labelled entry in the download menu (the layer-level url is the single-sublayer case). */
+    downloadParquetUrl?: string;
     popupFields?: Record<string, FieldConfig>; // Maps field labels to attribute names
     popupFieldsTable?: PopupFieldsTableConfig[]; // Subsets of popupFields rendered as tables in collapsible dropdowns
     relatedTables?: RelatedTable[];

@@ -855,9 +855,9 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
 };
 
 // Rock Property Data WMS Layer — wells (points) + fields (polygons) bundled as one toggle.
-// Both sublayers render together; each keeps its own popup fields + related table, labelled via
-// popupTitle so Wells vs Fields stay obvious in the popup. (downloadParquetUrl is one URL per
-// layer, so the button serves the wells dataset.)
+// Both sublayers render together; each keeps its own popup fields, related table, and parquet
+// download, labelled via popupTitle so Wells vs Fields stay distinct in the popup, legend, and
+// download menu.
 const geochemWellSitesLayerName = 'enmin_ccus_geochemistry_current';
 const geochemFieldsLayerName = 'enmin_ccus_geochemfieldpolys_current';
 const rockPropertyDataWMSConfig: WMSLayerProps = {
@@ -866,11 +866,11 @@ const rockPropertyDataWMSConfig: WMSLayerProps = {
     title: 'Rock Property Data',
     visible: false,
     crs: 'EPSG:3857',
-    downloadParquetUrl: parquetUrl("enmin_ccus_geochemistry"),
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geochemWellSitesLayerName}`,
             popupTitle: 'Wells',
+            downloadParquetUrl: parquetUrl("enmin_ccus_geochemistry"),
             popupEnabled: true,
             queryable: true,
             popupFields: {
@@ -926,6 +926,7 @@ const rockPropertyDataWMSConfig: WMSLayerProps = {
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geochemFieldsLayerName}`,
             popupTitle: 'Fields',
+            downloadParquetUrl: parquetUrl("enmin_ccus_geochemfieldpolys"),
             popupEnabled: true,
             queryable: true,
             popupFields: {

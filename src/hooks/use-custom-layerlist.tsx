@@ -137,6 +137,20 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
         return Object.keys(labels).length > 0 ? labels : undefined;
     }, [layerConfig]);
 
+    // Downloadable datasets: one per sublayer that defines a parquet URL (labelled by popupTitle),
+    // else the single layer-level URL. Lets a composite layer download each sublayer's data.
+    const downloadEntries = useMemo(() => {
+        if (isWMSLayer(layerConfig)) {
+            const subs = (layerConfig.sublayers ?? [])
+                .filter(s => s.downloadParquetUrl)
+                .map(s => ({ label: s.popupTitle || layerConfig.title || '', url: s.downloadParquetUrl as string }));
+            if (subs.length > 0) return subs;
+        }
+        return layerConfig.downloadParquetUrl
+            ? [{ label: layerConfig.title || '', url: layerConfig.downloadParquetUrl }]
+            : [];
+    }, [layerConfig]);
+
     const currentZoom = useMapZoom();
     const visibleZoomRange = layerConfig.visibleZoomRange ?? null;
     const zoomHint = isSelected ? getZoomHint(currentZoom, visibleZoomRange) : null;
@@ -333,7 +347,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
                             bivariateLegend={layerConfig.bivariateLegend}
                             arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
                             legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}
-                            downloadParquetUrl={layerConfig.downloadParquetUrl}
+                            downloadEntries={downloadEntries}
                             disableExport={disableExport}
                         />
                     </AccordionContent>
