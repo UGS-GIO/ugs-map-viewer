@@ -226,7 +226,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         className={`overflow-hidden transition-[max-height] duration-200 ease-out ${statsOpen ? 'max-h-[2000px]' : 'max-h-0'}`}
                     >
                         <div className="mt-2 mb-2 rounded border border-border bg-muted/40 p-1">
-                            {statsContent}
+                            {statsOpen && statsContent}
                         </div>
                     </div>
                 )}

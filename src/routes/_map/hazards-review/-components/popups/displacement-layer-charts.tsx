@@ -3,7 +3,7 @@ import area from '@turf/area'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label as RechartsLabel } from 'recharts'
+import { BarChart, Bar, Rectangle, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label as RechartsLabel, type BarShapeProps } from 'recharts'
 import type { LayerContentProps } from '@/components/maps/popups/types'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronRightIcon } from 'lucide-react'
@@ -24,6 +24,11 @@ import {
 const FALLBACK_THRESHOLD_IN = 1.2
 
 const SQM_TO_SQMI = 1 / 2_589_988.110336
+
+// Stacked-bar chart height in px. Shared by the chart wrapper and recharts'
+// ResponsiveContainer so a numeric height (not '100%') is always passed —
+// recharts v3 logs a width/height warning when it measures 0 at mount.
+const CHART_HEIGHT_PX = 224
 
 // Round to 1 decimal place for popup display.
 const fmt1 = (n: number): string => n.toFixed(1)
@@ -343,6 +348,21 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
         }
     }
 
+    // Per-segment highlight via the Bar `shape` render prop — replaces the
+    // deprecated <Cell> children (recharts v3 routes per-datum styling through
+    // `shape`). Dims segments outside the active year; Cumulative end-years light
+    // every window up to and including the pick, Yearly only the exact match.
+    // Only geometry + fill are forwarded to Rectangle so non-DOM Bar props
+    // (payload, tooltipPosition, …) can't leak onto the SVG path.
+    const renderHighlightBar = (props: BarShapeProps) => {
+        const { x, y, width, height, fill } = props
+        const yr = props.payload?.year as string | undefined
+        const highlighted =
+            !year ||
+            (yr ? (typeValue === 'Cumulative' ? yr <= year : yr === year) : true)
+        return <Rectangle x={x} y={y} width={width} height={height} fill={fill} fillOpacity={highlighted ? 1 : 0.25} />
+    }
+
     if (isError) return <div className="text-xs text-destructive mb-2">Failed to load stats.</div>
 
     return (
@@ -377,9 +397,14 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                         Visual threshold {fmt1(visualThreshold)} in differs from SLD default {fmt1(auditThreshold)} in — KPI &amp; metrics above stay pinned to the default.
                     </p>
                 )}
-                <div className="h-56 w-full">
+                <div className="w-full" style={{ height: CHART_HEIGHT_PX }}>
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
-                        <ResponsiveContainer>
+                        // Fixed numeric height so recharts' ResponsiveContainer never
+                        // renders at calculatedHeight <= 0 — that path logs a width/height
+                        // warning on every mount (recharts v3 logs in prod too). Width
+                        // stays responsive at 100%. Wrapper + chart share CHART_HEIGHT_PX
+                        // so there's one source of truth for the height.
+                        <ResponsiveContainer width="100%" height={CHART_HEIGHT_PX}>
                             <BarChart
                                 data={stackedAreaByYear}
                                 margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
@@ -407,24 +432,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                                     content={<StackedBarTooltip />}
                                 />
                                 {stackedBinOrder.map(bin => (
-                                    <Bar key={bin.name} dataKey={bin.name} stackId="rate" fill={bin.color} name={bin.title}>
-                                        {stackedAreaByYear.map(d => {
-                                            // Cumulative windows nest (2017→Y), so picking an end
-                                            // year highlights every bar at or before it to convey
-                                            // "this window covers everything up through Y". Yearly
-                                            // bars are independent buckets, so only the exact match
-                                            // stays lit.
-                                            const highlighted =
-                                                !year ||
-                                                (typeValue === 'Cumulative' ? d.year <= year : d.year === year)
-                                            return (
-                                                <Cell
-                                                    key={d.year}
-                                                    fillOpacity={highlighted ? 1 : 0.25}
-                                                />
-                                            )
-                                        })}
-                                    </Bar>
+                                    <Bar key={bin.name} dataKey={bin.name} stackId="rate" fill={bin.color} name={bin.title} shape={renderHighlightBar} />
                                 ))}
                             </BarChart>
                         </ResponsiveContainer>
