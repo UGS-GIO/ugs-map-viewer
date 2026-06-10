@@ -38,11 +38,20 @@ interface DisplacementFilterState {
     thresholdsIn: Record<ChartedType, ThresholdState>
     /** Selected basin locations per displacement type. Empty set = no basin filter (all basins). */
     basinsByType: Record<DisplacementType, ReadonlySet<string>>
+    /**
+     * Per-type set of data_qual categories the reviewer has UNCHECKED. Empty set
+     * = nothing excluded = all qualities shown (no filter). Storing exclusions
+     * (not selections) keeps "all = no filter" trivial and is future-proof: a new
+     * backend category shows by default until someone unchecks it.
+     */
+    excludedDataQualsByType: Record<DisplacementType, ReadonlySet<string>>
     setYearOverride: (y: string | null) => void
     setThreshold: (type: ChartedType, n: ThresholdState) => void
     addBasin: (type: DisplacementType, location: string) => void
     removeBasin: (type: DisplacementType, location: string) => void
     clearBasins: (type: DisplacementType) => void
+    toggleDataQual: (type: DisplacementType, qual: string) => void
+    clearDataQuals: (type: DisplacementType) => void
 }
 
 const DisplacementFilterContext = createContext<DisplacementFilterState | null>(null)
@@ -58,9 +67,27 @@ export function DisplacementFilterProvider({ children }: { children: ReactNode }
         'Yearly': new Set(),
         'Vertical Displacement Rate': new Set(),
     })
+    const [excludedDataQualsByType, setExcludedDataQualsByType] = useState<Record<DisplacementType, ReadonlySet<string>>>({
+        'Cumulative': new Set(),
+        'Yearly': new Set(),
+        'Vertical Displacement Rate': new Set(),
+    })
 
     function setThreshold(type: ChartedType, n: ThresholdState) {
         setThresholdsIn(prev => ({ ...prev, [type]: n }))
+    }
+
+    function toggleDataQual(type: DisplacementType, qual: string) {
+        setExcludedDataQualsByType(prev => {
+            const next = new Set(prev[type])
+            if (next.has(qual)) next.delete(qual)
+            else next.add(qual)
+            return { ...prev, [type]: next }
+        })
+    }
+
+    function clearDataQuals(type: DisplacementType) {
+        setExcludedDataQualsByType(prev => ({ ...prev, [type]: new Set() }))
     }
 
     function addBasin(type: DisplacementType, location: string) {
@@ -84,7 +111,7 @@ export function DisplacementFilterProvider({ children }: { children: ReactNode }
     }
 
     return (
-        <DisplacementFilterContext.Provider value={{ yearOverride, thresholdsIn, basinsByType, setYearOverride, setThreshold, addBasin, removeBasin, clearBasins }}>
+        <DisplacementFilterContext.Provider value={{ yearOverride, thresholdsIn, basinsByType, excludedDataQualsByType, setYearOverride, setThreshold, addBasin, removeBasin, clearBasins, toggleDataQual, clearDataQuals }}>
             {children}
         </DisplacementFilterContext.Provider>
     )
@@ -136,7 +163,7 @@ function quoteCqlLiteral(value: string): string {
 }
 
 export function useDisplacementLayerFilters(): Record<string, string> {
-    const { yearOverride, basinsByType } = useDisplacementFilters()
+    const { yearOverride, basinsByType, excludedDataQualsByType } = useDisplacementFilters()
     const effective = useEffectiveThresholdsIn()
     const latestByType = useDisplacementLatestYearByType()
     return useMemo(() => {
@@ -169,8 +196,16 @@ export function useDisplacementLayerFilters(): Record<string, string> {
                 const list = Array.from(basins).map(quoteCqlLiteral).join(', ')
                 clauses.push(`location IN (${list})`)
             }
+            // Data-quality: exclude unchecked categories. Empty exclusion set =
+            // no clause (all qualities shown). NOT IN keeps unknown future
+            // categories visible by default.
+            const excludedQuals = excludedDataQualsByType[typeValue]
+            if (excludedQuals && excludedQuals.size > 0) {
+                const list = Array.from(excludedQuals).map(quoteCqlLiteral).join(', ')
+                clauses.push(`data_qual NOT IN (${list})`)
+            }
             if (clauses.length > 0) out[title] = clauses.join(' AND ')
         }
         return out
-    }, [yearOverride, latestByType, effective, basinsByType])
+    }, [yearOverride, latestByType, effective, basinsByType, excludedDataQualsByType])
 }

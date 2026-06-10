@@ -4,7 +4,7 @@ import type { Feature, Polygon, MultiPolygon } from 'geojson'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
 import { fetchWfsFeatures } from '@/lib/map/wfs-service'
-import { DISPLACEMENT_TYPE_NAME, getStyleNameForType, type ChartedType, type DisplacementType } from './displacement-layers'
+import { DATA_QUAL_ORDER, DISPLACEMENT_TYPE_NAME, getStyleNameForType, type ChartedType, type DisplacementType } from './displacement-layers'
 import { fetchDisplacementSldBins, getZeroBound, type SldBin } from './displacement-sld-legend'
 
 export interface DisplacementProps {
@@ -126,6 +126,30 @@ export function useDisplacementBasinsForType(type: DisplacementType): string[] {
             if (f.properties.location) set.add(f.properties.location)
         }
         return Array.from(set).sort()
+    }, [type])
+    const { data = [] } = useQuery({ ...displacementFeaturesQueryOptions(), select })
+    return data
+}
+
+// Distinct data_qual categories present for a type, ordered best→worst via
+// DATA_QUAL_ORDER (unknown categories sort to the end, alphabetically). Drives
+// the data-quality filter checkboxes so only present categories show.
+export function useDisplacementDataQualsForType(type: DisplacementType): string[] {
+    const select = useCallback((features: DisplacementFeature[]) => {
+        const set = new Set<string>()
+        for (const f of features) {
+            if (f.properties.type !== type) continue
+            const q = f.properties.data_qual
+            if (typeof q === 'string' && q.trim()) set.add(q)
+        }
+        const order = DATA_QUAL_ORDER as readonly string[]
+        return Array.from(set).sort((a, b) => {
+            const ia = order.indexOf(a), ib = order.indexOf(b)
+            if (ia !== -1 && ib !== -1) return ia - ib
+            if (ia !== -1) return -1
+            if (ib !== -1) return 1
+            return a.localeCompare(b)
+        })
     }, [type])
     const { data = [] } = useQuery({ ...displacementFeaturesQueryOptions(), select })
     return data

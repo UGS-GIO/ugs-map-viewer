@@ -93,3 +93,9 @@ const DISPLACEMENT_UNITS_LABEL: Record<DisplacementType, string> = {
 export function getUnitsLabelForType(type: DisplacementType): string {
     return DISPLACEMENT_UNITS_LABEL[type]
 }
+
+// Canonical data-quality categories, best→worst, used to order the data-quality
+// filter checkboxes. The filter itself works off whatever values are present in
+// the data (NOT IN excluded), so a new backend category still shows by default —
+// it just won't be sorted until added here.
+export const DATA_QUAL_ORDER = ['high', 'medium', 'low', 'very low', 'unknown'] as const

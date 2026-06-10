@@ -48,7 +48,7 @@ function LayerHeaderChip({ layer }: { layer: LayerContentProps }) {
 
     if (!isDisplacementLayerTitle(title)) {
         return (
-            <div className="mb-2 inline-flex items-center gap-1 rounded border border-border bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+            <div className="mb-2 inline-flex items-center gap-1 rounded border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                 <span>Outside Water Year filter</span>
             </div>
         )
@@ -57,7 +57,7 @@ function LayerHeaderChip({ layer }: { layer: LayerContentProps }) {
     const typeValue = DISPLACEMENT_LAYER_TYPES[title]
     if (!isChartedType(typeValue) || typeValue === 'Cumulative') {
         return (
-            <div className="mb-2 inline-flex items-center gap-1 rounded border border-border bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+            <div className="mb-2 inline-flex items-center gap-1 rounded border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                 <span>Period-keyed · Water Year does not apply</span>
             </div>
         )
@@ -108,7 +108,7 @@ function combinedBbox(features: DisplacementFeature[]): [number, number, number,
 }
 
 function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
-    const { yearOverride, basinsByType, addBasin, removeBasin, setYearOverride, clearBasins } = useDisplacementFilters()
+    const { yearOverride, basinsByType, excludedDataQualsByType, addBasin, removeBasin, setYearOverride, clearBasins } = useDisplacementFilters()
     // Year is mandatory now (no "all years" sentinel): falls back to the
     // latest available year for this type while the user hasn't picked one.
     const year = useEffectiveYear(typeValue)
@@ -151,13 +151,23 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     )
     const isLoading = featuresLoading || binsLoading
 
-    // `features` is already typeValue-sliced by useDisplacementFeaturesByType.
-    // Empty basin set = all basins.
+    // Data-quality filter: drop features whose data_qual the reviewer unchecked.
+    // Empty exclusion set = pass everything. Applied before basin/year scoping so
+    // KPIs, chart, and the basin ranking all honor it (matching the map cql).
+    const excludedQuals = excludedDataQualsByType[typeValue]
+    const qualFiltered = useMemo(
+        () => excludedQuals.size === 0
+            ? features
+            : features.filter(f => !excludedQuals.has(String(f.properties.data_qual ?? ''))),
+        [features, excludedQuals]
+    )
+
+    // `qualFiltered` is typeValue-sliced + quality-filtered. Empty basin set = all basins.
     const scoped = useMemo(
         () => selectedBasins.size === 0
-            ? features
-            : features.filter(f => selectedBasins.has(f.properties.location)),
-        [features, selectedBasins]
+            ? qualFiltered
+            : qualFiltered.filter(f => selectedBasins.has(f.properties.location)),
+        [qualFiltered, selectedBasins]
     )
 
     // Year filter resolution: Yearly matches `year`; Cumulative matches the
@@ -259,7 +269,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             return getBucketYear(f.properties) === year
         }
         const byLocation = new Map<string, { signed: number; abs: number; features: DisplacementFeature[] }>()
-        for (const f of features) {
+        for (const f of qualFiltered) {
             if (!yearMatched(f)) continue
             const loc = f.properties.location
             if (!loc) continue
@@ -287,7 +297,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             bbox: combinedBbox(locFeatures),
             bin: findBin(plotBins, signed),
         })).sort((a, b) => b.abs - a.abs)
-    }, [features, year, threshold, plotBins])
+    }, [qualFiltered, year, threshold, plotBins])
 
     // Use the global worst depth (across this type's entire dataset, ignoring
     // year/threshold) as the row-bar denominator so a basin's bar width keeps
@@ -295,12 +305,12 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     // calm year no longer makes mild basins look maxed out.
     const worstDepth = useMemo(() => {
         let max = 0
-        for (const f of features) {
+        for (const f of qualFiltered) {
             const a = Math.abs(f.properties.value_inch)
             if (a > max) max = a
         }
         return max
-    }, [features])
+    }, [qualFiltered])
 
     const { map } = useMap()
     // Combine precomputed basin bboxes (cheap min/max math) and pan once.
@@ -371,12 +381,12 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                 <div className="flex items-center justify-between mb-1">
                     <h4 className="text-xs font-medium">Subsidence &amp; Uplift by {yearAxisLabel}</h4>
                     {yearOverride !== null && (
-                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => setYearOverride(null)}>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setYearOverride(null)}>
                             Reset to latest
                         </Button>
                     )}
                 </div>
-                <p className="text-[10px] text-muted-foreground mb-1">Bars below zero = subsidence, above = uplift. Stacked by SLD bin (in); breaks + colors match the map. Click a year column to filter to that year.</p>
+                <p className="text-xs text-muted-foreground mb-1">Bars below zero = subsidence, above = uplift. Stacked by SLD bin (in); breaks + colors match the map. Click a year column to filter to that year.</p>
                 <div className="w-full" style={{ height: CHART_HEIGHT_PX }}>
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
                         // Fixed numeric height so recharts' ResponsiveContainer never
@@ -418,11 +428,11 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                         </ResponsiveContainer>
                     )}
                 </div>
-                <div className="mt-2 grid grid-cols-2 gap-x-3 px-2 text-[10px] text-foreground">
+                <div className="mt-2 grid grid-cols-2 gap-x-3 px-2 text-xs text-foreground">
                     <SignedLegendGroup label="Subsidence (below zero)" bins={subsidenceBins} />
                     <SignedLegendGroup label="Uplift (above zero)" bins={upliftBins} />
                 </div>
-                <p className="mt-1 px-2 text-[10px] italic text-muted-foreground">
+                <p className="mt-1 px-2 text-xs italic text-muted-foreground">
                     Bin values: {getUnitsLabelForType(typeValue)}.
                 </p>
             </div>
@@ -494,18 +504,18 @@ function BasinList({
                     <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 px-2 text-[10px]"
+                        className="h-6 px-2 text-xs"
                         onClick={() => clearBasins(typeValue)}
                     >
                         Clear filter
                     </Button>
                 )}
             </div>
-            <p className="text-[10px] text-muted-foreground mb-2">Basins ranked by their deepest contour value. Click a row to zoom + filter to that basin. Unselected basins grey out when a filter is active.</p>
+            <p className="text-xs text-muted-foreground mb-2">Basins ranked by their deepest contour value. Click a row to zoom + filter to that basin. Unselected basins grey out when a filter is active.</p>
             {isLoading ? (
                 <Skeleton className="h-40 w-full" />
             ) : total === 0 ? (
-                <p className="text-[11px] text-muted-foreground">No basins above threshold.</p>
+                <p className="text-xs text-muted-foreground">No basins above threshold.</p>
             ) : (
                 <>
                     <div className="flex flex-col gap-1">
@@ -539,24 +549,24 @@ function BasinList({
                                     aria-pressed={selectedBasins.has(b.location)}
                                 >
                                     <div className="flex flex-col gap-1 min-w-0">
-                                        <span className="truncate text-[11px] text-foreground group-hover:text-primary">{b.location}</span>
+                                        <span className="truncate text-xs text-foreground group-hover:text-primary">{b.location}</span>
                                         <div className="h-2 w-full rounded bg-muted overflow-hidden ring-1 ring-foreground/20">
                                             <div className="h-full" style={{ width: `${pct}%`, background: color }} />
                                         </div>
                                     </div>
-                                    <span className="tabular-nums text-[11px] text-muted-foreground whitespace-nowrap">{fmt1(b.abs)} in</span>
+                                    <span className="tabular-nums text-xs text-muted-foreground whitespace-nowrap">{fmt1(b.abs)} in</span>
                                 </button>
                             )
                         })}
                     </div>
                     {pageCount > 1 && (
-                        <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+                        <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
                             <span className="tabular-nums">{start + 1}–{end} of {total}</span>
                             <div className="flex items-center gap-1">
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-6 px-2 text-[10px]"
+                                    className="h-6 px-2 text-xs"
                                     onClick={() => setPage(Math.max(0, safePage - 1))}
                                     disabled={safePage === 0}
                                 >
@@ -566,7 +576,7 @@ function BasinList({
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="h-6 px-2 text-[10px]"
+                                    className="h-6 px-2 text-xs"
                                     onClick={() => setPage(Math.min(pageCount - 1, safePage + 1))}
                                     disabled={safePage >= pageCount - 1}
                                 >
@@ -597,7 +607,7 @@ function StackedBarTooltip({ active, payload, label }: { active?: boolean; paylo
     const rows = payload.filter(p => typeof p.value === 'number' && Math.abs(p.value as number) > 0)
     if (rows.length === 0) return null
     return (
-        <div className="rounded border border-border bg-popover px-2 py-1.5 text-[11px] text-popover-foreground shadow-sm">
+        <div className="rounded border border-border bg-popover px-2 py-1.5 text-xs text-popover-foreground shadow-sm">
             <div className="font-medium mb-1">{label}</div>
             <div className="flex flex-col gap-0.5">
                 {rows.map(r => (
@@ -620,7 +630,7 @@ function SignedLegendGroup({ label, bins }: { label: string; bins: SldBin[] }) {
     if (bins.length === 0) return <div />
     return (
         <div className="flex flex-col gap-0.5">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
             {bins.map(bin => (
                 <div key={bin.name} className="flex items-center gap-1.5 min-w-0">
                     <span
@@ -639,11 +649,11 @@ function KPI({ label, value, sub }: { label: string; value: string; sub?: string
     return (
         <Card>
             <CardHeader className="p-2 pb-0">
-                <CardTitle className="text-[10px] font-medium text-muted-foreground">{label}</CardTitle>
+                <CardTitle className="text-xs font-medium text-muted-foreground">{label}</CardTitle>
             </CardHeader>
             <CardContent className="p-2 pt-0">
                 <div className="text-sm font-semibold">{value}</div>
-                {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
+                {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
             </CardContent>
         </Card>
     )
@@ -669,7 +679,7 @@ function AdvancedMetrics({ isLoading, signedAreaSqMi, totalFootprintSqMi, quanti
         : 0
     return (
         <Collapsible>
-            <CollapsibleTrigger className="group flex w-full items-center justify-between rounded border border-border bg-muted/40 px-2 py-1 text-[11px] font-medium text-foreground hover:bg-muted/70">
+            <CollapsibleTrigger className="group flex w-full items-center justify-between rounded border border-border bg-muted/40 px-2 py-1 text-xs font-medium text-foreground hover:bg-muted/70">
                 <span>Advanced metrics</span>
                 <ChevronRightIcon className="h-3 w-3 transition-transform group-data-[state=open]:rotate-90" />
             </CollapsibleTrigger>
