@@ -143,8 +143,12 @@ export function useDisplacementLayerFilters(): Record<string, string> {
             if (effectiveYear) {
                 if (isPeriodKeyedType(typeValue)) {
                     // Period-keyed types (Cumulative, Vertical Displacement Rate) match
-                    // by end_date year — picks the observation window closing in that year.
-                    clauses.push(`end_date LIKE '${effectiveYear}%'`)
+                    // by end_date year — picks the observation window closing in that
+                    // year. `end_date` is a timestamp column, so LIKE fails server-side
+                    // (`operator does not exist: timestamp ~~ unknown`) and GeoServer
+                    // throws IOException → broken tiles. Use a half-open date range.
+                    const nextYear = Number(effectiveYear) + 1
+                    clauses.push(`end_date >= '${effectiveYear}-01-01T00:00:00Z' AND end_date < '${nextYear}-01-01T00:00:00Z'`)
                 } else {
                     // Year-keyed types (Yearly) match the water year column directly.
                     clauses.push(`year='${effectiveYear}'`)
