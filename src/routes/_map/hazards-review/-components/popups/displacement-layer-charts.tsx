@@ -558,7 +558,7 @@ function BasinList({
                                     aria-pressed={selectedBasins.has(b.location)}
                                 >
                                     <div className="flex flex-col gap-1 min-w-0">
-                                        <span className="truncate text-xs text-foreground group-hover:text-primary">{b.location}</span>
+                                        <span className="truncate text-xs text-foreground">{b.location}</span>
                                         <div className="h-2 w-full rounded bg-muted overflow-hidden ring-1 ring-foreground/20">
                                             <div className="h-full" style={{ width: `${pct}%`, background: color }} />
                                         </div>
