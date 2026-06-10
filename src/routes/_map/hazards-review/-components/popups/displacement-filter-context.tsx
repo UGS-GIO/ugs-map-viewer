@@ -19,6 +19,12 @@ export { CHARTED_TYPES, isChartedType, isPeriodKeyedType, type ChartedType }
 // failure, schema drift, etc.). Real defaults come from the SLD at runtime.
 const FALLBACK_THRESHOLD_IN = 1.2
 
+// One honest threshold override per charted type. `null` = use the SLD's "Zero"
+// deadband default. A number is the reviewer's pick and applies everywhere —
+// map cql, chart bar, and KPIs all read the same effective value (no hidden
+// visual-vs-audit split).
+type ThresholdState = number | null
+
 interface DisplacementFilterState {
     /**
      * User-picked year, or null when no override is set. Consumers should
@@ -28,9 +34,12 @@ interface DisplacementFilterState {
      * Cumulative made popups dump duplicate rows per overlap.
      */
     yearOverride: string | null
+    /** Per-charted-type threshold override (null = SLD default). See {@link useEffectiveThresholdsIn}. */
+    thresholdsIn: Record<ChartedType, ThresholdState>
     /** Selected basin locations per displacement type. Empty set = no basin filter (all basins). */
     basinsByType: Record<DisplacementType, ReadonlySet<string>>
     setYearOverride: (y: string | null) => void
+    setThreshold: (type: ChartedType, n: ThresholdState) => void
     addBasin: (type: DisplacementType, location: string) => void
     removeBasin: (type: DisplacementType, location: string) => void
     clearBasins: (type: DisplacementType) => void
@@ -40,11 +49,19 @@ const DisplacementFilterContext = createContext<DisplacementFilterState | null>(
 
 export function DisplacementFilterProvider({ children }: { children: ReactNode }) {
     const [yearOverride, setYearOverride] = useState<string | null>(null)
+    const [thresholdsIn, setThresholdsIn] = useState<Record<ChartedType, ThresholdState>>({
+        'Cumulative': null,
+        'Yearly': null,
+    })
     const [basinsByType, setBasinsByType] = useState<Record<DisplacementType, ReadonlySet<string>>>({
         'Cumulative': new Set(),
         'Yearly': new Set(),
         'Vertical Displacement Rate': new Set(),
     })
+
+    function setThreshold(type: ChartedType, n: ThresholdState) {
+        setThresholdsIn(prev => ({ ...prev, [type]: n }))
+    }
 
     function addBasin(type: DisplacementType, location: string) {
         setBasinsByType(prev => {
@@ -67,7 +84,7 @@ export function DisplacementFilterProvider({ children }: { children: ReactNode }
     }
 
     return (
-        <DisplacementFilterContext.Provider value={{ yearOverride, basinsByType, setYearOverride, addBasin, removeBasin, clearBasins }}>
+        <DisplacementFilterContext.Provider value={{ yearOverride, thresholdsIn, basinsByType, setYearOverride, setThreshold, addBasin, removeBasin, clearBasins }}>
             {children}
         </DisplacementFilterContext.Provider>
     )
@@ -91,18 +108,19 @@ export function useEffectiveYear(type: DisplacementType): string | null {
 }
 
 /**
- * Resolve the effective threshold per charted type: the SLD's "Zero" deadband,
- * falling back to FALLBACK_THRESHOLD_IN while the SLD is loading. One pinned
- * value drives the map cql, the stacked bar, and the KPIs — there's no
- * user-tunable threshold, so reviewers can't tune subsidence out of any view.
+ * Resolve the effective threshold per charted type: the reviewer's override if
+ * set, else the SLD's "Zero" deadband, else FALLBACK_THRESHOLD_IN while the SLD
+ * loads. This single value drives the map cql, the stacked bar, AND the KPIs —
+ * one honest knob, no visual-vs-audit split.
  */
 export function useEffectiveThresholdsIn(): Record<ChartedType, number> {
+    const { thresholdsIn } = useDisplacementFilters()
     const cumulativeSld = useDisplacementSldZeroBound('Cumulative')
     const yearlySld = useDisplacementSldZeroBound('Yearly')
     return useMemo(() => ({
-        'Cumulative': cumulativeSld ?? FALLBACK_THRESHOLD_IN,
-        'Yearly': yearlySld ?? FALLBACK_THRESHOLD_IN,
-    }), [cumulativeSld, yearlySld])
+        'Cumulative': thresholdsIn['Cumulative'] ?? cumulativeSld ?? FALLBACK_THRESHOLD_IN,
+        'Yearly': thresholdsIn['Yearly'] ?? yearlySld ?? FALLBACK_THRESHOLD_IN,
+    }), [thresholdsIn, cumulativeSld, yearlySld])
 }
 
 /**

@@ -7,21 +7,16 @@ import { BarChart, Bar, Rectangle, XAxis, YAxis, Tooltip, ResponsiveContainer, C
 import type { LayerContentProps } from '@/components/maps/popups/types'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronRightIcon } from 'lucide-react'
-import { useDisplacementFilters, useEffectiveYear } from './displacement-filter-context'
+import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import { useMap } from '@/hooks/use-map'
 import { DISPLACEMENT_LAYER_TYPES, getStyleNameForType, getUnitsLabelForType, isChartedType, isDisplacementLayerTitle, type ChartedType, type DisplacementType } from './displacement-layers'
-import { getZeroBound, type SldBin } from './displacement-sld-legend'
+import { type SldBin } from './displacement-sld-legend'
 import {
     getBucketYear,
     useDisplacementFeaturesByType,
     useDisplacementSldBins,
     type DisplacementFeature,
 } from './use-displacement-queries'
-
-// Hard fallback when SLD's Zero deadband can't be resolved. Mirrors the value
-// in displacement-filter-context — defined locally so this file's KPI/metric
-// math doesn't depend on the threshold context's React-only export surface.
-const FALLBACK_THRESHOLD_IN = 1.2
 
 const SQM_TO_SQMI = 1 / 2_589_988.110336
 
@@ -131,13 +126,10 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     const { data: sldBins = [], isLoading: binsLoading } = useDisplacementSldBins(styleName)
 
     const plotBins = useMemo(() => sldBins.filter(b => !b.isZero), [sldBins])
-    // Single threshold pinned to the SLD's "Zero" deadband. Drives the map cql,
-    // the stacked bar, and every KPI / metric / basin ranking — no user-tunable
-    // knob, so subsidence can't be tuned out of any view.
-    const threshold = useMemo(
-        () => getZeroBound(sldBins) ?? FALLBACK_THRESHOLD_IN,
-        [sldBins],
-    )
+    // One effective threshold (reviewer override → SLD "Zero" deadband default).
+    // Drives the map cql, the stacked bar, and every KPI / metric / basin
+    // ranking — one honest knob, applied everywhere.
+    const threshold = useEffectiveThresholdsIn()[typeValue]
 
     // Split SLD bins by sign and order each side so the stack reads outward
     // from zero: closest-to-zero bin first, deepest band last. Negative bins
@@ -361,7 +353,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     return (
         <div className="mb-3 flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-2">
-                <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={`|value| ≥ ${fmt1(threshold)} in (SLD default)`} />
+                <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={`|value| ≥ ${fmt1(threshold)} in`} />
                 <KPI label="Max |value|" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
                 <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
                 <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
