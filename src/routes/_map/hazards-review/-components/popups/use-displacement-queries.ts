@@ -106,55 +106,53 @@ export function useDisplacementSldZeroBound(type: ChartedType): number | null {
     return data
 }
 
-export function useDisplacementYearsForType(type: DisplacementType): string[] {
+// Distinct, sorted values of one property across a type's features, derived in
+// TanStack `select` so the raw 20k-feature array never reaches the component.
+// Backs the year / basin / data-quality option lists — extractor + sort are the
+// only things that differ between them.
+function useDistinctByType(
+    type: DisplacementType,
+    extract: (p: DisplacementProps) => string | null | undefined,
+    sort?: (a: string, b: string) => number,
+): string[] {
     const select = useCallback((features: DisplacementFeature[]) => {
-        const ys = new Set<string>()
+        const set = new Set<string>()
         for (const f of features) {
             if (f.properties.type !== type) continue
-            const y = getBucketYear(f.properties)
-            if (y) ys.add(y)
+            const v = extract(f.properties)
+            if (v) set.add(v)
         }
-        return Array.from(ys).sort()
-    }, [type])
+        return Array.from(set).sort(sort)
+    }, [type, extract, sort])
     const { data = [] } = useQuery({ ...displacementFeaturesQueryOptions(), select })
     return data
+}
+
+// Module-level extractors/sorters so the `select` callback stays referentially
+// stable (TanStack memoizes by callback identity).
+const extractLocation = (p: DisplacementProps) => p.location
+const extractDataQual = (p: DisplacementProps) =>
+    typeof p.data_qual === 'string' && p.data_qual.trim() ? p.data_qual : null
+// data_qual best→worst via DATA_QUAL_ORDER; unknown categories sort last, alphabetically.
+const sortByDataQualOrder = (a: string, b: string) => {
+    const order = DATA_QUAL_ORDER as readonly string[]
+    const ia = order.indexOf(a), ib = order.indexOf(b)
+    if (ia !== -1 && ib !== -1) return ia - ib
+    if (ia !== -1) return -1
+    if (ib !== -1) return 1
+    return a.localeCompare(b)
+}
+
+export function useDisplacementYearsForType(type: DisplacementType): string[] {
+    return useDistinctByType(type, getBucketYear)
 }
 
 export function useDisplacementBasinsForType(type: DisplacementType): string[] {
-    const select = useCallback((features: DisplacementFeature[]) => {
-        const set = new Set<string>()
-        for (const f of features) {
-            if (f.properties.type !== type) continue
-            if (f.properties.location) set.add(f.properties.location)
-        }
-        return Array.from(set).sort()
-    }, [type])
-    const { data = [] } = useQuery({ ...displacementFeaturesQueryOptions(), select })
-    return data
+    return useDistinctByType(type, extractLocation)
 }
 
-// Distinct data_qual categories present for a type, ordered best→worst via
-// DATA_QUAL_ORDER (unknown categories sort to the end, alphabetically). Drives
-// the data-quality filter checkboxes so only present categories show.
 export function useDisplacementDataQualsForType(type: DisplacementType): string[] {
-    const select = useCallback((features: DisplacementFeature[]) => {
-        const set = new Set<string>()
-        for (const f of features) {
-            if (f.properties.type !== type) continue
-            const q = f.properties.data_qual
-            if (typeof q === 'string' && q.trim()) set.add(q)
-        }
-        const order = DATA_QUAL_ORDER as readonly string[]
-        return Array.from(set).sort((a, b) => {
-            const ia = order.indexOf(a), ib = order.indexOf(b)
-            if (ia !== -1 && ib !== -1) return ia - ib
-            if (ia !== -1) return -1
-            if (ib !== -1) return 1
-            return a.localeCompare(b)
-        })
-    }, [type])
-    const { data = [] } = useQuery({ ...displacementFeaturesQueryOptions(), select })
-    return data
+    return useDistinctByType(type, extractDataQual, sortByDataQualOrder)
 }
 
 // Latest year present for a given type — Yearly uses water year, period-keyed
