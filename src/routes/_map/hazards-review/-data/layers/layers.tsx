@@ -1010,6 +1010,8 @@ const displacementPopupFields = {
     'Period Start': { field: 'start_date', type: 'string' },
     'Period End': { field: 'end_date', type: 'string' },
     'Displacement (in)': { field: 'value_inch', type: 'number', format: 'oneDecimal' },
+    'Data Quality': { field: 'data_qual', type: 'string' },
+    'Valid Pixels (%)': { field: 'pct_valid', type: 'number', format: 'oneDecimal' },
 } as const;
 
 function makeDisplacementContoursConfig(title: DisplacementLayerTitle): WMSLayerProps {
