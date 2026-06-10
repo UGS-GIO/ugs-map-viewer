@@ -232,10 +232,19 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
 
     const distinctBasins = useMemo(() => new Set(filtered.map(f => f.properties.location)).size, [filtered])
 
+    // Period spans the full window: earliest window-start year → latest window-end
+    // year. For Cumulative this reads start_date (fixed 2017) through the chosen
+    // end year (e.g. picking 2020 → "2017 – 2020", the whole accumulation window),
+    // not just the end. Yearly naturally shows its single open→close year span.
     const period = useMemo(() => {
-        const yrs = filtered.map(f => getBucketYear(f.properties)).filter((y): y is string => Boolean(y))
-        if (yrs.length === 0) return null
-        return { from: yrs.reduce((a, b) => a < b ? a : b), to: yrs.reduce((a, b) => a > b ? a : b) }
+        const ends = filtered.map(f => getBucketYear(f.properties)).filter((y): y is string => Boolean(y))
+        if (ends.length === 0) return null
+        const starts = filtered
+            .map(f => f.properties.start_date?.slice(0, 4))
+            .filter((y): y is string => Boolean(y))
+        const from = (starts.length ? starts : ends).reduce((a, b) => a < b ? a : b)
+        const to = ends.reduce((a, b) => a > b ? a : b)
+        return { from, to }
     }, [filtered])
 
     const stackedAreaByYear = useMemo(() => {

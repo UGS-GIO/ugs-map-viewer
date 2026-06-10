@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { MinusIcon, PlusIcon, XIcon } from 'lucide-react'
+import { XIcon } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -170,10 +170,9 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
             )}
 
             {isCharted && (
-                <ThresholdStepper
+                <ThresholdSelect
                     typeValue={typeValue}
                     currentThresholdIn={thresholdIn}
-                    isCustom={rawThreshold !== null}
                     onChange={(n) => setThreshold(typeValue, n)}
                     onReset={() => setThreshold(typeValue, null)}
                 />
@@ -188,9 +187,11 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
     )
 }
 
-// Pull the positive bin edges out of the SLD response, deduped + sorted. Any
-// |value_inch| between two adjacent edges yields the same filtered set, so
-// stepping by edge is the smallest move that actually changes what's shown.
+// Positive bin edges from the SLD response, deduped + sorted ascending. These
+// are the only meaningful threshold values (any |value_inch| between two edges
+// yields the same filtered set). The smallest edge is the SLD's "Zero" deadband
+// bound (1.2 in), so every option is >= 1.2 by construction — the UI can't drop
+// the threshold below the uncertainty band.
 function getBinBoundaries(bins: SldBin[]): number[] {
     const edges = new Set<number>()
     for (const b of bins) {
@@ -202,76 +203,51 @@ function getBinBoundaries(bins: SldBin[]): number[] {
     return Array.from(edges).filter(v => v > 0).sort((a, b) => a - b)
 }
 
-function findNextBoundary(boundaries: number[], current: number, direction: 1 | -1): number | null {
-    const epsilon = 1e-6
-    if (direction === 1) return boundaries.find(b => b > current + epsilon) ?? null
-    for (let i = boundaries.length - 1; i >= 0; i--) {
-        if (boundaries[i] < current - epsilon) return boundaries[i]
-    }
-    return null
-}
-
-interface ThresholdStepperProps {
+interface ThresholdSelectProps {
     typeValue: ChartedType
     currentThresholdIn: number
-    isCustom: boolean
     onChange: (n: number) => void
     onReset: () => void
 }
 
-// One honest threshold stepper. Snaps to SLD bin edges (the smallest steps that
-// actually re-filter), and is explicit that it affects the map, chart, and
-// stats — not a "visualization only" knob.
-function ThresholdStepper({ typeValue, currentThresholdIn, isCustom, onChange, onReset }: ThresholdStepperProps) {
+// Threshold as a predefined dropdown of SLD bin edges. The first option is the
+// SLD default (the Zero-deadband bound, ~1.2 in); selecting it resets to default.
+// Selecting a larger edge tightens the filter on |value| (both signs) across the
+// map, chart, and stats. Below-default values aren't offered — the deadband is
+// measurement noise, so reviewers can only raise the bar, not lower it.
+function ThresholdSelect({ typeValue, currentThresholdIn, onChange, onReset }: ThresholdSelectProps) {
     const styleName = getStyleNameForType(typeValue) ?? ''
     const { data: sldBins = [] } = useDisplacementSldBins(styleName)
     const boundaries = useMemo(() => getBinBoundaries(sldBins), [sldBins])
+    if (boundaries.length === 0) return null
 
     const fmt = (n: number) => n.toFixed(1)
-    const prevBoundary = findNextBoundary(boundaries, currentThresholdIn, -1)
-    const nextBoundary = findNextBoundary(boundaries, currentThresholdIn, 1)
+    const defaultThreshold = boundaries[0]
+    const selected = fmt(currentThresholdIn)
 
     return (
         <div className="flex flex-col gap-1 rounded border border-dashed border-border p-2">
-            <Label className="text-xs">
-                Threshold (|in|)
-                {!isCustom && <span className="ml-1 text-muted-foreground">· SLD default</span>}
-            </Label>
-            <div className="flex items-center gap-2">
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => prevBoundary !== null && onChange(prevBoundary)}
-                    disabled={prevBoundary === null}
-                    title={prevBoundary !== null ? `Step down to ${fmt(prevBoundary)} in` : 'No smaller bin edge'}
-                    aria-label="Step threshold down to previous SLD bin edge"
-                >
-                    <MinusIcon className="h-3.5 w-3.5" />
-                </Button>
-                <div className="flex-1 rounded border border-input bg-background px-2 py-1.5 text-center text-sm tabular-nums">
-                    {fmt(currentThresholdIn)} in
-                </div>
-                <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => nextBoundary !== null && onChange(nextBoundary)}
-                    disabled={nextBoundary === null}
-                    title={nextBoundary !== null ? `Step up to ${fmt(nextBoundary)} in` : 'No larger bin edge'}
-                    aria-label="Step threshold up to next SLD bin edge"
-                >
-                    <PlusIcon className="h-3.5 w-3.5" />
-                </Button>
-            </div>
+            <Label className="text-xs">Threshold (|in|)</Label>
+            <Select
+                value={selected}
+                onValueChange={(v) => {
+                    const n = parseFloat(v)
+                    if (Math.abs(n - defaultThreshold) < 1e-6) onReset()
+                    else onChange(n)
+                }}
+            >
+                <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                    {boundaries.map(b => (
+                        <SelectItem key={b} value={fmt(b)}>
+                            {fmt(b)} in{Math.abs(b - defaultThreshold) < 1e-6 ? ' · default' : ''}
+                        </SelectItem>
+                    ))}
+                </SelectContent>
+            </Select>
             <p className="text-xs text-muted-foreground">
-                Hides features with |value| below this. Applies to the map, chart, and stats. Steps snap to SLD bin edges.
+                Hides features with |value| below this (keeps both subsidence and uplift). Applies to the map, chart, and stats.
             </p>
-            {isCustom && (
-                <Button variant="ghost" size="sm" className="h-6 self-start px-2 text-xs" onClick={onReset}>
-                    Reset to default
-                </Button>
-            )}
         </div>
     )
 }

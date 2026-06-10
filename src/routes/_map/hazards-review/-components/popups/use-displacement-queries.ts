@@ -11,6 +11,8 @@ export interface DisplacementProps {
     location: string
     type: DisplacementType
     year: string | null
+    /** Window open date (timestamp). For Cumulative this is the fixed period start. */
+    start_date?: string | null
     end_date?: string | null
     value_inch: number
     /**
