@@ -395,7 +395,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                         </Button>
                     )}
                 </div>
-                <p className="text-xs text-muted-foreground mb-1">Bars below zero = subsidence, above = uplift. Stacked by SLD bin (in); breaks + colors match the map. Click a year column to filter to that year.</p>
+                <p className="text-xs text-muted-foreground mb-1">Bars below zero = subsidence, above = uplift. Stacked by displacement range (in); colors match the map. Click a year column to filter to that year.</p>
                 <div className="w-full" style={{ height: CHART_HEIGHT_PX }}>
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
                         // Fixed numeric height so recharts' ResponsiveContainer never
@@ -442,7 +442,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                     <SignedLegendGroup label="Uplift (above zero)" bins={upliftBins} />
                 </div>
                 <p className="mt-1 px-2 text-xs italic text-muted-foreground">
-                    Bin values: {getUnitsLabelForType(typeValue)}.
+                    Units: {getUnitsLabelForType(typeValue)}.
                 </p>
             </div>
 
