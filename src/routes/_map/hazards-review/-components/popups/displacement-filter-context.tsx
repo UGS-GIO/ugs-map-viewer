@@ -19,10 +19,6 @@ export { CHARTED_TYPES, isChartedType, isPeriodKeyedType, type ChartedType }
 // failure, schema drift, etc.). Real defaults come from the SLD at runtime.
 const FALLBACK_THRESHOLD_IN = 1.2
 
-// `null` means "auto — use the SLD's Zero deadband as the effective threshold."
-// A numeric value means the user explicitly tightened or loosened it.
-type ThresholdState = number | null
-
 interface DisplacementFilterState {
     /**
      * User-picked year, or null when no override is set. Consumers should
@@ -32,11 +28,9 @@ interface DisplacementFilterState {
      * Cumulative made popups dump duplicate rows per overlap.
      */
     yearOverride: string | null
-    thresholdsIn: Record<ChartedType, ThresholdState>
     /** Selected basin locations per displacement type. Empty set = no basin filter (all basins). */
     basinsByType: Record<DisplacementType, ReadonlySet<string>>
     setYearOverride: (y: string | null) => void
-    setThresholdIn: (type: ChartedType, n: ThresholdState) => void
     addBasin: (type: DisplacementType, location: string) => void
     removeBasin: (type: DisplacementType, location: string) => void
     clearBasins: (type: DisplacementType) => void
@@ -46,19 +40,11 @@ const DisplacementFilterContext = createContext<DisplacementFilterState | null>(
 
 export function DisplacementFilterProvider({ children }: { children: ReactNode }) {
     const [yearOverride, setYearOverride] = useState<string | null>(null)
-    const [thresholdsIn, setThresholdsIn] = useState<Record<ChartedType, ThresholdState>>({
-        'Cumulative': null,
-        'Yearly': null,
-    })
     const [basinsByType, setBasinsByType] = useState<Record<DisplacementType, ReadonlySet<string>>>({
         'Cumulative': new Set(),
         'Yearly': new Set(),
         'Vertical Displacement Rate': new Set(),
     })
-
-    function setThresholdIn(type: ChartedType, n: ThresholdState) {
-        setThresholdsIn(prev => ({ ...prev, [type]: n }))
-    }
 
     function addBasin(type: DisplacementType, location: string) {
         setBasinsByType(prev => {
@@ -81,7 +67,7 @@ export function DisplacementFilterProvider({ children }: { children: ReactNode }
     }
 
     return (
-        <DisplacementFilterContext.Provider value={{ yearOverride, thresholdsIn, basinsByType, setYearOverride, setThresholdIn, addBasin, removeBasin, clearBasins }}>
+        <DisplacementFilterContext.Provider value={{ yearOverride, basinsByType, setYearOverride, addBasin, removeBasin, clearBasins }}>
             {children}
         </DisplacementFilterContext.Provider>
     )
@@ -105,18 +91,18 @@ export function useEffectiveYear(type: DisplacementType): string | null {
 }
 
 /**
- * Resolve effective thresholds (state value if set, otherwise the SLD's Zero
- * deadband, otherwise FALLBACK_THRESHOLD_IN). Charts + cql builders should
- * always go through this rather than reading raw state.
+ * Resolve the effective threshold per charted type: the SLD's "Zero" deadband,
+ * falling back to FALLBACK_THRESHOLD_IN while the SLD is loading. One pinned
+ * value drives the map cql, the stacked bar, and the KPIs — there's no
+ * user-tunable threshold, so reviewers can't tune subsidence out of any view.
  */
 export function useEffectiveThresholdsIn(): Record<ChartedType, number> {
-    const { thresholdsIn } = useDisplacementFilters()
     const cumulativeSld = useDisplacementSldZeroBound('Cumulative')
     const yearlySld = useDisplacementSldZeroBound('Yearly')
     return useMemo(() => ({
-        'Cumulative': thresholdsIn['Cumulative'] ?? cumulativeSld ?? FALLBACK_THRESHOLD_IN,
-        'Yearly': thresholdsIn['Yearly'] ?? yearlySld ?? FALLBACK_THRESHOLD_IN,
-    }), [thresholdsIn, cumulativeSld, yearlySld])
+        'Cumulative': cumulativeSld ?? FALLBACK_THRESHOLD_IN,
+        'Yearly': yearlySld ?? FALLBACK_THRESHOLD_IN,
+    }), [cumulativeSld, yearlySld])
 }
 
 /**

@@ -7,7 +7,7 @@ import { BarChart, Bar, Rectangle, XAxis, YAxis, Tooltip, ResponsiveContainer, C
 import type { LayerContentProps } from '@/components/maps/popups/types'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronRightIcon } from 'lucide-react'
-import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
+import { useDisplacementFilters, useEffectiveYear } from './displacement-filter-context'
 import { useMap } from '@/hooks/use-map'
 import { DISPLACEMENT_LAYER_TYPES, getStyleNameForType, getUnitsLabelForType, isChartedType, isDisplacementLayerTitle, type ChartedType, type DisplacementType } from './displacement-layers'
 import { getZeroBound, type SldBin } from './displacement-sld-legend'
@@ -113,17 +113,10 @@ function combinedBbox(features: DisplacementFeature[]): [number, number, number,
 }
 
 function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
-    const { yearOverride, basinsByType, thresholdsIn, addBasin, removeBasin, setYearOverride, clearBasins } = useDisplacementFilters()
-    const effective = useEffectiveThresholdsIn()
+    const { yearOverride, basinsByType, addBasin, removeBasin, setYearOverride, clearBasins } = useDisplacementFilters()
     // Year is mandatory now (no "all years" sentinel): falls back to the
     // latest available year for this type while the user hasn't picked one.
     const year = useEffectiveYear(typeValue)
-    // `visualThreshold` is the user-tunable knob that drives ONLY the stacked
-    // bar (visual emphasis). Every KPI / metric / basin ranking uses
-    // `auditThreshold` — pinned to the SLD's Zero deadband — so reviewers
-    // can't quietly raise the bar and make subsidence "disappear" from the
-    // summary numbers.
-    const visualThreshold = effective[typeValue]
     const styleName = getChartedStyleName(typeValue)
     const selectedBasins = basinsByType[typeValue]
     const basinFilterActive = selectedBasins.size > 0
@@ -138,12 +131,13 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     const { data: sldBins = [], isLoading: binsLoading } = useDisplacementSldBins(styleName)
 
     const plotBins = useMemo(() => sldBins.filter(b => !b.isZero), [sldBins])
-    const auditThreshold = useMemo(
+    // Single threshold pinned to the SLD's "Zero" deadband. Drives the map cql,
+    // the stacked bar, and every KPI / metric / basin ranking — no user-tunable
+    // knob, so subsidence can't be tuned out of any view.
+    const threshold = useMemo(
         () => getZeroBound(sldBins) ?? FALLBACK_THRESHOLD_IN,
         [sldBins],
     )
-    const rawUserThreshold = thresholdsIn[typeValue]
-    const thresholdDirty = rawUserThreshold !== null && Math.abs(visualThreshold - auditThreshold) > 1e-6
 
     // Split SLD bins by sign and order each side so the stack reads outward
     // from zero: closest-to-zero bin first, deepest band last. Negative bins
@@ -187,11 +181,10 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
 
     const yearAxisLabel = typeValue === 'Cumulative' ? 'Period End Year' : 'Water Year'
 
-    // KPI + advanced metrics are pinned to auditThreshold (SLD Zero deadband)
-    // so they can't be tuned away by an over-cranked threshold setting.
+    // KPI + advanced metrics use the single SLD-pinned threshold.
     const auditOverThreshold = useMemo(
-        () => filtered.filter(f => Math.abs(f.properties.value_inch) >= auditThreshold),
-        [filtered, auditThreshold]
+        () => filtered.filter(f => Math.abs(f.properties.value_inch) >= threshold),
+        [filtered, threshold]
     )
 
     const totalAreaSqMi = useMemo(
@@ -247,7 +240,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
         const yearToBins = new Map<string, Record<string, number>>()
         for (const f of scoped) {
             const v = f.properties.value_inch
-            if (Math.abs(v) < visualThreshold) continue
+            if (Math.abs(v) < threshold) continue
             const bin = findBin(plotBins, v)
             if (!bin) continue
             const y = getBucketYear(f.properties)
@@ -263,7 +256,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
         }
         return Array.from(yearToBins, ([year, b]) => ({ year, ...b }))
             .sort((a, b) => a.year.localeCompare(b.year))
-    }, [scoped, visualThreshold, plotBins])
+    }, [scoped, threshold, plotBins])
 
     // Worst-basin list considers ALL basins (skips the basin filter) so the
     // ranking stays complete; non-selected rows render greyed out when a
@@ -280,7 +273,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             if (!loc) continue
             const v = f.properties.value_inch
             const a = Math.abs(v)
-            if (a < auditThreshold) continue
+            if (a < threshold) continue
             const cur = byLocation.get(loc)
             if (!cur) {
                 byLocation.set(loc, { signed: v, abs: a, features: [f] })
@@ -302,7 +295,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             bbox: combinedBbox(locFeatures),
             bin: findBin(plotBins, signed),
         })).sort((a, b) => b.abs - a.abs)
-    }, [features, year, auditThreshold, plotBins])
+    }, [features, year, threshold, plotBins])
 
     // Use the global worst depth (across this type's entire dataset, ignoring
     // year/threshold) as the row-bar denominator so a basin's bar width keeps
@@ -368,7 +361,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     return (
         <div className="mb-3 flex flex-col gap-3">
             <div className="grid grid-cols-2 gap-2">
-                <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={`|value| ≥ ${fmt1(auditThreshold)} in (SLD default)`} />
+                <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={`|value| ≥ ${fmt1(threshold)} in (SLD default)`} />
                 <KPI label="Max |value|" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
                 <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
                 <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
@@ -379,7 +372,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                 signedAreaSqMi={signedAreaSqMi}
                 totalFootprintSqMi={totalFootprintSqMi}
                 quantiles={valueQuantiles}
-                auditThreshold={auditThreshold}
+                threshold={threshold}
             />
 
             <div>
@@ -392,11 +385,6 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                     )}
                 </div>
                 <p className="text-[10px] text-muted-foreground mb-1">Bars below zero = subsidence, above = uplift. Stacked by SLD bin (in); breaks + colors match the map. Click a year column to filter to that year.</p>
-                {thresholdDirty && (
-                    <p className="mb-1 text-[10px] text-amber-600 dark:text-amber-400">
-                        Visual threshold {fmt1(visualThreshold)} in differs from SLD default {fmt1(auditThreshold)} in — KPI &amp; metrics above stay pinned to the default.
-                    </p>
-                )}
                 <div className="w-full" style={{ height: CHART_HEIGHT_PX }}>
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
                         // Fixed numeric height so recharts' ResponsiveContainer never
@@ -674,13 +662,13 @@ interface AdvancedMetricsProps {
     signedAreaSqMi: { subsiding: number; uplift: number }
     totalFootprintSqMi: number
     quantiles: { median: number; p95: number }
-    auditThreshold: number
+    threshold: number
 }
 
 // Audit-bound deep-dive numbers. Collapsed by default — reviewers who only
 // need the headline KPIs can ignore the section, but anyone QA-ing a basin
 // has the distribution shape + asymmetry numbers one click away.
-function AdvancedMetrics({ isLoading, signedAreaSqMi, totalFootprintSqMi, quantiles, auditThreshold }: AdvancedMetricsProps) {
+function AdvancedMetrics({ isLoading, signedAreaSqMi, totalFootprintSqMi, quantiles, threshold }: AdvancedMetricsProps) {
     const ratio = signedAreaSqMi.uplift > 0
         ? signedAreaSqMi.subsiding / signedAreaSqMi.uplift
         : null
@@ -698,7 +686,7 @@ function AdvancedMetrics({ isLoading, signedAreaSqMi, totalFootprintSqMi, quanti
                     <KPI
                         label="Median |value|"
                         value={isLoading ? '—' : `${fmt1(quantiles.median)} in`}
-                        sub={`audit ≥ ${fmt1(auditThreshold)} in`}
+                        sub={`|value| ≥ ${fmt1(threshold)} in`}
                     />
                     <KPI
                         label="p95 |value|"
