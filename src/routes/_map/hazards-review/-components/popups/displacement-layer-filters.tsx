@@ -151,7 +151,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                             </Button>
                         )}
                     </div>
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 pl-1">
                         {dataQuals.map(q => {
                             const checked = !excludedQuals.has(q)
                             return (
