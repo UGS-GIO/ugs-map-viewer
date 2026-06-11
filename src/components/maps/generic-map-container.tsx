@@ -354,12 +354,15 @@ export default function GenericMapContainer({
     onHighlightChange: handleHighlightChange,
   })
 
-  // Wrap setClickBufferBounds to also open the popup on click (handles raster-only layers)
+  // Raster-only layers are sampled async in usePopupData (not part of the
+  // vector/WMS click features), so their popup can't open at click time. Mark the
+  // click as pending; the effect below opens the sheet once raster sampling
+  // settles AND there's something to show — so an empty click no longer opens an
+  // empty sheet. Vector/WMS results open via useFeatureSelection (gated on hits).
+  const awaitingRasterOpenRef = useRef(false)
   const handleClickBufferChange = useCallback((bounds: { sw: [number, number]; ne: [number, number] } | null) => {
     setClickBufferBounds(bounds)
-    if (bounds && viewMode === 'map') {
-      requestAnimationFrame(() => popupSheetRef.current?.open())
-    }
+    awaitingRasterOpenRef.current = !!bounds && viewMode === 'map'
   }, [setClickBufferBounds, viewMode])
 
   // Register layer turned off callback with parent context (safe - callback is stable)
@@ -532,15 +535,27 @@ export default function GenericMapContainer({
   }, [clickBufferBounds])
 
   // Unified popup data: groups features by layer + fetches raster values
-  const { popupData: popupContent } = usePopupData({
+  const { popupData: popupContent, isLoadingRaster } = usePopupData({
     vectorFeatures: selectedFeatures,
     clickPoint,
     clickBbox: clickBufferBounds,
     layersConfig,
+    displayedTitles,
   })
 
   // Derived: has results (includes raster-only layers)
   const hasResults = useMemo(() => popupContent.length > 0, [popupContent])
+
+  // Open the sheet for a pending click once raster sampling settles: only if
+  // there are results. No results → no empty sheet. Cleared either way so it
+  // fires once per click.
+  useEffect(() => {
+    if (!awaitingRasterOpenRef.current || isLoadingRaster) return
+    awaitingRasterOpenRef.current = false
+    if (hasResults && viewMode === 'map') {
+      requestAnimationFrame(() => popupSheetRef.current?.open())
+    }
+  }, [isLoadingRaster, hasResults, viewMode])
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode)
