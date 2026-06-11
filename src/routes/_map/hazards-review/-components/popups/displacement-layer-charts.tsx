@@ -370,7 +370,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     if (isError) return <div className="text-xs text-destructive mb-2">Failed to load stats.</div>
 
     return (
-        <div className="mb-3 flex flex-col gap-3">
+        <div className="mb-3 flex flex-col gap-3 px-2 py-1">
             <div className="grid grid-cols-2 gap-2">
                 <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={`|value| ≥ ${fmt1(threshold)} in`} />
                 <KPI label="Max |value|" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
