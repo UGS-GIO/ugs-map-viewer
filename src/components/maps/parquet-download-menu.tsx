@@ -26,6 +26,16 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
     const download = useMutation({
         mutationFn: async (format: ExportFormat) => {
             const { exportParquet, safeFilename } = await import('@/lib/duckdb-export');
+
+            // Track download event in Google Tag Manager dataLayer
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                event: 'dataset_download',
+                layer_title: layerTitle,
+                format,
+                parquet_url: parquetUrl,
+            });
+
             await exportParquet({
                 parquetUrl,
                 filename: safeFilename(layerTitle),
