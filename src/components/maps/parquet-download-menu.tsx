@@ -45,7 +45,9 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
                 event: 'dataset_download',
                 layer_title: layerTitle,
                 format,
-                parquet_url: parquetUrl,
+                has_geometry: schema?.hasGeometry ?? false,
+                column_count: schema?.columns.length ?? 0,
+                row_count: schema?.rowCount ?? 0,
             });
         },
         onError: (err) => {
