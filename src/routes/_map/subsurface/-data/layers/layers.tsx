@@ -314,7 +314,7 @@ const nonpetrolWellsConfig: WMSLayerProps = {
 
 // Metal mining districts layer
 const metalMiningDistrictsLayerName = 'metalmineralapp_mining_districts';
-const metalMiningDistrictsTitle = 'Metalliferous Mining Districts';
+export const metalMiningDistrictsTitle = 'Mining Districts';
 const metalMiningDistrictsConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
