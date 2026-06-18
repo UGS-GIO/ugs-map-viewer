@@ -9,7 +9,7 @@ import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { utTownshipRangesTitle, wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, ucrcWellsWMSTitle } from './-data/layers/layers'
+import { utTownshipRangesTitle, wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, ucrcWellsWMSTitle, metalMiningDistrictsTitle } from './-data/layers/layers'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
@@ -73,6 +73,23 @@ const searchConfig: SearchSourceConfig[] = [
     params: {
       targetFields: ['uwi', 'well_name'],
       select: 'uwi,well_name,geom',
+    },
+    headers: {
+      'Accept-Profile': 'emp',
+      'Accept': 'application/geo+json',
+    },
+  },
+  {
+    type: 'postgREST',
+    url: `${PROD_POSTGREST_URL}/metalmineralapp_mining_districts`,
+    sourceName: 'Mining Districts',
+    layerName: metalMiningDistrictsTitle,
+    crs: 'EPSG:3857',
+    displayField: 'district',
+    secondaryDisplayField: 'commodity',
+    params: {
+      targetFields: ['commodity', 'district'],
+      select: 'commodity,district,type,shape',
     },
     headers: {
       'Accept-Profile': 'emp',
