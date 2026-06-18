@@ -135,7 +135,7 @@ const utTownshipRangesConfig: WMSLayerProps = {
 
 
 // Oil and Gas Fields WMS Layer
-const oilGasFieldsLayerName = 'oilgasfields';
+const oilGasFieldsLayerName = 'enmin_oilgasfields_ogm_current';
 const oilGasFieldsWMSTitle = 'Oil and Gas Fields';
 const oilGasFieldsWMSConfig: WMSLayerProps = {
     type: 'wms',
@@ -149,11 +149,11 @@ const oilGasFieldsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Field Name': { field: 'field_name', type: 'string' },
-                'Field Type': { field: 'field_type', type: 'string' },
-                'Producing Formations': { field: 'prod_formations', type: 'string' },
+                'Field Name': { field: 'fieldname', type: 'string' },
+                'Field Type': { field: 'type', type: 'string' },
+                'Producing Formations': { field: 'prodformations', type: 'string' },
                 'Reservoir Age': { field: 'reservoir_rocks', type: 'string' },
-                'Status': { field: 'status', type: 'string' }
+                'Status': { field: 'status_1', type: 'string' }
             },
         },
     ],
@@ -387,7 +387,7 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
 };
 
 // Pipelines WMS Layer
-const pipelinesLayerName = 'pipelines';
+const pipelinesLayerName = 'enmin_pipelines_current';
 const pipelinesWMSTitle = 'Pipelines';
 const pipelinesWMSConfig: WMSLayerProps = {
     type: 'wms',
@@ -404,7 +404,7 @@ const pipelinesWMSConfig: WMSLayerProps = {
                 'Operator': { field: 'operator', type: 'string' },
                 'Commodity': { field: 'commodity', type: 'string' },
                 'Acronym': { field: 'acronym', type: 'string' },
-                'Code Remarks': { field: 'coderemarks', type: 'string' }
+                'Code Remarks': { field: 'code_rmrks', type: 'string' }
             },
         },
     ],
@@ -531,6 +531,7 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
                 'Township': { field: 'township', type: 'string' },
                 'Range': { field: 'range', type: 'string' },
                 'Section': { field: 'section', type: 'string' },
+                'Notes': { field: 'notes_public', type: 'string' },
             },
             relatedTables: [
                 {
