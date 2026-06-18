@@ -901,7 +901,7 @@ const rockPropertyDataWMSConfig: WMSLayerProps = {
             },
             relatedTables: [
                 {
-                    fieldLabel: 'Geochemistry Data',
+                    fieldLabel: 'Rock Property Data',
                     matchingField: 'uwi',
                     targetField: 'uwi',
                     url: PROD_POSTGREST_URL + '/enmin_ccus_geochemistry_measurements_current',
@@ -939,7 +939,7 @@ const rockPropertyDataWMSConfig: WMSLayerProps = {
             },
             relatedTables: [
                 {
-                    fieldLabel: 'Geochemistry Data',
+                    fieldLabel: 'Rock Property Data',
                     matchingField: 'fieldnamejoin',
                     targetField: 'field',
                     url: PROD_POSTGREST_URL + '/enmin_geochemistry_fields_current',
