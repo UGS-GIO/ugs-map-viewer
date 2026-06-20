@@ -68,6 +68,28 @@ export const formatDate = (value: unknown, format: DatePopupFieldConfig['format'
 }
 
 /**
+ * Convert a value to a string, automatically formatting scientific notation 
+ * representing a standard number into plain digit strings (e.g. 4.304735231e+13 -> 43047352310000).
+ */
+export const formatStringValue = (value: unknown): string => {
+  if (value === null || value === undefined) {
+    return ''
+  }
+  const str = String(value)
+  if (/^-?\d+(\.\d+)?[eE][+-]?\d+$/.test(str)) {
+    const num = Number(str)
+    if (!isNaN(num)) {
+      // Use toLocaleString('fullwide', {useGrouping:false}) or just toString()
+      // toString() for very large numbers in JS might revert to scientific notation.
+      // However, for the expected range of API numbers, toString() is sufficient.
+      // If we need absolute precision for even larger integers, BigInt might be needed.
+      return num.toLocaleString('fullwide', { useGrouping: false })
+    }
+  }
+  return str
+}
+
+/**
  * Format a field value based on its config
  * Works for string, number, date, and custom field types
  */
@@ -77,7 +99,7 @@ export const formatFieldValue = (
   properties?: GeoJsonProperties
 ): string => {
   if (!fieldConfig) {
-    return rawValue === null || rawValue === undefined ? '' : String(rawValue)
+    return formatStringValue(rawValue)
   }
 
   // Handle custom fields
@@ -104,11 +126,11 @@ export const formatFieldValue = (
   // Handle string fields
   if (isStringField(fieldConfig)) {
     if (fieldConfig.transform) {
-      return fieldConfig.transform(rawValue === null ? null : String(rawValue)) ?? ''
+      return fieldConfig.transform(formatStringValue(rawValue)) ?? ''
     }
-    return String(rawValue ?? '')
+    return formatStringValue(rawValue)
   }
 
   // Fallback
-  return rawValue === null || rawValue === undefined ? '' : String(rawValue)
+  return formatStringValue(rawValue)
 }
