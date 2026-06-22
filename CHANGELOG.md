@@ -1,3 +1,16 @@
+## 2.6.0 (2026-06-22)
+
+* **chore**(`common`): dependency upgrades and cleanup (#447) ([447](///issues/447))
+* **feat**(`common`): add download tracking via gtm dataLayer (#456) ([456](///issues/456))
+* **fix**(`common`): popup click respects layer visibility for rasters and skips empty results (#455) ([455](///issues/455))
+* **fix**(`common`): render titleless related tables inline instead of as accordion (#452) ([452](///issues/452))
+* **fix**: handle scientific notation in API number popups (#460) ([460](///issues/460))
+* ****: Merge pull request #457 from UGS-GIO/develop ([457](///issues/457))
+* ****: Ucrc layer info table changes (#458) ([458](///issues/458))
+* **refactor**(`ccs`): added non petroleum layer to map (#442) ([442](///issues/442))
+* **refactor**(`ccs`): added township to search (#451) ([451](///issues/451))
+* **feat**(`geophysics`): adding tables to popups in same style as relatedTables (#450) ([450](///issues/450))
+
 ## [1.16.4](https://github.com/UGS-GIO/ugs-map-viewer/compare/v1.16.3...v1.16.4) (2026-01-22)
 
 
