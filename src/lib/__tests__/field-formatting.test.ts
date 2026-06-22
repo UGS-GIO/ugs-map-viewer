@@ -68,6 +68,16 @@ describe('formatFieldValue', () => {
     expect(formatFieldValue(undefined, 42)).toBe('42');
   });
 
+  it('handles scientific notation strings and numbers in string fields', () => {
+    const config: StringPopupFieldConfig = { type: 'string', field: 'api_number' };
+    expect(formatFieldValue(config, '4.304735231e+13')).toBe('43047352310000');
+    expect(formatFieldValue(config, 4.304735231e13)).toBe('43047352310000');
+    expect(formatFieldValue(config, '4.304735231e13')).toBe('43047352310000');
+    expect(formatFieldValue(config, '-4.304735231e+13')).toBe('-43047352310000');
+    expect(formatFieldValue(config, 'normal_string')).toBe('normal_string');
+    expect(formatFieldValue(undefined, '4.304735231e+13')).toBe('43047352310000');
+  });
+
   it('handles string fields with and without transforms', () => {
     const config: StringPopupFieldConfig = { type: 'string', field: 'name' };
     expect(formatFieldValue(config, 'test')).toBe('test');
