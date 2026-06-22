@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionHeader } from '@/components/ui/accordion';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { useLayerItemState } from '@/hooks/use-layer-item-state';
@@ -19,22 +21,47 @@ import { useIsMobile } from './use-mobile';
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from '@/lib/constants';
 import { useLayerUrl } from '@/context/layer-url-provider';
 
-// Helper to get all child layer titles from a group
-const getChildLayerTitles = (layer: LayerProps): string[] => {
-    if ('layers' in layer && layer.type === 'group') {
-        return (layer.layers || []).flatMap(child => getChildLayerTitles(child));
-    }
-    return layer.title ? [layer.title] : [];
-};
-
 interface LayerAccordionItemProps {
     layerConfig: LayerProps;
     isTopLevel: boolean;
     parentGroupTitle?: string;
     disableExport?: boolean;
+    /** Optional render-prop for content shown inside a group's accordion */
+    groupExtrasRender?: (groupTitle: string) => React.ReactNode;
+    /** Optional render-prop for content shown inside a single layer's accordion */
+    layerExtrasRender?: (layerTitle: string) => React.ReactNode;
+    /** Optional render-prop for whole-layer stats / charts rendered via the Stats toggle */
+    layerStatsRender?: (layerTitle: string) => React.ReactNode;
 }
 
-const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disableExport }: LayerAccordionItemProps) => {
+/**
+ * Collapsible "Filters" subsection rendered above a layer or group's normal
+ * content. Hides itself entirely when the consumer's render-prop returns null,
+ * so the slot is invisible by default and quiet for layers that have nothing
+ * to expose.
+ */
+function FiltersCollapsible({ content }: { content: React.ReactNode }) {
+    const [open, setOpen] = useState(false);
+    if (content === null || content === undefined || content === false) return null;
+    // Match LayerControls' mx-8 horizontal padding so the filter row aligns with
+    // the opacity slider + button cluster beneath it.
+    return (
+        <div className="mx-8 mt-2">
+            <Collapsible open={open} onOpenChange={setOpen}>
+                <CollapsibleTrigger className="flex w-full items-center gap-1.5 rounded border border-border bg-muted/40 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted">
+                    <ChevronRight className={`h-3 w-3 transition-transform ${open ? 'rotate-90' : ''}`} />
+                    <SlidersHorizontal className="h-3 w-3" />
+                    <span>Filters</span>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                    {content}
+                </CollapsibleContent>
+            </Collapsible>
+        </div>
+    );
+}
+
+const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender }: LayerAccordionItemProps) => {
     const {
         isSelected,
         handleToggleSelection,
@@ -219,7 +246,12 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
                             </AccordionTrigger>
                         </AccordionHeader>
                         <AccordionContent>
-                            <div className="flex items-center space-x-2 ml-2">
+                            {layerConfig.title && (
+                                <FiltersCollapsible
+                                    content={groupExtrasRender?.(layerConfig.title)}
+                                />
+                            )}
+                            <div className="flex items-center space-x-2">
                                 <Checkbox
                                     checked={groupCheckboxState === 'all'}
                                     onCheckedChange={handleSelectAllToggle}
@@ -233,6 +265,9 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
                                         layerConfig={child}
                                         isTopLevel={false}
                                         parentGroupTitle={layerConfig.title}
+                                        groupExtrasRender={groupExtrasRender}
+                                        layerExtrasRender={layerExtrasRender}
+                                        layerStatsRender={layerStatsRender}
                                     />
                                 </div>
                             ))}
@@ -313,6 +348,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
                             legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}
                             downloadParquetUrl={layerConfig.downloadParquetUrl}
                             disableExport={disableExport}
+                            filtersContent={layerConfig.title ? layerExtrasRender?.(layerConfig.title) : undefined}
+                            statsContent={layerConfig.title ? layerStatsRender?.(layerConfig.title) : undefined}
                         />
                     </AccordionContent>
                 </AccordionItem>
@@ -322,7 +359,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
 };
 
 
-export const useCustomLayerList = ({ config, disableExport }: { config: LayerProps[] | null; disableExport?: boolean }) => {
+export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender }: { config: LayerProps[] | null; disableExport?: boolean; groupExtrasRender?: (groupTitle: string) => React.ReactNode; layerExtrasRender?: (layerTitle: string) => React.ReactNode; layerStatsRender?: (layerTitle: string) => React.ReactNode }) => {
 
     const layerList = useMemo(() => {
         if (!config) return [];
@@ -333,10 +370,13 @@ export const useCustomLayerList = ({ config, disableExport }: { config: LayerPro
                     layerConfig={layer}
                     isTopLevel={true}
                     disableExport={disableExport}
+                    groupExtrasRender={groupExtrasRender}
+                    layerExtrasRender={layerExtrasRender}
+                    layerStatsRender={layerStatsRender}
                 />
             )
         });
-    }, [config, disableExport]);
+    }, [config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender]);
 
     return layerList;
 };

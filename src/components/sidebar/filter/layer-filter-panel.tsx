@@ -23,15 +23,21 @@ interface FieldProps<K extends FilterFieldKind = FilterFieldKind> {
     onChange: (value: FilterFieldValue) => void;
 }
 
-function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<FilterFieldKind, { kind: 'multiSelect' }>>) {
-    const { data: options = [], isLoading } = useDistinctFieldOptions({ schema, state, field });
-    const selected = state[field.field]?.kind === 'multiSelect' ? (state[field.field] as { values: string[] }).values : [];
+function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<FilterFieldKind, { kind: 'multiSelect' | 'containsAny' }>>) {
+    const { data: options = [], isLoading } = useDistinctFieldOptions({
+        schema,
+        state,
+        field,
+        splitCommaDelimited: field.kind === 'containsAny',
+    });
+    const v = state[field.field];
+    const selected = v && (v.kind === 'multiSelect' || v.kind === 'containsAny') ? v.values : [];
     const filtered = field.optionLabelFilter ? options.filter(field.optionLabelFilter) : options;
 
     const toggle = (label: string, checked: boolean) => {
         const next = new Set(selected);
         if (checked) next.add(label); else next.delete(label);
-        onChange({ kind: 'multiSelect', values: Array.from(next) });
+        onChange({ kind: field.kind, values: Array.from(next) });
     };
 
     if (isLoading) return <p className="text-sm text-muted-foreground">Loading...</p>;
@@ -168,7 +174,11 @@ export function LayerFilterPanel({ schema }: LayerFilterPanelProps) {
                             ? <MultiSelectGrid key={key} schema={schema} state={mgr.state} field={field} onChange={onChange} />
                             : <MultiSelectComboboxField key={key} schema={schema} state={mgr.state} field={field} onChange={onChange} />;
                     case 'containsAny':
-                        return <MultiSelectComboboxField key={key} schema={schema} state={mgr.state} field={field} onChange={onChange} />;
+                        // Swatched containsAny fields render as a checkbox grid (mirrors
+                        // multiSelect); others use the combobox.
+                        return field.optionSwatches
+                            ? <MultiSelectGrid key={key} schema={schema} state={mgr.state} field={field} onChange={onChange} />
+                            : <MultiSelectComboboxField key={key} schema={schema} state={mgr.state} field={field} onChange={onChange} />;
                     case 'range':
                         return <RangeField key={key} schema={schema} state={mgr.state} field={field} onChange={onChange} />;
                     case 'boolean':

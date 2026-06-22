@@ -29,6 +29,12 @@ export type FilterFieldKind =
         field: string;
         label: string;
         placeholder?: string;
+        /** When set, UI renders as a checkbox grid with color swatches. */
+        optionSwatches?: Record<string, string>;
+        /** Visual stroke color per option. */
+        optionStrokes?: Record<string, string>;
+        /** Optional label filter to hide certain options. */
+        optionLabelFilter?: (label: string) => boolean;
     }
     /** Numeric min/max range. */
     | {
