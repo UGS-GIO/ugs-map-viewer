@@ -42,7 +42,7 @@ export const useDistinctFieldOptions = ({
 
     return useQuery({
         queryKey: ['distinct-field-options', schema.recordKey, field.field, url],
-        queryFn: async (): Promise<string[]> => {
+        queryFn: async (): Promise<{ options: string[]; counts: Record<string, number> }> => {
             const res = await fetch(url, {
                 headers: { Accept: 'application/json', ...(schema.tableHeaders ?? {}) },
             });
@@ -50,21 +50,26 @@ export const useDistinctFieldOptions = ({
             const rows: Record<string, string>[] = await res.json();
             const seen = new Set<string>();
             const out: string[] = [];
+            // Per-value row counts, tallied from the same rows we already fetched —
+            // free, and cascaded by the other active filters (the predicate excludes
+            // only this field's own selection).
+            const counts: Record<string, number> = {};
+            const tally = (v: string) => {
+                if (!v) return;
+                if (!seen.has(v)) { seen.add(v); out.push(v); }
+                counts[v] = (counts[v] ?? 0) + 1;
+            };
             for (const row of rows) {
                 const raw = row[field.field];
                 if (typeof raw !== 'string') continue;
                 if (splitCommaDelimited) {
-                    for (const part of raw.split(',')) {
-                        const v = part.trim();
-                        if (v && !seen.has(v)) { seen.add(v); out.push(v); }
-                    }
+                    for (const part of raw.split(',')) tally(part.trim());
                 } else {
-                    const v = raw.trim();
-                    if (v && !seen.has(v)) { seen.add(v); out.push(v); }
+                    tally(raw.trim());
                 }
             }
             if (splitCommaDelimited) out.sort();
-            return out;
+            return { options: out, counts };
         },
         enabled,
         placeholderData: keepPreviousData,

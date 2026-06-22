@@ -24,12 +24,14 @@ interface FieldProps<K extends FilterFieldKind = FilterFieldKind> {
 }
 
 function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<FilterFieldKind, { kind: 'multiSelect' | 'containsAny' }>>) {
-    const { data: options = [], isLoading } = useDistinctFieldOptions({
+    const { data, isLoading } = useDistinctFieldOptions({
         schema,
         state,
         field,
         splitCommaDelimited: field.kind === 'containsAny',
     });
+    const options = data?.options ?? [];
+    const counts = data?.counts ?? {};
     const v = state[field.field];
     const selected = v && (v.kind === 'multiSelect' || v.kind === 'containsAny') ? v.values : [];
     const filtered = field.optionLabelFilter ? options.filter(field.optionLabelFilter) : options;
@@ -62,7 +64,12 @@ function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<
                                 }}
                             />
                         )}
-                        <Label htmlFor={`${field.field}-${label}`} className="text-sm cursor-pointer">{label}</Label>
+                        <Label htmlFor={`${field.field}-${label}`} className="text-sm cursor-pointer">
+                            {label}
+                            {counts[label] != null && (
+                                <span className="ml-1 text-muted-foreground">({counts[label].toLocaleString()})</span>
+                            )}
+                        </Label>
                     </div>
                 ))}
             </div>
@@ -71,12 +78,14 @@ function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<
 }
 
 function MultiSelectComboboxField({ schema, state, field, onChange }: FieldProps<Extract<FilterFieldKind, { kind: 'multiSelect' | 'containsAny' }>>) {
-    const { data: options = [], isLoading } = useDistinctFieldOptions({
+    const { data, isLoading } = useDistinctFieldOptions({
         schema,
         state,
         field,
         splitCommaDelimited: field.kind === 'containsAny',
     });
+    const options = data?.options ?? [];
+    const counts = data?.counts ?? {};
     const value = state[field.field];
     const selected = value && (value.kind === 'multiSelect' || value.kind === 'containsAny') ? value.values : [];
 
@@ -85,6 +94,7 @@ function MultiSelectComboboxField({ schema, state, field, onChange }: FieldProps
             label={field.label}
             placeholder={field.placeholder ?? `Select ${field.label.toLowerCase()}...`}
             options={options}
+            counts={counts}
             isLoading={isLoading}
             selected={selected}
             onChange={(values) => onChange({ kind: field.kind, values })}
