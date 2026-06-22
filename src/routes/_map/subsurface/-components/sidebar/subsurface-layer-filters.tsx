@@ -144,8 +144,10 @@ function useVectorSymbology(layerTitle: string) {
 
 function UcrcSymbology() {
     const { value: symbology, setValue: setSymbology } = useVectorSymbology(ucrcWellsWMSTitle)
-    const isBoxTypeMode = symbology === SYMBOLOGY_BOX_TYPE
 
+    // No color key here on purpose: the Legend toggle (WfsVectorLegend) already
+    // renders the box-type wedge swatches, and the Box Type filter grid repeats
+    // them too — a third copy under the selector was pure duplication.
     return (
         <div className="flex flex-col gap-2">
             <Label className="text-xs font-medium">Symbolize by</Label>
@@ -158,25 +160,6 @@ function UcrcSymbology() {
                     <SelectItem value={SYMBOLOGY_BOX_TYPE} className="text-xs">Box Type</SelectItem>
                 </SelectContent>
             </Select>
-            {isBoxTypeMode && (
-                <div className="text-xs text-muted-foreground space-y-1">
-                    <div className="font-medium">Wedge key</div>
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                        {UCRC_BOX_TYPE_CODES.map(code => (
-                            <div key={code} className="flex items-center gap-2">
-                                <span
-                                    className="inline-block w-3 h-3 rounded-sm border border-foreground/30 shrink-0"
-                                    style={{ backgroundColor: UCRC_BOX_TYPE_COLORS[code] }}
-                                />
-                                <span>{code}</span>
-                            </div>
-                        ))}
-                    </div>
-                    <p className="text-[11px] pt-1">
-                        Each well is a pie split into equal wedges — one per box type present, drawn clockwise starting top-left.
-                    </p>
-                </div>
-            )}
         </div>
     )
 }
