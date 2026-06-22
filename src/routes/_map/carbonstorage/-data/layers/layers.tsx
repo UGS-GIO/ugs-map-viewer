@@ -73,7 +73,7 @@ const oilGasFieldsWMSConfig: WMSLayerProps = {
 };
 
 // Pipelines WMS Layer
-const pipelinesLayerName = 'enmin_pipelines_current';
+const pipelinesLayerName = 'pipelines';
 const pipelinesWMSTitle = 'Pipelines';
 const pipelinesWMSConfig: WMSLayerProps = {
     type: 'wms',
@@ -90,7 +90,7 @@ const pipelinesWMSConfig: WMSLayerProps = {
                 'Operator': { field: 'operator', type: 'string' },
                 'Commodity': { field: 'commodity', type: 'string' },
                 'Acronym': { field: 'acronym', type: 'string' },
-                'Code Remarks': { field: 'code_rmrks', type: 'string' }
+                'Code Remarks': { field: 'coderemarks', type: 'string' }
             },
         },
     ],
