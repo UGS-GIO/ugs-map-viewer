@@ -60,6 +60,10 @@ export const layerFetchConfigs: Record<string, LayerFetchConfig[]> = {
         tableName: 'ccuslayerinfo',
         acceptProfile: 'emp'
     }],
+    'subsurface': [{
+        tableName: 'ucrclayerinfo',
+        acceptProfile: 'emp'
+    }],
     'geophysics': [{
         tableName: 'geophysicslayerinfo',
         acceptProfile: 'emp'

@@ -30,6 +30,13 @@ interface UsePopupDataOptions {
   clickBbox?: { sw: [number, number]; ne: [number, number] } | null
   /** Layer configuration to look up popupFields, rasterSource, etc. */
   layersConfig: LayerProps[]
+  /**
+   * Titles of currently-displayed layers (leaf checked + parent group on). When
+   * provided, raster/COG layers are only sampled on click if displayed — mirrors
+   * the WFS path so a turned-off raster layer can't return popup results. Omit
+   * to query all (backward-compatible).
+   */
+  displayedTitles?: Set<string>
 }
 
 interface RasterQueryConfig {
@@ -113,12 +120,12 @@ async function fetchRasterValue(
  * Get all visible WMS layers with rasterSource config
  * Uses flattenWmsLayers utility for consistent layer traversal
  */
-function getLayersWithRasterSource(layers: LayerProps[]): Map<string, RasterSource> {
+function getLayersWithRasterSource(layers: LayerProps[], displayedTitles?: Set<string>): Map<string, RasterSource> {
   const result = new Map<string, RasterSource>()
 
   for (const wmsLayer of flattenWmsLayers(layers)) {
     const sublayer = wmsLayer.sublayers?.[0]
-    if (sublayer?.queryable && sublayer?.rasterSource) {
+    if (sublayer?.queryable && sublayer?.rasterSource && (!displayedTitles || displayedTitles.has(wmsLayer.title))) {
       result.set(wmsLayer.title, sublayer.rasterSource)
     }
   }
@@ -138,10 +145,12 @@ function cogLayerToRasterSource(layer: COGLayerProps): RasterSource {
   }
 }
 
-function getCogLayersForPopup(layers: LayerProps[]): Map<string, { layer: COGLayerProps; rasterSource: RasterSource }> {
+function getCogLayersForPopup(layers: LayerProps[], displayedTitles?: Set<string>): Map<string, { layer: COGLayerProps; rasterSource: RasterSource }> {
   const result = new Map<string, { layer: COGLayerProps; rasterSource: RasterSource }>()
   for (const cog of flattenLeaves(layers, isCOGLayer)) {
-    if (cog.title) result.set(cog.title, { layer: cog, rasterSource: cogLayerToRasterSource(cog) })
+    if (cog.title && (!displayedTitles || displayedTitles.has(cog.title))) {
+      result.set(cog.title, { layer: cog, rasterSource: cogLayerToRasterSource(cog) })
+    }
   }
   return result
 }
@@ -177,6 +186,7 @@ export function usePopupData({
   clickPoint,
   clickBbox,
   layersConfig,
+  displayedTitles,
 }: UsePopupDataOptions): {
   popupData: LayerContentProps[]
   isLoadingRaster: boolean
@@ -193,8 +203,8 @@ export function usePopupData({
   }, [vectorFeatures])
 
   // Get all layers with rasterSource config (WMS) and visible COG layers (sampled client-side)
-  const layersWithRaster = useMemo(() => getLayersWithRasterSource(layersConfig), [layersConfig])
-  const cogLayers = useMemo(() => getCogLayersForPopup(layersConfig), [layersConfig])
+  const layersWithRaster = useMemo(() => getLayersWithRasterSource(layersConfig, displayedTitles), [layersConfig, displayedTitles])
+  const cogLayers = useMemo(() => getCogLayersForPopup(layersConfig, displayedTitles), [layersConfig, displayedTitles])
 
   // Determine which layers need raster fetching. Tagged 'wms' or 'cog' to dispatch query path.
   const rasterQueries = useMemo((): Array<RasterQueryConfig & { kind: 'wms' | 'cog' }> => {
@@ -283,7 +293,9 @@ export function usePopupData({
         sourceCRS: 'EPSG:4326',
         visible: true,
         popupFields: sublayerConfig?.popupFields,
+        popupFieldsTable: sublayerConfig?.popupFieldsTable,
         relatedTables: sublayerConfig?.relatedTables,
+        relatedTablesPosition: sublayerConfig?.relatedTablesPosition,
         linkFields: sublayerConfig?.linkFields,
         imageFields: sublayerConfig?.imageFields,
         colorCodingMap: sublayerConfig?.colorCodingMap,

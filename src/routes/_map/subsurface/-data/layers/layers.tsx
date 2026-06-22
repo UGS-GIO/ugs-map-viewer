@@ -7,7 +7,7 @@ import { formatNumeric } from "@/lib/utils";
 
 
 export const wellWithTopsLayerName = 'wellswithtops_hascore';
-export const wellWithTopsWMSTitle = 'Wells Database';
+export const wellWithTopsWMSTitle = 'Oil and Gas Wells (Source: Utah Division of Oil, Gas & Mining)';
 const wellWithTopsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -116,20 +116,23 @@ const utCountiesConfig: WMSLayerProps = {
 };
 
 // Utah township & ranges
+export const utTownshipRangesLayerName = 'enmin_plss_townshiprange_current';
+export const utTownshipRangesTitle = 'Utah Township & Ranges'; 
 const utTownshipRangesConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Utah Township & Ranges',
+    title: utTownshipRangesTitle,
     visible: false,
     crs: 'EPSG:3857',
     visibleZoomRange: [11, 22],
-    downloadParquetUrl: parquetUrl("enmin_plss_townshiprange"),
     sublayers: [{
-        name: `${ENERGY_MINERALS_WORKSPACE}:enmin_plss_townshiprange_current`,
+        name: `${ENERGY_MINERALS_WORKSPACE}:${utTownshipRangesLayerName}`,
         popupEnabled: false,
         queryable: false,
     }],
 };
+
+
 
 // Oil and Gas Fields WMS Layer
 const oilGasFieldsLayerName = 'oilgasfields';
@@ -181,7 +184,7 @@ const basinsWMSConfig: WMSLayerProps = {
 
 // Non Petroleum Wells Layer
 const nonpetrolWellsLayerName = 'nwpd_nonpetroleumwellcatalogwells';
-const nonpetrolWellsTitle = 'Non-Petroleum Wells';
+const nonpetrolWellsTitle = 'Exploration Boreholes - Downhole Data';
 const nonpetrolWellsConfig: WMSLayerProps = {
   type: 'wms',
   url: `${PROD_GEOSERVER_URL}/wms`,
@@ -311,7 +314,7 @@ const nonpetrolWellsConfig: WMSLayerProps = {
 
 // Metal mining districts layer
 const metalMiningDistrictsLayerName = 'metalmineralapp_mining_districts';
-const metalMiningDistrictsTitle = 'Metalliferous Mining Districts';
+export const metalMiningDistrictsTitle = 'Mining Districts';
 const metalMiningDistrictsConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -601,12 +604,9 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
 
 const subsurfaceDataConfig: LayerProps = {
     type: 'group',
-    title: 'Subsurface Data',
+    title: 'Other Subsurface Data',
     visible: false,
     layers: [
-        oilGasFieldsWMSConfig,
-        basinsWMSConfig,
-        metalMiningDistrictsConfig,
         wellWithTopsWMSConfig,
         nonpetrolWellsConfig,
     ]
@@ -626,6 +626,9 @@ const infrastructureAndLandUseConfig: LayerProps = {
     title: 'Infrastructure and Land Use',
     visible: false,
     layers: [
+        oilGasFieldsWMSConfig,
+        basinsWMSConfig,
+        metalMiningDistrictsConfig,
         SITLAConfig,
         pipelinesWMSConfig,
         utCountiesConfig,
