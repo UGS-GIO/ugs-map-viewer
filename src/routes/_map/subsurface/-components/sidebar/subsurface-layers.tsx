@@ -2,6 +2,7 @@ import { BackToMenuButton } from '@/components/ui/back-to-menu-button'
 import { useCustomLayerList } from '@/hooks/use-custom-layerlist'
 import { useGetLayerConfigs } from '@/hooks/use-get-layer-configs'
 import { renderSubsurfaceLayerFilters } from './subsurface-layer-filters'
+import { renderSubsurfaceLegend } from './subsurface-symbology-legend'
 
 /**
  * Subsurface variant of the shared Layers sidebar. Identical layout but injects
@@ -15,6 +16,7 @@ function SubsurfaceLayers({ disableExport = false }: { disableExport?: boolean }
         config: layerConfigs,
         disableExport,
         layerExtrasRender: renderSubsurfaceLayerFilters,
+        layerLegendRender: renderSubsurfaceLegend,
     })
 
     if (isLoading) {

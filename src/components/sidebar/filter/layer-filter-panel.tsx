@@ -163,9 +163,15 @@ export interface LayerFilterPanelProps {
     schema: FilterSchema;
     /** Card title; default "Filters". */
     title?: string;
+    /**
+     * Field names to keep in state/CQL but NOT render here (e.g. symbology
+     * fields surfaced in an interactive legend instead). Uses the full schema so
+     * round-tripped CQL preserves these fields — they're only hidden visually.
+     */
+    hideFields?: string[];
 }
 
-export function LayerFilterPanel({ schema }: LayerFilterPanelProps) {
+export function LayerFilterPanel({ schema, hideFields }: LayerFilterPanelProps) {
     const mgr = useLayerFilter(schema);
 
     const onFieldChange = useCallback((fieldName: string, value: FilterFieldValue) => {
@@ -174,7 +180,7 @@ export function LayerFilterPanel({ schema }: LayerFilterPanelProps) {
 
     return (
         <div className="space-y-4">
-            {schema.fields.map(field => {
+            {schema.fields.filter(field => !hideFields?.includes(field.field)).map(field => {
                 const key = field.field;
                 const onChange = (v: FilterFieldValue) => onFieldChange(key, v);
                 switch (field.kind) {
