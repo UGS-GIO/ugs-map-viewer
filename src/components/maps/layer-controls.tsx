@@ -98,7 +98,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     };
 
     return (
-        <div className="flex flex-col gap-y-4 pt-2">
+        <div className="flex flex-col gap-y-2 pt-2">
             <div className="flex flex-col gap-y-4 mx-8">
                 <div className="flex flex-col justify-between items-center w-full gap-y-4">
                     <div className="flex flex-row items-center justify-around gap-x-2 w-full mx-auto" data-tour="layer-opacity">
