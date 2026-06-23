@@ -114,7 +114,9 @@ function SchemaFilters({ schema }: { schema: FilterSchema }) {
 // alongside its filters in the layer-list dropdown.
 
 const SYMBOLOGY_PURPOSE = ''
-const SYMBOLOGY_BOX_TYPE = 'box-type'
+// Matches the STAC render id the warehouse publishes; selecting it sets
+// vector_symbology so the live PMTiles renderer draws the by-boxtype render.
+const SYMBOLOGY_BOX_TYPE = 'by-boxtype'
 
 function useVectorSymbology(layerTitle: string) {
     const navigate = useNavigate({ from: '/subsurface/' })
