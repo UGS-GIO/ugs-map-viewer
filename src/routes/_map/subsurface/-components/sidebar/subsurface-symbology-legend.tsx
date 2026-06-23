@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useLayerFilter } from '@/hooks/use-layer-filter'
 import { useDistinctFieldOptions } from '@/hooks/use-distinct-field-options'
 import type { FilterSchema, FilterFieldKind } from '@/lib/filter/types'
-import { ucrcWellsWMSTitle, UCRC_BOX_TYPE_CODES, UCRC_BOX_TYPE_COLORS, UCRC_PURPOSE_COLORS, UCRC_PURPOSE_STROKES } from '../../-data/layers/layers'
+import { ucrcWellsWMSTitle, UCRC_BOX_TYPE_COLORS, UCRC_PURPOSE_COLORS, UCRC_PURPOSE_STROKES } from '../../-data/layers/layers'
 import { ucrcFilterSchema } from '../../-data/layers/ucrc-schema'
 
 /**
@@ -31,6 +31,8 @@ export interface LegendSymbologyMode {
     strokes?: Record<string, string>
     /** Limit shown categories (e.g. only the symbolized box-type codes). */
     optionLabelFilter?: (label: string) => boolean
+    /** Order categories by feature count (descending) instead of the query order. */
+    sortByCount?: boolean
 }
 
 // Sentinel emitted when every category is unchecked ("Select none") so the map
@@ -97,8 +99,12 @@ function CategoryLegendGrid({ schema, field, mode }: { schema: FilterSchema; fie
     const { data, isLoading } = useDistinctFieldOptions({ schema, state: mgr.state, field, splitCommaDelimited: isContains })
     const counts = data?.counts ?? {}
     const options = useMemo(() => {
-        const all = data?.options ?? []
-        return mode.optionLabelFilter ? all.filter(mode.optionLabelFilter) : all
+        const c = data?.counts ?? {}
+        let all = data?.options ?? []
+        if (mode.optionLabelFilter) all = all.filter(mode.optionLabelFilter)
+        // Most-popular-first: order by feature count (desc), alpha tiebreak.
+        if (mode.sortByCount) all = [...all].sort((a, b) => (c[b] ?? 0) - (c[a] ?? 0) || a.localeCompare(b))
+        return all
     }, [data, mode])
 
     // Filter value holds the SHOWN set (multiSelect/containsAny `values`).
@@ -186,7 +192,7 @@ const UCRC_LEGEND_MODES: LegendSymbologyMode[] = [
         label: 'Sample Type',
         field: 'box_type_codes',
         swatches: UCRC_BOX_TYPE_COLORS,
-        optionLabelFilter: (label) => (UCRC_BOX_TYPE_CODES as readonly string[]).includes(label),
+        sortByCount: true,
     },
 ]
 
