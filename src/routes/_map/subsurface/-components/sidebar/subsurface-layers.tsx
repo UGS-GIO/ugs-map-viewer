@@ -6,9 +6,9 @@ import { renderSubsurfaceLegend } from './subsurface-symbology-legend'
 
 /**
  * Subsurface variant of the shared Layers sidebar. Identical layout but injects
- * per-layer filters (e.g. the UCRC Wells schema) into each layer's collapsible
+ * per-layer filters (e.g. the UCRC Collection schema) into each layer's collapsible
  * Filters slot via the `layerExtrasRender` render-prop. Replaces the old
- * Map Configurations "UCRC Wells Filters" card.
+ * Map Configurations "UCRC Collection Filters" card.
  */
 function SubsurfaceLayers({ disableExport = false }: { disableExport?: boolean } = {}) {
     const { layerConfigs, isLoading } = useGetLayerConfigs('layers')
