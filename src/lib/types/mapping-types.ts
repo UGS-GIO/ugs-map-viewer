@@ -178,7 +178,14 @@ export interface PMTilesRender {
 
 export interface PMTilesLayerProps extends BaseLayerProps {
     type: 'pmtiles';
-    /** URL to the PMTiles file (can be relative like '/pmtiles/layer.pmtiles' or absolute) */
+    /**
+     * STAC item id (warehouse serving-topics). When set, the config pipeline
+     * resolves `pmtilesUrl`, `sourceLayer`, `renders`, and `downloadParquetUrl`
+     * from the STAC item before render — the app config carries only UX
+     * (title, sublayers/popups, visibility). See `resolveStacLayerTree`.
+     */
+    stacItemId?: string;
+    /** URL to the PMTiles file (can be relative like '/pmtiles/layer.pmtiles' or absolute). Filled from STAC when `stacItemId` is set. */
     pmtilesUrl: string;
     /** URL to the style JSON file, or inline style layers */
     styleUrl?: string;

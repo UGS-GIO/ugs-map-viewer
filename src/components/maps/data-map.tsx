@@ -13,9 +13,10 @@ import {
 import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
-import { flattenDataLayersWithParent, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
+import { flattenDataLayersWithParent, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps } from '@/lib/types/mapping-types'
+import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId } from '@/components/maps/pmtiles-layer-source'
+import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
 import type maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 
@@ -36,13 +37,14 @@ import { toast } from 'sonner'
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps } from './types'
 
-type DataLayer = WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps
+type DataLayer = WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps | PMTilesLayerProps
 
 // MapLibre layer id used for z-order lookups. Keep prefixes stable — popup/query code greps for them.
 function getLayerId(layer: DataLayer): string {
   if (isWMSLayer(layer)) return `wms-layer-${layer.title}`
   if (isWFSLayer(layer)) return `${getWfsSourceId(layer)}-circle`
   if (isCOGLayer(layer)) return `cog-layer-${layer.title}`
+  if (isPMTilesLayer(layer)) return getPmtilesLayerId(layer)
   return `arcgis-layer-${layer.title}`
 }
 
@@ -319,6 +321,10 @@ export default function DataMap({
 
   const mountedLayerList = useMemo(() => mountedLayers.map(e => e.layer), [mountedLayers])
   const mountedWfsLayers = useMemo(() => mountedLayerList.filter(isWFSLayer), [mountedLayerList])
+  const mountedPmtilesLayers = useMemo(() => mountedLayerList.filter(isPMTilesLayer), [mountedLayerList])
+
+  // Fetch the active render's style fragment for each mounted PMTiles layer.
+  const pmtilesFragments = usePMTilesStyleFragments(mountedPmtilesLayers, vectorLayerSymbology)
 
   // Click queries skip hidden layers — user can't click what they can't see.
   const visibleWmsLayers = useMemo(
@@ -348,12 +354,14 @@ export default function DataMap({
   // Fetch WFS data for any mounted WFS layer (group toggle off shouldn't drop tiles).
   const { data: wfsLayerData } = useWfsLayerData(mountedWfsLayers)
 
-  // Renderable entries: WFS layers wait for geojson before mounting `<Source>`.
+  // Renderable entries: WFS layers wait for geojson, PMTiles for their style
+  // fragment, before mounting `<Source>` (keeps `beforeId` z-order valid).
   const renderableEntries = useMemo(() => {
     return mountedLayers.filter(e =>
-      !isWFSLayer(e.layer) || wfsLayerData.get(getWfsSourceId(e.layer)) !== undefined
+      (!isWFSLayer(e.layer) || wfsLayerData.get(getWfsSourceId(e.layer)) !== undefined) &&
+      (!isPMTilesLayer(e.layer) || pmtilesFragments.get(e.layer.title || '') !== undefined)
     )
-  }, [mountedLayers, wfsLayerData])
+  }, [mountedLayers, wfsLayerData, pmtilesFragments])
 
   // After data lands and the map style is loaded, run any per-layer sprite registration hooks.
   // Idempotent: each hook checks map.hasImage before adding.
@@ -844,6 +852,22 @@ export default function DataMap({
           }
           if (isCOGLayer(layer)) {
             return <CogLayerSource key={layer.title} layer={layer} beforeId={beforeId} hidden={hidden} opacity={opacity} />
+          }
+          if (isPMTilesLayer(layer)) {
+            const fragment = pmtilesFragments.get(layer.title || '')!
+            const activeSymbology = vectorLayerSymbology[layer.title] || ''
+            return (
+              <PMTilesLayerSource
+                key={`${layer.title}-${activeSymbology}`}
+                layer={layer}
+                fragment={fragment}
+                activeSymbology={activeSymbology}
+                beforeId={beforeId}
+                layerFilter={vectorLayerFilters[layer.title]}
+                hidden={hidden}
+                opacity={opacity}
+              />
+            )
           }
           return null
         })}

@@ -1,6 +1,6 @@
 import { Link } from "@/components/ui/link";
-import { MAPS_ASSETS_CDN_URL, parquetUrl, ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
-import { ArcGISMapServerLayerProps, LayerProps, WFSLayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { MAPS_ASSETS_CDN_URL, parquetUrl, ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
+import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps, WFSLayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
 
@@ -438,17 +438,20 @@ const faultsWMSConfig: WMSLayerProps = {
 
 const qFaultsLayerName = 'hazards_qfaults_current';
 const qFaultsWMSTitle = 'Hazardous Faults - Utah Quaternary Fault Database';
-const qFaultsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
+// STAC-driven: pmtilesUrl, sourceLayer, renders, and parquet are filled from the
+// warehouse STAC item `hazards_qfaults` at load (resolveStacLayerTree). The app
+// config carries only UX (title, popups). First layer migrated off GeoServer WMS.
+const qFaultsWMSConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: 'hazards_qfaults',
+    pmtilesUrl: '',
+    sourceLayer: qFaultsLayerName,
     title: qFaultsWMSTitle,
     visible: false,
-    crs: 'EPSG:26912',
-    downloadParquetUrl: parquetUrl("hazards_qfaults"),
+    opacity: 1,
     sublayers: [
         {
-            name: `${HAZARDS_WORKSPACE}:${qFaultsLayerName}`,
-            popupEnabled: false,
+            name: qFaultsLayerName,
             queryable: true,
             popupFields: {
                 'Fault Zone Name': { field: 'faultzone', type: 'string' },
