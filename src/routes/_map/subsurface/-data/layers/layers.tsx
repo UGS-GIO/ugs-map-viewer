@@ -411,7 +411,7 @@ const pipelinesWMSConfig: WMSLayerProps = {
 };
 
 
-// UCRC Wells Layer — rendered client-side via WFS for instant filtering and richer symbology
+// UCRC Collection Layer — rendered client-side via WFS for instant filtering and richer symbology
 const ucrcWellsLayerName = 'enmin_ucrc_wells_current';
 export const ucrcWellsQualifiedName = `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`;
 export const ucrcWellsWMSTitle = 'Utah Core Research Center Inventory';
