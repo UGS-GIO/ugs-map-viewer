@@ -31,6 +31,6 @@ export const ucrcFilterSchema: FilterSchema = {
             trueValue: 'True',
             falseValue: 'False',
         },
-        { kind: 'containsAny', field: 'box_type_codes', label: 'Box Type', placeholder: 'Select box types...' },
+        { kind: 'containsAny', field: 'box_type_codes', label: 'Sample Type', placeholder: 'Select sample types...' },
     ],
 };
