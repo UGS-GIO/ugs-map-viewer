@@ -15,7 +15,7 @@ import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
 import { flattenDataLayersWithParent, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId } from '@/components/maps/pmtiles-layer-source'
+import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint } from '@/components/maps/pmtiles-layer-source'
 import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
 import type maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
@@ -339,12 +339,16 @@ export default function DataMap({
     () => mountedLayerList.filter(isCOGLayer).filter(l => displayedTitles.has(l.title)),
     [mountedLayerList, displayedTitles],
   )
+  const visiblePmtilesLayers = useMemo(
+    () => mountedPmtilesLayers.filter(l => displayedTitles.has(l.title || '')),
+    [mountedPmtilesLayers, displayedTitles],
+  )
   // Vector buffer box is meaningful only when a vector layer is the click target; raster sampling alone uses the pixel highlight.
-  const hasVectorClickTarget = useMemo(() => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0, [visibleWmsLayers, visibleWfsLayers])
-  // Any clickable layer (WMS / WFS / COG) gates the click handler + URL-state restore.
+  const hasVectorClickTarget = useMemo(() => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visiblePmtilesLayers.length > 0, [visibleWmsLayers, visibleWfsLayers, visiblePmtilesLayers])
+  // Any clickable layer (WMS / WFS / COG / PMTiles) gates the click handler + URL-state restore.
   const hasClickableLayers = useMemo(
-    () => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visibleCogLayers.length > 0,
-    [visibleWmsLayers, visibleWfsLayers, visibleCogLayers],
+    () => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visibleCogLayers.length > 0 || visiblePmtilesLayers.length > 0,
+    [visibleWmsLayers, visibleWfsLayers, visibleCogLayers, visiblePmtilesLayers],
   )
   const cogClickPoint = useMemo(
     () => clickBufferBounds ? getBboxCenter(clickBufferBounds) : null,
@@ -383,6 +387,8 @@ export default function DataMap({
   visibleWmsLayersRef.current = visibleWmsLayers
   const visibleWfsLayersRef = useRef(visibleWfsLayers)
   visibleWfsLayersRef.current = visibleWfsLayers
+  const visiblePmtilesLayersRef = useRef(visiblePmtilesLayers)
+  visiblePmtilesLayersRef.current = visiblePmtilesLayers
 
   // Ref to store WFS features from polygon query (populated before WMS query completes)
   const polygonWfsLayerFeaturesRef = useRef<WfsLayerFeature[]>([])
@@ -439,9 +445,11 @@ export default function DataMap({
     options: { extractBbox?: boolean; clearOnEmpty?: boolean } = {}
   ) {
     const wfsFeatures = queryWfsLayersAtPoint(map, point, tolerance, visibleWfsLayersRef.current)
+    const pmtilesFeatures = queryPmtilesLayersAtPoint(map, point, tolerance, visiblePmtilesLayersRef.current)
+    const vectorFeatures = [...pmtilesFeatures, ...wfsFeatures]
 
     if (visibleWmsLayersRef.current.length === 0) {
-      dispatchFeatures(wfsFeatures, additive, options)
+      dispatchFeatures(vectorFeatures, additive, options)
       return
     }
 
@@ -456,7 +464,7 @@ export default function DataMap({
       },
       {
         onSuccess: (wmsFeatures) => {
-          dispatchFeatures([...wmsFeatures, ...wfsFeatures], additive, options)
+          dispatchFeatures([...wmsFeatures, ...vectorFeatures], additive, options)
         },
       }
     )

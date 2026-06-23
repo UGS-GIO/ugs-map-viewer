@@ -16,6 +16,7 @@ import { useQueries } from '@tanstack/react-query'
 import { Source, Layer, useMap, type LayerProps } from 'react-map-gl/maplibre'
 import type maplibregl from 'maplibre-gl'
 import type { PMTilesLayerProps, PMTilesRender } from '@/lib/types/mapping-types'
+import type { WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
 
 interface StyleFragmentLayer {
     id: string
@@ -90,6 +91,45 @@ export function usePMTilesStyleFragments(
 
 function spriteUrl(sprite: string): string {
     return sprite.startsWith('http') ? sprite : `${window.location.origin}${sprite}`
+}
+
+/**
+ * Query rendered PMTiles features at a point (with screen tolerance), mapped to
+ * the same `WfsLayerFeature` shape the popup pipeline consumes. Mirrors
+ * `queryWfsLayersAtPoint`: it walks every rendered layer tagged
+ * `metadata.pmtilesLayer` whose title is among the visible PMTiles layers (a
+ * single layer may render as many style sublayers), then dedupes per layer.
+ */
+export function queryPmtilesLayersAtPoint(
+    map: maplibregl.Map,
+    point: { x: number; y: number },
+    tolerance: number,
+    layers: PMTilesLayerProps[],
+): WfsLayerFeature[] {
+    if (layers.length === 0) return []
+    const titles = new Set(layers.map(l => l.title))
+    const ids = (map.getStyle().layers ?? [])
+        .filter(l => {
+            const md = l.metadata as { pmtilesLayer?: boolean; title?: string } | undefined
+            return md?.pmtilesLayer && !!md.title && titles.has(md.title) && !!map.getLayer(l.id)
+        })
+        .map(l => l.id)
+    if (ids.length === 0) return []
+
+    const bbox: [maplibregl.PointLike, maplibregl.PointLike] = [
+        [point.x - tolerance, point.y - tolerance],
+        [point.x + tolerance, point.y + tolerance],
+    ]
+    const features = map.queryRenderedFeatures(bbox, { layers: ids })
+    return features.map(f => {
+        const md = map.getLayer(f.layer.id)?.metadata as { title?: string } | undefined
+        return {
+            id: f.id ?? (f.properties?.ogc_fid as string | number | undefined) ?? 0,
+            properties: f.properties as Record<string, unknown>,
+            geometry: f.geometry,
+            layerTitle: md?.title || 'Unknown Layer',
+        }
+    })
 }
 
 const OPACITY_PROP: Record<string, string> = {
