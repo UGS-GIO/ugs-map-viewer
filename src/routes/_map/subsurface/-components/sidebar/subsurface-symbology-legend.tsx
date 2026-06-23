@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useLayerFilter } from '@/hooks/use-layer-filter'
 import { useDistinctFieldOptions } from '@/hooks/use-distinct-field-options'
 import type { FilterSchema, FilterFieldKind } from '@/lib/filter/types'
-import { ucrcWellsWMSTitle, UCRC_BOX_TYPE_COLORS, UCRC_PURPOSE_COLORS, UCRC_PURPOSE_STROKES } from '../../-data/layers/layers'
+import { ucrcWellsWMSTitle, UCRC_BOX_TYPE_CODES, UCRC_BOX_TYPE_COLORS, UCRC_PURPOSE_COLORS, UCRC_PURPOSE_STROKES } from '../../-data/layers/layers'
 import { ucrcFilterSchema } from '../../-data/layers/ucrc-schema'
 
 /**
@@ -33,6 +33,10 @@ export interface LegendSymbologyMode {
     optionLabelFilter?: (label: string) => boolean
     /** Order categories by feature count (descending) instead of the query order. */
     sortByCount?: boolean
+    /** Categories shown first (the symbolized/colored ones), above a divider. */
+    primaryValues?: readonly string[]
+    /** Divider label above the non-primary categories. */
+    othersLabel?: string
 }
 
 // Sentinel emitted when every category is unchecked ("Select none") so the map
@@ -102,8 +106,16 @@ function CategoryLegendGrid({ schema, field, mode }: { schema: FilterSchema; fie
         const c = data?.counts ?? {}
         let all = data?.options ?? []
         if (mode.optionLabelFilter) all = all.filter(mode.optionLabelFilter)
-        // Most-popular-first: order by feature count (desc), alpha tiebreak.
-        if (mode.sortByCount) all = [...all].sort((a, b) => (c[b] ?? 0) - (c[a] ?? 0) || a.localeCompare(b))
+        if (mode.sortByCount || mode.primaryValues) {
+            // Symbolized (primary) categories first, then by feature count (desc),
+            // alpha tiebreak — count order applies within each tier.
+            const primary = new Set(mode.primaryValues ?? [])
+            all = [...all].sort((a, b) => {
+                const pa = primary.has(a), pb = primary.has(b)
+                if (pa !== pb) return pa ? -1 : 1
+                return (c[b] ?? 0) - (c[a] ?? 0) || a.localeCompare(b)
+            })
+        }
         return all
     }, [data, mode])
 
@@ -135,6 +147,36 @@ function CategoryLegendGrid({ schema, field, mode }: { schema: FilterSchema; fie
     if (isLoading) return <p className="text-xs text-muted-foreground px-1">Loading…</p>
     if (options.length === 0) return null
 
+    // Split into the symbolized "primary" tier and the rest, for the divider.
+    const primarySet = new Set(mode.primaryValues ?? [])
+    const hasTiers = !!mode.primaryValues && options.some(o => primarySet.has(o)) && options.some(o => !primarySet.has(o))
+    const primary = hasTiers ? options.filter(o => primarySet.has(o)) : options
+    const others = hasTiers ? options.filter(o => !primarySet.has(o)) : []
+
+    // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens.
+    const renderRows = (items: string[]) => (
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-1.5">
+            {items.map(label => (
+                <label key={label} className="flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer">
+                    <Checkbox
+                        className="mt-0.5 shrink-0"
+                        checked={onSet.has(label)}
+                        onCheckedChange={() => toggle(label)}
+                        aria-label={`Toggle ${label}`}
+                    />
+                    <span
+                        className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
+                        style={{ backgroundColor: mode.swatches[label] ?? '#bdbdbd', borderColor: mode.strokes?.[label] ?? 'rgba(0,0,0,0.3)' }}
+                    />
+                    <span className="min-w-0 break-words leading-tight">
+                        {label}
+                        {counts[label] != null && <span className="ml-1 text-muted-foreground">({counts[label].toLocaleString()})</span>}
+                    </span>
+                </label>
+            ))}
+        </div>
+    )
+
     return (
         <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
@@ -152,28 +194,13 @@ function CategoryLegendGrid({ schema, field, mode }: { schema: FilterSchema; fie
                     >None</button>
                 </div>
             </div>
-            {/* Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow
-                screens (small laptops) so counts never collide. */}
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-1.5">
-                {options.map(label => (
-                    <label key={label} className="flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer">
-                        <Checkbox
-                            className="mt-0.5 shrink-0"
-                            checked={onSet.has(label)}
-                            onCheckedChange={() => toggle(label)}
-                            aria-label={`Toggle ${label}`}
-                        />
-                        <span
-                            className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
-                            style={{ backgroundColor: mode.swatches[label] ?? '#bdbdbd', borderColor: mode.strokes?.[label] ?? 'rgba(0,0,0,0.3)' }}
-                        />
-                        <span className="min-w-0 break-words leading-tight">
-                            {label}
-                            {counts[label] != null && <span className="ml-1 text-muted-foreground">({counts[label].toLocaleString()})</span>}
-                        </span>
-                    </label>
-                ))}
-            </div>
+            {renderRows(primary)}
+            {others.length > 0 && (
+                <>
+                    <Label className="text-xs font-medium text-muted-foreground border-t border-border pt-1.5 mt-0.5">{mode.othersLabel ?? 'Other'}</Label>
+                    {renderRows(others)}
+                </>
+            )}
             {mgr.hasAnyFilter && (
                 <Button variant="ghost" size="sm" className="h-6 self-start px-2 text-xs" onClick={mgr.clearAll}>
                     Reset all filters
@@ -193,6 +220,8 @@ const UCRC_LEGEND_MODES: LegendSymbologyMode[] = [
         field: 'box_type_codes',
         swatches: UCRC_BOX_TYPE_COLORS,
         sortByCount: true,
+        primaryValues: UCRC_BOX_TYPE_CODES,
+        othersLabel: 'Other sample types',
     },
 ]
 
