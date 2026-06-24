@@ -114,7 +114,14 @@ const handlers: Record<ExportFormat, Handler> = {
         return res.blob();
     },
 
-    geojson: (opts) => withConnection(async (conn, db) => {
+    // Build FeatureCollection in JS — duckdb-wasm's spatial GDAL GeoJSON writer
+    // crashes ("Cannot write feature"), so we read rows back as geometry-as-GeoJSON
+    // text plus property columns and assemble the FC manually. Reprojects to 4326
+    // for RFC 7946. Source is hardcoded EPSG:3857 (our current pipeline output);
+    // once parquets are published as 4326 this transform must be dropped, else it
+    // double-projects. always_xy keeps lon/lat ordering; Force2D drops the
+    // spurious Z=0 the source carries on otherwise-2D geometry.
+    geojson: (opts) => withConnection(async (conn) => {
         if (!opts.geometryColumn) {
             throw new Error('GeoJSON requires a geometry column');
         }
@@ -122,12 +129,23 @@ const handlers: Record<ExportFormat, Handler> = {
 
         opts.onProgress?.({ stage: 'converting', message: 'Writing GeoJSON…' });
         const escaped = escapeSql(opts.parquetUrl);
-        const virtualPath = `export_${Date.now()}.geojson`;
-        await conn.query(`
-            COPY (SELECT * FROM read_parquet('${escaped}'))
-            TO '${virtualPath}' WITH (FORMAT GDAL, DRIVER 'GeoJSON')
+        const geom = opts.geometryColumn;
+        const result = await conn.query(`
+            SELECT
+                ST_AsGeoJSON(ST_Force2D(ST_Transform(${geom}, 'EPSG:3857', 'EPSG:4326', true))) AS __g,
+                * EXCLUDE (${geom})
+            FROM read_parquet('${escaped}')
         `);
-        return bufferToBlob(db, virtualPath, EXPORT_FORMATS.geojson.mimeType);
+
+        const features: string[] = [];
+        for (const row of result.toArray()) {
+            const obj = row.toJSON() as Record<string, unknown>;
+            const geomJson = obj.__g;
+            delete obj.__g;
+            features.push(`{"type":"Feature","geometry":${geomJson},"properties":${JSON.stringify(obj, jsonReplacer)}}`);
+        }
+        const fc = `{"type":"FeatureCollection","features":[${features.join(',')}]}`;
+        return new Blob([fc], { type: EXPORT_FORMATS.geojson.mimeType });
     }),
 
     csv: (opts) => withConnection(async (conn, db) => {
@@ -146,21 +164,15 @@ const handlers: Record<ExportFormat, Handler> = {
         return bufferToBlob(db, virtualPath, EXPORT_FORMATS.csv.mimeType);
     }),
 
-    fgb: (opts) => withConnection(async (conn, db) => {
-        if (!opts.geometryColumn) {
-            throw new Error('FlatGeobuf requires a geometry column');
-        }
-        await loadSpatial(conn);
+};
 
-        opts.onProgress?.({ stage: 'converting', message: 'Writing FlatGeobuf…' });
-        const escaped = escapeSql(opts.parquetUrl);
-        const virtualPath = `export_${Date.now()}.fgb`;
-        await conn.query(`
-            COPY (SELECT * FROM read_parquet('${escaped}'))
-            TO '${virtualPath}' WITH (FORMAT GDAL, DRIVER 'FlatGeobuf')
-        `);
-        return bufferToBlob(db, virtualPath, EXPORT_FORMATS.fgb.mimeType);
-    }),
+// BIGINT columns arrive as JS bigint; JSON.stringify rejects them. Convert to
+// Number when it round-trips losslessly, else String — keeps the file valid.
+const jsonReplacer = (_key: string, value: unknown) => {
+    if (typeof value !== 'bigint') return value;
+    return value <= BigInt(Number.MAX_SAFE_INTEGER) && value >= BigInt(Number.MIN_SAFE_INTEGER)
+        ? Number(value)
+        : String(value);
 };
 
 // ── Public entrypoint ────────────────────────────────────────────────────────
