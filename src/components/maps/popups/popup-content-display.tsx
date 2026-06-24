@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { RelatedDataMap, EMPTY_RELATED_DATA_MAP } from "@/hooks/use-bulk-related-table";
 import { Feature, Geometry, GeoJsonProperties } from "geojson";
 import { ChevronDown, ChevronRight, ExternalLink, Info } from "lucide-react";
+import { RelatedDataTable } from "@/components/maps/popups/related-data-table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { LayerContentProps } from "@/components/maps/popups/types";
 import { Link } from "@/components/ui/link";
@@ -242,7 +243,7 @@ function InlineSection({ label, children }: { label?: string; children: ReactNod
 
 // Shared table used for both related tables and pivoted popup-fields tables. Centralizes the
 // header/cell styling so the two call sites can't drift apart. Pass `headers` to render a header
-// row; each row is an array of cell contents.
+// row; each row is an array of cell contents. (Sortable related tables use RelatedDataTable.)
 function PopupTable({ headers, rows }: { headers?: ReactNode[]; rows: ReactNode[][] }) {
     return (
         <Table>
@@ -440,11 +441,13 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         let innerContent: JSX.Element;
 
         if (useTableFormat) {
-            const headers = table.displayFields!.map(df => df.label || df.field);
+            // Sortable: raw rows + column defs (TanStack) so sorting is numeric/
+            // alphabetical on the underlying values, not the rendered cells.
             innerContent = (
-                <PopupTable
-                    headers={headers}
-                    rows={groupedValues.map(group => group.map(valueItem => valueItem.value))}
+                <RelatedDataTable
+                    rows={data[tableIndex] as Record<string, unknown>[]}
+                    displayFields={table.displayFields!}
+                    initialSort={table.sortBy ? { id: table.sortBy, desc: table.sortDirection === 'desc' } : undefined}
                 />
             );
         } else {
