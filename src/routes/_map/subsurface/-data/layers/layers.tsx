@@ -7,7 +7,7 @@ import { formatNumeric } from "@/lib/utils";
 
 
 export const wellWithTopsLayerName = 'wellswithtops_hascore';
-export const wellWithTopsWMSTitle = 'Wells Database';
+export const wellWithTopsWMSTitle = 'Oil and Gas Wells (Source: Utah Division of Oil, Gas & Mining)';
 const wellWithTopsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -184,7 +184,7 @@ const basinsWMSConfig: WMSLayerProps = {
 
 // Non Petroleum Wells Layer
 const nonpetrolWellsLayerName = 'nwpd_nonpetroleumwellcatalogwells';
-const nonpetrolWellsTitle = 'Non-Petroleum Wells';
+const nonpetrolWellsTitle = 'Exploration Boreholes - Downhole Data';
 const nonpetrolWellsConfig: WMSLayerProps = {
   type: 'wms',
   url: `${PROD_GEOSERVER_URL}/wms`,
@@ -314,7 +314,7 @@ const nonpetrolWellsConfig: WMSLayerProps = {
 
 // Metal mining districts layer
 const metalMiningDistrictsLayerName = 'metalmineralapp_mining_districts';
-const metalMiningDistrictsTitle = 'Metalliferous Mining Districts';
+export const metalMiningDistrictsTitle = 'Mining Districts';
 const metalMiningDistrictsConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -411,7 +411,7 @@ const pipelinesWMSConfig: WMSLayerProps = {
 };
 
 
-// UCRC Wells Layer — rendered client-side via WFS for instant filtering and richer symbology
+// UCRC Collection Layer — rendered client-side via WFS for instant filtering and richer symbology
 const ucrcWellsLayerName = 'enmin_ucrc_wells_current';
 export const ucrcWellsQualifiedName = `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`;
 export const ucrcWellsWMSTitle = 'Utah Core Research Center Inventory';
@@ -604,12 +604,9 @@ const ucrcWellsWFSConfig: WFSLayerProps = {
 
 const subsurfaceDataConfig: LayerProps = {
     type: 'group',
-    title: 'Subsurface Data',
+    title: 'Other Subsurface Data',
     visible: false,
     layers: [
-        oilGasFieldsWMSConfig,
-        basinsWMSConfig,
-        metalMiningDistrictsConfig,
         wellWithTopsWMSConfig,
         nonpetrolWellsConfig,
     ]
@@ -629,6 +626,9 @@ const infrastructureAndLandUseConfig: LayerProps = {
     title: 'Infrastructure and Land Use',
     visible: false,
     layers: [
+        oilGasFieldsWMSConfig,
+        basinsWMSConfig,
+        metalMiningDistrictsConfig,
         SITLAConfig,
         pipelinesWMSConfig,
         utCountiesConfig,

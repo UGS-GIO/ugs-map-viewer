@@ -348,7 +348,7 @@ export interface RelatedTable {
 }
 
 
-interface DisplayField {
+export interface DisplayField {
     field: string;
     label?: string;
     /** Format numeric values: 'number' (thousands), 'currency' (USD), 'percent'. Applied before transform. */

@@ -1,6 +1,6 @@
 import { House, Info as InfoIcon, Layers as LayersIcon, Settings, ExternalLink } from 'lucide-react'
 import Info from '@/components/sidebar/info'
-import Layers from '@/components/sidebar/layers'
+import SubsurfaceLayers from '../-components/sidebar/subsurface-layers'
 import MapConfigurations from '../-components/sidebar/map-configurations/map-configurations'
 
 export interface NavLink {
@@ -33,7 +33,7 @@ export const sidelinks: SideLink[] = [
     title: 'Layers',
     label: '',
     icon: <LayersIcon className='stroke-foreground' />,
-    component: Layers, // Direct component reference
+    component: SubsurfaceLayers, // Subsurface variant: per-layer filters in the dropdown
   },
   {
     title: 'Map Configurations',

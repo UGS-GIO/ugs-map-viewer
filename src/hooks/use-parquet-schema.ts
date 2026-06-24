@@ -9,6 +9,7 @@ export interface ParquetSchema {
     columns: string[];
     geometryColumn: string | null;
     hasGeometry: boolean;
+    rowCount: number;
 }
 
 const fetchSchema = async (url: string): Promise<ParquetSchema> => {
@@ -18,7 +19,9 @@ const fetchSchema = async (url: string): Promise<ParquetSchema> => {
     // schema[0] is the root group; actual columns start at index 1.
     const columns = metadata.schema.slice(1).map(s => s.name);
     const geometryColumn = GEOM_CANDIDATES.find(c => columns.includes(c)) ?? null;
-    return { columns, geometryColumn, hasGeometry: !!geometryColumn };
+    // metadata.num_rows is a bigint; coerce for plain JSON/analytics use.
+    const rowCount = Number(metadata.num_rows);
+    return { columns, geometryColumn, hasGeometry: !!geometryColumn, rowCount };
 };
 
 /** Probe a parquet URL's schema once, cache forever. Runs on mount when url is set. */

@@ -41,6 +41,18 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
                 },
             });
         },
+        onSuccess: (_data, format) => {
+            // Track completed download in Google Tag Manager dataLayer
+            window.dataLayer = window.dataLayer || [];
+            window.dataLayer.push({
+                event: 'dataset_download',
+                layer_title: layerTitle,
+                format,
+                has_geometry: schema?.hasGeometry ?? false,
+                column_count: schema?.columns.length ?? 0,
+                row_count: schema?.rowCount ?? 0,
+            });
+        },
         onError: (err) => {
             toast.error('Download failed', {
                 description: err instanceof Error ? err.message : String(err),
