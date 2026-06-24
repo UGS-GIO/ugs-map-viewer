@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { RelatedDataMap, EMPTY_RELATED_DATA_MAP } from "@/hooks/use-bulk-related-table";
 import { Feature, Geometry, GeoJsonProperties } from "geojson";
-import { ChevronDown, ChevronRight, ExternalLink, Info } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, ChevronsUpDown, ExternalLink, Info } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { LayerContentProps } from "@/components/maps/popups/types";
 import { Link } from "@/components/ui/link";
@@ -240,23 +240,96 @@ function InlineSection({ label, children }: { label?: string; children: ReactNod
     );
 }
 
-// Shared table used for both related tables and pivoted popup-fields tables. Centralizes the
-// header/cell styling so the two call sites can't drift apart. Pass `headers` to render a header
-// row; each row is an array of cell contents.
-function PopupTable({ headers, rows }: { headers?: ReactNode[]; rows: ReactNode[][] }) {
+type SortDir = 'asc' | 'desc';
+
+/**
+ * Derive a sortable key from a rendered cell. Numeric strings (incl. thousands
+ * separators / currency) → number; `N/A`/blank or React-node cells (transforms
+ * like links/photos) → null, which always sorts last. Other strings → string.
+ */
+function cellSortKey(cell: ReactNode): number | string | null {
+    if (cell == null) return null;
+    if (typeof cell === 'number') return Number.isFinite(cell) ? cell : null;
+    if (typeof cell !== 'string') return null; // React node — not sortable
+    const s = cell.trim();
+    if (s === '' || /^n\/?a$/i.test(s)) return null;
+    const stripped = s.replace(/[$,\s]/g, '');
+    if (/^[-+]?\d*\.?\d+$/.test(stripped)) {
+        const n = Number(stripped);
+        if (Number.isFinite(n)) return n;
+    }
+    return s;
+}
+
+// Shared table for related tables and pivoted popup-fields tables. Centralizes
+// header/cell styling. `sortable` makes columns of plain values clickable to
+// sort (numeric or alphabetical); N/A and node cells sort last in both orders.
+function PopupTable({ headers, rows, sortable = false }: { headers?: ReactNode[]; rows: ReactNode[][]; sortable?: boolean }) {
+    const [sort, setSort] = useState<{ col: number; dir: SortDir } | null>(null);
+
+    // A column is sortable only if every cell is a plain value (no React nodes).
+    const sortableCols = useMemo(() => {
+        if (!sortable || !headers) return [];
+        return headers.map((_, col) => rows.length > 0 && rows.every(r => {
+            const c = r[col];
+            return c == null || typeof c === 'string' || typeof c === 'number';
+        }));
+    }, [sortable, headers, rows]);
+
+    const orderedRows = useMemo(() => {
+        if (!sort) return rows;
+        const order = rows.map((_, i) => i).sort((ia, ib) => {
+            const ka = cellSortKey(rows[ia][sort.col]);
+            const kb = cellSortKey(rows[ib][sort.col]);
+            if (ka == null && kb == null) return 0;
+            if (ka == null) return 1;  // nulls/N-A always last, regardless of dir
+            if (kb == null) return -1;
+            const base = typeof ka === 'number' && typeof kb === 'number'
+                ? ka - kb
+                : String(ka).localeCompare(String(kb), undefined, { numeric: true, sensitivity: 'base' });
+            return sort.dir === 'asc' ? base : -base;
+        });
+        return order.map(i => rows[i]);
+    }, [rows, sort]);
+
+    const onHeaderClick = (col: number) => {
+        setSort(prev => {
+            if (!prev || prev.col !== col) return { col, dir: 'asc' };
+            if (prev.dir === 'asc') return { col, dir: 'desc' };
+            return null; // third click clears the sort
+        });
+    };
+
     return (
         <Table>
             {headers && (
                 <TableHeader>
                     <TableRow>
-                        {headers.map((header, idx) => (
-                            <TableHead key={idx} className="h-8 text-xs">{header}</TableHead>
-                        ))}
+                        {headers.map((header, idx) => {
+                            const canSort = sortableCols[idx];
+                            const active = sort?.col === idx;
+                            return (
+                                <TableHead key={idx} className="h-8 text-xs">
+                                    {canSort ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => onHeaderClick(idx)}
+                                            className="flex items-center gap-1 hover:text-foreground"
+                                        >
+                                            {header}
+                                            {active && sort?.dir === 'asc' && <ChevronUp className="h-3 w-3" />}
+                                            {active && sort?.dir === 'desc' && <ChevronDown className="h-3 w-3" />}
+                                            {!active && <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                                        </button>
+                                    ) : header}
+                                </TableHead>
+                            );
+                        })}
                     </TableRow>
                 </TableHeader>
             )}
             <TableBody>
-                {rows.map((cells, rowIdx) => (
+                {orderedRows.map((cells, rowIdx) => (
                     <TableRow key={rowIdx}>
                         {cells.map((cell, cellIdx) => (
                             <TableCell key={cellIdx} className="py-1.5 text-xs">{cell}</TableCell>
@@ -445,6 +518,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
                 <PopupTable
                     headers={headers}
                     rows={groupedValues.map(group => group.map(valueItem => valueItem.value))}
+                    sortable
                 />
             );
         } else {
