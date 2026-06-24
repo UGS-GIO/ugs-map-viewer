@@ -117,7 +117,10 @@ const handlers: Record<ExportFormat, Handler> = {
     // Build FeatureCollection in JS — duckdb-wasm's spatial GDAL GeoJSON writer
     // crashes ("Cannot write feature"), so we read rows back as geometry-as-GeoJSON
     // text plus property columns and assemble the FC manually. Reprojects to 4326
-    // for RFC 7946 (our pipeline parquets are EPSG:3857).
+    // for RFC 7946. Source is hardcoded EPSG:3857 (our current pipeline output);
+    // once parquets are published as 4326 this transform must be dropped, else it
+    // double-projects. always_xy keeps lon/lat ordering; Force2D drops the
+    // spurious Z=0 the source carries on otherwise-2D geometry.
     geojson: (opts) => withConnection(async (conn) => {
         if (!opts.geometryColumn) {
             throw new Error('GeoJSON requires a geometry column');
@@ -129,7 +132,7 @@ const handlers: Record<ExportFormat, Handler> = {
         const geom = opts.geometryColumn;
         const result = await conn.query(`
             SELECT
-                ST_AsGeoJSON(ST_Transform(${geom}, 'EPSG:4326', true)) AS __g,
+                ST_AsGeoJSON(ST_Force2D(ST_Transform(${geom}, 'EPSG:3857', 'EPSG:4326', true))) AS __g,
                 * EXCLUDE (${geom})
             FROM read_parquet('${escaped}')
         `);
