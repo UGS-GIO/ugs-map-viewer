@@ -135,9 +135,9 @@ describe('convenience flatten wrappers', () => {
     expect(flattenArcGisLayers(layers).map(l => l.title)).toEqual(['ArcGIS Layer', 'Hidden ArcGIS'])
   })
 
-  it('flattenDataLayers returns all WMS/WFS/ArcGIS leaves', () => {
+  it('flattenDataLayers returns all WMS/WFS/PMTiles/ArcGIS leaves', () => {
     const result = flattenDataLayers(layers)
-    expect(result.map(l => l.title)).toEqual(['WMS Layer', 'Hidden WMS', 'WFS Layer', 'ArcGIS Layer', 'Hidden ArcGIS'])
+    expect(result.map(l => l.title)).toEqual(['WMS Layer', 'Hidden WMS', 'WFS Layer', 'ArcGIS Layer', 'PMTiles Layer', 'Hidden ArcGIS'])
   })
 })
 

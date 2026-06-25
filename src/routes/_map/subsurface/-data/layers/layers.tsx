@@ -1,8 +1,7 @@
 import { Link } from "@/components/ui/link";
 import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
 import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL, UCRC_ASSETS_CDN_URL } from "@/lib/constants";
-import { LayerProps, WMSLayerProps, WFSLayerProps } from "@/lib/types/mapping-types";
-import { makePieWedgeSpriteRegistrar } from "@/lib/map/pie-wedge-sprites";
+import { LayerProps, WMSLayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 import { formatNumeric } from "@/lib/utils";
 
 
@@ -413,6 +412,8 @@ const pipelinesWMSConfig: WMSLayerProps = {
 
 // UCRC Collection Layer — rendered client-side via WFS for instant filtering and richer symbology
 const ucrcWellsLayerName = 'enmin_ucrc_wells_current';
+// PMTiles tile source-layer = STAC item id (not the `_current` DB view name).
+const ucrcWellsTileLayer = 'enmin_ucrc_wells';
 export const ucrcWellsQualifiedName = `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`;
 export const ucrcWellsWMSTitle = 'Utah Core Research Center Inventory';
 
@@ -456,61 +457,23 @@ export const UCRC_BOX_TYPE_COLORS: Record<string, string> = {
     CUTTINGS: '#1A9641',
     SLABS: '#0571B0',
 };
-const UCRC_BOX_TYPE_NAMESPACE = 'box-type';
 
-const ucrcWellsWFSConfig: WFSLayerProps = {
-    type: 'wfs',
-    wfsUrl: `${PROD_GEOSERVER_URL}/wfs`,
-    typeName: ucrcWellsQualifiedName,
+// STAC-driven: pmtilesUrl, sourceLayer, renders (by-purpose / by-boxtype incl.
+// the baked pie-wedge sprite + legends) and parquet are filled from the
+// warehouse STAC item `enmin_ucrc_wells` at load. Symbology is the hosted
+// renders, selected via vector_symbology; the app config carries only UX.
+const ucrcWellsWFSConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: 'enmin_ucrc_wells',
+    pmtilesUrl: '',
+    sourceLayer: ucrcWellsTileLayer,
     title: ucrcWellsWMSTitle,
     visible: true,
     opacity: 0.85,
-    crs: 'EPSG:4326',
-    geometryType: 'point',
-    downloadParquetUrl: parquetUrl("enmin_ucrc_wells"),
-    style: {
-        circleRadiusByZoom: [
-            [4, 2],
-            [7, 4],
-            [10, 6],
-            [13, 8],
-            [16, 10],
-        ],
-        circleStrokeWidth: 1,
-        circleColorMatch: {
-            field: 'purpose',
-            matches: UCRC_PURPOSE_COLORS,
-            defaultColor: UCRC_PURPOSE_COLORS.Other,
-        },
-        circleStrokeColorMatch: {
-            field: 'purpose',
-            matches: UCRC_PURPOSE_STROKES,
-            defaultColor: UCRC_PURPOSE_STROKES.Other,
-        },
-        // Box-type pie-wedge symbology, gated by Symbolize By dropdown
-        iconSymbologyKey: UCRC_BOX_TYPE_NAMESPACE,
-        iconImageExpression: ['concat', `${UCRC_BOX_TYPE_NAMESPACE}-`, ['coalesce', ['get', 'box_type_codes'], '']],
-        iconSizeByZoom: [
-            [4, 0.1],
-            [7, 0.2],
-            [10, 0.3],
-            [13, 0.4],
-            [16, 0.5],
-        ],
-        registerSprites: makePieWedgeSpriteRegistrar({
-            field: 'box_type_codes',
-            codes: UCRC_BOX_TYPE_CODES,
-            colors: UCRC_BOX_TYPE_COLORS,
-            namespace: UCRC_BOX_TYPE_NAMESPACE,
-        }),
-        pieGlyphLegend: {
-            codes: UCRC_BOX_TYPE_CODES,
-            colors: UCRC_BOX_TYPE_COLORS,
-        },
-    },
+    defaultRenderId: 'by-purpose',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`,
+            name: ucrcWellsTileLayer,
             popupEnabled: true,
             queryable: true,
             popupFields: {
