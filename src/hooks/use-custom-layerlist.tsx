@@ -32,6 +32,8 @@ interface LayerAccordionItemProps {
     layerExtrasRender?: (layerTitle: string) => React.ReactNode;
     /** Optional render-prop for whole-layer stats / charts rendered via the Stats toggle */
     layerStatsRender?: (layerTitle: string) => React.ReactNode;
+    /** Optional render-prop overriding a layer's legend content (e.g. an interactive symbology legend). */
+    layerLegendRender?: (layerTitle: string) => React.ReactNode;
 }
 
 /**
@@ -61,7 +63,7 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
     );
 }
 
-const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender }: LayerAccordionItemProps) => {
+const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: LayerAccordionItemProps) => {
     const {
         isSelected,
         handleToggleSelection,
@@ -268,6 +270,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
                                         groupExtrasRender={groupExtrasRender}
                                         layerExtrasRender={layerExtrasRender}
                                         layerStatsRender={layerStatsRender}
+                                        layerLegendRender={layerLegendRender}
                                     />
                                 </div>
                             ))}
@@ -282,7 +285,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
     // current symbology mode). COG layers render a colorbar from raster stats. Explicit
     // `customLegend` on the config always wins.
     const resolvedCustomLegend =
-        layerConfig.customLegend
+        (layerConfig.title ? layerLegendRender?.(layerConfig.title) : undefined)
+        ?? layerConfig.customLegend
         ?? (isCOGLayer(layerConfig) ? <CogLegend layer={layerConfig} /> : undefined)
         ?? (isWFSLayer(layerConfig) ? <WfsVectorLegend layer={layerConfig} /> : undefined);
 
@@ -359,7 +363,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
 };
 
 
-export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender }: { config: LayerProps[] | null; disableExport?: boolean; groupExtrasRender?: (groupTitle: string) => React.ReactNode; layerExtrasRender?: (layerTitle: string) => React.ReactNode; layerStatsRender?: (layerTitle: string) => React.ReactNode }) => {
+export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: { config: LayerProps[] | null; disableExport?: boolean; groupExtrasRender?: (groupTitle: string) => React.ReactNode; layerExtrasRender?: (layerTitle: string) => React.ReactNode; layerStatsRender?: (layerTitle: string) => React.ReactNode; layerLegendRender?: (layerTitle: string) => React.ReactNode }) => {
 
     const layerList = useMemo(() => {
         if (!config) return [];
@@ -373,10 +377,11 @@ export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, l
                     groupExtrasRender={groupExtrasRender}
                     layerExtrasRender={layerExtrasRender}
                     layerStatsRender={layerStatsRender}
+                    layerLegendRender={layerLegendRender}
                 />
             )
         });
-    }, [config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender]);
+    }, [config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender]);
 
     return layerList;
 };

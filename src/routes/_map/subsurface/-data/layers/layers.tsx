@@ -410,7 +410,7 @@ const pipelinesWMSConfig: WMSLayerProps = {
 };
 
 
-// UCRC Wells Layer — rendered client-side via WFS for instant filtering and richer symbology
+// UCRC Collection Layer — rendered client-side via WFS for instant filtering and richer symbology
 const ucrcWellsLayerName = 'enmin_ucrc_wells_current';
 // PMTiles tile source-layer = STAC item id (not the `_current` DB view name).
 const ucrcWellsTileLayer = 'enmin_ucrc_wells';

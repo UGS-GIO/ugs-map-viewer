@@ -4,7 +4,7 @@
  * dropdown + handler dispatch both pick it up.
  */
 
-export type ExportFormat = 'parquet' | 'fgb' | 'geojson' | 'csv';
+export type ExportFormat = 'parquet' | 'geojson' | 'csv';
 
 export interface ExportFormatMeta {
     /** Human-readable label for the menu */
@@ -27,13 +27,6 @@ export const EXPORT_FORMATS: Record<ExportFormat, ExportFormatMeta> = {
         mimeType: 'application/octet-stream',
         requiresGeometry: false,
         hint: 'native',
-    },
-    fgb: {
-        label: 'FlatGeobuf',
-        extension: 'fgb',
-        mimeType: 'application/octet-stream',
-        requiresGeometry: true,
-        hint: '.fgb',
     },
     geojson: {
         label: 'GeoJSON',

@@ -21,7 +21,7 @@ export const ucrcFilterSchema: FilterSchema = {
         },
         { kind: 'multiSelect', field: 'county', label: 'County', placeholder: 'Select counties...' },
         { kind: 'multiSelect', field: 'current_operator', label: 'Operator', placeholder: 'Select operators...' },
-        { kind: 'multiSelect', field: 'field_name', label: 'Field', placeholder: 'Select fields...' },
+        { kind: 'multiSelect', field: 'field_name', label: 'Oil/Gas Field', placeholder: 'Select oil/gas fields...' },
         { kind: 'multiSelect', field: 'cored_formations', label: 'Cored Formation', placeholder: 'Select formations...' },
         { kind: 'range', field: 'td_ft', label: 'Total Depth', units: 'ft', step: 100, snapStep: 100 },
         {
@@ -31,6 +31,6 @@ export const ucrcFilterSchema: FilterSchema = {
             trueValue: 'True',
             falseValue: 'False',
         },
-        { kind: 'containsAny', field: 'box_type_codes', label: 'Box Type', placeholder: 'Select box types...' },
+        { kind: 'containsAny', field: 'box_type_codes', label: 'Sample Type', placeholder: 'Select sample types...' },
     ],
 };

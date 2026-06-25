@@ -65,7 +65,7 @@ const searchConfig: SearchSourceConfig[] = [
   {
     type: 'postgREST',
     url: `${PROD_POSTGREST_URL}/enmin_ucrc_wells_current`,
-    sourceName: 'UCRC Wells',
+    sourceName: 'UCRC Collection',
     layerName: ucrcWellsWMSTitle,
     crs: 'EPSG:3857',
     displayField: 'well_name',
