@@ -20,17 +20,12 @@ import {
     LinkConfig,
     LinkDefinition,
     ImageFieldConfig,
+    PopupFieldsTableConfig,
 } from "@/lib/types/mapping-types";
 import { PopupImageGallery, type GalleryImage } from "@/components/maps/popups/popup-image-gallery";
 import { relatedRowToGalleryImage } from "@/lib/gallery-utils";
 import { sanitizeFilename } from "@/lib/download-utils";
-import {
-    isNumberField,
-    isStringField,
-    isDateField,
-    isCustomField,
-    formatFieldValue,
-} from "@/lib/field-formatting";
+import { formatFieldValue } from "@/lib/field-formatting";
 
 interface LabelValuePair {
     label: string | undefined;
@@ -269,9 +264,193 @@ function PopupTable({ headers, rows }: { headers?: ReactNode[]; rows: ReactNode[
     );
 }
 
+// --- Content Builders ---
+// Each builder turns one slice of the layer config into an ordered list of render items.
+// `isLong` marks full-width content (tables, long text) so the grid layout can span it.
+// Keeping these pure and module-level separates data-shaping from the component and lets the
+// caller compose them in any order (see relatedTablesPosition) without magic sort indices.
+type PopupItem = { content: JSX.Element; isLong: boolean };
+
+const URL_PATTERN = /https?:\/\/[^\s/$.?#].[^\s]*/;
+
+const isFieldConfig = (value: unknown): value is FieldConfig =>
+    typeof value === 'object' && value !== null && 'type' in value && 'field' in value;
+
+// One item per popup field (plus the raster value, if present), rendered as a label/value pair.
+function buildFeatureFieldItems({ properties, popupFields, rasterSource, rasterValue, colorCodingMap, colorCodingMode, linkFields }: {
+    properties: GeoJsonProperties;
+    popupFields?: Record<string, FieldConfig>;
+    rasterSource?: ProcessedRasterSource;
+    rasterValue: number | null;
+    colorCodingMap?: ColorCodingRecordFunction;
+    colorCodingMode?: ColorCodingMode;
+    linkFields?: LinkFields;
+}): PopupItem[] {
+    const props = properties || {};
+    const entries: Array<[string, unknown]> = popupFields ? Object.entries(popupFields) : Object.entries(props);
+    if (rasterValue !== null && rasterSource?.valueLabel) {
+        entries.push([rasterSource.valueLabel, rasterValue]);
+    }
+
+    const items: PopupItem[] = [];
+    entries.forEach(([label, entryData], index) => {
+        let currentConfig: FieldConfig | undefined;
+        let valueFromPropertiesDirectly: unknown;
+        const isRasterEntry = label === rasterSource?.valueLabel && entryData === rasterValue;
+
+        if (!isRasterEntry && isFieldConfig(entryData)) {
+            currentConfig = entryData;
+        } else if (!isRasterEntry) {
+            valueFromPropertiesDirectly = entryData;
+            currentConfig = { field: label, type: 'string', label } as StringPopupFieldConfig;
+        }
+
+        const fieldKey = currentConfig?.field || label;
+        let displayValue: string;
+        if (isRasterEntry) {
+            displayValue = rasterSource?.transform && rasterValue !== null
+                ? rasterSource.transform(rasterValue) || ''
+                : String(rasterValue ?? '');
+        } else if (currentConfig) {
+            // formatFieldValue dispatches on field type internally (custom reads from properties,
+            // the rest from rawValue), so one call covers every config.
+            const rawValue = popupFields ? props[currentConfig.field] : valueFromPropertiesDirectly;
+            displayValue = formatFieldValue(currentConfig, rawValue, props);
+        } else {
+            displayValue = String(entryData ?? '');
+        }
+
+        if (!shouldDisplayValue(displayValue)) return;
+
+        const colorStyle = getColorStyle(colorCodingMap, colorCodingMode, fieldKey, displayValue);
+        const hasColorStyling = !!colorStyle.className || Object.keys(colorStyle.style).length > 0;
+        const description = currentConfig?.description;
+        const labelContent = description ? (
+            <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <span className="inline-flex items-center gap-1">{label}<Info className="h-3.5 w-3.5 text-muted-foreground" /></span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-64 text-xs">{description}</TooltipContent>
+                </Tooltip>
+            </TooltipProvider>
+        ) : label;
+        const value = renderFieldContent(displayValue, fieldKey, props, linkFields, URL_PATTERN);
+
+        items.push({
+            isLong: String(displayValue).split(/\s+/).length > 20,
+            content: (
+                <div key={`feature-item-${label}-${index}`} className="flex flex-col">
+                    <p className="font-bold underline text-foreground">{labelContent}</p>
+                    <div className="break-words text-foreground/80">
+                        {hasColorStyling
+                            ? <span className={colorStyle.className} style={colorStyle.style}>{value}</span>
+                            : value}
+                    </div>
+                </div>
+            ),
+        });
+    });
+    return items;
+}
+
+// One item per related table (collapsible or inline section), as a table or label/value list.
+function buildRelatedTableItems({ relatedTables, data, properties }: {
+    relatedTables?: RelatedTable[];
+    data: ProcessedRelatedData[][];
+    properties: GeoJsonProperties;
+}): PopupItem[] {
+    const props = properties || {};
+    const items: PopupItem[] = [];
+    (relatedTables || []).forEach((table, tableIndex) => {
+        const groupedValues = getRelatedTableValues(tableIndex, data, relatedTables, props);
+        const flatValues = groupedValues.flat();
+
+        // Skip rendering if no real data (only "No data available" placeholder).
+        if (!flatValues.some(v => v.value !== "No data available")) return;
+
+        const useTableFormat = table.displayAs === 'table' && !!table.displayFields && table.displayFields.length > 0;
+        const sectionLabel = String(props[table.fieldLabel] || table.fieldLabel);
+        const collapsible = table.collapsible ?? sectionLabel.trim() !== '';
+
+        const innerContent = useTableFormat ? (
+            // Sortable: raw rows + column defs (TanStack) so sorting is numeric/
+            // alphabetical on the underlying values, not the rendered cells.
+            <RelatedDataTable
+                rows={data[tableIndex] as Record<string, unknown>[]}
+                displayFields={table.displayFields!}
+                initialSort={table.sortBy ? { id: table.sortBy, desc: table.sortDirection === 'desc' } : undefined}
+            />
+        ) : (
+            <>
+                {groupedValues.map((group, groupIdx) => (
+                    <div key={`group-${groupIdx}`} className="flex flex-col">
+                        {group.map((valueItem, valueIdx) => (
+                            <div key={`value-${valueItem.label}-${valueIdx}`} className="flex flex-row gap-x-2">
+                                {valueItem.label && <span className="font-bold">{valueItem.label}: </span>}
+                                <span>{valueItem.value}</span>
+                            </div>
+                        ))}
+                    </div>
+                ))}
+            </>
+        );
+
+        const content = collapsible ? (
+            <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel} count={groupedValues.length}>
+                {innerContent}
+            </CollapsibleSection>
+        ) : (
+            <InlineSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel || undefined}>
+                {innerContent}
+            </InlineSection>
+        );
+
+        const totalWords = flatValues.map(v => String(v.value)).join(" ").split(/\s+/).length;
+        items.push({ content, isLong: useTableFormat || totalWords > 20 || flatValues.length > 3 });
+    });
+    return items;
+}
+
+// One item per popup-fields table: a pivoted (label | value) table in a collapsible dropdown.
+function buildFieldsTableItems({ popupFieldsTable, properties }: {
+    popupFieldsTable?: PopupFieldsTableConfig[];
+    properties: GeoJsonProperties;
+}): PopupItem[] {
+    const props = properties || {};
+    return (popupFieldsTable || []).flatMap((tableConfig, tableIndex) => {
+        const rows: ReactNode[][] = tableConfig.fields
+            .map(field => ({
+                label: field.label,
+                value: formatFieldValue(field.config, props[field.config.field], props),
+                unit: field.unit,
+            }))
+            .filter(row => shouldDisplayValue(row.value))
+            .map(row => [
+                <span className="font-medium">{row.label}</span>,
+                row.unit ? `${row.value} ${row.unit}` : row.value,
+            ]);
+
+        if (rows.length === 0) return [];
+
+        const headers = (tableConfig.labelHeader || tableConfig.valueHeader)
+            ? [tableConfig.labelHeader, tableConfig.valueHeader]
+            : undefined;
+
+        return [{
+            isLong: true,
+            content: (
+                <CollapsibleSection key={`popup-fields-table-${tableIndex}`} label={tableConfig.sectionLabel} count={rows.length}>
+                    <PopupTable headers={headers} rows={rows} />
+                </CollapsibleSection>
+            ),
+        }];
+    });
+}
+
 // --- Main Component ---
 const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: PopupContentDisplayProps) => {
-    const { relatedTables, relatedTablesPosition, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
+    const { relatedTables, relatedTablesPosition, popupFields, popupFieldsTable, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
 
     // Convert bulk data to the format expected by getRelatedTableValues
     const data = useMemo((): ProcessedRelatedData[][] => {
@@ -316,6 +495,17 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
 
     const rasterValue = getRasterFeatureValue(rasterSource);
 
+    // Build the ordered list of render items. relatedTablesPosition decides whether related
+    // tables sit before or after the feature fields — expressed as list composition, not sort keys.
+    const orderedItems = useMemo<PopupItem[]>(() => {
+        const fieldItems = buildFeatureFieldItems({ properties, popupFields, rasterSource, rasterValue, colorCodingMap, colorCodingMode, linkFields });
+        const relatedItems = buildRelatedTableItems({ relatedTables, data, properties });
+        const tableItems = buildFieldsTableItems({ popupFieldsTable, properties });
+        return relatedTablesPosition === 'above'
+            ? [...relatedItems, ...fieldItems, ...tableItems]
+            : [...fieldItems, ...relatedItems, ...tableItems];
+    }, [properties, popupFields, rasterSource, rasterValue, colorCodingMap, colorCodingMode, linkFields, relatedTables, data, popupFieldsTable, relatedTablesPosition]);
+
     // Handle Raster-Only Display
     if (!feature && rasterValue !== null && rasterSource !== undefined) {
         const displayValue = rasterSource.transform
@@ -334,199 +524,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
 
     if (!feature) return null;
 
-    const urlPattern = /https?:\/\/[^\s/$.?#].[^\s]*/;
-
-    type PropertyValue = string | number | boolean | null | undefined;
-
-    const isFieldConfig = (value: FieldConfig | PropertyValue): value is FieldConfig => {
-        return typeof value === 'object' && value !== null && 'type' in value && 'field' in value;
-    };
-
-    const mappedFeatureEntries = popupFields
-        ? Object.entries(popupFields)
-        : Object.entries(properties);
-
-    if (rasterValue !== null && rasterSource?.valueLabel) {
-        mappedFeatureEntries.push([rasterSource.valueLabel, rasterValue]);
-    }
-
-    const contentItems: { content: JSX.Element; isLongContent: boolean; originalIndex: number; }[] = [];
-
-    mappedFeatureEntries.forEach(([label, entryData], index) => {
-        let currentConfig: FieldConfig | undefined = undefined;
-        let isRasterEntry = false;
-        let valueFromPropertiesDirectly: PropertyValue = undefined;
-
-        if (label === rasterSource?.valueLabel && entryData === rasterValue) {
-            isRasterEntry = true;
-        } else if (isFieldConfig(entryData)) {
-            currentConfig = entryData;
-        } else {
-            valueFromPropertiesDirectly = entryData;
-            currentConfig = { field: label, type: 'string', label } as StringPopupFieldConfig;
-        }
-
-        let finalDisplayValue: string;
-        const fieldKey = currentConfig?.field || label;
-
-        if (isRasterEntry) {
-            finalDisplayValue = rasterSource?.transform && rasterValue !== null
-                ? rasterSource.transform(rasterValue) || ''
-                : String(rasterValue ?? '');
-        } else if (currentConfig && isCustomField(currentConfig)) {
-            finalDisplayValue = currentConfig.transform?.(properties)?.toString() || '';
-        } else if (currentConfig && isDateField(currentConfig)) {
-            const rawValue = popupFields ? properties[currentConfig.field] : valueFromPropertiesDirectly;
-            finalDisplayValue = formatFieldValue(currentConfig, rawValue, properties);
-        } else if (currentConfig && (isStringField(currentConfig) || isNumberField(currentConfig))) {
-            const rawValue = popupFields ? properties[currentConfig.field] : valueFromPropertiesDirectly;
-            finalDisplayValue = formatFieldValue(currentConfig, rawValue, properties);
-        } else {
-            finalDisplayValue = String(entryData ?? '');
-        }
-
-        if (!shouldDisplayValue(finalDisplayValue)) {
-            return;
-        }
-
-        const colorStyle = getColorStyle(colorCodingMap, colorCodingMode, fieldKey, finalDisplayValue);
-        const hasColorStyling = colorStyle.className || Object.keys(colorStyle.style).length > 0;
-        const description = currentConfig?.description;
-        const labelContent = description ? (
-            <TooltipProvider delayDuration={200}>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <span className="inline-flex items-center gap-1">{label}<Info className="h-3.5 w-3.5 text-muted-foreground" /></span>
-                    </TooltipTrigger>
-                    <TooltipContent side="top" className="max-w-64 text-xs">
-                        {description}
-                    </TooltipContent>
-                </Tooltip>
-            </TooltipProvider>
-        ) : label;
-        const content = (
-            <div key={`feature-item-${label}-${index}`} className="flex flex-col">
-                <p className="font-bold underline text-foreground">{labelContent}</p>
-                <div className="break-words text-foreground/80">
-                    {hasColorStyling ? (
-                        <span className={colorStyle.className} style={colorStyle.style}>
-                            {renderFieldContent(finalDisplayValue, fieldKey, properties, linkFields, urlPattern)}
-                        </span>
-                    ) : (
-                        renderFieldContent(finalDisplayValue, fieldKey, properties, linkFields, urlPattern)
-                    )}
-                </div>
-            </div>
-        );
-
-        const isLongContent = String(finalDisplayValue).split(/\s+/).length > 20;
-        contentItems.push({ content, isLongContent, originalIndex: index });
-    });
-
-    // Handle Related Tables
-    (relatedTables || []).forEach((table, tableIndex) => {
-        const groupedValues = getRelatedTableValues(tableIndex, data, relatedTables, properties);
-        const flatValues = groupedValues.flat();
-
-        // Skip rendering if no real data (only "No data available" placeholder)
-        const hasRealData = flatValues.some(v => v.value !== "No data available");
-        if (!hasRealData) return;
-
-        // Use explicit displayAs config (defaults to 'list')
-        const useTableFormat = table.displayAs === 'table' && !!table.displayFields && table.displayFields.length > 0;
-
-        const sectionLabel = String(properties[table.fieldLabel] || table.fieldLabel);
-        const collapsible = table.collapsible ?? sectionLabel.trim() !== '';
-
-        let innerContent: JSX.Element;
-
-        if (useTableFormat) {
-            // Sortable: raw rows + column defs (TanStack) so sorting is numeric/
-            // alphabetical on the underlying values, not the rendered cells.
-            innerContent = (
-                <RelatedDataTable
-                    rows={data[tableIndex] as Record<string, unknown>[]}
-                    displayFields={table.displayFields!}
-                    initialSort={table.sortBy ? { id: table.sortBy, desc: table.sortDirection === 'desc' } : undefined}
-                />
-            );
-        } else {
-            innerContent = (
-                <>
-                    {groupedValues.map((group, groupIdx) => (
-                        <div key={`group-${groupIdx}`} className="flex flex-col">
-                            {group.map((valueItem, valueIdx) => (
-                                <div key={`value-${valueItem.label}-${valueIdx}`} className="flex flex-row gap-x-2">
-                                    {valueItem.label && <span className="font-bold">{valueItem.label}: </span>}
-                                    <span>{valueItem.value}</span>
-                                </div>
-                            ))}
-                        </div>
-                    ))}
-                </>
-            );
-        }
-
-        const relatedContent = collapsible ? (
-            <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel} count={groupedValues.length}>
-                {innerContent}
-            </CollapsibleSection>
-        ) : (
-            <InlineSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel || undefined}>
-                {innerContent}
-            </InlineSection>
-        );
-
-        const totalWords = flatValues.map(v => String(v.value)).join(" ").split(/\s+/).length;
-        const isLongContent = useTableFormat || totalWords > 20 || flatValues.length > 3;
-        // 'above' sorts related tables before the feature fields (which start at 0); 'below' (default) after them.
-        const relatedIndex = (relatedTablesPosition === 'above' ? -1000 : 1000) + tableIndex;
-        contentItems.push({ content: relatedContent, isLongContent, originalIndex: relatedIndex });
-    });
-
-    // Handle Popup Fields Tables (collapsible dropdown tables for subsets of popupFields).
-    // Pivoted layout: one row per field (Measurement | Value) so wide field sets don't scroll sideways.
-    (layer.popupFieldsTable || []).forEach((tableConfig, tableIndex) => {
-        const rows = tableConfig.fields
-            .map((field) => {
-                const value = formatFieldValue(field.config, properties[field.config.field], properties);
-                return { label: field.label, value, unit: field.unit };
-            })
-            .filter(row => shouldDisplayValue(row.value))
-            .map(row => [
-                <span className="font-medium">{row.label}</span>,
-                row.unit ? `${row.value} ${row.unit}` : row.value,
-            ]);
-
-        if (rows.length === 0) return;
-
-        const headers = (tableConfig.labelHeader || tableConfig.valueHeader)
-            ? [tableConfig.labelHeader, tableConfig.valueHeader]
-            : undefined;
-
-        const tableContent = (
-            <CollapsibleSection
-                key={`popup-fields-table-${tableIndex}`}
-                label={tableConfig.sectionLabel}
-                count={rows.length}
-            >
-                <PopupTable headers={headers} rows={rows} />
-            </CollapsibleSection>
-        );
-
-        contentItems.push({
-            content: tableContent,
-            isLongContent: true,
-            originalIndex: 2000 + tableIndex,
-        });
-    });
-
-    // --- Layout Rendering ---
-    // Render every item in config order (feature fields, then related tables, then popup
-    // tables). Full-width items (tables, long text) span all columns inline at their
-    // position rather than being hoisted to the top.
-    const orderedItems = contentItems.sort((a, b) => a.originalIndex - b.originalIndex);
-    const regularCount = orderedItems.filter(item => !item.isLongContent).length;
+    const regularCount = orderedItems.filter(item => !item.isLong).length;
     const useGridLayout = layout === "grid" || regularCount > 5;
 
     const galleryId = properties?.id ?? properties?.pk ?? properties?.ogc_fid ?? feature?.id ?? 'photos'
@@ -537,7 +535,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
             {galleryImages.length > 0 && <PopupImageGallery images={galleryImages} downloadName={galleryDownloadName} />}
             <div className={useGridLayout ? "grid grid-cols-2 gap-2" : "space-y-2"}>
                 {orderedItems.map((item, idx) =>
-                    useGridLayout && item.isLongContent ? (
+                    useGridLayout && item.isLong ? (
                         <div key={`full-width-${idx}`} className="col-span-full">{item.content}</div>
                     ) : (
                         item.content
