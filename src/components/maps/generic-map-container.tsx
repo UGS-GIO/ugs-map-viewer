@@ -72,11 +72,14 @@ async function fetchLegendDataForVisibleLayers(
         visible.push(...getVisibleWmsLayers(layer.layers || []))
       } else if (layer.type === 'wms' && displayedTitles.has(layer.title || '')) {
         const wmsLayer = layer as WMSLayerProps
-        const sublayer = wmsLayer.sublayers?.[0]
-        if (sublayer?.name) {
+        // Join all sublayer names so the export legend covers every sublayer of a
+        // composite layer. fetchLegendRulesBySublayer splits on the comma and fetches
+        // each — passing only sublayers[0] dropped the rest from the exported legend.
+        const sublayerNames = (wmsLayer.sublayers?.map(s => s.name).filter(Boolean) ?? []) as string[]
+        if (sublayerNames.length > 0) {
           visible.push({
-            title: layer.title || sublayer.name,
-            layerName: sublayer.name,
+            title: layer.title || sublayerNames[0],
+            layerName: sublayerNames.join(','),
             url: wmsLayer.url || `${PROD_GEOSERVER_URL}/wms`,
             bivariateLegend: layer.bivariateLegend,
           })
