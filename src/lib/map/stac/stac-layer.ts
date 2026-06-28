@@ -50,6 +50,8 @@ export interface StacItem {
         'ugs:layer'?: string;
         'proj:code'?: string;
         'ugs:row_count'?: number;
+        /** Renders block. Warehouse emits it namespaced as `ugs:renders`; older items used `renders`. */
+        'ugs:renders'?: Record<string, StacRenderEntry>;
         renders?: Record<string, StacRenderEntry>;
         [key: string]: unknown;
     };
@@ -181,7 +183,7 @@ export function resolveStacPMTilesLayer(item: StacItem, app: StacLayerAppConfig)
     if (!pmtilesUrl) {
         throw new Error(`STAC item '${item.id}' has no PMTiles asset; cannot render '${app.title}'.`);
     }
-    const renders = stacRendersToPMTiles(item.properties.renders);
+    const renders = stacRendersToPMTiles(item.properties['ugs:renders'] ?? item.properties.renders);
 
     return {
         type: 'pmtiles',
@@ -257,7 +259,7 @@ function collectStacItemIds(layers: LayerProps[], into: Set<string>): void {
 function mergeStacIntoLayer(layer: PMTilesLayerProps, item: StacItem): PMTilesLayerProps {
     const pmtilesUrl = pmtilesHref(item);
     if (!pmtilesUrl) throw new Error(`STAC item '${item.id}' has no PMTiles asset`);
-    const renders = stacRendersToPMTiles(item.properties.renders);
+    const renders = stacRendersToPMTiles(item.properties['ugs:renders'] ?? item.properties.renders);
     return {
         ...layer,
         pmtilesUrl,
