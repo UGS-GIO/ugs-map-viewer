@@ -135,7 +135,11 @@ function resolveStacRelatedTable(rt: RelatedTable, item: StacItem): RelatedTable
         targetField,
         headers: rt.headers ?? {},
         fieldLabel: rt.fieldLabel ?? asset.title ?? rt.stacAsset!,
-        displayFields: rt.displayFields ?? defaultDisplayFields(asset['table:columns'], matchingField),
+        // Gallery tables render via gallery* fields, not displayFields — defaulting them would
+        // make the popup also render a junk label/value list of every column. Only default for
+        // list/table displays where displayFields are actually used.
+        displayFields: rt.displayFields
+            ?? (rt.displayAs === 'gallery' ? undefined : defaultDisplayFields(asset['table:columns'], matchingField)),
     };
 }
 
