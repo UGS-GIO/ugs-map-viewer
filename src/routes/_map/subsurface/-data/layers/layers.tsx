@@ -497,11 +497,9 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
             },
             relatedTables: [
                 {
+                    // STAC-backed: url + uwi join filled from the enmin_ucrc_boxes related asset.
                     fieldLabel: 'Core Boxes',
-                    matchingField: 'uwi',
-                    targetField: 'uwi',
-                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_boxes_current`,
-                    headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
+                    stacAsset: 'enmin_ucrc_boxes',
                     displayAs: 'table',
                     displayFields: [
                         { field: 'box_number', label: 'Box #' },
@@ -526,11 +524,9 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                     sortDirection: 'asc',
                 },
                 {
+                    // STAC-backed: url + uwi join filled from the enmin_ucrc_photos related asset.
                     fieldLabel: 'Core Photos',
-                    matchingField: 'uwi',
-                    targetField: 'uwi',
-                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_photos_current`,
-                    headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
+                    stacAsset: 'enmin_ucrc_photos',
                     displayAs: 'gallery',
                     galleryUrlField: 'storage_path',
                     galleryBaseUrl: UCRC_ASSETS_CDN_URL,
