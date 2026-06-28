@@ -240,6 +240,19 @@ export async function fetchStacItem(href: string): Promise<StacItem> {
     return res.json();
 }
 
+/**
+ * Resolve a single asset's href on a STAC item (e.g. a related geoparquet). Used by
+ * components that need a specific asset URL outside the layer-resolution flow, e.g. the
+ * box-photos cell reading the photos parquet by box_pk. Cache via react-query at the call site.
+ */
+export async function fetchStacAssetHref(stacItemId: string, assetKey: string): Promise<string | undefined> {
+    const index = await fetchStacItemIndex();
+    const href = index[stacItemId];
+    if (!href) return undefined;
+    const item = await fetchStacItem(href);
+    return item.assets?.[assetKey]?.href;
+}
+
 /** Collect every `stacItemId` referenced in a (possibly nested) layer tree. */
 function collectStacItemIds(layers: LayerProps[], into: Set<string>): void {
     for (const layer of layers) {
