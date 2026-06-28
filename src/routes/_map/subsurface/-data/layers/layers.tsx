@@ -1,6 +1,6 @@
 import { Link } from "@/components/ui/link";
 import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
-import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL, UCRC_ASSETS_CDN_URL } from "@/lib/constants";
+import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 import { formatNumeric } from "@/lib/utils";
 
@@ -521,26 +521,6 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                         },
                     ],
                     sortBy: 'box_number',
-                    sortDirection: 'asc',
-                },
-                {
-                    // STAC-backed: url + uwi join filled from the enmin_ucrc_photos related asset.
-                    fieldLabel: 'Core Photos',
-                    stacAsset: 'enmin_ucrc_photos',
-                    displayAs: 'gallery',
-                    galleryUrlField: 'storage_path',
-                    galleryBaseUrl: UCRC_ASSETS_CDN_URL,
-                    galleryThumbnailTransform: (gcsPath: string) =>
-                        gcsPath.startsWith('photos/')
-                            ? `photos/_thumbs/200/${gcsPath.slice('photos/'.length)}`
-                            : `_thumbs/200/${gcsPath}`,
-                    galleryLabelField: 'filename',
-                    galleryMetadataFields: [
-                        { field: 'photo_type', label: 'Type' },
-                        { field: 'top_depth', label: 'Top (ft)' },
-                        { field: 'bottom_depth', label: 'Bottom (ft)' },
-                    ],
-                    sortBy: 'top_depth',
                     sortDirection: 'asc',
                 },
                 {
