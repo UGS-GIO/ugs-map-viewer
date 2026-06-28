@@ -222,7 +222,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
             if (!layer.relatedTables?.length) continue;
             for (const feature of layer.features) {
                 for (const table of layer.relatedTables) {
-                    const targetValue = feature.properties?.[table.targetField];
+                    const targetValue = feature.properties?.[table.targetField!];
                     if (targetValue) {
                         allTargetValues.push(String(targetValue));
                     }

@@ -109,7 +109,7 @@ export function useTableColumns(
                     header: label || 'Related',
                     cell: ({ row, table }) => {
                         const meta = table.options.meta!;
-                        const targetValue = String(row.original.properties[relatedTable.targetField] ?? '');
+                        const targetValue = String(row.original.properties[relatedTable.targetField!] ?? '');
                         if (!targetValue) return '-';
                         const currentMap = meta.relatedDataMaps[tableIndex];
                         if (!currentMap || currentMap.size === 0) {

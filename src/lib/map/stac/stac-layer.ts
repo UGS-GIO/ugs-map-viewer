@@ -15,11 +15,14 @@
  * No style URLs, sprites, colors, or legends are hand-authored in the app.
  */
 import type {
+    DisplayField,
     ExtendedSublayerProperties,
     LayerProps,
     PMTilesLayerProps,
     PMTilesRender,
+    RelatedTable,
 } from '@/lib/types/mapping-types';
+import { toTitleCase } from '@/lib/utils';
 
 // Serving-topics collection — the vector layers the viewer can render. Items
 // live at `./<id>/<id>.json` relative to this URL.
@@ -50,7 +53,16 @@ export interface StacItem {
         renders?: Record<string, StacRenderEntry>;
         [key: string]: unknown;
     };
-    assets: Record<string, { href: string; type?: string; roles?: string[] }>;
+    assets: Record<string, {
+        href: string;
+        type?: string;
+        roles?: string[];
+        title?: string;
+        /** Join metadata for related-data assets (roles include 'related'). */
+        'ugs:foreign_keys'?: Array<{ fields: string[]; reference: { resource: string; fields: string[] } }>;
+        /** Column schema for related-data assets, used to default displayFields. */
+        'table:columns'?: Array<{ name: string; type?: string }>;
+    }>;
 }
 
 /**
@@ -80,6 +92,67 @@ function pmtilesHref(item: StacItem): string | undefined {
 function parquetHref(item: StacItem): string | undefined {
     return item.assets?.data?.href
         ?? Object.values(item.assets ?? {}).find(a => a.type === 'application/vnd.apache.parquet')?.href;
+}
+
+/** Default displayFields from a related asset's table:columns (drop join/pk columns). */
+function defaultDisplayFields(
+    columns: Array<{ name: string }> | undefined,
+    matchingField: string,
+): DisplayField[] | undefined {
+    if (!columns?.length) return undefined;
+    return columns
+        .filter(c => c.name !== matchingField && c.name !== 'pk' && !c.name.endsWith('_pk'))
+        .map(c => ({ field: c.name, label: toTitleCase(c.name.replace(/_/g, ' ')) }));
+}
+
+/**
+ * Resolve one STAC-backed related table (an app entry tagged with `stacAsset`) against
+ * the item's `roles:['related']` asset: fill url(=parquet href) + join (from ugs:foreign_keys)
+ * + fetchMode 'parquet', then keep all app-authored presentation. Returns null (logged) if the
+ * asset is missing or lacks join metadata, so a broken table is dropped rather than half-built.
+ * Legacy entries (no `stacAsset`) are passed through untouched by the caller.
+ */
+function resolveStacRelatedTable(rt: RelatedTable, item: StacItem): RelatedTable | null {
+    const asset = item.assets?.[rt.stacAsset!];
+    if (!asset?.href || !asset.roles?.includes('related')) {
+        console.error(`[stac] related asset '${rt.stacAsset}' not found (or not role 'related') on item '${item.id}'`);
+        return null;
+    }
+    const fk = asset['ugs:foreign_keys']?.[0];
+    const matchingField = rt.matchingField ?? fk?.fields?.[0];
+    const targetField = rt.targetField ?? fk?.reference?.fields?.[0];
+    if (!matchingField || !targetField) {
+        console.error(`[stac] related asset '${rt.stacAsset}' on '${item.id}' has no ugs:foreign_keys; cannot join`);
+        return null;
+    }
+    return {
+        ...rt,
+        url: asset.href,
+        fetchMode: 'parquet',
+        matchingField,
+        targetField,
+        headers: rt.headers ?? {},
+        fieldLabel: rt.fieldLabel ?? asset.title ?? rt.stacAsset!,
+        displayFields: rt.displayFields ?? defaultDisplayFields(asset['table:columns'], matchingField),
+    };
+}
+
+/**
+ * For each sublayer, resolve any STAC-backed related tables against the item; legacy
+ * (url-based) entries pass through. Shared by both resolver paths so they can't drift.
+ */
+function resolveSublayerRelatedTables(
+    sublayers: ExtendedSublayerProperties[] | undefined,
+    item: StacItem,
+): ExtendedSublayerProperties[] | undefined {
+    if (!sublayers) return sublayers;
+    return sublayers.map(sub => {
+        if (!sub.relatedTables?.length) return sub;
+        const relatedTables = sub.relatedTables
+            .map(rt => (rt.stacAsset ? resolveStacRelatedTable(rt, item) : rt))
+            .filter((rt): rt is RelatedTable => rt != null);
+        return { ...sub, relatedTables };
+    });
 }
 
 /**
@@ -122,7 +195,7 @@ export function resolveStacPMTilesLayer(item: StacItem, app: StacLayerAppConfig)
         visible: app.visible ?? false,
         opacity: app.opacity ?? 0.85,
         downloadParquetUrl: parquetHref(item),
-        sublayers: app.sublayers,
+        sublayers: resolveSublayerRelatedTables(app.sublayers, item),
     };
 }
 
@@ -194,6 +267,7 @@ function mergeStacIntoLayer(layer: PMTilesLayerProps, item: StacItem): PMTilesLa
         renders: renders.length > 0 ? renders : layer.renders,
         defaultRenderId: layer.defaultRenderId ?? renders[0]?.id,
         downloadParquetUrl: layer.downloadParquetUrl ?? parquetHref(item),
+        sublayers: resolveSublayerRelatedTables(layer.sublayers, item),
     };
 }
 

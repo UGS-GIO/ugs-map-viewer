@@ -91,7 +91,7 @@ const getRelatedTableValues = (
     const table = relatedTables?.[groupedLayerIndex];
     if (!table) return [[{ label: "Invalid index", value: "Invalid index" }]];
 
-    const targetField = properties?.[table.targetField];
+    const targetField = properties?.[table.targetField!];
     const tableData = data[groupedLayerIndex];
 
     if (!tableData) return [[{ label: "", value: "No data available" }]];
@@ -99,7 +99,7 @@ const getRelatedTableValues = (
     // Each matching item becomes its own row (array of labelValuePairs)
     const tableMatches = tableData
         .filter(item =>
-            String(item[table.matchingField]) === String(targetField) &&
+            String(item[table.matchingField!]) === String(targetField) &&
             item.labelValuePairs
         )
         .map(item => item.labelValuePairs!);
@@ -282,7 +282,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         // Convert bulk RelatedDataMap to ProcessedRelatedData format
         return relatedTables.map((table, tableIndex) => {
             const dataMap = bulkRelatedData[tableIndex] || EMPTY_RELATED_DATA_MAP;
-            const targetValue = feature?.properties?.[table.targetField];
+            const targetValue = feature?.properties?.[table.targetField!];
             if (!targetValue) return [];
 
             const rows = dataMap.get(String(targetValue)) || [];
