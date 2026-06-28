@@ -111,8 +111,11 @@ export const queryParquetByValues = async (
         const order = sortBy
             ? ` ORDER BY ${quoteIdent(sortBy)} ${sortDirection === 'desc' ? 'DESC' : 'ASC'}`
             : '';
+        // Cast the join column to VARCHAR so string-quoted values match regardless of the
+        // column's parquet type (e.g. uwi VARCHAR or box_pk INTEGER) — duckdb won't compare
+        // INTEGER IN (VARCHAR…) without an explicit cast.
         const result = await conn.query(
-            `SELECT * FROM read_parquet('${escapeSql(url)}') WHERE ${quoteIdent(matchingField)} IN (${inList})${order}`,
+            `SELECT * FROM read_parquet('${escapeSql(url)}') WHERE CAST(${quoteIdent(matchingField)} AS VARCHAR) IN (${inList})${order}`,
         );
         return result.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>));
     });
