@@ -488,8 +488,24 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                 'Elevation (GL ft)': { field: 'elevation_gl', type: 'number' },
                 'Latitude': { field: 'latitude', type: 'number' },
                 'Longitude': { field: 'longitude', type: 'number' },
-                'Easting (NAD83)': { field: 'easting', type: 'number' },
-                'Northing (NAD83)': { field: 'northing', type: 'number' },
+                'Easting (NAD83)': {
+                    field: 'easting',
+                    type: 'custom',
+                    transform: (properties) => {
+                        const val = properties?.['easting'];
+                        if (val === null || val === undefined || val === 0 || val === '0') return null;
+                        return val;
+                    }
+                },
+                'Northing (NAD83)': {
+                    field: 'northing',
+                    type: 'custom',
+                    transform: (properties) => {
+                        const val = properties?.['northing'];
+                        if (val === null || val === undefined || val === 0 || val === '0') return null;
+                        return val;
+                    }
+                },
                 'Township': { field: 'township', type: 'string' },
                 'Range': { field: 'range', type: 'string' },
                 'Section': { field: 'section', type: 'string' },
