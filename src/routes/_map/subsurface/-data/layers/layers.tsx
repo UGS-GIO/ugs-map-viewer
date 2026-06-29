@@ -514,7 +514,12 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                             transform: (pk, row, allRows) => (
                                 <BoxPhotosCell
                                     boxId={pk}
-                                    allBoxIds={(allRows ?? []).map(r => String(r.pk))}
+                                    photoCount={row?.photo_count != null ? Number(row.photo_count) : undefined}
+                                    // Only bulk-fetch boxes that actually have photos (when photo_count is
+                                    // published); fall back to all boxes when the column isn't there yet.
+                                    allBoxIds={(allRows ?? [])
+                                        .filter(r => r.photo_count == null || Number(r.photo_count) > 0)
+                                        .map(r => String(r.pk))}
                                     boxLabel={`${row?.uwi ?? 'core'}_box${row?.box_number ?? pk}_${row?.box_top_ft ?? '?'}-${row?.box_bottom_ft ?? '?'}ft`}
                                 />
                             ),
