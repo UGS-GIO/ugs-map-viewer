@@ -41,13 +41,28 @@ export function useBulkRelatedTable(
 
             const results = await Promise.all(
                 configs.map(async (config): Promise<RelatedDataMap> => {
+                    // STAC-backed entries are resolved to a full url/matchingField before reaching
+                    // here; bail if a config is missing the join column either way.
+                    const matchingField = config.matchingField;
+                    if (!matchingField) return new Map();
                     try {
                         let rows: PostgRESTRow[];
 
-                        if (config.fetchMode === 'wfs' && config.wfsTypeName) {
+                        if (config.fetchMode === 'parquet' && config.url) {
+                            // STAC geoparquet via duckdb-wasm. Lazy import keeps duckdb off the
+                            // initial bundle — it loads on the first popup with a parquet table.
+                            const { queryParquetByValues } = await import('@/lib/duckdb/client');
+                            rows = await queryParquetByValues({
+                                url: config.url,
+                                matchingField,
+                                values: uniqueValues,
+                                sortBy: config.sortBy,
+                                sortDirection: config.sortDirection,
+                            });
+                        } else if (config.fetchMode === 'wfs' && config.wfsTypeName && config.url) {
                             // WFS mode: build CQL_FILTER IN query
                             const inValues = uniqueValues.map(v => `'${v}'`).join(',');
-                            const cqlFilter = `${config.matchingField} IN (${inValues})`;
+                            const cqlFilter = `${matchingField} IN (${inValues})`;
                             const wfsUrl = new URL(config.url);
                             wfsUrl.searchParams.set('service', 'WFS');
                             wfsUrl.searchParams.set('version', '1.1.0');
@@ -70,10 +85,10 @@ export function useBulkRelatedTable(
                             rows = (geojson.features || []).map(
                                 (f: { properties?: PostgRESTRow }) => f.properties || {}
                             );
-                        } else {
+                        } else if (config.url) {
                             // PostgREST mode (default)
                             const inValues = uniqueValues.join(',');
-                            let queryUrl = `${config.url}?${config.matchingField}=in.(${inValues})`;
+                            let queryUrl = `${config.url}?${matchingField}=in.(${inValues})`;
                             if (config.sortBy) {
                                 const dir = config.sortDirection === 'desc' ? 'desc' : 'asc';
                                 queryUrl += `&order=${config.sortBy}.${dir}`;
@@ -90,13 +105,15 @@ export function useBulkRelatedTable(
 
                             const data = await response.json();
                             rows = Array.isArray(data) ? data : [data];
+                        } else {
+                            return new Map();
                         }
 
                         // Build a map: matchingField value -> array of rows
                         // (supports multiple matches like formation tops per well)
                         const map = new Map<string, PostgRESTRow[]>();
                         for (const row of rows) {
-                            const key = String(row[config.matchingField] ?? '');
+                            const key = String(row[matchingField] ?? '');
                             if (key) {
                                 const existing = map.get(key) || [];
                                 existing.push(row);

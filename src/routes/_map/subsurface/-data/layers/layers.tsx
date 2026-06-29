@@ -1,6 +1,6 @@
 import { Link } from "@/components/ui/link";
 import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
-import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL, UCRC_ASSETS_CDN_URL } from "@/lib/constants";
+import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 import { formatNumeric } from "@/lib/utils";
 
@@ -497,11 +497,9 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
             },
             relatedTables: [
                 {
+                    // STAC-backed: url + uwi join filled from the enmin_ucrc_boxes related asset.
                     fieldLabel: 'Core Boxes',
-                    matchingField: 'uwi',
-                    targetField: 'uwi',
-                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_boxes_current`,
-                    headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
+                    stacAsset: 'enmin_ucrc_boxes',
                     displayAs: 'table',
                     displayFields: [
                         { field: 'box_number', label: 'Box #' },
@@ -516,35 +514,18 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                             transform: (pk, row, allRows) => (
                                 <BoxPhotosCell
                                     boxId={pk}
-                                    allBoxIds={(allRows ?? []).map(r => String(r.pk))}
+                                    photoCount={row?.photo_count != null ? Number(row.photo_count) : undefined}
+                                    // Only bulk-fetch boxes that actually have photos (when photo_count is
+                                    // published); fall back to all boxes when the column isn't there yet.
+                                    allBoxIds={(allRows ?? [])
+                                        .filter(r => r.photo_count == null || Number(r.photo_count) > 0)
+                                        .map(r => String(r.pk))}
                                     boxLabel={`${row?.uwi ?? 'core'}_box${row?.box_number ?? pk}_${row?.box_top_ft ?? '?'}-${row?.box_bottom_ft ?? '?'}ft`}
                                 />
                             ),
                         },
                     ],
                     sortBy: 'box_number',
-                    sortDirection: 'asc',
-                },
-                {
-                    fieldLabel: 'Core Photos',
-                    matchingField: 'uwi',
-                    targetField: 'uwi',
-                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_photos_current`,
-                    headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
-                    displayAs: 'gallery',
-                    galleryUrlField: 'storage_path',
-                    galleryBaseUrl: UCRC_ASSETS_CDN_URL,
-                    galleryThumbnailTransform: (gcsPath: string) =>
-                        gcsPath.startsWith('photos/')
-                            ? `photos/_thumbs/200/${gcsPath.slice('photos/'.length)}`
-                            : `_thumbs/200/${gcsPath}`,
-                    galleryLabelField: 'filename',
-                    galleryMetadataFields: [
-                        { field: 'photo_type', label: 'Type' },
-                        { field: 'top_depth', label: 'Top (ft)' },
-                        { field: 'bottom_depth', label: 'Bottom (ft)' },
-                    ],
-                    sortBy: 'top_depth',
                     sortDirection: 'asc',
                 },
                 {
