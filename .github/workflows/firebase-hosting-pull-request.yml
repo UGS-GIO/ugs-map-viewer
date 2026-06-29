@@ -31,3 +31,4 @@ jobs:
           target: main-site
           channelId: pr-${{ github.event.number }}
           expires: 6d
+          firebaseToolsVersion: '13.29.1'
