@@ -23,15 +23,23 @@ interface FieldProps<K extends FilterFieldKind = FilterFieldKind> {
     onChange: (value: FilterFieldValue) => void;
 }
 
-function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<FilterFieldKind, { kind: 'multiSelect' }>>) {
-    const { data: options = [], isLoading } = useDistinctFieldOptions({ schema, state, field });
-    const selected = state[field.field]?.kind === 'multiSelect' ? (state[field.field] as { values: string[] }).values : [];
+function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<FilterFieldKind, { kind: 'multiSelect' | 'containsAny' }>>) {
+    const { data, isLoading } = useDistinctFieldOptions({
+        schema,
+        state,
+        field,
+        splitCommaDelimited: field.kind === 'containsAny',
+    });
+    const options = data?.options ?? [];
+    const counts = data?.counts ?? {};
+    const v = state[field.field];
+    const selected = v && (v.kind === 'multiSelect' || v.kind === 'containsAny') ? v.values : [];
     const filtered = field.optionLabelFilter ? options.filter(field.optionLabelFilter) : options;
 
     const toggle = (label: string, checked: boolean) => {
         const next = new Set(selected);
         if (checked) next.add(label); else next.delete(label);
-        onChange({ kind: 'multiSelect', values: Array.from(next) });
+        onChange({ kind: field.kind, values: Array.from(next) });
     };
 
     if (isLoading) return <p className="text-sm text-muted-foreground">Loading...</p>;
@@ -56,7 +64,12 @@ function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<
                                 }}
                             />
                         )}
-                        <Label htmlFor={`${field.field}-${label}`} className="text-sm cursor-pointer">{label}</Label>
+                        <Label htmlFor={`${field.field}-${label}`} className="text-sm cursor-pointer">
+                            {label}
+                            {counts[label] != null && (
+                                <span className="ml-1 text-muted-foreground">({counts[label].toLocaleString()})</span>
+                            )}
+                        </Label>
                     </div>
                 ))}
             </div>
@@ -65,12 +78,14 @@ function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<
 }
 
 function MultiSelectComboboxField({ schema, state, field, onChange }: FieldProps<Extract<FilterFieldKind, { kind: 'multiSelect' | 'containsAny' }>>) {
-    const { data: options = [], isLoading } = useDistinctFieldOptions({
+    const { data, isLoading } = useDistinctFieldOptions({
         schema,
         state,
         field,
         splitCommaDelimited: field.kind === 'containsAny',
     });
+    const options = data?.options ?? [];
+    const counts = data?.counts ?? {};
     const value = state[field.field];
     const selected = value && (value.kind === 'multiSelect' || value.kind === 'containsAny') ? value.values : [];
 
@@ -79,6 +94,7 @@ function MultiSelectComboboxField({ schema, state, field, onChange }: FieldProps
             label={field.label}
             placeholder={field.placeholder ?? `Select ${field.label.toLowerCase()}...`}
             options={options}
+            counts={counts}
             isLoading={isLoading}
             selected={selected}
             onChange={(values) => onChange({ kind: field.kind, values })}
@@ -147,9 +163,15 @@ export interface LayerFilterPanelProps {
     schema: FilterSchema;
     /** Card title; default "Filters". */
     title?: string;
+    /**
+     * Field names to keep in state/CQL but NOT render here (e.g. symbology
+     * fields surfaced in an interactive legend instead). Uses the full schema so
+     * round-tripped CQL preserves these fields — they're only hidden visually.
+     */
+    hideFields?: string[];
 }
 
-export function LayerFilterPanel({ schema }: LayerFilterPanelProps) {
+export function LayerFilterPanel({ schema, hideFields }: LayerFilterPanelProps) {
     const mgr = useLayerFilter(schema);
 
     const onFieldChange = useCallback((fieldName: string, value: FilterFieldValue) => {
@@ -158,7 +180,7 @@ export function LayerFilterPanel({ schema }: LayerFilterPanelProps) {
 
     return (
         <div className="space-y-4">
-            {schema.fields.map(field => {
+            {schema.fields.filter(field => !hideFields?.includes(field.field)).map(field => {
                 const key = field.field;
                 const onChange = (v: FilterFieldValue) => onFieldChange(key, v);
                 switch (field.kind) {
@@ -168,7 +190,11 @@ export function LayerFilterPanel({ schema }: LayerFilterPanelProps) {
                             ? <MultiSelectGrid key={key} schema={schema} state={mgr.state} field={field} onChange={onChange} />
                             : <MultiSelectComboboxField key={key} schema={schema} state={mgr.state} field={field} onChange={onChange} />;
                     case 'containsAny':
-                        return <MultiSelectComboboxField key={key} schema={schema} state={mgr.state} field={field} onChange={onChange} />;
+                        // Swatched containsAny fields render as a checkbox grid (mirrors
+                        // multiSelect); others use the combobox.
+                        return field.optionSwatches
+                            ? <MultiSelectGrid key={key} schema={schema} state={mgr.state} field={field} onChange={onChange} />
+                            : <MultiSelectComboboxField key={key} schema={schema} state={mgr.state} field={field} onChange={onChange} />;
                     case 'range':
                         return <RangeField key={key} schema={schema} state={mgr.state} field={field} onChange={onChange} />;
                     case 'boolean':

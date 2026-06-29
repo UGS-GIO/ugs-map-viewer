@@ -422,57 +422,22 @@ export class MapLibreMapFactory implements MapFactory {
       });
     }
 
-    // If styleUrl is provided, fetch and apply the style layers
-    if (layerConfig.styleUrl) {
-      try {
-        const response = await fetch(layerConfig.styleUrl);
-        if (!response.ok) {
-          console.error(`[addPMTilesLayer] Style fetch failed for ${layerConfig.title}:`, response.status);
-          return;
-        }
-        const styleJson = await response.json();
-
-        // Filter style layers to only those matching this config's sourceLayer
-        // This is important for combined PMTiles where one style JSON contains all layers
-        const matchingLayers = (styleJson.layers || []).filter((layer: Record<string, unknown>) => {
-          return layer['source-layer'] === layerConfig.sourceLayer;
+    // Multi-render layers (STAC item.renders): add every render's layers up
+    // front, each tagged with its renderId in metadata. Only the active render
+    // starts visible; the symbology toggle flips visibility at runtime.
+    if (layerConfig.renders && layerConfig.renders.length > 0) {
+      const activeId = layerConfig.defaultRenderId ?? layerConfig.renders[0].id;
+      for (const render of layerConfig.renders) {
+        await this.addPMTilesStyleFragment(map, sourceId, layerConfig, render.styleUrl, {
+          renderId: render.id,
+          sprite: render.sprite,
+          visible: !!layerConfig.visible && render.id === activeId,
         });
-
-        // Add each matching layer from the style, updating source references
-        for (const layer of matchingLayers) {
-          const layerId = `${sourceId}-${layer.id}`;
-
-          if (!map.getLayer(layerId)) {
-            try {
-              const layerSpec: maplibregl.LayerSpecification = {
-                id: layerId,
-                type: layer.type,
-                source: sourceId,
-                'source-layer': layer['source-layer'],
-                ...(layer.filter && { filter: layer.filter }), // Only include filter if defined
-                layout: {
-                  ...layer.layout,
-                  visibility: layerConfig.visible ? 'visible' : 'none',
-                },
-                paint: layer.paint || {},
-                metadata: {
-                  title: layerConfig.title,
-                  pmtilesLayer: true,
-                  maplibreStyleUrl: layerConfig.styleUrl,
-                  maplibreSourceId: sourceId,
-                  maplibreSourceLayer: layerConfig.sourceLayer,
-                },
-              };
-
-              map.addLayer(layerSpec);
-            } catch (err) {
-              console.error(`[addPMTilesLayer] Failed to add layer ${layerId}:`, err);
-            }
-          }
-        }
-      } catch (error) {
-        console.error(`[addPMTilesLayer] Error loading style for ${layerConfig.title}:`, error);
       }
+    } else if (layerConfig.styleUrl) {
+      await this.addPMTilesStyleFragment(map, sourceId, layerConfig, layerConfig.styleUrl, {
+        visible: !!layerConfig.visible,
+      });
     } else {
       // Default fill + line style if no styleUrl provided
       const fillLayerId = `${sourceId}-fill`;
@@ -521,6 +486,86 @@ export class MapLibreMapFactory implements MapFactory {
           },
         });
       }
+    }
+  }
+
+  /**
+   * Fetch a MapLibre style fragment (`{ layers: [...] }`) and add its layers to
+   * an existing PMTiles source. Handles warehouse "fragment" styles that omit
+   * `source-layer` (injects the config's). When `renderId` is given, layer ids
+   * and metadata are namespaced so multiple symbology renders coexist on one
+   * source and can be visibility-toggled independently.
+   */
+  private async addPMTilesStyleFragment(
+    map: maplibregl.Map,
+    sourceId: string,
+    layerConfig: PMTilesLayerProps,
+    styleUrl: string,
+    opts: { renderId?: string; sprite?: string; visible: boolean },
+  ): Promise<void> {
+    // Icon renders ship a sprite sheet the base style doesn't carry. Add it
+    // under the renderId namespace (idempotent); failures are non-fatal so a
+    // missing sprite only drops icons, not the whole layer.
+    if (opts.sprite && opts.renderId) {
+      try {
+        const spriteUrl = opts.sprite.startsWith('http') ? opts.sprite : `${window.location.origin}${opts.sprite}`;
+        const existing = (map.getSprite() as Array<{ id: string }> | undefined) ?? [];
+        if (!existing.some(s => s.id === opts.renderId)) {
+          map.addSprite(opts.renderId, spriteUrl);
+        }
+      } catch (err) {
+        console.warn(`[addPMTilesStyleFragment] sprite add failed for ${layerConfig.title}/${opts.renderId}:`, err);
+      }
+    }
+
+    try {
+      const response = await fetch(styleUrl);
+      if (!response.ok) {
+        console.error(`[addPMTilesStyleFragment] Style fetch failed for ${layerConfig.title}:`, response.status);
+        return;
+      }
+      const styleJson = await response.json();
+
+      // Keep layers matching this config's sourceLayer; fragment styles omit
+      // `source-layer`, so treat those as ours and inject it below.
+      const matchingLayers = (styleJson.layers || []).filter((layer: Record<string, unknown>) => {
+        const sl = layer['source-layer'];
+        return sl == null || sl === layerConfig.sourceLayer;
+      });
+
+      for (const layer of matchingLayers) {
+        const layerId = opts.renderId
+          ? `${sourceId}-${opts.renderId}-${layer.id}`
+          : `${sourceId}-${layer.id}`;
+        if (map.getLayer(layerId)) continue;
+        try {
+          const layerSpec: maplibregl.LayerSpecification = {
+            id: layerId,
+            type: layer.type,
+            source: sourceId,
+            'source-layer': (layer['source-layer'] as string) ?? layerConfig.sourceLayer,
+            ...(layer.filter && { filter: layer.filter }),
+            layout: {
+              ...layer.layout,
+              visibility: opts.visible ? 'visible' : 'none',
+            },
+            paint: layer.paint || {},
+            metadata: {
+              title: layerConfig.title,
+              pmtilesLayer: true,
+              maplibreStyleUrl: styleUrl,
+              maplibreSourceId: sourceId,
+              maplibreSourceLayer: layerConfig.sourceLayer,
+              ...(opts.renderId && { renderId: opts.renderId }),
+            },
+          };
+          map.addLayer(layerSpec);
+        } catch (err) {
+          console.error(`[addPMTilesStyleFragment] Failed to add layer ${layerId}:`, err);
+        }
+      }
+    } catch (error) {
+      console.error(`[addPMTilesStyleFragment] Error loading style for ${layerConfig.title}:`, error);
     }
   }
 

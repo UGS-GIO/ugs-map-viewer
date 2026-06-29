@@ -1,4 +1,4 @@
-import { Info, Shrink, TableOfContents } from 'lucide-react';
+import { Info, Shrink, TableOfContents, SlidersHorizontal, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -28,6 +28,10 @@ interface LayerControlsProps {
     downloadParquetUrl?: string;
     /** When true, hide format-conversion dropdown and offer only a direct parquet download. Used for apps that require unmodified source data. */
     disableExport?: boolean;
+    /** Optional layer-scoped filter UI. When provided, adds a Filters toggle to the button row and a collapsible panel below. */
+    filtersContent?: React.ReactNode;
+    /** Optional layer-scoped stats / charts UI. When provided, adds a Stats toggle to the button row and a collapsible panel below. */
+    statsContent?: React.ReactNode;
 }
 
 const LayerControls: React.FC<LayerControlsProps> = ({
@@ -46,10 +50,17 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     legendUnit,
     downloadParquetUrl,
     disableExport = false,
+    filtersContent,
+    statsContent,
 }) => {
-    // Sync activeTab with openLegend prop, but let the user toggle freely afterwards
+    // Info + Legend remain a single-select pair (mutually exclusive — they both
+    // describe the layer and stacking them is redundant). Filters + Stats each
+    // get their own independent open state so reviewers can keep both visible
+    // alongside Info or Legend if they want.
     const [prevOpenLegend, setPrevOpenLegend] = useState(openLegend);
     const [activeTab, setActiveTab] = useState<'info' | 'legend' | null>(openLegend ? 'legend' : null);
+    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [statsOpen, setStatsOpen] = useState(false);
 
     if (openLegend !== prevOpenLegend) {
         setPrevOpenLegend(openLegend);
@@ -87,7 +98,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     };
 
     return (
-        <div className="flex flex-col gap-y-4 pt-2">
+        <div className="flex flex-col gap-y-2 pt-2">
             <div className="flex flex-col gap-y-4 mx-8">
                 <div className="flex flex-col justify-between items-center w-full gap-y-4">
                     <div className="flex flex-row items-center justify-around gap-x-2 w-full mx-auto" data-tour="layer-opacity">
@@ -120,7 +131,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         <Toggle
                             aria-label="Toggle info"
                             size="stacked"
-                            className="flex flex-col items-center px-3 py-2 min-w-[80px] flex-1 gap-1"
+                            className="flex flex-col items-center px-3 py-2 min-w-[80px] basis-[calc((100%-1rem)/3)] grow-0 gap-1"
                             pressed={infoPressed}
                             onPressedChange={() => handleToggle('info')}
                         >
@@ -131,7 +142,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         <Button
                             variant="ghost"
                             size="stacked"
-                            className="flex flex-col items-center px-3 py-2 min-w-[80px] flex-1 gap-1"
+                            className="flex flex-col items-center px-3 py-2 min-w-[80px] basis-[calc((100%-1rem)/3)] grow-0 gap-1"
                             onClick={handleZoomToLayer}
                         >
                             <Shrink className="h-5 w-5" />
@@ -141,7 +152,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         <Toggle
                             aria-label="Toggle legend"
                             size="stacked"
-                            className="flex flex-col items-center px-3 py-2 min-w-[80px] flex-1 gap-1"
+                            className="flex flex-col items-center px-3 py-2 min-w-[80px] basis-[calc((100%-1rem)/3)] grow-0 gap-1"
                             pressed={legendPressed}
                             onPressedChange={() => handleToggle('legend')}
                             data-tour="layer-legend"
@@ -152,6 +163,32 @@ const LayerControls: React.FC<LayerControlsProps> = ({
 
                         {!disableExport && downloadParquetUrl && (
                             <ParquetDownloadMenu parquetUrl={downloadParquetUrl} layerTitle={title} />
+                        )}
+
+                        {filtersContent && (
+                            <Toggle
+                                aria-label="Toggle filters"
+                                size="stacked"
+                                className="flex flex-col items-center px-3 py-2 min-w-[80px] basis-[calc((100%-1rem)/3)] grow-0 gap-1"
+                                pressed={filtersOpen}
+                                onPressedChange={setFiltersOpen}
+                            >
+                                <SlidersHorizontal className="h-5 w-5" />
+                                <span className='text-xs'>Filters</span>
+                            </Toggle>
+                        )}
+
+                        {statsContent && (
+                            <Toggle
+                                aria-label="Toggle stats"
+                                size="stacked"
+                                className="flex flex-col items-center px-3 py-2 min-w-[80px] basis-[calc((100%-1rem)/3)] grow-0 gap-1"
+                                pressed={statsOpen}
+                                onPressedChange={setStatsOpen}
+                            >
+                                <BarChart3 className="h-5 w-5" />
+                                <span className='text-xs'>Stats</span>
+                            </Toggle>
                         )}
                     </div>
                 </div>
@@ -171,6 +208,24 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     arcgisUrl={arcgisUrl}
                     legendUnit={legendUnit}
                 />
+                {filtersContent && (
+                    <div
+                        className={`overflow-hidden transition-[max-height] duration-200 ease-out ${filtersOpen ? 'max-h-[1000px]' : 'max-h-0'}`}
+                    >
+                        <div className="mt-1 mb-2 mx-1 px-1.5 pt-2 border-t border-border/60">
+                            {filtersContent}
+                        </div>
+                    </div>
+                )}
+                {statsContent && (
+                    <div
+                        className={`overflow-hidden transition-[max-height] duration-200 ease-out ${statsOpen ? 'max-h-[2000px]' : 'max-h-0'}`}
+                    >
+                        <div className="mt-1 mb-2 mx-1 px-1.5 pt-2 border-t border-border/60">
+                            {statsOpen && statsContent}
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
