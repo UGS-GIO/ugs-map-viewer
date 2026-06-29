@@ -134,7 +134,7 @@ const utTownshipRangesConfig: WMSLayerProps = {
 
 
 // Oil and Gas Fields WMS Layer
-const oilGasFieldsLayerName = 'oilgasfields';
+const oilGasFieldsLayerName = 'enmin_oilgasfields_ogm_current';
 const oilGasFieldsWMSTitle = 'Oil and Gas Fields';
 const oilGasFieldsWMSConfig: WMSLayerProps = {
     type: 'wms',
@@ -148,11 +148,11 @@ const oilGasFieldsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Field Name': { field: 'field_name', type: 'string' },
-                'Field Type': { field: 'field_type', type: 'string' },
-                'Producing Formations': { field: 'prod_formations', type: 'string' },
+                'Field Name': { field: 'fieldname', type: 'string' },
+                'Field Type': { field: 'type', type: 'string' },
+                'Producing Formations': { field: 'prodformations', type: 'string' },
                 'Reservoir Age': { field: 'reservoir_rocks', type: 'string' },
-                'Status': { field: 'status', type: 'string' }
+                'Status': { field: 'status_1', type: 'string' }
             },
         },
     ],
@@ -409,7 +409,6 @@ const pipelinesWMSConfig: WMSLayerProps = {
     ],
 };
 
-
 // UCRC Collection Layer — rendered client-side via WFS for instant filtering and richer symbology
 const ucrcWellsLayerName = 'enmin_ucrc_wells_current';
 // PMTiles tile source-layer = STAC item id (not the `_current` DB view name).
@@ -494,6 +493,7 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                 'Township': { field: 'township', type: 'string' },
                 'Range': { field: 'range', type: 'string' },
                 'Section': { field: 'section', type: 'string' },
+                'Notes': { field: 'notes_public', type: 'string' },
             },
             relatedTables: [
                 {
