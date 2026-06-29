@@ -494,6 +494,15 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                         return val;
                     }
                 },
+                'Kelly bushing Elevation (GL ft)': {
+                    field: 'elevation_kb',
+                    type: 'custom',
+                    transform: (properties) => {
+                        const val = properties?.['elevation_kb'];
+                        if (val === null || val === undefined || val === 0 || val === '0') return null;
+                        return val;
+                    }
+                },
                 'Latitude': { field: 'latitude', type: 'number' },
                 'Longitude': { field: 'longitude', type: 'number' },
                 'Easting (NAD83)': {
