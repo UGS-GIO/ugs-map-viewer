@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { RelatedDataMap, EMPTY_RELATED_DATA_MAP } from "@/hooks/use-bulk-related-table";
 import { Feature, Geometry, GeoJsonProperties } from "geojson";
 import { ChevronDown, ChevronRight, ExternalLink, Info } from "lucide-react";
@@ -48,6 +49,8 @@ type PopupContentDisplayProps = {
     layout?: "grid" | "stacked";
     /** Pre-fetched bulk related data maps (one per relatedTable) */
     bulkRelatedData?: RelatedDataMap[];
+    /** True while the bulk related-table fetch is in flight — show skeletons in place of tables. */
+    relatedLoading?: boolean;
 };
 
 // --- Utility Functions ---
@@ -270,7 +273,7 @@ function PopupTable({ headers, rows }: { headers?: ReactNode[]; rows: ReactNode[
 }
 
 // --- Main Component ---
-const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: PopupContentDisplayProps) => {
+const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, relatedLoading }: PopupContentDisplayProps) => {
     const { relatedTables, relatedTablesPosition, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
 
     // Convert bulk data to the format expected by getRelatedTableValues
@@ -428,9 +431,31 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData }: P
         const groupedValues = getRelatedTableValues(tableIndex, data, relatedTables, properties);
         const flatValues = groupedValues.flat();
 
-        // Skip rendering if no real data (only "No data available" placeholder)
+        // Skip rendering if no real data (only "No data available" placeholder).
         const hasRealData = flatValues.some(v => v.value !== "No data available");
-        if (!hasRealData) return;
+        if (!hasRealData) {
+            // While the bulk related fetch is in flight, show a labeled skeleton in place of the
+            // table so the popup signals "loading" instead of the section silently popping in.
+            if (relatedLoading) {
+                const loadingLabel = String(properties[table.fieldLabel] || table.fieldLabel);
+                const relatedIndex = (relatedTablesPosition === 'above' ? -1000 : 1000) + tableIndex;
+                contentItems.push({
+                    content: (
+                        <div key={`related-loading-${table.fieldLabel}-${tableIndex}`} className="flex flex-col gap-1.5">
+                            <p className="font-bold underline text-foreground">{loadingLabel}</p>
+                            <div className="space-y-1.5 py-1">
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-5/6" />
+                                <Skeleton className="h-4 w-2/3" />
+                            </div>
+                        </div>
+                    ),
+                    isLongContent: true,
+                    originalIndex: relatedIndex,
+                });
+            }
+            return;
+        }
 
         // Use explicit displayAs config (defaults to 'list')
         const useTableFormat = table.displayAs === 'table' && !!table.displayFields && table.displayFields.length > 0;
@@ -556,7 +581,8 @@ const PopupContentDisplay = memo(PopupContentDisplayInner, (prevProps, nextProps
         prevProps.layout === nextProps.layout &&
         prevProps.layer.sourceCRS === nextProps.layer.sourceCRS &&
         prevProps.layer.layerTitle === nextProps.layer.layerTitle &&
-        prevProps.bulkRelatedData === nextProps.bulkRelatedData
+        prevProps.bulkRelatedData === nextProps.bulkRelatedData &&
+        prevProps.relatedLoading === nextProps.relatedLoading
     );
 });
 

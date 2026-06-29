@@ -59,12 +59,18 @@ const fetchBoxPhotosBulk = async (boxIds: string[], parquetUrl: string): Promise
  * Renders the photo thumbnail/gallery for a single box. All instances mounted
  * with the same `allBoxIds` share one bulk fetch via react-query dedup.
  */
-export function BoxPhotosCell({ boxId, allBoxIds, boxLabel, stacItemId = 'enmin_ucrc_wells', photosAsset = 'enmin_ucrc_photos' }: { boxId: string; allBoxIds: string[]; boxLabel?: string; stacItemId?: string; photosAsset?: string }) {
+export function BoxPhotosCell({ boxId, allBoxIds, boxLabel, photoCount, stacItemId = 'enmin_ucrc_wells', photosAsset = 'enmin_ucrc_photos' }: { boxId: string; allBoxIds: string[]; boxLabel?: string; photoCount?: number; stacItemId?: string; photosAsset?: string }) {
+    // `photoCount` comes from the boxes parquet (warehouse-computed). When it's 0 we know up
+    // front there are no photos — render a dash immediately, no fetch, no skeleton. Undefined
+    // (column not published yet) falls back to fetching + skeleton for every cell.
+    const knownEmpty = photoCount === 0
+
     // Resolve the photos geoparquet href from STAC (cached forever — immutable warehouse asset).
     const { data: parquetUrl, isLoading: urlLoading } = useQuery({
         queryKey: ['stac-asset-href', stacItemId, photosAsset],
         queryFn: () => fetchStacAssetHref(stacItemId, photosAsset),
         staleTime: Infinity,
+        enabled: !knownEmpty,
     })
 
     // Sorted key so sibling cells share one query regardless of row order
@@ -74,9 +80,10 @@ export function BoxPhotosCell({ boxId, allBoxIds, boxLabel, stacItemId = 'enmin_
         queryKey: ['ucrc-box-photos-parquet', parquetUrl, sortedKey],
         queryFn: () => fetchBoxPhotosBulk(allBoxIds, parquetUrl!),
         staleTime: 1000 * 60 * 30,
-        enabled: allBoxIds.length > 0 && !!parquetUrl,
+        enabled: !knownEmpty && allBoxIds.length > 0 && !!parquetUrl,
     })
 
+    if (knownEmpty) return <span className="text-muted-foreground">—</span>
     if (urlLoading || photosLoading) return <Skeleton className="w-10 h-7 rounded-sm" />
 
     const images = photoMap?.get(boxId) ?? []
