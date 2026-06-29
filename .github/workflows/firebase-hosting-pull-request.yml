@@ -31,3 +31,6 @@ jobs:
           target: main-site
           channelId: pr-${{ github.event.number }}
           expires: 6d
+          # Pin firebase-tools: 15.22.3 broke `hosting:channel:deploy` ("version is the
+          # current active version"). Unpin once a fixed release is out.
+          firebaseToolsVersion: '15.22.2'

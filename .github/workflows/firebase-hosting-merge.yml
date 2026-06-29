@@ -71,6 +71,7 @@ jobs:
           projectId: '${{ env.PROJECT_ID }}' # ut-dnr-ugs-maps-dev
           channelId: live # Deploy to the main site for the dev project
           target: main-site
+          firebaseToolsVersion: '15.22.2' # 15.22.3 broke channel:deploy
 
       # --- Deploy to PRODUCTION Project (if master branch) ---
       - name: Deploy SPA to Production Environment (live channel)
@@ -81,7 +82,8 @@ jobs:
           firebaseServiceAccount: '${{ secrets[env.FIREBASE_SERVICE_ACCOUNT_SECRET_NAME] }}'
           projectId: '${{ env.PROJECT_ID }}' # ut-dnr-ugs-maps-prod
           channelId: live
-          target: main-site 
+          target: main-site
+          firebaseToolsVersion: '15.22.2' # 15.22.3 broke channel:deploy
 
       # --- Deploy the production redirector configurations ---
       - name: Deploy Hazards Redirector to Production (live channel)
@@ -93,6 +95,7 @@ jobs:
           projectId: '${{ env.PROJECT_ID }}' # ut-dnr-ugs-maps-prod
           channelId: live
           target: hazards-subdomain
+          firebaseToolsVersion: '15.22.2' # 15.22.3 broke channel:deploy
 
       # === Sync master back to develop (Only on master branch) ===
       # After semantic-release commits CHANGELOG.md and package.json updates,
