@@ -14,6 +14,7 @@ import { setupCOGProtocol } from '@/lib/map/cog/setup'
 import { routeTree } from './routeTree.gen'
 
 // Initialize PMTiles protocol (runs once at app start)
+console.log('Preview deploy trigger: 1');
 setupPMTilesProtocol()
 setupCOGProtocol()
 
