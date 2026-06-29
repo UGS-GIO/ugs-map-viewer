@@ -98,7 +98,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
     const relatedTableTargetValues = useMemo(() => {
         if (!selectedLayer?.relatedTables?.length) return [];
         return selectedLayer.relatedTables.flatMap(table =>
-            rowData.map(row => String(row.properties[table.targetField] ?? ''))
+            rowData.map(row => String(row.properties[table.targetField!] ?? ''))
         );
     }, [selectedLayer?.relatedTables, rowData]);
 
@@ -535,7 +535,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                                             const relatedTable = selectedLayer.relatedTables[tableIndex];
                                             if (!relatedTable) return null;
 
-                                            const targetValue = String(row.original.properties[relatedTable.targetField] ?? '');
+                                            const targetValue = String(row.original.properties[relatedTable.targetField!] ?? '');
                                             const dataMap = table.options.meta!.relatedDataMaps[tableIndex];
                                             const relatedRows = dataMap?.get(targetValue) || [];
 

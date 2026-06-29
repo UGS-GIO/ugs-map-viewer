@@ -347,10 +347,19 @@ export interface RelatedTable {
     fieldLabel: string;
     /** Optional description shown as tooltip on the field label */
     description?: string;
-    matchingField: string;
-    targetField: string;
-    url: string;
-    headers: Record<string, string>;
+    /**
+     * STAC-backed related table: the asset key (e.g. 'enmin_ucrc_boxes') on the layer's
+     * STAC item. When set, the resolver fills url/matchingField/targetField/fetchMode from
+     * the asset's href + ugs:foreign_keys, and this entry carries ONLY presentation (UX).
+     * Author EXACTLY ONE of `stacAsset` (STAC-driven) or `url` (legacy PostgREST/WFS).
+     * After resolution the entry is always fully populated, so consumers treat
+     * url/matchingField/targetField as present.
+     */
+    stacAsset?: string;
+    matchingField?: string;
+    targetField?: string;
+    url?: string;
+    headers?: Record<string, string>;
     displayFields?: DisplayField[];
     logicalOperator?: string;
     sortBy?: string;
@@ -371,8 +380,8 @@ export interface RelatedTable {
     galleryBaseUrl?: string;
     /** Optional metadata fields to display alongside the image in the lightbox */
     galleryMetadataFields?: { field: string; label: string }[];
-    /** Fetch mode: 'postgrest' (default) or 'wfs' for GeoServer WFS queries */
-    fetchMode?: 'postgrest' | 'wfs';
+    /** Fetch mode: 'postgrest' (default), 'wfs' for GeoServer WFS, or 'parquet' for STAC geoparquet via duckdb-wasm */
+    fetchMode?: 'postgrest' | 'wfs' | 'parquet';
     /** WFS typeName (required when fetchMode is 'wfs'), e.g. 'emp:sco2_with_grid' */
     wfsTypeName?: string;
 }

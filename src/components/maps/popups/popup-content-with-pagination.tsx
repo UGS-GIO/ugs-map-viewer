@@ -47,12 +47,14 @@ const FeatureCard = memo(({
     buttons,
     handleZoomToFeature,
     bulkRelatedData,
+    relatedLoading,
 }: {
     layer: LayerContentProps,
     feature: ExtendedFeature,
     buttons: React.ReactNode[] | null,
     handleZoomToFeature: (feature: ExtendedFeature, sourceCRS: string, maxZoomLevel?: number) => void,
     bulkRelatedData?: RelatedDataMap[],
+    relatedLoading?: boolean,
 }) => {
     return (
         <div className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
@@ -69,6 +71,7 @@ const FeatureCard = memo(({
                 layout={layer.popupFields &&
                     Object.keys(layer.popupFields).length > 5 ? "grid" : "stacked"}
                 bulkRelatedData={bulkRelatedData}
+                relatedLoading={relatedLoading}
             />
         </div>
     )
@@ -82,11 +85,13 @@ const PaginatedFeatureList = memo(({
     buttons,
     handleZoomToFeature,
     bulkRelatedData,
+    relatedLoading,
 }: {
     layer: LayerContentProps,
     buttons: React.ReactNode[] | null,
     handleZoomToFeature: (feature: ExtendedFeature, sourceCRS: string, maxZoomLevel?: number) => void,
     bulkRelatedData?: RelatedDataMap[],
+    relatedLoading?: boolean,
 }) => {
     const [page, setPage] = useState(0)
     const total = layer.features.length
@@ -114,6 +119,7 @@ const PaginatedFeatureList = memo(({
                     buttons={buttons}
                     handleZoomToFeature={handleZoomToFeature}
                     bulkRelatedData={bulkRelatedData}
+                    relatedLoading={relatedLoading}
                 />
             ))}
         </>
@@ -222,7 +228,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
             if (!layer.relatedTables?.length) continue;
             for (const feature of layer.features) {
                 for (const table of layer.relatedTables) {
-                    const targetValue = feature.properties?.[table.targetField];
+                    const targetValue = feature.properties?.[table.targetField!];
                     if (targetValue) {
                         allTargetValues.push(String(targetValue));
                     }
@@ -237,7 +243,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
     }, [layerContent])
 
     // Bulk fetch related data for all features at once
-    const { dataByTable: bulkRelatedData } = useBulkRelatedTable(
+    const { dataByTable: bulkRelatedData, isLoading: relatedLoading } = useBulkRelatedTable(
         bulkFetchConfig.tables,
         bulkFetchConfig.values
     )
@@ -339,6 +345,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                                             buttons={buttons}
                                             handleZoomToFeature={handleZoomToFeature}
                                             bulkRelatedData={layer.relatedTables?.length ? bulkRelatedData : undefined}
+                                            relatedLoading={layer.relatedTables?.length ? relatedLoading : false}
                                         />
                                     ) : hasRaster ? (
                                         <RasterOnlyCard layer={layer} clickPoint={clickPoint} onZoomToPixel={handleZoomToPixel} />
@@ -355,6 +362,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                                 buttons={buttons}
                                 handleZoomToFeature={handleZoomToFeature}
                                 bulkRelatedData={selectedLayer.relatedTables?.length ? bulkRelatedData : undefined}
+                                relatedLoading={selectedLayer.relatedTables?.length ? relatedLoading : false}
                             />
                         ) : hasRasterData(selectedLayer) ? (
                             <RasterOnlyCard layer={selectedLayer} clickPoint={clickPoint} onZoomToPixel={handleZoomToPixel} />

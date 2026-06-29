@@ -113,9 +113,9 @@ function buildRelatedCsv(
 
     const rows: { key: string; record: Record<string, unknown> }[] = [];
     for (const row of dataToExport) {
-        const targetValue = String(row.properties[table.targetField] ?? '');
+        const targetValue = String(row.properties[table.targetField!] ?? '');
         const records = dataMap?.get(targetValue) || [];
-        const key = String(row.properties[table.targetField] ?? row.feature.id ?? '');
+        const key = String(row.properties[table.targetField!] ?? row.feature.id ?? '');
         for (const record of records) {
             rows.push({ key, record });
         }
@@ -188,7 +188,7 @@ function exportAsGeoJSON(
         if (relatedTables.length > 0) {
             const related: Record<string, Record<string, unknown>[]> = {};
             relatedTables.forEach((table, idx) => {
-                const targetValue = String(row.properties[table.targetField] ?? '');
+                const targetValue = String(row.properties[table.targetField!] ?? '');
                 const records = relatedDataMaps[idx]?.get(targetValue) || [];
                 const key = table.fieldLabel || `table-${idx + 1}`;
                 related[key] = records;
