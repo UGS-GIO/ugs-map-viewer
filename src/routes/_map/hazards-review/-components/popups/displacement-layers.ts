@@ -105,6 +105,17 @@ export const DATA_QUAL_ORDER = ['high', 'medium', 'low', 'very low', 'unknown'] 
 // to this set, not to all-visible.
 export const DEFAULT_VISIBLE_DATA_QUALS = ['high', 'medium'] as const
 
+// What each data-quality category means: share of valid pixels behind the
+// measurement. Surfaced under each data-quality checkbox. Keyed by the same
+// lowercase tokens as DATA_QUAL_ORDER; categories without an entry (e.g.
+// 'unknown') render no description.
+export const DATA_QUAL_DESCRIPTIONS: Record<string, string> = {
+    'high': '≥ 80% of pixels valid',
+    'medium': '60–79% of pixels valid',
+    'low': '40–59% of pixels valid',
+    'very low': '< 40% of pixels valid',
+}
+
 // Default exclusion set = every known category that isn't visible by default.
 // Stored as exclusions to match excludedDataQualsByType's "store what's hidden"
 // model. Categories absent from a given type's data are harmless extras here.

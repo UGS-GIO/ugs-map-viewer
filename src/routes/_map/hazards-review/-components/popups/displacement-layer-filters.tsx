@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import {
+    DATA_QUAL_DESCRIPTIONS,
     DEFAULT_EXCLUDED_DATA_QUALS,
     DISPLACEMENT_LAYER_TYPES,
     getStyleNameForType,
@@ -165,13 +166,19 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                         {dataQuals.map(q => {
                             const checked = !excludedQuals.has(q)
                             return (
-                                <label key={q} className="flex items-center gap-2 text-xs text-foreground capitalize cursor-pointer">
+                                <label key={q} className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
                                     <Checkbox
                                         checked={checked}
                                         onCheckedChange={() => toggleDataQual(typeValue, q)}
                                         aria-label={`Toggle ${q} data quality`}
+                                        className="mt-0.5"
                                     />
-                                    <span>{q}</span>
+                                    <span className="flex flex-col leading-tight">
+                                        <span className="capitalize">{q}</span>
+                                        {DATA_QUAL_DESCRIPTIONS[q] && (
+                                            <span className="text-[10px] text-muted-foreground">{DATA_QUAL_DESCRIPTIONS[q]}</span>
+                                        )}
+                                    </span>
                                 </label>
                             )
                         })}
