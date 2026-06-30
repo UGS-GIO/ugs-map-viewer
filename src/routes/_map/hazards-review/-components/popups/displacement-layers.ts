@@ -99,3 +99,14 @@ export function getUnitsLabelForType(type: DisplacementType): string {
 // the data (NOT IN excluded), so a new backend category still shows by default —
 // it just won't be sorted until added here.
 export const DATA_QUAL_ORDER = ['high', 'medium', 'low', 'very low', 'unknown'] as const
+
+// Categories shown by default. Reviewers start scoped to trustworthy data;
+// everything below medium is excluded until they opt back in. "Reset" returns
+// to this set, not to all-visible.
+export const DEFAULT_VISIBLE_DATA_QUALS = ['high', 'medium'] as const
+
+// Default exclusion set = every known category that isn't visible by default.
+// Stored as exclusions to match excludedDataQualsByType's "store what's hidden"
+// model. Categories absent from a given type's data are harmless extras here.
+export const DEFAULT_EXCLUDED_DATA_QUALS: readonly string[] =
+    DATA_QUAL_ORDER.filter(q => !(DEFAULT_VISIBLE_DATA_QUALS as readonly string[]).includes(q))

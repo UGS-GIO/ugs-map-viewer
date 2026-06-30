@@ -1,7 +1,9 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useCallback, useMemo, type ReactNode } from 'react'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import {
     DISPLACEMENT_LAYER_TYPES,
     CHARTED_TYPES,
+    DEFAULT_EXCLUDED_DATA_QUALS,
     isChartedType,
     isPeriodKeyedType,
     type ChartedType,
@@ -56,59 +58,171 @@ interface DisplacementFilterState {
 
 const DisplacementFilterContext = createContext<DisplacementFilterState | null>(null)
 
+// Persisted as a JSON string inside the shared `filters` search record (the same
+// per-layer filter slot every map uses — see useLayerFilter / _map.tsx), keyed by
+// the displacement layer group. year = period/water-year override;
+// thresholds/basins/excludedQuals are keyed by displacement type. An absent
+// per-type `excludedQuals` entry means the high/medium default applies.
+const DISPLACEMENT_FILTER_KEY = 'Displacement Contours'
+
+interface DisplacementSearch {
+    year?: string
+    thresholds?: Record<string, number>
+    basins?: Record<string, string[]>
+    excludedQuals?: Record<string, string[]>
+}
+
+const DEFAULT_EXCLUDED_SET = new Set<string>(DEFAULT_EXCLUDED_DATA_QUALS)
+const isDefaultQuals = (arr: readonly string[]): boolean =>
+    arr.length === DEFAULT_EXCLUDED_SET.size && arr.every(q => DEFAULT_EXCLUDED_SET.has(q))
+
+// Stored exclusion array for a type, falling back to the high/medium default
+// when the URL hasn't recorded one.
+const readExcluded = (d: DisplacementSearch | undefined, type: DisplacementType): string[] =>
+    d?.excludedQuals?.[type] ?? [...DEFAULT_EXCLUDED_DATA_QUALS]
+
+// Collapse an all-default displacement object to undefined so the URL param
+// drops out entirely once every filter is back at its default.
+function pruneDisplacement(d: DisplacementSearch): DisplacementSearch | undefined {
+    const thresholds = d.thresholds && Object.keys(d.thresholds).length ? d.thresholds : undefined
+    const basins = d.basins && Object.values(d.basins).some(a => a && a.length) ? d.basins : undefined
+    const excludedQuals = d.excludedQuals && Object.keys(d.excludedQuals).length ? d.excludedQuals : undefined
+    if (!d.year && !thresholds && !basins && !excludedQuals) return undefined
+    return {
+        ...(d.year ? { year: d.year } : {}),
+        ...(thresholds ? { thresholds } : {}),
+        ...(basins ? { basins } : {}),
+        ...(excludedQuals ? { excludedQuals } : {}),
+    }
+}
+
+// Parse the JSON-encoded displacement entry out of the `filters` record. Returns
+// undefined for a missing/blank/corrupt value so the provider falls back to
+// defaults instead of throwing on a hand-edited URL.
+function parseDisplacement(raw: string | undefined): DisplacementSearch | undefined {
+    if (!raw) return undefined
+    try {
+        const o = JSON.parse(raw)
+        return o && typeof o === 'object' && !Array.isArray(o) ? (o as DisplacementSearch) : undefined
+    } catch {
+        return undefined
+    }
+}
+
 export function DisplacementFilterProvider({ children }: { children: ReactNode }) {
-    const [yearOverride, setYearOverride] = useState<string | null>(null)
-    const [thresholdsIn, setThresholdsIn] = useState<Record<ChartedType, ThresholdState>>({
-        'Cumulative': null,
-        'Yearly': null,
-    })
-    const [basinsByType, setBasinsByType] = useState<Record<DisplacementType, ReadonlySet<string>>>({
-        'Cumulative': new Set(),
-        'Yearly': new Set(),
-        'Vertical Displacement Rate': new Set(),
-    })
-    const [excludedDataQualsByType, setExcludedDataQualsByType] = useState<Record<DisplacementType, ReadonlySet<string>>>({
-        'Cumulative': new Set(),
-        'Yearly': new Set(),
-        'Vertical Displacement Rate': new Set(),
-    })
+    // Filter state lives in the shared `filters` URL record (the same per-layer
+    // filter slot every map uses), JSON-encoded under DISPLACEMENT_FILTER_KEY, so
+    // it survives reloads and is shareable. strict:false matches useLayerFilter.
+    const navigate = useNavigate()
+    const search = useSearch({ strict: false }) as { filters?: Record<string, string> }
+    const raw = search.filters?.[DISPLACEMENT_FILTER_KEY]
+    const d = useMemo(() => parseDisplacement(raw), [raw])
 
-    function setThreshold(type: ChartedType, n: ThresholdState) {
-        setThresholdsIn(prev => ({ ...prev, [type]: n }))
-    }
+    const yearOverride = d?.year ?? null
 
-    function toggleDataQual(type: DisplacementType, qual: string) {
-        setExcludedDataQualsByType(prev => {
-            const next = new Set(prev[type])
-            if (next.has(qual)) next.delete(qual)
-            else next.add(qual)
-            return { ...prev, [type]: next }
+    const thresholdsIn = useMemo<Record<ChartedType, ThresholdState>>(() => ({
+        'Cumulative': d?.thresholds?.['Cumulative'] ?? null,
+        'Yearly': d?.thresholds?.['Yearly'] ?? null,
+    }), [d?.thresholds])
+
+    const basinsByType = useMemo<Record<DisplacementType, ReadonlySet<string>>>(() => ({
+        'Cumulative': new Set(d?.basins?.['Cumulative'] ?? []),
+        'Yearly': new Set(d?.basins?.['Yearly'] ?? []),
+        'Vertical Displacement Rate': new Set(d?.basins?.['Vertical Displacement Rate'] ?? []),
+    }), [d?.basins])
+
+    const excludedQualsRec = d?.excludedQuals
+    const excludedDataQualsByType = useMemo<Record<DisplacementType, ReadonlySet<string>>>(() => ({
+        'Cumulative': new Set(excludedQualsRec?.['Cumulative'] ?? DEFAULT_EXCLUDED_DATA_QUALS),
+        'Yearly': new Set(excludedQualsRec?.['Yearly'] ?? DEFAULT_EXCLUDED_DATA_QUALS),
+        'Vertical Displacement Rate': new Set(excludedQualsRec?.['Vertical Displacement Rate'] ?? DEFAULT_EXCLUDED_DATA_QUALS),
+    }), [excludedQualsRec])
+
+    // All writes route through the shared `filters` record: read the current
+    // displacement JSON, apply the mutation, prune to undefined when all-default,
+    // and merge back without disturbing other layers' filter entries (e.g. UCRC).
+    // Mirrors useLayerFilter's writeCql.
+    const update = useCallback((mut: (cur: DisplacementSearch) => DisplacementSearch) => {
+        navigate({
+            to: '.',
+            replace: true,
+            search: (prev: Record<string, unknown>) => {
+                const prevFilters = prev.filters && typeof prev.filters === 'object' && !Array.isArray(prev.filters)
+                    ? { ...(prev.filters as Record<string, string>) }
+                    : {}
+                const cur = parseDisplacement(prevFilters[DISPLACEMENT_FILTER_KEY]) ?? {}
+                const next = pruneDisplacement(mut(cur))
+                if (next) prevFilters[DISPLACEMENT_FILTER_KEY] = JSON.stringify(next)
+                else delete prevFilters[DISPLACEMENT_FILTER_KEY]
+                return { ...prev, filters: Object.keys(prevFilters).length > 0 ? prevFilters : undefined }
+            },
         })
-    }
+    }, [navigate])
 
-    function clearDataQuals(type: DisplacementType) {
-        setExcludedDataQualsByType(prev => ({ ...prev, [type]: new Set() }))
-    }
+    const setYearOverride = useCallback((y: string | null) => {
+        update(cur => ({ ...cur, year: y ?? undefined }))
+    }, [update])
 
-    function addBasin(type: DisplacementType, location: string) {
-        setBasinsByType(prev => {
-            const next = new Set(prev[type])
-            next.add(location)
-            return { ...prev, [type]: next }
+    const setThreshold = useCallback((type: ChartedType, n: ThresholdState) => {
+        update(cur => {
+            const thresholds = { ...cur.thresholds }
+            if (n === null) delete thresholds[type]
+            else thresholds[type] = n
+            return { ...cur, thresholds }
         })
-    }
+    }, [update])
 
-    function removeBasin(type: DisplacementType, location: string) {
-        setBasinsByType(prev => {
-            const next = new Set(prev[type])
-            next.delete(location)
-            return { ...prev, [type]: next }
+    const toggleDataQual = useCallback((type: DisplacementType, qual: string) => {
+        update(cur => {
+            const set = new Set(readExcluded(cur, type))
+            if (set.has(qual)) set.delete(qual)
+            else set.add(qual)
+            const arr = [...set]
+            const excludedQuals = { ...cur.excludedQuals }
+            // Drop the key when back at the default so the URL stays clean.
+            if (isDefaultQuals(arr)) delete excludedQuals[type]
+            else excludedQuals[type] = arr
+            return { ...cur, excludedQuals }
         })
-    }
+    }, [update])
 
-    function clearBasins(type: DisplacementType) {
-        setBasinsByType(prev => ({ ...prev, [type]: new Set() }))
-    }
+    // "Reset" returns to the high/medium default = drop the per-type key.
+    const clearDataQuals = useCallback((type: DisplacementType) => {
+        update(cur => {
+            if (!cur.excludedQuals?.[type]) return cur
+            const excludedQuals = { ...cur.excludedQuals }
+            delete excludedQuals[type]
+            return { ...cur, excludedQuals }
+        })
+    }, [update])
+
+    const addBasin = useCallback((type: DisplacementType, location: string) => {
+        update(cur => {
+            const set = new Set(cur.basins?.[type] ?? [])
+            set.add(location)
+            return { ...cur, basins: { ...cur.basins, [type]: [...set] } }
+        })
+    }, [update])
+
+    const removeBasin = useCallback((type: DisplacementType, location: string) => {
+        update(cur => {
+            const set = new Set(cur.basins?.[type] ?? [])
+            set.delete(location)
+            const basins = { ...cur.basins }
+            if (set.size) basins[type] = [...set]
+            else delete basins[type]
+            return { ...cur, basins }
+        })
+    }, [update])
+
+    const clearBasins = useCallback((type: DisplacementType) => {
+        update(cur => {
+            if (!cur.basins?.[type]) return cur
+            const basins = { ...cur.basins }
+            delete basins[type]
+            return { ...cur, basins }
+        })
+    }, [update])
 
     return (
         <DisplacementFilterContext.Provider value={{ yearOverride, thresholdsIn, basinsByType, excludedDataQualsByType, setYearOverride, setThreshold, addBasin, removeBasin, clearBasins, toggleDataQual, clearDataQuals }}>

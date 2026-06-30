@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import {
+    DEFAULT_EXCLUDED_DATA_QUALS,
     DISPLACEMENT_LAYER_TYPES,
     getStyleNameForType,
     isChartedType,
@@ -14,6 +15,13 @@ import {
     type ChartedType,
     type DisplacementType,
 } from './displacement-layers'
+
+// Compare a live exclusion set against the high/medium default so "dirty" means
+// "the reviewer changed data-quality from the default", not "anything excluded".
+function isDefaultDataQuals(excluded: ReadonlySet<string>): boolean {
+    return excluded.size === DEFAULT_EXCLUDED_DATA_QUALS.length
+        && DEFAULT_EXCLUDED_DATA_QUALS.every(q => excluded.has(q))
+}
 import { useDisplacementBasinsForType, useDisplacementDataQualsForType, useDisplacementSldBins, useDisplacementYearsForType } from './use-displacement-queries'
 import { type SldBin } from './displacement-sld-legend'
 
@@ -51,19 +59,20 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
         [allBasins, selectedBasins],
     )
     const excludedQuals = excludedDataQualsByType[typeValue]
+    const dataQualsDirty = !isDefaultDataQuals(excludedQuals)
 
     // Year dropdown always reflects the effective year (override or latest).
     // Empty string is a transient state only while features are still loading.
     const displayYear = effectiveYear && years.includes(effectiveYear) ? effectiveYear : (years[years.length - 1] ?? '')
     const thresholdIn = isCharted ? effective[typeValue] : 0
     const rawThreshold = isCharted ? thresholdsIn[typeValue] : null
-    const isDirty = yearOverride !== null || rawThreshold !== null || selectedBasins.size > 0 || excludedQuals.size > 0
+    const isDirty = yearOverride !== null || rawThreshold !== null || selectedBasins.size > 0 || dataQualsDirty
 
     function resetLocal() {
         if (yearOverride !== null) setYearOverride(null)
         if (isCharted) setThreshold(typeValue, null)
         if (selectedBasins.size > 0) clearBasins(typeValue)
-        if (excludedQuals.size > 0) clearDataQuals(typeValue)
+        if (dataQualsDirty) clearDataQuals(typeValue)
     }
 
     return (
@@ -136,11 +145,11 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                     <div className="flex items-center justify-between">
                         <Label className="text-xs">
                             Data quality
-                            {excludedQuals.size > 0 && (
-                                <span className="ml-1 text-muted-foreground">· {dataQuals.length - excludedQuals.size}/{dataQuals.length}</span>
+                            {dataQuals.some(q => excludedQuals.has(q)) && (
+                                <span className="ml-1 text-muted-foreground">· {dataQuals.filter(q => !excludedQuals.has(q)).length}/{dataQuals.length}</span>
                             )}
                         </Label>
-                        {excludedQuals.size > 0 && (
+                        {dataQualsDirty && (
                             <Button
                                 variant="ghost"
                                 size="sm"
