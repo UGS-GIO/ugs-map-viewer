@@ -153,14 +153,15 @@ export default function Map() {
 }
 
 function FilteredMapContainer() {
-  const { yearOverride, basinsByType } = useDisplacementFilters()
+  const { yearOverridesByType, basinsByType } = useDisplacementFilters()
   const latestByType = useDisplacementLatestYearByType()
   const layerFilters = useDisplacementLayerFilters()
-  // Build a per-type concrete year map: user pick wins, else latest from data.
+  // Build a per-type concrete year map: that type's user pick wins, else latest
+  // from data. Per-type so one layer's year never leaks into another's popup.
   const effectiveYearByType: Record<DisplacementType, string | null> = {
-    'Cumulative': yearOverride ?? latestByType['Cumulative'] ?? null,
-    'Yearly': yearOverride ?? latestByType['Yearly'] ?? null,
-    'Vertical Displacement Rate': yearOverride ?? latestByType['Vertical Displacement Rate'] ?? null,
+    'Cumulative': yearOverridesByType['Cumulative'] ?? latestByType['Cumulative'] ?? null,
+    'Yearly': yearOverridesByType['Yearly'] ?? latestByType['Yearly'] ?? null,
+    'Vertical Displacement Rate': yearOverridesByType['Vertical Displacement Rate'] ?? latestByType['Vertical Displacement Rate'] ?? null,
   }
   const popupFeatureFilter = makeDisplacementPopupFeatureFilter({ effectiveYearByType, basinsByType })
   return (

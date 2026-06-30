@@ -108,7 +108,8 @@ function combinedBbox(features: DisplacementFeature[]): [number, number, number,
 }
 
 function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
-    const { yearOverride, basinsByType, excludedDataQualsByType, addBasin, removeBasin, setYearOverride, clearBasins } = useDisplacementFilters()
+    const { yearOverridesByType, basinsByType, excludedDataQualsByType, addBasin, removeBasin, setYearOverride, clearBasins } = useDisplacementFilters()
+    const yearOverride = yearOverridesByType[typeValue]
     // Year is mandatory now (no "all years" sentinel): falls back to the
     // latest available year for this type while the user hasn't picked one.
     const year = useEffectiveYear(typeValue)
@@ -390,7 +391,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                 <div className="flex items-center justify-between mb-1">
                     <h4 className="text-xs font-medium">Uplift &amp; Subsidence by {yearAxisLabel}</h4>
                     {yearOverride !== null && (
-                        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setYearOverride(null)}>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setYearOverride(typeValue, null)}>
                             Reset to latest
                         </Button>
                     )}
@@ -410,7 +411,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                                 stackOffset="sign"
                                 onClick={(state) => {
                                     const label = state?.activeLabel
-                                    if (typeof label === 'string' && label) setYearOverride(label)
+                                    if (typeof label === 'string' && label) setYearOverride(typeValue, label)
                                 }}
                                 style={{ cursor: 'pointer' }}
                             >

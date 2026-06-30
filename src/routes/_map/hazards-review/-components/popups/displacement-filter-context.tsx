@@ -29,13 +29,13 @@ type ThresholdState = number | null
 
 interface DisplacementFilterState {
     /**
-     * User-picked year, or null when no override is set. Consumers should
-     * resolve the effective year per type via {@link useEffectiveYear} so the
-     * map/charts always have a concrete year (null → latest from the SLD data).
-     * The "all years" sentinel was removed: returning every nested window for
-     * Cumulative made popups dump duplicate rows per overlap.
+     * Per-type user-picked year, or null when no override is set for that type.
+     * Per-type (not global) so clicking a year on one layer's chart never
+     * retargets another layer. Consumers resolve the effective year via
+     * {@link useEffectiveYear} (null → latest from the SLD data). The "all years"
+     * sentinel was removed: every nested Cumulative window dumped duplicate rows.
      */
-    yearOverride: string | null
+    yearOverridesByType: Record<DisplacementType, string | null>
     /** Per-charted-type threshold override (null = SLD default). See {@link useEffectiveThresholdsIn}. */
     thresholdsIn: Record<ChartedType, ThresholdState>
     /** Selected basin locations per displacement type. Empty set = no basin filter (all basins). */
@@ -47,7 +47,7 @@ interface DisplacementFilterState {
      * backend category shows by default until someone unchecks it.
      */
     excludedDataQualsByType: Record<DisplacementType, ReadonlySet<string>>
-    setYearOverride: (y: string | null) => void
+    setYearOverride: (type: DisplacementType, y: string | null) => void
     setThreshold: (type: ChartedType, n: ThresholdState) => void
     addBasin: (type: DisplacementType, location: string) => void
     removeBasin: (type: DisplacementType, location: string) => void
@@ -66,7 +66,7 @@ const DisplacementFilterContext = createContext<DisplacementFilterState | null>(
 const DISPLACEMENT_FILTER_KEY = 'Displacement Contours'
 
 interface DisplacementSearch {
-    year?: string
+    years?: Record<string, string>
     thresholds?: Record<string, number>
     basins?: Record<string, string[]>
     excludedQuals?: Record<string, string[]>
@@ -84,12 +84,13 @@ const readExcluded = (d: DisplacementSearch | undefined, type: DisplacementType)
 // Collapse an all-default displacement object to undefined so the URL param
 // drops out entirely once every filter is back at its default.
 function pruneDisplacement(d: DisplacementSearch): DisplacementSearch | undefined {
+    const years = d.years && Object.values(d.years).some(v => v) ? d.years : undefined
     const thresholds = d.thresholds && Object.keys(d.thresholds).length ? d.thresholds : undefined
     const basins = d.basins && Object.values(d.basins).some(a => a && a.length) ? d.basins : undefined
     const excludedQuals = d.excludedQuals && Object.keys(d.excludedQuals).length ? d.excludedQuals : undefined
-    if (!d.year && !thresholds && !basins && !excludedQuals) return undefined
+    if (!years && !thresholds && !basins && !excludedQuals) return undefined
     return {
-        ...(d.year ? { year: d.year } : {}),
+        ...(years ? { years } : {}),
         ...(thresholds ? { thresholds } : {}),
         ...(basins ? { basins } : {}),
         ...(excludedQuals ? { excludedQuals } : {}),
@@ -118,7 +119,12 @@ export function DisplacementFilterProvider({ children }: { children: ReactNode }
     const raw = search.filters?.[DISPLACEMENT_FILTER_KEY]
     const d = useMemo(() => parseDisplacement(raw), [raw])
 
-    const yearOverride = d?.year ?? null
+    const yearsRec = d?.years
+    const yearOverridesByType = useMemo<Record<DisplacementType, string | null>>(() => ({
+        'Cumulative': yearsRec?.['Cumulative'] ?? null,
+        'Yearly': yearsRec?.['Yearly'] ?? null,
+        'Vertical Displacement Rate': yearsRec?.['Vertical Displacement Rate'] ?? null,
+    }), [yearsRec])
 
     const thresholdsIn = useMemo<Record<ChartedType, ThresholdState>>(() => ({
         'Cumulative': d?.thresholds?.['Cumulative'] ?? null,
@@ -159,8 +165,13 @@ export function DisplacementFilterProvider({ children }: { children: ReactNode }
         })
     }, [navigate])
 
-    const setYearOverride = useCallback((y: string | null) => {
-        update(cur => ({ ...cur, year: y ?? undefined }))
+    const setYearOverride = useCallback((type: DisplacementType, y: string | null) => {
+        update(cur => {
+            const years = { ...cur.years }
+            if (y === null) delete years[type]
+            else years[type] = y
+            return { ...cur, years }
+        })
     }, [update])
 
     const setThreshold = useCallback((type: ChartedType, n: ThresholdState) => {
@@ -225,7 +236,7 @@ export function DisplacementFilterProvider({ children }: { children: ReactNode }
     }, [update])
 
     return (
-        <DisplacementFilterContext.Provider value={{ yearOverride, thresholdsIn, basinsByType, excludedDataQualsByType, setYearOverride, setThreshold, addBasin, removeBasin, clearBasins, toggleDataQual, clearDataQuals }}>
+        <DisplacementFilterContext.Provider value={{ yearOverridesByType, thresholdsIn, basinsByType, excludedDataQualsByType, setYearOverride, setThreshold, addBasin, removeBasin, clearBasins, toggleDataQual, clearDataQuals }}>
             {children}
         </DisplacementFilterContext.Provider>
     )
@@ -243,9 +254,9 @@ export function useDisplacementFilters(): DisplacementFilterState {
  * while the SLD-feature query is loading.
  */
 export function useEffectiveYear(type: DisplacementType): string | null {
-    const { yearOverride } = useDisplacementFilters()
+    const { yearOverridesByType } = useDisplacementFilters()
     const latestByType = useDisplacementLatestYearByType()
-    return yearOverride ?? latestByType[type] ?? null
+    return yearOverridesByType[type] ?? latestByType[type] ?? null
 }
 
 /**
@@ -277,14 +288,14 @@ function quoteCqlLiteral(value: string): string {
 }
 
 export function useDisplacementLayerFilters(): Record<string, string> {
-    const { yearOverride, basinsByType, excludedDataQualsByType } = useDisplacementFilters()
+    const { yearOverridesByType, basinsByType, excludedDataQualsByType } = useDisplacementFilters()
     const effective = useEffectiveThresholdsIn()
     const latestByType = useDisplacementLatestYearByType()
     return useMemo(() => {
         const out: Record<DisplacementLayerTitle, string> = {} as Record<DisplacementLayerTitle, string>
         for (const [title, typeValue] of Object.entries(DISPLACEMENT_LAYER_TYPES) as [DisplacementLayerTitle, DisplacementType][]) {
             const clauses: string[] = []
-            const effectiveYear = yearOverride ?? latestByType[typeValue] ?? null
+            const effectiveYear = yearOverridesByType[typeValue] ?? latestByType[typeValue] ?? null
             if (effectiveYear) {
                 if (isPeriodKeyedType(typeValue)) {
                     // Period-keyed types (Cumulative, Vertical Displacement Rate) match
@@ -321,5 +332,5 @@ export function useDisplacementLayerFilters(): Record<string, string> {
             if (clauses.length > 0) out[title] = clauses.join(' AND ')
         }
         return out
-    }, [yearOverride, latestByType, effective, basinsByType, excludedDataQualsByType])
+    }, [yearOverridesByType, latestByType, effective, basinsByType, excludedDataQualsByType])
 }

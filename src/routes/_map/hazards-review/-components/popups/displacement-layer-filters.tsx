@@ -38,7 +38,8 @@ export function renderDisplacementLayerFilters(layerTitle: string): React.ReactN
 }
 
 function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }) {
-    const { yearOverride, thresholdsIn, basinsByType, excludedDataQualsByType, setYearOverride, setThreshold, addBasin, removeBasin, clearBasins, toggleDataQual, clearDataQuals } = useDisplacementFilters()
+    const { yearOverridesByType, thresholdsIn, basinsByType, excludedDataQualsByType, setYearOverride, setThreshold, addBasin, removeBasin, clearBasins, toggleDataQual, clearDataQuals } = useDisplacementFilters()
+    const yearOverride = yearOverridesByType[typeValue]
     const effective = useEffectiveThresholdsIn()
 
     const isCharted = isChartedType(typeValue)
@@ -69,7 +70,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
     const isDirty = yearOverride !== null || rawThreshold !== null || selectedBasins.size > 0 || dataQualsDirty
 
     function resetLocal() {
-        if (yearOverride !== null) setYearOverride(null)
+        if (yearOverride !== null) setYearOverride(typeValue, null)
         if (isCharted) setThreshold(typeValue, null)
         if (selectedBasins.size > 0) clearBasins(typeValue)
         if (dataQualsDirty) clearDataQuals(typeValue)
@@ -80,7 +81,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
             {hasYear && (
                 <div className="flex flex-col gap-1">
                     <Label className="text-xs">{yearLabelFor(typeValue)}</Label>
-                    <Select value={displayYear} onValueChange={setYearOverride}>
+                    <Select value={displayYear} onValueChange={(y) => setYearOverride(typeValue, y)}>
                         <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
