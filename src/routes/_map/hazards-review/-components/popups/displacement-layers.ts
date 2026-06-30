@@ -87,7 +87,7 @@ export function isPeriodKeyedType(t: DisplacementType): boolean {
 const DISPLACEMENT_UNITS_LABEL: Record<DisplacementType, string> = {
     'Cumulative': 'inches of vertical displacement per time period',
     'Yearly': 'inches of vertical displacement',
-    'Vertical Displacement Rate': 'inches of vertical displacement per time period',
+    'Vertical Displacement Rate': 'in/year',
 }
 
 export function getUnitsLabelForType(type: DisplacementType): string {
