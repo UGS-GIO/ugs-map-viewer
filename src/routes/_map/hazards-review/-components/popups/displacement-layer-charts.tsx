@@ -388,14 +388,14 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
 
             <div>
                 <div className="flex items-center justify-between mb-1">
-                    <h4 className="text-xs font-medium">Subsidence &amp; Uplift by {yearAxisLabel}</h4>
+                    <h4 className="text-xs font-medium">Uplift &amp; Subsidence by {yearAxisLabel}</h4>
                     {yearOverride !== null && (
                         <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setYearOverride(null)}>
                             Reset to latest
                         </Button>
                     )}
                 </div>
-                <p className="text-xs text-muted-foreground mb-1">Bars below zero = subsidence, above = uplift. Stacked by displacement range (in); colors match the map. Click a year column to filter to that year.</p>
+                <p className="text-xs text-muted-foreground mb-1">Bars above zero = uplift, below zero = subsidence. Stacked by displacement range (in); colors match the map. Click a year column to filter to that year.</p>
                 <div className="w-full" style={{ height: CHART_HEIGHT_PX }}>
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
                         // Fixed numeric height so recharts' ResponsiveContainer never
@@ -438,8 +438,8 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                     )}
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-x-3 px-2 text-xs text-foreground">
-                    <SignedLegendGroup label="Subsidence (below zero)" bins={subsidenceBins} />
                     <SignedLegendGroup label="Uplift (above zero)" bins={upliftBins} />
+                    <SignedLegendGroup label="Subsidence (below zero)" bins={subsidenceBins} />
                 </div>
                 <p className="mt-1 px-2 text-xs italic text-muted-foreground">
                     Units: {getUnitsLabelForType(typeValue)}.
@@ -680,8 +680,8 @@ interface AdvancedMetricsProps {
 // need the headline KPIs can ignore the section, but anyone QA-ing a basin
 // has the distribution shape + asymmetry numbers one click away.
 function AdvancedMetrics({ isLoading, signedAreaSqMi, totalFootprintSqMi, quantiles, threshold }: AdvancedMetricsProps) {
-    const ratio = signedAreaSqMi.uplift > 0
-        ? signedAreaSqMi.subsiding / signedAreaSqMi.uplift
+    const ratio = signedAreaSqMi.subsiding > 0
+        ? signedAreaSqMi.uplift / signedAreaSqMi.subsiding
         : null
     const coveragePct = totalFootprintSqMi > 0
         ? (signedAreaSqMi.subsiding / totalFootprintSqMi) * 100
@@ -705,11 +705,11 @@ function AdvancedMetrics({ isLoading, signedAreaSqMi, totalFootprintSqMi, quanti
                         sub="distribution tail"
                     />
                     <KPI
-                        label="Subs / Uplift"
+                        label="Uplift / Subs"
                         value={isLoading
                             ? '—'
                             : (ratio === null ? '∞' : ratio.toFixed(2))}
-                        sub={`${fmt1(signedAreaSqMi.subsiding)} / ${fmt1(signedAreaSqMi.uplift)} mi²`}
+                        sub={`${fmt1(signedAreaSqMi.uplift)} / ${fmt1(signedAreaSqMi.subsiding)} mi²`}
                     />
                     <KPI
                         label="Subsiding coverage"
