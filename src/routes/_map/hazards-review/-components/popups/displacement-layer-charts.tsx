@@ -401,12 +401,8 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                         </ResponsiveContainer>
                     )}
                 </div>
-                <div className="mt-2 grid grid-cols-2 gap-x-3 px-2 text-xs text-foreground">
-                    <SignedLegendGroup label="Uplift (above zero)" bins={upliftBins} />
-                    <SignedLegendGroup label="Subsidence (below zero)" bins={subsidenceBins} />
-                </div>
-                <p className="mt-1 px-2 text-xs italic text-muted-foreground">
-                    Units: {getUnitsLabelForType(typeValue)}.
+                <p className="mt-2 px-2 text-xs italic text-muted-foreground">
+                    Units: {getUnitsLabelForType(typeValue)}. Swatch colors are defined in the layer's Legend.
                 </p>
             </div>
 
@@ -580,25 +576,6 @@ function StackedBarTooltip({ active, payload, label }: { active?: boolean; paylo
                     </div>
                 ))}
             </div>
-        </div>
-    )
-}
-
-function SignedLegendGroup({ label, bins }: { label: string; bins: SldBin[] }) {
-    if (bins.length === 0) return <div />
-    return (
-        <div className="flex flex-col gap-0.5">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-            {bins.map(bin => (
-                <div key={bin.name} className="flex items-center gap-1.5 min-w-0">
-                    <span
-                        className="inline-block h-2.5 w-2.5 shrink-0 ring-1 ring-foreground/40"
-                        style={{ background: bin.color }}
-                        aria-hidden
-                    />
-                    <span className="truncate">{bin.title}</span>
-                </div>
-            ))}
         </div>
     )
 }

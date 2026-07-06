@@ -19,21 +19,32 @@ interface LegendSwatchGridProps {
      */
     isChecked?: (key: string) => boolean
     onToggle?: (key: string) => void
+    /**
+     * 'auto' (default): auto-fitting columns (2-up when there's room, 1-up on
+     * narrow screens) — fits a single wide categorical field, e.g. UCRC.
+     * 'single': always one column, no minimum item width. Use this when the
+     * grid is already nested inside a narrower split (e.g. a 2-up Uplift/
+     * Subsidence layout) — 'auto's minmax(8rem,...) forces items wider than
+     * their half-width column there and overflows the panel.
+     */
+    columns?: 'auto' | 'single'
 }
 
 /**
- * Shared grid-of-swatches legend body: auto-fitting columns (2-up when the
- * sidebar is wide enough, 1-up on narrow screens) of circular swatch + label
- * rows. Extracted from the UCRC interactive symbology legend so other legends
+ * Shared grid-of-swatches legend body: circular swatch + label rows.
+ * Extracted from the UCRC interactive symbology legend so other legends
  * (e.g. the displacement layers' static Uplift/Subsidence split) can reuse the
- * same visual grid without carrying the checkbox/filter wiring.
+ * same visual style without carrying the checkbox/filter wiring.
  */
-export function LegendSwatchGrid({ items, isChecked, onToggle }: LegendSwatchGridProps) {
+export function LegendSwatchGrid({ items, isChecked, onToggle, columns = 'auto' }: LegendSwatchGridProps) {
     if (items.length === 0) return null
     const interactive = !!onToggle
+    const containerClassName = columns === 'single'
+        ? 'flex flex-col gap-y-1.5'
+        : 'grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-1.5'
 
     return (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-1.5">
+        <div className={containerClassName}>
             {items.map(item => {
                 const swatch = (
                     <span

@@ -32,7 +32,7 @@ function LegendGroup({ label, bins }: { label: string; bins: SldBin[] }) {
     return (
         <div className="flex flex-col gap-1 min-w-0">
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-            <LegendSwatchGrid items={toSwatchItems(bins)} />
+            <LegendSwatchGrid items={toSwatchItems(bins)} columns="single" />
         </div>
     )
 }
@@ -64,7 +64,7 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
             </div>
             {zeroBin && (
                 <div className="border-t border-border/60 pt-1.5">
-                    <LegendSwatchGrid items={toSwatchItems([zeroBin])} />
+                    <LegendSwatchGrid items={toSwatchItems([zeroBin])} columns="single" />
                 </div>
             )}
             <p className="text-xs italic text-muted-foreground">Units: {getUnitsLabelForType(typeValue)}.</p>
