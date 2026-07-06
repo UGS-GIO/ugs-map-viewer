@@ -151,6 +151,37 @@ export function useDisplacementBasinsForType(type: DisplacementType): string[] {
     return useDistinctByType(type, extractLocation)
 }
 
+export interface DisplacementBasinYearIndex {
+    /** Years with at least one feature, per basin. */
+    yearsByBasin: Record<string, ReadonlySet<string>>
+    /** Basins with at least one feature, per year. */
+    basinsByYear: Record<string, ReadonlySet<string>>
+}
+
+const EMPTY_INDEX: DisplacementBasinYearIndex = { yearsByBasin: {}, basinsByYear: {} }
+
+// Cross-index of basin <-> year coverage for a type, built in one pass over
+// the raw feature array. Backs the filter panel's mutual graying: picking a
+// basin narrows which years have data for it, and picking a year narrows
+// which basins have data for it.
+export function useDisplacementBasinYearIndexForType(type: DisplacementType): DisplacementBasinYearIndex {
+    const select = useCallback((features: DisplacementFeature[]): DisplacementBasinYearIndex => {
+        const yearsByBasin: Record<string, Set<string>> = {}
+        const basinsByYear: Record<string, Set<string>> = {}
+        for (const f of features) {
+            if (f.properties.type !== type) continue
+            const basin = f.properties.location
+            const year = getBucketYear(f.properties)
+            if (!basin || !year) continue
+            ;(yearsByBasin[basin] ??= new Set()).add(year)
+            ;(basinsByYear[year] ??= new Set()).add(basin)
+        }
+        return { yearsByBasin, basinsByYear }
+    }, [type])
+    const { data = EMPTY_INDEX } = useQuery({ ...displacementFeaturesQueryOptions(), select })
+    return data
+}
+
 export function useDisplacementDataQualsForType(type: DisplacementType): string[] {
     return useDistinctByType(type, extractDataQual, sortByDataQualOrder)
 }

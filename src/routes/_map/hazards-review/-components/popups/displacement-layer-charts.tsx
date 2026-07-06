@@ -106,7 +106,7 @@ function combinedBbox(features: DisplacementFeature[]): [number, number, number,
 }
 
 function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
-    const { yearOverridesByType, basinsByType, excludedDataQualsByType, addBasin, removeBasin, setYearOverride, clearBasins } = useDisplacementFilters()
+    const { yearOverridesByType, basinsByType, excludedDataQualsByType, addBasin, removeBasin, setYearOverride } = useDisplacementFilters()
     const yearOverride = yearOverridesByType[typeValue]
     // Year is mandatory now (no "all years" sentinel): falls back to the
     // latest available year for this type while the user hasn't picked one.
@@ -419,7 +419,6 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                 isLoading={isLoading}
                 addBasin={addBasin}
                 removeBasin={removeBasin}
-                clearBasins={clearBasins}
                 zoomToBboxes={zoomToBboxes}
             />
         </div>
@@ -441,7 +440,6 @@ interface BasinListProps {
     isLoading: boolean
     addBasin: (type: DisplacementType, location: string) => void
     removeBasin: (type: DisplacementType, location: string) => void
-    clearBasins: (type: DisplacementType) => void
     zoomToBboxes: (bboxes: ([number, number, number, number] | null)[]) => void
 }
 
@@ -456,7 +454,6 @@ function BasinList({
     isLoading,
     addBasin,
     removeBasin,
-    clearBasins,
     zoomToBboxes,
 }: BasinListProps) {
     const [page, setPage] = useState(0)
@@ -471,20 +468,8 @@ function BasinList({
 
     return (
         <div>
-            <div className="flex items-center justify-between mb-1">
-                <h4 className="text-xs font-medium">Subsidence by Basin</h4>
-                {basinFilterActive && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-xs"
-                        onClick={() => clearBasins(typeValue)}
-                    >
-                        Clear filter
-                    </Button>
-                )}
-            </div>
-            <p className="text-xs text-muted-foreground mb-2">Basins ranked by their deepest contour value. Click a row to zoom + filter to that basin. Unselected basins grey out when a filter is active.</p>
+            <h4 className="text-xs font-medium mb-1">Subsidence by Basin</h4>
+            <p className="text-xs text-muted-foreground mb-2">Basins ranked by their deepest contour value. Click a row to zoom + filter to that basin. Unselected basins grey out when a filter is active. Use the basin filter above to clear a selection.</p>
             {isLoading ? (
                 <Skeleton className="h-40 w-full" />
             ) : total === 0 ? (

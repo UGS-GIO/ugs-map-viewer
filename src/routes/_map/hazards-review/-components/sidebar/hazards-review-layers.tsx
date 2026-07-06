@@ -1,21 +1,21 @@
 import { BackToMenuButton } from '@/components/ui/back-to-menu-button'
 import { useCustomLayerList } from '@/hooks/use-custom-layerlist'
 import { useGetLayerConfigs } from '@/hooks/use-get-layer-configs'
-import { renderDisplacementLayerFilters } from '../popups/displacement-layer-filters'
-import { renderDisplacementLayerStats } from '../popups/displacement-layer-charts'
+import { renderDisplacementLayerPanel } from '../popups/displacement-layer-panel'
 
 /**
  * Hazards-review variant of the shared Layers sidebar. Identical layout but
- * injects per-layer subsidence filters (Water Year for Yearly; threshold for
- * Cumulative + Yearly; nothing for Vertical Displacement Rate) inside each
- * displacement layer's collapsible Filters slot.
+ * injects a combined filters + stats panel (basin/year/data-quality/threshold
+ * controls plus the KPI/chart/basin-list stats — ALL-4819) inside each
+ * displacement layer's collapsible Filters slot. Nothing is passed for
+ * layerStatsRender any more: the Stats toggle disappears and everything lives
+ * behind the single Filters toggle.
  */
 export function HazardsReviewLayers() {
     const { layerConfigs, isLoading } = useGetLayerConfigs('layers')
     const layerList = useCustomLayerList({
         config: layerConfigs,
-        layerExtrasRender: renderDisplacementLayerFilters,
-        layerStatsRender: renderDisplacementLayerStats,
+        layerExtrasRender: renderDisplacementLayerPanel,
     })
 
     if (isLoading) {

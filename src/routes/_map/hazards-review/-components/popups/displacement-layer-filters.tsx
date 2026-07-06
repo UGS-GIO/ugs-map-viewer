@@ -23,7 +23,7 @@ function isDefaultDataQuals(excluded: ReadonlySet<string>): boolean {
     return excluded.size === DEFAULT_EXCLUDED_DATA_QUALS.length
         && DEFAULT_EXCLUDED_DATA_QUALS.every(q => excluded.has(q))
 }
-import { useDisplacementBasinsForType, useDisplacementDataQualsForType, useDisplacementSldBins, useDisplacementYearsForType } from './use-displacement-queries'
+import { useDisplacementBasinsForType, useDisplacementBasinYearIndexForType, useDisplacementDataQualsForType, useDisplacementSldBins, useDisplacementYearsForType } from './use-displacement-queries'
 import { type SldBin } from './displacement-sld-legend'
 
 // Label the year dropdown by type semantics: 'Water Year' for Yearly,
@@ -54,6 +54,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
     const allBasins = useDisplacementBasinsForType(typeValue)
     const dataQuals = useDisplacementDataQualsForType(typeValue)
     const effectiveYear = useEffectiveYear(typeValue)
+    const { yearsByBasin, basinsByYear } = useDisplacementBasinYearIndexForType(typeValue)
 
     const selectedBasins = basinsByType[typeValue]
     const availableBasins = useMemo(
@@ -67,6 +68,22 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
     // Empty string is a transient state only while features are still loading.
     const displayYear = effectiveYear && years.includes(effectiveYear) ? effectiveYear : (years[years.length - 1] ?? '')
     const thresholdIn = isCharted ? effective[typeValue] : 0
+
+    // Mutual graying between the basin and year pickers: once basins are
+    // selected, years with no data for ANY selected basin grey out (union, not
+    // intersection — reviewing basin A's 2019 data and basin B's 2021 data in
+    // the same session is normal). Once a year is in effect, basins with no
+    // data for that year grey out in the "add a basin" list. Both are visual
+    // hints only — grayed options stay selectable, nothing is hidden.
+    const yearsWithDataForSelectedBasins = useMemo(() => {
+        if (selectedBasins.size === 0) return null
+        const union = new Set<string>()
+        for (const b of selectedBasins) {
+            for (const y of yearsByBasin[b] ?? []) union.add(y)
+        }
+        return union
+    }, [selectedBasins, yearsByBasin])
+    const basinsWithDataForEffectiveYear = hasYear ? (basinsByYear[displayYear] ?? new Set<string>()) : null
     const rawThreshold = isCharted ? thresholdsIn[typeValue] : null
     const isDirty = yearOverride !== null || rawThreshold !== null || selectedBasins.size > 0 || dataQualsDirty
 
@@ -79,21 +96,6 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
 
     return (
         <div className="flex flex-col gap-2 px-2 py-1">
-            {hasYear && (
-                <div className="flex flex-col gap-1">
-                    <Label className="text-xs">{yearLabelFor(typeValue)}</Label>
-                    <Select value={displayYear} onValueChange={(y) => setYearOverride(typeValue, y)}>
-                        <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                            {years.map(y => <SelectItem key={y} value={y}>{y}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                    {yearOverride === null && (
-                        <p className="text-xs text-muted-foreground">Defaults to latest. Pick a year above.</p>
-                    )}
-                </div>
-            )}
-
             <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
                     <Label className="text-xs">
@@ -137,10 +139,47 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                         <SelectValue placeholder={availableBasins.length === 0 ? 'All basins selected' : 'Add a basin…'} />
                     </SelectTrigger>
                     <SelectContent>
-                        {availableBasins.map(b => <SelectItem key={b} value={b}>{b}</SelectItem>)}
+                        {availableBasins.map(b => (
+                            <SelectItem
+                                key={b}
+                                value={b}
+                                disabled={basinsWithDataForEffectiveYear !== null && !basinsWithDataForEffectiveYear.has(b)}
+                            >
+                                {b}
+                            </SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
+                {basinsWithDataForEffectiveYear !== null && availableBasins.some(b => !basinsWithDataForEffectiveYear.has(b)) && (
+                    <p className="text-xs text-muted-foreground">Greyed-out basins have no data for {displayYear}.</p>
+                )}
             </div>
+
+            {hasYear && (
+                <div className="flex flex-col gap-1">
+                    <Label className="text-xs">{yearLabelFor(typeValue)}</Label>
+                    <Select value={displayYear} onValueChange={(y) => setYearOverride(typeValue, y)}>
+                        <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            {years.map(y => (
+                                <SelectItem
+                                    key={y}
+                                    value={y}
+                                    disabled={yearsWithDataForSelectedBasins !== null && !yearsWithDataForSelectedBasins.has(y)}
+                                >
+                                    {y}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    {yearOverride === null && (
+                        <p className="text-xs text-muted-foreground">Defaults to latest. Pick a year above.</p>
+                    )}
+                    {yearsWithDataForSelectedBasins !== null && years.some(y => !yearsWithDataForSelectedBasins.has(y)) && (
+                        <p className="text-xs text-muted-foreground">Greyed-out years have no data for the selected basin(s).</p>
+                    )}
+                </div>
+            )}
 
             {dataQuals.length > 0 && (
                 <div className="flex flex-col gap-1">
