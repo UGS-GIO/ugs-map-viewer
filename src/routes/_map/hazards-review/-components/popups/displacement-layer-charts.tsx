@@ -5,8 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { BarChart, Bar, Rectangle, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label as RechartsLabel, type BarShapeProps } from 'recharts'
 import type { LayerContentProps } from '@/components/maps/popups/types'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { ChevronRightIcon } from 'lucide-react'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import { useMap } from '@/hooks/use-map'
 import { DISPLACEMENT_LAYER_TYPES, getStyleNameForType, getUnitsLabelForType, isChartedType, isDisplacementLayerTitle, type ChartedType, type DisplacementType } from './displacement-layers'
@@ -195,24 +193,6 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
         [auditOverThreshold]
     )
 
-    // Subsiding vs uplift area at the SLD-default bound. Used by the
-    // subsidence/uplift ratio metric and the areal-coverage breakdown.
-    const signedAreaSqMi = useMemo(() => {
-        let sub = 0, up = 0
-        for (const f of auditOverThreshold) {
-            const v = f.properties.value_inch
-            const a = area(f) * SQM_TO_SQMI
-            if (v < 0) sub += a
-            else if (v > 0) up += a
-        }
-        return { subsiding: sub, uplift: up }
-    }, [auditOverThreshold])
-
-    const totalFootprintSqMi = useMemo(
-        () => filtered.reduce((acc, f) => acc + area(f) * SQM_TO_SQMI, 0),
-        [filtered]
-    )
-
     const maxDisplacement = useMemo(() => {
         let max = 0
         for (const f of filtered) {
@@ -221,15 +201,6 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
         }
         return max
     }, [filtered])
-
-    // Median + p95 |value| over audit-bound features so reviewers see the
-    // distribution shape, not just the worst single contour.
-    const valueQuantiles = useMemo(() => {
-        const vals = auditOverThreshold.map(f => Math.abs(f.properties.value_inch)).sort((a, b) => a - b)
-        if (vals.length === 0) return { median: 0, p95: 0 }
-        const at = (q: number) => vals[Math.min(vals.length - 1, Math.floor(q * vals.length))]
-        return { median: at(0.5), p95: at(0.95) }
-    }, [auditOverThreshold])
 
     const distinctBasins = useMemo(() => new Set(filtered.map(f => f.properties.location)).size, [filtered])
 
@@ -378,14 +349,6 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                 <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
                 <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
             </div>
-
-            <AdvancedMetrics
-                isLoading={isLoading}
-                signedAreaSqMi={signedAreaSqMi}
-                totalFootprintSqMi={totalFootprintSqMi}
-                quantiles={valueQuantiles}
-                threshold={threshold}
-            />
 
             <div>
                 <div className="flex items-center justify-between mb-1">
@@ -666,59 +629,5 @@ function KPI({ label, value, sub }: { label: string; value: string; sub?: string
                 {sub && <div className="text-xs text-muted-foreground">{sub}</div>}
             </CardContent>
         </Card>
-    )
-}
-
-interface AdvancedMetricsProps {
-    isLoading: boolean
-    signedAreaSqMi: { subsiding: number; uplift: number }
-    totalFootprintSqMi: number
-    quantiles: { median: number; p95: number }
-    threshold: number
-}
-
-// Audit-bound deep-dive numbers. Collapsed by default — reviewers who only
-// need the headline KPIs can ignore the section, but anyone QA-ing a basin
-// has the distribution shape + asymmetry numbers one click away.
-function AdvancedMetrics({ isLoading, signedAreaSqMi, totalFootprintSqMi, quantiles, threshold }: AdvancedMetricsProps) {
-    const ratio = signedAreaSqMi.subsiding > 0
-        ? signedAreaSqMi.uplift / signedAreaSqMi.subsiding
-        : null
-    const coveragePct = totalFootprintSqMi > 0
-        ? (signedAreaSqMi.subsiding / totalFootprintSqMi) * 100
-        : 0
-    return (
-        <Collapsible>
-            <CollapsibleTrigger className="group flex w-full items-center justify-between rounded border border-border bg-muted/40 px-2 py-1 text-xs font-medium text-foreground hover:bg-muted/70">
-                <span>Advanced metrics</span>
-                <ChevronRightIcon className="h-3 w-3 transition-transform group-data-[state=open]:rotate-90" />
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-                <div className="mt-2 grid grid-cols-2 gap-2">
-                    <KPI
-                        label="Median |value|"
-                        value={isLoading ? '—' : `${fmt1(quantiles.median)} in`}
-                        sub={`|value| ≥ ${fmt1(threshold)} in`}
-                    />
-                    <KPI
-                        label="p95 |value|"
-                        value={isLoading ? '—' : `${fmt1(quantiles.p95)} in`}
-                        sub="distribution tail"
-                    />
-                    <KPI
-                        label="Uplift / Subs"
-                        value={isLoading
-                            ? '—'
-                            : (ratio === null ? '∞' : ratio.toFixed(2))}
-                        sub={`${fmt1(signedAreaSqMi.uplift)} / ${fmt1(signedAreaSqMi.subsiding)} mi²`}
-                    />
-                    <KPI
-                        label="Subsiding coverage"
-                        value={isLoading ? '—' : `${coveragePct.toFixed(1)}%`}
-                        sub="of feature footprint"
-                    />
-                </div>
-            </CollapsibleContent>
-        </Collapsible>
     )
 }
