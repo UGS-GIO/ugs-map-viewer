@@ -1,9 +1,9 @@
 import { useCallback, useMemo } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { LegendSwatchGrid } from '@/components/maps/legend-swatch-grid'
 import { useLayerFilter } from '@/hooks/use-layer-filter'
 import { useDistinctFieldOptions } from '@/hooks/use-distinct-field-options'
 import type { FilterSchema, FilterFieldKind } from '@/lib/filter/types'
@@ -155,26 +155,17 @@ function CategoryLegendGrid({ schema, field, mode }: { schema: FilterSchema; fie
 
     // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens.
     const renderRows = (items: string[]) => (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-1.5">
-            {items.map(label => (
-                <label key={label} className="flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer">
-                    <Checkbox
-                        className="mt-0.5 shrink-0"
-                        checked={onSet.has(label)}
-                        onCheckedChange={() => toggle(label)}
-                        aria-label={`Toggle ${label}`}
-                    />
-                    <span
-                        className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
-                        style={{ backgroundColor: mode.swatches[label] ?? '#bdbdbd', borderColor: mode.strokes?.[label] ?? 'rgba(0,0,0,0.3)' }}
-                    />
-                    <span className="min-w-0 break-words leading-tight">
-                        {label}
-                        {counts[label] != null && <span className="ml-1 text-muted-foreground">({counts[label].toLocaleString()})</span>}
-                    </span>
-                </label>
-            ))}
-        </div>
+        <LegendSwatchGrid
+            items={items.map(label => ({
+                key: label,
+                label,
+                color: mode.swatches[label] ?? '#bdbdbd',
+                stroke: mode.strokes?.[label],
+                count: counts[label],
+            }))}
+            isChecked={(label) => onSet.has(label)}
+            onToggle={toggle}
+        />
     )
 
     return (

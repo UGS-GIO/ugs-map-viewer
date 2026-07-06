@@ -2,6 +2,7 @@ import { BackToMenuButton } from '@/components/ui/back-to-menu-button'
 import { useCustomLayerList } from '@/hooks/use-custom-layerlist'
 import { useGetLayerConfigs } from '@/hooks/use-get-layer-configs'
 import { renderDisplacementLayerPanel } from '../popups/displacement-layer-panel'
+import { renderDisplacementLegend } from '../popups/displacement-legend'
 
 /**
  * Hazards-review variant of the shared Layers sidebar. Identical layout but
@@ -9,13 +10,15 @@ import { renderDisplacementLayerPanel } from '../popups/displacement-layer-panel
  * controls plus the KPI/chart/basin-list stats — ALL-4819) inside each
  * displacement layer's collapsible Filters slot. Nothing is passed for
  * layerStatsRender any more: the Stats toggle disappears and everything lives
- * behind the single Filters toggle.
+ * behind the single Filters toggle. The Legend slot gets a static Uplift/
+ * Subsidence split (non-clickable — unlike the UCRC symbology legend).
  */
 export function HazardsReviewLayers() {
     const { layerConfigs, isLoading } = useGetLayerConfigs('layers')
     const layerList = useCustomLayerList({
         config: layerConfigs,
         layerExtrasRender: renderDisplacementLayerPanel,
+        layerLegendRender: renderDisplacementLegend,
     })
 
     if (isLoading) {
