@@ -370,7 +370,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                         <ResponsiveContainer width="100%" height={CHART_HEIGHT_PX}>
                             <BarChart
                                 data={stackedAreaByYear}
-                                margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
+                                margin={{ top: 16, right: 4, bottom: 0, left: 0 }}
                                 stackOffset="sign"
                                 onClick={(state) => {
                                     const label = state?.activeLabel

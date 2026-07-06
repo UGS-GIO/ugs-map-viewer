@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { LegendAccordion } from '@/components/maps/legend-accordion';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Toggle } from '@/components/ui/toggle';
 import { LayerDescriptionAccordion } from '@/components/maps/layer-description-accordion';
 import { useQuery } from '@tanstack/react-query';
@@ -34,6 +34,30 @@ interface LayerControlsProps {
     statsContent?: React.ReactNode;
     /** Optional SLD style name forwarded to the legend so it matches the styled map tiles. */
     styleName?: string;
+}
+
+// Tracks its content's real height via ResizeObserver instead of a guessed
+// max-height cap, so the collapse/expand transition never clips taller content.
+function AutoHeightCollapse({ open, children }: { open: boolean; children: React.ReactNode }) {
+    const innerRef = useRef<HTMLDivElement>(null);
+    const [height, setHeight] = useState(0);
+
+    useEffect(() => {
+        const el = innerRef.current;
+        if (!el) return;
+        const observer = new ResizeObserver(([entry]) => setHeight(entry.contentRect.height));
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
+
+    return (
+        <div
+            className="overflow-hidden transition-[max-height] duration-200 ease-out"
+            style={{ maxHeight: open ? height : 0 }}
+        >
+            <div ref={innerRef}>{children}</div>
+        </div>
+    );
 }
 
 const LayerControls: React.FC<LayerControlsProps> = ({
@@ -213,22 +237,18 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     styleName={styleName}
                 />
                 {filtersContent && (
-                    <div
-                        className={`overflow-hidden transition-[max-height] duration-200 ease-out ${filtersOpen ? 'max-h-[1000px]' : 'max-h-0'}`}
-                    >
+                    <AutoHeightCollapse open={filtersOpen}>
                         <div className="mt-2 mb-2 rounded border border-border bg-muted/40 p-1">
                             {filtersContent}
                         </div>
-                    </div>
+                    </AutoHeightCollapse>
                 )}
                 {statsContent && (
-                    <div
-                        className={`overflow-hidden transition-[max-height] duration-200 ease-out ${statsOpen ? 'max-h-[2000px]' : 'max-h-0'}`}
-                    >
+                    <AutoHeightCollapse open={statsOpen}>
                         <div className="mt-2 mb-2 rounded border border-border bg-muted/40 p-1">
                             {statsOpen && statsContent}
                         </div>
-                    </div>
+                    </AutoHeightCollapse>
                 )}
             </div>
         </div>
