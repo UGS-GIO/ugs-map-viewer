@@ -830,8 +830,8 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
     ],
 };
 
-const geothermalPowerplantsLayerName = 'ccus_geothermalpowerplants';
-const geothermalPowerplantsWMSTitle = 'Geothermal Power Plants';
+const geothermalPowerplantsLayerName = 'enmin_poweplants_current';
+const geothermalPowerplantsWMSTitle = 'Power Plants';
 const geothermalPowerplantsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
