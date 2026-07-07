@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { cn } from '@/lib/utils'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import {
     DATA_QUAL_DESCRIPTIONS,
@@ -143,7 +144,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                             <SelectItem
                                 key={b}
                                 value={b}
-                                disabled={basinsWithDataForEffectiveYear !== null && !basinsWithDataForEffectiveYear.has(b)}
+                                className={cn(basinsWithDataForEffectiveYear !== null && !basinsWithDataForEffectiveYear.has(b) && 'text-muted-foreground opacity-50')}
                             >
                                 {b}
                             </SelectItem>
@@ -165,7 +166,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                                 <SelectItem
                                     key={y}
                                     value={y}
-                                    disabled={yearsWithDataForSelectedBasins !== null && !yearsWithDataForSelectedBasins.has(y)}
+                                    className={cn(yearsWithDataForSelectedBasins !== null && !yearsWithDataForSelectedBasins.has(y) && 'text-muted-foreground opacity-50')}
                                 >
                                     {y}
                                 </SelectItem>
