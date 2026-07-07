@@ -1241,6 +1241,133 @@ const geologicalInformationConfig: LayerProps = {
         seamlessGeolunitsWMSConfig,
     ]
 }
+const nonpetrolWellsLayerName = 'nwpd_nonpetroleumwellcatalogwells';
+const nonpetrolWellsTitle = 'Non-Petroleum Wells';
+const nonpetrolWellsConfig: WMSLayerProps = {
+  type: 'wms',
+  url: `${PROD_GEOSERVER_URL}/wms`,
+  title: nonpetrolWellsTitle,
+  visible: false,
+  crs: 'EPSG:3857',
+  sublayers: [
+    {
+      name: `${ENERGY_MINERALS_WORKSPACE}:${nonpetrolWellsLayerName}`,
+      popupEnabled: true,
+      queryable: true,
+      popupFields: {
+        'Name': { field: 'well_name', type: 'string' },
+        'UWI': { field: 'uwi', type: 'string' },
+        'Operator': { field: 'operator', type: 'string' },
+        'Depth': {
+            field: 'custom',
+            type: 'custom',
+            transform: (props) => {
+                const bht = props?.['depth'];
+                return `${bht} ft`;
+            }
+        },
+        'County': {
+            field: 'custom',
+            type: 'custom',
+            transform: (props) => {
+                const cnty = props?.['county'];
+                const st = props?.['state'];
+                return `${cnty} , ${st}`;
+            }
+        },
+        'Location': {
+            field: 'custom',
+            type: 'custom',
+            transform: (props) => {
+              const tnum = props?.['town_num'];
+              const tdir = props?.['town_dir'];
+              const rnum = props?.['range_num'];
+              const rdir = props?.['range_dir'];
+              const sect = props?.['sect'];
+              return `${tnum}${tdir} ${rnum}${rdir} Section ${sect}`;
+            }
+        },
+        'Meridian': { field: 'meridian', type: 'string' },
+        'Purpose': {
+          field: 'purpose',
+          type: 'string',
+          transform: (value: string | null) => {
+            if (value === 'C') return 'Coal';
+            if (value === 'T') return 'Tar Sands';
+            if (value === 'SH') return 'Oil Shale';
+            if (value === 'W') return 'Water/Geothermal';
+            return 'Unknown';
+          }
+        },
+        'Reports': {
+          field: 'analyses',
+          type: 'string',
+          transform: (value: string | null) => {
+            if (value === 'Y') return 'Available';
+            if (value === 'N') return 'None';
+            return 'Unknown';
+          }
+        },
+        'Well Logs': {
+          field: 'well_logs',
+          type: 'string',
+          transform: (value: string | null) => {
+            if (value === 'Y') return 'Available';
+            if (value === 'N') return 'None';
+            return 'Unknown';
+          }
+        },
+      },
+      relatedTables: [
+                {
+                    fieldLabel: 'Well Log Files',
+                    matchingField: 'well_id',
+                    targetField: 'uwi',
+                    url: PROD_POSTGREST_URL + '/nwpd_welllogs',
+                    headers: {
+                        "Accept-Profile": 'emp',
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    displayFields: [
+                        {
+                            field: 'filename',
+                            label: '',
+                            transform: (value: string | null, row) => {
+                                const path = row?.['full_path'];
+                                if (!path) return value || 'No link available';
+                                return <Link to={String('http://maps-assets.geology.utah.gov/' + path)}>{value || 'View File'}</Link>;
+                            }
+                        },
+                    ],
+                    sortDirection: 'asc',
+                },
+                {
+                    fieldLabel: 'Well Analyses Files',
+                    matchingField: 'well_id',
+                    targetField: 'uwi',
+                    url: PROD_POSTGREST_URL + '/nwpd_wellanalyses',
+                    headers: {
+                        "Accept-Profile": 'emp',
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    displayFields: [
+                        {
+                            field: 'filename',
+                            label: '',
+                            transform: (value: string | null, row) => {
+                                const path = row?.['full_path'];
+                                if (!path) return value || 'No link available';
+                                return <Link to={String('http://maps-assets.geology.utah.gov/' + path)}>{value || 'View File'}</Link>;
+                            }
+                        },
+                    ],
+                }]
+        },
+  ]
+};
+
 const subsurfaceDataConfig: LayerProps = {
     type: 'group',
     title: 'Subsurface Data',
@@ -1253,6 +1380,7 @@ const subsurfaceDataConfig: LayerProps = {
         geothermalWellsWMSConfig,
         geothermalSpringsJoinsConfig,
         geothermalWellsJoinsConfig,
+        nonpetrolWellsConfig,
     ]
 }
 

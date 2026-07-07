@@ -13,9 +13,10 @@ interface PopupFilterInputs {
  * inline with the map tiles. Year filter matches the water year column for
  * Yearly, and the end_date year for period-keyed types (Cumulative + VDR).
  *
- * The year filter is mandatory now (no "all years" sentinel): if a type's
- * effective year is null, features for that type are dropped entirely until
- * the data finishes loading.
+ * Mirrors the map cql exactly: the year clause only applies once a type's
+ * effective year resolves. While it is null (data still loading, or a type
+ * with no year bucket) no year filter is applied — same as the map tiles, so
+ * popup cards never disagree with what's drawn.
  */
 export function makeDisplacementPopupFeatureFilter({ effectiveYearByType, basinsByType }: PopupFilterInputs) {
     return (feature: ExtendedFeature, layer: LayerContentProps): boolean => {
@@ -25,12 +26,13 @@ export function makeDisplacementPopupFeatureFilter({ effectiveYearByType, basins
         const props = feature.properties as { year?: string; location?: string; end_date?: string } | undefined
 
         const effectiveYear = effectiveYearByType[typeValue]
-        if (!effectiveYear) return false
-        if (isPeriodKeyedType(typeValue)) {
-            const endYear = props?.end_date?.slice(0, 4)
-            if (endYear !== effectiveYear) return false
-        } else {
-            if (props?.year !== effectiveYear) return false
+        if (effectiveYear) {
+            if (isPeriodKeyedType(typeValue)) {
+                const endYear = props?.end_date?.slice(0, 4)
+                if (endYear !== effectiveYear) return false
+            } else {
+                if (props?.year !== effectiveYear) return false
+            }
         }
 
         const basins = basinsByType[typeValue]

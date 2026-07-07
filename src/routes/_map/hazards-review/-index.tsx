@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Layout } from '@/components/layout/layout';
 import { TopNav } from '@/components/top-nav';
 import { MapFooter } from '@/components/maps/map-footer';
@@ -158,12 +158,14 @@ function FilteredMapContainer() {
   const layerFilters = useDisplacementLayerFilters()
   // Build a per-type concrete year map: that type's user pick wins, else latest
   // from data. Per-type so one layer's year never leaks into another's popup.
-  const effectiveYearByType: Record<DisplacementType, string | null> = {
-    'Cumulative': yearOverridesByType['Cumulative'] ?? latestByType['Cumulative'] ?? null,
-    'Yearly': yearOverridesByType['Yearly'] ?? latestByType['Yearly'] ?? null,
-    'Vertical Displacement Rate': yearOverridesByType['Vertical Displacement Rate'] ?? latestByType['Vertical Displacement Rate'] ?? null,
-  }
-  const popupFeatureFilter = makeDisplacementPopupFeatureFilter({ effectiveYearByType, basinsByType })
+  const popupFeatureFilter = useMemo(() => {
+    const effectiveYearByType: Record<DisplacementType, string | null> = {
+      'Cumulative': yearOverridesByType['Cumulative'] ?? latestByType['Cumulative'] ?? null,
+      'Yearly': yearOverridesByType['Yearly'] ?? latestByType['Yearly'] ?? null,
+      'Vertical Displacement Rate': yearOverridesByType['Vertical Displacement Rate'] ?? latestByType['Vertical Displacement Rate'] ?? null,
+    }
+    return makeDisplacementPopupFeatureFilter({ effectiveYearByType, basinsByType })
+  }, [yearOverridesByType, latestByType, basinsByType])
   return (
     <GenericMapContainer
       layerFilters={layerFilters}

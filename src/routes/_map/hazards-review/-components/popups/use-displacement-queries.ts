@@ -4,7 +4,7 @@ import type { Feature, Polygon, MultiPolygon } from 'geojson'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
 import { fetchWfsFeatures } from '@/lib/map/wfs-service'
-import { DATA_QUAL_ORDER, DISPLACEMENT_TYPE_NAME, getStyleNameForType, type ChartedType, type DisplacementType } from './displacement-layers'
+import { DATA_QUAL_ORDER, DISPLACEMENT_TYPE_NAME, getStyleNameForType, isPeriodKeyedType, type ChartedType, type DisplacementType } from './displacement-layers'
 import { fetchDisplacementSldBins, getZeroBound, type SldBin } from './displacement-sld-legend'
 
 export interface DisplacementProps {
@@ -31,12 +31,13 @@ export interface DisplacementProps {
 
 export type DisplacementFeature = Feature<Polygon | MultiPolygon, DisplacementProps>
 
-// Cumulative features carry null `year` and a period like "2017-10-20 to 2021-10-11";
-// bucket them by the period's end year so charts/filters stay year-aligned. Yearly
-// uses its native `year` field; VDR + others fall through to null.
+// Period-keyed features (Cumulative, Vertical Displacement Rate) carry null `year`
+// and a period like "2017-10-20 to 2021-10-11"; bucket them by the period's end
+// year so charts/filters/popups stay year-aligned with the map cql (which also
+// keys these types on end_date). Yearly uses its native `year` field.
 export function getBucketYear(props: Pick<DisplacementProps, 'type' | 'year' | 'end_date'>): string | null {
     if (props.type === 'Yearly') return props.year ?? null
-    if (props.type === 'Cumulative' && props.end_date) return props.end_date.slice(0, 4)
+    if (isPeriodKeyedType(props.type) && props.end_date) return props.end_date.slice(0, 4)
     return null
 }
 

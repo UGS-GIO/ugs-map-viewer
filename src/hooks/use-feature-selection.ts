@@ -85,14 +85,6 @@ export function useFeatureSelection({
       return
     }
 
-    // Check if clicked feature is a basin (displacement contour)
-    if (features.length > 0) {
-        const basinFeature = features.find(f => f.layerTitle?.includes('Displacement'));
-        if (basinFeature && basinFeature.properties?.location) {
-            window.dispatchEvent(new CustomEvent('basin-selected', { detail: { basin: basinFeature.properties.location } }));
-        }
-    }
-
     // Calculate new selection
     setSelectedFeatures(prev => {
       let newSelection: ClickedFeature[]
