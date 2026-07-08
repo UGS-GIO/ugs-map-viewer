@@ -830,7 +830,7 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
     ],
 };
 
-const geothermalPowerplantsLayerName = 'enmin_poweplants_current';
+const geothermalPowerplantsLayerName = 'enmin_powerplants_current';
 const geothermalPowerplantsWMSTitle = 'Power Plants';
 const geothermalPowerplantsWMSConfig: WMSLayerProps = {
     type: 'wms',
