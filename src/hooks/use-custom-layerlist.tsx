@@ -145,6 +145,15 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
 
     const { refetch: fetchExtent, data: cachedExtent } = useLayerExtent(extentOptions);
 
+    // Related tables live on sublayer popup config (WMS/PMTiles). Flattened
+    // across sublayers so the download menu can bundle them all in one zip.
+    const relatedTables = useMemo(() => {
+        if (isWMSLayer(layerConfig) || isPMTilesLayer(layerConfig)) {
+            return layerConfig.sublayers?.flatMap(sub => sub.relatedTables ?? []) ?? [];
+        }
+        return [];
+    }, [layerConfig]);
+
     const currentZoom = useMapZoom();
     const visibleZoomRange = layerConfig.visibleZoomRange ?? null;
     const zoomHint = isSelected ? getZoomHint(currentZoom, visibleZoomRange) : null;
@@ -351,6 +360,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
                             arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
                             legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}
                             downloadParquetUrl={layerConfig.downloadParquetUrl}
+                            relatedTables={relatedTables}
                             disableExport={disableExport}
                             filtersContent={layerConfig.title ? layerExtrasRender?.(layerConfig.title) : undefined}
                             statsContent={layerConfig.title ? layerStatsRender?.(layerConfig.title) : undefined}
