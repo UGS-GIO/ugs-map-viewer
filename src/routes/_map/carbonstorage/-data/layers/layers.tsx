@@ -845,7 +845,7 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
             queryable: true,
             popupFields: {
                 'Name': { field: 'plant', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
-                'Capacity (MW)': { field: 'capacity_mw', type: 'number' },
+                'Capacity (MW)': { field: 'total_mw', type: 'number' },
                 'Operator': { field: 'operator', type: 'string' },
                 'City': { field: 'city', type: 'string' },
                 'County': { field: 'county', type: 'string' },
