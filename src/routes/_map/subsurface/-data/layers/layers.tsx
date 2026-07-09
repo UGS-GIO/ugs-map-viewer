@@ -5,76 +5,40 @@ import { LayerProps, WMSLayerProps, PMTilesLayerProps } from "@/lib/types/mappin
 import { formatNumeric } from "@/lib/utils";
 
 
-export const wellWithTopsLayerName = 'wellswithtops_hascore';
+// STAC-driven wells layer. Data/style (pmtilesUrl, sourceLayer, renders,
+// parquet download) are filled from the warehouse STAC item `wells_spatial` at
+// load by `resolveStacLayerTree`; this config carries only UX (title, popups).
+export const wellWithTopsLayerName = 'wells_spatial';
 export const wellWithTopsWMSTitle = 'Oil and Gas Wells (Source: Utah Division of Oil, Gas & Mining)';
-const wellWithTopsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
+const wellWithTopsWMSConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: 'wells_spatial',
+    pmtilesUrl: '',
+    sourceLayer: wellWithTopsLayerName,
     title: wellWithTopsWMSTitle,
     visible: false,
-    crs: 'EPSG:26912',
+    opacity: 0.85,
+    defaultRenderId: 'by-purpose',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${wellWithTopsLayerName}`,
-            popupEnabled: false,
+            name: wellWithTopsLayerName,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
-                'API': { field: 'api', type: 'string' },
-                'Well Name': { field: 'wellname', type: 'string' },
-                'Disclaimer': {
-                    field: 'Formation Tops Disclaimer',
-                    type: 'custom',
-                    transform: () => 'Formation top information and LAS file availability is provided as-is and may not be fully complete or accurate.'
-                }
+                'API Number': { field: 'api_number', type: 'string' },
+                'UWI': { field: 'uwi', type: 'string' },
+                'Well Name': { field: 'well_name', type: 'string' },
+                'Operator': { field: 'current_operator', type: 'string' },
+                'County': { field: 'county', type: 'string' },
+                'Purpose': { field: 'purpose', type: 'string' },
+                'Township': { field: 'township', type: 'string' },
+                'Range': { field: 'range', type: 'string' },
+                'Section': { field: 'section', type: 'string' },
+                'Latitude': { field: 'latitude', type: 'number' },
+                'Longitude': { field: 'longitude', type: 'number' },
+                'Easting (NAD83)': { field: 'easting', type: 'number' },
+                'Northing (NAD83)': { field: 'northing', type: 'number' },
             },
-            relatedTables: [
-                {
-                    fieldLabel: 'Formation Tops',
-                    matchingField: 'api',
-                    targetField: 'api',
-                    url: PROD_POSTGREST_URL + '/view_wellswithtops_hascore',
-                    headers: {
-                        "Accept-Profile": 'emp',
-                        "Accept": "application/json",
-                        "Cache-Control": "no-cache",
-                    },
-                    displayFields: [
-                        { field: 'formation_alias', label: 'Formation Name' },
-                        { field: 'formation_depth', label: 'Formation Depth (ft)', format: 'number' },
-                    ],
-                    sortBy: 'formation_depth',
-                    sortDirection: 'asc',
-                    displayAs: 'table'
-                },
-                {
-                    fieldLabel: 'LAS File Information',
-                    matchingField: 'display_api',
-                    targetField: 'api',
-                    url: PROD_POSTGREST_URL + '/ccus_las_display_view',
-                    headers: {
-                        "Accept-Profile": 'emp',
-                        "Accept": "application/json",
-                        "Cache-Control": "no-cache",
-                    },
-                    displayFields: [
-                        { field: 'display_description', label: 'Description', transform: (value: string | null) => value !== '' ? value : 'No Data' },
-                        { field: 'display_field_name', label: 'Field Name', transform: (value: string | null) => value !== '' ? value : 'No Data' },
-                        { field: 'display_well_status', label: 'Well Status', transform: (value: string | null) => value !== '' ? value : 'No Data' },
-                        { field: 'display_well_type', label: 'Well Type', transform: (value: string | null) => value !== '' ? value : 'No Data' },
-                        {
-                            field: 'source', label: 'Source', transform: (value: string | null) => {
-                                if (value === 'DOGM') {
-                                    return <Link to="https://dataexplorer.ogm.utah.gov/">Utah Division of Oil, Gas and Mining</Link>
-                                } else if (value === 'UGS') {
-                                    return <>Utah Geological Survey - contact <Link to="mailto:gstpierre@utah.gov">gstpierre@utah.gov</Link></>
-                                }
-                                return value !== '' ? value : 'No Data';
-                            }
-                        }
-                    ],
-                    displayAs: 'table'
-                }
-            ]
         },
     ],
 };
