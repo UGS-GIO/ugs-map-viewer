@@ -70,7 +70,7 @@ const landslideInventoryConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'lsfhazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -109,7 +109,7 @@ const landslideSusceptibilityConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'lsshazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -147,7 +147,7 @@ const liquefactionConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'lqshazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -286,7 +286,7 @@ const surfaceFaultRuptureConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'sfrhazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -321,7 +321,7 @@ const windBlownSandConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'wsshazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -358,7 +358,7 @@ const saltTectonicsDeformationConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'sdhhazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -395,7 +395,7 @@ const shallowBedrockConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'sbphazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -432,7 +432,7 @@ const rockfallHazardConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'rfhhazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -469,7 +469,7 @@ const pipingAndErosionConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'peshazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -506,7 +506,7 @@ const expansiveSoilRockConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'exshazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -543,7 +543,7 @@ const shallowGroundwaterConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'sgshazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -580,7 +580,7 @@ const radonSusceptibilityConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'grshazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -617,7 +617,7 @@ const corrosiveSoilRockConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'crshazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -654,7 +654,7 @@ const collapsibleSoilConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'csshazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -691,7 +691,7 @@ const solubleSoilAndRockConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'slshazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -728,7 +728,7 @@ const alluvialFanConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'aafhazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -765,7 +765,7 @@ const floodAndDebrisConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'flhhazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -801,7 +801,7 @@ const earthFissureConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'efhhazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -838,7 +838,7 @@ const erosionHazardZoneConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'erzhazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
@@ -874,7 +874,7 @@ const karstFeaturesConfig: PMTilesLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'mkfhazardunit',
-                    url: `${PROD_POSTGREST_URL}/unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
