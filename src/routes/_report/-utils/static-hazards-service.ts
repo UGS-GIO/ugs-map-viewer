@@ -43,7 +43,7 @@ export interface HazardTextSections {
 }
 
 /**
- * Type for PostgREST unitdescriptions_current table response rows
+ * Type for PostgREST hazards_unitdescriptions_current table response rows
  */
 type HazardUnitRow = PostgRESTRowOf<{
     relate_id: string;
@@ -87,7 +87,7 @@ export async function queryAllUnitsForHazardCodes(hazardCodes: string[]): Promis
         // Query using hazardcode field with exact match
         // This will get ALL units for each hazard code, not just ones in the polygon
         const filter = hazardCodes.map(code => `hazardcode.eq.${code}`).join(',');
-        const url = `${PROD_POSTGREST_URL}/unitdescriptions_current?or=(${filter})`;
+        const url = `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current?or=(${filter})`;
 
         const response = await fetch(url, {
             headers: {
@@ -130,7 +130,7 @@ export async function queryHazardUnitsStatic(units: string[]): Promise<HazardUni
 
     try {
         const filter = `relate_id=in.(${units.join(',')})`;
-        const url = `${PROD_POSTGREST_URL}/unitdescriptions_current?${filter}`;
+        const url = `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current?${filter}`;
 
         const response = await fetch(url, {
             headers: {

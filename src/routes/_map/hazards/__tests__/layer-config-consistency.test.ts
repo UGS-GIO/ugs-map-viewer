@@ -197,7 +197,7 @@ describe('hazard layer config ↔ report data consistency', () => {
       const codes = Object.keys(hazardLayerNameMap)
       const filter = codes.map(c => `hazardcode.eq.${c}`).join(',')
       const res = await fetch(
-        `${PROD_POSTGREST_URL}/unitdescriptions_current?or=(${filter})&select=hazardcode,hazardname`,
+        `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current?or=(${filter})&select=hazardcode,hazardname`,
         { headers: { 'Accept-Profile': 'hazards', 'Accept': 'application/json' } }
       )
       const rows: { hazardcode: string; hazardname: string }[] = await res.json()
