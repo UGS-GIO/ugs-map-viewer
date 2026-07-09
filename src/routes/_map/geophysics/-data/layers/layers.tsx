@@ -235,7 +235,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
 
 // Geothermal Power Plants WMS Layer
 const geothermalPowerplantsLayerName = 'enmin_powerplants_current';
-const geothermalPowerplantsWMSTitle = 'Geothermal Power Plants';
+const geothermalPowerplantsWMSTitle = 'Power Plants';
 const geothermalPowerplantsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
