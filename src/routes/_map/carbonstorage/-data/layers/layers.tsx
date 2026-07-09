@@ -830,7 +830,7 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
     ],
 };
 
-const geothermalPowerplantsLayerName = 'enmin_poweplants_current';
+const geothermalPowerplantsLayerName = 'enmin_powerplants_current';
 const geothermalPowerplantsWMSTitle = 'Power Plants';
 const geothermalPowerplantsWMSConfig: WMSLayerProps = {
     type: 'wms',
@@ -844,9 +844,9 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'plant', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
-                'Capacity (MW)': { field: 'capacity_mw', type: 'number' },
-                'Operator': { field: 'operator', type: 'string' },
+                'Name': { field: 'plant_name', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
+                'Capacity (MW)': { field: 'total_mw', type: 'number' },
+                'Operator': { field: 'utility_na', type: 'string' },
                 'City': { field: 'city', type: 'string' },
                 'County': { field: 'county', type: 'string' },
             },
