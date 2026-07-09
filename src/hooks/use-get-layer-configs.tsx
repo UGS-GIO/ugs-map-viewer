@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import { LayerProps } from "@/lib/types/mapping-types";
+import { resolveStacLayerTree } from "@/lib/map/stac/stac-layer";
 import { useGetCurrentPage } from "./use-get-current-page";
 
 export interface LayerOrderConfig {
@@ -90,7 +91,7 @@ const loadAllLayerConfigs = async (currentPage: string): Promise<LayerProps[]> =
         const layerConfigPaths = import.meta.glob(`@/routes/_map/*/-data/layers/*.tsx`);
 
         // filter for layerconfig paths in the /routes/_map/{currentPage}/-data/layers/ directory
-        const filteredLayerConfigPaths: Record<string, () => Promise<any>> = {};
+        const filteredLayerConfigPaths: Record<string, () => Promise<unknown>> = {};
         for (const path of Object.keys(layerConfigPaths)) {
             if (path.includes(`/_map/${currentPage}/-data/layers/`)) {
                 filteredLayerConfigPaths[path] = layerConfigPaths[path];
@@ -142,11 +143,11 @@ const useGetLayerConfigs = (pageName?: string, layerOrderConfigs?: LayerOrderCon
                 if (!currentPage) {
                     return null;
                 }
-                const configs = await loadSingleLayerConfig(currentPage, pageName);
+                const configs = await resolveStacLayerTree(await loadSingleLayerConfig(currentPage, pageName));
                 return applyLayerOrdering(configs, memoizedLayerOrderConfigs || []);
             } else {
                 // All configs workflow
-                const allConfigs = await loadAllLayerConfigs(currentPage);
+                const allConfigs = await resolveStacLayerTree(await loadAllLayerConfigs(currentPage));
                 const processedConfigs = applyLayerOrdering(allConfigs, memoizedLayerOrderConfigs || []);
                 return processedConfigs.length > 0 ? processedConfigs : null;
             }

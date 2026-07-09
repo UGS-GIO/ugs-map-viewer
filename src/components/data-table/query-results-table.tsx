@@ -100,7 +100,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
         // Values scoped per table (index-aligned with relatedTables) so each table is queried
         // only with its own key column's values.
         return selectedLayer.relatedTables.map(table =>
-            rowData.map(row => String(row.properties[table.targetField] ?? ''))
+            rowData.map(row => String(row.properties[table.targetField!] ?? ''))
         );
     }, [selectedLayer?.relatedTables, rowData]);
 
@@ -537,7 +537,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                                             const relatedTable = selectedLayer.relatedTables[tableIndex];
                                             if (!relatedTable) return null;
 
-                                            const targetValue = String(row.original.properties[relatedTable.targetField] ?? '');
+                                            const targetValue = String(row.original.properties[relatedTable.targetField!] ?? '');
                                             const dataMap = table.options.meta!.relatedDataMaps[tableIndex];
                                             const relatedRows = dataMap?.get(targetValue) || [];
 

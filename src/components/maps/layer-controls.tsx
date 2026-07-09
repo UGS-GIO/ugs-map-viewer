@@ -9,6 +9,7 @@ import { LayerDescriptionAccordion } from '@/components/maps/layer-description-a
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
 import { ParquetDownloadMenu } from '@/components/maps/parquet-download-menu';
+import type { RelatedTable } from '@/lib/types/mapping-types';
 
 interface LayerControlsProps {
     handleZoomToLayer: () => void;
@@ -27,8 +28,9 @@ interface LayerControlsProps {
     /** Maps a GeoServer sublayer name to a friendly heading, for delineating sublayers in the legend. */
     layerLabels?: Record<string, string>;
     /** Downloadable datasets for this layer. One entry per dataset (a multi-sublayer layer exposes one
-     * per sublayer); each renders its own labelled download menu. */
-    downloadEntries?: Array<{ label: string; url: string }>;
+     * per sublayer); each renders its own labelled download menu and bundles its related tables
+     * (e.g. formation tops, geochemistry) into the "Include related data" zip. */
+    downloadEntries?: Array<{ label: string; url: string; relatedTables?: RelatedTable[] }>;
     /** When true, hide format-conversion dropdown and offer only a direct parquet download. Used for apps that require unmodified source data. */
     disableExport?: boolean;
     /** Optional layer-scoped filter UI. When provided, adds a Filters toggle to the button row and a collapsible panel below. */
@@ -171,6 +173,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                                 parquetUrl={d.url}
                                 layerTitle={downloadEntries.length > 1 ? `${title}-${d.label}` : title}
                                 label={downloadEntries.length > 1 ? d.label : undefined}
+                                relatedTables={d.relatedTables}
                             />
                         ))}
 
@@ -222,7 +225,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     <div
                         className={`overflow-hidden transition-[max-height] duration-200 ease-out ${filtersOpen ? 'max-h-[1000px]' : 'max-h-0'}`}
                     >
-                        <div className="mt-2 mb-2 rounded border border-border bg-muted/40 p-2.5">
+                        <div className="mt-1 mb-2 mx-1 px-1.5 pt-2 border-t border-border/60">
                             {filtersContent}
                         </div>
                     </div>
@@ -231,7 +234,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     <div
                         className={`overflow-hidden transition-[max-height] duration-200 ease-out ${statsOpen ? 'max-h-[2000px]' : 'max-h-0'}`}
                     >
-                        <div className="mt-2 mb-2 rounded border border-border bg-muted/40 p-2.5">
+                        <div className="mt-1 mb-2 mx-1 px-1.5 pt-2 border-t border-border/60">
                             {statsOpen && statsContent}
                         </div>
                     </div>

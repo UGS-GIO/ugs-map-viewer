@@ -48,7 +48,7 @@ const georegionsWMSConfig: WMSLayerProps = {
 };
 
 // Oil and Gas Fields WMS Layer
-const oilGasFieldsLayerName = 'oilgasfields';
+const oilGasFieldsLayerName = 'enmin_oilgasfields_ogm_current';
 const oilGasFieldsWMSTitle = 'Oil and Gas Fields';
 const oilGasFieldsWMSConfig: WMSLayerProps = {
     type: 'wms',
@@ -62,11 +62,11 @@ const oilGasFieldsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Field Name': { field: 'field_name', type: 'string' },
-                'Field Type': { field: 'field_type', type: 'string' },
-                'Producing Formations': { field: 'prod_formations', type: 'string' },
-                'Reservoir Age': { field: 'reservoir_rocks', type: 'string' },
-                'Status': { field: 'status', type: 'string' }
+                'Field Name': { field: 'fieldname', type: 'string' },
+                'Field Type': { field: 'type', type: 'string' },
+                'Producing Formations': { field: 'prodformations', type: 'string' },
+                'Reservoir Age': { field: 'reservoirrocks', type: 'string' },
+                'Status': { field: 'status_1', type: 'string' }
             },
         },
     ],
@@ -830,8 +830,8 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
     ],
 };
 
-const geothermalPowerplantsLayerName = 'ccus_geothermalpowerplants';
-const geothermalPowerplantsWMSTitle = 'Geothermal Power Plants';
+const geothermalPowerplantsLayerName = 'enmin_powerplants_current';
+const geothermalPowerplantsWMSTitle = 'Power Plants';
 const geothermalPowerplantsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -844,9 +844,9 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'plant', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
-                'Capacity (MW)': { field: 'capacity_mw', type: 'number' },
-                'Operator': { field: 'operator', type: 'string' },
+                'Name': { field: 'plant_name', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
+                'Capacity (MW)': { field: 'total_mw', type: 'number' },
+                'Operator': { field: 'utility_na', type: 'string' },
                 'City': { field: 'city', type: 'string' },
                 'County': { field: 'county', type: 'string' },
             },

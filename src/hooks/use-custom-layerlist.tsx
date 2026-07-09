@@ -167,16 +167,25 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
     }, [layerConfig]);
 
     // Downloadable datasets: one per sublayer that defines a parquet URL (labelled by popupTitle),
-    // else the single layer-level URL. Lets a composite layer download each sublayer's data.
+    // else the single layer-level URL (from STAC for PMTiles). Each entry carries its own related
+    // tables (flattened from the sublayer) so the download menu can bundle them in a zip. Lets a
+    // composite layer download each sublayer's data.
     const downloadEntries = useMemo(() => {
-        if (isWMSLayer(layerConfig)) {
+        if (isWMSLayer(layerConfig) || isPMTilesLayer(layerConfig)) {
             const subs = (layerConfig.sublayers ?? [])
                 .filter(s => s.downloadParquetUrl)
-                .map(s => ({ label: s.popupTitle || layerConfig.title || '', url: s.downloadParquetUrl as string }));
+                .map(s => ({
+                    label: s.popupTitle || layerConfig.title || '',
+                    url: s.downloadParquetUrl as string,
+                    relatedTables: s.relatedTables ?? [],
+                }));
             if (subs.length > 0) return subs;
         }
+        const relatedTables = (isWMSLayer(layerConfig) || isPMTilesLayer(layerConfig))
+            ? (layerConfig.sublayers?.flatMap(sub => sub.relatedTables ?? []) ?? [])
+            : [];
         return layerConfig.downloadParquetUrl
-            ? [{ label: layerConfig.title || '', url: layerConfig.downloadParquetUrl }]
+            ? [{ label: layerConfig.title || '', url: layerConfig.downloadParquetUrl, relatedTables }]
             : [];
     }, [layerConfig]);
 
