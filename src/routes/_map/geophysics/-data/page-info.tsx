@@ -12,7 +12,6 @@ const references = (
         <li>Gettings, P., D.S. Chapman, and R.G. Allis, 2008, Techniques, analysis, and noise in a Salt Lake Valley 4D gravity experiment: Geophysics, v. 73, p. WA71–WA82. </li>
         <li>Harmonica v0.7.0, 2024, Forward modeling, inversion, and processing gravity and magnetic data, <Link to="https://zenodo.org/records/13308312">https://zenodo.org/records/13308312</Link>. </li>
         <li>Hinze, W.J., Aiken, C., Brozena, J., Coakley, B., Dater, D., Flanagan, G., Forsberg, R., Hildenbrand, T., Keller, G.R., Kellogg, J., Kucks, R., Li, X., Mainville, A., Morin, R., Pilkington, M., Plouff, D., Ravat, D., Roman, D., Urrutia-Fucugauchi, J., Veronneau, M., Webring, M., and Winester, D., 2005, New standards for reducing gravity data—The North American gravity database: Geophysics, v. 70, no. 4, p. J25–J32. </li>
-        <li>INGENIOUS - Great Basin Regional Dataset Compilation, 2022, doi:10.15121/1881483. </li>
         <li>Keller, R., Hildenbrand, T.G., Kucks, R., Webring, M., Briesacher, A., Rujawitz, K. Hittleman, A.M., Roman, D., Winester, D., Aldouri, R., Seeley, J., Rasillo, J., Torres, R., Hinze, W., Gates, A., Kreinovich, V., Salayandia, L., 2006, A community effort to construct a gravity database for the United States and an associated Web portal, doi:10.1130/2006.2397(02). </li>
         <li>Palacky, G.J., 1988, Resistivity characteristics of geologic targets–chapter 3, in Nabighian, M.N., editor, Electromagnetic methods in applied geophysics—Volume 1, Theory: Tulsa, Oklahoma, Society of Exploration Geophysicists, Investigations in Geophysics Series, p. 52–129. </li>
         <li>Soler, S.R. and Uieda, L., 2021, Gradient-boosted equivalent sources: Geophysical Journal International, doi:10.1093/gji/ggab297. </li>
@@ -90,9 +89,6 @@ const dataSources = (
     <ul className="list-disc ml-5 space-y-4">
         <li>Hazardous (Quaternary Age) Faults - Utah Geological Survey <br />
             <Link to="https://opendata.gis.utah.gov/datasets/utahDNR::utah-quaternary-faults/about">Access data</Link>
-        </li>
-        <li>Great Basin Faults (INGENIOUS Project) - Geothermal Data Repository <br />
-            <Link to="https://gdr.openei.org/submissions/1391">Access data</Link>
         </li>
         <li>Utah Faults - Utah Geological Survey <br />
             <Link to="https://geology.utah.gov/publication-details/?pub=M-179dm">Access data</Link>
