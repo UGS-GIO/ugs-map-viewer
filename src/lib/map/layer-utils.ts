@@ -54,8 +54,8 @@ export const flattenWfsLayers = (layers: LayerProps[]) =>
 export const flattenArcGisLayers = (layers: LayerProps[]) =>
   flattenLeaves(layers, isArcGISMapServerLayer)
 
-export const isDataLayer = (layer: LayerProps): layer is WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps =>
-  isWMSLayer(layer) || isWFSLayer(layer) || isArcGISMapServerLayer(layer) || isCOGLayer(layer)
+export const isDataLayer = (layer: LayerProps): layer is WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps | PMTilesLayerProps =>
+  isWMSLayer(layer) || isWFSLayer(layer) || isArcGISMapServerLayer(layer) || isCOGLayer(layer) || isPMTilesLayer(layer)
 
 export const flattenDataLayers = (layers: LayerProps[]) =>
   flattenLeaves(layers, isDataLayer)
@@ -66,7 +66,7 @@ export const flattenDataLayers = (layers: LayerProps[]) =>
  * state from the URL.
  */
 export interface DataLeafWithParent {
-  layer: WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps
+  layer: WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps | PMTilesLayerProps
   parentGroupTitle: string | null
 }
 

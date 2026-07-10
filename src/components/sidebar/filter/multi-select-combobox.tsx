@@ -13,6 +13,8 @@ interface MultiSelectComboboxProps {
     label: string;
     placeholder: string;
     options: string[];
+    /** Optional per-option row counts, shown right-aligned in each item. */
+    counts?: Record<string, number>;
     isLoading?: boolean;
     selected: string[];
     onChange: (values: string[]) => void;
@@ -22,6 +24,7 @@ const MultiSelectCombobox = ({
     label,
     placeholder,
     options,
+    counts,
     isLoading = false,
     selected,
     onChange,
@@ -93,6 +96,9 @@ const MultiSelectCombobox = ({
                                             selected.includes(opt) ? "opacity-100" : "opacity-0"
                                         )} />
                                         {opt}
+                                        {counts?.[opt] != null && (
+                                            <span className="ml-auto pl-2 text-muted-foreground">{counts[opt].toLocaleString()}</span>
+                                        )}
                                     </CommandItem>
                                 ))}
                             </CommandGroup>

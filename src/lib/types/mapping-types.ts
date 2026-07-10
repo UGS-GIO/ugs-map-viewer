@@ -156,12 +156,48 @@ export interface COGLayerProps extends BaseLayerProps {
     popupValueLabel?: string;
 }
 
+/**
+ * One symbology option for a PMTiles layer, mirroring a STAC item's `renders`
+ * entry (ugs-styles publishes these per `(itemId, render)`). The viewer fetches
+ * `styleUrl` (a `{ layers: [...] }` fragment), loads `sprite` if present, and
+ * derives the legend from `legend`. Multiple renders on one layer drive the
+ * "Symbolize by" toggle via the `vector_symbology` search param (value = `id`).
+ */
+export interface PMTilesRender {
+    /** Render id; also the `vector_symbology[title]` value that selects it. */
+    id: string;
+    /** Human-readable label for the symbology selector. */
+    title?: string;
+    /** URL to the render's MapLibre style fragment (`{ layers: [...] }`). */
+    styleUrl: string;
+    /** Optional sprite sheet base URL (no extension) for icon renders. */
+    sprite?: string;
+    /** Legend swatches (label → color); icon renders carry this explicitly. */
+    legend?: Array<{ label: string; color: string }>;
+}
+
 export interface PMTilesLayerProps extends BaseLayerProps {
     type: 'pmtiles';
-    /** URL to the PMTiles file (can be relative like '/pmtiles/layer.pmtiles' or absolute) */
+    /**
+     * STAC item id (warehouse serving-topics). When set, the config pipeline
+     * resolves `pmtilesUrl`, `sourceLayer`, `renders`, and `downloadParquetUrl`
+     * from the STAC item before render — the app config carries only UX
+     * (title, sublayers/popups, visibility). See `resolveStacLayerTree`.
+     */
+    stacItemId?: string;
+    /** URL to the PMTiles file (can be relative like '/pmtiles/layer.pmtiles' or absolute). Filled from STAC when `stacItemId` is set. */
     pmtilesUrl: string;
     /** URL to the style JSON file, or inline style layers */
     styleUrl?: string;
+    /**
+     * Multiple symbology renders (from STAC `item.renders`). When set, the layer
+     * renders every render's layers (visibility-toggled by `vector_symbology`)
+     * instead of the single `styleUrl`. The first entry, or `defaultRenderId`,
+     * is shown initially.
+     */
+    renders?: PMTilesRender[];
+    /** Which render id is active by default (defaults to `renders[0].id`). */
+    defaultRenderId?: string;
     /** Source layer name within the PMTiles file */
     sourceLayer: string;
     /** Optional sublayer config for popups/queries */
@@ -311,10 +347,19 @@ export interface RelatedTable {
     fieldLabel: string;
     /** Optional description shown as tooltip on the field label */
     description?: string;
-    matchingField: string;
-    targetField: string;
-    url: string;
-    headers: Record<string, string>;
+    /**
+     * STAC-backed related table: the asset key (e.g. 'enmin_ucrc_boxes') on the layer's
+     * STAC item. When set, the resolver fills url/matchingField/targetField/fetchMode from
+     * the asset's href + ugs:foreign_keys, and this entry carries ONLY presentation (UX).
+     * Author EXACTLY ONE of `stacAsset` (STAC-driven) or `url` (legacy PostgREST/WFS).
+     * After resolution the entry is always fully populated, so consumers treat
+     * url/matchingField/targetField as present.
+     */
+    stacAsset?: string;
+    matchingField?: string;
+    targetField?: string;
+    url?: string;
+    headers?: Record<string, string>;
     displayFields?: DisplayField[];
     logicalOperator?: string;
     sortBy?: string;
@@ -335,14 +380,14 @@ export interface RelatedTable {
     galleryBaseUrl?: string;
     /** Optional metadata fields to display alongside the image in the lightbox */
     galleryMetadataFields?: { field: string; label: string }[];
-    /** Fetch mode: 'postgrest' (default) or 'wfs' for GeoServer WFS queries */
-    fetchMode?: 'postgrest' | 'wfs';
+    /** Fetch mode: 'postgrest' (default), 'wfs' for GeoServer WFS, or 'parquet' for STAC geoparquet via duckdb-wasm */
+    fetchMode?: 'postgrest' | 'wfs' | 'parquet';
     /** WFS typeName (required when fetchMode is 'wfs'), e.g. 'emp:sco2_with_grid' */
     wfsTypeName?: string;
 }
 
 
-interface DisplayField {
+export interface DisplayField {
     field: string;
     label?: string;
     /** Format numeric values: 'number' (thousands), 'currency' (USD), 'percent'. Applied before transform. */

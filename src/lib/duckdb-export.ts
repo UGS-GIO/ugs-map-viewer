@@ -12,6 +12,10 @@
 
 import * as duckdb from '@duckdb/duckdb-wasm';
 import { EXPORT_FORMATS, type ExportFormat } from '@/lib/export-formats';
+import { withConnection, loadSpatial, escapeSql, queryParquetDistinctValues } from '@/lib/duckdb/client';
+import { downloadZip } from '@/lib/download-utils';
+import { fetchRelatedRowsBulk, relatedRowsToCsv } from '@/lib/related-table-fetch';
+import type { RelatedTable } from '@/lib/types/mapping-types';
 
 export type { ExportFormat } from '@/lib/export-formats';
 export { safeFilename } from '@/lib/export-formats';
@@ -28,53 +32,13 @@ export interface ExportOptions {
     format: ExportFormat;
     /** Geometry column name if present, else null — discovered via useParquetSchema */
     geometryColumn: string | null;
+    /** Related tables configured on the layer (formation tops, geochemistry, etc). When
+     * present + non-empty, `exportParquet` bundles them alongside the main file as a zip. */
+    relatedTables?: RelatedTable[];
     onProgress?: (stage: ExportStage) => void;
 }
 
-// ── DuckDB singleton (lazy, module-scoped) ───────────────────────────────────
-
-let dbInstance: duckdb.AsyncDuckDB | null = null;
-let dbPromise: Promise<duckdb.AsyncDuckDB> | null = null;
-
-const initDuckDB = async (): Promise<duckdb.AsyncDuckDB> => {
-    if (dbInstance) return dbInstance;
-    if (dbPromise) return dbPromise;
-
-    dbPromise = (async () => {
-        const bundle = await duckdb.selectBundle(duckdb.getJsDelivrBundles());
-        const workerUrl = URL.createObjectURL(
-            new Blob([`importScripts("${bundle.mainWorker}");`], { type: 'text/javascript' }),
-        );
-        const worker = new Worker(workerUrl);
-        const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(), worker);
-        await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
-        URL.revokeObjectURL(workerUrl);
-        dbInstance = db;
-        return db;
-    })();
-
-    return dbPromise;
-};
-
-/** Open a DuckDB connection for the duration of `fn`, always close it. */
-const withConnection = async <T>(
-    fn: (conn: duckdb.AsyncDuckDBConnection, db: duckdb.AsyncDuckDB) => Promise<T>,
-): Promise<T> => {
-    const db = await initDuckDB();
-    const conn = await db.connect();
-    try { return await fn(conn, db); }
-    finally { await conn.close(); }
-};
-
-/** Load spatial extension on a connection. Idempotent. */
-const loadSpatial = async (conn: duckdb.AsyncDuckDBConnection): Promise<void> => {
-    await conn.query('INSTALL spatial');
-    await conn.query('LOAD spatial');
-};
-
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-const escapeSql = (s: string): string => s.replace(/'/g, "''");
 
 const triggerDownload = (blob: Blob, filename: string): void => {
     const url = URL.createObjectURL(blob);
@@ -114,7 +78,14 @@ const handlers: Record<ExportFormat, Handler> = {
         return res.blob();
     },
 
-    geojson: (opts) => withConnection(async (conn, db) => {
+    // Build FeatureCollection in JS — duckdb-wasm's spatial GDAL GeoJSON writer
+    // crashes ("Cannot write feature"), so we read rows back as geometry-as-GeoJSON
+    // text plus property columns and assemble the FC manually. Reprojects to 4326
+    // for RFC 7946. Source is hardcoded EPSG:3857 (our current pipeline output);
+    // once parquets are published as 4326 this transform must be dropped, else it
+    // double-projects. always_xy keeps lon/lat ordering; Force2D drops the
+    // spurious Z=0 the source carries on otherwise-2D geometry.
+    geojson: (opts) => withConnection(async (conn) => {
         if (!opts.geometryColumn) {
             throw new Error('GeoJSON requires a geometry column');
         }
@@ -122,12 +93,23 @@ const handlers: Record<ExportFormat, Handler> = {
 
         opts.onProgress?.({ stage: 'converting', message: 'Writing GeoJSON…' });
         const escaped = escapeSql(opts.parquetUrl);
-        const virtualPath = `export_${Date.now()}.geojson`;
-        await conn.query(`
-            COPY (SELECT * FROM read_parquet('${escaped}'))
-            TO '${virtualPath}' WITH (FORMAT GDAL, DRIVER 'GeoJSON')
+        const geom = opts.geometryColumn;
+        const result = await conn.query(`
+            SELECT
+                ST_AsGeoJSON(ST_Force2D(ST_Transform(${geom}, 'EPSG:3857', 'EPSG:4326', true))) AS __g,
+                * EXCLUDE (${geom})
+            FROM read_parquet('${escaped}')
         `);
-        return bufferToBlob(db, virtualPath, EXPORT_FORMATS.geojson.mimeType);
+
+        const features: string[] = [];
+        for (const row of result.toArray()) {
+            const obj = row.toJSON() as Record<string, unknown>;
+            const geomJson = obj.__g;
+            delete obj.__g;
+            features.push(`{"type":"Feature","geometry":${geomJson},"properties":${JSON.stringify(obj, jsonReplacer)}}`);
+        }
+        const fc = `{"type":"FeatureCollection","features":[${features.join(',')}]}`;
+        return new Blob([fc], { type: EXPORT_FORMATS.geojson.mimeType });
     }),
 
     csv: (opts) => withConnection(async (conn, db) => {
@@ -146,21 +128,71 @@ const handlers: Record<ExportFormat, Handler> = {
         return bufferToBlob(db, virtualPath, EXPORT_FORMATS.csv.mimeType);
     }),
 
-    fgb: (opts) => withConnection(async (conn, db) => {
-        if (!opts.geometryColumn) {
-            throw new Error('FlatGeobuf requires a geometry column');
-        }
-        await loadSpatial(conn);
+};
 
-        opts.onProgress?.({ stage: 'converting', message: 'Writing FlatGeobuf…' });
-        const escaped = escapeSql(opts.parquetUrl);
-        const virtualPath = `export_${Date.now()}.fgb`;
-        await conn.query(`
-            COPY (SELECT * FROM read_parquet('${escaped}'))
-            TO '${virtualPath}' WITH (FORMAT GDAL, DRIVER 'FlatGeobuf')
-        `);
-        return bufferToBlob(db, virtualPath, EXPORT_FORMATS.fgb.mimeType);
-    }),
+// BIGINT columns arrive as JS bigint; JSON.stringify rejects them. Convert to
+// Number when it round-trips losslessly, else String — keeps the file valid.
+const jsonReplacer = (_key: string, value: unknown) => {
+    if (typeof value !== 'bigint') return value;
+    return value <= BigInt(Number.MAX_SAFE_INTEGER) && value >= BigInt(Number.MIN_SAFE_INTEGER)
+        ? Number(value)
+        : String(value);
+};
+
+// Sanitize a related table's fieldLabel into a safe zip entry name.
+const safeEntryName = (s: string): string =>
+    s.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'related';
+
+// Unique `related-<name>.csv` stem per table, resolved synchronously up front so
+// two tables with the same (or empty) fieldLabel don't collide to one zip entry.
+// Deterministic and race-free — computed before the concurrent fetch below.
+const uniqueEntryNames = (relatedTables: RelatedTable[]): string[] => {
+    const used = new Set<string>();
+    return relatedTables.map((t, idx) => {
+        const base = safeEntryName(t.fieldLabel || `table-${idx + 1}`);
+        let name = base;
+        for (let n = 2; used.has(name); n++) name = `${base}-${n}`;
+        used.add(name);
+        return name;
+    });
+};
+
+/**
+ * Fetch every configured related table for the full layer (not just visible
+ * features).
+ *
+ * - parquet related assets are read whole (already scoped to the STAC item), so
+ *   we skip the distinct-key scan entirely — reading the main parquet's join
+ *   column just to feed a filter we don't use would be pure waste.
+ * - postgrest/wfs tables may be shared across datasets, so we pull the layer's
+ *   distinct join keys (once, for that table's targetField) and chunk-filter.
+ *
+ * Each table is isolated: one that errors (bad URL, CORS, server cap) is logged
+ * and skipped so the main file and the other related tables still download.
+ */
+const buildRelatedCsvFiles = async (
+    parquetUrl: string,
+    relatedTables: RelatedTable[],
+): Promise<Record<string, string>> => {
+    const files: Record<string, string> = {};
+    const entryNames = uniqueEntryNames(relatedTables);
+    await Promise.all(relatedTables.map(async (table, idx) => {
+        if (!table.matchingField) return;
+        try {
+            let values: string[] = [];
+            if (table.fetchMode !== 'parquet') {
+                if (!table.targetField) return; // STAC-backed entry not yet resolved
+                values = await queryParquetDistinctValues({ url: parquetUrl, field: table.targetField });
+                if (values.length === 0) return;
+            }
+            const rows = await fetchRelatedRowsBulk(table, values);
+            if (rows.length === 0) return;
+            files[`related-${entryNames[idx]}.csv`] = relatedRowsToCsv(rows, table);
+        } catch (err) {
+            console.error(`[exportParquet] related table '${table.fieldLabel ?? idx}' failed, skipping:`, err);
+        }
+    }));
+    return files;
 };
 
 // ── Public entrypoint ────────────────────────────────────────────────────────
@@ -169,8 +201,27 @@ export const exportParquet = async (opts: ExportOptions): Promise<void> => {
     const meta = EXPORT_FORMATS[opts.format];
     try {
         const blob = await handlers[opts.format](opts);
-        opts.onProgress?.({ stage: 'writing', message: 'Saving file…' });
-        triggerDownload(blob, `${opts.filename}.${meta.extension}`);
+        const relatedTables = opts.relatedTables ?? [];
+
+        if (relatedTables.length === 0) {
+            opts.onProgress?.({ stage: 'writing', message: 'Saving file…' });
+            triggerDownload(blob, `${opts.filename}.${meta.extension}`);
+            opts.onProgress?.({ stage: 'complete', message: 'Done' });
+            return;
+        }
+
+        opts.onProgress?.({ stage: 'converting', message: 'Fetching related tables…' });
+        const relatedFiles = await buildRelatedCsvFiles(opts.parquetUrl, relatedTables);
+
+        opts.onProgress?.({ stage: 'writing', message: 'Saving files…' });
+        if (Object.keys(relatedFiles).length === 0) {
+            // No related rows matched — fall back to a single-file download rather
+            // than a zip with only the main file.
+            triggerDownload(blob, `${opts.filename}.${meta.extension}`);
+        } else {
+            const mainBytes = new Uint8Array(await blob.arrayBuffer());
+            downloadZip({ [`${opts.filename}.${meta.extension}`]: mainBytes, ...relatedFiles }, opts.filename);
+        }
         opts.onProgress?.({ stage: 'complete', message: 'Done' });
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PopupImageGallery, type GalleryImage } from './popup-image-gallery'
-import { PROD_POSTGREST_URL, UCRC_ASSETS_CDN_URL } from '@/lib/constants'
+import { UCRC_ASSETS_CDN_URL } from '@/lib/constants'
 import { encodePathSegments } from '@/lib/gallery-utils'
 import { sanitizeFilename } from '@/lib/download-utils'
+import { fetchStacAssetHref } from '@/lib/map/stac/stac-layer'
 
 const buildThumbnailPath = (gcsPath: string) =>
     gcsPath.startsWith('photos/')
@@ -32,17 +33,20 @@ function toGalleryImage(row: PhotoRow): GalleryImage {
     }
 }
 
-const fetchBoxPhotosBulk = async (boxIds: string[]): Promise<Map<string, GalleryImage[]>> => {
+const fetchBoxPhotosBulk = async (boxIds: string[], parquetUrl: string): Promise<Map<string, GalleryImage[]>> => {
     const map = new Map<string, GalleryImage[]>()
-    if (boxIds.length === 0) return map
-    const inList = boxIds.join(',')
-    const res = await fetch(
-        `${PROD_POSTGREST_URL}/enmin_ucrc_photos_current?box_pk=in.(${inList})&order=top_depth.asc`,
-        { headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' } },
-    )
-    if (!res.ok) return map
-    const rows: PhotoRow[] = await res.json()
-    for (const row of rows) {
+    if (boxIds.length === 0 || !parquetUrl) return map
+    // Read the STAC photos geoparquet, filtered by box_pk, via duckdb-wasm (lazy import
+    // keeps duckdb off the initial bundle). Same asset the Core Photos gallery uses.
+    const { queryParquetByValues } = await import('@/lib/duckdb/client')
+    const rows = await queryParquetByValues({
+        url: parquetUrl,
+        matchingField: 'box_pk',
+        values: boxIds,
+        sortBy: 'top_depth',
+        sortDirection: 'asc',
+    })
+    for (const row of rows as unknown as PhotoRow[]) {
         const key = String(row.box_pk)
         const list = map.get(key) ?? []
         list.push(toGalleryImage(row))
@@ -55,18 +59,32 @@ const fetchBoxPhotosBulk = async (boxIds: string[]): Promise<Map<string, Gallery
  * Renders the photo thumbnail/gallery for a single box. All instances mounted
  * with the same `allBoxIds` share one bulk fetch via react-query dedup.
  */
-export function BoxPhotosCell({ boxId, allBoxIds, boxLabel }: { boxId: string; allBoxIds: string[]; boxLabel?: string }) {
+export function BoxPhotosCell({ boxId, allBoxIds, boxLabel, photoCount, stacItemId = 'enmin_ucrc_wells', photosAsset = 'enmin_ucrc_photos' }: { boxId: string; allBoxIds: string[]; boxLabel?: string; photoCount?: number; stacItemId?: string; photosAsset?: string }) {
+    // `photoCount` comes from the boxes parquet (warehouse-computed). When it's 0 we know up
+    // front there are no photos — render a dash immediately, no fetch, no skeleton. Undefined
+    // (column not published yet) falls back to fetching + skeleton for every cell.
+    const knownEmpty = photoCount === 0
+
+    // Resolve the photos geoparquet href from STAC (cached forever — immutable warehouse asset).
+    const { data: parquetUrl, isLoading: urlLoading } = useQuery({
+        queryKey: ['stac-asset-href', stacItemId, photosAsset],
+        queryFn: () => fetchStacAssetHref(stacItemId, photosAsset),
+        staleTime: Infinity,
+        enabled: !knownEmpty,
+    })
+
     // Sorted key so sibling cells share one query regardless of row order
     const sortedKey = [...allBoxIds].sort().join(',')
 
-    const { data: photoMap, isLoading } = useQuery({
-        queryKey: ['ucrc-box-photos-bulk', sortedKey],
-        queryFn: () => fetchBoxPhotosBulk(allBoxIds),
+    const { data: photoMap, isLoading: photosLoading } = useQuery({
+        queryKey: ['ucrc-box-photos-parquet', parquetUrl, sortedKey],
+        queryFn: () => fetchBoxPhotosBulk(allBoxIds, parquetUrl!),
         staleTime: 1000 * 60 * 30,
-        enabled: allBoxIds.length > 0,
+        enabled: !knownEmpty && allBoxIds.length > 0 && !!parquetUrl,
     })
 
-    if (isLoading) return <Skeleton className="w-10 h-7 rounded-sm" />
+    if (knownEmpty) return <span className="text-muted-foreground">—</span>
+    if (urlLoading || photosLoading) return <Skeleton className="w-10 h-7 rounded-sm" />
 
     const images = photoMap?.get(boxId) ?? []
     if (images.length === 0) return <span className="text-muted-foreground">—</span>
