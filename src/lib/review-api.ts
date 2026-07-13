@@ -98,6 +98,12 @@ export const deleteComment = (id: number) =>
 
 export const listReviewers = () => api<string[]>(`/api/reviewers`);
 
+// Map a hazards-review layer value to the warehouse STAC item id so a comment lands on the SAME thread
+// as the internal review viewer. 'hazards:hazards_qfaults_current' → 'hazards_qfaults' (drop the
+// workspace prefix + the _current suffix; the matview name already embeds the schema).
+export const layerToItemId = (layerValue: string): string =>
+  (layerValue.split(':').pop() ?? layerValue).replace(/_current$/, '');
+
 export const listNotifications = (unseen = false) =>
   api<Notification[]>(`/api/notifications${unseen ? '?unseen=true' : ''}`);
 

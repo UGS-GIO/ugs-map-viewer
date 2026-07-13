@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
   type Comment,
-  REVIEW_API_URL,
   createComment,
   deleteComment,
   listComments,
@@ -33,7 +32,9 @@ export function ReviewComments({ itemId, label = 'Review comments' }: { itemId: 
   const { user } = useAuth();
   const myEmail = user?.email ?? undefined;
   const key = ['review-comments', itemId] as const;
-  const enabled = !!REVIEW_API_URL && !!user;
+  // Same-origin by default (empty REVIEW_API_URL + the firebase.json `/api/**` rewrite → review-api),
+  // so we gate on the signed-in user, not on a base URL. No backend → the fetch errors → panel hides.
+  const enabled = !!user;
 
   const { data: comments = [], isLoading, error } = useQuery({
     queryKey: key,
@@ -93,8 +94,9 @@ export function ReviewComments({ itemId, label = 'Review comments' }: { itemId: 
   const repliesByRoot = new Map<number, Comment[]>();
   for (const c of comments) if (c.parent_id != null) (repliesByRoot.get(c.parent_id) ?? repliesByRoot.set(c.parent_id, []).get(c.parent_id)!).push(c);
 
-  // No API configured, or the public build without it → render nothing.
-  const notConfigured = !REVIEW_API_URL || (error && /\b(401|403|503)\b|Failed to fetch|Unexpected token/i.test(String(error)));
+  // No backend reachable (public build without the rewrite → /api/* returns the SPA HTML → parse
+  // error; or 401/403/503) → render nothing.
+  const notConfigured = error && /\b(401|403|503)\b|Failed to fetch|Unexpected token|not valid JSON/i.test(String(error));
   if (notConfigured) return null;
 
   return (

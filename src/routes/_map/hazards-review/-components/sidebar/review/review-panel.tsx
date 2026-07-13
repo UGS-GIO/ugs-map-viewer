@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ReviewComments } from '@/components/review/review-comments';
-import { REVIEW_API_URL } from '@/lib/review-api';
+import { layerToItemId } from '@/lib/review-api';
 import { useFetchReviewableLayers } from '@/hooks/use-fetch-reviewable-layers';
 
 function ReviewPanel() {
@@ -25,9 +25,6 @@ function ReviewPanel() {
           <CardDescription>Pick a layer under review to read and add comments. Comments sync with the internal review app.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {!REVIEW_API_URL && (
-            <p className="text-xs text-muted-foreground">Review API not configured (set VITE_REVIEW_API_URL).</p>
-          )}
           <div className="space-y-1">
             <Label className="text-xs">Reviewable layer</Label>
             <Select value={layer} onValueChange={setLayer}>
@@ -42,7 +39,7 @@ function ReviewPanel() {
             </Select>
           </div>
 
-          {layer && <ReviewComments itemId={layer} label={`Comments — ${layers.find((l) => l.value === layer)?.label ?? layer}`} />}
+          {layer && <ReviewComments itemId={layerToItemId(layer)} label={`Comments — ${layers.find((l) => l.value === layer)?.label ?? layer}`} />}
         </CardContent>
       </Card>
     </div>
