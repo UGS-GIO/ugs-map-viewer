@@ -469,7 +469,7 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
     title: ucrcWellsWMSTitle,
     visible: true,
     opacity: 0.85,
-    defaultRenderId: 'by-purpose',
+    defaultRenderId: 'by-boxtype',
     sublayers: [
         {
             name: ucrcWellsTileLayer,

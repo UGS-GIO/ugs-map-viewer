@@ -212,10 +212,13 @@ function CategoryLegendGrid({ schema, field, mode }: { schema: FilterSchema; fie
 
 // ─── UCRC wiring ────────────────────────────────────────────────────────────
 
+// Sample Type (box-type) is the default on page load: id '' = the default
+// sentinel (empty vector_symbology → map falls back to defaultRenderId
+// 'by-boxtype'). Purpose carries its real STAC render key so selecting it writes
+// a value activeRenderOf can match directly. Order = dropdown order.
 const UCRC_LEGEND_MODES: LegendSymbologyMode[] = [
-    { id: '', label: 'Purpose', field: 'purpose', swatches: UCRC_PURPOSE_COLORS, strokes: UCRC_PURPOSE_STROKES },
     {
-        id: 'box-type',
+        id: '',
         label: 'Sample Type',
         field: 'box_type_codes',
         swatches: UCRC_BOX_TYPE_COLORS,
@@ -223,6 +226,7 @@ const UCRC_LEGEND_MODES: LegendSymbologyMode[] = [
         primaryValues: UCRC_BOX_TYPE_CODES,
         othersLabel: 'Other sample types',
     },
+    { id: 'by-purpose', label: 'Purpose', field: 'purpose', swatches: UCRC_PURPOSE_COLORS, strokes: UCRC_PURPOSE_STROKES },
 ]
 
 /** `layerLegendRender` for the subsurface layer list. */
