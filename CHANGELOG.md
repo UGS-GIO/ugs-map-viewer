@@ -1,3 +1,34 @@
+## 2.7.0 (2026-07-13)
+
+* **feat**(`common`): live PMTiles rendering via STAC renders (qfaults + UCRC migrated) (#462) ([462](///issues/462))
+* **feat**(`common`): sortable related-table columns via TanStack Table (numeric/alpha, N/A last) (#465) ([465](///issues/465))
+* **feat**(`common`): source popup related tables from STAC parquet assets via duckdb-wasm (#467) ([467](///issues/467))
+* **fix**(`common`): add related-table download option to layerlist export (#470) ([470](///issues/470))
+* **fix**(`common`): bump deploy workflows to node 22 for semantic-release 25
+* **fix**(`common`): drop fgb export, rewrite geojson around broken duckdb-wasm gdal (#441) ([441](///issues/441))
+* ****: Merge pull request #473 from UGS-GIO/develop ([473](///issues/473))
+* ****: Merge pull request #477 from UGS-GIO/hotfix/ci-node-22 ([477](///issues/477))
+* **refactor**(`ccs`):  changes to power plants layer (#471) ([471](///issues/471))
+* **refactor**(`geophysics`): changes to layers (#475) ([475](///issues/475))
+* **fix**(`hazards`): rename PostgREST endpoint unitdescriptions_current to hazards_unitdescriptions_current (#472) ([472](///issues/472))
+* **feat**(`subsurface`): move UCRC layer filters and symbology into the layer-list dropdown (#461) ([461](///issues/461))
+* **fix**(`subsurface`): legend Sample Type label, strip NUL sentinel, tighten Symbolize-by gap (#463) ([463](///issues/463))
+* **refactor**(`subsurface`): ucrc inventory layer attribute changes (#469) ([469](///issues/469))
+* **refactor**(`subsurface`): update ogm fields (#459) ([459](///issues/459))
+
+## 2.6.0 (2026-06-22)
+
+* **chore**(`common`): dependency upgrades and cleanup (#447) ([447](///issues/447))
+* **feat**(`common`): add download tracking via gtm dataLayer (#456) ([456](///issues/456))
+* **fix**(`common`): popup click respects layer visibility for rasters and skips empty results (#455) ([455](///issues/455))
+* **fix**(`common`): render titleless related tables inline instead of as accordion (#452) ([452](///issues/452))
+* **fix**: handle scientific notation in API number popups (#460) ([460](///issues/460))
+* ****: Merge pull request #457 from UGS-GIO/develop ([457](///issues/457))
+* ****: Ucrc layer info table changes (#458) ([458](///issues/458))
+* **refactor**(`ccs`): added non petroleum layer to map (#442) ([442](///issues/442))
+* **refactor**(`ccs`): added township to search (#451) ([451](///issues/451))
+* **feat**(`geophysics`): adding tables to popups in same style as relatedTables (#450) ([450](///issues/450))
+
 ## [1.16.4](https://github.com/UGS-GIO/ugs-map-viewer/compare/v1.16.3...v1.16.4) (2026-01-22)
 
 
