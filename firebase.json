@@ -10,13 +10,6 @@
       ],
       "rewrites": [
         {
-          "source": "/api/**",
-          "run": {
-            "serviceId": "ugs-warehouse-review-api",
-            "region": "us-central1"
-          }
-        },
-        {
           "source": "**",
           "destination": "/index.html"
         }

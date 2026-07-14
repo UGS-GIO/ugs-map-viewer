@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
   type Comment,
+  REVIEW_API_URL,
   createComment,
   deleteComment,
   listComments,
@@ -32,9 +33,9 @@ export function ReviewComments({ itemId, label = 'Review comments' }: { itemId: 
   const { user } = useAuth();
   const myEmail = user?.email ?? undefined;
   const key = ['review-comments', itemId] as const;
-  // Same-origin by default (empty REVIEW_API_URL + the firebase.json `/api/**` rewrite → review-api),
-  // so we gate on the signed-in user, not on a base URL. No backend → the fetch errors → panel hides.
-  const enabled = !!user;
+  // Need both a signed-in user (for the Firebase token) and the gateway URL (VITE_REVIEW_API_URL).
+  // Unset URL or no backend → the fetch errors → the panel hides.
+  const enabled = !!REVIEW_API_URL && !!user;
 
   const { data: comments = [], isLoading, error } = useQuery({
     queryKey: key,

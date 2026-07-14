@@ -4,8 +4,9 @@
  * are SYNCED with it — keyed by email (Firebase/Entra and Google IAP resolve to the same @utah.gov
  * address) and by item id. Auth is the Firebase ID token (verified server-side); no cookies.
  *
- * Base URL comes from VITE_REVIEW_API_URL. When unset (e.g. before the service is deployed), calls are
- * skipped by the hooks so the UI degrades quietly.
+ * Base URL = VITE_REVIEW_API_URL = the API Gateway URL (`tofu output review_api_gateway_url`). The gateway
+ * validates this Firebase token, then invokes the private review-api as its own service account (org
+ * requires an authenticated invoker — no public Cloud Run). When unset, the hooks degrade quietly.
  */
 import { auth } from '@/lib/auth';
 
