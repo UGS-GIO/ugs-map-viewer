@@ -28,8 +28,9 @@ import { ucrcFilterSchema } from '../../-data/layers/ucrc-schema'
 const NONE_SENTINEL = '__none__'
 
 // A colour group derived from a legend entry that carries `values` (grouped renders,
-// e.g. box types → Core/Cuttings/Other). Empty values = catch-all (the remainder).
-interface LegendGroup { key: string; label: string; color: string; values: readonly string[] }
+// e.g. box types → Core/Cuttings/Other). `color` is the group's base hue (header); each
+// value carries its own shade of it.
+interface LegendGroup { key: string; label: string; color: string; values: readonly { value: string; color: string }[] }
 
 // One symbology option, derived from a STAC render.
 interface Mode { id: string; label: string; field: string; entries: readonly LegendEntry[] }
@@ -106,9 +107,13 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
         return [...(data?.options ?? [])].sort((a, b) => (c[b] ?? 0) - (c[a] ?? 0) || a.localeCompare(b))
     }, [data])
 
-    // Colour + stroke per value, derived from the render's legend (flat renders: label == value).
+    // Colour per value, derived from the render's legend. Flat renders: entry label == value.
+    // Grouped renders: each group's `values` carry per-item shades. `stroke` is a flat-render
+    // swatch outline. Item shade wins, then flat swatch, then default.
     const swatch = useMemo(() => new Map(entries.map(e => [e.label, e.color])), [entries])
     const stroke = useMemo(() => new Map(entries.map(e => [e.label, e.stroke])), [entries])
+    const itemColor = useMemo(() => new Map(entries.flatMap(e => (e.values ?? []).map(v => [v.value, v.color] as const))), [entries])
+    const colorFor = (value: string) => itemColor.get(value) ?? swatch.get(value) ?? '#bdbdbd'
     // Grouped render when any legend entry carries `values`; each entry becomes a colour group.
     const groups = useMemo<LegendGroup[] | null>(() =>
         entries.some(e => e.values && e.values.length)
@@ -143,9 +148,9 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
     if (isLoading) return <p className="text-xs text-muted-foreground px-1">Loading…</p>
     if (options.length === 0) return null
 
-    // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens.
-    // `groupColor` (when set) overrides per-value swatches with the group's colour.
-    const renderRows = (items: string[], groupColor?: string) => (
+    // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens. Each value's
+    // swatch is its own colour (per-item shade for grouped renders, fill for flat renders).
+    const renderRows = (items: string[]) => (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-1.5">
             {items.map(label => (
                 <label key={label} className="flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer">
@@ -157,7 +162,7 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                     />
                     <span
                         className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
-                        style={{ backgroundColor: groupColor ?? swatch.get(label) ?? '#bdbdbd', borderColor: stroke.get(label) ?? 'rgba(0,0,0,0.3)' }}
+                        style={{ backgroundColor: colorFor(label), borderColor: stroke.get(label) ?? 'rgba(0,0,0,0.3)' }}
                     />
                     <span className="min-w-0 break-words leading-tight">
                         {label}
@@ -194,9 +199,10 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
     // Grouped layout: a coloured header per group (toggles the whole group), its specific
     // values spelled out beneath. Empty `values` = catch-all (everything not in another group).
     if (groups) {
-        const claimed = new Set(groups.flatMap(g => [...g.values]))
-        const membersOf = (g: LegendGroup) =>
-            g.values.length ? options.filter(o => g.values.includes(o)) : options.filter(o => !claimed.has(o))
+        const membersOf = (g: LegendGroup) => {
+            const inGroup = new Set(g.values.map(v => v.value))
+            return options.filter(o => inGroup.has(o))
+        }
         return (
             <div className="flex flex-col gap-2">
                 {controls}
@@ -218,7 +224,7 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                                 <span className="inline-block w-3 h-3 rounded-full shrink-0 border" style={{ backgroundColor: g.color, borderColor: 'rgba(0,0,0,0.3)' }} />
                                 <Label className="text-xs font-semibold cursor-pointer">{g.label}</Label>
                             </label>
-                            <div className="pl-4">{renderRows(items, g.color)}</div>
+                            <div className="pl-4">{renderRows(items)}</div>
                         </div>
                     )
                 })}

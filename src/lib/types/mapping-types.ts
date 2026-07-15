@@ -164,11 +164,12 @@ export interface COGLayerProps extends BaseLayerProps {
  * "Symbolize by" toggle via the `vector_symbology` search param (value = `id`).
  */
 /** One legend entry: a symbology colour + what it represents. `values` (grouped renders) =
- *  the specific field values this entry rolls up; `stroke` = optional swatch outline. */
+ *  the specific field values this entry rolls up, each with its own shade of the group colour;
+ *  `stroke` = optional swatch outline (flat renders). */
 export interface LegendEntry {
     label: string;
     color: string;
-    values?: readonly string[];
+    values?: readonly { value: string; color: string }[];
     stroke?: string;
 }
 
