@@ -1,10 +1,6 @@
 import type { FilterSchema } from '@/lib/filter/types';
 import { PROD_POSTGREST_URL } from '@/lib/constants';
-import {
-    ucrcWellsWMSTitle,
-    UCRC_PURPOSE_COLORS,
-    UCRC_PURPOSE_STROKES,
-} from './layers';
+import { ucrcWellsWMSTitle } from './layers';
 
 export const ucrcFilterSchema: FilterSchema = {
     recordKey: ucrcWellsWMSTitle,
@@ -15,8 +11,8 @@ export const ucrcFilterSchema: FilterSchema = {
             kind: 'multiSelect',
             field: 'purpose',
             label: 'Purpose',
-            optionSwatches: UCRC_PURPOSE_COLORS,
-            optionStrokes: UCRC_PURPOSE_STROKES,
+            // Symbology colours (purpose + box type) live in the legend, derived from the STAC
+            // render legend — not here. This field is surfaced in the legend, hidden in Filters.
             optionLabelFilter: (label) => label !== 'Other / Unknown' && label !== 'Other',
         },
         { kind: 'multiSelect', field: 'county', label: 'County', placeholder: 'Select counties...' },
