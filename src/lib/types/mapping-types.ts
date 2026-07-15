@@ -163,6 +163,15 @@ export interface COGLayerProps extends BaseLayerProps {
  * derives the legend from `legend`. Multiple renders on one layer drive the
  * "Symbolize by" toggle via the `vector_symbology` search param (value = `id`).
  */
+/** One legend entry: a symbology colour + what it represents. `values` (grouped renders) =
+ *  the specific field values this entry rolls up; `stroke` = optional swatch outline. */
+export interface LegendEntry {
+    label: string;
+    color: string;
+    values?: readonly string[];
+    stroke?: string;
+}
+
 export interface PMTilesRender {
     /** Render id; also the `vector_symbology[title]` value that selects it. */
     id: string;
@@ -172,8 +181,10 @@ export interface PMTilesRender {
     styleUrl: string;
     /** Optional sprite sheet base URL (no extension) for icon renders. */
     sprite?: string;
-    /** Legend swatches (label → color); icon renders carry this explicitly. */
-    legend?: Array<{ label: string; color: string }>;
+    /** Legend swatches; the source of truth for this render's symbology (colour + grouping). */
+    legend?: LegendEntry[];
+    /** Feature attribute this render symbolizes — lets the legend/filter wire to a field. */
+    field?: string;
 }
 
 export interface PMTilesLayerProps extends BaseLayerProps {

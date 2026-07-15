@@ -448,14 +448,8 @@ export const UCRC_PURPOSE_STROKES: Record<string, string> = {
     'Other': '#858585',
 };
 
-// Box-type pie-wedge symbology config (comma-delimited codes on each well).
-export const UCRC_BOX_TYPE_CODES = ['BUTTS', 'CORE', 'CUTTINGS', 'SLABS'] as const;
-export const UCRC_BOX_TYPE_COLORS: Record<string, string> = {
-    BUTTS: '#E66101',
-    CORE: '#5E3C99',
-    CUTTINGS: '#1A9641',
-    SLABS: '#0571B0',
-};
+// Box-type symbology (colours + core/cuttings/other grouping) is now derived from the STAC
+// render's legend — see ugs-styles palettes/ucrc-boxtype.ts. Nothing hardcoded here.
 
 // STAC-driven: pmtilesUrl, sourceLayer, renders (by-purpose / by-boxtype incl.
 // the baked pie-wedge sprite + legends) and parquet are filled from the

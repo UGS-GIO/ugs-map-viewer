@@ -7,42 +7,37 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useLayerFilter } from '@/hooks/use-layer-filter'
 import { useDistinctFieldOptions } from '@/hooks/use-distinct-field-options'
 import type { FilterSchema, FilterFieldKind } from '@/lib/filter/types'
-import { ucrcWellsWMSTitle, UCRC_BOX_TYPE_CODES, UCRC_BOX_TYPE_COLORS, UCRC_PURPOSE_COLORS, UCRC_PURPOSE_STROKES } from '../../-data/layers/layers'
+import type { LayerProps, PMTilesLayerProps, PMTilesRender, LegendEntry } from '@/lib/types/mapping-types'
+import { isPMTilesLayer } from '@/lib/map/layer-utils'
+import { ucrcWellsWMSTitle } from '../../-data/layers/layers'
 import { ucrcFilterSchema } from '../../-data/layers/ucrc-schema'
 
 /**
- * Interactive symbology legend for a vector layer. Replaces the static swatch
- * legend AND the separate "Symbolize by" control: the legend is now the
- * categorical filter for the symbology field — pick the field (dropdown), see
- * each category's swatch + count, toggle categories on/off (all on = no filter),
- * with Select all / none. Vector-only (WMS legends are server images).
+ * Interactive symbology legend for a PMTiles vector layer — the categorical
+ * filter for the symbology field: pick the render (dropdown), see each category's
+ * swatch + count, toggle categories/groups on/off (all on = no filter).
+ *
+ * Everything about symbology is DERIVED from the STAC render (ugs-styles → warehouse):
+ * `render.field` (what to filter), `render.legend` (colours; `values` = the specific
+ * category values a grouped entry rolls up; `stroke` = swatch outline). No colours,
+ * groupings, or category lists are hardcoded here — change them in ugs-styles.
  */
 
-export interface LegendSymbologyMode {
-    /** vector_symbology value that selects this mode ('' = default). */
-    id: string
-    /** Dropdown label. */
-    label: string
-    /** Schema field this mode colors + filters by. */
-    field: string
-    /** Category value → fill color. */
-    swatches: Record<string, string>
-    /** Category value → stroke color (optional). */
-    strokes?: Record<string, string>
-    /** Limit shown categories (e.g. only the symbolized box-type codes). */
-    optionLabelFilter?: (label: string) => boolean
-    /** Order categories by feature count (descending) instead of the query order. */
-    sortByCount?: boolean
-    /** Categories shown first (the symbolized/colored ones), above a divider. */
-    primaryValues?: readonly string[]
-    /** Divider label above the non-primary categories. */
-    othersLabel?: string
-}
-
-// Sentinel emitted when every category is unchecked ("Select none") so the map
-// shows nothing — an empty multiSelect means "no filter = all", which is the
-// opposite of what an all-off legend should do.
+// Sentinel emitted when every category is unchecked ("None") so the map shows nothing —
+// an empty multiSelect means "no filter = all", the opposite of an all-off legend.
 const NONE_SENTINEL = '__none__'
+
+// A colour group derived from a legend entry that carries `values` (grouped renders,
+// e.g. box types → Core/Cuttings/Other). Empty values = catch-all (the remainder).
+interface LegendGroup { key: string; label: string; color: string; values: readonly string[] }
+
+// One symbology option, derived from a STAC render.
+interface Mode { id: string; label: string; field: string; entries: readonly LegendEntry[] }
+
+const modesFromRenders = (renders: readonly PMTilesRender[]): Mode[] =>
+    renders
+        .filter(r => r.field)
+        .map(r => ({ id: r.id, label: r.title ?? r.id, field: r.field ?? '', entries: r.legend ?? [] }))
 
 /** Generic symbology read/write on the route's `vector_symbology` search param. */
 function useVectorSymbology(layerTitle: string) {
@@ -65,62 +60,63 @@ function useVectorSymbology(layerTitle: string) {
 }
 
 interface SymbologyLegendProps {
-    layerTitle: string
+    layer: PMTilesLayerProps
     schema: FilterSchema
-    modes: LegendSymbologyMode[]
 }
 
-/** Generic interactive symbology legend (dropdown + category filter grid). */
-export function SymbologyLegend({ layerTitle, schema, modes }: SymbologyLegendProps) {
-    const { value: active, setValue: setActive } = useVectorSymbology(layerTitle)
-    const mode = modes.find(m => m.id === active) ?? modes[0]
-    const field = schema.fields.find(f => f.field === mode.field)
-    if (!field) return null
+/** Interactive symbology legend (render dropdown + category filter grid), derived from STAC. */
+export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
+    const { value: active, setValue: setActive } = useVectorSymbology(layer.title ?? '')
+    const modes = useMemo(() => modesFromRenders(layer.renders ?? []), [layer.renders])
+    // Empty param → the layer's default render. Selecting a render writes its real id.
+    const mode = modes.find(m => m.id === active)
+        ?? modes.find(m => m.id === layer.defaultRenderId)
+        ?? modes[0]
+    const field = mode ? schema.fields.find(f => f.field === mode.field) : undefined
+    if (!mode || !field) return null
 
     return (
         <div className="flex flex-col gap-2 px-1 py-1">
             {modes.length > 1 && (
                 <div className="flex flex-col gap-1">
                     <Label className="text-xs font-medium">Symbolize by</Label>
-                    <Select value={mode.id || '__default__'} onValueChange={(v) => setActive(v === '__default__' ? '' : v)}>
+                    <Select value={mode.id} onValueChange={setActive}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {modes.map(m => (
-                                <SelectItem key={m.id || '__default__'} value={m.id || '__default__'} className="text-xs">{m.label}</SelectItem>
+                                <SelectItem key={m.id} value={m.id} className="text-xs">{m.label}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                 </div>
             )}
-            <CategoryLegendGrid schema={schema} field={field} mode={mode} />
+            <CategoryLegendGrid schema={schema} field={field} entries={mode.entries} />
         </div>
     )
 }
 
-function CategoryLegendGrid({ schema, field, mode }: { schema: FilterSchema; field: FilterFieldKind; mode: LegendSymbologyMode }) {
+function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; field: FilterFieldKind; entries: readonly LegendEntry[] }) {
     const mgr = useLayerFilter(schema)
     const isContains = field.kind === 'containsAny'
     const { data, isLoading } = useDistinctFieldOptions({ schema, state: mgr.state, field, splitCommaDelimited: isContains })
     const counts = data?.counts ?? {}
+    // All distinct values, ordered by feature count (desc), alpha tiebreak.
     const options = useMemo(() => {
         const c = data?.counts ?? {}
-        let all = data?.options ?? []
-        if (mode.optionLabelFilter) all = all.filter(mode.optionLabelFilter)
-        if (mode.sortByCount || mode.primaryValues) {
-            // Symbolized (primary) categories first, then by feature count (desc),
-            // alpha tiebreak — count order applies within each tier.
-            const primary = new Set(mode.primaryValues ?? [])
-            all = [...all].sort((a, b) => {
-                const pa = primary.has(a), pb = primary.has(b)
-                if (pa !== pb) return pa ? -1 : 1
-                return (c[b] ?? 0) - (c[a] ?? 0) || a.localeCompare(b)
-            })
-        }
-        return all
-    }, [data, mode])
+        return [...(data?.options ?? [])].sort((a, b) => (c[b] ?? 0) - (c[a] ?? 0) || a.localeCompare(b))
+    }, [data])
 
-    // Filter value holds the SHOWN set (multiSelect/containsAny `values`).
-    // Empty = no filter = all on. NONE_SENTINEL = all off (show nothing).
+    // Colour + stroke per value, derived from the render's legend (flat renders: label == value).
+    const swatch = useMemo(() => new Map(entries.map(e => [e.label, e.color])), [entries])
+    const stroke = useMemo(() => new Map(entries.map(e => [e.label, e.stroke])), [entries])
+    // Grouped render when any legend entry carries `values`; each entry becomes a colour group.
+    const groups = useMemo<LegendGroup[] | null>(() =>
+        entries.some(e => e.values && e.values.length)
+            ? entries.map(e => ({ key: e.label, label: e.label, color: e.color, values: e.values ?? [] }))
+            : null
+    , [entries])
+
+    // Filter value holds the SHOWN set. Empty = all on. NONE_SENTINEL = all off.
     const raw = mgr.state[field.field]
     const values = raw && (raw.kind === 'multiSelect' || raw.kind === 'containsAny') ? raw.values : []
     const allOn = values.length === 0
@@ -147,14 +143,9 @@ function CategoryLegendGrid({ schema, field, mode }: { schema: FilterSchema; fie
     if (isLoading) return <p className="text-xs text-muted-foreground px-1">Loading…</p>
     if (options.length === 0) return null
 
-    // Split into the symbolized "primary" tier and the rest, for the divider.
-    const primarySet = new Set(mode.primaryValues ?? [])
-    const hasTiers = !!mode.primaryValues && options.some(o => primarySet.has(o)) && options.some(o => !primarySet.has(o))
-    const primary = hasTiers ? options.filter(o => primarySet.has(o)) : options
-    const others = hasTiers ? options.filter(o => !primarySet.has(o)) : []
-
     // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens.
-    const renderRows = (items: string[]) => (
+    // `groupColor` (when set) overrides per-value swatches with the group's colour.
+    const renderRows = (items: string[], groupColor?: string) => (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-1.5">
             {items.map(label => (
                 <label key={label} className="flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer">
@@ -166,7 +157,7 @@ function CategoryLegendGrid({ schema, field, mode }: { schema: FilterSchema; fie
                     />
                     <span
                         className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
-                        style={{ backgroundColor: mode.swatches[label] ?? '#bdbdbd', borderColor: mode.strokes?.[label] ?? 'rgba(0,0,0,0.3)' }}
+                        style={{ backgroundColor: groupColor ?? swatch.get(label) ?? '#bdbdbd', borderColor: stroke.get(label) ?? 'rgba(0,0,0,0.3)' }}
                     />
                     <span className="min-w-0 break-words leading-tight">
                         {label}
@@ -177,62 +168,81 @@ function CategoryLegendGrid({ schema, field, mode }: { schema: FilterSchema; fie
         </div>
     )
 
+    const controls = (
+        <div className="flex items-center justify-between">
+            <Label className="text-xs font-medium text-muted-foreground">{field.label}</Label>
+            <div className="flex items-center gap-2">
+                <button
+                    className="text-xs text-muted-foreground hover:text-foreground underline disabled:opacity-40 disabled:no-underline"
+                    disabled={allOn}
+                    onClick={() => emit(new Set(options))}
+                >All</button>
+                <button
+                    className="text-xs text-muted-foreground hover:text-foreground underline disabled:opacity-40 disabled:no-underline"
+                    disabled={onSet.size === 0}
+                    onClick={() => emit(new Set())}
+                >None</button>
+            </div>
+        </div>
+    )
+    const resetBtn = mgr.hasAnyFilter && (
+        <Button variant="ghost" size="sm" className="h-6 self-start px-2 text-xs" onClick={mgr.clearAll}>
+            Reset all filters
+        </Button>
+    )
+
+    // Grouped layout: a coloured header per group (toggles the whole group), its specific
+    // values spelled out beneath. Empty `values` = catch-all (everything not in another group).
+    if (groups) {
+        const claimed = new Set(groups.flatMap(g => [...g.values]))
+        const membersOf = (g: LegendGroup) =>
+            g.values.length ? options.filter(o => g.values.includes(o)) : options.filter(o => !claimed.has(o))
+        return (
+            <div className="flex flex-col gap-2">
+                {controls}
+                {groups.map(g => {
+                    const items = membersOf(g)
+                    if (items.length === 0) return null
+                    const onCount = items.filter(i => onSet.has(i)).length
+                    const groupChecked: boolean | 'indeterminate' = onCount === items.length ? true : onCount === 0 ? false : 'indeterminate'
+                    const toggleGroup = () => {
+                        const next = new Set(onSet)
+                        if (onCount === items.length) items.forEach(i => next.delete(i))
+                        else items.forEach(i => next.add(i))
+                        emit(next)
+                    }
+                    return (
+                        <div key={g.key} className="flex flex-col gap-1">
+                            <label className="flex items-center gap-1.5 border-t border-border pt-1.5 mt-0.5 cursor-pointer">
+                                <Checkbox className="shrink-0" checked={groupChecked} onCheckedChange={toggleGroup} aria-label={`Toggle ${g.label} group`} />
+                                <span className="inline-block w-3 h-3 rounded-full shrink-0 border" style={{ backgroundColor: g.color, borderColor: 'rgba(0,0,0,0.3)' }} />
+                                <Label className="text-xs font-semibold cursor-pointer">{g.label}</Label>
+                            </label>
+                            <div className="pl-4">{renderRows(items, g.color)}</div>
+                        </div>
+                    )
+                })}
+                {resetBtn}
+            </div>
+        )
+    }
+
+    // Flat layout: one swatch per value, coloured from the render's legend.
     return (
         <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium text-muted-foreground">{field.label}</Label>
-                <div className="flex items-center gap-2">
-                    <button
-                        className="text-xs text-muted-foreground hover:text-foreground underline disabled:opacity-40 disabled:no-underline"
-                        disabled={allOn}
-                        onClick={() => emit(new Set(options))}
-                    >All</button>
-                    <button
-                        className="text-xs text-muted-foreground hover:text-foreground underline disabled:opacity-40 disabled:no-underline"
-                        disabled={onSet.size === 0}
-                        onClick={() => emit(new Set())}
-                    >None</button>
-                </div>
-            </div>
-            {renderRows(primary)}
-            {others.length > 0 && (
-                <>
-                    <Label className="text-xs font-medium text-muted-foreground border-t border-border pt-1.5 mt-0.5">{mode.othersLabel ?? 'Other'}</Label>
-                    {renderRows(others)}
-                </>
-            )}
-            {mgr.hasAnyFilter && (
-                <Button variant="ghost" size="sm" className="h-6 self-start px-2 text-xs" onClick={mgr.clearAll}>
-                    Reset all filters
-                </Button>
-            )}
+            {controls}
+            {renderRows(options)}
+            {resetBtn}
         </div>
     )
 }
 
 // ─── UCRC wiring ────────────────────────────────────────────────────────────
 
-// Sample Type (box-type) is the default on page load: id '' = the default
-// sentinel (empty vector_symbology → map falls back to defaultRenderId
-// 'by-boxtype'). Purpose carries its real STAC render key so selecting it writes
-// a value activeRenderOf can match directly. Order = dropdown order.
-const UCRC_LEGEND_MODES: LegendSymbologyMode[] = [
-    {
-        id: '',
-        label: 'Sample Type',
-        field: 'box_type_codes',
-        swatches: UCRC_BOX_TYPE_COLORS,
-        sortByCount: true,
-        primaryValues: UCRC_BOX_TYPE_CODES,
-        othersLabel: 'Other sample types',
-    },
-    { id: 'by-purpose', label: 'Purpose', field: 'purpose', swatches: UCRC_PURPOSE_COLORS, strokes: UCRC_PURPOSE_STROKES },
-]
-
-/** `layerLegendRender` for the subsurface layer list. */
-export function renderSubsurfaceLegend(layerTitle: string): React.ReactNode {
-    if (layerTitle === ucrcWellsWMSTitle) {
-        return <SymbologyLegend layerTitle={ucrcWellsWMSTitle} schema={ucrcFilterSchema} modes={UCRC_LEGEND_MODES} />
+/** `layerLegendRender` for the subsurface layer list. Symbology is derived from the layer's STAC renders. */
+export function renderSubsurfaceLegend(layer: LayerProps): React.ReactNode {
+    if (layer.title === ucrcWellsWMSTitle && isPMTilesLayer(layer)) {
+        return <SymbologyLegend layer={layer} schema={ucrcFilterSchema} />
     }
     return null
 }
