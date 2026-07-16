@@ -16,7 +16,7 @@ import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
 import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, isGeoJSONLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint } from '@/components/maps/pmtiles-layer-source'
-import { GeoJSONLayerSource, getGeojsonLayerId } from '@/components/maps/geojson-layer-source'
+import { GeoJSONLayerSource, getGeojsonLayerId, queryGeojsonLayersAtPoint } from '@/components/maps/geojson-layer-source'
 import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps, GeoJSONLayerProps } from '@/lib/types/mapping-types'
 import type maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
@@ -345,12 +345,16 @@ export default function DataMap({
     () => mountedPmtilesLayers.filter(l => displayedTitles.has(l.title || '')),
     [mountedPmtilesLayers, displayedTitles],
   )
+  const visibleGeojsonLayers = useMemo(
+    () => mountedLayerList.filter(isGeoJSONLayer).filter(l => displayedTitles.has(l.title || '')),
+    [mountedLayerList, displayedTitles],
+  )
   // Vector buffer box is meaningful only when a vector layer is the click target; raster sampling alone uses the pixel highlight.
-  const hasVectorClickTarget = useMemo(() => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visiblePmtilesLayers.length > 0, [visibleWmsLayers, visibleWfsLayers, visiblePmtilesLayers])
-  // Any clickable layer (WMS / WFS / COG / PMTiles) gates the click handler + URL-state restore.
+  const hasVectorClickTarget = useMemo(() => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visiblePmtilesLayers.length > 0 || visibleGeojsonLayers.length > 0, [visibleWmsLayers, visibleWfsLayers, visiblePmtilesLayers, visibleGeojsonLayers])
+  // Any clickable layer (WMS / WFS / COG / PMTiles / GeoJSON) gates the click handler + URL-state restore.
   const hasClickableLayers = useMemo(
-    () => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visibleCogLayers.length > 0 || visiblePmtilesLayers.length > 0,
-    [visibleWmsLayers, visibleWfsLayers, visibleCogLayers, visiblePmtilesLayers],
+    () => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visibleCogLayers.length > 0 || visiblePmtilesLayers.length > 0 || visibleGeojsonLayers.length > 0,
+    [visibleWmsLayers, visibleWfsLayers, visibleCogLayers, visiblePmtilesLayers, visibleGeojsonLayers],
   )
   const cogClickPoint = useMemo(
     () => clickBufferBounds ? getBboxCenter(clickBufferBounds) : null,
@@ -391,6 +395,8 @@ export default function DataMap({
   visibleWfsLayersRef.current = visibleWfsLayers
   const visiblePmtilesLayersRef = useRef(visiblePmtilesLayers)
   visiblePmtilesLayersRef.current = visiblePmtilesLayers
+  const visibleGeojsonLayersRef = useRef(visibleGeojsonLayers)
+  visibleGeojsonLayersRef.current = visibleGeojsonLayers
 
   // Ref to store WFS features from polygon query (populated before WMS query completes)
   const polygonWfsLayerFeaturesRef = useRef<WfsLayerFeature[]>([])
@@ -448,7 +454,8 @@ export default function DataMap({
   ) {
     const wfsFeatures = queryWfsLayersAtPoint(map, point, tolerance, visibleWfsLayersRef.current)
     const pmtilesFeatures = queryPmtilesLayersAtPoint(map, point, tolerance, visiblePmtilesLayersRef.current)
-    const vectorFeatures = [...pmtilesFeatures, ...wfsFeatures]
+    const geojsonFeatures = queryGeojsonLayersAtPoint(map, point, tolerance, visibleGeojsonLayersRef.current)
+    const vectorFeatures = [...pmtilesFeatures, ...wfsFeatures, ...geojsonFeatures]
 
     if (visibleWmsLayersRef.current.length === 0) {
       dispatchFeatures(vectorFeatures, additive, options)

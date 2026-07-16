@@ -11,6 +11,7 @@ import { Source, Layer } from 'react-map-gl/maplibre'
 import type maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 import type { GeoJSONLayerProps } from '@/lib/types/mapping-types'
+import type { WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
 import { colorFromTitle } from '@/lib/map/user-layers/detect'
 
 /** Stable source id per GeoJSON layer. */
@@ -21,6 +22,55 @@ export function getGeojsonSourceId(layer: GeoJSONLayerProps): string {
 /** Canonical first-sublayer id for z-order (`beforeId`) lookups. */
 export function getGeojsonLayerId(layer: GeoJSONLayerProps): string {
     return `geojson-layer-${layer.title}`
+}
+
+/**
+ * Query rendered user-GeoJSON features at a point (with screen tolerance), mapped
+ * to the `WfsLayerFeature` shape the popup pipeline consumes. Mirrors
+ * {@link queryPmtilesLayersAtPoint}: walks every rendered layer tagged
+ * `metadata.userGeojson` whose title is among the visible GeoJSON layers.
+ *
+ * Deduped per (layer, feature id) because one polygon renders in BOTH the fill
+ * and line sublayers and would otherwise show up twice in the popup.
+ */
+export function queryGeojsonLayersAtPoint(
+    map: maplibregl.Map,
+    point: { x: number; y: number },
+    tolerance: number,
+    layers: GeoJSONLayerProps[],
+): WfsLayerFeature[] {
+    if (layers.length === 0) return []
+    const titles = new Set(layers.map(l => l.title))
+    const ids = (map.getStyle().layers ?? [])
+        .filter(l => {
+            const meta = l.metadata as { userGeojson?: boolean; title?: string } | undefined
+            return meta?.userGeojson && !!meta.title && titles.has(meta.title) && !!map.getLayer(l.id)
+        })
+        .map(l => l.id)
+    if (ids.length === 0) return []
+
+    const bbox: [maplibregl.PointLike, maplibregl.PointLike] = [
+        [point.x - tolerance, point.y - tolerance],
+        [point.x + tolerance, point.y + tolerance],
+    ]
+
+    const seen = new Set<string>()
+    const out: WfsLayerFeature[] = []
+    for (const f of map.queryRenderedFeatures(bbox, { layers: ids })) {
+        const meta = map.getLayer(f.layer.id)?.metadata as { title?: string } | undefined
+        const layerTitle = meta?.title || 'Unknown Layer'
+        const id = f.id ?? 0
+        const key = `${layerTitle}:${id}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        out.push({
+            id,
+            properties: f.properties as Record<string, unknown>,
+            geometry: f.geometry,
+            layerTitle,
+        })
+    }
+    return out
 }
 
 export function GeoJSONLayerSource({
@@ -43,7 +93,9 @@ export function GeoJSONLayerSource({
     const md = { title: layer.title, userGeojson: true }
 
     return (
-        <Source id={sourceId} type="geojson" data={data}>
+        // `generateId` gives features stable numeric ids — needed for popup dedupe
+        // (a polygon renders in both the fill and line sublayers) and for selection.
+        <Source id={sourceId} type="geojson" data={data} generateId>
             <Layer
                 id={`${primaryId}-fill`}
                 beforeId={beforeId}
