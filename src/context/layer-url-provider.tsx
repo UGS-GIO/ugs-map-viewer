@@ -3,6 +3,7 @@ import { useSearch, useNavigate, useLocation } from '@tanstack/react-router';
 import { LayerProps } from '@/lib/types/mapping-types';
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs';
 import { findAncestorGroupTitles } from '@/lib/map/layer-utils';
+import { useUserLayers } from '@/context/user-layers-provider';
 
 type ActiveFilters = Record<string, string>;
 
@@ -99,6 +100,9 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
     } = useSearch({ from: '/_map' });
 
     const layersConfig = useGetLayerConfigsData();
+    // User-layer titles are valid immediately (recipes/uploads known synchronously),
+    // so selection isn't stripped while a remote user layer is still being built.
+    const { userLayerTitles } = useUserLayers();
     const hasInitializedForPath = useRef<string | null>(null);
     const location = useLocation();
 
@@ -112,6 +116,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         if (!layersConfig || hasInitializedForPath.current === location.pathname) return;
 
         const allValidLayerTitles = getAllValidTitles(layersConfig);
+        userLayerTitles.forEach(t => allValidLayerTitles.add(t));
         const defaultSelected = getDefaultSelected(layersConfig);
 
         let finalLayers: { selected?: string[] } | undefined = urlLayers;
@@ -174,7 +179,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
 
         hasInitializedForPath.current = location.pathname;
 
-    }, [layersConfig, navigate, urlLayers, urlVisibility, urlFilters, location.pathname]);
+    }, [layersConfig, navigate, urlLayers, urlVisibility, urlFilters, location.pathname, userLayerTitles]);
 
     // structuralSharing on useSearch guarantees stable references for unchanged values
     const selectedLayerTitles = useMemo(

@@ -13,10 +13,11 @@ import {
 import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
-import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
+import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, isGeoJSONLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint } from '@/components/maps/pmtiles-layer-source'
-import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
+import { GeoJSONLayerSource, getGeojsonLayerId } from '@/components/maps/geojson-layer-source'
+import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps, GeoJSONLayerProps } from '@/lib/types/mapping-types'
 import type maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 
@@ -37,7 +38,7 @@ import { toast } from 'sonner'
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps } from './types'
 
-type DataLayer = WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps | PMTilesLayerProps
+type DataLayer = WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps | PMTilesLayerProps | GeoJSONLayerProps
 
 // MapLibre layer id used for z-order lookups. Keep prefixes stable — popup/query code greps for them.
 function getLayerId(layer: DataLayer): string {
@@ -45,6 +46,7 @@ function getLayerId(layer: DataLayer): string {
   if (isWFSLayer(layer)) return `${getWfsSourceId(layer)}-circle`
   if (isCOGLayer(layer)) return `cog-layer-${layer.title}`
   if (isPMTilesLayer(layer)) return getPmtilesLayerId(layer)
+  if (isGeoJSONLayer(layer)) return getGeojsonLayerId(layer)
   return `arcgis-layer-${layer.title}`
 }
 
@@ -872,6 +874,17 @@ export default function DataMap({
                 activeSymbology={activeSymbology}
                 beforeId={beforeId}
                 layerFilter={vectorLayerFilters[layer.title]}
+                hidden={hidden}
+                opacity={opacity}
+              />
+            )
+          }
+          if (isGeoJSONLayer(layer)) {
+            return (
+              <GeoJSONLayerSource
+                key={layer.title}
+                layer={layer}
+                beforeId={beforeId}
                 hidden={hidden}
                 opacity={opacity}
               />

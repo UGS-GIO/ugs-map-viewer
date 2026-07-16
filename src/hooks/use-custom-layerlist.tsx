@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionHeader } from '@/components/ui/accordion';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronRight, SlidersHorizontal } from 'lucide-react';
+import { ChevronRight, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { useLayerItemState } from '@/hooks/use-layer-item-state';
@@ -14,6 +14,7 @@ import { useLayerExtent, UseLayerExtentOptions } from '@/hooks/use-layer-extent'
 import { useMapZoom, getZoomHint } from '@/hooks/use-map-zoom';
 import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions';
 import { useSidebar } from '@/hooks/use-sidebar';
+import { useUserLayers } from '@/context/user-layers-provider';
 import LayerControls from '@/components/maps/layer-controls';
 import { WfsVectorLegend } from '@/components/maps/wfs-vector-legend';
 import { ZoomHintPill } from '@/components/maps/zoom-hint-pill';
@@ -71,7 +72,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
     } = useLayerItemState(layerConfig);
 
     const { map } = useMap();
-    const { groupVisibility, setGroupVisibility, layerOpacity: layerOpacityMap, setLayerOpacity } = useLayerUrl();
+    const { groupVisibility, setGroupVisibility, layerOpacity: layerOpacityMap, setLayerOpacity, updateLayerSelection } = useLayerUrl();
+    const { removeUserLayer } = useUserLayers();
     const { setIsCollapsed, setNavOpened } = useSidebar();
     const { data: layerDescriptions } = useFetchLayerDescriptions();
     const isMobile = useIsMobile();
@@ -229,6 +231,17 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
         }
     };
 
+    // Remove a user-added layer: deselect it, drop highlights, then delete it
+    // from the URL recipe / IndexedDB (via the user-layers provider).
+    const isUserLayer = layerConfig.userAdded === true;
+    const handleRemoveUserLayer = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!layerConfig.title) return;
+        onLayerTurnedOff(layerConfig.title);
+        updateLayerSelection(layerConfig.title, false);
+        removeUserLayer(layerConfig.title);
+    }, [layerConfig.title, onLayerTurnedOff, updateLayerSelection, removeUserLayer]);
+
     const accordionValue = isUserExpanded ? "item-1" : "";
 
 
@@ -334,6 +347,17 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                 {layerConfig.title}
                             </h3>
                         </AccordionTrigger>
+                        {isUserLayer && (
+                            <button
+                                type="button"
+                                onClick={handleRemoveUserLayer}
+                                title="Remove layer"
+                                aria-label={`Remove ${layerConfig.title}`}
+                                className="mr-2 shrink-0 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </button>
+                        )}
                     </AccordionHeader>
                     {zoomHint && visibleZoomRange && (
                         <div className="px-2 pb-2 -mt-1">
