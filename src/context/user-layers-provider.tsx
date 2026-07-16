@@ -42,6 +42,13 @@ interface UserLayersContextType {
     removeUserLayer: (title: string) => void
     /** True while remote recipes are being (re)built. */
     isBuilding: boolean
+    /**
+     * True once uploaded layers have been read back from IndexedDB. Consumers
+     * that validate layer titles (see `LayerUrlProvider`) MUST wait for this —
+     * an upload's title lives in `?layers.selected` but its definition only
+     * appears after the async hydration, so validating early would strip it.
+     */
+    isHydrated: boolean
 }
 
 const noop = () => ''
@@ -52,6 +59,8 @@ const defaultValue: UserLayersContextType = {
     addUploadedLayer: async () => '',
     removeUserLayer: () => {},
     isBuilding: false,
+    // No provider → nothing to hydrate, so consumers must not stall.
+    isHydrated: true,
 }
 
 // Non-undefined default so `useUserLayers()` is safe outside the provider
@@ -76,6 +85,7 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
     const [remoteBuilt, setRemoteBuilt] = useState<LayerProps[]>([])
     const [uploads, setUploads] = useState<GeoJSONLayerProps[]>([])
     const [isBuilding, setIsBuilding] = useState(false)
+    const [isHydrated, setIsHydrated] = useState(false)
 
     // Rebuild remote layers whenever the URL recipes change.
     useEffect(() => {
@@ -99,11 +109,14 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
         return () => { cancelled = true }
     }, [recipesKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Hydrate uploaded layers from IndexedDB once on mount.
+    // Hydrate uploaded layers from IndexedDB once on mount. Always flips
+    // `isHydrated`, even on failure, so a broken IndexedDB can't wedge the
+    // consumers gated on it.
     useEffect(() => {
-        getAllUserLayers().then(records => {
-            setUploads(records.map(r => r.def as GeoJSONLayerProps))
-        })
+        getAllUserLayers()
+            .then(records => setUploads(records.map(r => r.def as GeoJSONLayerProps)))
+            .catch(e => console.warn('[user-layers] hydrate failed:', e))
+            .finally(() => setIsHydrated(true))
     }, [])
 
     const userLayers = useMemo(() => [...remoteBuilt, ...uploads], [remoteBuilt, uploads])
@@ -176,7 +189,8 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
         addUploadedLayer,
         removeUserLayer,
         isBuilding,
-    }), [userLayers, userLayerTitles, addRemoteLayer, addUploadedLayer, removeUserLayer, isBuilding])
+        isHydrated,
+    }), [userLayers, userLayerTitles, addRemoteLayer, addUploadedLayer, removeUserLayer, isBuilding, isHydrated])
 
     return <UserLayersContext.Provider value={value}>{children}</UserLayersContext.Provider>
 }

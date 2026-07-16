@@ -100,9 +100,12 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
     } = useSearch({ from: '/_map' });
 
     const layersConfig = useGetLayerConfigsData();
-    // User-layer titles are valid immediately (recipes/uploads known synchronously),
-    // so selection isn't stripped while a remote user layer is still being built.
-    const { userLayerTitles } = useUserLayers();
+    // User-layer titles are valid immediately (recipes known synchronously), so
+    // selection isn't stripped while a remote user layer is still being built.
+    // Uploads resolve asynchronously from IndexedDB, so validation also waits on
+    // `isHydrated` — otherwise an uploaded layer's title would be stripped from
+    // `?layers.selected` before its definition lands, and it'd vanish on reload.
+    const { userLayerTitles, isHydrated: userLayersHydrated } = useUserLayers();
     const hasInitializedForPath = useRef<string | null>(null);
     const location = useLocation();
 
@@ -113,7 +116,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
     const isInitialized = urlLayers?.selected !== undefined;
 
     useEffect(() => {
-        if (!layersConfig || hasInitializedForPath.current === location.pathname) return;
+        if (!layersConfig || !userLayersHydrated || hasInitializedForPath.current === location.pathname) return;
 
         const allValidLayerTitles = getAllValidTitles(layersConfig);
         userLayerTitles.forEach(t => allValidLayerTitles.add(t));
@@ -179,7 +182,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
 
         hasInitializedForPath.current = location.pathname;
 
-    }, [layersConfig, navigate, urlLayers, urlVisibility, urlFilters, location.pathname, userLayerTitles]);
+    }, [layersConfig, navigate, urlLayers, urlVisibility, urlFilters, location.pathname, userLayerTitles, userLayersHydrated]);
 
     // structuralSharing on useSearch guarantees stable references for unchanged values
     const selectedLayerTitles = useMemo(
