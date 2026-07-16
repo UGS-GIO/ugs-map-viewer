@@ -9,6 +9,7 @@ import { LayerDescriptionAccordion } from '@/components/maps/layer-description-a
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
 import { ParquetDownloadMenu } from '@/components/maps/parquet-download-menu';
+import type { RelatedTable } from '@/lib/types/mapping-types';
 
 interface LayerControlsProps {
     handleZoomToLayer: () => void;
@@ -26,6 +27,9 @@ interface LayerControlsProps {
     legendUnit?: string;
     /** GeoParquet URL for client-side export. When set, download dropdown is enabled. */
     downloadParquetUrl?: string;
+    /** Related tables configured on the layer's sublayers (e.g. formation tops, geochemistry).
+     * When non-empty, the download menu offers an "Include related data" option. */
+    relatedTables?: RelatedTable[];
     /** When true, hide format-conversion dropdown and offer only a direct parquet download. Used for apps that require unmodified source data. */
     disableExport?: boolean;
     /** Optional layer-scoped filter UI. When provided, adds a Filters toggle to the button row and a collapsible panel below. */
@@ -75,6 +79,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     arcgisUrl,
     legendUnit,
     downloadParquetUrl,
+    relatedTables,
     disableExport = false,
     filtersContent,
     statsContent,
@@ -189,7 +194,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         </Toggle>
 
                         {!disableExport && downloadParquetUrl && (
-                            <ParquetDownloadMenu parquetUrl={downloadParquetUrl} layerTitle={title} />
+                            <ParquetDownloadMenu parquetUrl={downloadParquetUrl} layerTitle={title} relatedTables={relatedTables} />
                         )}
 
                         {filtersContent && (

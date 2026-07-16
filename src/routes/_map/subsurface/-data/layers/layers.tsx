@@ -469,7 +469,7 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
     title: ucrcWellsWMSTitle,
     visible: true,
     opacity: 0.85,
-    defaultRenderId: 'by-purpose',
+    defaultRenderId: 'by-boxtype',
     sublayers: [
         {
             name: ucrcWellsTileLayer,
@@ -485,11 +485,44 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                 'Purpose': { field: 'purpose', type: 'string' },
                 'Producing Formation': { field: 'producing_formation', type: 'string' },
                 'TD (ft)': { field: 'td_ft', type: 'number' },
-                'Elevation (GL ft)': { field: 'elevation_gl', type: 'number' },
+                'Elevation (GL ft)': {
+                    field: 'elevation_gl',
+                    type: 'custom',
+                    transform: (properties) => {
+                        const val = properties?.['elevation_gl'];
+                        if (val === null || val === undefined || val === 0 || val === '0') return null;
+                        return val;
+                    }
+                },
+                'Kelly bushing Elevation (GL ft)': {
+                    field: 'elevation_kb',
+                    type: 'custom',
+                    transform: (properties) => {
+                        const val = properties?.['elevation_kb'];
+                        if (val === null || val === undefined || val === 0 || val === '0') return null;
+                        return val;
+                    }
+                },
                 'Latitude': { field: 'latitude', type: 'number' },
                 'Longitude': { field: 'longitude', type: 'number' },
-                'Easting (NAD83)': { field: 'easting', type: 'number' },
-                'Northing (NAD83)': { field: 'northing', type: 'number' },
+                'Easting (NAD83)': {
+                    field: 'easting',
+                    type: 'custom',
+                    transform: (properties) => {
+                        const val = properties?.['easting'];
+                        if (val === null || val === undefined || val === 0 || val === '0') return null;
+                        return val;
+                    }
+                },
+                'Northing (NAD83)': {
+                    field: 'northing',
+                    type: 'custom',
+                    transform: (properties) => {
+                        const val = properties?.['northing'];
+                        if (val === null || val === undefined || val === 0 || val === '0') return null;
+                        return val;
+                    }
+                },
                 'Township': { field: 'township', type: 'string' },
                 'Range': { field: 'range', type: 'string' },
                 'Section': { field: 'section', type: 'string' },

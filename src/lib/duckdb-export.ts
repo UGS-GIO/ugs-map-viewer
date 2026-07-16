@@ -12,7 +12,10 @@
 
 import * as duckdb from '@duckdb/duckdb-wasm';
 import { EXPORT_FORMATS, type ExportFormat } from '@/lib/export-formats';
-import { withConnection, loadSpatial, escapeSql } from '@/lib/duckdb/client';
+import { withConnection, loadSpatial, escapeSql, queryParquetDistinctValues } from '@/lib/duckdb/client';
+import { downloadZip } from '@/lib/download-utils';
+import { fetchRelatedRowsBulk, relatedRowsToCsv } from '@/lib/related-table-fetch';
+import type { RelatedTable } from '@/lib/types/mapping-types';
 
 export type { ExportFormat } from '@/lib/export-formats';
 export { safeFilename } from '@/lib/export-formats';
@@ -29,6 +32,9 @@ export interface ExportOptions {
     format: ExportFormat;
     /** Geometry column name if present, else null — discovered via useParquetSchema */
     geometryColumn: string | null;
+    /** Related tables configured on the layer (formation tops, geochemistry, etc). When
+     * present + non-empty, `exportParquet` bundles them alongside the main file as a zip. */
+    relatedTables?: RelatedTable[];
     onProgress?: (stage: ExportStage) => void;
 }
 
@@ -133,14 +139,89 @@ const jsonReplacer = (_key: string, value: unknown) => {
         : String(value);
 };
 
+// Sanitize a related table's fieldLabel into a safe zip entry name.
+const safeEntryName = (s: string): string =>
+    s.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'related';
+
+// Unique `related-<name>.csv` stem per table, resolved synchronously up front so
+// two tables with the same (or empty) fieldLabel don't collide to one zip entry.
+// Deterministic and race-free — computed before the concurrent fetch below.
+const uniqueEntryNames = (relatedTables: RelatedTable[]): string[] => {
+    const used = new Set<string>();
+    return relatedTables.map((t, idx) => {
+        const base = safeEntryName(t.fieldLabel || `table-${idx + 1}`);
+        let name = base;
+        for (let n = 2; used.has(name); n++) name = `${base}-${n}`;
+        used.add(name);
+        return name;
+    });
+};
+
+/**
+ * Fetch every configured related table for the full layer (not just visible
+ * features).
+ *
+ * - parquet related assets are read whole (already scoped to the STAC item), so
+ *   we skip the distinct-key scan entirely — reading the main parquet's join
+ *   column just to feed a filter we don't use would be pure waste.
+ * - postgrest/wfs tables may be shared across datasets, so we pull the layer's
+ *   distinct join keys (once, for that table's targetField) and chunk-filter.
+ *
+ * Each table is isolated: one that errors (bad URL, CORS, server cap) is logged
+ * and skipped so the main file and the other related tables still download.
+ */
+const buildRelatedCsvFiles = async (
+    parquetUrl: string,
+    relatedTables: RelatedTable[],
+): Promise<Record<string, string>> => {
+    const files: Record<string, string> = {};
+    const entryNames = uniqueEntryNames(relatedTables);
+    await Promise.all(relatedTables.map(async (table, idx) => {
+        if (!table.matchingField) return;
+        try {
+            let values: string[] = [];
+            if (table.fetchMode !== 'parquet') {
+                if (!table.targetField) return; // STAC-backed entry not yet resolved
+                values = await queryParquetDistinctValues({ url: parquetUrl, field: table.targetField });
+                if (values.length === 0) return;
+            }
+            const rows = await fetchRelatedRowsBulk(table, values);
+            if (rows.length === 0) return;
+            files[`related-${entryNames[idx]}.csv`] = relatedRowsToCsv(rows, table);
+        } catch (err) {
+            console.error(`[exportParquet] related table '${table.fieldLabel ?? idx}' failed, skipping:`, err);
+        }
+    }));
+    return files;
+};
+
 // ── Public entrypoint ────────────────────────────────────────────────────────
 
 export const exportParquet = async (opts: ExportOptions): Promise<void> => {
     const meta = EXPORT_FORMATS[opts.format];
     try {
         const blob = await handlers[opts.format](opts);
-        opts.onProgress?.({ stage: 'writing', message: 'Saving file…' });
-        triggerDownload(blob, `${opts.filename}.${meta.extension}`);
+        const relatedTables = opts.relatedTables ?? [];
+
+        if (relatedTables.length === 0) {
+            opts.onProgress?.({ stage: 'writing', message: 'Saving file…' });
+            triggerDownload(blob, `${opts.filename}.${meta.extension}`);
+            opts.onProgress?.({ stage: 'complete', message: 'Done' });
+            return;
+        }
+
+        opts.onProgress?.({ stage: 'converting', message: 'Fetching related tables…' });
+        const relatedFiles = await buildRelatedCsvFiles(opts.parquetUrl, relatedTables);
+
+        opts.onProgress?.({ stage: 'writing', message: 'Saving files…' });
+        if (Object.keys(relatedFiles).length === 0) {
+            // No related rows matched — fall back to a single-file download rather
+            // than a zip with only the main file.
+            triggerDownload(blob, `${opts.filename}.${meta.extension}`);
+        } else {
+            const mainBytes = new Uint8Array(await blob.arrayBuffer());
+            downloadZip({ [`${opts.filename}.${meta.extension}`]: mainBytes, ...relatedFiles }, opts.filename);
+        }
         opts.onProgress?.({ stage: 'complete', message: 'Done' });
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

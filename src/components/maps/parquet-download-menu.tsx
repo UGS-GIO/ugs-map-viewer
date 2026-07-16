@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { Download, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
+    DropdownMenuCheckboxItem,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuLabel,
@@ -12,16 +14,22 @@ import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useParquetSchema } from '@/hooks/use-parquet-schema';
 import { EXPORT_FORMATS, availableFormats, type ExportFormat } from '@/lib/export-formats';
+import type { RelatedTable } from '@/lib/types/mapping-types';
 
 interface ParquetDownloadMenuProps {
     /** GeoParquet URL — when present, the menu renders. */
     parquetUrl: string;
     /** Used as the download filename stem */
     layerTitle: string;
+    /** Related tables configured on the layer (e.g. formation tops, geochemistry). When
+     * non-empty, adds an "Include related data" option that bundles them as a zip. */
+    relatedTables?: RelatedTable[];
 }
 
-export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parquetUrl, layerTitle }) => {
+export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parquetUrl, layerTitle, relatedTables }) => {
     const { data: schema, isLoading: schemaLoading, isError: schemaError } = useParquetSchema(parquetUrl);
+    const [includeRelated, setIncludeRelated] = useState(true);
+    const hasRelatedTables = (relatedTables?.length ?? 0) > 0;
 
     const download = useMutation({
         mutationFn: async (format: ExportFormat) => {
@@ -31,6 +39,7 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
                 filename: safeFilename(layerTitle),
                 format,
                 geometryColumn: schema?.geometryColumn ?? null,
+                relatedTables: hasRelatedTables && includeRelated ? relatedTables : undefined,
                 onProgress: (stage) => {
                     if (stage.stage === 'error') {
                         // Let mutation onError handle display; no-op here
@@ -93,6 +102,21 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
                         </DropdownMenuItem>
                     );
                 })}
+                {hasRelatedTables && (
+                    <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                            Options
+                        </DropdownMenuLabel>
+                        <DropdownMenuCheckboxItem
+                            checked={includeRelated}
+                            onCheckedChange={setIncludeRelated}
+                            onSelect={(e) => e.preventDefault()}
+                        >
+                            Include related data
+                        </DropdownMenuCheckboxItem>
+                    </>
+                )}
             </DropdownMenuContent>
         </DropdownMenu>
     );

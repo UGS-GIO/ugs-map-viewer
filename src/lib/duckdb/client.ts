@@ -120,3 +120,49 @@ export const queryParquetByValues = async (
         return result.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>));
     });
 };
+
+export interface ParquetAllOptions {
+    /** Remote .parquet URL (read over httpfs). */
+    url: string;
+    sortBy?: string;
+    sortDirection?: 'asc' | 'desc';
+}
+
+/**
+ * Read an entire remote geoparquet. Used by the layerlist "download whole layer +
+ * related tables" path, where every row is wanted anyway — avoids building a giant
+ * value-filtered query (which blows past URL limits for postgrest joins).
+ */
+export const queryParquetAll = async (
+    { url, sortBy, sortDirection }: ParquetAllOptions,
+): Promise<PostgRESTRow[]> => {
+    return withConnection(async (conn) => {
+        const order = sortBy
+            ? ` ORDER BY ${quoteIdent(sortBy)} ${sortDirection === 'desc' ? 'DESC' : 'ASC'}`
+            : '';
+        const result = await conn.query(
+            `SELECT * FROM read_parquet('${escapeSql(url)}')${order}`,
+        );
+        return result.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>));
+    });
+};
+
+/**
+ * Read the distinct non-null values of one column from a remote geoparquet.
+ * Used to seed a bulk related-table fetch (matchingField IN (...)) for a
+ * whole-layer download, where there's no already-loaded feature set to draw
+ * join keys from.
+ */
+export const queryParquetDistinctValues = async (
+    { url, field }: { url: string; field: string },
+): Promise<string[]> => {
+    return withConnection(async (conn) => {
+        const result = await conn.query(
+            `SELECT DISTINCT CAST(${quoteIdent(field)} AS VARCHAR) AS v FROM read_parquet('${escapeSql(url)}') WHERE ${quoteIdent(field)} IS NOT NULL`,
+        );
+        return result.toArray()
+            .map(r => (r.toJSON() as { v: unknown }).v)
+            .filter((v): v is string => v != null)
+            .map(String);
+    });
+};
