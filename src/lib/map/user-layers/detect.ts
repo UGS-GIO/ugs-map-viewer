@@ -27,7 +27,7 @@ import { loadCogMetadata } from '@/hooks/use-cog-metadata'
 import { registerLocalPMTiles } from '@/lib/map/pmtiles/setup'
 
 /** A layer produced by uploading a local file (data lives in the browser, not a URL). */
-export type UploadedLayer = GeoJSONLayerProps | PMTilesLayerProps
+export type UploadedLayer = GeoJSONLayerProps | PMTilesLayerProps | COGLayerProps
 
 export type DetectedFormat = 'pmtiles' | 'geojson' | 'cog' | 'wms' | 'stac' | 'unknown'
 
@@ -108,19 +108,41 @@ function buildGeoJSONFromData(data: FeatureCollection, title: string, idbKey: st
 }
 
 /**
- * COG rendering needs a value range, which comes from stats embedded by
- * `gdal_edit -stats` (or a STAC fallback). Without them `useCogRange` yields
- * undefined and the layer silently never draws — so verify up front and fail
- * with a reason the user can act on instead of adding a dead layer.
+ * Both COG failure modes are silent — the layer mounts and simply never draws —
+ * so they're caught at add-time instead:
+ *
+ *  - No stats: `useCogRange` can't compute a colour range and returns undefined.
+ *  - Not EPSG:3857: the cog protocol assumes Web Mercator (`CogReader` runs
+ *    `mercatorBboxToGeographicBbox` over the image bbox), so another CRS yields
+ *    garbage bounds and the tiles land nowhere. `epsg` is only checked when it
+ *    could actually be read, so an unreadable geokey never causes a false reject.
+ *
+ * Returns the resolved stats so callers needn't re-read them.
  */
-async function buildCOG(url: string, title: string, stacUrl?: string): Promise<COGLayerProps> {
-    const stats = await loadCogMetadata(url, stacUrl)
+async function assertRenderableCog(url: string, label: string, stacUrl?: string) {
+    let stats
+    try {
+        stats = await loadCogMetadata(url, stacUrl)
+    } catch {
+        stats = null
+    }
     if (!stats) {
         throw new Error(
-            `"${title}" has no readable statistics, so its colour range can't be computed and it would render blank. ` +
-            `Add stats to the GeoTIFF (gdal_edit.py -stats file.tif), or use a STAC item that carries raster:bands statistics.`,
+            `"${label}" has no readable statistics, so its colour range can't be computed and it would render blank. ` +
+            `Add stats before converting to COG (gdal_edit.py -stats src.tif, then gdal_translate -of COG).`,
         )
     }
+    if (stats.epsg !== undefined && stats.epsg !== 3857) {
+        throw new Error(
+            `"${label}" is EPSG:${stats.epsg}, but COG layers must be EPSG:3857 (Web Mercator) to line up on the map. ` +
+            `Reproject it first: gdalwarp -t_srs EPSG:3857 src.tif out.tif`,
+        )
+    }
+    return stats
+}
+
+async function buildCOG(url: string, title: string, stacUrl?: string): Promise<COGLayerProps> {
+    await assertRenderableCog(url, title, stacUrl)
     return { type: 'cog', title, cogUrl: url, stacUrl, colorStops: DEFAULT_COG_STOPS, stretchMode: 'minmax', continuous: true, visible: true, opacity: 0.9, userAdded: true }
 }
 
@@ -253,18 +275,61 @@ export async function buildPMTilesFromFile(file: File, idbKey: string): Promise<
 }
 
 /**
- * Parse an uploaded file into a layer def. Supports GeoJSON (inline data) and
- * PMTiles (File-backed via the protocol). Returns the def plus the file that
- * must be persisted — for PMTiles that is a re-keyed copy, and hydration depends
- * on persisting exactly this one so its name matches `pmtilesUrl`.
+ * Build a layer from a local COG. The cog protocol only accepts a URL string
+ * (`CogReader(url)` → `geotiff.fromUrl`), so the file is exposed as an object
+ * URL — `blob:` URLs answer Range requests (verified: 206 + Content-Range), which
+ * is exactly what geotiff needs to read a COG's headers and tiles lazily.
+ *
+ * Object URLs do NOT survive a reload, so `cogUrl` is regenerated on hydration —
+ * the persisted value is never trusted. See `objectUrlForCog`.
+ */
+export async function buildCOGFromFile(file: File, idbKey: string): Promise<COGLayerProps> {
+    const objectUrl = URL.createObjectURL(file)
+    const title = file.name.replace(/\.(tif|tiff)$/i, '')
+    try {
+        await assertRenderableCog(objectUrl, file.name)
+    } catch (e) {
+        // Unusable — release the URL rather than leak the file's bytes.
+        URL.revokeObjectURL(objectUrl)
+        throw e
+    }
+    return {
+        type: 'cog',
+        title,
+        cogUrl: objectUrl,
+        colorStops: DEFAULT_COG_STOPS,
+        stretchMode: 'minmax',
+        continuous: true,
+        visible: true,
+        opacity: 0.9,
+        userAdded: true,
+        local: true,
+        idbKey,
+    }
+}
+
+/** Fresh object URL for a hydrated COG upload — the persisted one is dead after reload. */
+export function objectUrlForCog(file: File): string {
+    return URL.createObjectURL(file)
+}
+
+/**
+ * Parse an uploaded file into a layer def. Supports GeoJSON (inline data),
+ * PMTiles (File-backed via the protocol) and COG (File-backed via object URL).
+ * Returns the def plus the file that must be persisted — for PMTiles that is a
+ * re-keyed copy, and hydration depends on persisting exactly this one so its
+ * name matches `pmtilesUrl`.
  */
 export async function buildLayerFromFile(file: File, idbKey: string): Promise<{ def: UploadedLayer; file: File }> {
     const name = file.name.toLowerCase()
     if (name.endsWith('.pmtiles')) {
         return buildPMTilesFromFile(file, idbKey)
     }
+    if (name.endsWith('.tif') || name.endsWith('.tiff')) {
+        return { def: await buildCOGFromFile(file, idbKey), file }
+    }
     if (!name.endsWith('.geojson') && !name.endsWith('.json')) {
-        throw new Error('Only GeoJSON (.geojson / .json) and PMTiles (.pmtiles) files can be uploaded. Use a URL for COG/WMS.')
+        throw new Error('Only GeoJSON (.geojson / .json), PMTiles (.pmtiles) and COG (.tif / .tiff) files can be uploaded.')
     }
     let parsed: unknown
     try {

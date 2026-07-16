@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { detectFormatFromUrl, titleFromUrl, colorFromTitle, buildLayerFromFile, buildLayerFromUrl } from '../detect'
 import { loadCogMetadata } from '@/hooks/use-cog-metadata'
 import { registerLocalPMTiles } from '@/lib/map/pmtiles/setup'
-import type { GeoJSONLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
+import type { GeoJSONLayerProps, PMTilesLayerProps, COGLayerProps } from '@/lib/types/mapping-types'
 
 vi.mock('@/hooks/use-cog-metadata', () => ({ loadCogMetadata: vi.fn() }))
 vi.mock('@/lib/map/pmtiles/setup', () => ({ registerLocalPMTiles: vi.fn() }))
@@ -106,7 +106,7 @@ describe('buildLayerFromFile', () => {
     })
 
     it('rejects unsupported extensions', async () => {
-        await expect(buildLayerFromFile(asFile('a.tif', fc), 'k')).rejects.toThrow(/Only GeoJSON .* and PMTiles/)
+        await expect(buildLayerFromFile(asFile('a.csv', fc), 'k')).rejects.toThrow(/Only GeoJSON .* PMTiles .* COG/)
     })
 
     it('rejects invalid JSON', async () => {
@@ -117,6 +117,73 @@ describe('buildLayerFromFile', () => {
         await expect(
             buildLayerFromFile(asFile('a.geojson', JSON.stringify({ type: 'Feature' })), 'k'),
         ).rejects.toThrow(/not a GeoJSON FeatureCollection/)
+    })
+})
+
+describe('buildLayerFromFile — COG uploads', () => {
+    const tifFile = (name = 'gravity.tif') =>
+        new File([new Uint8Array([1, 2, 3])], name, { type: 'image/tiff' })
+
+    beforeEach(() => {
+        vi.mocked(loadCogMetadata).mockReset()
+        vi.stubGlobal('URL', {
+            ...URL,
+            createObjectURL: vi.fn(() => 'blob:http://localhost/fake-object-url'),
+            revokeObjectURL: vi.fn(),
+        })
+    })
+
+    it('builds a local COG layer pointed at an object URL', async () => {
+        vi.mocked(loadCogMetadata).mockResolvedValue({ minimum: 25.37, maximum: 74.2, mean: 49.62, stddev: 11.96 })
+        const { def, file } = await buildLayerFromFile(tifFile(), 'upload-cog')
+        const layer = def as COGLayerProps
+
+        expect(layer.type).toBe('cog')
+        expect(layer.title).toBe('gravity')
+        expect(layer.cogUrl).toBe('blob:http://localhost/fake-object-url')
+        expect(layer.local).toBe(true)
+        expect(layer.userAdded).toBe(true)
+        expect(layer.idbKey).toBe('upload-cog')
+        expect(file.name).toBe('gravity.tif') // the original file is what gets persisted
+    })
+
+    it('rejects a COG with no stats and releases the object URL', async () => {
+        vi.mocked(loadCogMetadata).mockResolvedValue(null)
+        await expect(buildLayerFromFile(tifFile(), 'k')).rejects.toThrow(/no readable statistics/)
+        // Must not leak the object URL for a layer that was never added.
+        expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:http://localhost/fake-object-url')
+    })
+
+    it('rejects an unreadable tiff rather than propagating the raw error', async () => {
+        vi.mocked(loadCogMetadata).mockRejectedValue(new Error('not a tiff'))
+        await expect(buildLayerFromFile(tifFile(), 'k')).rejects.toThrow(/no readable statistics/)
+    })
+
+    it('accepts .tiff as well as .tif', async () => {
+        vi.mocked(loadCogMetadata).mockResolvedValue({ minimum: 0, maximum: 1, mean: 0.5, stddev: 0.1 })
+        const { def } = await buildLayerFromFile(tifFile('dem.tiff'), 'k')
+        expect(def.type).toBe('cog')
+        expect(def.title).toBe('dem')
+    })
+
+    // The cog protocol assumes Web Mercator; another CRS renders nowhere, silently.
+    it('rejects a COG that is not EPSG:3857', async () => {
+        vi.mocked(loadCogMetadata).mockResolvedValue({ minimum: 0, maximum: 1, mean: 0.5, stddev: 0.1, epsg: 4326 })
+        await expect(buildLayerFromFile(tifFile(), 'k')).rejects.toThrow(/EPSG:4326, but COG layers must be EPSG:3857/)
+        expect(URL.revokeObjectURL).toHaveBeenCalled()
+    })
+
+    it('accepts an EPSG:3857 COG', async () => {
+        vi.mocked(loadCogMetadata).mockResolvedValue({ minimum: 0, maximum: 1, mean: 0.5, stddev: 0.1, epsg: 3857 })
+        const { def } = await buildLayerFromFile(tifFile(), 'k')
+        expect(def.type).toBe('cog')
+    })
+
+    it('does not reject when the CRS simply could not be read', async () => {
+        // epsg undefined => unknown, not wrong. Blocking here would be a false reject.
+        vi.mocked(loadCogMetadata).mockResolvedValue({ minimum: 0, maximum: 1, mean: 0.5, stddev: 0.1 })
+        const { def } = await buildLayerFromFile(tifFile(), 'k')
+        expect(def.type).toBe('cog')
     })
 })
 

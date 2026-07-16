@@ -18,7 +18,7 @@ import { createContext, useContext, useCallback, useEffect, useMemo, useState, t
 import { useSearch, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import type { LayerProps } from '@/lib/types/mapping-types'
-import { buildLayerFromUrl, type DetectedFormat, type UploadedLayer } from '@/lib/map/user-layers/detect'
+import { buildLayerFromUrl, objectUrlForCog, type DetectedFormat, type UploadedLayer } from '@/lib/map/user-layers/detect'
 import { getAllUserLayers, putUserLayer, deleteUserLayer } from '@/lib/map/user-layers/idb'
 import { registerLocalPMTiles } from '@/lib/map/pmtiles/setup'
 
@@ -121,17 +121,26 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
                 const restored: UploadedLayer[] = []
                 for (const r of records) {
                     const def = r.def as UploadedLayer
-                    if (def.type === 'pmtiles') {
+                    // File-backed uploads need their browser-side handle rebuilt.
+                    if (def.type === 'pmtiles' || def.type === 'cog') {
                         if (!r.file) {
-                            console.warn(`[user-layers] dropping "${def.title}" — persisted PMTiles file is missing`)
+                            console.warn(`[user-layers] dropping "${def.title}" — persisted file is missing`)
                             continue
                         }
                         try {
-                            registerLocalPMTiles(r.file)
+                            if (def.type === 'pmtiles') {
+                                // Must precede mount: a protocol cache miss would fetch the key as a URL.
+                                registerLocalPMTiles(r.file)
+                                restored.push(def)
+                            } else {
+                                // Object URLs die with the previous document, so the persisted
+                                // `cogUrl` is stale — always mint a fresh one.
+                                restored.push({ ...def, cogUrl: objectUrlForCog(r.file) })
+                            }
                         } catch (e) {
-                            console.warn(`[user-layers] could not restore PMTiles "${def.title}":`, e)
-                            continue
+                            console.warn(`[user-layers] could not restore "${def.title}":`, e)
                         }
+                        continue
                     }
                     restored.push(def)
                 }
@@ -177,9 +186,9 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
         const title = uniqueTitle(def.title, takenTitles())
         const id = def.idbKey ?? title
         const finalDef = { ...def, title, idbKey: id }
-        // PMTiles archives are File-backed, so the file must be persisted to rebuild
-        // their FileSource on reload. GeoJSON carries its data inline on the def.
-        const storedFile = finalDef.type === 'pmtiles' ? file : undefined
+        // PMTiles and COG are File-backed, so the file must be persisted to rebuild
+        // their FileSource / object URL on reload. GeoJSON carries its data inline.
+        const storedFile = finalDef.type === 'pmtiles' || finalDef.type === 'cog' ? file : undefined
         await putUserLayer({ id, def: finalDef, file: storedFile, createdAt: performance.now() })
         setUploads(prev => [...prev, finalDef])
         return title
@@ -202,6 +211,10 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
         // Upload? Remove from IndexedDB + state.
         const upload = uploads.find(u => u.title === title)
         if (upload) {
+            // Release the COG's object URL — it pins the file's bytes in memory.
+            if (upload.type === 'cog' && upload.cogUrl?.startsWith('blob:')) {
+                URL.revokeObjectURL(upload.cogUrl)
+            }
             deleteUserLayer(upload.idbKey ?? title).catch(e => console.warn('[user-layers] IDB delete failed:', e))
             setUploads(prev => prev.filter(u => u.title !== title))
         }

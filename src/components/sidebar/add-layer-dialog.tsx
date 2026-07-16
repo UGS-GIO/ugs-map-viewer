@@ -165,12 +165,12 @@ export function AddLayerDialog() {
                                 ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                                 : <Upload className="h-6 w-6 text-muted-foreground" />}
                             <span className="text-sm text-muted-foreground">
-                                Drop a GeoJSON or PMTiles file here, or <span className="text-foreground font-medium">browse</span>
+                                Drop a GeoJSON, PMTiles or COG file here, or <span className="text-foreground font-medium">browse</span>
                             </span>
-                            <span className="text-xs text-muted-foreground">.geojson / .json / .pmtiles — stored in this browser only</span>
+                            <span className="text-xs text-muted-foreground">.geojson / .json / .pmtiles / .tif — stored in this browser only</span>
                             <input
                                 type="file"
-                                accept=".geojson,.json,.pmtiles,application/geo+json,application/json"
+                                accept=".geojson,.json,.pmtiles,.tif,.tiff,application/geo+json,application/json,image/tiff"
                                 className="hidden"
                                 onChange={e => handleFile(e.target.files?.[0])}
                             />
