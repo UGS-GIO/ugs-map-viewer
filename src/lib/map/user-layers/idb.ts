@@ -19,6 +19,12 @@ export interface StoredUserLayer {
     id: string
     /** The complete LayerProps, including inline GeoJSON `data` for geojson uploads. */
     def: LayerProps
+    /**
+     * The original file, for PMTiles uploads. IndexedDB structured-clones `File`
+     * natively, so the archive survives reload and a `FileSource` can be rebuilt
+     * from it. GeoJSON uploads don't need this — their data is inline on `def`.
+     */
+    file?: File
     /** Creation order, for stable listing. */
     createdAt: number
 }

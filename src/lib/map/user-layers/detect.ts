@@ -24,6 +24,10 @@ import {
     type StacItem,
 } from '@/lib/map/stac/stac-layer'
 import { loadCogMetadata } from '@/hooks/use-cog-metadata'
+import { registerLocalPMTiles } from '@/lib/map/pmtiles/setup'
+
+/** A layer produced by uploading a local file (data lives in the browser, not a URL). */
+export type UploadedLayer = GeoJSONLayerProps | PMTilesLayerProps
 
 export type DetectedFormat = 'pmtiles' | 'geojson' | 'cog' | 'wms' | 'stac' | 'unknown'
 
@@ -206,12 +210,61 @@ export async function buildLayerFromUrl(input: string, opts: BuildFromUrlOptions
     }
 }
 
-/** Parse an uploaded file into a layer def. v1 supports GeoJSON uploads; the
- *  returned `idbKey` is where the caller must persist it in IndexedDB. */
-export async function buildLayerFromFile(file: File, idbKey: string): Promise<GeoJSONLayerProps> {
+/**
+ * Build a layer from a local PMTiles archive. Registers a `FileSource`-backed
+ * instance with the protocol and points the layer at its key rather than a URL
+ * — see {@link registerLocalPMTiles}.
+ *
+ * The protocol keys instances by `FileSource.getKey()`, which is the file NAME.
+ * Two uploads called `tiles.pmtiles` would therefore collide and silently render
+ * the same data, so the file is re-wrapped under a uuid-prefixed name and THAT
+ * file is what gets persisted + registered. The display title keeps the original.
+ */
+export async function buildPMTilesFromFile(file: File, idbKey: string): Promise<{ def: PMTilesLayerProps; file: File }> {
+    const keyedFile = new File([file], `${idbKey}-${file.name}`, { type: file.type })
+    const archive = registerLocalPMTiles(keyedFile)
+    let meta: { vector_layers?: Array<{ id: string }> }
+    try {
+        meta = (await archive.getMetadata()) as { vector_layers?: Array<{ id: string }> }
+    } catch (e) {
+        throw new Error(`"${file.name}" could not be read as a PMTiles archive: ${e instanceof Error ? e.message : String(e)}`)
+    }
+    const sourceLayer = meta.vector_layers?.[0]?.id
+    if (!sourceLayer) {
+        throw new Error(`"${file.name}" has no vector layers — only vector PMTiles archives can be added.`)
+    }
+    const title = file.name.replace(/\.pmtiles$/i, '')
+    return {
+        def: {
+            type: 'pmtiles',
+            title,
+            // The protocol key, NOT a URL. `local` tells the source component to use it verbatim.
+            pmtilesUrl: keyedFile.name,
+            sourceLayer,
+            styleUrl: defaultVectorStyleUrl(sourceLayer, colorFromTitle(title)),
+            visible: true,
+            opacity: 0.85,
+            userAdded: true,
+            local: true,
+            idbKey,
+        },
+        file: keyedFile,
+    }
+}
+
+/**
+ * Parse an uploaded file into a layer def. Supports GeoJSON (inline data) and
+ * PMTiles (File-backed via the protocol). Returns the def plus the file that
+ * must be persisted — for PMTiles that is a re-keyed copy, and hydration depends
+ * on persisting exactly this one so its name matches `pmtilesUrl`.
+ */
+export async function buildLayerFromFile(file: File, idbKey: string): Promise<{ def: UploadedLayer; file: File }> {
     const name = file.name.toLowerCase()
+    if (name.endsWith('.pmtiles')) {
+        return buildPMTilesFromFile(file, idbKey)
+    }
     if (!name.endsWith('.geojson') && !name.endsWith('.json')) {
-        throw new Error('Only GeoJSON files (.geojson / .json) can be uploaded. Use a URL for PMTiles/COG/WMS.')
+        throw new Error('Only GeoJSON (.geojson / .json) and PMTiles (.pmtiles) files can be uploaded. Use a URL for COG/WMS.')
     }
     let parsed: unknown
     try {
@@ -224,5 +277,6 @@ export async function buildLayerFromFile(file: File, idbKey: string): Promise<Ge
         throw new Error(`"${file.name}" is not a GeoJSON FeatureCollection.`)
     }
     const title = file.name.replace(/\.(geojson|json)$/i, '')
-    return buildGeoJSONFromData(parsed as FeatureCollection, title, idbKey)
+    // GeoJSON data is inlined on the def, so the file itself needn't be persisted.
+    return { def: buildGeoJSONFromData(parsed as FeatureCollection, title, idbKey), file }
 }

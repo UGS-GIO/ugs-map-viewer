@@ -87,8 +87,8 @@ export function AddLayerDialog() {
         setBusy(true)
         try {
             const idbKey = `upload-${crypto.randomUUID()}`
-            const def = await buildLayerFromFile(file, idbKey)
-            const title = await addUploadedLayer(def)
+            const { def, file: fileToStore } = await buildLayerFromFile(file, idbKey)
+            const title = await addUploadedLayer(def, fileToStore)
             finishAndSelect(title)
         } catch (e) {
             toast.error('Could not add file', { description: e instanceof Error ? e.message : String(e) })
@@ -165,12 +165,12 @@ export function AddLayerDialog() {
                                 ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                                 : <Upload className="h-6 w-6 text-muted-foreground" />}
                             <span className="text-sm text-muted-foreground">
-                                Drop a GeoJSON file here, or <span className="text-foreground font-medium">browse</span>
+                                Drop a GeoJSON or PMTiles file here, or <span className="text-foreground font-medium">browse</span>
                             </span>
-                            <span className="text-xs text-muted-foreground">.geojson / .json — stored in this browser only</span>
+                            <span className="text-xs text-muted-foreground">.geojson / .json / .pmtiles — stored in this browser only</span>
                             <input
                                 type="file"
-                                accept=".geojson,.json,application/geo+json,application/json"
+                                accept=".geojson,.json,.pmtiles,application/geo+json,application/json"
                                 className="hidden"
                                 onChange={e => handleFile(e.target.files?.[0])}
                             />

@@ -17,9 +17,10 @@
 import { createContext, useContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useSearch, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
-import type { GeoJSONLayerProps, LayerProps } from '@/lib/types/mapping-types'
-import { buildLayerFromUrl, type DetectedFormat } from '@/lib/map/user-layers/detect'
+import type { LayerProps } from '@/lib/types/mapping-types'
+import { buildLayerFromUrl, type DetectedFormat, type UploadedLayer } from '@/lib/map/user-layers/detect'
 import { getAllUserLayers, putUserLayer, deleteUserLayer } from '@/lib/map/user-layers/idb'
+import { registerLocalPMTiles } from '@/lib/map/pmtiles/setup'
 
 /** Compact, shareable description of a remote user layer (rebuilt on load). */
 export interface UserLayerRecipe {
@@ -36,8 +37,8 @@ interface UserLayersContextType {
     userLayerTitles: Set<string>
     /** Add a remote (URL/id) layer: writes a recipe to the URL; returns final title. */
     addRemoteLayer: (recipe: UserLayerRecipe) => string
-    /** Add an uploaded GeoJSON layer: persists it to IndexedDB. Returns final title. */
-    addUploadedLayer: (def: GeoJSONLayerProps) => Promise<string>
+    /** Add an uploaded layer (GeoJSON or PMTiles): persists it to IndexedDB. Returns final title. */
+    addUploadedLayer: (def: UploadedLayer, file?: File) => Promise<string>
     /** Remove a user layer by title (from URL or IndexedDB). */
     removeUserLayer: (title: string) => void
     /** True while remote recipes are being (re)built. */
@@ -83,7 +84,7 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
     const recipesKey = useMemo(() => JSON.stringify(recipes), [recipes])
 
     const [remoteBuilt, setRemoteBuilt] = useState<LayerProps[]>([])
-    const [uploads, setUploads] = useState<GeoJSONLayerProps[]>([])
+    const [uploads, setUploads] = useState<UploadedLayer[]>([])
     const [isBuilding, setIsBuilding] = useState(false)
     const [isHydrated, setIsHydrated] = useState(false)
 
@@ -114,7 +115,28 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
     // consumers gated on it.
     useEffect(() => {
         getAllUserLayers()
-            .then(records => setUploads(records.map(r => r.def as GeoJSONLayerProps)))
+            .then(records => {
+                // Re-register File-backed PMTiles archives BEFORE the layers mount:
+                // on a protocol cache miss the key would be fetched as a URL and 404.
+                const restored: UploadedLayer[] = []
+                for (const r of records) {
+                    const def = r.def as UploadedLayer
+                    if (def.type === 'pmtiles') {
+                        if (!r.file) {
+                            console.warn(`[user-layers] dropping "${def.title}" — persisted PMTiles file is missing`)
+                            continue
+                        }
+                        try {
+                            registerLocalPMTiles(r.file)
+                        } catch (e) {
+                            console.warn(`[user-layers] could not restore PMTiles "${def.title}":`, e)
+                            continue
+                        }
+                    }
+                    restored.push(def)
+                }
+                setUploads(restored)
+            })
             .catch(e => console.warn('[user-layers] hydrate failed:', e))
             .finally(() => setIsHydrated(true))
     }, [])
@@ -151,12 +173,15 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
         return title
     }, [navigate, takenTitles])
 
-    const addUploadedLayer = useCallback(async (def: GeoJSONLayerProps): Promise<string> => {
+    const addUploadedLayer = useCallback(async (def: UploadedLayer, file?: File): Promise<string> => {
         const title = uniqueTitle(def.title, takenTitles())
-        const finalDef = { ...def, title }
         const id = def.idbKey ?? title
-        await putUserLayer({ id, def: { ...finalDef, idbKey: id }, createdAt: performance.now() })
-        setUploads(prev => [...prev, { ...finalDef, idbKey: id }])
+        const finalDef = { ...def, title, idbKey: id }
+        // PMTiles archives are File-backed, so the file must be persisted to rebuild
+        // their FileSource on reload. GeoJSON carries its data inline on the def.
+        const storedFile = finalDef.type === 'pmtiles' ? file : undefined
+        await putUserLayer({ id, def: finalDef, file: storedFile, createdAt: performance.now() })
+        setUploads(prev => [...prev, finalDef])
         return title
     }, [takenTitles])
 

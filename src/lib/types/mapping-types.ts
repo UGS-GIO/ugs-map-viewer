@@ -115,8 +115,10 @@ interface BaseLayerProps {
     customLegend?: React.ReactNode;
     /** True for layers the user added at runtime (add-layer feature), not build-time config. Drives the remove button + "My Layers" grouping. */
     userAdded?: boolean;
-    /** A user layer whose data lives only in browser-local IndexedDB (uploaded file). Not shareable via URL. */
+    /** A user layer whose data lives only in the browser (uploaded file). Not shareable via URL. */
     local?: boolean;
+    /** IndexedDB record id backing a `local` upload; used to re-hydrate it on reload. */
+    idbKey?: string;
     /** Structured bivariate legend config — works in both sidebar and print export */
     bivariateLegend?: { xLabel: string; yLabel: string };
     /** GeoParquet URL for client-side export. When set, download button in layer controls is enabled. */
@@ -316,8 +318,6 @@ export interface GeoJSONLayerProps extends BaseLayerProps {
     geojsonUrl?: string;
     /** Inline FeatureCollection (uploads / IndexedDB-hydrated). */
     data?: FeatureCollection;
-    /** IndexedDB key backing `data` for a local upload; used to re-hydrate on reload. */
-    idbKey?: string;
     /** Fill/stroke/circle colour. Defaults to a hash of `title` when omitted. */
     color?: string;
 }
