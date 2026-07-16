@@ -23,6 +23,7 @@ import {
     resolveStacPMTilesLayer,
     type StacItem,
 } from '@/lib/map/stac/stac-layer'
+import { loadCogMetadata } from '@/hooks/use-cog-metadata'
 
 export type DetectedFormat = 'pmtiles' | 'geojson' | 'cog' | 'wms' | 'stac' | 'unknown'
 
@@ -102,8 +103,21 @@ function buildGeoJSONFromData(data: FeatureCollection, title: string, idbKey: st
     return { type: 'geojson', title, data, idbKey, color: colorFromTitle(title), visible: true, opacity: 0.8, userAdded: true, local: true }
 }
 
-function buildCOG(url: string, title: string): COGLayerProps {
-    return { type: 'cog', title, cogUrl: url, colorStops: DEFAULT_COG_STOPS, stretchMode: 'minmax', continuous: true, visible: true, opacity: 0.9, userAdded: true }
+/**
+ * COG rendering needs a value range, which comes from stats embedded by
+ * `gdal_edit -stats` (or a STAC fallback). Without them `useCogRange` yields
+ * undefined and the layer silently never draws — so verify up front and fail
+ * with a reason the user can act on instead of adding a dead layer.
+ */
+async function buildCOG(url: string, title: string, stacUrl?: string): Promise<COGLayerProps> {
+    const stats = await loadCogMetadata(url, stacUrl)
+    if (!stats) {
+        throw new Error(
+            `"${title}" has no readable statistics, so its colour range can't be computed and it would render blank. ` +
+            `Add stats to the GeoTIFF (gdal_edit.py -stats file.tif), or use a STAC item that carries raster:bands statistics.`,
+        )
+    }
+    return { type: 'cog', title, cogUrl: url, stacUrl, colorStops: DEFAULT_COG_STOPS, stretchMode: 'minmax', continuous: true, visible: true, opacity: 0.9, userAdded: true }
 }
 
 /** WMS needs a layer name; parse it from a `layers=` param or take an explicit one. */
@@ -124,7 +138,7 @@ function buildWMS(url: string, title: string, layerName?: string): WMSLayerProps
     }
 }
 
-function buildFromStacItem(item: StacItem, title: string): LayerProps {
+async function buildFromStacItem(item: StacItem, title: string, itemHref?: string): Promise<LayerProps> {
     const hasPmtiles = !!item.assets?.pmtiles
         || Object.values(item.assets ?? {}).some(a => a.type === 'application/vnd.pmtiles')
     if (hasPmtiles) {
@@ -133,7 +147,8 @@ function buildFromStacItem(item: StacItem, title: string): LayerProps {
     const cog = Object.values(item.assets ?? {}).find(
         a => a.type?.includes('image/tiff') || a.roles?.includes('data'),
     )
-    if (cog?.href) return buildCOG(cog.href, title)
+    // Pass the item href so the COG can fall back to the item's raster:bands stats.
+    if (cog?.href) return buildCOG(cog.href, title, itemHref)
     throw new Error(`STAC item '${item.id}' has no PMTiles or COG asset to render.`)
 }
 
@@ -146,14 +161,14 @@ async function buildFromStac(input: string, title: string): Promise<LayerProps> 
         if (!('stac_version' in item) && (item as unknown as { type?: string }).type === 'FeatureCollection') {
             return buildGeoJSONFromUrl(input, title)
         }
-        return buildFromStacItem(item, title || item.id)
+        return buildFromStacItem(item, title || item.id, input)
     }
     // Otherwise treat as an id in the serving-topics collection.
     const index = await fetchStacItemIndex()
     const href = index[input]
     if (!href) throw new Error(`STAC item id '${input}' not found in ${STAC_SERVING_TOPICS_COLLECTION}`)
     const item = await fetchStacItem(href)
-    return buildFromStacItem(item, title || item.id)
+    return buildFromStacItem(item, title || item.id, href)
 }
 
 export interface BuildFromUrlOptions {

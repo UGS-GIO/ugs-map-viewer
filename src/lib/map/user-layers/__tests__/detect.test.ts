@@ -1,5 +1,8 @@
-import { describe, it, expect } from 'vitest'
-import { detectFormatFromUrl, titleFromUrl, colorFromTitle, buildLayerFromFile } from '../detect'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { detectFormatFromUrl, titleFromUrl, colorFromTitle, buildLayerFromFile, buildLayerFromUrl } from '../detect'
+import { loadCogMetadata } from '@/hooks/use-cog-metadata'
+
+vi.mock('@/hooks/use-cog-metadata', () => ({ loadCogMetadata: vi.fn() }))
 
 describe('detectFormatFromUrl', () => {
     it('detects PMTiles', () => {
@@ -50,6 +53,33 @@ describe('colorFromTitle', () => {
 
     it('returns a hex colour', () => {
         expect(colorFromTitle('anything')).toMatch(/^#[0-9a-f]{6}$/i)
+    })
+})
+
+describe('buildLayerFromUrl — COG', () => {
+    beforeEach(() => vi.mocked(loadCogMetadata).mockReset())
+
+    it('builds a COG layer when the file has readable stats', async () => {
+        vi.mocked(loadCogMetadata).mockResolvedValue({ minimum: 0, maximum: 10, mean: 5, stddev: 1 })
+        const layer = await buildLayerFromUrl('https://x.org/gravity.tif')
+        expect(layer.type).toBe('cog')
+        expect(layer.title).toBe('gravity')
+        expect(layer.userAdded).toBe(true)
+    })
+
+    it('rejects a COG with no stats rather than adding a layer that renders blank', async () => {
+        vi.mocked(loadCogMetadata).mockResolvedValue(null)
+        await expect(buildLayerFromUrl('https://x.org/gravity.tif')).rejects.toThrow(/no readable statistics/)
+    })
+})
+
+describe('buildLayerFromUrl — unsupported', () => {
+    it('rejects an unrecognized format with a helpful message', async () => {
+        await expect(buildLayerFromUrl('https://x.org/data.csv')).rejects.toThrow(/Could not detect format/)
+    })
+
+    it('rejects empty input', async () => {
+        await expect(buildLayerFromUrl('   ')).rejects.toThrow(/Enter a URL or STAC item id/)
     })
 })
 
