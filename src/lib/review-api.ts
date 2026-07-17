@@ -12,10 +12,14 @@ import { auth } from '@/lib/auth';
 
 export const REVIEW_API_URL = (import.meta.env.VITE_REVIEW_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
 
+// A row comment keys on a STABLE domain key (rowKey = the column name, e.g. 'pk') so a comment resolves
+// to the same row across the internal warehouse viewer (parquet/PMTiles) and this app (PostGIS pk).
+// rowVal = one row's thread (list); rowVals = create on N rows at once.
 export type CommentTarget = {
   kind?: 'item' | 'row' | 'column';
-  featureId?: number;
-  featureIds?: number[];
+  rowKey?: string;
+  rowVal?: string;
+  rowVals?: string[];
   column?: string;
 };
 
@@ -23,7 +27,8 @@ export type Comment = {
   id: number;
   item_ids: string[];
   target_kind: 'item' | 'row' | 'column';
-  feature_ids: number[] | null;
+  row_key: string | null;        // the stable-key column name (e.g. 'pk') when target_kind = row
+  row_key_vals: string[] | null; // 1..N stable key values
   column_name: string | null;
   parent_id: number | null;
   body: string;
@@ -43,7 +48,8 @@ export type Notification = {
   body: string;
   item_ids: string[];
   target_kind: string;
-  feature_ids: number[] | null;
+  row_key: string | null;
+  row_key_vals: string[] | null;
   column_name: string | null;
   parent_id: number | null;
 };
@@ -66,23 +72,24 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
-// Comments for an item (a hazard layer id), optionally narrowed to a feature/column.
-export const listComments = (itemId: string, target?: { featureId?: number; column?: string }) => {
+// Comments for an item (a hazard layer id), optionally narrowed to a row (by stable key value) or column.
+export const listComments = (itemId: string, target?: { rowVal?: string; column?: string }) => {
   const q = new URLSearchParams({ item_id: itemId });
-  if (target?.featureId != null) q.set('feature_id', String(target.featureId));
+  if (target?.rowVal != null) q.set('row_val', target.rowVal);
   if (target?.column) q.set('column', target.column);
   return api<Comment[]>(`/api/comments?${q.toString()}`);
 };
 
 export const createComment = (itemIds: string[], body: string, target?: CommentTarget) => {
-  const featureIds = target?.featureIds ?? (target?.featureId != null ? [target.featureId] : null);
+  const rowVals = target?.rowVals ?? (target?.rowVal != null ? [target.rowVal] : null);
   return api<Comment>(`/api/comments`, {
     method: 'POST',
     body: JSON.stringify({
       item_ids: itemIds,
       body,
       target_kind: target?.kind ?? 'item',
-      feature_ids: featureIds,
+      row_key: target?.rowKey ?? null,
+      row_key_vals: rowVals,
       column_name: target?.column ?? null,
     }),
   });
