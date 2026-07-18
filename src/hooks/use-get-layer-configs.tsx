@@ -5,12 +5,12 @@ import { resolveStacLayerTree } from "@/lib/map/stac/stac-layer";
 import { fetchReviewCatalogGroup } from "@/lib/map/stac/review-catalog-group";
 import { useGetCurrentPage } from "./use-get-current-page";
 
-// Review build only: prepend the auto-discovered "Review" group (from the review STAC catalog) so it
-// shows in both the layer list and the map. No-op (and no fetch) outside the review build.
-const withReviewGroup = async (configs: LayerProps[]): Promise<LayerProps[]> => {
-    if (import.meta.env.MODE !== 'review') return configs;
+// The /review-stac page's layers ARE the review STAC catalog (auto-discovered), not a static per-page
+// config. Same-origin behind IAP. Empty outside IAP (fetch fails) so the page just shows no layers.
+const REVIEW_STAC_PAGE = 'review-stac';
+const loadReviewStacLayers = async (): Promise<LayerProps[]> => {
     const group = await fetchReviewCatalogGroup();
-    return group ? [group, ...configs] : configs;
+    return group ? [group] : [];
 };
 
 export interface LayerOrderConfig {
@@ -147,18 +147,22 @@ const useGetLayerConfigs = (pageName?: string, layerOrderConfigs?: LayerOrderCon
     const query = useQuery({
         queryKey,
         queryFn: async (): Promise<LayerProps[] | null> => {
+            // /review-stac: layers come from the review STAC catalog, not a static page config.
+            if (pageName === REVIEW_STAC_PAGE || currentPage === REVIEW_STAC_PAGE) {
+                return loadReviewStacLayers();
+            }
             if (pageName) {
                 // Single config workflow
                 if (!currentPage) {
                     return null;
                 }
                 const configs = await resolveStacLayerTree(await loadSingleLayerConfig(currentPage, pageName));
-                return withReviewGroup(applyLayerOrdering(configs, memoizedLayerOrderConfigs || []));
+                return applyLayerOrdering(configs, memoizedLayerOrderConfigs || []);
             } else {
                 // All configs workflow
                 const allConfigs = await resolveStacLayerTree(await loadAllLayerConfigs(currentPage));
                 const processedConfigs = applyLayerOrdering(allConfigs, memoizedLayerOrderConfigs || []);
-                return processedConfigs.length > 0 ? withReviewGroup(processedConfigs) : null;
+                return processedConfigs.length > 0 ? processedConfigs : null;
             }
         },
         enabled: !pageName || !!currentPage, // Only run query if we have currentPage (for single config) or we're loading all configs
