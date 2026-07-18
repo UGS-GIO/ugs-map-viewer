@@ -2,7 +2,16 @@ import { useMemo } from "react";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import { LayerProps } from "@/lib/types/mapping-types";
 import { resolveStacLayerTree } from "@/lib/map/stac/stac-layer";
+import { fetchReviewCatalogGroup } from "@/lib/map/stac/review-catalog-group";
 import { useGetCurrentPage } from "./use-get-current-page";
+
+// Review build only: prepend the auto-discovered "Review" group (from the review STAC catalog) so it
+// shows in both the layer list and the map. No-op (and no fetch) outside the review build.
+const withReviewGroup = async (configs: LayerProps[]): Promise<LayerProps[]> => {
+    if (import.meta.env.MODE !== 'review') return configs;
+    const group = await fetchReviewCatalogGroup();
+    return group ? [group, ...configs] : configs;
+};
 
 export interface LayerOrderConfig {
     layerName: string;
@@ -144,12 +153,12 @@ const useGetLayerConfigs = (pageName?: string, layerOrderConfigs?: LayerOrderCon
                     return null;
                 }
                 const configs = await resolveStacLayerTree(await loadSingleLayerConfig(currentPage, pageName));
-                return applyLayerOrdering(configs, memoizedLayerOrderConfigs || []);
+                return withReviewGroup(applyLayerOrdering(configs, memoizedLayerOrderConfigs || []));
             } else {
                 // All configs workflow
                 const allConfigs = await resolveStacLayerTree(await loadAllLayerConfigs(currentPage));
                 const processedConfigs = applyLayerOrdering(allConfigs, memoizedLayerOrderConfigs || []);
-                return processedConfigs.length > 0 ? processedConfigs : null;
+                return processedConfigs.length > 0 ? withReviewGroup(processedConfigs) : null;
             }
         },
         enabled: !pageName || !!currentPage, // Only run query if we have currentPage (for single config) or we're loading all configs

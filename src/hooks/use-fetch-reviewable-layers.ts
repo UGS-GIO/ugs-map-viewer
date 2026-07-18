@@ -1,49 +1,27 @@
-import { useMemo } from 'react';
-import { LayerProps } from '@/lib/types/mapping-types';
-import { isGroupLayer, isWMSLayer } from '@/lib/map/layer-utils';
-import { useGetLayerConfigsData } from './use-get-layer-configs';
+import { useQuery } from '@tanstack/react-query';
+import { fetchReviewCatalog } from '@/lib/map/stac/review-catalog-group';
 
 export interface LayerOption {
-  value: string; // workspace-qualified sublayer name, e.g. 'hazards:hazards_qfaults_current'
-  label: string; // friendly title from the parent WMS layer
+  value: string; // STAC item id — also the comment thread key (see layerToItemId)
+  label: string; // item title
 }
 
-// A layer is "reviewable" when its GeoServer sublayer points at a review matview — those names end in
-// `_current` (the promoted-under-review matview) or `_review`. Derived straight from the static
-// hazards-review layer config (useGetLayerConfigs), so no PostGREST round-trip.
-const REVIEW_NAME = /(_current|_review)$/;
-
 /**
- * The reviewable hazard layers for the comments picker — derived from the hazards-review page's own
- * layer config, not a PostGREST lookup. `value` is the sublayer name a warehouse STAC item id maps from
- * (see `layerToItemId`); `label` is the parent layer's title.
+ * Reviewable layers for the comments picker — the actual review STAC catalog items (same source as the
+ * auto-discovered "Review" map group), NOT a static-config name match. `value` is the STAC item id, which
+ * is also the comment item id, so a comment lands on the same thread as the internal review viewer.
  */
 export const useFetchReviewableLayers = (): { data: LayerOption[] } => {
-  const layerConfig = useGetLayerConfigsData('layers');
-
-  const data = useMemo<LayerOption[]>(() => {
-    if (!layerConfig) return [];
-    const byValue = new Map<string, string>();
-
-    const walk = (layers: LayerProps[]) => {
-      for (const layer of layers) {
-        if (isWMSLayer(layer)) {
-          for (const sub of layer.sublayers) {
-            if (sub.name && sub.queryable !== false && REVIEW_NAME.test(sub.name) && !byValue.has(sub.name)) {
-              byValue.set(sub.name, layer.title);
-            }
-          }
-        } else if (isGroupLayer(layer) && layer.layers) {
-          walk(layer.layers);
-        }
-      }
-    };
-    walk(layerConfig);
-
-    return [...byValue.entries()]
-      .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [layerConfig]);
-
-  return { data };
+  const { data } = useQuery({
+    queryKey: ['review-catalog-layers'],
+    queryFn: async (): Promise<LayerOption[]> => {
+      const items = await fetchReviewCatalog();
+      return items
+        .map((i) => ({ value: i.id, label: (i.properties?.title as string | undefined) ?? i.id }))
+        .sort((a, b) => a.label.localeCompare(b.label));
+    },
+    retry: false,
+    staleTime: 5 * 60_000,
+  });
+  return { data: data ?? [] };
 };
