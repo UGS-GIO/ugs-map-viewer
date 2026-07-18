@@ -1,15 +1,12 @@
 /**
- * Client for the warehouse review-comments API (the non-IAP `ugs-warehouse-review-api` Cloud Run twin).
- * Same `review.*` tables as the internal warehouse review viewer, so comments/notifications written here
- * are SYNCED with it — keyed by email (Firebase/Entra and Google IAP resolve to the same @utah.gov
- * address) and by item id. Auth is the Firebase ID token (verified server-side); no cookies.
+ * Client for the warehouse review-comments API (served by review-serving under the same origin as the
+ * review app, behind IAP). Same `review.*` tables as the internal review viewer, so comments sync —
+ * keyed by email (IAP injects the reviewer's @utah.gov address, which review-serving trusts) and item id.
  *
- * Base URL = VITE_REVIEW_API_URL = the API Gateway URL (`tofu output review_api_gateway_url`). The gateway
- * validates this Firebase token, then invokes the private review-api as its own service account (org
- * requires an authenticated invoker — no public Cloud Run). When unset, the hooks degrade quietly.
+ * Auth: NONE in the client — the app is served behind IAP, so same-origin `/api/*` requests carry the
+ * IAP session cookie automatically; review-serving reads the authenticated email from the IAP header.
+ * Base URL is same-origin (relative `/api`); VITE_REVIEW_API_URL may override it for local dev.
  */
-import { auth } from '@/lib/auth';
-
 export const REVIEW_API_URL = (import.meta.env.VITE_REVIEW_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
 
 // A row comment keys on a STABLE domain key (rowKey = the column name, e.g. 'pk') so a comment resolves
@@ -54,14 +51,12 @@ export type Notification = {
   parent_id: number | null;
 };
 
-/** fetch wrapper that attaches the current user's Firebase ID token as a Bearer credential. */
+/** fetch wrapper — same-origin behind IAP, so the IAP session cookie authenticates; no Bearer token. */
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = await auth.currentUser?.getIdToken();
   const res = await fetch(`${REVIEW_API_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...init?.headers,
     },
   });

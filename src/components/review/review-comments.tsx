@@ -6,13 +6,12 @@
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
-import { useAuth } from '@/context/auth-provider';
+import { useWhoami } from '@/hooks/use-whoami';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
   type Comment,
-  REVIEW_API_URL,
   createComment,
   deleteComment,
   listComments,
@@ -30,12 +29,12 @@ function mentionAt(text: string, caret: number): { at: number; query: string } |
 
 export function ReviewComments({ itemId, label = 'Review comments' }: { itemId: string; label?: string }) {
   const qc = useQueryClient();
-  const { user } = useAuth();
-  const myEmail = user?.email ?? undefined;
+  const { email } = useWhoami();
+  const myEmail = email ?? undefined;
   const key = ['review-comments', itemId] as const;
-  // Need both a signed-in user (for the Firebase token) and the gateway URL (VITE_REVIEW_API_URL).
-  // Unset URL or no backend → the fetch errors → the panel hides.
-  const enabled = !!REVIEW_API_URL && !!user;
+  // IAP identity present (behind IAP `/whoami` returns the reviewer email) → load. Outside IAP the
+  // email is null → panel hidden; a missing backend also errors the fetch and the panel hides.
+  const enabled = !!email;
 
   const { data: comments = [], isLoading, error } = useQuery({
     queryKey: key,

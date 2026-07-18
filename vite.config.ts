@@ -6,7 +6,10 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 // https://vitejs.dev/config/
 // Fix for MapLibre GL JS 5.12.0 __publicField issue
 // See: https://github.com/maplibre/maplibre-gl-js/issues/6680
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  // Review build (`vite build --mode review`) is served from the private review bucket under
+  // /review/app/ behind review-serving's IAP; the public build stays at root.
+  base: mode === 'review' ? '/review/app/' : '/',
   plugins: [
     tanstackRouter({
       target: 'react',
@@ -52,4 +55,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))
