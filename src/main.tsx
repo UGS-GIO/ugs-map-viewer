@@ -24,8 +24,9 @@ proj4.defs("EPSG:3857", "+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_
 
 proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs +type=crs");
 
-// Create a new router instance
-const router = createRouter({ routeTree })
+// Create a new router instance. basepath matches the Vite base (`/` normally, `/review/app/` for the
+// IAP review build) so route matching works when the app is served under a sub-path.
+const router = createRouter({ routeTree, basepath: import.meta.env.BASE_URL })
 
 // Lazy load Firebase Analytics - only initialize when user navigates
 let analyticsInitialized = false;
