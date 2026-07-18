@@ -13,6 +13,7 @@
  */
 import type { GroupLayerProps, LayerProps } from '@/lib/types/mapping-types';
 import { resolveStacPMTilesLayer, type StacItem } from '@/lib/map/stac/stac-layer';
+import { filterFieldsForItem } from '@/lib/map/layer-filters';
 
 const REVIEW_CATALOG_URL = '/api/review-catalog';
 
@@ -33,9 +34,11 @@ export function reviewCatalogGroup(items: StacItem[]): GroupLayerProps | null {
   const layers: LayerProps[] = [];
   for (const item of items) {
     try {
-      layers.push(
-        resolveStacPMTilesLayer(item, { stacItemId: item.id, title: itemTitle(item), visible: false }),
-      );
+      const layer = resolveStacPMTilesLayer(item, { stacItemId: item.id, title: itemTitle(item), visible: false });
+      // Attach declarative filter controls for this layer (auto-discovery: from the registry).
+      const filterFields = filterFieldsForItem(item.id);
+      if (filterFields) layer.filterFields = filterFields;
+      layers.push(layer);
     } catch {
       // no PMTiles asset on this item — not mappable, skip
     }

@@ -16,13 +16,25 @@ import { MapContext } from '@/context/map-context';
 import { useWhoami } from '@/hooks/use-whoami';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { User } from 'lucide-react';
+import { ReviewFilterProvider } from './-components/review-filter-context';
+import { useReviewVectorFilters } from './-components/layer-filters';
 
 export default function ReviewStacMap() {
+  // Filter state wraps both the sidebar (Filters slot writes) and the map (reads → vectorLayerFilters).
+  return (
+    <ReviewFilterProvider>
+      <ReviewStacMapContent />
+    </ReviewFilterProvider>
+  );
+}
+
+function ReviewStacMapContent() {
   const { isCollapsed, sidebarWidthPx } = useSidebar();
   const isMobile = useIsMobile();
   const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
   const { contextValue } = useMapContextState();
   const { email, user } = useWhoami();
+  const vectorLayerFilters = useReviewVectorFilters();
 
   return (
     <MapContext.Provider value={contextValue}>
@@ -52,7 +64,7 @@ export default function ReviewStacMap() {
               <TopNav />
             </Layout.Header>
             <Layout.Body>
-              <GenericMapContainer layerConfigKey="review-stac" />
+              <GenericMapContainer layerConfigKey="review-stac" vectorLayerFilters={vectorLayerFilters} />
             </Layout.Body>
             <Layout.Footer className={cn('z-20 hidden md:flex')} dynamicContent={<MapFooter />} />
           </Layout>

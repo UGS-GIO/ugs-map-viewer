@@ -204,7 +204,19 @@ export interface PMTilesLayerProps extends BaseLayerProps {
     sourceLayer: string;
     /** Optional sublayer config for popups/queries */
     sublayers?: ExtendedSublayerProperties[];
+    /**
+     * Declarative, layer-level filter controls. Origin-agnostic: auto-discovered layers get these from
+     * a registry (or STAC columns); a config-based layer can hand-declare them. Consumed by the generic
+     * <LayerFilters> UI + buildFilterExpression -> vectorLayerFilters (MapLibre setFilter). See
+     * src/lib/map/layer-filters.ts.
+     */
+    filterFields?: FilterFieldSpec[];
 }
+
+/** A single declarative filter control on a vector layer's feature property. */
+export type FilterFieldSpec =
+    | { field: string; label: string; kind: 'enum'; values: string[] }
+    | { field: string; label: string; kind: 'number-range'; min: number; max: number; step?: number };
 
 export interface WFSLayerProps extends BaseLayerProps {
     type: 'wfs';
