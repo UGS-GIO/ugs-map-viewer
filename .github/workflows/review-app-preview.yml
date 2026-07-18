@@ -1,0 +1,79 @@
+name: Review App Preview
+
+# Per-PR preview of the review app (--mode review) → the private review bucket under
+# review/app/pr-<N>/, served behind review-serving's IAP. Gated by paths so docs/config-only PRs
+# don't build+upload the whole app. Cleaned up when the PR closes.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'index.html'
+      - 'vite.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/review-app-preview.yml'
+
+permissions:
+  contents: read
+  id-token: write # WIF
+  pull-requests: write # comment the preview URL
+
+jobs:
+  deploy:
+    if: ${{ github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: review-app-pr-${{ github.event.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Build review preview
+        env:
+          VITE_REVIEW_BASE: /review/app/pr-${{ github.event.number }}/
+        run: npm run build -- --mode review
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/328621131372/locations/global/workloadIdentityPools/github-actions/providers/github-actions-provider
+          service_account: review-app-deploy@ut-dnr-ugs-maps-prod.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy review preview to bucket
+        run: |
+          PFX="review/app/pr-${{ github.event.number }}"
+          gcloud storage rsync dist "gs://ut-dnr-ugs-maps-prod-review/$PFX" \
+            --recursive --delete-unmatched-destination-objects --project ut-dnr-ugs-maps-prod
+          gcloud storage objects update "gs://ut-dnr-ugs-maps-prod-review/$PFX/index.html" \
+            --cache-control="no-cache,max-age=0" --project ut-dnr-ugs-maps-prod
+      - name: Comment preview URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const n = context.issue.number;
+            const url = `https://ugs-warehouse-review-serving-ufyuidl4mq-uc.a.run.app/review/app/pr-${n}/`;
+            const marker = '<!-- review-app-preview -->';
+            const body = `${marker}\n🔍 **Review app preview** — sign in with your utah.gov Google account (IAP):\n${url}`;
+            const { data: comments } = await github.rest.issues.listComments({ ...context.repo, issue_number: n });
+            const existing = comments.find(c => c.body.includes(marker));
+            if (existing) await github.rest.issues.updateComment({ ...context.repo, comment_id: existing.id, body });
+            else await github.rest.issues.createComment({ ...context.repo, issue_number: n, body });
+
+  cleanup:
+    if: ${{ github.event.action == 'closed' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/328621131372/locations/global/workloadIdentityPools/github-actions/providers/github-actions-provider
+          service_account: review-app-deploy@ut-dnr-ugs-maps-prod.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Remove PR preview prefix
+        run: |
+          gcloud storage rm --recursive \
+            "gs://ut-dnr-ugs-maps-prod-review/review/app/pr-${{ github.event.number }}/" \
+            --project ut-dnr-ugs-maps-prod || echo "nothing to remove"

@@ -7,9 +7,10 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 // Fix for MapLibre GL JS 5.12.0 __publicField issue
 // See: https://github.com/maplibre/maplibre-gl-js/issues/6680
 export default defineConfig(({ mode }) => ({
-  // Review build (`vite build --mode review`) is served from the private review bucket under
-  // /review/app/ behind review-serving's IAP; the public build stays at root.
-  base: mode === 'review' ? '/review/app/' : '/',
+  // Review build (`vite build --mode review`) is served from the private review bucket behind
+  // review-serving's IAP. Base defaults to /review/app/ (the live app); CI overrides it via
+  // VITE_REVIEW_BASE for per-PR previews (e.g. /review/app/pr-489/). Public build stays at root.
+  base: mode === 'review' ? (process.env.VITE_REVIEW_BASE ?? '/review/app/') : '/',
   plugins: [
     tanstackRouter({
       target: 'react',
