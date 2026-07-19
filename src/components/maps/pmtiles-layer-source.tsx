@@ -213,6 +213,26 @@ export function PMTilesLayerSource({
     const styleLayers = (fragment.layers ?? []).filter(l => l['source-layer'] == null || l['source-layer'] === layer.sourceLayer)
     const primaryId = getPmtilesLayerId(layer)
 
+    // Features matching NO style rule draw nothing (the styles are per-rule, no catch-all). Render a
+    // neutral fallback for them so data that fell through symbology is still visible. Filter = none of the
+    // rule filters; if any rule is unfiltered (a real catch-all), everything is classified → skip. The
+    // fallback and the styled layers are mutually exclusive by construction, so z-order never matters.
+    const ruleFilters = styleLayers.map(l => l.filter).filter(Boolean) as maplibregl.FilterSpecification[]
+    const hasCatchAll = styleLayers.some(l => !l.filter)
+    const unclassified: maplibregl.FilterSpecification | null =
+        !hasCatchAll && ruleFilters.length
+            ? (['!', ['any', ...ruleFilters]] as unknown as maplibregl.FilterSpecification)
+            : null
+    const fallbackFilter = (() => {
+        const fs = [unclassified, layerFilter].filter(Boolean) as maplibregl.FilterSpecification[]
+        return fs.length === 2 ? (['all', ...fs] as unknown as maplibregl.FilterSpecification) : fs[0]
+    })()
+    const FALLBACKS: Array<{ suffix: string; type: 'fill' | 'line' | 'circle'; paint: Record<string, unknown> }> = [
+        { suffix: 'fill', type: 'fill', paint: { 'fill-color': '#9ca3af', 'fill-opacity': 0.25 } },
+        { suffix: 'line', type: 'line', paint: { 'line-color': '#9ca3af', 'line-width': 1 } },
+        { suffix: 'circle', type: 'circle', paint: { 'circle-color': '#9ca3af', 'circle-radius': 3, 'circle-opacity': 0.6 } },
+    ]
+
     return (
         <Source id={sourceId} type="vector" url={url}>
             {styleLayers.map((l, i) => {
@@ -228,6 +248,19 @@ export function PMTilesLayerSource({
                     paint: withOpacity(l.paint, l.type, opacity ?? layer.opacity),
                     ...(filter ? { filter } : {}),
                     metadata: { title: layer.title, pmtilesLayer: true, pmtilesSourceId: sourceId },
+                } as LayerProps
+                return <Layer key={spec.id} beforeId={beforeId} {...spec} />
+            })}
+            {unclassified && FALLBACKS.map(fb => {
+                const spec = {
+                    id: `${primaryId}-unclassified-${fb.suffix}`,
+                    type: fb.type,
+                    source: sourceId,
+                    'source-layer': layer.sourceLayer,
+                    layout: { visibility: hidden ? 'none' : 'visible' },
+                    paint: fb.paint,
+                    ...(fallbackFilter ? { filter: fallbackFilter } : {}),
+                    metadata: { title: layer.title, pmtilesLayer: true, pmtilesSourceId: sourceId, unclassified: true },
                 } as LayerProps
                 return <Layer key={spec.id} beforeId={beforeId} {...spec} />
             })}
