@@ -42,8 +42,12 @@ export function legendItemsFromStyle(layers: StyleLayerLike[]): Array<{ key: str
 /** Generic legend for a pmtiles layer, fetched from its active render's style. Renders nothing when the
  *  style has no rule metadata (e.g. a single unclassified fill). */
 export function PMTilesStyleLegend({ layer }: { layer: PMTilesLayerProps }) {
-    const styleUrl = activeRenderOf(layer)?.styleUrl;
-    const { data: items = [] } = useQuery({
+    const render = activeRenderOf(layer);
+    const styleUrl = render?.styleUrl;
+    // A render can declare its legend outright (ugs-styles publishes one for icon renders, where colors
+    // live in a sprite and can't be read off the paint). Prefer that; only parse the style when absent.
+    const declared = render?.legend;
+    const { data: derived = [] } = useQuery({
         queryKey: ['pmtiles-style-legend', styleUrl ?? ''],
         queryFn: async () => {
             const res = await fetch(styleUrl!);
@@ -51,10 +55,13 @@ export function PMTilesStyleLegend({ layer }: { layer: PMTilesLayerProps }) {
             const style = await res.json();
             return legendItemsFromStyle(style.layers ?? []);
         },
-        enabled: !!styleUrl,
+        enabled: !!styleUrl && !declared?.length,
         staleTime: Infinity,
     });
 
+    const items = declared?.length
+        ? declared.map((l) => ({ key: l.label, label: l.label, color: l.color }))
+        : derived;
     if (items.length === 0) return null;
     return (
         <div className="p-2">
