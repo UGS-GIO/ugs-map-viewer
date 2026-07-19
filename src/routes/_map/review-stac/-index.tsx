@@ -18,12 +18,22 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { User } from 'lucide-react';
 import { ReviewFilterProvider } from './-components/review-filter-context';
 import { useReviewVectorFilters } from './-components/layer-filters';
+import { useReviewDisplacementParquetUrl } from './-components/use-review-displacement';
+import { DisplacementSourceProvider } from '@/routes/_map/hazards-review/-components/popups/displacement-data-source';
+import { DisplacementFilterProvider } from '@/routes/_map/hazards-review/-components/popups/displacement-filter-context';
+import { useDisplacementVectorFilters } from '@/routes/_map/hazards-review/-components/popups/displacement-vector-filters';
 
 export default function ReviewStacMap() {
-  // Filter state wraps both the sidebar (Filters slot writes) and the map (reads → vectorLayerFilters).
+  // Displacement stats/filters read the review geoparquet (never GeoServer). All filter state wraps both
+  // the sidebar (Filters slot writes) and the map (reads → vectorLayerFilters).
+  const parquetUrl = useReviewDisplacementParquetUrl();
   return (
     <ReviewFilterProvider>
-      <ReviewStacMapContent />
+      <DisplacementSourceProvider value={{ kind: 'parquet', parquetUrl: parquetUrl ?? '' }}>
+        <DisplacementFilterProvider>
+          <ReviewStacMapContent />
+        </DisplacementFilterProvider>
+      </DisplacementSourceProvider>
     </ReviewFilterProvider>
   );
 }
@@ -34,7 +44,7 @@ function ReviewStacMapContent() {
   const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
   const { contextValue } = useMapContextState();
   const { email, user } = useWhoami();
-  const vectorLayerFilters = useReviewVectorFilters();
+  const vectorLayerFilters = { ...useReviewVectorFilters(), ...useDisplacementVectorFilters() };
 
   return (
     <MapContext.Provider value={contextValue}>

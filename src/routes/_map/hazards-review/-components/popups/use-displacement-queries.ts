@@ -6,6 +6,7 @@ import { queryKeys } from '@/lib/query-keys'
 import { fetchWfsFeatures } from '@/lib/map/wfs-service'
 import { DATA_QUAL_ORDER, DISPLACEMENT_TYPE_NAME, getStyleNameForType, isPeriodKeyedType, type ChartedType, type DisplacementType } from './displacement-layers'
 import { fetchDisplacementSldBins, getZeroBound, type SldBin } from './displacement-sld-legend'
+import { useDisplacementSource, sourceKey, fetchDisplacementFromParquet, type DisplacementDataSource } from './displacement-data-source'
 
 export interface DisplacementProps {
     location: string
@@ -54,9 +55,9 @@ async function fetchAllDisplacement(): Promise<DisplacementFeature[]> {
 // needs displacement features goes through this — TanStack dedupes the network
 // hit across subscribers and lets `queryClient.prefetchQuery(...)` warm the
 // cache without coupling to a component.
-export const displacementFeaturesQueryOptions = () => queryOptions({
-    queryKey: queryKeys.hazards.displacementFeatures(),
-    queryFn: fetchAllDisplacement,
+export const displacementFeaturesQueryOptions = (source: DisplacementDataSource = { kind: 'wfs' }) => queryOptions({
+    queryKey: [...queryKeys.hazards.displacementFeatures(), sourceKey(source)],
+    queryFn: () => (source.kind === 'parquet' ? fetchDisplacementFromParquet(source.parquetUrl) : fetchAllDisplacement()),
     // 20k feature pull is expensive; treat as session-stable. gcTime keeps it
     // around long enough that a user toggling layers off+on doesn't refetch.
     staleTime: 10 * 60 * 1000,
@@ -64,32 +65,35 @@ export const displacementFeaturesQueryOptions = () => queryOptions({
     refetchOnWindowFocus: false,
 })
 
-export const displacementSldBinsQueryOptions = (styleName: string) => queryOptions({
-    queryKey: queryKeys.hazards.displacementSldBins(styleName),
-    queryFn: () => fetchDisplacementSldBins(styleName),
+export const displacementSldBinsQueryOptions = (styleName: string, source: DisplacementDataSource = { kind: 'wfs' }) => queryOptions({
+    queryKey: [...queryKeys.hazards.displacementSldBins(styleName), sourceKey(source)],
+    // Review (parquet) source must NOT touch GeoServer SLD — no threshold bins yet (default deadband);
+    // GL-style-derived bins are a later stage. WFS/hazards-review keeps the SLD fetch.
+    queryFn: () => (source.kind === 'parquet' ? Promise.resolve([] as SldBin[]) : fetchDisplacementSldBins(styleName)),
     staleTime: 60 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
     refetchOnWindowFocus: false,
-    enabled: !!styleName,
+    enabled: source.kind === 'parquet' ? true : !!styleName,
 })
 
 export function useDisplacementFeatures() {
-    return useQuery(displacementFeaturesQueryOptions())
+    return useQuery(displacementFeaturesQueryOptions(useDisplacementSource()))
 }
 
 // Per-type slicing pushed through `select` so React Query memoizes the filtered
 // array by callback identity — components reading only one type don't re-render
 // when an unrelated type's features change shape.
 export function useDisplacementFeaturesByType(type: DisplacementType) {
+    const source = useDisplacementSource()
     const select = useCallback(
         (features: DisplacementFeature[]) => features.filter(f => f.properties.type === type),
         [type],
     )
-    return useQuery({ ...displacementFeaturesQueryOptions(), select })
+    return useQuery({ ...displacementFeaturesQueryOptions(source), select })
 }
 
 export function useDisplacementSldBins(styleName: string) {
-    return useQuery(displacementSldBinsQueryOptions(styleName))
+    return useQuery(displacementSldBinsQueryOptions(styleName, useDisplacementSource()))
 }
 
 // Resolve the SLD "Zero" deadband for a charted type. Returns null when bins
@@ -101,7 +105,7 @@ export function useDisplacementSldZeroBound(type: ChartedType): number | null {
         [],
     )
     const { data = null } = useQuery({
-        ...displacementSldBinsQueryOptions(styleName),
+        ...displacementSldBinsQueryOptions(styleName, useDisplacementSource()),
         select,
     })
     return data
@@ -116,6 +120,7 @@ function useDistinctByType(
     extract: (p: DisplacementProps) => string | null | undefined,
     sort?: (a: string, b: string) => number,
 ): string[] {
+    const source = useDisplacementSource()
     const select = useCallback((features: DisplacementFeature[]) => {
         const set = new Set<string>()
         for (const f of features) {
@@ -125,7 +130,7 @@ function useDistinctByType(
         }
         return Array.from(set).sort(sort)
     }, [type, extract, sort])
-    const { data = [] } = useQuery({ ...displacementFeaturesQueryOptions(), select })
+    const { data = [] } = useQuery({ ...displacementFeaturesQueryOptions(source), select })
     return data
 }
 
@@ -179,7 +184,7 @@ export function useDisplacementBasinYearIndexForType(type: DisplacementType): Di
         }
         return { yearsByBasin, basinsByYear }
     }, [type])
-    const { data = EMPTY_INDEX } = useQuery({ ...displacementFeaturesQueryOptions(), select })
+    const { data = EMPTY_INDEX } = useQuery({ ...displacementFeaturesQueryOptions(useDisplacementSource()), select })
     return data
 }
 
@@ -202,7 +207,7 @@ export function useDisplacementLatestYearForType(type: DisplacementType): string
         }
         return latest
     }, [type])
-    const { data = null } = useQuery({ ...displacementFeaturesQueryOptions(), select })
+    const { data = null } = useQuery({ ...displacementFeaturesQueryOptions(useDisplacementSource()), select })
     return data
 }
 
@@ -230,7 +235,7 @@ export function useDisplacementHasQualityFields(): DisplacementQualityCaps {
         }
         return { pctValid, dataQual }
     }, [])
-    const { data } = useQuery({ ...displacementFeaturesQueryOptions(), select })
+    const { data } = useQuery({ ...displacementFeaturesQueryOptions(useDisplacementSource()), select })
     return data ?? { pctValid: false, dataQual: false }
 }
 
@@ -248,6 +253,6 @@ export function useDisplacementLatestYearByType(): Record<DisplacementType, stri
         }
         return latest as Record<DisplacementType, string | null>
     }, [])
-    const { data } = useQuery({ ...displacementFeaturesQueryOptions(), select })
+    const { data } = useQuery({ ...displacementFeaturesQueryOptions(useDisplacementSource()), select })
     return data ?? ({} as Record<DisplacementType, string | null>)
 }

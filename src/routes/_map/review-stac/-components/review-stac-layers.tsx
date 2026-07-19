@@ -2,16 +2,21 @@ import { BackToMenuButton } from '@/components/ui/back-to-menu-button'
 import { useCustomLayerList } from '@/hooks/use-custom-layerlist'
 import { useGetLayerConfigs } from '@/hooks/use-get-layer-configs'
 import { LayerFiltersByTitle } from './layer-filters'
+import { renderDisplacementLayerPanel } from '@/routes/_map/hazards-review/-components/popups/displacement-layer-panel'
+import { renderDisplacementLegend } from '@/routes/_map/hazards-review/-components/popups/displacement-legend'
 
 /**
- * Layers sidebar for /review-stac. The layer tree is the auto-discovered review STAC catalog
- * (useGetLayerConfigs('review-stac')). Layers that declare filterFields get a generic Filters slot.
+ * Layers sidebar for /review-stac. Auto-discovered review catalog layers. Displacement type-layers get
+ * the full InSAR filter+stats panel (fed by the review geoparquet); other layers get the generic
+ * <LayerFilters> from their declared filterFields.
  */
 export function ReviewStacLayers() {
   const { layerConfigs, isLoading } = useGetLayerConfigs('review-stac')
   const layerList = useCustomLayerList({
     config: layerConfigs,
-    layerExtrasRender: (title) => <LayerFiltersByTitle title={title} config={layerConfigs ?? []} />,
+    layerExtrasRender: (title) =>
+      renderDisplacementLayerPanel(title) ?? <LayerFiltersByTitle title={title} config={layerConfigs ?? []} />,
+    layerLegendRender: (title) => renderDisplacementLegend(title),
   })
 
   if (isLoading) {
