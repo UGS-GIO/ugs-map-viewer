@@ -5,6 +5,7 @@ import type { LayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
 import { isGroupLayer, isPMTilesLayer } from '@/lib/map/layer-utils'
 import { LayerFilters } from './layer-filters'
 import { layerPanelPlugin } from './layer-panels'
+import { PMTilesStyleLegend } from '@/components/maps/pmtiles-style-legend'
 
 /**
  * Layers sidebar for /review-stac (auto-discovered review catalog layers).
@@ -33,9 +34,11 @@ export function ReviewStacLayers() {
         </div>
       )
     },
+    // Plug-in legend if the layer registered one, else the generic legend derived from its own GL style.
     layerLegendRender: (title) => {
       const layer = find(title)
-      return layer ? (layerPanelPlugin(layer)?.renderLegend?.(layer) ?? null) : null
+      if (!layer) return null
+      return layerPanelPlugin(layer)?.renderLegend?.(layer) ?? <PMTilesStyleLegend layer={layer} />
     },
   })
 
