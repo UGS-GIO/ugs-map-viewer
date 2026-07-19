@@ -58,6 +58,8 @@ async function fetchAllDisplacement(): Promise<DisplacementFeature[]> {
 export const displacementFeaturesQueryOptions = (source: DisplacementDataSource = { kind: 'wfs' }) => queryOptions({
     queryKey: [...queryKeys.hazards.displacementFeatures(), sourceKey(source)],
     queryFn: () => (source.kind === 'parquet' ? fetchDisplacementFromParquet(source.parquetUrl) : fetchAllDisplacement()),
+    // Parquet source: don't fire until the (async) signed URL resolves, or duckdb gets read_parquet('').
+    enabled: source.kind === 'parquet' ? !!source.parquetUrl : true,
     // 20k feature pull is expensive; treat as session-stable. gcTime keeps it
     // around long enough that a user toggling layers off+on doesn't refetch.
     staleTime: 10 * 60 * 1000,
