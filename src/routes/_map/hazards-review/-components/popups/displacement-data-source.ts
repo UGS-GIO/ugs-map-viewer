@@ -31,7 +31,11 @@ export function parseGlStyleBins(style: {
             if (op === 'all' || op === 'any') { e.slice(1).forEach(walk); return; }
             if (op === '>=' || op === '>' || op === '<=' || op === '<') {
                 const g = e[1], v = e[2];
-                if (Array.isArray(g) && g[0] === 'get' && g[1] === 'value_inch' && typeof v === 'number') {
+                // Styles seeded from the SLD used `value_inch`; the warehouse tiles they style expose
+                // `value_inches`, so published styles now filter on the latter. Accept either.
+                const isValueField = Array.isArray(g) && g[0] === 'get'
+                    && (g[1] === 'value_inch' || g[1] === 'value_inches');
+                if (isValueField && typeof v === 'number') {
                     found = true;
                     if (op === '>=' || op === '>') min = Math.max(min, v);
                     if (op === '<=' || op === '<') max = Math.min(max, v);
