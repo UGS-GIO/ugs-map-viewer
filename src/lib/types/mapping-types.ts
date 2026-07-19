@@ -215,7 +215,21 @@ export interface PMTilesLayerProps extends BaseLayerProps {
 
 /** A single declarative filter control on a vector layer's feature property. */
 export type FilterFieldSpec =
-    | { field: string; label: string; kind: 'enum'; values: string[] }
+    | {
+          field: string;
+          label: string;
+          kind: 'enum';
+          values: string[];
+          /** Single-select (one value at a time, radio-like) instead of the default multi-select chips. */
+          single?: boolean;
+          /** Picking a value also switches the layer's render (symbology). Requires `optionRenders`.
+           *  Generic mechanism: any config layer can make an enum field drive symbology, not just displacement. */
+          drivesSymbology?: boolean;
+          /** value -> renderId, used when `drivesSymbology`. */
+          optionRenders?: Record<string, string>;
+          /** Default selected value for a `single` field (falls back to values[0]). */
+          defaultValue?: string;
+      }
     | { field: string; label: string; kind: 'number-range'; min: number; max: number; step?: number };
 
 export interface WFSLayerProps extends BaseLayerProps {

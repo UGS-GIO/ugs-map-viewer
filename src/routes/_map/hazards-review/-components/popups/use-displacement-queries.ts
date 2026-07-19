@@ -6,7 +6,7 @@ import { queryKeys } from '@/lib/query-keys'
 import { fetchWfsFeatures } from '@/lib/map/wfs-service'
 import { DATA_QUAL_ORDER, DISPLACEMENT_TYPE_NAME, getStyleNameForType, isPeriodKeyedType, type ChartedType, type DisplacementType } from './displacement-layers'
 import { fetchDisplacementSldBins, getZeroBound, type SldBin } from './displacement-sld-legend'
-import { useDisplacementSource, sourceKey, fetchDisplacementFromParquet, type DisplacementDataSource } from './displacement-data-source'
+import { useDisplacementSource, sourceKey, fetchDisplacementFromParquet, fetchGlStyleBins, type DisplacementDataSource } from './displacement-data-source'
 
 export interface DisplacementProps {
     location: string
@@ -36,9 +36,15 @@ export type DisplacementFeature = Feature<Polygon | MultiPolygon, DisplacementPr
 // and a period like "2017-10-20 to 2021-10-11"; bucket them by the period's end
 // year so charts/filters/popups stay year-aligned with the map cql (which also
 // keys these types on end_date). Yearly uses its native `year` field.
+// end_date is normalized to an ISO string at the source (WFS returns ISO; the review parquet is CAST to
+// VARCHAR in the fetch). Parse the year strictly (leading `YYYY-`) rather than blind-slicing — a non-ISO
+// value (e.g. an epoch that slipped through) yields null, never a bogus year like "1728".
 export function getBucketYear(props: Pick<DisplacementProps, 'type' | 'year' | 'end_date'>): string | null {
     if (props.type === 'Yearly') return props.year ?? null
-    if (isPeriodKeyedType(props.type) && props.end_date) return props.end_date.slice(0, 4)
+    if (isPeriodKeyedType(props.type) && props.end_date) {
+        const m = /^(\d{4})-\d{2}/.exec(String(props.end_date))
+        return m ? m[1] : null
+    }
     return null
 }
 
@@ -69,13 +75,17 @@ export const displacementFeaturesQueryOptions = (source: DisplacementDataSource 
 
 export const displacementSldBinsQueryOptions = (styleName: string, source: DisplacementDataSource = { kind: 'wfs' }) => queryOptions({
     queryKey: [...queryKeys.hazards.displacementSldBins(styleName), sourceKey(source)],
-    // Review (parquet) source must NOT touch GeoServer SLD — no threshold bins yet (default deadband);
-    // GL-style-derived bins are a later stage. WFS/hazards-review keeps the SLD fetch.
-    queryFn: () => (source.kind === 'parquet' ? Promise.resolve([] as SldBin[]) : fetchDisplacementSldBins(styleName)),
+    // Review (parquet) source must NOT touch GeoServer SLD: bins (chart breaks + colors) are parsed from
+    // the review GL style instead, so they match exactly what the map draws. WFS keeps the SLD fetch.
+    queryFn: () =>
+        source.kind === 'parquet'
+            ? fetchGlStyleBins(source.glStyleUrlByStyle?.[styleName])
+            : fetchDisplacementSldBins(styleName),
     staleTime: 60 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
     refetchOnWindowFocus: false,
-    enabled: source.kind === 'parquet' ? true : !!styleName,
+    // Parquet: wait for the catalog-resolved style URL, else we'd cache an empty bin set (blank charts).
+    enabled: source.kind === 'parquet' ? !!source.glStyleUrlByStyle?.[styleName] : !!styleName,
 })
 
 export function useDisplacementFeatures() {

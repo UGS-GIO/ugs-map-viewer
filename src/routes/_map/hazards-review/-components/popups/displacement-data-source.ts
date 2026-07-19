@@ -7,8 +7,72 @@ import { createContext, useContext } from 'react';
 import type { Polygon } from 'geojson';
 import { withConnection, escapeSql, normalizeRow } from '@/lib/duckdb/client';
 import type { DisplacementFeature, DisplacementProps } from './use-displacement-queries';
+import type { SldBin } from './displacement-sld-legend';
 
-export type DisplacementDataSource = { kind: 'wfs' } | { kind: 'parquet'; parquetUrl: string };
+// parquet source also carries the per-GeoServer-style-name GL style URL, so displacement bins (chart
+// breaks + colors) come from the review GL style — never GeoServer SLD.
+export type DisplacementDataSource =
+    | { kind: 'wfs' }
+    | { kind: 'parquet'; parquetUrl: string; glStyleUrlByStyle?: Record<string, string> };
+
+/** Parse the value breaks + colors out of a review GL style fragment into SldBin[] (the chart's bins).
+ *  Each fill layer filters `value_inch` by a half-open range; the zero deadband spans across 0. */
+export function parseGlStyleBins(style: { layers?: Array<{ type?: string; paint?: Record<string, unknown>; filter?: unknown }> }): SldBin[] {
+    const bins: SldBin[] = [];
+    const seen = new Set<string>();
+    const bounds = (filter: unknown): { min: number; max: number } | null => {
+        let min = -Infinity, max = Infinity, found = false;
+        const walk = (e: unknown) => {
+            if (!Array.isArray(e)) return;
+            const op = e[0];
+            if (op === '!') return; // skip the negated deadband exclusion
+            if (op === 'all' || op === 'any') { e.slice(1).forEach(walk); return; }
+            if (op === '>=' || op === '>' || op === '<=' || op === '<') {
+                const g = e[1], v = e[2];
+                if (Array.isArray(g) && g[0] === 'get' && g[1] === 'value_inch' && typeof v === 'number') {
+                    found = true;
+                    if (op === '>=' || op === '>') min = Math.max(min, v);
+                    if (op === '<=' || op === '<') max = Math.min(max, v);
+                }
+            }
+        };
+        walk(filter);
+        return found ? { min, max } : null;
+    };
+    for (const l of style.layers ?? []) {
+        if (l.type !== 'fill') continue;
+        const color = l.paint?.['fill-color'];
+        if (typeof color !== 'string') continue;
+        const b = bounds(l.filter);
+        if (!b) continue;
+        const key = `${b.min}|${b.max}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const isZero = b.min < 0 && b.max > 0;
+        bins.push({ name: `gl_${b.min}_${b.max}`, title: binTitle(b.min, b.max, isZero), min: b.min, max: b.max, color, isZero });
+    }
+    bins.sort((a, b) => a.min - b.min);
+    return bins;
+}
+
+function binTitle(min: number, max: number, isZero: boolean): string {
+    if (isZero) return `within ±${Math.max(Math.abs(min), Math.abs(max))} in`;
+    if (min === -Infinity) return `< ${max} in`;
+    if (max === Infinity) return `≥ ${min} in`;
+    return `${min} – ${max} in`;
+}
+
+/** Fetch a review GL style URL and parse its value bins. () on any failure (charts degrade gracefully). */
+export async function fetchGlStyleBins(styleUrl: string | undefined): Promise<SldBin[]> {
+    if (!styleUrl) return [];
+    try {
+        const res = await fetch(styleUrl);
+        if (!res.ok) return [];
+        return parseGlStyleBins(await res.json());
+    } catch {
+        return [];
+    }
+}
 
 const DisplacementSourceContext = createContext<DisplacementDataSource>({ kind: 'wfs' });
 export const DisplacementSourceProvider = DisplacementSourceContext.Provider;

@@ -6,7 +6,8 @@
 import { useMemo } from 'react';
 import type { FilterSpecification } from 'maplibre-gl';
 import type { PMTilesLayerProps, LayerProps } from '@/lib/types/mapping-types';
-import { buildFilterExpression } from '@/lib/map/layer-filters';
+import { buildFilterExpression, resolveLayerSymbology, activeEnumValue } from '@/lib/map/layer-filters';
+import type { FilterFieldSpec } from '@/lib/types/mapping-types';
 import { isGroupLayer, isPMTilesLayer } from '@/lib/map/layer-utils';
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs';
 import { useReviewFilters } from './review-filter-context';
@@ -30,6 +31,47 @@ export function useReviewVectorFilters(): Record<string, FilterSpecification> {
     walk(layers);
     return out;
   }, [values, layers]);
+}
+
+/** {layerTitle -> renderId} for layers whose filter values drive symbology — feed to GenericMapContainer's
+ *  vectorLayerSymbology. Generic: driven purely by `drivesSymbology` filter fields. */
+export function useReviewVectorSymbology(): Record<string, string> {
+  const { values } = useReviewFilters();
+  const layers = useGetLayerConfigsData('review-stac') ?? [];
+  return useMemo(() => {
+    const out: Record<string, string> = {};
+    const walk = (ls: LayerProps[]) => {
+      for (const l of ls) {
+        if (isGroupLayer(l) && l.layers) walk(l.layers);
+        else if (isPMTilesLayer(l) && l.filterFields?.length && l.title) {
+          const renderId = resolveLayerSymbology(l.filterFields, values[l.title] ?? {});
+          if (renderId) out[l.title] = renderId;
+        }
+      }
+    };
+    walk(layers);
+    return out;
+  }, [values, layers]);
+}
+
+/** Single-select enum: exactly one value active at a time (used by symbology-driving fields). */
+function SingleEnumControl({ title, spec }: { title: string; spec: Extract<FilterFieldSpec, { kind: 'enum' }> }) {
+  const { values, setFieldValue } = useReviewFilters();
+  const active = activeEnumValue(spec, values[title] ?? {});
+  return (
+    <div className="flex flex-wrap gap-1">
+      {spec.values.map((v) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => setFieldValue(title, spec.field, [v])}
+          className={`rounded border px-1.5 py-0.5 text-[11px] ${v === active ? 'border-primary bg-primary/15 text-foreground' : 'text-muted-foreground'}`}
+        >
+          {v}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function EnumControl({ title, field, options }: { title: string; field: string; options: string[] }) {
@@ -85,7 +127,11 @@ export function LayerFilters({ layer }: { layer: PMTilesLayerProps }) {
         <div key={spec.field}>
           <div className="mb-1 text-xs font-medium">{spec.label}</div>
           {spec.kind === 'enum' ? (
-            <EnumControl title={layer.title!} field={spec.field} options={spec.values} />
+            spec.single ? (
+              <SingleEnumControl title={layer.title!} spec={spec} />
+            ) : (
+              <EnumControl title={layer.title!} field={spec.field} options={spec.values} />
+            )
           ) : (
             <RangeControl title={layer.title!} field={spec.field} min={spec.min} max={spec.max} step={spec.step} />
           )}

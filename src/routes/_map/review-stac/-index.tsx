@@ -16,20 +16,26 @@ import { MapContext } from '@/context/map-context';
 import { useWhoami } from '@/hooks/use-whoami';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { User } from 'lucide-react';
+import { useMemo } from 'react';
 import { ReviewFilterProvider } from './-components/review-filter-context';
-import { useReviewVectorFilters } from './-components/layer-filters';
-import { useReviewDisplacementParquetUrl } from './-components/use-review-displacement';
+import { useReviewVectorFilters, useReviewVectorSymbology } from './-components/layer-filters';
+import { useDisplacementFilterOverride } from './-components/layer-panels';
+import { useReviewDisplacementParquetUrl, useReviewDisplacementGlStyleUrls } from './-components/use-review-displacement';
 import { DisplacementSourceProvider } from '@/routes/_map/hazards-review/-components/popups/displacement-data-source';
 import { DisplacementFilterProvider } from '@/routes/_map/hazards-review/-components/popups/displacement-filter-context';
-import { useDisplacementVectorFilters } from '@/routes/_map/hazards-review/-components/popups/displacement-vector-filters';
 
 export default function ReviewStacMap() {
-  // Displacement stats/filters read the review geoparquet (never GeoServer). All filter state wraps both
-  // the sidebar (Filters slot writes) and the map (reads → vectorLayerFilters).
+  // Displacement stats/filters/bins read the review geoparquet + review GL styles (never GeoServer). All
+  // filter state wraps both the sidebar (Filters slot writes) and the map (reads → filters + symbology).
   const parquetUrl = useReviewDisplacementParquetUrl();
+  const glStyleUrlByStyle = useReviewDisplacementGlStyleUrls();
+  const source = useMemo(
+    () => ({ kind: 'parquet' as const, parquetUrl: parquetUrl ?? '', glStyleUrlByStyle }),
+    [parquetUrl, glStyleUrlByStyle],
+  );
   return (
     <ReviewFilterProvider>
-      <DisplacementSourceProvider value={{ kind: 'parquet', parquetUrl: parquetUrl ?? '' }}>
+      <DisplacementSourceProvider value={source}>
         <DisplacementFilterProvider>
           <ReviewStacMapContent />
         </DisplacementFilterProvider>
@@ -44,7 +50,10 @@ function ReviewStacMapContent() {
   const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
   const { contextValue } = useMapContextState();
   const { email, user } = useWhoami();
-  const vectorLayerFilters = { ...useReviewVectorFilters(), ...useDisplacementVectorFilters() };
+  // Generic declarative filters for every layer; the displacement plug-in then overrides its own layer
+  // with the richer InSAR expression (year/basin/quality/threshold for the active type).
+  const vectorLayerFilters = { ...useReviewVectorFilters(), ...useDisplacementFilterOverride() };
+  const vectorLayerSymbology = useReviewVectorSymbology();
 
   return (
     <MapContext.Provider value={contextValue}>
@@ -74,7 +83,11 @@ function ReviewStacMapContent() {
               <TopNav />
             </Layout.Header>
             <Layout.Body>
-              <GenericMapContainer layerConfigKey="review-stac" vectorLayerFilters={vectorLayerFilters} />
+              <GenericMapContainer
+                layerConfigKey="review-stac"
+                vectorLayerFilters={vectorLayerFilters}
+                vectorLayerSymbology={vectorLayerSymbology}
+              />
             </Layout.Body>
             <Layout.Footer className={cn('z-20 hidden md:flex')} dynamicContent={<MapFooter />} />
           </Layout>

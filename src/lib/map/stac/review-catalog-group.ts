@@ -29,33 +29,20 @@ function itemTitle(item: StacItem): string {
   return (item.properties?.title as string | undefined) ?? item.id;
 }
 
-/** Build the auto-discovered "Review" group. Items without a PMTiles asset (not mappable) are skipped. */
-// Displacement is special-cased: the InSAR filter/stats/legend panel is built per displacement TYPE, so
-// the single displacement pmtiles item expands into 3 per-type layer entries (titles + renders match the
-// DISPLACEMENT_LAYERS ': Review' registry, so isDisplacementLayerTitle + the panel reuse as-is). Each is
-// the same pmtiles; the `type ==` base clause is applied via useDisplacementVectorFilters.
-const DISPLACEMENT_ITEM_ID = 'hazards_displacement_contours';
-const DISPLACEMENT_TYPE_LAYERS: Array<{ title: string; renderId: string }> = [
-  { title: 'Displacement Contours - Cumulative: Review', renderId: 'cumulative' },
-  { title: 'Displacement Contours - Yearly: Review', renderId: 'yearly' },
-  { title: 'Displacement Contours - Vertical Displacement Rate: Review', renderId: 'velocity' },
-];
+export const DISPLACEMENT_ITEM_ID = 'hazards_displacement_contours';
 
+/** Build the auto-discovered "Review" group. Items without a PMTiles asset (not mappable) are skipped.
+ *  One catalog item = one layer, always — no per-item special cases. Displacement used to expand into 3
+ *  per-type layers; its `type` is now a symbology-driving filter field (see FILTER_REGISTRY), so picking a
+ *  type switches render + filter on the single layer and the sidebar matches the catalog 1:1. */
 export function reviewCatalogGroup(items: StacItem[]): GroupLayerProps | null {
   const layers: LayerProps[] = [];
   for (const item of items) {
     try {
       const base = resolveStacPMTilesLayer(item, { stacItemId: item.id, title: itemTitle(item), visible: false });
-      if (item.id === DISPLACEMENT_ITEM_ID) {
-        // Expand into 3 per-type layers (same pmtiles); each defaults to its own render.
-        for (const { title, renderId } of DISPLACEMENT_TYPE_LAYERS) {
-          layers.push({ ...base, title, defaultRenderId: base.renders?.some((r) => r.id === renderId) ? renderId : base.defaultRenderId });
-        }
-      } else {
-        const filterFields = filterFieldsForItem(item.id);
-        if (filterFields) base.filterFields = filterFields;
-        layers.push(base);
-      }
+      const filterFields = filterFieldsForItem(item.id);
+      if (filterFields) base.filterFields = filterFields;
+      layers.push(base);
     } catch {
       // no PMTiles asset on this item — not mappable, skip
     }
@@ -70,6 +57,22 @@ export async function fetchReviewCatalogGroup(): Promise<GroupLayerProps | null>
     return reviewCatalogGroup(await fetchReviewCatalog());
   } catch {
     return null;
+  }
+}
+
+/** renderId -> GL style URL for the review displacement item. The chart's value bins + colors are parsed
+ *  from these styles (review path never touches GeoServer SLD). */
+export async function fetchReviewDisplacementStyleUrls(): Promise<Record<string, string>> {
+  const items = await fetchReviewCatalog();
+  const item = items.find((i) => i.id === DISPLACEMENT_ITEM_ID);
+  if (!item) return {};
+  try {
+    const base = resolveStacPMTilesLayer(item, { stacItemId: item.id, title: itemTitle(item) });
+    const out: Record<string, string> = {};
+    for (const r of base.renders ?? []) if (r.styleUrl) out[r.id] = r.styleUrl;
+    return out;
+  } catch {
+    return {};
   }
 }
 
