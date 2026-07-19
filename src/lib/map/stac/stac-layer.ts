@@ -193,6 +193,9 @@ export function resolveStacPMTilesLayer(item: StacItem, app: StacLayerAppConfig)
         type: 'pmtiles',
         title: app.title,
         pmtilesUrl,
+        // Carry the item id through: consumers key off it (e.g. per-layer panel plug-ins), and the
+        // resolved-from item is authoritative over whatever the app config guessed.
+        stacItemId: item.id,
         // PMTiles vector source-layer is named after the STAC item id (warehouse
         // convention), NOT `ugs:layer` (which is the DB view, e.g. `*_current`).
         sourceLayer: item.id,
@@ -280,6 +283,7 @@ function mergeStacIntoLayer(layer: PMTilesLayerProps, item: StacItem): PMTilesLa
     return {
         ...layer,
         pmtilesUrl,
+        stacItemId: item.id,
         // Tile source-layer = STAC item id (warehouse convention), authoritative
         // over any app-provided value.
         sourceLayer: item.id,
