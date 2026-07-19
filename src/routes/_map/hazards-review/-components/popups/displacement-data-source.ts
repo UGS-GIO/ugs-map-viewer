@@ -25,8 +25,13 @@ export const sourceKey = (s: DisplacementDataSource): string => (s.kind === 'par
 export async function fetchDisplacementFromParquet(parquetUrl: string): Promise<DisplacementFeature[]> {
   // Only the columns the charts/filters need — NOT geom (large WKB; combinedBbox uses the bbox_* cols).
   const rows = await withConnection(async (conn) => {
+    // Cast the date columns to ISO strings — they're timestamps in the parquet, and getBucketYear does
+    // end_date.slice(0,4). Without the cast duckdb hands back epoch ms and the "year" reads off that
+    // (e.g. "1728…"), breaking the year selector + all year-bucketed charts.
     const res = await conn.query(
-      `SELECT location, type, year, start_date, end_date, value_inches, pct_valid, data_qual,
+      `SELECT location, type, year,
+              CAST(start_date AS VARCHAR) AS start_date, CAST(end_date AS VARCHAR) AS end_date,
+              value_inches, pct_valid, data_qual,
               bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax
        FROM read_parquet('${escapeSql(parquetUrl)}')`,
     );
