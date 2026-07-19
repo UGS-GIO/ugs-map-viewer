@@ -17,7 +17,9 @@ export type DisplacementDataSource =
 
 /** Parse the value breaks + colors out of a review GL style fragment into SldBin[] (the chart's bins).
  *  Each fill layer filters `value_inch` by a half-open range; the zero deadband spans across 0. */
-export function parseGlStyleBins(style: { layers?: Array<{ type?: string; paint?: Record<string, unknown>; filter?: unknown }> }): SldBin[] {
+export function parseGlStyleBins(style: {
+    layers?: Array<{ type?: string; paint?: Record<string, unknown>; filter?: unknown; metadata?: Record<string, unknown> }>;
+}): SldBin[] {
     const bins: SldBin[] = [];
     const seen = new Set<string>();
     const bounds = (filter: unknown): { min: number; max: number } | null => {
@@ -48,8 +50,23 @@ export function parseGlStyleBins(style: { layers?: Array<{ type?: string; paint?
         const key = `${b.min}|${b.max}`;
         if (seen.has(key)) continue;
         seen.add(key);
-        const isZero = b.min < 0 && b.max > 0;
-        bins.push({ name: `gl_${b.min}_${b.max}`, title: binTitle(b.min, b.max, isZero), min: b.min, max: b.max, color, isZero });
+        // Prefer the SLD rule identity the style publishes (ugs-styles #12). The deadband is NOT inferable
+        // from bounds: velocity's deadband is the rule named `Zero` ([-0.001, 0.001]) while its class_9
+        // ([-0.075, 0.075]) also spans zero but is real data. Fall back to the span-zero guess only for
+        // styles published before that metadata existed.
+        const meta = l.metadata ?? {};
+        const ruleName = typeof meta['ugs:rule'] === 'string' ? (meta['ugs:rule'] as string) : undefined;
+        const ruleTitle = typeof meta['ugs:title'] === 'string' ? (meta['ugs:title'] as string) : undefined;
+        const isZero =
+            typeof meta['ugs:zero'] === 'boolean' ? (meta['ugs:zero'] as boolean) : b.min < 0 && b.max > 0;
+        bins.push({
+            name: ruleName ?? `gl_${b.min}_${b.max}`,
+            title: ruleTitle || binTitle(b.min, b.max, isZero),
+            min: b.min,
+            max: b.max,
+            color,
+            isZero,
+        });
     }
     bins.sort((a, b) => a.min - b.min);
     return bins;
