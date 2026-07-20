@@ -19,7 +19,7 @@ import { User } from 'lucide-react';
 import { useMemo } from 'react';
 import { ReviewFilterProvider } from './-components/review-filter-context';
 import { useReviewVectorFilters, useReviewVectorSymbology } from './-components/layer-filters';
-import { useDisplacementFilterOverride } from './-components/layer-panels';
+import { useDisplacementFilterOverride, FeatureCommentsForPopup } from './-components/layer-panels';
 import { useReviewDisplacementParquetUrl, useReviewDisplacementGlStyleUrls } from './-components/use-review-displacement';
 import { DisplacementSourceProvider } from '@/routes/_map/hazards-review/-components/popups/displacement-data-source';
 import { DisplacementFilterProvider } from '@/routes/_map/hazards-review/-components/popups/displacement-filter-context';
@@ -87,6 +87,9 @@ function ReviewStacMapContent() {
                 layerConfigKey="review-stac"
                 vectorLayerFilters={vectorLayerFilters}
                 vectorLayerSymbology={vectorLayerSymbology}
+                popupFeatureRender={(feature, layer) => (
+                  <FeatureCommentsForPopup layerTitle={layer.layerTitle} properties={feature.properties} />
+                )}
               />
             </Layout.Body>
             <Layout.Footer className={cn('z-20 hidden md:flex')} dynamicContent={<MapFooter />} />

@@ -16,6 +16,8 @@
 import type { ReactNode } from 'react';
 import type { FilterSpecification } from 'maplibre-gl';
 import type { PMTilesLayerProps, LayerProps, FilterFieldSpec } from '@/lib/types/mapping-types';
+import type { GeoJsonProperties } from 'geojson';
+import { FeatureComments } from '@/components/review/feature-comments';
 import { DISPLACEMENT_ITEM_ID } from '@/lib/map/stac/review-catalog-group';
 import { activeEnumValue } from '@/lib/map/layer-filters';
 import { isGroupLayer, isPMTilesLayer } from '@/lib/map/layer-utils';
@@ -80,6 +82,40 @@ function findByStacItemId(layers: LayerProps[], itemId: string): PMTilesLayerPro
       const r = findByStacItemId(l.layers, itemId);
       if (r) return r;
     } else if (isPMTilesLayer(l) && l.stacItemId === itemId) {
+      return l;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Per-feature review comments in the popup. Resolves the clicked feature's layer to its STAC item id
+ * (the comment thread key, shared with the internal review viewer) and its declared stable key.
+ * Layers without a durable key render the "unavailable" note instead — see FeatureComments.
+ */
+export function FeatureCommentsForPopup({ layerTitle, properties }: {
+  layerTitle: string;
+  properties: GeoJsonProperties;
+}) {
+  const layers = useGetLayerConfigsData('review-stac') ?? [];
+  const layer = findPMTilesByTitle(layers, layerTitle);
+  if (!layer?.stacItemId) return null;
+  return (
+    <FeatureComments
+      itemId={layer.stacItemId}
+      properties={properties}
+      stableKey={layer.stableKey}
+      layerTitle={layer.title}
+    />
+  );
+}
+
+function findPMTilesByTitle(layers: LayerProps[], title: string): PMTilesLayerProps | undefined {
+  for (const l of layers) {
+    if (isGroupLayer(l) && l.layers) {
+      const r = findPMTilesByTitle(l.layers, title);
+      if (r) return r;
+    } else if (isPMTilesLayer(l) && l.title === title) {
       return l;
     }
   }

@@ -27,18 +27,23 @@ function mentionAt(text: string, caret: number): { at: number; query: string } |
   return { at: caret - m[1].length - 1, query: m[1] };
 }
 
-export function ReviewComments({ itemId, label = 'Review comments' }: { itemId: string; label?: string }) {
+export function ReviewComments({ itemId, label = 'Review comments', target }: {
+  itemId: string;
+  label?: string;
+  /** Narrow the thread to one row (feature). Omit for a layer-level thread. */
+  target?: { rowKey: string; rowVal: string };
+}) {
   const qc = useQueryClient();
   const { email } = useWhoami();
   const myEmail = email ?? undefined;
-  const key = ['review-comments', itemId] as const;
+  const key = ['review-comments', itemId, target?.rowKey ?? null, target?.rowVal ?? null] as const;
   // IAP identity present (behind IAP `/whoami` returns the reviewer email) → load. Outside IAP the
   // email is null → panel hidden; a missing backend also errors the fetch and the panel hides.
   const enabled = !!email;
 
   const { data: comments = [], isLoading, error } = useQuery({
     queryKey: key,
-    queryFn: () => listComments(itemId),
+    queryFn: () => listComments(itemId, target ? { rowVal: target.rowVal } : undefined),
     retry: false,
     enabled,
   });
@@ -51,7 +56,8 @@ export function ReviewComments({ itemId, label = 'Review comments' }: { itemId: 
   const [mentionIdx, setMentionIdx] = useState(0);
 
   const add = useMutation({
-    mutationFn: () => createComment([itemId], body),
+    mutationFn: () => createComment([itemId], body,
+      target ? { kind: 'row', rowKey: target.rowKey, rowVal: target.rowVal } : undefined),
     onSuccess: (created) => {
       setBody('');
       qc.setQueryData<Comment[]>(key, (old = []) => [created, ...old]);

@@ -211,6 +211,10 @@ export interface PMTilesLayerProps extends BaseLayerProps {
      * src/lib/map/layer-filters.ts.
      */
     filterFields?: FilterFieldSpec[];
+    /** Feature property holding a DURABLE per-feature key (default 'pk'). Feature-level review comments
+     *  anchor to it; without one they stay disabled, since positional ids (feature_id/objectid) can
+     *  re-number on reingest and would silently re-anchor a comment to a different feature. */
+    stableKey?: string;
 }
 
 /** A single declarative filter control on a vector layer's feature property. */
