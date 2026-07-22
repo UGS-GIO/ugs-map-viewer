@@ -9,7 +9,7 @@ import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, utTownshipRangesTitle } from './-data/layers/layers'
+import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle } from './-data/layers/layers'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
@@ -34,23 +34,6 @@ const searchConfig: SearchSourceConfig[] = [
     params: {
       targetFields: ['api', 'wellname'],
       select: 'api,wellname,shape',
-    },
-    headers: {
-      'Accept-Profile': 'emp',
-      'Accept': 'application/geo+json',
-    },
-  },
-  {
-    type: 'postgREST',
-    url: `${PROD_POSTGREST_URL}/enmin_plss_townshiprange_current`,
-    sourceName: 'Utah Township & Ranges',
-    layerName: utTownshipRangesTitle,
-    crs: 'EPSG:26912',
-    displayField: 'twnshplab',
-    secondaryDisplayField: 'label',
-    params: {
-      targetFields: ['twnshplab', 'label'],
-      select: 'twnshplab,label,geom',
     },
     headers: {
       'Accept-Profile': 'emp',
