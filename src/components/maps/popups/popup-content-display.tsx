@@ -288,7 +288,10 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
             const targetValue = feature?.properties?.[table.targetField!];
             if (!targetValue) return [];
 
-            const rows = dataMap.get(String(targetValue)) || [];
+            const fetchedRows = dataMap.get(String(targetValue)) || [];
+            // Optional full-array aggregation (e.g. collapsing raw rows into summarized
+            // intervals) before displayFields/labelValuePairs are computed per row.
+            const rows = table.rowsTransform ? table.rowsTransform(fetchedRows) : fetchedRows;
 
             // Format like the original hook does - add labelValuePairs
             return rows.map(row => {

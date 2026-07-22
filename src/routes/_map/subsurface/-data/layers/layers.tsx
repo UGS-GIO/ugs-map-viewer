@@ -3,6 +3,7 @@ import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
 import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 import { formatNumeric } from "@/lib/utils";
+import { mergeSampleIntervals } from "@/lib/sample-intervals";
 
 
 export const wellWithTopsLayerName = 'wellswithtops_hascore';
@@ -536,6 +537,26 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                     ],
                     sortBy: 'box_number',
                     sortDirection: 'asc',
+                },
+                {
+                    // Client-side rollup of the SAME enmin_ucrc_boxes rows used by "Core Boxes"
+                    // above: collapses individual box records into contiguous Core/Cuttings
+                    // depth intervals, starting a new interval whenever the gap to the next
+                    // same-type sample exceeds 10 ft (ALL-4766).
+                    fieldLabel: 'Samples',
+                    stacAsset: 'enmin_ucrc_boxes',
+                    displayAs: 'table',
+                    rowsTransform: (rows) => mergeSampleIntervals(rows, {
+                        typeField: 'box_type_group',
+                        typeFallbackField: 'box_type',
+                        topField: 'box_top_ft',
+                        bottomField: 'box_bottom_ft',
+                    }),
+                    displayFields: [
+                        { field: 'sample_type', label: 'Type' },
+                        { field: 'top_ft', label: 'Top (ft)', format: 'number' },
+                        { field: 'bottom_ft', label: 'Bottom (ft)', format: 'number' },
+                    ],
                 },
                 {
                     fieldLabel: 'Attachments',
