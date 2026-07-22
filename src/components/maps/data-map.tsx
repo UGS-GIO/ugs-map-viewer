@@ -13,7 +13,7 @@ import {
 import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
-import { flattenDataLayersWithParent, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
+import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint } from '@/components/maps/pmtiles-layer-source'
 import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
@@ -296,15 +296,15 @@ export default function DataMap({
   // The config tree is never mutated — we compute mount/display per leaf at render time.
   const { selectedLayerTitles, groupVisibility, layerOpacity } = useLayerUrl()
 
-  // Flat list of data leaves in config order (top of sidebar = first), tagged with parent group.
-  const dataLeaves = useMemo(() => flattenDataLayersWithParent(layers), [layers])
+  // Flat list of data leaves in config order (top of sidebar = first), tagged with enclosing groups.
+  const dataLeaves = useMemo(() => flattenDataLayersWithAncestors(layers), [layers])
 
   // `mounted` = checkbox state → drives `<Source>` presence.
-  // `displayed` = mounted && group toggle on → drives `<Layer layout.visibility>` and queryability.
+  // `displayed` = mounted && every enclosing group toggle on → drives `<Layer layout.visibility>` and queryability.
   const renderEntries = useMemo(() => {
-    return dataLeaves.map(({ layer, parentGroupTitle }) => {
+    return dataLeaves.map(({ layer, ancestorGroupTitles }) => {
       const { mounted, displayed } = resolveLeafVisibility(
-        layer.title, parentGroupTitle, selectedLayerTitles, groupVisibility,
+        layer.title, ancestorGroupTitles, selectedLayerTitles, groupVisibility,
       )
       return { layer, mounted, displayed }
     })

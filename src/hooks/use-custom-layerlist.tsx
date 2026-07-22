@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionHeader } from '@/components/ui/accordion';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight, SlidersHorizontal } from 'lucide-react';
@@ -24,7 +24,6 @@ import { useLayerUrl } from '@/context/layer-url-provider';
 interface LayerAccordionItemProps {
     layerConfig: LayerProps;
     isTopLevel: boolean;
-    parentGroupTitle?: string;
     disableExport?: boolean;
     /** Optional render-prop for content shown inside a group's accordion */
     groupExtrasRender?: (groupTitle: string) => React.ReactNode;
@@ -63,7 +62,7 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
     );
 }
 
-const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: LayerAccordionItemProps) => {
+const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: LayerAccordionItemProps) => {
     const {
         isSelected,
         handleToggleSelection,
@@ -85,6 +84,18 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
         // If it's not a group, it's a single layer. ALWAYS start collapsed.
         return false;
     });
+
+    // A child can be selected from outside the list (search, a filter) while its group
+    // sits collapsed. Expand on the none → some/all transition only, so a group the user
+    // collapsed by hand stays collapsed. (Mount-time selection is handled by the initializer.)
+    const prevCheckboxState = useRef(groupCheckboxState);
+    useEffect(() => {
+        if (layerConfig.type !== 'group') return;
+        if (prevCheckboxState.current === 'none' && groupCheckboxState !== 'none') {
+            setIsUserExpanded(true);
+        }
+        prevCheckboxState.current = groupCheckboxState;
+    }, [groupCheckboxState, layerConfig.type]);
 
     // Get group visibility from shared context (default: true)
     const isGroupLayerVisible = groupVisibility.get(layerConfig.title || '') ?? true;
@@ -182,21 +193,11 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
 
     const { onLayerTurnedOff } = useMap();
 
-    // This handler now explicitly sets the accordion state.
-    // Also enables parent group visibility when selecting a child layer
     const handleLocalToggle = (checked: boolean) => {
         // Notify parent to clear features from results when layer is turned off
         // (handleLayerTurnedOff in useFeatureSelection handles highlight clearing declaratively)
         if (!checked && layerConfig.title) {
             onLayerTurnedOff(layerConfig.title);
-        }
-
-        // When selecting a child layer, ensure parent group is visible
-        if (checked && parentGroupTitle) {
-            const parentVisible = groupVisibility.get(parentGroupTitle) ?? true;
-            if (!parentVisible) {
-                setGroupVisibility(parentGroupTitle, true);
-            }
         }
 
         handleToggleSelection(checked);
@@ -275,7 +276,6 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
                                         disableExport={disableExport}
                                         layerConfig={child}
                                         isTopLevel={false}
-                                        parentGroupTitle={layerConfig.title}
                                         groupExtrasRender={groupExtrasRender}
                                         layerExtrasRender={layerExtrasRender}
                                         layerStatsRender={layerStatsRender}

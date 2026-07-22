@@ -11,6 +11,7 @@ import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
 import { PROD_POSTGREST_URL } from '@/lib/constants';
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox';
+import { geothermalTEMLayerTitle, gravityStationsLayeTitle } from './-data/layers/layers';
 
 export default function Map() {
     const { isCollapsed, sidebarWidthPx } = useSidebar();
@@ -26,6 +27,7 @@ export default function Map() {
             functionName: 'search_geophysics_tem',
             searchTerm: 'search_term',
             sourceName: 'TEM Data',
+            layerName: geothermalTEMLayerTitle,
             displayField: 'station',
             crs: 'EPSG:4326',
             params: { select: 'station,project,unique_id,geom' },
@@ -37,6 +39,7 @@ export default function Map() {
             functionName: 'search_geophysics_ugsgravity',
             searchTerm: 'search_term',
             sourceName: 'Gravity Stations',
+            layerName: gravityStationsLayeTitle,
             displayField: 'unique_id',
             crs: 'EPSG:4326',
             params: { select: 'unique_id,station,project,geom' },
