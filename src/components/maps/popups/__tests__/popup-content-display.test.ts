@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildGalleryImages } from '../popup-content-display'
+import { buildGalleryImages, getRelatedTableValues } from '../popup-content-display'
 import type { RelatedTable } from '@/lib/types/mapping-types'
 
 const galleryTable: RelatedTable = {
@@ -86,5 +86,50 @@ describe('buildGalleryImages', () => {
         expect(result).toHaveLength(1)
         expect(result[0].url).toBe('https://cdn.example.com/site.jpg')
         expect(result[0].label).toBe('Site Photo')
+    })
+})
+
+describe('getRelatedTableValues', () => {
+    const boxesTable: RelatedTable = {
+        fieldLabel: 'Core Boxes',
+        matchingField: 'uwi',
+        targetField: 'uwi',
+        url: 'https://example.com/boxes',
+        displayAs: 'table',
+        displayFields: [{ field: 'box_type', label: 'Type' }],
+    }
+
+    it('filters rows by matchingField when there is no rowsTransform', () => {
+        const data = [[
+            { uwi: '123', box_type: 'Cuttings', labelValuePairs: [{ label: 'Type', value: 'Cuttings' }] },
+            { uwi: '999', box_type: 'Whole Core', labelValuePairs: [{ label: 'Type', value: 'Whole Core' }] },
+        ]]
+        const result = getRelatedTableValues(0, data, [boxesTable], { uwi: '123' })
+        expect(result).toEqual([[{ label: 'Type', value: 'Cuttings' }]])
+    })
+
+    it('does not drop rowsTransform output that no longer carries matchingField', () => {
+        // Regression test: mergeSampleIntervals (and any future rowsTransform) collapses
+        // many raw rows into new summary rows that don't carry the original join column
+        // (e.g. `uwi`). Those rows were already scoped to this feature upstream via the
+        // bulkRelatedData map lookup, so re-checking matchingField here must not apply —
+        // doing so previously caused the "Sample Types" table to silently render nothing
+        // (ALL-4766) even though data existed.
+        const sampleTypesTable: RelatedTable = {
+            ...boxesTable,
+            fieldLabel: 'Sample Types',
+            rowsTransform: (rows) => rows,
+            displayFields: [{ field: 'sample_type', label: 'Type' }],
+        }
+        const data = [[
+            { sample_type: 'Cuttings', top_ft: 0, bottom_ft: 416, labelValuePairs: [{ label: 'Type', value: 'Cuttings' }] },
+        ]]
+        const result = getRelatedTableValues(0, data, [sampleTypesTable], { uwi: '4304710005T000' })
+        expect(result).toEqual([[{ label: 'Type', value: 'Cuttings' }]])
+    })
+
+    it('returns "No data available" when there are truly no rows', () => {
+        const result = getRelatedTableValues(0, [[]], [boxesTable], { uwi: '123' })
+        expect(result).toEqual([[{ label: '', value: 'No data available' }]])
     })
 })

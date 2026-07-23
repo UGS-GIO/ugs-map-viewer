@@ -83,7 +83,7 @@ const getColorStyle = (
     return { style: { color }, className: '' };
 };
 
-const getRelatedTableValues = (
+export const getRelatedTableValues = (
     groupedLayerIndex: number,
     data: ProcessedRelatedData[][],
     relatedTables: RelatedTable[] | undefined,
@@ -99,10 +99,17 @@ const getRelatedTableValues = (
 
     if (!tableData) return [[{ label: "", value: "No data available" }]];
 
-    // Each matching item becomes its own row (array of labelValuePairs)
+    // Each matching item becomes its own row (array of labelValuePairs).
+    // The matchingField re-check here is a belt-and-suspenders guard against
+    // stale/misaligned bulk data — but `rowsTransform` (e.g. mergeSampleIntervals)
+    // deliberately collapses many joined rows into new summary rows that no
+    // longer carry the original join column (e.g. `uwi`). Those rows were already
+    // scoped to this feature upstream (via the bulkRelatedData map lookup keyed by
+    // targetValue), so re-checking matchingField on them would incorrectly drop
+    // every row. Skip the guard when a transform has run.
     const tableMatches = tableData
         .filter(item =>
-            String(item[table.matchingField!]) === String(targetField) &&
+            (table.rowsTransform || String(item[table.matchingField!]) === String(targetField)) &&
             item.labelValuePairs
         )
         .map(item => item.labelValuePairs!);
