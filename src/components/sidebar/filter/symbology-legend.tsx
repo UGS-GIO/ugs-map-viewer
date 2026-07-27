@@ -114,6 +114,11 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
     const stroke = useMemo(() => new Map(entries.map(e => [e.label, e.stroke])), [entries])
     const itemColor = useMemo(() => new Map(entries.flatMap(e => (e.values ?? []).map(v => [v.value, v.color] as const))), [entries])
     const colorFor = (value: string) => itemColor.get(value) ?? swatch.get(value) ?? '#bdbdbd'
+    // Display text per raw value — grouped renders may carry a friendlier `label` for a shouty-case
+    // managed code (e.g. 'CORESAMPLES' -> 'Core Samples'); flat renders have no per-item labels, so
+    // this is a no-op there and the raw field value (already fit to show) is used as-is.
+    const itemLabel = useMemo(() => new Map(entries.flatMap(e => (e.values ?? []).map(v => [v.value, v.label] as const))), [entries])
+    const displayLabel = (value: string) => itemLabel.get(value) ?? value
     // Grouped render when any legend entry carries `values`; each entry becomes a colour group.
     const groups = useMemo<LegendGroup[] | null>(() =>
         entries.some(e => e.values && e.values.length)
@@ -156,21 +161,21 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
     // swatch is its own colour (per-item shade for grouped renders, fill for flat renders).
     const renderRows = (items: string[]) => (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-1.5">
-            {items.map(label => (
-                <label key={label} className="flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer">
+            {items.map(value => (
+                <label key={value} className="flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer">
                     <Checkbox
                         className="mt-0.5 shrink-0"
-                        checked={onSet.has(label)}
-                        onCheckedChange={() => toggle(label)}
-                        aria-label={`Toggle ${label}`}
+                        checked={onSet.has(value)}
+                        onCheckedChange={() => toggle(value)}
+                        aria-label={`Toggle ${displayLabel(value)}`}
                     />
                     <span
                         className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
-                        style={{ backgroundColor: colorFor(label), borderColor: stroke.get(label) ?? 'rgba(0,0,0,0.3)' }}
+                        style={{ backgroundColor: colorFor(value), borderColor: stroke.get(value) ?? 'rgba(0,0,0,0.3)' }}
                     />
                     <span className="min-w-0 break-words leading-tight">
-                        {label}
-                        {counts[label] != null && <span className="ml-1 text-muted-foreground">({counts[label].toLocaleString()})</span>}
+                        {displayLabel(value)}
+                        {counts[value] != null && <span className="ml-1 text-muted-foreground">({counts[value].toLocaleString()})</span>}
                     </span>
                 </label>
             ))}

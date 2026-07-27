@@ -165,11 +165,13 @@ export interface COGLayerProps extends BaseLayerProps {
  */
 /** One legend entry: a symbology colour + what it represents. `values` (grouped renders) =
  *  the specific field values this entry rolls up, each with its own shade of the group colour;
- *  `stroke` = optional swatch outline (flat renders). */
+ *  `stroke` = optional swatch outline (flat renders). Each grouped value's `value` is the raw
+ *  data/filter token; `label` (optional) is its display text when the raw token isn't fit to show
+ *  as-is (e.g. shouty-case managed codes) — falls back to `value` when absent. */
 export interface LegendEntry {
     label: string;
     color: string;
-    values?: readonly { value: string; color: string }[];
+    values?: readonly { value: string; color: string; label?: string }[];
     stroke?: string;
 }
 
