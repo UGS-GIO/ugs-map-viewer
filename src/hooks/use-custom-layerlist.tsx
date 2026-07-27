@@ -32,7 +32,7 @@ interface LayerAccordionItemProps {
     /** Optional render-prop for whole-layer stats / charts rendered via the Stats toggle */
     layerStatsRender?: (layerTitle: string) => React.ReactNode;
     /** Optional render-prop overriding a layer's legend content (e.g. an interactive symbology legend). */
-    layerLegendRender?: (layerTitle: string) => React.ReactNode;
+    layerLegendRender?: (layer: LayerProps) => React.ReactNode;
 }
 
 /**
@@ -294,7 +294,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
     // current symbology mode). COG layers render a colorbar from raster stats. Explicit
     // `customLegend` on the config always wins.
     const resolvedCustomLegend =
-        (layerConfig.title ? layerLegendRender?.(layerConfig.title) : undefined)
+        (layerConfig.title ? layerLegendRender?.(layerConfig) : undefined)
         ?? layerConfig.customLegend
         ?? (isCOGLayer(layerConfig) ? <CogLegend layer={layerConfig} /> : undefined)
         ?? (isWFSLayer(layerConfig) ? <WfsVectorLegend layer={layerConfig} /> : undefined);
@@ -373,7 +373,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
 };
 
 
-export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: { config: LayerProps[] | null; disableExport?: boolean; groupExtrasRender?: (groupTitle: string) => React.ReactNode; layerExtrasRender?: (layerTitle: string) => React.ReactNode; layerStatsRender?: (layerTitle: string) => React.ReactNode; layerLegendRender?: (layerTitle: string) => React.ReactNode }) => {
+export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: { config: LayerProps[] | null; disableExport?: boolean; groupExtrasRender?: (groupTitle: string) => React.ReactNode; layerExtrasRender?: (layerTitle: string) => React.ReactNode; layerStatsRender?: (layerTitle: string) => React.ReactNode; layerLegendRender?: (layer: LayerProps) => React.ReactNode }) => {
 
     const layerList = useMemo(() => {
         if (!config) return [];

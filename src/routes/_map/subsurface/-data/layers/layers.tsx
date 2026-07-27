@@ -416,46 +416,8 @@ const ucrcWellsTileLayer = 'enmin_ucrc_wells';
 export const ucrcWellsQualifiedName = `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`;
 export const ucrcWellsWMSTitle = 'Utah Core Research Center Inventory';
 
-// Purpose colors mirror the GeoServer SLD for this layer (default style). Keep in sync if SLD changes.
-export const UCRC_PURPOSE_COLORS: Record<string, string> = {
-    'Oil and Gas': '#2B83BA',
-    'Mining': '#D7191C',
-    'Tar Sands': '#4B3621',
-    'Water': '#41B6C4',
-    'Potash': '#E66101',
-    'Coal': '#333333',
-    'Stratigraphy': '#7B68EE',
-    'Building or Construction': '#FDB863',
-    'Oil Shale': '#8C6D31',
-    'Geothermal': '#E31A1C',
-    'Teaching': '#A6D854',
-    'Display': '#FF69B4',
-    'Other': '#BDBDBD',
-};
-export const UCRC_PURPOSE_STROKES: Record<string, string> = {
-    'Oil and Gas': '#1A5276',
-    'Mining': '#922B21',
-    'Tar Sands': '#2C1F13',
-    'Water': '#2C7F8C',
-    'Potash': '#A04500',
-    'Coal': '#1A1A1A',
-    'Stratigraphy': '#5548A6',
-    'Building or Construction': '#B08045',
-    'Oil Shale': '#5E4921',
-    'Geothermal': '#9E1213',
-    'Teaching': '#74963B',
-    'Display': '#B3497E',
-    'Other': '#858585',
-};
-
-// Box-type pie-wedge symbology config (comma-delimited codes on each well).
-export const UCRC_BOX_TYPE_CODES = ['BUTTS', 'CORE', 'CUTTINGS', 'SLABS'] as const;
-export const UCRC_BOX_TYPE_COLORS: Record<string, string> = {
-    BUTTS: '#E66101',
-    CORE: '#5E3C99',
-    CUTTINGS: '#1A9641',
-    SLABS: '#0571B0',
-};
+// UCRC symbology (purpose + box-type colours, box-type grouping/shades) is derived entirely from
+// the STAC render legends (by-purpose / by-boxtype) — see ugs-styles. Nothing hardcoded here.
 
 // STAC-driven: pmtilesUrl, sourceLayer, renders (by-purpose / by-boxtype incl.
 // the baked pie-wedge sprite + legends) and parquet are filled from the
