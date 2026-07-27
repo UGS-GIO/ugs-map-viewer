@@ -11,10 +11,11 @@
  * "Core Chips") into the broad Core / Cuttings / Other groups used by the UCRC "by-boxtype"
  * map symbology (see `ugs:renders["by-boxtype"].legend` on the enmin_ucrc_wells STAC item).
  *
- * There is NO `box_type_group` column on the published enmin_ucrc_boxes data — only the
- * finer-grained `box_type` string. This mirrors the map's legend locally so the "Sample
- * Types" popup table buckets the same way the map does. Comparison is case/whitespace
- * insensitive against the actual `box_type` values seen in production.
+ * The published data DOES carry a `box_type_group` column, but it is wrong upstream: every
+ * Core-family type (Whole Core, Butts, Slabs, Skeletonized Core, Core Samples, Spot Cores)
+ * is labelled OTHER, and only CUTTINGS is correct. So we bucket from `box_type` here instead,
+ * mirroring the map's legend. Switch to `box_type_group` once the warehouse fixes it.
+ * Comparison is case/whitespace insensitive against the actual `box_type` values in production.
  */
 const CORE_BOX_TYPES = new Set([
     'BUTTS',
