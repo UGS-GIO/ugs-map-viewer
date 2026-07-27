@@ -5,7 +5,16 @@ import { highlightFeature, highlightFeatureCollection, clearGraphics, type Highl
 import type { ExtendedFeature } from '@/components/maps/popups/types';
 import type { ExtendedGeometry, SearchSourceConfig } from './search-types';
 
-function determineCRS(
+/**
+ * Resolve the CRS a search result's geometry is actually in.
+ *
+ * PostGIS emits a GeoJSON `crs` member only when the geometry's SRID is NOT 4326 — for WGS84 it
+ * omits it, because GeoJSON is WGS84 by definition (RFC 7946). So the payload is self-describing:
+ * a `crs` member means "not WGS84, here's what it is"; no member means WGS84. Trusting a
+ * caller-declared CRS over that is how real degrees get reprojected as Web Mercator metres and
+ * every result lands on Null Island.
+ */
+export function determineCRS(
     feature: Feature<ExtendedGeometry, GeoJsonProperties> | null,
     sourceConfig: SearchSourceConfig
 ): string {
@@ -15,10 +24,11 @@ function determineCRS(
     if (sourceConfig.type === 'masquerade') return `EPSG:${sourceConfig.outSR ?? 4326}`;
     if (outputCrs && (typeof outputCrs === 'number' || typeof outputCrs === 'string')) return `EPSG:${outputCrs}`;
     if (geom?.crs?.properties?.name) {
+        // Accepts both the short form PostGIS emits ("EPSG:26912") and the OGC URN
+        // ("urn:ogc:def:crs:EPSG::26912").
         const match = geom.crs.properties.name.match(/EPSG::(\d+)/);
         return match?.[1] ? `EPSG:${match[1]}` : geom.crs.properties.name;
     }
-    if (sourceConfig.type === 'postgREST' && sourceConfig.crs) return sourceConfig.crs;
     return "EPSG:4326";
 }
 

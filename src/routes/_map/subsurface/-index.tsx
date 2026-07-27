@@ -33,7 +33,6 @@ const searchConfig: SearchSourceConfig[] = [
       url: `${PROD_POSTGREST_URL}/enmin_plss_townshiprange_current`,
       sourceName: 'Utah Township & Ranges',
       layerName: utTownshipRangesTitle,
-      crs: 'EPSG:26912',
       displayField: 'twnshplab',
       secondaryDisplayField: 'label',
       params: {
@@ -50,7 +49,6 @@ const searchConfig: SearchSourceConfig[] = [
     url: `${PROD_POSTGREST_URL}/wellswithtops_hascore`,
     sourceName: 'Wells Database',
     layerName: wellWithTopsWMSTitle,
-    crs: 'EPSG:26912',
     displayField: 'api',
     secondaryDisplayField: 'wellname',
     params: {
@@ -67,7 +65,6 @@ const searchConfig: SearchSourceConfig[] = [
     url: `${PROD_POSTGREST_URL}/enmin_ucrc_wells_current`,
     sourceName: 'UCRC Collection',
     layerName: ucrcWellsWMSTitle,
-    crs: 'EPSG:3857',
     displayField: 'well_name',
     secondaryDisplayField: 'uwi',
     params: {
@@ -84,7 +81,6 @@ const searchConfig: SearchSourceConfig[] = [
     url: `${PROD_POSTGREST_URL}/metalmineralapp_mining_districts`,
     sourceName: 'Mining Districts',
     layerName: metalMiningDistrictsTitle,
-    crs: 'EPSG:3857',
     displayField: 'district',
     secondaryDisplayField: 'commodity',
     params: {
@@ -104,7 +100,6 @@ const searchConfig: SearchSourceConfig[] = [
     functionParams: { search_scale: 'small' },
     sourceName: 'Geologic Units',
     layerName: seamlessGeolunitsWMSTitle,
-    crs: 'EPSG:4326',
     displayField: "unit_label",
     params: { select: 'unit_label,match_type' },
     groupByField: 'match_type',
