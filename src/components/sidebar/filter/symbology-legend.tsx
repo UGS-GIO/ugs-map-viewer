@@ -123,7 +123,11 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
 
     // Filter value holds the SHOWN set. Empty = all on. NONE_SENTINEL = all off.
     const raw = mgr.state[field.field]
-    const values = raw && (raw.kind === 'multiSelect' || raw.kind === 'containsAny') ? raw.values : []
+    // Memoized so the unfiltered case (raw undefined) doesn't hand `onSet` a fresh [] every render.
+    const values = useMemo(
+        () => (raw && (raw.kind === 'multiSelect' || raw.kind === 'containsAny') ? raw.values : []),
+        [raw],
+    )
     const allOn = values.length === 0
     const noneOn = values.length === 1 && values[0] === NONE_SENTINEL
     const onSet = useMemo(() => {
