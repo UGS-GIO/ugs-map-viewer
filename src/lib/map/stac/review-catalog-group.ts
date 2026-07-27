@@ -17,12 +17,53 @@ import { filterFieldsForItem } from '@/lib/map/layer-filters';
 
 const REVIEW_CATALOG_URL = '/api/review-catalog';
 
-/** Fetch the review STAC catalog items (same-origin behind IAP; the IAP cookie authenticates). */
-export async function fetchReviewCatalog(): Promise<StacItem[]> {
+/** Fraction of the server-reported TTL we hold a response for, leaving headroom before expiry. */
+const TTL_SAFETY_FACTOR = 0.8;
+/** Used when the server omits `ttl_seconds`. */
+const FALLBACK_LIFETIME_MS = 5 * 60_000;
+
+type CachedCatalog = { items: StacItem[]; expiresAt: number };
+
+let inFlight: Promise<CachedCatalog> | null = null;
+
+async function loadCatalog(): Promise<CachedCatalog> {
   const res = await fetch(REVIEW_CATALOG_URL);
   if (!res.ok) throw new Error(`review-catalog ${res.status}`);
   const data = await res.json();
-  return Array.isArray(data?.items) ? (data.items as StacItem[]) : [];
+  const items = Array.isArray(data?.items) ? (data.items as StacItem[]) : [];
+  const ttlSeconds = Number(data?.ttl_seconds);
+  const lifetime =
+    Number.isFinite(ttlSeconds) && ttlSeconds > 0
+      ? ttlSeconds * 1000 * TTL_SAFETY_FACTOR
+      : FALLBACK_LIFETIME_MS;
+  return { items, expiresAt: Date.now() + lifetime };
+}
+
+/**
+ * Fetch the review STAC catalog items (same-origin behind IAP; the IAP cookie authenticates).
+ *
+ * Asset hrefs come back as short-lived signed GCS URLs, so the response is cached only until
+ * `ttl_seconds` is nearly up — callers that read an asset (geoparquet, style JSON) after that
+ * get freshly signed hrefs instead of a 403. Shared across call sites so one page load doesn't
+ * re-crawl the catalog per consumer.
+ */
+export async function fetchReviewCatalog(): Promise<StacItem[]> {
+  if (inFlight) {
+    try {
+      const cached = await inFlight;
+      if (Date.now() < cached.expiresAt) return cached.items;
+    } catch {
+      // previous attempt failed — fall through and retry
+    }
+  }
+  const pending = loadCatalog();
+  inFlight = pending;
+  try {
+    return (await pending).items;
+  } catch (err) {
+    if (inFlight === pending) inFlight = null;
+    throw err;
+  }
 }
 
 function itemTitle(item: StacItem): string {
