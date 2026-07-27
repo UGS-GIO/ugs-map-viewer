@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useCallback, useRef } from 'react'
+import { useMemo, useEffect, useRef } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import { Layout } from '@/components/layout/layout'
 import { TopNav } from '@/components/top-nav'
@@ -28,7 +28,6 @@ const searchConfig: SearchSourceConfig[] = [
     url: `${PROD_POSTGREST_URL}/wellswithtops_hascore`,
     sourceName: 'Wells Database',
     layerName: wellWithTopsWMSTitle,
-    crs: 'EPSG:26912',
     displayField: 'api',
     secondaryDisplayField: 'wellname',
     params: {
@@ -45,7 +44,6 @@ const searchConfig: SearchSourceConfig[] = [
     url: `${PROD_POSTGREST_URL}/enmin_plss_townshiprange_current`,
     sourceName: 'Utah Township & Ranges',
     layerName: utTownshipRangesTitle,
-    crs: 'EPSG:26912',
     displayField: 'twnshplab',
     secondaryDisplayField: 'label',
     params: {
@@ -65,7 +63,6 @@ const searchConfig: SearchSourceConfig[] = [
     functionParams: { search_scale: 'small' },
     sourceName: 'Geologic Units',
     layerName: seamlessGeolunitsWMSTitle,
-    crs: 'EPSG:4326',
     displayField: "unit_label",
     params: { select: 'unit_label,match_type' },
     groupByField: 'match_type',
@@ -84,7 +81,7 @@ export default function Map() {
   const { isCollapsed, sidebarWidthPx } = useSidebar();
   const isMobile = useIsMobile();
   const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
-  const { selectedLayerTitles, updateLayerSelection, setGroupVisibility, groupVisibility } = useLayerUrl()
+  const { updateLayerSelection } = useLayerUrl()
   const { contextValue } = useMapContextState();
   const searchRef = useRef<SearchComboboxHandle>(null);
 
@@ -104,47 +101,15 @@ export default function Map() {
     return filters
   }, [filtersFromUrl])
 
-  // Auto-select layer when filter is applied
+  // A filtered layer must be on screen (selection reveals its groups too).
   useEffect(() => {
     for (const [filterKey, layerTitle] of Object.entries(CCS_FILTER_MAPPING)) {
-      const filterValue = filtersFromUrl[filterKey]
-      if (filterValue && !selectedLayerTitles.has(layerTitle)) {
-        updateLayerSelection(layerTitle, true)
-      }
+      if (filtersFromUrl[filterKey]) updateLayerSelection(layerTitle, true)
     }
-  }, [filtersFromUrl, selectedLayerTitles, updateLayerSelection])
+  }, [filtersFromUrl, updateLayerSelection])
 
-  // Map child layers to their parent group for auto-visibility
-  const LAYER_PARENT_GROUP: Record<string, string> = {
-    [seamlessGeolunitsWMSTitle]: 'Geological Information',
-    [wellWithTopsWMSTitle]: 'Subsurface Data',
-  }
-
-  // Auto-select the associated layer and its parent group when a search result is picked
-  const ensureLayerSelected = useCallback(
-    (sourceIndex: number, configs: SearchSourceConfig[]) => {
-      const src = configs[sourceIndex]
-      const layerName = src?.type === 'postgREST' ? src.layerName : undefined
-      if (layerName && !selectedLayerTitles.has(layerName)) {
-        updateLayerSelection(layerName, true)
-      }
-      const parentGroup = layerName ? LAYER_PARENT_GROUP[layerName] : undefined
-      if (parentGroup && !groupVisibility.get(parentGroup)) {
-        setGroupVisibility(parentGroup, true)
-      }
-    },
-    [selectedLayerTitles, updateLayerSelection, groupVisibility, setGroupVisibility]
-  )
-
-  const onFeatureSelect: typeof handleSearchSelect = useCallback(
-    (...args) => { ensureLayerSelected(args[2], args[3]); handleSearchSelect(...args) },
-    [ensureLayerSelected]
-  )
-
-  const onCollectionSelect: typeof handleCollectionSelect = useCallback(
-    (...args) => { ensureLayerSelected(args[2], args[3]); handleCollectionSelect(...args) },
-    [ensureLayerSelected]
-  )
+  const onFeatureSelect = handleSearchSelect
+  const onCollectionSelect = handleCollectionSelect
 
   return (
     <MapContext.Provider value={contextValue}>
