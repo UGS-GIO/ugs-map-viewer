@@ -542,10 +542,9 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                     // Client-side rollup of the SAME enmin_ucrc_boxes rows used by "Core Boxes"
                     // above: collapses individual box records into contiguous Core/Cuttings
                     // depth intervals, starting a new interval whenever the gap to the next
-                    // same-type sample exceeds 10 ft (ALL-4766). There is no `box_type_group`
-                    // column on the published data, so raw `box_type` values (e.g. "Whole
-                    // Core", "Core Chips") are bucketed via `boxTypeToSampleGroup`, which
-                    // mirrors the map's "by-boxtype" legend (Core / Cuttings / Other).
+                    // same-type sample exceeds 10 ft (ALL-4766). `box_type_group` exists on the
+                    // published data but mislabels every Core-family type as OTHER, so we bucket
+                    // from raw `box_type` via `boxTypeToSampleGroup` instead (see sample-intervals.ts).
                     fieldLabel: 'Sample Types',
                     stacAsset: 'enmin_ucrc_boxes',
                     displayAs: 'table',

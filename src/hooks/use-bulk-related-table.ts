@@ -40,21 +40,35 @@ export function useBulkRelatedTable(
                 return configs.map(() => new Map());
             }
 
+            // Two relatedTable configs can resolve to the same underlying asset (e.g. "Core
+            // Boxes" and "Sample Types" both read enmin_ucrc_boxes via stacAsset) — dedupe by
+            // url+matchingField so the same parquet isn't read through duckdb twice per popup.
+            const fetchCache = new Map<string, Promise<RelatedDataMap>>();
+
             const results = await Promise.all(
-                configs.map(async (config): Promise<RelatedDataMap> => {
+                configs.map((config): Promise<RelatedDataMap> => {
                     // STAC-backed entries are resolved to a full url/matchingField before reaching
                     // here; bail if a config is missing the join column either way.
                     const matchingField = config.matchingField;
-                    if (!matchingField) return new Map();
-                    try {
-                        const rows = await fetchRelatedRows(config, uniqueValues);
-                        // Map: matchingField value -> array of rows (supports multiple
-                        // matches like formation tops per well).
-                        return groupRelatedRows(rows, matchingField);
-                    } catch (err) {
-                        console.error(`Error fetching bulk related table:`, err);
-                        return new Map();
+                    if (!matchingField || !config.url) return Promise.resolve(new Map());
+
+                    const cacheKey = `${config.fetchMode ?? 'postgrest'}|${config.url}|${matchingField}`;
+                    let cached = fetchCache.get(cacheKey);
+                    if (!cached) {
+                        cached = (async (): Promise<RelatedDataMap> => {
+                            try {
+                                const rows = await fetchRelatedRows(config, uniqueValues);
+                                // Map: matchingField value -> array of rows (supports multiple
+                                // matches like formation tops per well).
+                                return groupRelatedRows(rows, matchingField);
+                            } catch (err) {
+                                console.error(`Error fetching bulk related table:`, err);
+                                return new Map();
+                            }
+                        })();
+                        fetchCache.set(cacheKey, cached);
                     }
+                    return cached;
                 })
             );
 
