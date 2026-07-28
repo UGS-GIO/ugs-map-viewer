@@ -114,6 +114,11 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
     const stroke = useMemo(() => new Map(entries.map(e => [e.label, e.stroke])), [entries])
     const itemColor = useMemo(() => new Map(entries.flatMap(e => (e.values ?? []).map(v => [v.value, v.color] as const))), [entries])
     const colorFor = (value: string) => itemColor.get(value) ?? swatch.get(value) ?? '#bdbdbd'
+    // Display text per raw value — grouped renders may carry a friendlier `label` for a shouty-case
+    // managed code (e.g. 'CORESAMPLES' -> 'Core Samples'); flat renders have no per-item labels, so
+    // this is a no-op there and the raw field value (already fit to show) is used as-is.
+    const itemLabel = useMemo(() => new Map(entries.flatMap(e => (e.values ?? []).map(v => [v.value, v.label] as const))), [entries])
+    const displayLabel = (value: string) => itemLabel.get(value) ?? value
     // Grouped render when any legend entry carries `values`; each entry becomes a colour group.
     const groups = useMemo<LegendGroup[] | null>(() =>
         entries.some(e => e.values && e.values.length)
@@ -152,25 +157,26 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
     if (isLoading) return <p className="text-xs text-muted-foreground px-1">Loading…</p>
     if (options.length === 0) return null
 
-    // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens. Each value's
-    // swatch is its own colour (per-item shade for grouped renders, fill for flat renders).
-    const renderRows = (items: string[]) => (
+    // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens.
+    const renderRows = (items: string[], showSwatch = true) => (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-1.5">
-            {items.map(label => (
-                <label key={label} className="flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer">
+            {items.map(value => (
+                <label key={value} className="flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer">
                     <Checkbox
                         className="mt-0.5 shrink-0"
-                        checked={onSet.has(label)}
-                        onCheckedChange={() => toggle(label)}
-                        aria-label={`Toggle ${label}`}
+                        checked={onSet.has(value)}
+                        onCheckedChange={() => toggle(value)}
+                        aria-label={`Toggle ${displayLabel(value)}`}
                     />
-                    <span
-                        className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
-                        style={{ backgroundColor: colorFor(label), borderColor: stroke.get(label) ?? 'rgba(0,0,0,0.3)' }}
-                    />
+                    {showSwatch && (
+                        <span
+                            className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
+                            style={{ backgroundColor: colorFor(value), borderColor: stroke.get(value) ?? 'rgba(0,0,0,0.3)' }}
+                        />
+                    )}
                     <span className="min-w-0 break-words leading-tight">
-                        {label}
-                        {counts[label] != null && <span className="ml-1 text-muted-foreground">({counts[label].toLocaleString()})</span>}
+                        {displayLabel(value)}
+                        {counts[value] != null && <span className="ml-1 text-muted-foreground">({counts[value].toLocaleString()})</span>}
                     </span>
                 </label>
             ))}
@@ -213,8 +219,11 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                 {groups.map(g => {
                     const items = membersOf(g)
                     if (items.length === 0) return null
+                    const total = items.reduce((sum, v) => sum + (counts[v] ?? 0), 0)
+                    const shown = items.reduce((sum, v) => sum + (onSet.has(v) ? counts[v] ?? 0 : 0), 0)
                     const onCount = items.filter(i => onSet.has(i)).length
                     const groupChecked: boolean | 'indeterminate' = onCount === items.length ? true : onCount === 0 ? false : 'indeterminate'
+                    const shadesMatchGroup = items.every(v => colorFor(v) === g.color)
                     const toggleGroup = () => {
                         const next = new Set(onSet)
                         if (onCount === items.length) items.forEach(i => next.delete(i))
@@ -226,9 +235,16 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                             <label className="flex items-center gap-1.5 border-t border-border pt-1.5 mt-0.5 cursor-pointer">
                                 <Checkbox className="shrink-0" checked={groupChecked} onCheckedChange={toggleGroup} aria-label={`Toggle ${g.label} group`} />
                                 <span className="inline-block w-3 h-3 rounded-full shrink-0 border" style={{ backgroundColor: g.color, borderColor: 'rgba(0,0,0,0.3)' }} />
-                                <Label className="text-xs font-semibold cursor-pointer">{g.label}</Label>
+                                <Label className="text-xs font-semibold cursor-pointer">
+                                    {g.label}
+                                    {total > 0 && (
+                                        <span className="ml-1 font-normal text-muted-foreground">
+                                            ({shown === total ? total.toLocaleString() : `${shown.toLocaleString()}/${total.toLocaleString()}`})
+                                        </span>
+                                    )}
+                                </Label>
                             </label>
-                            <div className="pl-4">{renderRows(items)}</div>
+                            <div className="pl-4">{renderRows(items, !shadesMatchGroup)}</div>
                         </div>
                     )
                 })}

@@ -39,7 +39,7 @@ export interface StacRenderEntry {
     /** Absolute sprite-sheet base URL (no extension) for icon renders. */
     sprite?: string;
     /** Legend swatches; icon renders carry this explicitly. */
-    legend?: Array<{ label: string; color: string; values?: readonly { value: string; color: string }[]; stroke?: string }>;
+    legend?: Array<{ label: string; color: string; values?: readonly { value: string; color: string; label?: string }[]; stroke?: string }>;
     /** Feature attribute this render symbolizes. */
     field?: string;
 }
