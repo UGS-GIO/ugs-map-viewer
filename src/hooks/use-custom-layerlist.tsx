@@ -16,6 +16,7 @@ import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions'
 import { useSidebar } from '@/hooks/use-sidebar';
 import LayerControls from '@/components/maps/layer-controls';
 import { WfsVectorLegend } from '@/components/maps/wfs-vector-legend';
+import { StacRenderLegend } from '@/components/maps/stac-render-legend';
 import { ZoomHintPill } from '@/components/maps/zoom-hint-pill';
 import { useIsMobile } from './use-mobile';
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from '@/lib/constants';
@@ -297,7 +298,9 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
         (layerConfig.title ? layerLegendRender?.(layerConfig) : undefined)
         ?? layerConfig.customLegend
         ?? (isCOGLayer(layerConfig) ? <CogLegend layer={layerConfig} /> : undefined)
-        ?? (isWFSLayer(layerConfig) ? <WfsVectorLegend layer={layerConfig} /> : undefined);
+        ?? (isWFSLayer(layerConfig) ? <WfsVectorLegend layer={layerConfig} /> : undefined)
+        // PMTiles layers have no GetLegendGraphic; swatches come from the STAC render.
+        ?? (isPMTilesLayer(layerConfig) ? <StacRenderLegend layer={layerConfig} /> : undefined);
 
     // --- Single Layer Rendering ---
     return (
