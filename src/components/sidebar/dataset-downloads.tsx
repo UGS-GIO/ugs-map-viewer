@@ -7,13 +7,9 @@ import { isPMTilesLayer, isWMSLayer } from '@/lib/map/layer-utils';
 import type { LayerProps, RelatedTable } from '@/lib/types/mapping-types';
 
 /**
- * Full-dataset downloads for the Data Sources panel, derived from the map's own
- * layer config — every layer publishing a `downloadParquetUrl` is listed, using
- * the same client-side export menu as the layer list.
- *
- * Nothing is hardcoded here: STAC-backed layers get their parquet URL filled in
- * from the warehouse item (see `mergeStacIntoLayer`), so a newly published
- * dataset appears in this list with no app change.
+ * Full-dataset downloads for the Data Sources panel: every layer carrying a
+ * `downloadParquetUrl`, through the same export menu as the layer list. STAC-backed
+ * layers get that URL from the warehouse item, so new datasets need no app change.
  */
 
 interface DownloadableDataset {
@@ -22,12 +18,9 @@ interface DownloadableDataset {
     relatedTables: RelatedTable[];
 }
 
-// Warehouse-published parquet lives under `/warehouse/geoparquet/…` on the assets CDN; the
-// pre-warehouse `parquetUrl()` helper points at `/parquet/…` on the same host. Path, not host,
-// is what separates a catalogued dataset from one staged ad hoc.
+// Same CDN host either way — warehouse assets are the ones under `/warehouse/`.
 const isWarehouseParquet = (url: string) => new URL(url, MAPS_ASSETS_CDN_URL).pathname.startsWith('/warehouse/');
 
-// Related tables hang off sublayer popup config; flattened so the export can bundle them.
 const relatedTablesOf = (layer: LayerProps): RelatedTable[] =>
     isWMSLayer(layer) || isPMTilesLayer(layer)
         ? layer.sublayers?.flatMap(sub => sub.relatedTables ?? []) ?? []
@@ -45,7 +38,7 @@ const collectDatasets = (layers: LayerProps[]): DownloadableDataset[] =>
     });
 
 export function DatasetDownloads() {
-    // Same query key as the sidebar layer list, so this is a cache hit rather than a second load.
+    // Same query key as the sidebar layer list — cache hit, not a second load.
     const { layerConfigs, isLoading } = useGetLayerConfigs('layers');
 
     const { catalogued, staged } = useMemo(() => {
