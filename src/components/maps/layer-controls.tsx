@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { LegendAccordion } from '@/components/maps/legend-accordion';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Toggle } from '@/components/ui/toggle';
 import { LayerDescriptionAccordion } from '@/components/maps/layer-description-accordion';
 import { useQuery } from '@tanstack/react-query';
@@ -40,26 +40,19 @@ interface LayerControlsProps {
     styleName?: string;
 }
 
-// Tracks its content's real height via ResizeObserver instead of a guessed
-// max-height cap, so the collapse/expand transition never clips taller content.
+// Animates to content's real height via a CSS grid-rows trick (0fr <-> 1fr) instead of a
+// guessed max-height cap, so the collapse/expand transition never clips taller content.
+// Deliberately NOT ResizeObserver-measured: content here can include a Recharts
+// ResponsiveContainer, which runs its own internal ResizeObserver on the same node — a JS
+// height-measurement + animated-state loop on top of that fed back into itself every transition
+// frame and froze the map (see #500). Pure CSS has no measurement step, so there's nothing to loop.
 function AutoHeightCollapse({ open, children }: { open: boolean; children: React.ReactNode }) {
-    const innerRef = useRef<HTMLDivElement>(null);
-    const [height, setHeight] = useState(0);
-
-    useEffect(() => {
-        const el = innerRef.current;
-        if (!el) return;
-        const observer = new ResizeObserver(([entry]) => setHeight(entry.contentRect.height));
-        observer.observe(el);
-        return () => observer.disconnect();
-    }, []);
-
     return (
         <div
-            className="overflow-hidden transition-[max-height] duration-200 ease-out"
-            style={{ maxHeight: open ? height : 0 }}
+            className="grid transition-[grid-template-rows] duration-200 ease-out"
+            style={{ gridTemplateRows: open ? '1fr' : '0fr' }}
         >
-            <div ref={innerRef}>{children}</div>
+            <div className="overflow-hidden">{children}</div>
         </div>
     );
 }
