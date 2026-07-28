@@ -157,9 +157,8 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
     if (isLoading) return <p className="text-xs text-muted-foreground px-1">Loading…</p>
     if (options.length === 0) return null
 
-    // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens. Each value's
-    // swatch is its own colour (per-item shade for grouped renders, fill for flat renders).
-    const renderRows = (items: string[]) => (
+    // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens.
+    const renderRows = (items: string[], showSwatch = true) => (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-1.5">
             {items.map(value => (
                 <label key={value} className="flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer">
@@ -169,10 +168,12 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                         onCheckedChange={() => toggle(value)}
                         aria-label={`Toggle ${displayLabel(value)}`}
                     />
-                    <span
-                        className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
-                        style={{ backgroundColor: colorFor(value), borderColor: stroke.get(value) ?? 'rgba(0,0,0,0.3)' }}
-                    />
+                    {showSwatch && (
+                        <span
+                            className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
+                            style={{ backgroundColor: colorFor(value), borderColor: stroke.get(value) ?? 'rgba(0,0,0,0.3)' }}
+                        />
+                    )}
                     <span className="min-w-0 break-words leading-tight">
                         {displayLabel(value)}
                         {counts[value] != null && <span className="ml-1 text-muted-foreground">({counts[value].toLocaleString()})</span>}
@@ -222,6 +223,7 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                     const shown = items.reduce((sum, v) => sum + (onSet.has(v) ? counts[v] ?? 0 : 0), 0)
                     const onCount = items.filter(i => onSet.has(i)).length
                     const groupChecked: boolean | 'indeterminate' = onCount === items.length ? true : onCount === 0 ? false : 'indeterminate'
+                    const shadesMatchGroup = items.every(v => colorFor(v) === g.color)
                     const toggleGroup = () => {
                         const next = new Set(onSet)
                         if (onCount === items.length) items.forEach(i => next.delete(i))
@@ -242,7 +244,7 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                                     )}
                                 </Label>
                             </label>
-                            <div className="pl-4">{renderRows(items)}</div>
+                            <div className="pl-4">{renderRows(items, !shadesMatchGroup)}</div>
                         </div>
                     )
                 })}
