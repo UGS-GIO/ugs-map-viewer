@@ -8,7 +8,8 @@
  */
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import type { FilterSchema, FilterState, FilterFieldKind } from '@/lib/filter/types';
-import { toPostgrestPredicates } from '@/lib/filter/generators';
+import { toPostgrestPredicates, toSqlPredicates } from '@/lib/filter/generators';
+import { useSchemaParquetUrl } from '@/hooks/use-schema-parquet-url';
 
 interface Options {
     schema: FilterSchema;
@@ -38,9 +39,22 @@ export const useDistinctFieldOptions = ({
     splitCommaDelimited = false,
     enabled = true,
 }: Options) => {
+    const { parquetUrl, isResolving } = useSchemaParquetUrl(schema);
     const url = buildUrl(schema, field, state);
+    const predicates = parquetUrl ? toSqlPredicates(schema, state, field.field) : [];
 
-    return useQuery({
+    const parquetQuery = useQuery({
+        queryKey: ['distinct-field-options', 'parquet', parquetUrl, field.field, predicates, splitCommaDelimited],
+        queryFn: async (): Promise<{ options: string[]; counts: Record<string, number> }> => {
+            const { queryParquetFieldOptions } = await import('@/lib/duckdb/client');
+            return queryParquetFieldOptions({ url: parquetUrl!, field: field.field, predicates, splitCommaDelimited });
+        },
+        enabled: enabled && !!parquetUrl,
+        placeholderData: keepPreviousData,
+        staleTime: 1000 * 60 * 5,
+    });
+
+    const postgrestQuery = useQuery({
         queryKey: ['distinct-field-options', schema.recordKey, field.field, url],
         queryFn: async (): Promise<{ options: string[]; counts: Record<string, number> }> => {
             const res = await fetch(url, {
@@ -71,8 +85,13 @@ export const useDistinctFieldOptions = ({
             if (splitCommaDelimited) out.sort();
             return { options: out, counts };
         },
-        enabled,
+        enabled: enabled && !schema.stacItemId,
         placeholderData: keepPreviousData,
         staleTime: 1000 * 60 * 5,
     });
+
+    if (schema.stacItemId) {
+        return { ...parquetQuery, isLoading: parquetQuery.isLoading || isResolving };
+    }
+    return postgrestQuery;
 };

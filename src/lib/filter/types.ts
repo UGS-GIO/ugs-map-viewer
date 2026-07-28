@@ -65,6 +65,8 @@ export interface FilterSchema {
     tableUrl: string;
     /** Extra headers to send with PostgREST requests. */
     tableHeaders?: Record<string, string>;
+    /** Set to source options/extents from the STAC geoparquet instead of `tableUrl`. */
+    stacItemId?: string;
     /** Ordered field list. Renders top-to-bottom in the UI. */
     fields: FilterFieldKind[];
 }
