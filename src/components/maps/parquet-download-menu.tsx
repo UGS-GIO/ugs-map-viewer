@@ -24,7 +24,7 @@ interface ParquetDownloadMenuProps {
     /** Related tables configured on the layer (e.g. formation tops, geochemistry). When
      * non-empty, adds an "Include related data" option that bundles them as a zip. */
     relatedTables?: RelatedTable[];
-    /** Icon-only trigger, for dense lists. Default is the stacked icon+label button row style. */
+    /** Icon-only trigger for dense lists; default is the stacked icon+label button. */
     compact?: boolean;
 }
 

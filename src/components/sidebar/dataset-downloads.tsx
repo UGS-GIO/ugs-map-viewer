@@ -7,11 +7,7 @@ import { EXPORT_DISABLED_PAGES, MAPS_ASSETS_CDN_URL } from '@/lib/constants';
 import { isPMTilesLayer, isWMSLayer } from '@/lib/map/layer-utils';
 import type { LayerProps, RelatedTable } from '@/lib/types/mapping-types';
 
-/**
- * Full-dataset downloads for the Data Sources panel: every layer carrying a
- * `downloadParquetUrl`, through the same export menu as the layer list. STAC-backed
- * layers get that URL from the warehouse item, so new datasets need no app change.
- */
+/** Data Sources panel downloads: every layer carrying a `downloadParquetUrl`. */
 
 interface DownloadableDataset {
     title: string;
@@ -19,7 +15,7 @@ interface DownloadableDataset {
     relatedTables: RelatedTable[];
 }
 
-// Same CDN host either way — warehouse assets are the ones under `/warehouse/`.
+// Same CDN host either way; warehouse assets live under `/warehouse/`.
 const isWarehouseParquet = (url: string) => new URL(url, MAPS_ASSETS_CDN_URL).pathname.startsWith('/warehouse/');
 
 const relatedTablesOf = (layer: LayerProps): RelatedTable[] =>
@@ -61,7 +57,7 @@ export function DatasetDownloads() {
             <div>
                 <h4 className="text-sm font-semibold">Download Datasets</h4>
                 <p className="text-xs text-muted-foreground">
-                    Full datasets published by the UGS, in GeoParquet, GeoJSON, or CSV.
+                    Full datasets, in GeoParquet, GeoJSON, or CSV.
                 </p>
             </div>
             <DatasetGroup

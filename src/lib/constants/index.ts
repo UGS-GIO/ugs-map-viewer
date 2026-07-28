@@ -18,11 +18,7 @@ export const UCRC_ASSETS_CDN_URL = import.meta.env.DEV
  */
 export const parquetUrl = (name: string) => `${MAPS_ASSETS_CDN_URL}/parquet/${name}/${name}.parquet`;
 
-/**
- * Routes that serve unmodified source data and therefore offer no data export.
- * These already pass `disableExport` to their Layers / map container; this list is
- * what the Info panel's dataset downloads honour, since it mounts route-agnostically.
- */
+/** Routes serving unmodified source data — no downloads. Matches their `disableExport`. */
 export const EXPORT_DISABLED_PAGES: readonly string[] = ['hazards'];
 
 // Constants for symbol generation
