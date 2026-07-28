@@ -24,9 +24,11 @@ interface ParquetDownloadMenuProps {
     /** Related tables configured on the layer (e.g. formation tops, geochemistry). When
      * non-empty, adds an "Include related data" option that bundles them as a zip. */
     relatedTables?: RelatedTable[];
+    /** Icon-only trigger, for dense lists. Default is the stacked icon+label button row style. */
+    compact?: boolean;
 }
 
-export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parquetUrl, layerTitle, relatedTables }) => {
+export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parquetUrl, layerTitle, relatedTables, compact = false }) => {
     const { data: schema, isLoading: schemaLoading, isError: schemaError } = useParquetSchema(parquetUrl);
     const [includeRelated, setIncludeRelated] = useState(true);
     const hasRelatedTables = (relatedTables?.length ?? 0) > 0;
@@ -75,17 +77,21 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
             <DropdownMenuTrigger asChild>
                 <Button
                     variant="ghost"
-                    size="stacked"
+                    size={compact ? 'icon' : 'stacked'}
                     disabled={disabled}
-                    className="flex flex-col items-center px-3 py-2 min-w-[80px] flex-1 gap-1"
-                    aria-label="Download layer data"
+                    className={compact
+                        ? 'h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground'
+                        : 'flex flex-col items-center px-3 py-2 min-w-[80px] flex-1 gap-1'}
+                    aria-label={compact ? `Download ${layerTitle}` : 'Download layer data'}
                 >
                     {(isDownloading || schemaLoading)
-                        ? <Loader2 className="h-5 w-5 animate-spin" />
-                        : <Download className="h-5 w-5" />}
-                    <span className="text-xs">
-                        {isDownloading ? 'Exporting…' : schemaLoading ? 'Loading…' : 'Download'}
-                    </span>
+                        ? <Loader2 className={compact ? 'h-4 w-4 animate-spin' : 'h-5 w-5 animate-spin'} />
+                        : <Download className={compact ? 'h-4 w-4' : 'h-5 w-5'} />}
+                    {!compact && (
+                        <span className="text-xs">
+                            {isDownloading ? 'Exporting…' : schemaLoading ? 'Loading…' : 'Download'}
+                        </span>
+                    )}
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">

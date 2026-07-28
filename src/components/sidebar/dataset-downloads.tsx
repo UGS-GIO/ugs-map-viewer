@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { ParquetDownloadMenu } from '@/components/maps/parquet-download-menu';
 import { Spinner } from '@/components/ui/loading-spinner';
 import { useGetLayerConfigs } from '@/hooks/use-get-layer-configs';
-import { MAPS_ASSETS_CDN_URL } from '@/lib/constants';
+import { useGetCurrentPage } from '@/hooks/use-get-current-page';
+import { EXPORT_DISABLED_PAGES, MAPS_ASSETS_CDN_URL } from '@/lib/constants';
 import { isPMTilesLayer, isWMSLayer } from '@/lib/map/layer-utils';
 import type { LayerProps, RelatedTable } from '@/lib/types/mapping-types';
 
@@ -38,6 +39,7 @@ const collectDatasets = (layers: LayerProps[]): DownloadableDataset[] =>
     });
 
 export function DatasetDownloads() {
+    const currentPage = useGetCurrentPage();
     // Same query key as the sidebar layer list — cache hit, not a second load.
     const { layerConfigs, isLoading } = useGetLayerConfigs('layers');
 
@@ -50,6 +52,7 @@ export function DatasetDownloads() {
         };
     }, [layerConfigs]);
 
+    if (EXPORT_DISABLED_PAGES.includes(currentPage)) return null;
     if (isLoading) return <div className="flex justify-center py-4"><Spinner /></div>;
     if (catalogued.length === 0 && staged.length === 0) return null;
 
@@ -81,11 +84,13 @@ function DatasetGroup({ heading, hint, datasets }: { heading: string; hint: stri
         <div className="space-y-1">
             <h5 className="text-xs font-semibold text-muted-foreground">{heading}</h5>
             <p className="text-xs text-muted-foreground">{hint}</p>
-            <ul className="space-y-1">
+            {/* Grid keeps buttons in one column when titles wrap. */}
+            <ul className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1">
                 {datasets.map(dataset => (
-                    <li key={dataset.parquetUrl} className="flex items-center justify-between gap-2">
+                    <li key={dataset.parquetUrl} className="contents">
                         <span className="min-w-0 break-words text-sm leading-tight">{dataset.title}</span>
                         <ParquetDownloadMenu
+                            compact
                             parquetUrl={dataset.parquetUrl}
                             layerTitle={dataset.title}
                             relatedTables={dataset.relatedTables}
