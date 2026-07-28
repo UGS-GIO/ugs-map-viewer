@@ -218,6 +218,8 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                 {groups.map(g => {
                     const items = membersOf(g)
                     if (items.length === 0) return null
+                    const total = items.reduce((sum, v) => sum + (counts[v] ?? 0), 0)
+                    const shown = items.reduce((sum, v) => sum + (onSet.has(v) ? counts[v] ?? 0 : 0), 0)
                     const onCount = items.filter(i => onSet.has(i)).length
                     const groupChecked: boolean | 'indeterminate' = onCount === items.length ? true : onCount === 0 ? false : 'indeterminate'
                     const toggleGroup = () => {
@@ -231,7 +233,14 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                             <label className="flex items-center gap-1.5 border-t border-border pt-1.5 mt-0.5 cursor-pointer">
                                 <Checkbox className="shrink-0" checked={groupChecked} onCheckedChange={toggleGroup} aria-label={`Toggle ${g.label} group`} />
                                 <span className="inline-block w-3 h-3 rounded-full shrink-0 border" style={{ backgroundColor: g.color, borderColor: 'rgba(0,0,0,0.3)' }} />
-                                <Label className="text-xs font-semibold cursor-pointer">{g.label}</Label>
+                                <Label className="text-xs font-semibold cursor-pointer">
+                                    {g.label}
+                                    {total > 0 && (
+                                        <span className="ml-1 font-normal text-muted-foreground">
+                                            ({shown === total ? total.toLocaleString() : `${shown.toLocaleString()}/${total.toLocaleString()}`})
+                                        </span>
+                                    )}
+                                </Label>
                             </label>
                             <div className="pl-4">{renderRows(items)}</div>
                         </div>
