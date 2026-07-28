@@ -109,8 +109,8 @@ export function DatasetDownloads() {
                 datasets={staged}
             />
             <DatasetGroup
-                heading="Not yet available"
-                hint="No downloadable copy published for these layers yet."
+                heading="Download not available"
+                hint="These layers aren't published for download."
                 datasets={unavailable}
             />
         </div>
