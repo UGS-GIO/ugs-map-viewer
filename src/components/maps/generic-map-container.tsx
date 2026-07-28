@@ -12,7 +12,7 @@ import type { LayerContentProps, ExtendedFeature } from '@/components/maps/popup
 import { QueryResultsTable } from '@/components/data-table/query-results-table'
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { flattenDataLayersWithParent, resolveLeafVisibility } from '@/lib/map/layer-utils'
+import { flattenDataLayersWithAncestors, resolveLeafVisibility } from '@/lib/map/layer-utils'
 import { useMapUrlSync, type ViewMode } from '@/hooks/use-map-url-sync'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useSidebar } from '@/hooks/use-sidebar'
@@ -307,13 +307,13 @@ export default function GenericMapContainer({
   const popupSheetRef = useRef<PopupSheetRef>(null)
   const sheetTriggerRef = useRef<HTMLButtonElement>(null)
 
-  // Currently-displayed titles: leaf is checked AND its parent group toggle is on.
+  // Currently-displayed titles: leaf is checked AND every enclosing group toggle is on.
   // Used by the legend fetcher to filter WMS layers without re-deriving runtime state.
   const displayedTitles = useMemo(() => {
     const s = new Set<string>()
-    for (const { layer, parentGroupTitle } of flattenDataLayersWithParent(layersConfig)) {
+    for (const { layer, ancestorGroupTitles } of flattenDataLayersWithAncestors(layersConfig)) {
       const { displayed } = resolveLeafVisibility(
-        layer.title, parentGroupTitle, selectedLayerTitles, groupVisibility,
+        layer.title, ancestorGroupTitles, selectedLayerTitles, groupVisibility,
       )
       if (displayed && layer.title) s.add(layer.title)
     }

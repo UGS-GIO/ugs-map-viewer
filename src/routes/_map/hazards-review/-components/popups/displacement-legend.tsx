@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { LegendSwatchGrid } from '@/components/maps/legend-swatch-grid'
+import type { LayerProps } from '@/lib/types/mapping-types'
 import { useDisplacementSldBins } from './use-displacement-queries'
 import {
     DISPLACEMENT_LAYER_TYPES,
@@ -17,9 +18,10 @@ import { type SldBin } from './displacement-sld-legend'
  * legend (`LegendSwatchGrid`) — just without the checkbox/toggle wiring, since
  * these are WMS raster classes, not a filterable vector field.
  */
-export function renderDisplacementLegend(layerTitle: string): React.ReactNode {
-    if (!isDisplacementLayerTitle(layerTitle)) return null
-    const typeValue = DISPLACEMENT_LAYER_TYPES[layerTitle]
+export function renderDisplacementLegend(layer: LayerProps): React.ReactNode {
+    const title = layer.title
+    if (!title || !isDisplacementLayerTitle(title)) return null
+    const typeValue = DISPLACEMENT_LAYER_TYPES[title]
     return <DisplacementLegend typeValue={typeValue} />
 }
 

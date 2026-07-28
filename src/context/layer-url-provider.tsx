@@ -2,6 +2,7 @@ import { createContext, useContext, useCallback, ReactNode, useMemo, useEffect, 
 import { useSearch, useNavigate, useLocation } from '@tanstack/react-router';
 import { LayerProps } from '@/lib/types/mapping-types';
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs';
+import { findAncestorGroupTitles } from '@/lib/map/layer-utils';
 
 type ActiveFilters = Record<string, string>;
 
@@ -14,6 +15,7 @@ type LayerOpacity = Map<string, number>;
 interface LayerUrlContextType {
     selectedLayerTitles: Set<string>;
     activeFilters: ActiveFilters;
+    /** Select/deselect layers. Selecting also switches the enclosing groups on. */
     updateLayerSelection: (titles: string | string[], shouldBeSelected: boolean) => void;
     updateFilter: (layerTitle: string, filterValue: string | undefined) => void;
     /** Whether the layer URL has been initialized (defaults applied if needed) */
@@ -234,41 +236,67 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
     const updateLayerSelection = useCallback((titles: string | string[], shouldBeSelected: boolean) => {
         const titlesToUpdate = Array.isArray(titles) ? titles : [titles];
 
+        // Switch enclosing groups on in the same navigation as the selection: a group
+        // toggled off hides its whole subtree (`resolveLeafVisibility`), and a second
+        // navigate() in the same tick would just re-derive `prev` and drop this write.
+        const groupsToShow = shouldBeSelected && layersConfig
+            ? [...new Set(titlesToUpdate.flatMap(title => findAncestorGroupTitles(layersConfig, title)))]
+            : [];
+
         navigate({
             to: '.',
             search: (prev) => {
                 const currentSelected = new Set(prev.layers?.selected || []);
                 const currentFilters = { ...(prev.filters || {}) };
+                const currentVisibility = { ...(prev.visibility || {}) };
+                let changed = false;
 
                 if (shouldBeSelected) {
-                    titlesToUpdate.forEach(title => currentSelected.add(title));
+                    titlesToUpdate.forEach(title => {
+                        if (!currentSelected.has(title)) { currentSelected.add(title); changed = true; }
+                    });
+                    groupsToShow.forEach(group => {
+                        if (currentVisibility[group] !== true) { currentVisibility[group] = true; changed = true; }
+                    });
                 } else {
                     titlesToUpdate.forEach(title => {
-                        currentSelected.delete(title);
-                        delete currentFilters[title];
+                        if (currentSelected.delete(title)) changed = true;
+                        if (title in currentFilters) { delete currentFilters[title]; changed = true; }
                     });
                 }
+
+                // Idempotent: callers re-assert selection freely, so a no-op must return
+                // `prev` unchanged rather than loop the effects that called us.
+                if (!changed) return prev;
 
                 return {
                     ...prev,
                     layers: { selected: Array.from(currentSelected) },
                     filters: Object.keys(currentFilters).length > 0 ? currentFilters : undefined,
+                    visibility: Object.keys(currentVisibility).length > 0 ? currentVisibility : undefined,
                 };
             },
             replace: true,
         });
-    }, [navigate]);
+    }, [navigate, layersConfig]);
 
     const updateFilter = useCallback((layerTitle: string, filterValue: string | undefined) => {
+        // Applying a filter selects the layer, so reveal its groups too — same invariant
+        // as updateLayerSelection, or a filtered layer inside an off group stays hidden.
+        const groupsToShow = filterValue && layersConfig
+            ? findAncestorGroupTitles(layersConfig, layerTitle)
+            : [];
         navigate({
             to: '.',
             search: (prev) => {
                 const currentFilters = { ...(prev.filters || {}) };
                 const currentSelected = new Set(prev.layers?.selected || []);
+                const currentVisibility = { ...(prev.visibility || {}) };
 
                 if (filterValue) {
                     currentFilters[layerTitle] = filterValue;
                     currentSelected.add(layerTitle);
+                    groupsToShow.forEach(group => { currentVisibility[group] = true; });
                 } else {
                     delete currentFilters[layerTitle];
                 }
@@ -277,11 +305,12 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
                     ...prev,
                     layers: { selected: Array.from(currentSelected) },
                     filters: Object.keys(currentFilters).length > 0 ? currentFilters : undefined,
+                    visibility: Object.keys(currentVisibility).length > 0 ? currentVisibility : undefined,
                 };
             },
             replace: true
         });
-    }, [navigate]);
+    }, [navigate, layersConfig]);
 
     const value = {
         selectedLayerTitles,

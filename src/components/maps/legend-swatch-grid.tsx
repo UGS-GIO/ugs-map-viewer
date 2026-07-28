@@ -28,6 +28,12 @@ interface LegendSwatchGridProps {
      * their half-width column there and overflows the panel.
      */
     columns?: 'auto' | 'single'
+    /**
+     * Omit the colour swatch, leaving checkbox + label. Use when the swatch adds
+     * nothing — e.g. a grouped symbology legend where every item in the group
+     * already shares the coloured group header's shade.
+     */
+    showSwatch?: boolean
 }
 
 /**
@@ -36,7 +42,7 @@ interface LegendSwatchGridProps {
  * (e.g. the displacement layers' static Uplift/Subsidence split) can reuse the
  * same visual style without carrying the checkbox/filter wiring.
  */
-export function LegendSwatchGrid({ items, isChecked, onToggle, columns = 'auto' }: LegendSwatchGridProps) {
+export function LegendSwatchGrid({ items, isChecked, onToggle, columns = 'auto', showSwatch = true }: LegendSwatchGridProps) {
     if (items.length === 0) return null
     const interactive = !!onToggle
     const containerClassName = columns === 'single'
@@ -46,7 +52,7 @@ export function LegendSwatchGrid({ items, isChecked, onToggle, columns = 'auto' 
     return (
         <div className={containerClassName}>
             {items.map(item => {
-                const swatch = (
+                const swatch = showSwatch && (
                     <span
                         className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
                         style={{ backgroundColor: item.color, borderColor: item.stroke ?? 'rgba(0,0,0,0.3)' }}

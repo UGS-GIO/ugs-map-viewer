@@ -529,7 +529,7 @@ const geothermalKgraLayerConfig: WMSLayerProps = {
 
 // gravity stations
 const gravityStationsLayeName = 'enmin_geophysics_ugsgravity_current';
-const gravityStationsLayeTitle = 'Modern Gravity Stations';
+export const gravityStationsLayeTitle = 'Modern Gravity Stations';
 const gravityStationsLayerConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -597,7 +597,7 @@ const pacesLegacyLayerConfig: WMSLayerProps = {
 
 // TEM data
 const geothermalTEMLayerName = 'enmin_geophysics_tem_current';
-const geothermalTEMLayerTitle = 'Transient Electromagnetic Data (TEM)';
+export const geothermalTEMLayerTitle = 'Transient Electromagnetic Data (TEM)';
 const geothermalTEMLayerConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
