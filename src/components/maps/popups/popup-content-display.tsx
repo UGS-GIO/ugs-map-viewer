@@ -86,32 +86,21 @@ const getColorStyle = (
 export const getRelatedTableValues = (
     groupedLayerIndex: number,
     data: ProcessedRelatedData[][],
-    relatedTables: RelatedTable[] | undefined,
-    properties: GeoJsonProperties
+    relatedTables: RelatedTable[] | undefined
 ): LabelValuePair[][] => {
     if (!data?.length) return [[{ label: "", value: "No data available" }]];
 
     const table = relatedTables?.[groupedLayerIndex];
     if (!table) return [[{ label: "Invalid index", value: "Invalid index" }]];
 
-    const targetField = properties?.[table.targetField!];
     const tableData = data[groupedLayerIndex];
-
     if (!tableData) return [[{ label: "", value: "No data available" }]];
 
-    // Each matching item becomes its own row (array of labelValuePairs).
-    // The matchingField re-check here is a belt-and-suspenders guard against
-    // stale/misaligned bulk data — but `rowsTransform` (e.g. mergeSampleIntervals)
-    // deliberately collapses many joined rows into new summary rows that no
-    // longer carry the original join column (e.g. `uwi`). Those rows were already
-    // scoped to this feature upstream (via the bulkRelatedData map lookup keyed by
-    // targetValue), so re-checking matchingField on them would incorrectly drop
-    // every row. Skip the guard when a transform has run.
+    // Rows are already scoped to this feature upstream (bulkRelatedData map lookup
+    // keyed by targetValue, in the `data` useMemo below) — no matchingField re-check
+    // needed here, just take whichever rows got labelValuePairs computed.
     const tableMatches = tableData
-        .filter(item =>
-            (table.rowsTransform || String(item[table.matchingField!]) === String(targetField)) &&
-            item.labelValuePairs
-        )
+        .filter(item => item.labelValuePairs)
         .map(item => item.labelValuePairs!);
 
     return tableMatches.length > 0
@@ -438,7 +427,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
 
     // Handle Related Tables
     (relatedTables || []).forEach((table, tableIndex) => {
-        const groupedValues = getRelatedTableValues(tableIndex, data, relatedTables, properties);
+        const groupedValues = getRelatedTableValues(tableIndex, data, relatedTables);
         const flatValues = groupedValues.flat();
 
         // Skip rendering if no real data (only "No data available" placeholder).
