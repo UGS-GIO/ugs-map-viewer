@@ -833,7 +833,7 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
 // STAC-driven: pmtilesUrl, sourceLayer, renders (colour by `primsource`, radius by `total_mw`)
 // and parquet come from the warehouse item `enmin_powerplants`. Symbology lives in ugs-styles.
 const powerplantsLayerName = 'enmin_powerplants';
-const powerplantsTitle = 'Power Plants';
+export const powerplantsTitle = 'Power Plants';
 const powerplantsConfig: PMTilesLayerProps = {
     type: 'pmtiles',
     stacItemId: powerplantsLayerName,

@@ -61,8 +61,12 @@ export type FilterFieldKind =
 export interface FilterSchema {
     /** Key under `search.filters[recordKey]` where the CQL lives. */
     recordKey: string;
-    /** PostgREST base URL for distinct-option / range-extent queries. */
-    tableUrl: string;
+    /**
+     * PostgREST base URL for distinct-option / range-extent queries. Omit when the layer has
+     * no PostgREST table at all (fully warehouse-sourced) — `stacItemId` alone drives the
+     * geoparquet path in that case and the PostgREST path is never enabled.
+     */
+    tableUrl?: string;
     /** Extra headers to send with PostgREST requests. */
     tableHeaders?: Record<string, string>;
     /** Set to source options/extents from the STAC geoparquet instead of `tableUrl`. */
