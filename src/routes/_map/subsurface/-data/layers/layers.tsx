@@ -507,6 +507,30 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
             },
             relatedTables: [
                 {
+                    // Client-side rollup of the SAME enmin_ucrc_boxes rows used by "Core Boxes"
+                    // below: collapses individual box records into contiguous Core/Cuttings
+                    // depth intervals, starting a new interval whenever the gap to the next
+                    // same-type sample exceeds 10 ft (ALL-4766). `box_type_group` exists on the
+                    // published data but mislabels every Core-family type as OTHER, so we bucket
+                    // from raw `box_type` via `boxTypeToSampleGroup` instead (see sample-intervals.ts).
+                    fieldLabel: 'Sample Types',
+                    stacAsset: 'enmin_ucrc_boxes',
+                    displayAs: 'table',
+                    rowsTransform: (rows) => mergeSampleIntervals(rows, {
+                        typeField: 'box_type',
+                        groupBy: boxTypeToSampleGroup,
+                        topField: 'box_top_ft',
+                        bottomField: 'box_bottom_ft',
+                        notesField: 'notes_public',
+                    }),
+                    displayFields: [
+                        { field: 'sample_type', label: 'Type' },
+                        { field: 'top_ft', label: 'Top (ft)', format: 'number' },
+                        { field: 'bottom_ft', label: 'Bottom (ft)', format: 'number' },
+                        { field: 'notes_public', label: 'Notes', transform: (v) => v || '—' },
+                    ],
+                },
+                {
                     // STAC-backed: url + uwi join filled from the enmin_ucrc_boxes related asset.
                     fieldLabel: 'Core Boxes',
                     stacAsset: 'enmin_ucrc_boxes',
@@ -537,30 +561,6 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                     ],
                     sortBy: 'box_number',
                     sortDirection: 'asc',
-                },
-                {
-                    // Client-side rollup of the SAME enmin_ucrc_boxes rows used by "Core Boxes"
-                    // above: collapses individual box records into contiguous Core/Cuttings
-                    // depth intervals, starting a new interval whenever the gap to the next
-                    // same-type sample exceeds 10 ft (ALL-4766). `box_type_group` exists on the
-                    // published data but mislabels every Core-family type as OTHER, so we bucket
-                    // from raw `box_type` via `boxTypeToSampleGroup` instead (see sample-intervals.ts).
-                    fieldLabel: 'Sample Types',
-                    stacAsset: 'enmin_ucrc_boxes',
-                    displayAs: 'table',
-                    rowsTransform: (rows) => mergeSampleIntervals(rows, {
-                        typeField: 'box_type',
-                        groupBy: boxTypeToSampleGroup,
-                        topField: 'box_top_ft',
-                        bottomField: 'box_bottom_ft',
-                        notesField: 'notes_public',
-                    }),
-                    displayFields: [
-                        { field: 'sample_type', label: 'Type' },
-                        { field: 'top_ft', label: 'Top (ft)', format: 'number' },
-                        { field: 'bottom_ft', label: 'Bottom (ft)', format: 'number' },
-                        { field: 'notes_public', label: 'Notes', transform: (v) => v || '—' },
-                    ],
                 },
                 {
                     fieldLabel: 'Attachments',
