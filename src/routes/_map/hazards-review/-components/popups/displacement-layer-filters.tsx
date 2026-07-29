@@ -97,6 +97,12 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
 
     return (
         <div className="flex flex-col gap-2 px-2 py-1">
+            {isDirty && (
+                <Button variant="ghost" size="sm" className="h-7 self-start px-2 text-xs" onClick={resetLocal}>
+                    Reset all
+                </Button>
+            )}
+
             <div className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
                     <Label className="text-xs">
@@ -112,7 +118,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                             className="h-6 px-2 text-xs"
                             onClick={() => clearBasins(typeValue)}
                         >
-                            Clear
+                            Reset Basins
                         </Button>
                     )}
                 </div>
@@ -158,7 +164,19 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
 
             {hasYear && (
                 <div className="flex flex-col gap-1">
-                    <Label className="text-xs">{yearLabelFor(typeValue)}</Label>
+                    <div className="flex items-center justify-between">
+                        <Label className="text-xs">{yearLabelFor(typeValue)}</Label>
+                        {yearOverride !== null && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-xs"
+                                onClick={() => setYearOverride(typeValue, null)}
+                            >
+                                Reset {yearLabelFor(typeValue)}
+                            </Button>
+                        )}
+                    </div>
                     <Select value={displayYear} onValueChange={(y) => setYearOverride(typeValue, y)}>
                         <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
                         <SelectContent>
@@ -233,12 +251,6 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                     onChange={(n) => setThreshold(typeValue, n)}
                     onReset={() => setThreshold(typeValue, null)}
                 />
-            )}
-
-            {isDirty && (
-                <Button variant="ghost" size="sm" className="h-7 self-start px-2 text-xs" onClick={resetLocal}>
-                    Reset all
-                </Button>
             )}
         </div>
     )
