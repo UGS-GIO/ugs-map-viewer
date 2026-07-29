@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { LegendSwatchGrid } from '@/components/maps/legend-swatch-grid'
+import type { LayerProps } from '@/lib/types/mapping-types'
 import { useDisplacementSldBins } from './use-displacement-queries'
 import {
     DISPLACEMENT_LAYER_TYPES,
@@ -11,16 +12,26 @@ import {
 import { type SldBin } from './displacement-sld-legend'
 
 /**
- * `layerLegendRender` for the hazards-review layer list. Replaces the default
- * flat WMS GetLegendGraphic image with a legend split into Uplift / Subsidence
- * columns, reusing the same swatch-grid presentation as the UCRC symbology
- * legend (`LegendSwatchGrid`) — just without the checkbox/toggle wiring, since
- * these are WMS raster classes, not a filterable vector field.
+ * Displacement legend resolved by layer title: a legend split into Uplift /
+ * Subsidence columns, reusing the same swatch-grid presentation as the UCRC
+ * symbology legend (`LegendSwatchGrid`) — just without the checkbox/toggle
+ * wiring, since these are WMS raster classes, not a filterable vector field.
+ *
+ * Title-keyed rather than layer-keyed so callers that DERIVE a title can reuse
+ * it — review-stac renders one PMTiles layer whose active displacement type
+ * comes from filter state, so the title it needs isn't its own layer's title.
  */
-export function renderDisplacementLegend(layerTitle: string): React.ReactNode {
-    if (!isDisplacementLayerTitle(layerTitle)) return null
-    const typeValue = DISPLACEMENT_LAYER_TYPES[layerTitle]
-    return <DisplacementLegend typeValue={typeValue} />
+export function renderDisplacementLegendForTitle(title: string): React.ReactNode {
+    if (!isDisplacementLayerTitle(title)) return null
+    return <DisplacementLegend typeValue={DISPLACEMENT_LAYER_TYPES[title]} />
+}
+
+/**
+ * `layerLegendRender` for the hazards-review layer list. Replaces the default
+ * flat WMS GetLegendGraphic image with the legend above.
+ */
+export function renderDisplacementLegend(layer: LayerProps): React.ReactNode {
+    return renderDisplacementLegendForTitle(layer.title ?? '')
 }
 
 function toSwatchItems(bins: SldBin[]) {

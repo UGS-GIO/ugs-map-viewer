@@ -35,8 +35,9 @@ export function ReviewStacLayers() {
       )
     },
     // Plug-in legend if the layer registered one, else the generic legend derived from its own GL style.
-    layerLegendRender: (title) => {
-      const layer = find(title)
+    // Receives the layer config; still resolved through `find` so we get the PMTiles-narrowed type.
+    layerLegendRender: (layerConfig) => {
+      const layer = find(layerConfig.title ?? '')
       if (!layer) return null
       return layerPanelPlugin(layer)?.renderLegend?.(layer) ?? <PMTilesStyleLegend layer={layer} />
     },

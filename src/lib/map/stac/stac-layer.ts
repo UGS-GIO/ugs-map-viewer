@@ -39,7 +39,9 @@ export interface StacRenderEntry {
     /** Absolute sprite-sheet base URL (no extension) for icon renders. */
     sprite?: string;
     /** Legend swatches; icon renders carry this explicitly. */
-    legend?: Array<{ label: string; color: string }>;
+    legend?: Array<{ label: string; color: string; values?: readonly { value: string; color: string; label?: string }[]; stroke?: string }>;
+    /** Feature attribute this render symbolizes. */
+    field?: string;
 }
 
 /** The slice of a STAC item we depend on. Extra fields are ignored. */
@@ -172,7 +174,7 @@ export function stacRendersToPMTiles(renders: Record<string, StacRenderEntry> | 
     for (const [id, r] of Object.entries(renders)) {
         if (!r.style_url) continue;
         if (r.assets && !r.assets.includes('pmtiles')) continue;
-        out.push({ id, title: r.title, styleUrl: r.style_url, sprite: r.sprite, legend: r.legend });
+        out.push({ id, title: r.title, styleUrl: r.style_url, sprite: r.sprite, legend: r.legend, field: r.field });
     }
     return out;
 }

@@ -13,7 +13,7 @@ import { MASQUERADE_GEOCODER_URL } from '@/lib/constants';
 import { useMap } from '@/hooks/use-map';
 import { clearGraphics } from '@/lib/map/highlight-utils';
 import { useToast } from "@/hooks/use-toast";
-import { findLayerByTitle } from '@/lib/map/utils';
+import { useLayerUrl } from '@/context/layer-url-provider';
 
 import type {
     SearchSourceConfig,
@@ -56,6 +56,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
     const commandRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
+    const { updateLayerSelection } = useLayerUrl();
 
     // Mutation for fetching geometries from a PostgREST function (on selection)
     const geometryMutation = useMutation({
@@ -91,11 +92,13 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
 
     const isAnyMutationPending = geometryMutation.isPending || addressCandidateMutation.isPending;
 
+    // Re-assert selection on every hit — the layer's group may have been switched off
+    // since it was checked. DataMap derives layer visibility from this URL state, so no
+    // imperative map flip is needed (it would only be clobbered on the next render).
     const ensureLayerVisibleByTitle = useCallback((layerTitle: string | undefined) => {
-        if (!map || !layerTitle) return;
-        const foundLayer = findLayerByTitle(map, layerTitle);
-        if (foundLayer) foundLayer.visible = true;
-    }, [map]);
+        if (!layerTitle) return;
+        updateLayerSelection(layerTitle, true);
+    }, [updateLayerSelection]);
 
     const clearSearch = useCallback(() => {
         setInputValue('');

@@ -24,7 +24,7 @@ import { isGroupLayer, isPMTilesLayer } from '@/lib/map/layer-utils';
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs';
 import { useReviewFilters } from './review-filter-context';
 import { renderDisplacementLayerPanel } from '@/routes/_map/hazards-review/-components/popups/displacement-layer-panel';
-import { renderDisplacementLegend } from '@/routes/_map/hazards-review/-components/popups/displacement-legend';
+import { renderDisplacementLegendForTitle } from '@/routes/_map/hazards-review/-components/popups/displacement-legend';
 import { useDisplacementVectorFilters } from '@/routes/_map/hazards-review/-components/popups/displacement-vector-filters';
 import type { DisplacementType } from '@/routes/_map/hazards-review/-components/popups/displacement-layers';
 
@@ -73,7 +73,7 @@ function DisplacementStats({ layer }: { layer: PMTilesLayerProps }) {
 }
 
 function DisplacementLegendForActiveType({ layer }: { layer: PMTilesLayerProps }) {
-  return <>{renderDisplacementLegend(PER_TYPE_REVIEW_TITLE[useActiveType(layer)])}</>;
+  return <>{renderDisplacementLegendForTitle(PER_TYPE_REVIEW_TITLE[useActiveType(layer)])}</>;
 }
 
 function findByStacItemId(layers: LayerProps[], itemId: string): PMTilesLayerProps | undefined {

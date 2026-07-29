@@ -11,8 +11,9 @@ import {
   flattenWfsLayers,
   flattenArcGisLayers,
   flattenDataLayers,
-  flattenDataLayersWithParent,
+  flattenDataLayersWithAncestors,
   resolveLeafVisibility,
+  findAncestorGroupTitles,
 } from '../layer-utils'
 import type {
   LayerProps,
@@ -141,29 +142,29 @@ describe('convenience flatten wrappers', () => {
   })
 })
 
-// ── flattenDataLayersWithParent ──────────────────────────────────────
+// ── flattenDataLayersWithAncestors ──────────────────────────────────────
 
-describe('flattenDataLayersWithParent', () => {
-  it('tags top-level layers with null parent', () => {
-    const result = flattenDataLayersWithParent([wmsLayer, arcgisLayer])
+describe('flattenDataLayersWithAncestors', () => {
+  it('tags top-level layers with no enclosing groups', () => {
+    const result = flattenDataLayersWithAncestors([wmsLayer, arcgisLayer])
     expect(result).toEqual([
-      { layer: wmsLayer, parentGroupTitle: null },
-      { layer: arcgisLayer, parentGroupTitle: null },
+      { layer: wmsLayer, ancestorGroupTitles: [] },
+      { layer: arcgisLayer, ancestorGroupTitles: [] },
     ])
   })
 
   it('tags grouped layers with their group title', () => {
-    const result = flattenDataLayersWithParent([group])
+    const result = flattenDataLayersWithAncestors([group])
     expect(result).toHaveLength(4)
-    expect(result.every(r => r.parentGroupTitle === 'Group')).toBe(true)
+    expect(result.every(r => r.ancestorGroupTitles.join() === 'Group')).toBe(true)
     expect(result.map(r => r.layer.title)).toEqual(['WMS Layer', 'Hidden WMS', 'WFS Layer', 'ArcGIS Layer'])
   })
 
-  it('innermost group wins for nested groups', () => {
+  it('tags nested leaves with every enclosing group, outermost first', () => {
     const inner: GroupLayerProps = { type: 'group', title: 'Inner', layers: [wmsLayer] }
     const outer: GroupLayerProps = { type: 'group', title: 'Outer', layers: [inner] }
-    const result = flattenDataLayersWithParent([outer])
-    expect(result).toEqual([{ layer: wmsLayer, parentGroupTitle: 'Inner' }])
+    const result = flattenDataLayersWithAncestors([outer])
+    expect(result).toEqual([{ layer: wmsLayer, ancestorGroupTitles: ['Outer', 'Inner'] }])
   })
 })
 
@@ -171,28 +172,64 @@ describe('flattenDataLayersWithParent', () => {
 
 describe('resolveLeafVisibility', () => {
   it('unchecked leaf is neither mounted nor displayed', () => {
-    expect(resolveLeafVisibility('A', null, new Set(), new Map())).toEqual({ mounted: false, displayed: false })
+    expect(resolveLeafVisibility('A', [], new Set(), new Map())).toEqual({ mounted: false, displayed: false })
   })
 
   it('checked top-level leaf is mounted and displayed', () => {
-    expect(resolveLeafVisibility('A', null, new Set(['A']), new Map())).toEqual({ mounted: true, displayed: true })
+    expect(resolveLeafVisibility('A', [], new Set(['A']), new Map())).toEqual({ mounted: true, displayed: true })
   })
 
   it('checked grouped leaf with group toggle on is mounted and displayed', () => {
     const groupVis = new Map([['G', true]])
-    expect(resolveLeafVisibility('A', 'G', new Set(['A']), groupVis)).toEqual({ mounted: true, displayed: true })
+    expect(resolveLeafVisibility('A', ['G'], new Set(['A']), groupVis)).toEqual({ mounted: true, displayed: true })
   })
 
   it('checked grouped leaf with group toggle off is mounted but not displayed', () => {
     const groupVis = new Map([['G', false]])
-    expect(resolveLeafVisibility('A', 'G', new Set(['A']), groupVis)).toEqual({ mounted: true, displayed: false })
+    expect(resolveLeafVisibility('A', ['G'], new Set(['A']), groupVis)).toEqual({ mounted: true, displayed: false })
   })
 
   it('grouped leaf defaults to displayed when group has no toggle entry', () => {
-    expect(resolveLeafVisibility('A', 'G', new Set(['A']), new Map())).toEqual({ mounted: true, displayed: true })
+    expect(resolveLeafVisibility('A', ['G'], new Set(['A']), new Map())).toEqual({ mounted: true, displayed: true })
+  })
+
+  it('nested leaf is hidden when an outer group is off, even with the inner group on', () => {
+    const groupVis = new Map([['Outer', false], ['Inner', true]])
+    expect(resolveLeafVisibility('A', ['Outer', 'Inner'], new Set(['A']), groupVis))
+      .toEqual({ mounted: true, displayed: false })
+  })
+
+  it('nested leaf is displayed when every enclosing group is on', () => {
+    const groupVis = new Map([['Outer', true], ['Inner', true]])
+    expect(resolveLeafVisibility('A', ['Outer', 'Inner'], new Set(['A']), groupVis))
+      .toEqual({ mounted: true, displayed: true })
   })
 
   it('undefined title is never mounted', () => {
-    expect(resolveLeafVisibility(undefined, null, new Set(['A']), new Map())).toEqual({ mounted: false, displayed: false })
+    expect(resolveLeafVisibility(undefined, [], new Set(['A']), new Map())).toEqual({ mounted: false, displayed: false })
+  })
+})
+
+// ── findAncestorGroupTitles / findParentGroupTitle ───────────────────
+
+describe('findAncestorGroupTitles', () => {
+  const inner: GroupLayerProps = { type: 'group', title: 'Inner', layers: [wmsLayer] }
+  const outer: GroupLayerProps = { type: 'group', title: 'Outer', layers: [inner] }
+  const tree: LayerProps[] = [wfsLayer, outer]
+
+  it('returns groups outermost first for a nested leaf', () => {
+    expect(findAncestorGroupTitles(tree, 'WMS Layer')).toEqual(['Outer', 'Inner'])
+  })
+
+  it('returns no groups for a top-level leaf', () => {
+    expect(findAncestorGroupTitles(tree, 'WFS Layer')).toEqual([])
+  })
+
+  it('returns no groups for a missing title', () => {
+    expect(findAncestorGroupTitles(tree, 'Nope')).toEqual([])
+  })
+
+  it('returns the ancestors of a group itself', () => {
+    expect(findAncestorGroupTitles(tree, 'Inner')).toEqual(['Outer'])
   })
 })

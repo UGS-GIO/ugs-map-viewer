@@ -32,7 +32,6 @@ export default function Map() {
       layerName: qFaultsWMSTitle,
       searchTerm: "search_term",
       sourceName: 'Faults',
-      crs: 'EPSG:4326',
       displayField: "concatnames",
       params: { select: 'concatnames' }, // Exclude geometry from search for fast response
       headers: {

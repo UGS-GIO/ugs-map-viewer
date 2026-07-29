@@ -3,7 +3,7 @@ import area from '@turf/area'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { BarChart, Bar, Rectangle, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label as RechartsLabel, type BarShapeProps } from 'recharts'
+import { BarChart, Bar, Rectangle, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label as RechartsLabel, type BarShapeProps, type XAxisTickContentProps } from 'recharts'
 import type { LayerContentProps } from '@/components/maps/popups/types'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import { useMap } from '@/hooks/use-map'
@@ -324,19 +324,71 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
         }
     }
 
+    // Which year columns are inside the active filter. Cumulative end-years light
+    // every window up to and including the pick, Yearly only the exact match.
+    const isHighlightedYear = (yr: string | undefined) => {
+        if (!year || !yr) return true
+        return typeValue === 'Cumulative' ? yr <= year : yr === year
+    }
+
     // Per-segment highlight via the Bar `shape` render prop — replaces the
     // deprecated <Cell> children (recharts v3 routes per-datum styling through
-    // `shape`). Dims segments outside the active year; Cumulative end-years light
-    // every window up to and including the pick, Yearly only the exact match.
+    // `shape`). Dims segments outside the active year. The dim is deliberately
+    // mild: the band below is what marks the selection, so off-year bars only
+    // need to recede, not disappear — at a heavier dim they wash out entirely
+    // against the light theme's background and the chart loses its context.
     // Only geometry + fill are forwarded to Rectangle so non-DOM Bar props
     // (payload, tooltipPosition, …) can't leak onto the SVG path.
     const renderHighlightBar = (props: BarShapeProps) => {
         const { x, y, width, height, fill } = props
-        const yr = props.payload?.year as string | undefined
-        const highlighted =
-            !year ||
-            (yr ? (typeValue === 'Cumulative' ? yr <= year : yr === year) : true)
-        return <Rectangle x={x} y={y} width={width} height={height} fill={fill} fillOpacity={highlighted ? 1 : 0.25} />
+        const highlighted = isHighlightedYear(props.payload?.year as string | undefined)
+        return <Rectangle x={x} y={y} width={width} height={height} fill={fill} fillOpacity={highlighted ? 1 : 0.45} />
+    }
+
+    // Full-height tint band behind the active year's column(s). Opacity alone
+    // can't mark the selection when a year's segments are only a pixel or two
+    // tall (calm years, or a high threshold) — there's nothing to dim. The band
+    // spans the whole plot, so which column is active stays legible at any
+    // magnitude. Bar `background` rects are already sized to the category band
+    // (`y: plotTop, height: plotHeight`) and render beneath the bars.
+    const renderYearBand = (props: BarShapeProps) => {
+        const { x, y, width, height } = props
+        if (!year || !isHighlightedYear(props.payload?.year as string | undefined)) return <g />
+        return (
+            <Rectangle
+                x={x}
+                y={y}
+                width={width}
+                height={height}
+                fill="currentColor"
+                fillOpacity={0.1}
+                stroke="currentColor"
+                strokeOpacity={0.3}
+                strokeWidth={1}
+            />
+        )
+    }
+
+    // Bold + full-contrast tick for the selected year, muted for the rest — a
+    // second, unambiguous read of the pick (exact match even for Cumulative,
+    // where the band covers the whole accumulation window up to that year).
+    const renderYearTick = (props: XAxisTickContentProps) => {
+        const value = String(props.payload?.value ?? '')
+        const selected = value === year
+        return (
+            <text
+                x={props.x}
+                y={props.y}
+                dy={11}
+                textAnchor="middle"
+                fill="currentColor"
+                fontSize={11}
+                fontWeight={selected ? 700 : 400}
+                fillOpacity={selected ? 1 : 0.6}
+            >
+                {value}
+            </text>
+        )
     }
 
     if (isError) return <div className="text-xs text-destructive mb-2">Failed to load stats.</div>
@@ -359,7 +411,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                         </Button>
                     )}
                 </div>
-                <p className="text-xs text-muted-foreground mb-1">Bars above zero = uplift, below zero = subsidence. Stacked by displacement range (in); colors match the map. Click a year column to filter to that year.</p>
+                <p className="text-xs text-muted-foreground mb-1">Bars above zero = uplift, below zero = subsidence. Stacked by displacement range (in); colors match the map. Click a year column to filter to that year — the shaded column is the active {yearAxisLabel.toLowerCase()}.</p>
                 <div className="w-full" style={{ height: CHART_HEIGHT_PX }}>
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
                         // Fixed numeric height so recharts' ResponsiveContainer never
@@ -379,7 +431,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                                 style={{ cursor: 'pointer' }}
                             >
                                 <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
-                                <XAxis dataKey="year" stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} height={20} />
+                                <XAxis dataKey="year" stroke="currentColor" tick={renderYearTick} height={20} />
                                 <YAxis
                                     stroke="currentColor"
                                     tick={{ fill: 'currentColor', fontSize: 11 }}
@@ -394,8 +446,19 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                                     cursor={{ fill: 'currentColor', fillOpacity: 0.05 }}
                                     content={<StackedBarTooltip />}
                                 />
-                                {stackedBinOrder.map(bin => (
-                                    <Bar key={bin.name} dataKey={bin.name} stackId="rate" fill={bin.color} name={bin.title} shape={renderHighlightBar} />
+                                {stackedBinOrder.map((bin, i) => (
+                                    <Bar
+                                        key={bin.name}
+                                        dataKey={bin.name}
+                                        stackId="rate"
+                                        fill={bin.color}
+                                        name={bin.title}
+                                        shape={renderHighlightBar}
+                                        // First stack member only — every Bar in the stack paints
+                                        // the same full-height background rect, so leaving it on
+                                        // all of them just stacks identical bands on each other.
+                                        background={i === 0 ? renderYearBand : undefined}
+                                    />
                                 ))}
                             </BarChart>
                         </ResponsiveContainer>
