@@ -4,17 +4,18 @@ import type { Feature, Polygon, MultiPolygon } from 'geojson'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
 import { fetchWfsFeatures } from '@/lib/map/wfs-service'
-import { DATA_QUAL_ORDER, DISPLACEMENT_TYPE_NAME, getStyleNameForType, isPeriodKeyedType, type ChartedType, type DisplacementType } from './displacement-layers'
+import { DATA_QUAL_ORDER, DISPLACEMENT_TYPE_NAME, getStyleNameForType, type ChartedType, type DisplacementType } from './displacement-layers'
 import { fetchDisplacementSldBins, getZeroBound, type SldBin } from './displacement-sld-legend'
 
 export interface DisplacementProps {
     location: string
     type: DisplacementType
-    year: string | null
+    /** Year the observation window closes. Populated for every type. */
+    year: number
     /** Window open date (timestamp). For Cumulative this is the fixed period start. */
     start_date?: string | null
     end_date?: string | null
-    value_inch: number
+    value_inches: number
     /**
      * Percentage of source pixels classed as valid (0–100). Backend addition —
      * optional today, populated once the data-quality enrichment lands. UI
@@ -31,14 +32,10 @@ export interface DisplacementProps {
 
 export type DisplacementFeature = Feature<Polygon | MultiPolygon, DisplacementProps>
 
-// Period-keyed features (Cumulative, Vertical Displacement Rate) carry null `year`
-// and a period like "2017-10-20 to 2021-10-11"; bucket them by the period's end
-// year so charts/filters/popups stay year-aligned with the map cql (which also
-// keys these types on end_date). Yearly uses its native `year` field.
-export function getBucketYear(props: Pick<DisplacementProps, 'type' | 'year' | 'end_date'>): string | null {
-    if (props.type === 'Yearly') return props.year ?? null
-    if (isPeriodKeyedType(props.type) && props.end_date) return props.end_date.slice(0, 4)
-    return null
+// `year` is the window's closing year for every type, so one accessor serves
+// charts, filters and popups. String-keyed because it indexes option lists.
+export function getBucketYear(props: Pick<DisplacementProps, 'year'>): string | null {
+    return props.year == null ? null : String(props.year)
 }
 
 async function fetchAllDisplacement(): Promise<DisplacementFeature[]> {

@@ -73,8 +73,8 @@ export function renderDisplacementLayerStats(layerTitle: string): React.ReactNod
     return <DisplacementLayerCharts typeValue={typeValue} />
 }
 
-// Locate which SldBin a feature's signed value_inch falls into. Half-open on the
-// upper bound matches the SLD's "value_inch < X" semantics so each feature
+// Locate which SldBin a feature's signed value_inches falls into. Half-open on the
+// upper bound matches the SLD's "value_inches < X" semantics so each feature
 // resolves to exactly one bin.
 export function findBin(bins: SldBin[], v: number): SldBin | undefined {
     return bins.find(b => v >= b.min && v < b.max)
@@ -184,7 +184,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
 
     // KPI + advanced metrics use the single SLD-pinned threshold.
     const auditOverThreshold = useMemo(
-        () => filtered.filter(f => Math.abs(f.properties.value_inch) >= threshold),
+        () => filtered.filter(f => Math.abs(f.properties.value_inches) >= threshold),
         [filtered, threshold]
     )
 
@@ -196,7 +196,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     const maxDisplacement = useMemo(() => {
         let max = 0
         for (const f of filtered) {
-            const v = Math.abs(f.properties.value_inch)
+            const v = Math.abs(f.properties.value_inches)
             if (v > max) max = v
         }
         return max
@@ -222,7 +222,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     const stackedAreaByYear = useMemo(() => {
         const yearToBins = new Map<string, Record<string, number>>()
         for (const f of scoped) {
-            const v = f.properties.value_inch
+            const v = f.properties.value_inches
             if (Math.abs(v) < threshold) continue
             const bin = findBin(plotBins, v)
             if (!bin) continue
@@ -254,7 +254,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             if (!yearMatched(f)) continue
             const loc = f.properties.location
             if (!loc) continue
-            const v = f.properties.value_inch
+            const v = f.properties.value_inches
             const a = Math.abs(v)
             if (a < threshold) continue
             const cur = byLocation.get(loc)
@@ -287,7 +287,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     const worstDepth = useMemo(() => {
         let max = 0
         for (const f of qualFiltered) {
-            const a = Math.abs(f.properties.value_inch)
+            const a = Math.abs(f.properties.value_inches)
             if (a > max) max = a
         }
         return max

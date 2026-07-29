@@ -13,7 +13,6 @@ import {
     getStyleNameForType,
     isChartedType,
     isDisplacementLayerTitle,
-    isPeriodKeyedType,
     type ChartedType,
     type DisplacementType,
 } from './displacement-layers'
@@ -30,7 +29,7 @@ import { type SldBin } from './displacement-sld-legend'
 // Label the year dropdown by type semantics: 'Water Year' for Yearly,
 // 'Period End Year' for Cumulative + Vertical Displacement Rate.
 function yearLabelFor(type: DisplacementType): string {
-    return isPeriodKeyedType(type) ? 'Period End Year' : 'Water Year'
+    return type === 'Yearly' ? 'Water Year' : 'Period End Year'
 }
 
 export function renderDisplacementLayerFilters(layerTitle: string): React.ReactNode {
@@ -257,9 +256,9 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
 }
 
 // Positive bin edges from the SLD response, deduped + sorted ascending. These
-// are the only meaningful threshold values (any |value_inch| between two edges
+// are the only meaningful threshold values (any |value_inches| between two edges
 // yields the same filtered set). The smallest edge is the SLD's "Zero" deadband
-// bound (1.2 in), so every option is >= 1.2 by construction — the UI can't drop
+// bound, so every option is >= the deadband by construction — the UI can't drop
 // the threshold below the uncertainty band.
 function getBinBoundaries(bins: SldBin[]): number[] {
     const edges = new Set<number>()
@@ -280,7 +279,7 @@ interface ThresholdSelectProps {
 }
 
 // Threshold as a predefined dropdown of SLD bin edges. The first option is the
-// SLD default (the Zero-deadband bound, ~1.2 in); selecting it resets to default.
+// SLD default (the Zero-deadband bound); selecting it resets to default.
 // Selecting a larger edge tightens the filter on |value| (both signs) across the
 // map, chart, and stats. Below-default values aren't offered — the deadband is
 // measurement noise, so reviewers can only raise the bar, not lower it.

@@ -5,7 +5,6 @@ import {
     CHARTED_TYPES,
     DEFAULT_EXCLUDED_DATA_QUALS,
     isChartedType,
-    isPeriodKeyedType,
     type ChartedType,
     type DisplacementLayerTitle,
     type DisplacementType,
@@ -15,11 +14,14 @@ import { useDisplacementLatestYearByType, useDisplacementSldZeroBound } from './
 // Re-export the type predicates + token sets so existing call sites keep
 // importing from this module — the canonical definitions now live in
 // `displacement-layers.ts` to break a circular import.
-export { CHARTED_TYPES, isChartedType, isPeriodKeyedType, type ChartedType }
+export { CHARTED_TYPES, isChartedType, type ChartedType }
 
 // Fallback used only when the SLD's "Zero" deadband can't be resolved (network
 // failure, schema drift, etc.). Real defaults come from the SLD at runtime.
-const FALLBACK_THRESHOLD_IN = 1.2
+const FALLBACK_THRESHOLD_IN: Record<ChartedType, number> = {
+    'Cumulative': 2,
+    'Yearly': 1,
+}
 
 // One honest threshold override per charted type. `null` = use the SLD's "Zero"
 // deadband default. A number is the reviewer's pick and applies everywhere —
@@ -270,8 +272,8 @@ export function useEffectiveThresholdsIn(): Record<ChartedType, number> {
     const cumulativeSld = useDisplacementSldZeroBound('Cumulative')
     const yearlySld = useDisplacementSldZeroBound('Yearly')
     return useMemo(() => ({
-        'Cumulative': thresholdsIn['Cumulative'] ?? cumulativeSld ?? FALLBACK_THRESHOLD_IN,
-        'Yearly': thresholdsIn['Yearly'] ?? yearlySld ?? FALLBACK_THRESHOLD_IN,
+        'Cumulative': thresholdsIn['Cumulative'] ?? cumulativeSld ?? FALLBACK_THRESHOLD_IN['Cumulative'],
+        'Yearly': thresholdsIn['Yearly'] ?? yearlySld ?? FALLBACK_THRESHOLD_IN['Yearly'],
     }), [thresholdsIn, cumulativeSld, yearlySld])
 }
 
@@ -297,23 +299,14 @@ export function useDisplacementLayerFilters(): Record<string, string> {
             const clauses: string[] = []
             const effectiveYear = yearOverridesByType[typeValue] ?? latestByType[typeValue] ?? null
             if (effectiveYear) {
-                if (isPeriodKeyedType(typeValue)) {
-                    // Period-keyed types (Cumulative, Vertical Displacement Rate) match
-                    // by end_date year — picks the observation window closing in that
-                    // year. `end_date` is a timestamp column, so LIKE fails server-side
-                    // (`operator does not exist: timestamp ~~ unknown`) and GeoServer
-                    // throws IOException → broken tiles. Use a half-open date range.
-                    const nextYear = Number(effectiveYear) + 1
-                    clauses.push(`end_date >= '${effectiveYear}-01-01T00:00:00Z' AND end_date < '${nextYear}-01-01T00:00:00Z'`)
-                } else {
-                    // Year-keyed types (Yearly) match the water year column directly.
-                    clauses.push(`year='${effectiveYear}'`)
-                }
+                // `year` is an int column holding the window's closing year, so an
+                // unquoted equality works for every type.
+                clauses.push(`year=${Number(effectiveYear)}`)
             }
             if (isChartedType(typeValue)) {
                 const thresholdIn = effective[typeValue]
                 if (thresholdIn > 0) {
-                    clauses.push(`(value_inch >= ${thresholdIn} OR value_inch <= ${-thresholdIn})`)
+                    clauses.push(`(value_inches >= ${thresholdIn} OR value_inches <= ${-thresholdIn})`)
                 }
             }
             const basins = basinsByType[typeValue]

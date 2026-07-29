@@ -3,7 +3,7 @@ import { DISPLACEMENT_TYPE_NAME } from './displacement-layers'
 
 /**
  * Bin derived from a single rule in a WMS GetLegendGraphic response. Mirrors
- * the SLD class boundaries on `value_inch`, so the chart's stacked bars and
+ * the SLD class boundaries on `value_inches`, so the chart's stacked bars and
  * swatches use the exact same breaks + colors the map renders with.
  */
 export interface SldBin {
@@ -12,7 +12,7 @@ export interface SldBin {
     min: number          // -Infinity for the lowest open bin
     max: number          // Infinity for the highest open bin
     color: string        // hex from Polygon.fill
-    isZero: boolean      // true for the "within uncertainty" deadband bin
+    isZero: boolean      // true for the "within uncertainty" deadband bin (straddles 0)
 }
 
 interface LegendRule {
@@ -27,12 +27,12 @@ interface LegendResponse {
 }
 
 // Parse a SLD CQL-style filter like:
-//   [value_inch >= '-12' AND value_inch < '-8' AND NOT (value_inch >= '-1.2' AND value_inch <= '1.2')]
-// Strips the NOT-deadband subclause, then walks value_inch <op> 'N' pairs to
+//   [value_inches >= '-12' AND value_inches < '-8' AND NOT (value_inches >= '-2' AND value_inches <= '2')]
+// Strips the NOT-deadband subclause, then walks value_inches <op> 'N' pairs to
 // derive {min, max}. Half-open (< / <=) treated the same for binning purposes.
 function parseBoundsFromFilter(filter: string): { min: number; max: number } {
     const stripped = filter.replace(/\s+AND\s+NOT\s*\([^)]+\)/g, '')
-    const re = /value_inch\s*(>=|<=|>|<)\s*'(-?\d+(?:\.\d+)?)'/g
+    const re = /value_inches\s*(>=|<=|>|<)\s*'(-?\d+(?:\.\d+)?)'/g
     let min = -Infinity
     let max = Infinity
     let m: RegExpExecArray | null
@@ -61,7 +61,9 @@ export async function fetchDisplacementSldBins(styleName: string): Promise<SldBi
                 min,
                 max,
                 color: r.symbolizers![0].Polygon!.fill ?? '#999',
-                isZero: r.name === 'Zero',
+                // The deadband is the one class spanning both signs. Structural,
+                // not by rule name — styles spell it 'Zero', 'excluded', etc.
+                isZero: min < 0 && max > 0,
             }
         })
     // Sort by lower bound so stacked bars + legend swatches read left-to-right.
