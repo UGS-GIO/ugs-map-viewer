@@ -3,7 +3,7 @@ import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
 import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 import { formatNumeric } from "@/lib/utils";
-import { mergeSampleIntervals, boxTypeToSampleGroup } from "@/lib/sample-intervals";
+import { mergeSampleIntervals, resolveSampleTypeGroupBy } from "@/lib/sample-intervals";
 
 
 export const wellWithTopsLayerName = 'wellswithtops_hascore';
@@ -510,15 +510,18 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                     // Client-side rollup of the SAME enmin_ucrc_boxes rows used by "Core Boxes"
                     // below: collapses individual box records into contiguous Core/Cuttings
                     // depth intervals, starting a new interval whenever the gap to the next
-                    // same-type sample exceeds 10 ft (ALL-4766). `box_type_group` exists on the
-                    // published data but mislabels every Core-family type as OTHER, so we bucket
-                    // from raw `box_type` via `boxTypeToSampleGroup` instead (see sample-intervals.ts).
+                    // same-type sample exceeds 10 ft (ALL-4766). Grouping is keyed off
+                    // `box_type_code` (per-box code column) via `resolveSampleTypeGroupBy`,
+                    // which reads the wells layer's own `by-boxtype` STAC legend — the same
+                    // legend the map's by-boxtype symbology uses — instead of a hardcoded
+                    // table. `box_type_group` also exists on the published data but mislabels
+                    // every Core-family type as OTHER (ALL-5379); don't use it.
                     fieldLabel: 'Sample Types',
                     stacAsset: 'enmin_ucrc_boxes',
                     displayAs: 'table',
-                    rowsTransform: (rows) => mergeSampleIntervals(rows, {
-                        typeField: 'box_type',
-                        groupBy: boxTypeToSampleGroup,
+                    rowsTransform: (rows, renders) => mergeSampleIntervals(rows, {
+                        typeField: 'box_type_code',
+                        groupBy: resolveSampleTypeGroupBy(renders),
                         topField: 'box_top_ft',
                         bottomField: 'box_bottom_ft',
                         notesField: 'notes_public',

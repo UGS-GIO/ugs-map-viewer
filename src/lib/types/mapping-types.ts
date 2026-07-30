@@ -408,8 +408,13 @@ export interface RelatedTable {
      * can change the row count — e.g. collapsing many raw records into summarized rows
      * (see `mergeSampleIntervals` for the UCRC Samples table, which merges individual
      * core/cuttings box records into contiguous depth intervals).
+     *
+     * `renders` is the STAC `ugs:renders` legend/symbology array off the table's owning
+     * layer (already resolved by `resolveStacLayerTree` by the time a popup can open) —
+     * passed through so a transform can derive groupings from the warehouse's own legend
+     * instead of hardcoding them (see `resolveSampleTypeGroupBy` in sample-intervals.ts).
      */
-    rowsTransform?: (rows: Record<string, unknown>[]) => Record<string, unknown>[];
+    rowsTransform?: (rows: Record<string, unknown>[], renders?: PMTilesRender[]) => Record<string, unknown>[];
 }
 
 

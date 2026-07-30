@@ -6,35 +6,91 @@
  * the next same-type sample exceeds `maxGap` (default 10 ft).
  */
 
+import type { PMTilesRender } from '@/lib/types/mapping-types'
+
 /**
- * Buckets a raw `box_type` value (as published on enmin_ucrc_boxes, e.g. "Whole Core",
- * "Core Chips") into the broad Core / Cuttings / Other groups used by the UCRC "by-boxtype"
- * map symbology (see `ugs:renders["by-boxtype"].legend` on the enmin_ucrc_wells STAC item).
+ * Static last-resort fallback for bucketing a raw `box_type_code` value (the per-box
+ * code column on enmin_ucrc_boxes, e.g. "CORESAMPLES", "CUTTINGS" -- the same vocabulary
+ * as the aggregate `box_type_codes` field the wells layer uses for its own by-boxtype map
+ * symbology) into Core / Cuttings / Other. Only used when the STAC `by-boxtype` legend
+ * can't be read off the wells layer's `renders` (see `resolveSampleTypeGroupBy` below,
+ * which is the actual source of truth used by the popup).
  *
- * The published data DOES carry a `box_type_group` column, but it is wrong upstream: every
- * Core-family type (Whole Core, Butts, Slabs, Skeletonized Core, Core Samples, Spot Cores)
- * is labelled OTHER, and only CUTTINGS is correct. So we bucket from `box_type` here instead,
- * mirroring the map's legend. Switch to `box_type_group` once the warehouse fixes it.
- * Comparison is case/whitespace insensitive against the actual `box_type` values in production.
+ * `box_type_group` also exists on the published data but is wrong upstream: every
+ * Core-family type is labelled OTHER, and only CUTTINGS is correct — do not use it.
+ *
+ * Keep this in sync with `ugs:renders["by-boxtype"].legend` on the enmin_ucrc_wells STAC
+ * item if the warehouse ever changes it. Verified 1:1 against every distinct
+ * `box_type_code` value present in production enmin_ucrc_boxes on 2026-07-29.
  */
-const CORE_BOX_TYPES = new Set([
+const FALLBACK_CORE_CODES = new Set([
   'BUTTS',
-  'CORE SAMPLES',
+  'CORESAMPLES',
   'SKELETONIZED CORE',
   'SLABS',
   'SPOT CORES',
   'WHOLE CORE',
 ])
-const CUTTINGS_BOX_TYPES = new Set(['CORE CHIPS', 'CUTTINGS'])
+const FALLBACK_CUTTINGS_CODES = new Set(['CORE CHIPS', 'CUTTINGS'])
 
-export function boxTypeToSampleGroup(boxType: unknown): string {
-  const normalized = String(boxType ?? '')
+function fallbackGroupByCode(rawCode: unknown): string {
+  const normalized = String(rawCode ?? '')
     .trim()
     .toUpperCase()
   if (!normalized) return ''
-  if (CORE_BOX_TYPES.has(normalized)) return 'Core'
-  if (CUTTINGS_BOX_TYPES.has(normalized)) return 'Cuttings'
+  if (FALLBACK_CORE_CODES.has(normalized)) return 'Core'
+  if (FALLBACK_CUTTINGS_CODES.has(normalized)) return 'Cuttings'
   return 'Other'
+}
+
+/**
+ * Builds a `box_type_code` -> sample-group label lookup from the `by-boxtype` STAC render
+ * on the UCRC wells layer (`ugs:renders["by-boxtype"]`, field `box_type_codes`). That
+ * legend is the warehouse's own source of truth for the Core/Cuttings/Other grouping
+ * (mirrors the map's by-boxtype symbology) — this table reads it instead of re-declaring
+ * the grouping locally.
+ *
+ * Returns null if the render/legend isn't present on `renders` (STAC schema changed
+ * upstream, or renders haven't resolved yet), so callers can fall back.
+ */
+export function groupByFromByBoxtypeLegend(
+  renders: PMTilesRender[] | undefined
+): ((rawCode: unknown) => string) | null {
+  const render = renders?.find((r) => r.field === 'box_type_codes')
+  if (!render?.legend?.length) return null
+
+  const map = new Map<string, string>()
+  for (const entry of render.legend) {
+    for (const v of entry.values ?? []) {
+      map.set(v.value.trim().toUpperCase(), entry.label)
+    }
+  }
+  if (map.size === 0) return null
+
+  return (rawCode: unknown): string => {
+    const normalized = String(rawCode ?? '')
+      .trim()
+      .toUpperCase()
+    if (!normalized) return ''
+    return map.get(normalized) ?? 'Other'
+  }
+}
+
+/**
+ * Resolves the `groupBy` classifier for the "Sample Types" popup table: prefers the STAC
+ * `by-boxtype` legend off the wells layer's already-resolved `renders` (source of truth),
+ * falls back to a static code map only if that legend isn't available for some reason.
+ * `box_type_group` (broken upstream, see ALL-5379) can't be used for this instead.
+ */
+export function resolveSampleTypeGroupBy(
+  renders: PMTilesRender[] | undefined
+): (rawCode: unknown) => string {
+  const dynamic = groupByFromByBoxtypeLegend(renders)
+  if (dynamic) return dynamic
+  console.error(
+    'Sample Types popup: STAC by-boxtype legend missing on enmin_ucrc_wells renders — using static box_type_code fallback grouping.'
+  )
+  return fallbackGroupByCode
 }
 
 export interface SampleIntervalOptions {
