@@ -61,9 +61,22 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const Comp = asChild ? Slot : "button"
+    // Slot (asChild) clones its single child and requires exactly one React element —
+    // it can't take the loading/leftSection/rightSection decoration slots below, which
+    // render as separate array entries even when falsy. Pass `children` straight through.
+    if (asChild) {
+      return (
+        <Slot
+          className={cn(buttonVariants({ variant, size, className }))}
+          ref={ref}
+          {...props}
+        >
+          {children}
+        </Slot>
+      )
+    }
     return (
-      <Comp
+      <button
         className={cn(buttonVariants({ variant, size, className }))}
         disabled={loading || disabled}
         ref={ref}
@@ -79,7 +92,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {rightSection && loading && (
           <Loader2 className="ml-2 h-4 w-4 animate-spin" />
         )}
-      </Comp>
+      </button>
     )
   }
 )
