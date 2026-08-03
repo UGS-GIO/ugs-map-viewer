@@ -121,8 +121,9 @@ function DatasetGroup({ heading, datasets }: { heading?: string; datasets: Downl
     return (
         <div className="space-y-1">
             {heading && <h5 className="text-xs font-semibold text-muted-foreground">{heading}</h5>}
-            {/* Grid keeps buttons in one column when titles wrap. */}
-            <ul className="grid grid-cols-[1fr_auto] items-center gap-x-2 gap-y-1">
+            {/* Grid keeps buttons in one column when titles wrap. items-start so the button
+                aligns with the title line, not the vertical center of title+agency. */}
+            <ul className="grid grid-cols-[1fr_auto] items-start gap-x-2 gap-y-1">
                 {datasets.map(dataset => (
                     <li key={dataset.title} className="contents">
                         <span className="min-w-0 break-words leading-tight">
