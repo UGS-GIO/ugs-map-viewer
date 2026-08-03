@@ -13,6 +13,8 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
     title: wellWithTopsWMSTitle,
     visible: false,
     crs: 'EPSG:26912',
+    sourceAgency: 'Utah Geological Survey',
+    sourceUrl: 'https://gis.utah.gov/products/sgid/energy/oil-gas-wells/',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${wellWithTopsLayerName}`,
@@ -107,6 +109,7 @@ const utCountiesConfig: WMSLayerProps = {
     visible: false,
     crs: 'EPSG:3857',
     downloadParquetUrl: parquetUrl("enmin_ut_counties"),
+    sourceAgency: 'UGRC',
     sublayers: [{
         name: `${ENERGY_MINERALS_WORKSPACE}:enmin_ut_counties_current`,
         popupEnabled: false,
@@ -124,6 +127,8 @@ const utTownshipRangesConfig: WMSLayerProps = {
     visible: false,
     crs: 'EPSG:3857',
     visibleZoomRange: [11, 22],
+    sourceAgency: 'UGRC',
+    sourceUrl: 'https://gis.utah.gov/products/sgid/cadastre/plss-sections/',
     sublayers: [{
         name: `${ENERGY_MINERALS_WORKSPACE}:${utTownshipRangesLayerName}`,
         popupEnabled: false,
@@ -142,6 +147,7 @@ const oilGasFieldsWMSConfig: WMSLayerProps = {
     title: oilGasFieldsWMSTitle,
     visible: false,
     crs: 'EPSG:3857',
+    sourceAgency: 'Utah Geological Survey and Utah Division of Oil, Gas and Mining',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${oilGasFieldsLayerName}`,
@@ -168,6 +174,7 @@ const basinsWMSConfig: WMSLayerProps = {
     visible: false,
     crs: 'EPSG:3857',
     downloadParquetUrl: parquetUrl("enmin_ucrc_basins"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${basinsLayerName}`,
@@ -190,6 +197,7 @@ const nonpetrolWellsConfig: WMSLayerProps = {
   title: nonpetrolWellsTitle,
   visible: false,
   crs: 'EPSG:3857',
+  sourceAgency: 'Utah Geological Survey',
   sublayers: [
     {
       name: `${ENERGY_MINERALS_WORKSPACE}:${nonpetrolWellsLayerName}`,
@@ -320,6 +328,8 @@ const metalMiningDistrictsConfig: WMSLayerProps = {
     title: metalMiningDistrictsTitle,
     visible: false,
     crs: 'EPSG:3857',
+    sourceAgency: 'Utah Geological Survey',
+    sourceUrl: 'https://doi.org/10.34191/OFR-695',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${metalMiningDistrictsLayerName}`,
@@ -373,6 +383,8 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     opacity: 0.5,
     visible: false,
     crs: 'EPSG:3857',
+    sourceAgency: 'Utah Geological Survey',
+    sourceUrl: 'https://geology.utah.gov/publication-details/?pub=M-179dm',
     sublayers: [
         {
             name: `${MAPPING_WORKSPACE}:${seamlessGeolunitsLayerName}`,
@@ -394,6 +406,7 @@ const pipelinesWMSConfig: WMSLayerProps = {
     title: pipelinesWMSTitle,
     visible: false,
     crs: 'EPSG:3857',
+    sourceAgency: 'UGRC and Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${pipelinesLayerName}`,
@@ -432,6 +445,7 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
     visible: true,
     opacity: 0.85,
     defaultRenderId: 'by-boxtype',
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: ucrcWellsTileLayer,
