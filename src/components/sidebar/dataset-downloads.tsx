@@ -93,7 +93,6 @@ export function DatasetDownloads() {
                 <h4 className="text-sm font-semibold">Download Datasets</h4>
             </div>
             <DatasetGroup datasets={available} />
-            <DatasetGroup heading="Not available for download" datasets={unavailable} />
         </div>
     );
 }
