@@ -9,12 +9,16 @@ import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, utTownshipRangesTitle } from './-data/layers/layers'
+import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, utTownshipRangesTitle, powerplantsTitle } from './-data/layers/layers'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, type SearchComboboxHandle } from '@/components/sidebar/filter/search-combobox'
 import { PROD_POSTGREST_URL } from '@/lib/constants'
+import { powerplantsFilterSchema } from './-data/layers/powerplants-schema'
+import { toMaplibreFilter } from '@/lib/filter/generators'
+import { fromCql } from '@/lib/filter/parse'
+import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
 
 // Carbon Storage specific filter mapping
 const CCS_FILTER_MAPPING: Record<string, string> = {
@@ -101,11 +105,24 @@ export default function Map() {
     return filters
   }, [filtersFromUrl])
 
+  // Translate Power Plants' stored CQL filter (from its checkbox legend) into a maplibre
+  // filter expression for the PMTiles layer.
+  const vectorLayerFilters = useMemo(() => {
+    const powerplantsCql = filtersFromUrl[powerplantsFilterSchema.recordKey]
+    const result: Record<string, FilterSpecification> = {}
+    if (powerplantsCql) {
+      const expr: ExpressionSpecification | null = toMaplibreFilter(powerplantsFilterSchema, fromCql(powerplantsFilterSchema, powerplantsCql))
+      if (expr) result[powerplantsTitle] = expr
+    }
+    return result
+  }, [filtersFromUrl])
+
   // A filtered layer must be on screen (selection reveals its groups too).
   useEffect(() => {
     for (const [filterKey, layerTitle] of Object.entries(CCS_FILTER_MAPPING)) {
       if (filtersFromUrl[filterKey]) updateLayerSelection(layerTitle, true)
     }
+    if (filtersFromUrl[powerplantsFilterSchema.recordKey]) updateLayerSelection(powerplantsTitle, true)
   }, [filtersFromUrl, updateLayerSelection])
 
   const onFeatureSelect = handleSearchSelect
@@ -142,6 +159,7 @@ export default function Map() {
             <Layout.Body>
               <GenericMapContainer
                 layerFilters={layerFilters}
+                vectorLayerFilters={vectorLayerFilters}
                 onClearSearch={() => searchRef.current?.clear()}
               />
             </Layout.Body>
