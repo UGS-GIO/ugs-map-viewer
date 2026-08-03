@@ -11,6 +11,8 @@ const roadsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: roadsWMSTitle,
     visible: false,
+    sourceAgency: 'UGRC',
+    sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-roads/about',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${roadsLayerName}`,
@@ -31,6 +33,8 @@ const railroadsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: railroadsWMSTitle,
     visible: false,
+    sourceAgency: 'UGRC',
+    sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-railroads/about',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${railroadsLayerName}`,
@@ -51,6 +55,8 @@ const transmissionLinesWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: transmissionLinesWMSTitle,
     visible: false,
+    sourceAgency: 'UGRC',
+    sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah::utah-transmission-lines/about',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${transmissionLinesLayerName}`,
@@ -72,6 +78,8 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     title: seamlessGeolunitsWMSTitle,
     opacity: 0.5,
     visible: false,
+    sourceAgency: 'Utah Geological Survey',
+    sourceUrl: 'https://geology.utah.gov/publication-details/?pub=M-179dm',
     sublayers: [
         {
             name: `${MAPPING_WORKSPACE}:${seamlessGeolunitsLayerName}`,
@@ -124,6 +132,8 @@ const faultsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: faultsWMSTitle,
     visible: false,
+    sourceAgency: 'Utah Geological Survey',
+    sourceUrl: 'https://geology.utah.gov/publication-details/?pub=M-179dm',
     sublayers: [
         {
             name: `${MAPPING_WORKSPACE}:${faultsLayerName}`,
@@ -176,6 +186,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
     title: qFaultsWMSTitle,
     visible: false,
     downloadParquetUrl: parquetUrl("hazards_qfaults"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${qFaultsLayerName}`,
@@ -241,6 +252,7 @@ const geothermalPowerplantsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalPowerplantsWMSTitle,
     visible: true,
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalPowerplantsLayerName}`,
@@ -265,6 +277,7 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalWellsWMSTitle,
     visible: true,
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsLayerName}`,
@@ -370,6 +383,7 @@ const heatflowLayerConfig: WMSLayerProps = {
     title: heatflowLayeTitle,
     visible: true,
     downloadParquetUrl: parquetUrl("mart_geophysics_heatflowedwards_source"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${heatflowLayeName}`,
@@ -434,6 +448,7 @@ const geothermalUseLayerConfig: WMSLayerProps = {
     title: geothermalUseLayeTitle,
     visible: true,
     downloadParquetUrl: parquetUrl("geothermal_utgeothermaluses"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalUseLayeName}`,
@@ -473,6 +488,7 @@ const deepSedimentaryBasinsLayerConfig: WMSLayerProps = {
     title: deepSedimentaryBasinsLayerTitle,
     visible: true,
     downloadParquetUrl: parquetUrl("geothermal_deepsedbasin"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${deepSedimentaryBasinsLayerName}`,
@@ -494,6 +510,7 @@ const potentialResourcesLayerConfig: WMSLayerProps = {
     title: potentialResourcesLayerTitle,
     visible: true,
     downloadParquetUrl: parquetUrl("geothermal_potentialresourcearea"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${potentialResourcesLayerName}`,
@@ -515,6 +532,7 @@ const geothermalKgraLayerConfig: WMSLayerProps = {
     title: geothermalKgraLayerTitle,
     visible: true,
     downloadParquetUrl: parquetUrl("geothermal_kgra"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalKgraLayerName}`,
@@ -536,6 +554,7 @@ const gravityStationsLayerConfig: WMSLayerProps = {
     title: gravityStationsLayeTitle,
     visible: true,
     downloadParquetUrl: parquetUrl("enmin_geophysics_ugsgravity"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${gravityStationsLayeName}`,
@@ -573,6 +592,7 @@ const pacesLegacyLayerConfig: WMSLayerProps = {
     title: pacesLegacyLayerTitle,
     visible: false,
     downloadParquetUrl: parquetUrl("enmin_geophysics_pacesgravity"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${pacesLegacyLayerName}`,
@@ -605,6 +625,7 @@ const geothermalTEMLayerConfig: WMSLayerProps = {
     visible: true,
     customLayerParameters: { cql_filter: "dataquality IN ('1','2')" },
     downloadParquetUrl: parquetUrl("enmin_geophysics_tem"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalTEMLayerName}`,
@@ -637,6 +658,7 @@ const mtStationsLayerConfig: WMSLayerProps = {
     title: mtStationsLayerTitle,
     visible: true,
     downloadParquetUrl: parquetUrl("enmin_geophysics_mtstations"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${mtStationsLayerName}`,
@@ -680,6 +702,7 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
     title: geothermalWellsJoinsTitle,
     visible: false,
     downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_wellfeatures"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsJoinsName}`,
@@ -738,6 +761,7 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
     title: geothermalSpringsJoinsTitle,
     visible: false,
     downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_springfeatures"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalSpringsJoinsName}`,
