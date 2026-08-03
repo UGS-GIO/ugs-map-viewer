@@ -82,79 +82,10 @@ const mapDetailsShortened = (
     </p>
 )
 
-const dataSources = (
-    <div className='mx-2 space-y-4'>
-        <p>
-            Data for the UCRC Collections Portal were compiled from a variety of authoritative sources including the Utah Geological Survey; the Utah Division of Oil, Gas and Mining; the Utah State and Institutional Trust Lands Administration; and federal agencies.
-        </p>
-            <p>
-                <strong>Utah Core Research Inventory Data</strong> - Utah Geological Survey
-            </p>
-
-
-
-        <p className="text-lg font-semibold underline mt-4">
-            Other Subsurface Data
-        </p>
-
-        <div className="space-y-2">
-            
-            <p>
-                <strong>Oil and Gas Wells (with formation tops information)</strong> - Utah Geological Survey
-            </p>
-            <span><Link to="https://gis.utah.gov/products/sgid/energy/oil-gas-wells/">Access data</Link></span>
-            <p>
-                <strong>Exploration Boreholes</strong> - Downhole Data - Utah Geological Survey
-            </p>
-            
-        </div>
-
-        <p className="text-lg font-semibold underline mt-4">
-            Geological Information
-        </p>
-
-        <div className="space-y-2">
-            <p>
-                <strong>Geological Units (500k)</strong> - Utah Geological Survey
-            </p>
-            <span><Link to="https://geology.utah.gov/publication-details/?pub=M-179dm">Access data</Link></span>
-            <p>
-                <strong>Oil and Gas Fields</strong> - Utah Geological Survey and Utah Division of Oil, Gas and Mining
-            </p>
-            <p>
-                <strong>Sedimentary Basins</strong> - Utah Geological Survey
-            </p>
-            <p>
-                <strong>Utah Mining Districts</strong> - Utah Geological Survey
-            </p>
-            <span><Link to="https://doi.org/10.34191/OFR-695">Access data</Link></span>
-        </div>
-
-        <p className="text-lg font-semibold underline mt-4">
-            Infrastructure and Land Use
-        </p>
-
-        <div className="space-y-2">
-
-            <p>
-                <strong>Utah Land Ownership</strong> - Utah Geospatial Resource Center
-            </p>
-            <span><Link to="https://opendata.gis.utah.gov/datasets/SITLA::land-ownership/about">Access data</Link></span>
-            <p>
-                <strong>Pipelines </strong> - Utah Geospatial Resource Center and Utah Geological Survey
-            </p>
-            <p>
-                <strong>Utah Counties</strong> - Utah Geospatial Resource Center
-            </p>
-            <span><Link to="https://gis.utah.gov/products/sgid/boundaries/county/">Access data</Link></span>
-            <p>
-                <strong>Utah Township, Range, and Section</strong> -  Utah Geospatial Resource Center
-            </p>
-            <span><Link to="https://gis.utah.gov/products/sgid/cadastre/plss-sections/">Access data</Link></span>
-
-        </div>
-    </div>
-)
+// Per-dataset sourcing (agency + external links) now lives on each layer config
+// and renders inline in the Download Datasets list (DatasetDownloads) — nothing
+// left to duplicate here.
+const dataSources = <></>;
 
 const dataSourcesShortened = (
     <p className='text-left text-sm mx-2 font-normal'>

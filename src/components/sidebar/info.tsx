@@ -9,6 +9,7 @@ import { BackToMenuButton } from '../ui/back-to-menu-button';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { useGetPageInfo } from '@/hooks/use-get-page-info';
+import { DatasetDownloads } from '@/components/sidebar/dataset-downloads';
 
 function Info() {
   type ModalType = 'references' | 'disclaimer' | 'acknowledgments' | '';
@@ -97,6 +98,7 @@ function Info() {
                 </AccordionTrigger>
               </AccordionHeader>
               <AccordionContent>
+                <DatasetDownloads />
                 {pageInfo?.dataSources || (
                   <div className="flex justify-center py-4">
                     <Spinner />
