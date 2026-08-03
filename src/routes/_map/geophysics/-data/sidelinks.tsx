@@ -1,4 +1,4 @@
-import { House, Info as InfoIcon, Layers as LayersIcon, Settings } from 'lucide-react'
+import { House, Info as InfoIcon, Layers as LayersIcon, MessageSquare, Settings } from 'lucide-react'
 import Info from '@/components/sidebar/info'
 import GeophysicsLayers from '../-components/sidebar/geophysics-layers'
 import MapConfigurations from '@/routes/_map/wetlands/-components/sidebar/map-configurations/map-configurations'
@@ -41,4 +41,10 @@ export const sidelinks: SideLink[] = [
     icon: <Settings className='stroke-foreground' />,
     component: MapConfigurations, // Direct component reference
   },
+  {
+    title: 'Feedback',
+    label: '',
+    href: 'https://docs.google.com/forms/d/e/1FAIpQLScDCUrestiLU92klqWdYSgiXrDawMlLWFRXI5ZhLnZQM0qnfA/viewform',
+    icon: <MessageSquare className='text-ring' />,
+  }
 ];
