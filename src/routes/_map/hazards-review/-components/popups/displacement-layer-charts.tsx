@@ -3,6 +3,7 @@ import area from '@turf/area'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { LegendSwatchGrid, type LegendSwatchItem } from '@/components/maps/legend-swatch-grid'
 import { BarChart, Bar, Rectangle, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label as RechartsLabel, type BarShapeProps, type XAxisTickContentProps } from 'recharts'
 import type { LayerContentProps } from '@/components/maps/popups/types'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
@@ -241,6 +242,30 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             .sort((a, b) => a.year.localeCompare(b.year))
     }, [scoped, threshold, plotBins])
 
+    // Bin names that actually contribute a non-zero segment somewhere in the
+    // currently plotted years — drives the under-chart legend so reviewers
+    // only see swatches for ranges present in view, not every possible SLD
+    // class.
+    const presentBinNames = useMemo(() => {
+        const names = new Set<string>()
+        for (const row of stackedAreaByYear) {
+            for (const [key, value] of Object.entries(row)) {
+                if (key === 'year') continue
+                if (typeof value === 'number' && value !== 0) names.add(key)
+            }
+        }
+        return names
+    }, [stackedAreaByYear])
+
+    const visibleUpliftBins = useMemo(
+        () => upliftBins.filter(b => presentBinNames.has(b.name)),
+        [upliftBins, presentBinNames]
+    )
+    const visibleSubsidenceBins = useMemo(
+        () => subsidenceBins.filter(b => presentBinNames.has(b.name)),
+        [subsidenceBins, presentBinNames]
+    )
+
     // Worst-basin list considers ALL basins (skips the basin filter) so the
     // ranking stays complete; non-selected rows render greyed out when a
     // basin filter is active. Still honors year + threshold + type scope.
@@ -412,7 +437,10 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                     )}
                 </div>
                 <p className="text-xs text-muted-foreground mb-1">Bars above zero = uplift, below zero = subsidence. Stacked by displacement range (in); colors match the map. Click a year column to filter to that year — the shaded column is the active {yearAxisLabel.toLowerCase()}.</p>
-                <div className="w-full" style={{ height: CHART_HEIGHT_PX }}>
+                <div
+                    className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus-visible]:outline [&_.recharts-surface:focus-visible]:outline-2 [&_.recharts-surface:focus-visible]:outline-offset-2 [&_.recharts-surface:focus-visible]:outline-ring"
+                    style={{ height: CHART_HEIGHT_PX }}
+                >
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
                         // Fixed numeric height so recharts' ResponsiveContainer never
                         // renders at calculatedHeight <= 0 — that path logs a width/height
@@ -464,8 +492,14 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                         </ResponsiveContainer>
                     )}
                 </div>
+                {(visibleUpliftBins.length > 0 || visibleSubsidenceBins.length > 0) && (
+                    <div className="mt-2 grid grid-cols-2 gap-x-3 px-2">
+                        <ChartLegendGroup label="Uplift" bins={visibleUpliftBins} />
+                        <ChartLegendGroup label="Subsidence" bins={visibleSubsidenceBins} />
+                    </div>
+                )}
                 <p className="mt-2 px-2 text-xs italic text-muted-foreground">
-                    Units: {getUnitsLabelForType(typeValue)}. Swatch colors are defined in the layer's Legend.
+                    Units: {getUnitsLabelForType(typeValue)}.
                 </p>
             </div>
 
@@ -639,6 +673,22 @@ function StackedBarTooltip({ active, payload, label }: { active?: boolean; paylo
                     </div>
                 ))}
             </div>
+        </div>
+    )
+}
+
+// Under-chart legend group (Uplift / Subsidence column). Only ever receives
+// bins that actually contributed a segment to the currently plotted years
+// (see `presentBinNames` above) — a full static legend of every SLD class
+// regardless of what's on screen duplicates the layer's separate Legend tab
+// for no benefit; this one only shows what a reviewer can actually see.
+function ChartLegendGroup({ label, bins }: { label: string; bins: SldBin[] }) {
+    if (bins.length === 0) return null
+    const items: LegendSwatchItem[] = bins.map(b => ({ key: b.name, label: b.title, color: b.color }))
+    return (
+        <div className="flex flex-col gap-1 min-w-0">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+            <LegendSwatchGrid items={items} columns="single" />
         </div>
     )
 }
