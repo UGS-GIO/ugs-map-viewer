@@ -103,7 +103,7 @@ function DatasetGroup({ heading, datasets }: { heading?: string; datasets: Downl
     return (
         <div className="space-y-1">
             {heading && <h5 className="text-xs font-semibold text-muted-foreground">{heading}</h5>}
-            <ul className="grid grid-cols-[1fr_auto] items-start gap-x-2 gap-y-1">
+            <ul className="grid grid-cols-[1fr_auto] items-start gap-x-2 gap-y-3">
                 {datasets.map(dataset => (
                     <li key={dataset.title} className="contents">
                         <span className="min-w-0 break-words leading-tight">
