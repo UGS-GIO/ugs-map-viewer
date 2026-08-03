@@ -72,7 +72,7 @@ export function DatasetDownloads() {
         staleTime: 30 * 60 * 1000,
     });
 
-    const { available } = useMemo(() => {
+    const { available, unavailable } = useMemo(() => {
         const resolved = all.map(d => ({
             ...d,
             parquetUrl: d.parquetUrl ? warehouseByStem?.[stemOf(d.parquetUrl)] ?? d.parquetUrl : null,
@@ -93,6 +93,7 @@ export function DatasetDownloads() {
                 <h4 className="text-sm font-semibold">Download Datasets</h4>
             </div>
             <DatasetGroup datasets={available} />
+            <DatasetGroup datasets={unavailable} />
         </div>
     );
 }
