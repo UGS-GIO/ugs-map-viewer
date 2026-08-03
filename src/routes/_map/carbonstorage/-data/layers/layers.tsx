@@ -1,6 +1,6 @@
 import { Link } from "@/components/ui/link";
 import { MAPS_ASSETS_CDN_URL, parquetUrl, ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
-import { ArcGISMapServerLayerProps, LayerProps, WFSLayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps, WFSLayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
 
@@ -830,21 +830,26 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
     ],
 };
 
-const geothermalPowerplantsLayerName = 'enmin_powerplants_current';
-const geothermalPowerplantsWMSTitle = 'Power Plants';
-const geothermalPowerplantsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: geothermalPowerplantsWMSTitle,
+// STAC-driven: pmtilesUrl, sourceLayer, renders (colour by `primsource`, radius by `total_mw`)
+// and parquet come from the warehouse item `enmin_powerplants`. Symbology lives in ugs-styles.
+const powerplantsLayerName = 'enmin_powerplants';
+export const powerplantsTitle = 'Power Plants';
+const powerplantsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: powerplantsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: powerplantsLayerName,
+    title: powerplantsTitle,
     visible: false,
-    crs: 'EPSG:26912',
+    opacity: 1,
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalPowerplantsLayerName}`,
+            name: powerplantsLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
                 'Name': { field: 'plant_name', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
+                'Primary Source': { field: 'primsource', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
                 'Capacity (MW)': { field: 'total_mw', type: 'number' },
                 'Operator': { field: 'utility_na', type: 'string' },
                 'City': { field: 'city', type: 'string' },
@@ -1347,7 +1352,7 @@ const infrastructureAndLandUseConfig: LayerProps = {
     title: 'Infrastructure and Land Use',
     visible: false,
     layers: [
-        geothermalPowerplantsWMSConfig,
+        powerplantsConfig,
         pipelinesWMSConfig,
         riversWMSConfig,
         roadsWMSConfig,

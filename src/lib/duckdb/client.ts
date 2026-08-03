@@ -166,3 +166,46 @@ export const queryParquetDistinctValues = async (
             .map(String);
     });
 };
+
+/** Value → row count for one column. `splitCommaDelimited` counts each comma-separated token. */
+export const queryParquetFieldOptions = async (
+    { url, field, predicates = [], splitCommaDelimited = false }:
+        { url: string; field: string; predicates?: string[]; splitCommaDelimited?: boolean },
+): Promise<{ options: string[]; counts: Record<string, number> }> => {
+    const col = quoteIdent(field);
+    const where = [`${col} IS NOT NULL`, `CAST(${col} AS VARCHAR) <> ''`, ...predicates].join(' AND ');
+    const value = splitCommaDelimited
+        ? `TRIM(UNNEST(string_split(CAST(${col} AS VARCHAR), ',')))`
+        : `TRIM(CAST(${col} AS VARCHAR))`;
+
+    return withConnection(async (conn) => {
+        const result = await conn.query(`
+            SELECT v, COUNT(*) AS n FROM (
+                SELECT ${value} AS v FROM read_parquet('${escapeSql(url)}') WHERE ${where}
+            ) WHERE v <> '' GROUP BY v ORDER BY n DESC, v ASC
+        `);
+        const options: string[] = [];
+        const counts: Record<string, number> = {};
+        for (const row of result.toArray()) {
+            const { v, n } = row.toJSON() as { v: unknown; n: unknown };
+            if (v == null) continue;
+            options.push(String(v));
+            counts[String(v)] = Number(n);
+        }
+        return { options, counts };
+    });
+};
+
+/** Global min/max of a numeric column, for a range slider's rails. */
+export const queryParquetFieldExtent = async (
+    { url, field }: { url: string; field: string },
+): Promise<{ min: number; max: number }> => {
+    const col = quoteIdent(field);
+    return withConnection(async (conn) => {
+        const result = await conn.query(
+            `SELECT MIN(${col}) AS lo, MAX(${col}) AS hi FROM read_parquet('${escapeSql(url)}') WHERE ${col} IS NOT NULL`,
+        );
+        const { lo, hi } = (result.toArray()[0]?.toJSON() ?? {}) as { lo: unknown; hi: unknown };
+        return { min: Number(lo ?? 0), max: Number(hi ?? 0) };
+    });
+};
