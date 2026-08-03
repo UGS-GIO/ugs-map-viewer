@@ -72,7 +72,7 @@ export function DatasetDownloads() {
         staleTime: 30 * 60 * 1000,
     });
 
-    const { available, unavailable } = useMemo(() => {
+    const { available } = useMemo(() => {
         const resolved = all.map(d => ({
             ...d,
             parquetUrl: d.parquetUrl ? warehouseByStem?.[stemOf(d.parquetUrl)] ?? d.parquetUrl : null,
