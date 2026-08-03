@@ -12,20 +12,15 @@ import { isPMTilesLayer, isWMSLayer } from '@/lib/map/layer-utils';
 import { fetchStacItem, fetchStacItemIndex } from '@/lib/map/stac/stac-layer';
 import type { LayerProps, RelatedTable } from '@/lib/types/mapping-types';
 
-/** Data Sources panel downloads: every layer carrying a `downloadParquetUrl`. */
-
 interface DownloadableDataset {
     title: string;
-    /** null when the layer publishes no parquet — listed, but with nothing to download. */
     parquetUrl: string | null;
     relatedTables: RelatedTable[];
-    /** Agency/organization that sources the data, shown as a subtitle. */
     sourceAgency?: string;
-    /** Hard-coded external link (e.g. UGRC open-data page, UGS publication) shown when there's no parquet. */
     sourceUrl?: string;
 }
 
-/** `/parquet/hazards_qfaults/hazards_qfaults.parquet` → `hazards_qfaults`, to match against STAC ids. */
+// e.g. `/parquet/hazards_qfaults/hazards_qfaults.parquet` → `hazards_qfaults`
 const stemOf = (url: string) => new URL(url, MAPS_ASSETS_CDN_URL).pathname.split('/').pop()?.replace(/\.parquet$/, '') ?? '';
 
 const relatedTablesOf = (layer: LayerProps): RelatedTable[] =>
@@ -33,7 +28,6 @@ const relatedTablesOf = (layer: LayerProps): RelatedTable[] =>
         ? layer.sublayers?.flatMap(sub => sub.relatedTables ?? []) ?? []
         : [];
 
-// Our own services only — external ones (e.g. SITLA land ownership) aren't ours to serve.
 const collectDatasets = (layers: LayerProps[]): DownloadableDataset[] =>
     layers.flatMap(layer => {
         if ('layers' in layer && Array.isArray(layer.layers)) return collectDatasets(layer.layers);
@@ -49,7 +43,6 @@ const collectDatasets = (layers: LayerProps[]): DownloadableDataset[] =>
 
 export function DatasetDownloads() {
     const currentPage = useGetCurrentPage();
-    // Same query key as the sidebar layer list — cache hit, not a second load.
     const { layerConfigs, isLoading } = useGetLayerConfigs('layers');
 
     const all = useMemo(() => {
@@ -62,8 +55,7 @@ export function DatasetDownloads() {
         [all],
     );
 
-    // A hand-authored CDN parquet whose stem is in the catalog gets upgraded to the
-    // warehouse copy, so datasets migrate without editing every layer config.
+    // Upgrades a hand-authored CDN parquet to its warehouse copy by stem match.
     const { data: warehouseByStem } = useQuery({
         queryKey: ['dataset-downloads-warehouse-parquet', stems],
         queryFn: async () => {
@@ -80,8 +72,6 @@ export function DatasetDownloads() {
         staleTime: 30 * 60 * 1000,
     });
 
-    // Warehouse vs. non-warehouse origin is internal bookkeeping only — users just
-    // need to know whether a download exists, not where it's hosted.
     const { available, unavailable } = useMemo(() => {
         const resolved = all.map(d => ({
             ...d,
@@ -121,8 +111,6 @@ function DatasetGroup({ heading, datasets }: { heading?: string; datasets: Downl
     return (
         <div className="space-y-1">
             {heading && <h5 className="text-xs font-semibold text-muted-foreground">{heading}</h5>}
-            {/* Grid keeps buttons in one column when titles wrap. items-start so the button
-                aligns with the title line, not the vertical center of title+agency. */}
             <ul className="grid grid-cols-[1fr_auto] items-start gap-x-2 gap-y-1">
                 {datasets.map(dataset => (
                     <li key={dataset.title} className="contents">

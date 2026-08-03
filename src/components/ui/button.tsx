@@ -61,9 +61,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    // Slot (asChild) clones its single child and requires exactly one React element —
-    // it can't take the loading/leftSection/rightSection decoration slots below, which
-    // render as separate array entries even when falsy. Pass `children` straight through.
+    // Slot requires exactly one child — skip the loading/section decoration below.
     if (asChild) {
       return (
         <Slot
