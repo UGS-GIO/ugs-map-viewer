@@ -72,15 +72,15 @@ export function DatasetDownloads() {
         staleTime: 30 * 60 * 1000,
     });
 
-    const { available, unavailable } = useMemo(() => {
+    // Downloadable first, then an external link, then nothing — alphabetical within each tier.
+    const tierOf = (d: DownloadableDataset) => d.parquetUrl ? 0 : d.sourceUrl ? 1 : 2;
+
+    const sorted = useMemo(() => {
         const resolved = all.map(d => ({
             ...d,
             parquetUrl: d.parquetUrl ? warehouseByStem?.[stemOf(d.parquetUrl)] ?? d.parquetUrl : null,
         }));
-        return {
-            available: resolved.filter(d => d.parquetUrl),
-            unavailable: resolved.filter(d => !d.parquetUrl),
-        };
+        return resolved.sort((a, b) => tierOf(a) - tierOf(b) || a.title.localeCompare(b.title));
     }, [all, warehouseByStem]);
 
     if (EXPORT_DISABLED_PAGES.includes(currentPage)) return null;
@@ -92,19 +92,8 @@ export function DatasetDownloads() {
             <div>
                 <h4 className="text-sm font-semibold">Download Datasets</h4>
             </div>
-            <DatasetGroup datasets={available} />
-            <DatasetGroup datasets={unavailable} />
-        </div>
-    );
-}
-
-function DatasetGroup({ heading, datasets }: { heading?: string; datasets: DownloadableDataset[] }) {
-    if (datasets.length === 0) return null;
-    return (
-        <div className="space-y-1">
-            {heading && <h5 className="text-xs font-semibold text-muted-foreground">{heading}</h5>}
             <ul className="grid grid-cols-[1fr_auto] items-start gap-x-2 gap-y-3">
-                {datasets.map(dataset => (
+                {sorted.map(dataset => (
                     <li key={dataset.title} className="contents">
                         <span className="min-w-0 break-words leading-tight">
                             <span className="block text-sm">{dataset.title}</span>
