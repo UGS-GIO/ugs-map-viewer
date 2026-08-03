@@ -29,7 +29,10 @@ interface ParquetDownloadMenuProps {
 }
 
 export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parquetUrl, layerTitle, relatedTables, compact = false }) => {
-    const { data: schema, isLoading: schemaLoading, isError: schemaError } = useParquetSchema(parquetUrl);
+    // Schema probe (a small range request) waits for the menu to actually open, so
+    // rendering a list of these doesn't fire a network request per row up front.
+    const [open, setOpen] = useState(false);
+    const { data: schema, isLoading: schemaLoading, isError: schemaError } = useParquetSchema(open ? parquetUrl : undefined);
     const [includeRelated, setIncludeRelated] = useState(true);
     const hasRelatedTables = (relatedTables?.length ?? 0) > 0;
 
@@ -73,7 +76,7 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
     const formats = availableFormats(schema?.hasGeometry ?? false);
 
     return (
-        <DropdownMenu>
+        <DropdownMenu open={open} onOpenChange={setOpen}>
             <DropdownMenuTrigger asChild>
                 <Button
                     variant="ghost"
