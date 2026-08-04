@@ -270,7 +270,7 @@ function PopupTable({ headers, rows }: { headers?: ReactNode[]; rows: ReactNode[
 
 // --- Main Component ---
 const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, relatedLoading }: PopupContentDisplayProps) => {
-    const { relatedTables, relatedTablesPosition, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource, renders } = layer;
+    const { relatedTables, relatedTablesPosition, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
 
     // Convert bulk data to the format expected by getRelatedTableValues
     const data = useMemo((): ProcessedRelatedData[][] => {
@@ -287,7 +287,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
             const fetchedRows = dataMap.get(String(targetValue)) || [];
             // Optional full-array aggregation (e.g. collapsing raw rows into summarized
             // intervals) before displayFields/labelValuePairs are computed per row.
-            const rows = table.rowsTransform ? table.rowsTransform(fetchedRows, renders) : fetchedRows;
+            const rows = table.rowsTransform ? table.rowsTransform(fetchedRows) : fetchedRows;
 
             // Format like the original hook does - add labelValuePairs
             return rows.map(row => {
@@ -307,7 +307,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
                 return row;
             });
         });
-    }, [bulkRelatedData, relatedTables, feature?.properties, renders]);
+    }, [bulkRelatedData, relatedTables, feature?.properties]);
 
     // Hooks must run before any early return — keep these above the raster/no-feature guards.
     const properties = useMemo(() => feature?.properties || {}, [feature]);

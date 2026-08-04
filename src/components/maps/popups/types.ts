@@ -11,7 +11,6 @@ import type {
     ColorCodingMode,
     ImageFieldConfig,
     PopupFieldsTableConfig,
-    PMTilesRender,
 } from '@/lib/types/mapping-types'
 
 /**
@@ -33,8 +32,6 @@ export interface LayerContentProps {
     popupFieldsTable?: PopupFieldsTableConfig[]
     relatedTables?: RelatedTable[]
     relatedTablesPosition?: 'above' | 'below'
-    /** STAC by-* render legends (symbology) off the owning layer, when it's STAC-backed pmtiles. */
-    renders?: PMTilesRender[]
     linkFields?: LinkFields
     imageFields?: ImageFieldConfig[]
     colorCodingMap?: ColorCodingRecordFunction
