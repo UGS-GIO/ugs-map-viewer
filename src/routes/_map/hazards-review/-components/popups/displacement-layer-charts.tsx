@@ -454,7 +454,9 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                 </div>
                 <p className="text-xs text-muted-foreground mb-1">Bars above zero = uplift, below zero = subsidence. Stacked by displacement range (in); colors match the map. Hover a column to read its per-range areas in the legend below; click to filter to that year — the shaded column is the active {yearAxisLabel.toLowerCase()}.</p>
                 <div
-                    className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus-visible]:outline [&_.recharts-surface:focus-visible]:outline-2 [&_.recharts-surface:focus-visible]:outline-offset-2 [&_.recharts-surface:focus-visible]:outline-ring"
+                    // Recharts focuses the SVG on click, which Chrome counts as
+                    // focus-visible — any ring here fires on every mouse click.
+                    className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none"
                     style={{ height: CHART_HEIGHT_PX }}
                 >
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
@@ -668,24 +670,12 @@ const StackedYearChart = memo(function StackedYearChart({ data, bins, year, type
 
     // Full-height tint band behind the active year's column(s). Opacity alone
     // can't mark a selection whose segments are a pixel tall (calm years, high
-    // threshold) — there's nothing to dim. Bar `background` rects are already
-    // sized to the category band and render beneath the bars.
+    // threshold) — there's nothing to dim. Fill only: a stroke reads as a box
+    // drawn around every bar once a Cumulative range spans several columns.
     const renderYearBand = (props: BarShapeProps) => {
         const { x, y, width, height } = props
         if (!year || !isHighlightedYear(props.payload?.year as string | undefined)) return <g />
-        return (
-            <Rectangle
-                x={x}
-                y={y}
-                width={width}
-                height={height}
-                fill="currentColor"
-                fillOpacity={0.1}
-                stroke="currentColor"
-                strokeOpacity={0.3}
-                strokeWidth={1}
-            />
-        )
+        return <Rectangle x={x} y={y} width={width} height={height} fill="currentColor" fillOpacity={0.1} />
     }
 
     // Bold + full-contrast tick for the selected year, muted for the rest — a
