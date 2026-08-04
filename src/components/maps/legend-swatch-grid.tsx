@@ -6,6 +6,10 @@ export interface LegendSwatchItem {
     color: string
     stroke?: string
     count?: number
+    /** Right-aligned readout, e.g. "12.3 mi²". Unlike `count`, gets its own column. */
+    value?: string
+    /** Second readout column, for comparing two measures of the same row. */
+    secondaryValue?: string
 }
 
 interface LegendSwatchGridProps {
@@ -65,12 +69,21 @@ export function LegendSwatchGrid({ items, isChecked, onToggle, columns = 'auto',
                         {item.count != null && <span className="ml-1 text-muted-foreground">({item.count.toLocaleString()})</span>}
                     </span>
                 )
+                // Fixed min-width aligns numbers into columns across rows.
+                const value = item.value != null && (
+                    <span className="ml-auto shrink-0 pl-1 min-w-[4.25rem] text-right tabular-nums leading-tight text-muted-foreground">{item.value}</span>
+                )
+                const secondaryValue = item.secondaryValue != null && (
+                    <span className="shrink-0 pl-2 min-w-[4.25rem] text-right tabular-nums leading-tight text-muted-foreground">{item.secondaryValue}</span>
+                )
 
                 if (!interactive) {
                     return (
                         <div key={item.key} className="flex min-w-0 items-start gap-1.5 pr-1 text-xs">
                             {swatch}
                             {label}
+                            {value}
+                            {secondaryValue}
                         </div>
                     )
                 }
@@ -85,6 +98,8 @@ export function LegendSwatchGrid({ items, isChecked, onToggle, columns = 'auto',
                         />
                         {swatch}
                         {label}
+                        {value}
+                        {secondaryValue}
                     </label>
                 )
             })}
