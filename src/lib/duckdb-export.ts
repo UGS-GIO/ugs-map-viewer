@@ -79,25 +79,16 @@ interface GeoJSONBuild {
     floatCols: string[];
 }
 
-// Builds the FeatureCollection in JS: duckdb-wasm's GDAL GeoJSON writer crashes
-// ("Cannot write feature"), so we read geometry back as GeoJSON text plus property
-// columns and assemble it here. Reprojects to 4326 for RFC 7946 — source is hardcoded
-// EPSG:3857 (our current pipeline output); once parquets publish as 4326 this transform
-// must go, else it double-projects. always_xy keeps lon/lat ordering; Force2D drops the
-// spurious Z=0 the source carries on otherwise-2D geometry.
-//
-// Also the input to every gdal3.js conversion, which is why it reports column types:
-// GDAL's GeoJSON reader infers Integer for a float column whose values happen to be
-// whole, silently downcasting depth/elevation fields.
+// Assembled in JS because duckdb-wasm's GDAL GeoJSON writer crashes. Output is 4326
+// per RFC 7946, and is also the input to every gdal3.js conversion — hence the column
+// types, which stop GDAL downcasting whole-valued floats to Integer.
 const buildGeoJSON = (opts: ExportOptions): Promise<GeoJSONBuild> => withConnection(async (conn) => {
     if (!opts.geometryColumn) {
         throw new Error('This format requires a geometry column');
     }
     await loadSpatial(conn);
-    // Warehouse GeoParquet carries CRS metadata that spatial's GeoParquet reader chokes
-    // on ("stoi: no conversion"), which otherwise fails the read outright. Disabling the
-    // conversion hands us the raw WKB blob instead — and unlike reading before LOAD
-    // spatial, it works no matter what already loaded the extension.
+    // Warehouse CRS metadata makes spatial's GeoParquet reader throw "stoi: no conversion".
+    // Disabling it yields raw WKB, and works whatever already loaded the extension.
     await conn.query(`SET enable_geoparquet_conversion = false`);
 
     const escaped = escapeSql(opts.parquetUrl);
@@ -120,17 +111,15 @@ const buildGeoJSON = (opts: ExportOptions): Promise<GeoJSONBuild> => withConnect
     }
     const geom = geomIsBlob ? `ST_GeomFromWKB(${geomCol})` : geomCol;
 
-    // Source CRS varies: legacy CDN parquets are EPSG:3857 (metres), warehouse ones are
-    // OGC:CRS84 (degrees). Sniff rather than hardcode — transforming an already-4326
-    // source double-projects it into the ocean. Longitude never exceeds 180, Web
-    // Mercator easting is ~1e7, so the magnitude separates them unambiguously.
+    // CDN parquets are 3857, warehouse ones already 4326 — transforming the latter
+    // double-projects. Longitude caps at 180; Mercator easting is ~1e7, so magnitude tells.
     const probe = await conn.query(`
         SELECT max(abs(ST_X(ST_Centroid(${geom})))) AS max_x
         FROM (SELECT ${geomCol} FROM read_parquet('${escaped}') WHERE ${geomCol} IS NOT NULL LIMIT 100)
     `);
     const maxX = Number((probe.toArray()[0]?.toJSON() as Record<string, unknown>)?.max_x ?? 0);
     const needsTransform = maxX > 180;
-    // always_xy keeps lon/lat ordering; Force2D drops the spurious Z=0 some sources carry.
+    // always_xy keeps lon/lat order; Force2D drops the spurious Z=0 some sources carry.
     const geom4326 = needsTransform
         ? `ST_Force2D(ST_Transform(${geom}, 'EPSG:3857', 'EPSG:4326', true))`
         : `ST_Force2D(${geom})`;
@@ -152,9 +141,8 @@ const buildGeoJSON = (opts: ExportOptions): Promise<GeoJSONBuild> => withConnect
     return { geojson: `{"type":"FeatureCollection","features":[${features.join(',')}]}`, cols, floatCols };
 });
 
-// gpkg / shp / gdb / fgb all take the same route: DuckDB builds the GeoJSON, gdal3.js
-// writes the real format. The ~40MB GDAL payload is imported here so it only downloads
-// when one of these is picked, and is memoized after the first use.
+// DuckDB builds the GeoJSON, gdal3.js writes the real format. Imported here so its
+// ~40MB only downloads when one of these formats is picked.
 const gdalHandler = (format: ExportFormat): Handler => async (opts) => {
     opts.onProgress?.({ stage: 'converting', message: 'Reading features…' });
     const { geojson, cols, floatCols } = await buildGeoJSON(opts);

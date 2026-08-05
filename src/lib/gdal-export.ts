@@ -1,9 +1,7 @@
 /**
- * Real GDAL/OGR in the browser (gdal3.js). DuckDB-WASM's GDAL output drivers are
- * broken — see duckdb-spatial#363 / duckdb-wasm#1840, open since 2024 — but gdal3.js
- * bundles a full GDAL build whose OGR drivers write correctly, including OpenFileGDB
- * (Esri File Geodatabase, write support since GDAL 3.6). We feed it a GeoJSON produced
- * by DuckDB and convert to GPKG / SHP / GDB / FlatGeobuf.
+ * GDAL/OGR in the browser. DuckDB-WASM's GDAL writers are broken (duckdb-spatial#363,
+ * open since 2024); gdal3.js is a full GDAL whose drivers work, including OpenFileGDB.
+ * Takes DuckDB-built GeoJSON → GPKG / SHP / GDB / FlatGeobuf.
  *
  * Ported from ugs-warehouse `viewer/src/gdal.ts`; keep the two in sync.
  */
@@ -13,11 +11,9 @@ import dataUrl from 'gdal3.js/dist/package/gdal3WebAssembly.data?url'
 import wasmUrl from 'gdal3.js/dist/package/gdal3WebAssembly.wasm?url'
 
 export interface GdalTarget {
-    /** OGR driver name */
     driver: string
-    /** File extension (no dot) */
     ext: string
-    /** Emits several files (shp sidecars, the .gdb directory) which we zip */
+    /** Emits several files (shp sidecars, the .gdb directory) which we zip. */
     multi: boolean
 }
 
@@ -31,7 +27,7 @@ export const GDAL_TARGETS: Record<string, GdalTarget> = {
 type Gdal = Awaited<ReturnType<typeof initGdalJs>>
 let gdalPromise: Promise<Gdal> | null = null
 
-// Memoized: the ~40MB wasm + data payload loads once per page, not per download.
+// Memoized: the ~40MB payload loads once per page, not per download.
 function getGdal(): Promise<Gdal> {
     if (!gdalPromise) {
         gdalPromise = initGdalJs({
@@ -53,11 +49,8 @@ export interface GdalConversion {
 }
 
 /**
- * Convert a GeoJSON string (WGS84) to `target`, reprojecting to `epsg` (default 4326).
- *
- * `cols` (all attribute columns) + `floatCols` (the DOUBLE/REAL ones) force real typing:
- * GDAL's GeoJSON reader otherwise infers Integer for a float column whose values happen
- * to be whole, silently downcasting depth/elevation fields. An OGR-SQL CAST fixes it.
+ * GeoJSON (WGS84) → `target`, reprojected to `epsg`. `floatCols` get an OGR-SQL CAST:
+ * GDAL otherwise reads a whole-valued float column as Integer, downcasting depths.
  */
 export async function convertGeoJSON(
     geojson: string,
@@ -71,30 +64,28 @@ export async function convertGeoJSON(
     const input = new File([geojson], 'in.geojson', { type: 'application/geo+json' })
     const { datasets } = await gdal.open(input)
     const ds = datasets[0]
-    // Shapefile: pass the bare stem (the driver appends .shp/.dbf/… — giving `stem.shp`
-    // would double to `stem.shp.shp`). Other drivers want the full filename.
+    // Shapefile takes the bare stem — the driver appends .shp/.dbf/…
     const outName = target.ext === 'shp' ? stem : `${stem}.${target.ext}`
-    // -nln names the output layer after the dataset (else it inherits "in" from in.geojson).
+    // -nln names the layer after the dataset, else it inherits "in" from in.geojson.
     const args = ['-f', target.driver, '-t_srs', `EPSG:${epsg}`, '-nln', stem]
     if (floatCols.length && cols.length) {
         const fset = new Set(floatCols)
         const q = (c: string) => `"${c.replace(/"/g, '""')}"`
-        // Geometry passes through OGR SQL implicitly; CAST only the whole-valued float columns.
+        // Geometry passes through OGR SQL implicitly.
         const sel = cols.map(c => (fset.has(c) ? `CAST(${q(c)} AS float(24,10)) AS ${q(c)}` : q(c))).join(', ')
         args.push('-sql', `SELECT ${sel} FROM "in"`)
     }
     const result = await gdal.ogr2ogr(ds, args, outName)
 
-    // try/finally so the single-file early return still closes the dataset (else gpkg/fgb
-    // exports leak the handle + MEMFS buffers into the GDAL runtime heap).
+    // try/finally so the early return still closes the dataset — otherwise gpkg/fgb
+    // exports leak the handle + MEMFS buffers into the GDAL heap.
     try {
         if (!target.multi) {
             const bytes = await gdal.getFileBytes(result)
             return { bytes, filename: `${stem}.${target.ext}`, mime: 'application/octet-stream' }
         }
 
-        // Multi-file: collect the format's output files and zip. For a .gdb directory keep
-        // the files nested under `<stem>.gdb/`; shapefile sidecars sit at the zip root.
+        // .gdb files stay nested under `<stem>.gdb/`; shapefile sidecars sit at the zip root.
         const outputs = await gdal.getOutputFiles()
         const entries: Record<string, Uint8Array> = {}
         for (const f of outputs) {
@@ -112,11 +103,8 @@ export async function convertGeoJSON(
 }
 
 /**
- * Deterministic shapefile field-name limits (pure — no data read). Names > 10 chars get
- * truncated by the driver; two that collapse to the same 10-char name collide, losing a
- * column silently; > 255 fields is a hard cap.
- *
- * Ported from ugs-warehouse `viewer/src/download.ts`.
+ * Shapefile field-name limits: names > 10 chars are truncated, two that collapse to the
+ * same 10 chars silently lose a column, and 255 fields is a hard cap.
  */
 export function shapefileFieldChecks(cols: string[]): {
     longNames: string[]
