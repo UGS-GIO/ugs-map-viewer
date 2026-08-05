@@ -9,7 +9,7 @@ import { useGetLayerConfigs } from '@/hooks/use-get-layer-configs';
 import { useGetCurrentPage } from '@/hooks/use-get-current-page';
 import { EXPORT_DISABLED_PAGES, MAPS_ASSETS_CDN_URL } from '@/lib/constants';
 import { isPMTilesLayer, isWMSLayer } from '@/lib/map/layer-utils';
-import { fetchStacItem, fetchStacItemIndex } from '@/lib/map/stac/stac-layer';
+import { fetchStacItemIndex } from '@/lib/map/stac/stac-layer';
 import type { LayerProps, RelatedTable } from '@/lib/types/mapping-types';
 
 interface DownloadableDataset {
@@ -60,13 +60,10 @@ export function DatasetDownloads() {
         queryKey: ['dataset-downloads-warehouse-parquet', stems],
         queryFn: async () => {
             const index = await fetchStacItemIndex();
-            const entries = await Promise.all(
-                stems.filter(s => index[s]).map(async s => {
-                    const item = await fetchStacItem(index[s]);
-                    return [s, item.assets?.data?.href] as const;
-                }),
-            );
-            return Object.fromEntries(entries.filter(([, href]) => href)) as Record<string, string>;
+            const entries = stems
+                .map(s => [s, index[s]?.assets?.data?.href] as const)
+                .filter((entry): entry is [string, string] => !!entry[1]);
+            return Object.fromEntries(entries);
         },
         enabled: stems.length > 0,
         staleTime: 30 * 60 * 1000,

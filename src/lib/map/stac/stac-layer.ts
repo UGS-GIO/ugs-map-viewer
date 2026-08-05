@@ -24,10 +24,11 @@ import type {
 } from '@/lib/types/mapping-types';
 import { toTitleCase } from '@/lib/utils';
 
-// Serving-topics collection — the vector layers the viewer can render. Items
-// live at `./<id>/<id>.json` relative to this URL.
-export const STAC_SERVING_TOPICS_COLLECTION =
-    'https://maps-assets.geology.utah.gov/warehouse/stac/ugs-serving-topics/collection.json';
+// Rollup of every serving-topics item, full body included (one fetch, no N+1).
+// `collection.json`'s item links are stale — they don't account for items now
+// nesting under `<schema>/<id>/<id>.json` — so use this instead.
+export const STAC_SERVING_TOPICS_ITEMS_URL =
+    'https://maps-assets.geology.utah.gov/warehouse/stac/ugs-serving-topics/items.json';
 
 /** One entry of a STAC item's `renders` extension (warehouse-attached). */
 export interface StacRenderEntry {
@@ -218,32 +219,20 @@ export function renderSelectOptions(layer: PMTilesLayerProps): Array<{ id: strin
 
 // ─── Catalog fetch + tree resolution ───────────────────────────────────────
 
-interface StacCollection {
-    links?: Array<{ rel: string; href: string; title?: string }>;
+interface StacItemsIndexDoc {
+    items?: StacItem[];
 }
 
-/**
- * Fetch the serving-topics collection and build `itemId → absolute item URL`
- * from its `item` links (relative hrefs resolved against the collection URL).
- */
-export async function fetchStacItemIndex(): Promise<Record<string, string>> {
-    const res = await fetch(STAC_SERVING_TOPICS_COLLECTION);
-    if (!res.ok) throw new Error(`STAC collection fetch failed: ${res.status}`);
-    const collection: StacCollection = await res.json();
-    const index: Record<string, string> = {};
-    for (const link of collection.links ?? []) {
-        if (link.rel !== 'item' || !link.href) continue;
-        const href = new URL(link.href, STAC_SERVING_TOPICS_COLLECTION).toString();
-        const id = href.split('/').pop()?.replace(/\.json$/, '');
-        if (id) index[id] = href;
+/** Fetch the serving-topics rollup, indexed by item id. */
+export async function fetchStacItemIndex(): Promise<Record<string, StacItem>> {
+    const res = await fetch(STAC_SERVING_TOPICS_ITEMS_URL);
+    if (!res.ok) throw new Error(`STAC items index fetch failed: ${res.status}`);
+    const doc: StacItemsIndexDoc = await res.json();
+    const index: Record<string, StacItem> = {};
+    for (const item of doc.items ?? []) {
+        if (item.id) index[item.id] = item;
     }
     return index;
-}
-
-export async function fetchStacItem(href: string): Promise<StacItem> {
-    const res = await fetch(href);
-    if (!res.ok) throw new Error(`STAC item fetch failed: ${res.status}`);
-    return res.json();
 }
 
 /**
@@ -253,10 +242,7 @@ export async function fetchStacItem(href: string): Promise<StacItem> {
  */
 export async function fetchStacAssetHref(stacItemId: string, assetKey: string): Promise<string | undefined> {
     const index = await fetchStacItemIndex();
-    const href = index[stacItemId];
-    if (!href) return undefined;
-    const item = await fetchStacItem(href);
-    return item.assets?.[assetKey]?.href;
+    return index[stacItemId]?.assets?.[assetKey]?.href;
 }
 
 /** Collect every `stacItemId` referenced in a (possibly nested) layer tree. */
@@ -306,15 +292,14 @@ export async function resolveStacLayerTree(layers: LayerProps[]): Promise<LayerP
 
     const index = await fetchStacItemIndex();
     const items = new Map<string, StacItem>();
-    await Promise.all([...ids].map(async (id) => {
-        try {
-            const href = index[id];
-            if (!href) throw new Error(`'${id}' not in serving-topics collection`);
-            items.set(id, await fetchStacItem(href));
-        } catch (err) {
-            console.error(`[resolveStacLayerTree] failed to resolve STAC item '${id}':`, err);
+    for (const id of ids) {
+        const item = index[id];
+        if (!item) {
+            console.error(`[resolveStacLayerTree] failed to resolve STAC item '${id}': not in serving-topics index`);
+            continue;
         }
-    }));
+        items.set(id, item);
+    }
 
     const mapTree = (list: LayerProps[]): LayerProps[] => {
         const out: LayerProps[] = [];
