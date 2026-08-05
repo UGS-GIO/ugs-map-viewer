@@ -32,6 +32,8 @@ export interface ExportOptions {
     format: ExportFormat;
     /** Geometry column name if present, else null — discovered via useParquetSchema */
     geometryColumn: string | null;
+    /** Output CRS for the gdal formats (shp/gpkg/gdb/fgb). Defaults to 4326. */
+    epsg?: number;
     /** Related tables configured on the layer (formation tops, geochemistry, etc). When
      * present + non-empty, `exportParquet` bundles them alongside the main file as a zip. */
     relatedTables?: RelatedTable[];
@@ -69,6 +71,110 @@ const bufferToBlob = async (
 
 type Handler = (opts: ExportOptions) => Promise<Blob>;
 
+interface GeoJSONBuild {
+    geojson: string;
+    /** Non-geometry column names, in parquet order. */
+    cols: string[];
+    /** The subset of `cols` typed DOUBLE/FLOAT/REAL/DECIMAL in the source. */
+    floatCols: string[];
+}
+
+// Builds the FeatureCollection in JS: duckdb-wasm's GDAL GeoJSON writer crashes
+// ("Cannot write feature"), so we read geometry back as GeoJSON text plus property
+// columns and assemble it here. Reprojects to 4326 for RFC 7946 — source is hardcoded
+// EPSG:3857 (our current pipeline output); once parquets publish as 4326 this transform
+// must go, else it double-projects. always_xy keeps lon/lat ordering; Force2D drops the
+// spurious Z=0 the source carries on otherwise-2D geometry.
+//
+// Also the input to every gdal3.js conversion, which is why it reports column types:
+// GDAL's GeoJSON reader infers Integer for a float column whose values happen to be
+// whole, silently downcasting depth/elevation fields.
+const buildGeoJSON = (opts: ExportOptions): Promise<GeoJSONBuild> => withConnection(async (conn) => {
+    if (!opts.geometryColumn) {
+        throw new Error('This format requires a geometry column');
+    }
+    await loadSpatial(conn);
+    // Warehouse GeoParquet carries CRS metadata that spatial's GeoParquet reader chokes
+    // on ("stoi: no conversion"), which otherwise fails the read outright. Disabling the
+    // conversion hands us the raw WKB blob instead — and unlike reading before LOAD
+    // spatial, it works no matter what already loaded the extension.
+    await conn.query(`SET enable_geoparquet_conversion = false`);
+
+    const escaped = escapeSql(opts.parquetUrl);
+    const geomCol = opts.geometryColumn;
+
+    const described = await conn.query(`DESCRIBE SELECT * FROM read_parquet('${escaped}')`);
+    const cols: string[] = [];
+    const floatCols: string[] = [];
+    let geomIsBlob = false;
+    for (const row of described.toArray()) {
+        const { column_name: name, column_type: type } = row.toJSON() as Record<string, unknown>;
+        const col = String(name);
+        const colType = String(type).toUpperCase();
+        if (col === geomCol) {
+            geomIsBlob = colType.includes('BLOB');
+            continue;
+        }
+        cols.push(col);
+        if (/DOUBLE|FLOAT|REAL|DECIMAL|NUMERIC/.test(colType)) floatCols.push(col);
+    }
+    const geom = geomIsBlob ? `ST_GeomFromWKB(${geomCol})` : geomCol;
+
+    // Source CRS varies: legacy CDN parquets are EPSG:3857 (metres), warehouse ones are
+    // OGC:CRS84 (degrees). Sniff rather than hardcode — transforming an already-4326
+    // source double-projects it into the ocean. Longitude never exceeds 180, Web
+    // Mercator easting is ~1e7, so the magnitude separates them unambiguously.
+    const probe = await conn.query(`
+        SELECT max(abs(ST_X(ST_Centroid(${geom})))) AS max_x
+        FROM (SELECT ${geomCol} FROM read_parquet('${escaped}') WHERE ${geomCol} IS NOT NULL LIMIT 100)
+    `);
+    const maxX = Number((probe.toArray()[0]?.toJSON() as Record<string, unknown>)?.max_x ?? 0);
+    const needsTransform = maxX > 180;
+    // always_xy keeps lon/lat ordering; Force2D drops the spurious Z=0 some sources carry.
+    const geom4326 = needsTransform
+        ? `ST_Force2D(ST_Transform(${geom}, 'EPSG:3857', 'EPSG:4326', true))`
+        : `ST_Force2D(${geom})`;
+
+    const result = await conn.query(`
+        SELECT
+            ST_AsGeoJSON(${geom4326}) AS __g,
+            * EXCLUDE (${geomCol})
+        FROM read_parquet('${escaped}')
+    `);
+
+    const features: string[] = [];
+    for (const row of result.toArray()) {
+        const obj = row.toJSON() as Record<string, unknown>;
+        const geomJson = obj.__g;
+        delete obj.__g;
+        features.push(`{"type":"Feature","geometry":${geomJson},"properties":${JSON.stringify(obj, jsonReplacer)}}`);
+    }
+    return { geojson: `{"type":"FeatureCollection","features":[${features.join(',')}]}`, cols, floatCols };
+});
+
+// gpkg / shp / gdb / fgb all take the same route: DuckDB builds the GeoJSON, gdal3.js
+// writes the real format. The ~40MB GDAL payload is imported here so it only downloads
+// when one of these is picked, and is memoized after the first use.
+const gdalHandler = (format: ExportFormat): Handler => async (opts) => {
+    opts.onProgress?.({ stage: 'converting', message: 'Reading features…' });
+    const { geojson, cols, floatCols } = await buildGeoJSON(opts);
+
+    opts.onProgress?.({ stage: 'converting', message: `Writing ${EXPORT_FORMATS[format].label}…` });
+    const { convertGeoJSON, GDAL_TARGETS } = await import('@/lib/gdal-export');
+    const { bytes, mime } = await convertGeoJSON(
+        geojson,
+        opts.filename,
+        GDAL_TARGETS[format],
+        opts.epsg ?? 4326,
+        cols,
+        floatCols,
+    );
+    // Copy into a fresh ArrayBuffer so Blob accepts it regardless of the underlying buffer kind.
+    const copy = new Uint8Array(bytes.byteLength);
+    copy.set(bytes);
+    return new Blob([copy], { type: mime });
+};
+
 const handlers: Record<ExportFormat, Handler> = {
     // Direct pass-through — no DuckDB needed.
     parquet: async (opts) => {
@@ -78,39 +184,11 @@ const handlers: Record<ExportFormat, Handler> = {
         return res.blob();
     },
 
-    // Build FeatureCollection in JS — duckdb-wasm's spatial GDAL GeoJSON writer
-    // crashes ("Cannot write feature"), so we read rows back as geometry-as-GeoJSON
-    // text plus property columns and assemble the FC manually. Reprojects to 4326
-    // for RFC 7946. Source is hardcoded EPSG:3857 (our current pipeline output);
-    // once parquets are published as 4326 this transform must be dropped, else it
-    // double-projects. always_xy keeps lon/lat ordering; Force2D drops the
-    // spurious Z=0 the source carries on otherwise-2D geometry.
-    geojson: (opts) => withConnection(async (conn) => {
-        if (!opts.geometryColumn) {
-            throw new Error('GeoJSON requires a geometry column');
-        }
-        await loadSpatial(conn);
-
+    geojson: async (opts) => {
         opts.onProgress?.({ stage: 'converting', message: 'Writing GeoJSON…' });
-        const escaped = escapeSql(opts.parquetUrl);
-        const geom = opts.geometryColumn;
-        const result = await conn.query(`
-            SELECT
-                ST_AsGeoJSON(ST_Force2D(ST_Transform(${geom}, 'EPSG:3857', 'EPSG:4326', true))) AS __g,
-                * EXCLUDE (${geom})
-            FROM read_parquet('${escaped}')
-        `);
-
-        const features: string[] = [];
-        for (const row of result.toArray()) {
-            const obj = row.toJSON() as Record<string, unknown>;
-            const geomJson = obj.__g;
-            delete obj.__g;
-            features.push(`{"type":"Feature","geometry":${geomJson},"properties":${JSON.stringify(obj, jsonReplacer)}}`);
-        }
-        const fc = `{"type":"FeatureCollection","features":[${features.join(',')}]}`;
-        return new Blob([fc], { type: EXPORT_FORMATS.geojson.mimeType });
-    }),
+        const { geojson } = await buildGeoJSON(opts);
+        return new Blob([geojson], { type: EXPORT_FORMATS.geojson.mimeType });
+    },
 
     csv: (opts) => withConnection(async (conn, db) => {
         const escaped = escapeSql(opts.parquetUrl);
@@ -128,6 +206,10 @@ const handlers: Record<ExportFormat, Handler> = {
         return bufferToBlob(db, virtualPath, EXPORT_FORMATS.csv.mimeType);
     }),
 
+    gpkg: gdalHandler('gpkg'),
+    shp: gdalHandler('shp'),
+    gdb: gdalHandler('gdb'),
+    fgb: gdalHandler('fgb'),
 };
 
 // BIGINT columns arrive as JS bigint; JSON.stringify rejects them. Convert to
