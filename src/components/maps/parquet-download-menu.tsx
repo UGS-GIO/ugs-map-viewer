@@ -32,8 +32,12 @@ interface ParquetDownloadMenuProps {
 export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parquetUrl, layerTitle, relatedTables, compact = false }) => {
     // Schema probe (a small range request) waits for the menu to actually open, so
     // rendering a list of these doesn't fire a network request per row up front.
+    // `enabled` (not the query key) gates the fetch — selecting a DropdownMenuItem
+    // auto-closes the menu, and closing sets `open` false right as the mutation
+    // fires; if that also blanked the query key, the just-fetched geometryColumn
+    // would vanish mid-export and every geometry format would fail.
     const [open, setOpen] = useState(false);
-    const { data: schema, isLoading: schemaLoading, isError: schemaError } = useParquetSchema(open ? parquetUrl : undefined);
+    const { data: schema, isLoading: schemaLoading, isError: schemaError } = useParquetSchema(parquetUrl, open);
     const [includeRelated, setIncludeRelated] = useState(true);
     const hasRelatedTables = (relatedTables?.length ?? 0) > 0;
 
