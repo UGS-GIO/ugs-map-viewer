@@ -8,6 +8,13 @@
 const INTERNAL_COLUMNS = new Set([
     'bbox',
     'feature_id',
+    // Source-format plumbing: Esri/OGR row ids and their geometry measures. The measures
+    // are recorded in the source projection, so they don't match the exported geometry.
+    'fid',
+    'objectid',
+    'ogc_fid',
+    'shape_area',
+    'shape_length',
     // Parquet exports drop their geometry column via `geometryColumn`; this is for the
     // table path, where geometry is emitted separately from the property list.
     'geometry',
