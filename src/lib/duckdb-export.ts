@@ -12,7 +12,7 @@
 
 import * as duckdb from '@duckdb/duckdb-wasm';
 import { EXPORT_FORMATS, type ExportFormat } from '@/lib/export-formats';
-import { withConnection, loadSpatial, escapeSql, queryParquetDistinctValues } from '@/lib/duckdb/client';
+import { withConnection, loadSpatial, escapeSql, quoteIdent, queryParquetDistinctValues } from '@/lib/duckdb/client';
 import { downloadZip } from '@/lib/download-utils';
 import { fetchRelatedRowsBulk, relatedRowsToCsv } from '@/lib/related-table-fetch';
 import type { RelatedTable } from '@/lib/types/mapping-types';
@@ -71,6 +71,14 @@ const bufferToBlob = async (
 
 type Handler = (opts: ExportOptions) => Promise<Blob>;
 
+// Internal columns the table export drops too (see table-export-utils buildMainColumns),
+// so both downloads carry the same fields.
+const isInternalColumn = (col: string): boolean => col === 'bbox' || col.startsWith('_');
+
+/** `EXCLUDE (...)` list for a parquet's geometry + internal columns, or '' when there's nothing to drop. */
+const excludeClause = (dropped: string[]): string =>
+    dropped.length ? ` EXCLUDE (${dropped.map(quoteIdent).join(', ')})` : '';
+
 interface GeoJSONBuild {
     geojson: string;
     /** Non-geometry column names, in parquet order. */
@@ -97,6 +105,7 @@ const buildGeoJSON = (opts: ExportOptions): Promise<GeoJSONBuild> => withConnect
     const described = await conn.query(`DESCRIBE SELECT * FROM read_parquet('${escaped}')`);
     const cols: string[] = [];
     const floatCols: string[] = [];
+    const dropped: string[] = [geomCol];
     let geomIsBlob = false;
     for (const row of described.toArray()) {
         const { column_name: name, column_type: type } = row.toJSON() as Record<string, unknown>;
@@ -104,6 +113,10 @@ const buildGeoJSON = (opts: ExportOptions): Promise<GeoJSONBuild> => withConnect
         const colType = String(type).toUpperCase();
         if (col === geomCol) {
             geomIsBlob = colType.includes('BLOB');
+            continue;
+        }
+        if (isInternalColumn(col)) {
+            dropped.push(col);
             continue;
         }
         cols.push(col);
@@ -127,7 +140,7 @@ const buildGeoJSON = (opts: ExportOptions): Promise<GeoJSONBuild> => withConnect
     const result = await conn.query(`
         SELECT
             ST_AsGeoJSON(${geom4326}) AS __g,
-            * EXCLUDE (${geomCol})
+            *${excludeClause(dropped)}
         FROM read_parquet('${escaped}')
     `);
 
@@ -180,12 +193,16 @@ const handlers: Record<ExportFormat, Handler> = {
 
     csv: (opts) => withConnection(async (conn, db) => {
         const escaped = escapeSql(opts.parquetUrl);
-        const selectClause = opts.geometryColumn ? `* EXCLUDE (${opts.geometryColumn})` : '*';
 
         opts.onProgress?.({ stage: 'downloading', message: 'Fetching parquet…' });
+        const described = await conn.query(`DESCRIBE SELECT * FROM read_parquet('${escaped}')`);
+        const dropped = described.toArray()
+            .map(row => String((row.toJSON() as Record<string, unknown>).column_name))
+            .filter(col => col === opts.geometryColumn || isInternalColumn(col));
+
         await conn.query(`
             CREATE OR REPLACE VIEW export_view AS
-            SELECT ${selectClause} FROM read_parquet('${escaped}')
+            SELECT *${excludeClause(dropped)} FROM read_parquet('${escaped}')
         `);
 
         opts.onProgress?.({ stage: 'converting', message: 'Writing CSV…' });
