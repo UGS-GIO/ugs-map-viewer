@@ -8,7 +8,12 @@
 const INTERNAL_COLUMNS = new Set([
     'bbox',
     'feature_id',
+    // Geometry column aliases (see use-parquet-schema GEOM_CANDIDATES). The parquet
+    // exports already drop theirs via `geometryColumn`; this catches the table path,
+    // where geometry is emitted separately and must not also appear as a property.
+    'geom',
     'geometry',
+    'wkb_geometry',
     'metadata_publication_id',
     'quad_name',
     'review_status',
