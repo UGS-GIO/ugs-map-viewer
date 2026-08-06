@@ -2,6 +2,7 @@ import { isValidElement } from 'react';
 import type { RelatedTable, FieldConfig } from '@/lib/types/mapping-types';
 import type { RelatedDataMap } from '@/hooks/use-bulk-related-table';
 import { buildCSV, downloadCsvString, downloadGeoJSON, downloadZip, geojsonToWKT } from '@/lib/download-utils';
+import { isInternalColumn } from '@/lib/export-fields';
 import { formatFieldValue } from '@/lib/field-formatting';
 import { formatNumeric } from '@/lib/utils';
 import type { RowData, ColumnConfig } from './types';
@@ -29,7 +30,8 @@ function safeName(s: string): string {
 
 // Union of all property keys across rows, merged with configured labels/formatting.
 // Configured (popupField) columns come first in their declared order; remaining raw
-// property keys are appended alphabetically. Internal/_-prefixed keys are dropped.
+// property keys are appended alphabetically. Warehouse bookkeeping keys are dropped —
+// the same list the parquet downloads use, so both agree on a dataset's fields.
 function buildMainColumns(data: RowData[], columnConfigs: ColumnConfig[]): MainColumn[] {
     const cols: MainColumn[] = [];
     const seen = new Set<string>();
@@ -37,6 +39,7 @@ function buildMainColumns(data: RowData[], columnConfigs: ColumnConfig[]): MainC
     for (const cfg of columnConfigs) {
         if (cfg.fieldConfig?.type === 'custom') continue;
         if (seen.has(cfg.field)) continue;
+        if (isInternalColumn(cfg.field)) continue;
         seen.add(cfg.field);
         cols.push({ field: cfg.field, label: cfg.label, fieldConfig: cfg.fieldConfig });
     }
@@ -45,7 +48,7 @@ function buildMainColumns(data: RowData[], columnConfigs: ColumnConfig[]): MainC
     for (const row of data) {
         for (const key of Object.keys(row.properties)) {
             if (seen.has(key)) continue;
-            if (key === 'geometry' || key === 'bbox' || key.startsWith('_')) continue;
+            if (isInternalColumn(key)) continue;
             seen.add(key);
             extras.push(key);
         }

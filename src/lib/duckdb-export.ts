@@ -14,6 +14,7 @@ import * as duckdb from '@duckdb/duckdb-wasm';
 import { EXPORT_FORMATS, type ExportFormat } from '@/lib/export-formats';
 import { withConnection, loadSpatial, escapeSql, quoteIdent, queryParquetDistinctValues } from '@/lib/duckdb/client';
 import { downloadZip } from '@/lib/download-utils';
+import { isInternalColumn } from '@/lib/export-fields';
 import { fetchRelatedRowsBulk, relatedRowsToCsv } from '@/lib/related-table-fetch';
 import type { RelatedTable } from '@/lib/types/mapping-types';
 
@@ -70,10 +71,6 @@ const bufferToBlob = async (
 // ── Per-format handlers ──────────────────────────────────────────────────────
 
 type Handler = (opts: ExportOptions) => Promise<Blob>;
-
-// Internal columns the table export drops too (see table-export-utils buildMainColumns),
-// so both downloads carry the same fields.
-const isInternalColumn = (col: string): boolean => col === 'bbox' || col.startsWith('_');
 
 /** `EXCLUDE (...)` list for a parquet's geometry + internal columns, or '' when there's nothing to drop. */
 const excludeClause = (dropped: string[]): string =>
