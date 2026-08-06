@@ -1,3 +1,21 @@
+## 2.8.0 (2026-08-06)
+
+* **feat**(`common`): full-dataset downloads in the Data Sources panel (#498) ([498](///issues/498))
+* **feat**(`common`): Power Plants from the warehouse, with PMTiles legends and parquet-backed filter options (#497) ([497](///issues/497))
+* **feat**(`common`): shapefile, geopackage, geodatabase and flatgeobuf downloads via gdal3.js (#508) ([508](///issues/508))
+* **fix**(`common`): correct 2x scale bar distance from 256px tile size assumption (#506) ([506](///issues/506))
+* **fix**(`common`): resolve STAC layers via the items.json rollup (#509) ([509](///issues/509))
+* **fix**(`common`): reveal a layer's enclosing groups when it is turned on (#490) ([490](///issues/490))
+* ****: Merge pull request #510 from UGS-GIO/develop ([510](///issues/510))
+* ****: Merge remote-tracking branch 'origin/master' into develop
+* ****: Ucrc updated info panel content (#485) ([485](///issues/485))
+* **refactor**(`ccs`): adding township to search (#481) ([481](///issues/481))
+* **feat**(`geophysics`): add feedback form link in sidebar (#504) ([504](///issues/504))
+* **chore**(`release`): 2.7.0 [skip ci] ([462](///issues/462)) ([465](///issues/465)) ([467](///issues/467)) ([470](///issues/470)) ([441](///issues/441)) ([473](///issues/473)) ([477](///issues/477)) ([471](///issues/471)) ([475](///issues/475)) ([472](///issues/472)) ([461](///issues/461)) ([463](///issues/463)) ([469](///issues/469)) ([459](///issues/459))
+* **feat**(`subsurface`): default vector symbology to sample type on page load (#482) ([482](///issues/482))
+* **feat**(`subsurface`): grouped legend display labels and per-group feature counts (#496) ([496](///issues/496))
+* **refactor**(`subsurface`): derive symbology legend from STAC render, drop hardcoded box-type colors (#483) ([483](///issues/483))
+
 ## 2.7.0 (2026-08-05)
 
 * **feat**(`common`): live PMTiles rendering via STAC renders (qfaults + UCRC migrated) (#462) ([462](///issues/462))
