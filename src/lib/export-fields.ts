@@ -12,6 +12,7 @@ const INTERNAL_COLUMNS = new Set([
     'metadata_publication_id',
     'quad_name',
     'review_status',
+    'scale',
     'table_type',
     'target_epsg',
 ]);
