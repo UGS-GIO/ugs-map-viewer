@@ -14,7 +14,6 @@
 import { useQuery } from '@tanstack/react-query';
 import type { PMTilesLayerProps } from '@/lib/types/mapping-types';
 import {
-    fetchStacItem,
     fetchStacItemIndex,
     resolveStacPMTilesLayer,
     type StacLayerAppConfig,
@@ -33,12 +32,11 @@ export function useStacPMTilesLayers(appConfigs: StacLayerAppConfig[]) {
         queryKey: ['stac', 'pmtiles-layers', [...ids].sort()],
         queryFn: async () => {
             const index = await fetchStacItemIndex();
-            return Promise.all(appConfigs.map(async (cfg) => {
-                const href = index[cfg.stacItemId];
-                if (!href) throw new Error(`STAC item '${cfg.stacItemId}' not found in serving-topics collection`);
-                const item = await fetchStacItem(href);
+            return appConfigs.map((cfg) => {
+                const item = index[cfg.stacItemId];
+                if (!item) throw new Error(`STAC item '${cfg.stacItemId}' not found in serving-topics index`);
                 return resolveStacPMTilesLayer(item, cfg);
-            }));
+            });
         },
         enabled: appConfigs.length > 0,
         staleTime: STAC_STALE_TIME,

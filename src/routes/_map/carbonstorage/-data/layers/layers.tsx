@@ -1,6 +1,6 @@
 import { Link } from "@/components/ui/link";
 import { MAPS_ASSETS_CDN_URL, parquetUrl, ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
-import { ArcGISMapServerLayerProps, LayerProps, WFSLayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps, WFSLayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
 
@@ -16,6 +16,7 @@ const georegionsWMSConfig: WMSLayerProps = {
     opacity: 0.3,
     crs: 'EPSG:3857',
     downloadParquetUrl: parquetUrl("enmin_ccus_georegions"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${georegionsLayerName}`,
@@ -56,6 +57,7 @@ const oilGasFieldsWMSConfig: WMSLayerProps = {
     title: oilGasFieldsWMSTitle,
     visible: false,
     crs: 'EPSG:3857',
+    sourceAgency: 'Utah Division of Oil, Gas and Mining',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${oilGasFieldsLayerName}`,
@@ -81,6 +83,7 @@ const pipelinesWMSConfig: WMSLayerProps = {
     title: pipelinesWMSTitle,
     visible: false,
     crs: 'EPSG:3857',
+    sourceAgency: 'UGRC',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${pipelinesLayerName}`,
@@ -181,6 +184,8 @@ const riversWMSConfig: WMSLayerProps = {
     title: riversWMSTitle,
     visible: false,
     crs: 'EPSG:3857',
+    sourceAgency: 'UGRC',
+    sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-major-rivers-polygons/about',
     sublayers: [
         {
             name: `${GEN_GIS_WORKSPACE}:${riversLayerName}`,
@@ -203,6 +208,8 @@ const roadsWMSConfig: WMSLayerProps = {
     title: roadsWMSTitle,
     visible: false,
     crs: 'EPSG:3857',
+    sourceAgency: 'Local data stewards, UDOT, and UGRC',
+    sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-roads/about',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${roadsLayerName}`,
@@ -224,6 +231,8 @@ const railroadsWMSConfig: WMSLayerProps = {
     title: railroadsWMSTitle,
     visible: false,
     crs: 'EPSG:26912',
+    sourceAgency: 'UGRC',
+    sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-railroads/about',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${railroadsLayerName}`,
@@ -245,6 +254,8 @@ const transmissionLinesWMSConfig: WMSLayerProps = {
     title: transmissionLinesWMSTitle,
     visible: false,
     crs: 'EPSG:26912',
+    sourceAgency: 'UGRC',
+    sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah::utah-transmission-lines/about',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${transmissionLinesLayerName}`,
@@ -266,6 +277,8 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     title: seamlessGeolunitsWMSTitle,
     opacity: 0.5,
     crs: 'EPSG:26912',
+    sourceAgency: 'Utah Geological Survey',
+    sourceUrl: 'https://geology.utah.gov/publication-details/?pub=M-179dm',
     sublayers: [
         {
             name: `${MAPPING_WORKSPACE}:${seamlessGeolunitsLayerName}`,
@@ -309,6 +322,7 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
     title: wellWithTopsWMSTitle,
     visible: true,
     crs: 'EPSG:26912',
+    sourceAgency: 'Utah Division of Oil, Gas and Mining',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${wellWithTopsLayerName}`,
@@ -392,6 +406,8 @@ const faultsWMSConfig: WMSLayerProps = {
     title: faultsWMSTitle,
     visible: false,
     crs: 'EPSG:26912',
+    sourceAgency: 'Utah Geological Survey',
+    sourceUrl: 'https://geology.utah.gov/publication-details/?pub=M-179dm',
     sublayers: [
         {
             name: `${MAPPING_WORKSPACE}:${faultsLayerName}`,
@@ -445,6 +461,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
     visible: false,
     crs: 'EPSG:26912',
     downloadParquetUrl: parquetUrl("hazards_qfaults"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${HAZARDS_WORKSPACE}:${qFaultsLayerName}`,
@@ -510,6 +527,7 @@ const coresAndCuttingsWMSConfig: WMSLayerProps = {
     title: coresAndCuttingsWMSTitle,
     visible: false,
     crs: 'EPSG:26912',
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${coresAndCuttingsLayerName}`,
@@ -706,6 +724,8 @@ const wildernessStudyAreasWMSConfig: WMSLayerProps = {
     title: wildernessStudyAreasWMSTitle,
     visible: false,
     crs: 'EPSG:26912',
+    sourceAgency: 'U.S. Bureau of Land Management',
+    sourceUrl: 'https://gbp-blm-egis.hub.arcgis.com/maps/0ae90ebbc1f54f77b80b76a6148ab83d/about',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${wildernessStudyAreasLayerName}`,
@@ -729,6 +749,8 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
     title: sitlaReportsWMSTitle,
     visible: false,
     crs: 'EPSG:26912',
+    sourceAgency: 'Utah Geological Survey',
+    sourceUrl: 'https://ugspub.nr.utah.gov/publications/non_lib_pubs/contract_deliverables/EMP-1.pdf',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${sitlaReportsLayerName}`,
@@ -781,6 +803,7 @@ const ccsExclusionAreasWMSConfig: WMSLayerProps = {
     title: ccsExclusionAreasWMSTitle,
     visible: false,
     crs: 'EPSG:26912',
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${ccsExclusionAreasLayerName}`,
@@ -804,6 +827,7 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
     visible: true,
     crs: 'EPSG:3857',
     downloadParquetUrl: parquetUrl("ccus_projects"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${ccusProjectsLayerName}`,
@@ -830,21 +854,27 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
     ],
 };
 
-const geothermalPowerplantsLayerName = 'enmin_powerplants_current';
-const geothermalPowerplantsWMSTitle = 'Power Plants';
-const geothermalPowerplantsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: geothermalPowerplantsWMSTitle,
+// STAC-driven: pmtilesUrl, sourceLayer, renders (colour by `primsource`, radius by `total_mw`)
+// and parquet come from the warehouse item `enmin_powerplants`. Symbology lives in ugs-styles.
+const powerplantsLayerName = 'enmin_powerplants';
+export const powerplantsTitle = 'Power Plants';
+const powerplantsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: powerplantsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: powerplantsLayerName,
+    title: powerplantsTitle,
     visible: false,
-    crs: 'EPSG:26912',
+    opacity: 1,
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalPowerplantsLayerName}`,
+            name: powerplantsLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
                 'Name': { field: 'plant_name', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
+                'Primary Source': { field: 'primsource', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
                 'Capacity (MW)': { field: 'total_mw', type: 'number' },
                 'Operator': { field: 'utility_na', type: 'string' },
                 'City': { field: 'city', type: 'string' },
@@ -864,6 +894,7 @@ const geochemWellSitesWMSConfig: WMSLayerProps = {
     visible: false,
     crs: 'EPSG:3857',
     downloadParquetUrl: parquetUrl("enmin_ccus_geochemistry"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geochemWellSitesLayerName}`,
@@ -932,6 +963,7 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
     title: geothermalWellsJoinsTitle,
     visible: false,
     downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_wellfeatures"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsJoinsName}`,
@@ -990,6 +1022,7 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
     title: geothermalSpringsJoinsTitle,
     visible: false,
     downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_springfeatures"),
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalSpringsJoinsName}`,
@@ -1043,6 +1076,7 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalWellsWMSTitle,
     visible: false,
+    sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsLayerName}`,
@@ -1133,6 +1167,8 @@ const utCountiesConfig: WMSLayerProps = {
     title: 'Utah Counties',
     visible: false,
     crs: 'EPSG:3857',
+    sourceAgency: 'UGRC',
+    sourceUrl: 'https://gis.utah.gov/products/sgid/boundaries/county/',
     sublayers: [{
         name: `${ENERGY_MINERALS_WORKSPACE}:enmin_ut_counties_current`,
         popupEnabled: false,
@@ -1150,6 +1186,8 @@ const utTownshipRangesConfig: WMSLayerProps = {
     visible: false,
     crs: 'EPSG:3857',
     visibleZoomRange: [11, 22],
+    sourceAgency: 'UGRC',
+    sourceUrl: 'https://gis.utah.gov/products/sgid/cadastre/plss-sections/',
     sublayers: [{
         name: `${ENERGY_MINERALS_WORKSPACE}:${utTownshipRangesLayerName}`,
         popupEnabled: false,
@@ -1167,6 +1205,7 @@ const nonpetrolWellsConfig: WMSLayerProps = {
   title: nonpetrolWellsTitle,
   visible: false,
   crs: 'EPSG:3857',
+  sourceAgency: 'Utah Geological Survey',
   sublayers: [
     {
       name: `${ENERGY_MINERALS_WORKSPACE}:${nonpetrolWellsLayerName}`,
@@ -1347,7 +1386,7 @@ const infrastructureAndLandUseConfig: LayerProps = {
     title: 'Infrastructure and Land Use',
     visible: false,
     layers: [
-        geothermalPowerplantsWMSConfig,
+        powerplantsConfig,
         pipelinesWMSConfig,
         riversWMSConfig,
         roadsWMSConfig,

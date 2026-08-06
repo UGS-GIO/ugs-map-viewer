@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useCallback, useRef } from 'react'
+import { useMemo, useEffect, useRef } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import { Layout } from '@/components/layout/layout'
 import { TopNav } from '@/components/top-nav'
@@ -9,12 +9,16 @@ import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle } from './-data/layers/layers'
+import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, utTownshipRangesTitle, powerplantsTitle } from './-data/layers/layers'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, type SearchComboboxHandle } from '@/components/sidebar/filter/search-combobox'
 import { PROD_POSTGREST_URL } from '@/lib/constants'
+import { powerplantsFilterSchema } from './-data/layers/powerplants-schema'
+import { toMaplibreFilter } from '@/lib/filter/generators'
+import { fromCql } from '@/lib/filter/parse'
+import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
 
 // Carbon Storage specific filter mapping
 const CCS_FILTER_MAPPING: Record<string, string> = {
@@ -28,12 +32,27 @@ const searchConfig: SearchSourceConfig[] = [
     url: `${PROD_POSTGREST_URL}/wellswithtops_hascore`,
     sourceName: 'Wells Database',
     layerName: wellWithTopsWMSTitle,
-    crs: 'EPSG:26912',
     displayField: 'api',
     secondaryDisplayField: 'wellname',
     params: {
       targetFields: ['api', 'wellname'],
       select: 'api,wellname,shape',
+    },
+    headers: {
+      'Accept-Profile': 'emp',
+      'Accept': 'application/geo+json',
+    },
+  },
+  {
+    type: 'postgREST',
+    url: `${PROD_POSTGREST_URL}/enmin_plss_townshiprange_current`,
+    sourceName: 'Utah Township & Ranges',
+    layerName: utTownshipRangesTitle,
+    displayField: 'twnshplab',
+    secondaryDisplayField: 'label',
+    params: {
+      targetFields: ['twnshplab', 'label'],
+      select: 'twnshplab,label,geom',
     },
     headers: {
       'Accept-Profile': 'emp',
@@ -48,7 +67,6 @@ const searchConfig: SearchSourceConfig[] = [
     functionParams: { search_scale: 'small' },
     sourceName: 'Geologic Units',
     layerName: seamlessGeolunitsWMSTitle,
-    crs: 'EPSG:4326',
     displayField: "unit_label",
     params: { select: 'unit_label,match_type' },
     groupByField: 'match_type',
@@ -67,7 +85,7 @@ export default function Map() {
   const { isCollapsed, sidebarWidthPx } = useSidebar();
   const isMobile = useIsMobile();
   const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
-  const { selectedLayerTitles, updateLayerSelection, setGroupVisibility, groupVisibility } = useLayerUrl()
+  const { updateLayerSelection } = useLayerUrl()
   const { contextValue } = useMapContextState();
   const searchRef = useRef<SearchComboboxHandle>(null);
 
@@ -87,47 +105,28 @@ export default function Map() {
     return filters
   }, [filtersFromUrl])
 
-  // Auto-select layer when filter is applied
+  // Translate Power Plants' stored CQL filter (from its checkbox legend) into a maplibre
+  // filter expression for the PMTiles layer.
+  const vectorLayerFilters = useMemo(() => {
+    const powerplantsCql = filtersFromUrl[powerplantsFilterSchema.recordKey]
+    const result: Record<string, FilterSpecification> = {}
+    if (powerplantsCql) {
+      const expr: ExpressionSpecification | null = toMaplibreFilter(powerplantsFilterSchema, fromCql(powerplantsFilterSchema, powerplantsCql))
+      if (expr) result[powerplantsTitle] = expr
+    }
+    return result
+  }, [filtersFromUrl])
+
+  // A filtered layer must be on screen (selection reveals its groups too).
   useEffect(() => {
     for (const [filterKey, layerTitle] of Object.entries(CCS_FILTER_MAPPING)) {
-      const filterValue = filtersFromUrl[filterKey]
-      if (filterValue && !selectedLayerTitles.has(layerTitle)) {
-        updateLayerSelection(layerTitle, true)
-      }
+      if (filtersFromUrl[filterKey]) updateLayerSelection(layerTitle, true)
     }
-  }, [filtersFromUrl, selectedLayerTitles, updateLayerSelection])
+    if (filtersFromUrl[powerplantsFilterSchema.recordKey]) updateLayerSelection(powerplantsTitle, true)
+  }, [filtersFromUrl, updateLayerSelection])
 
-  // Map child layers to their parent group for auto-visibility
-  const LAYER_PARENT_GROUP: Record<string, string> = {
-    [seamlessGeolunitsWMSTitle]: 'Geological Information',
-    [wellWithTopsWMSTitle]: 'Subsurface Data',
-  }
-
-  // Auto-select the associated layer and its parent group when a search result is picked
-  const ensureLayerSelected = useCallback(
-    (sourceIndex: number, configs: SearchSourceConfig[]) => {
-      const src = configs[sourceIndex]
-      const layerName = src?.type === 'postgREST' ? src.layerName : undefined
-      if (layerName && !selectedLayerTitles.has(layerName)) {
-        updateLayerSelection(layerName, true)
-      }
-      const parentGroup = layerName ? LAYER_PARENT_GROUP[layerName] : undefined
-      if (parentGroup && !groupVisibility.get(parentGroup)) {
-        setGroupVisibility(parentGroup, true)
-      }
-    },
-    [selectedLayerTitles, updateLayerSelection, groupVisibility, setGroupVisibility]
-  )
-
-  const onFeatureSelect: typeof handleSearchSelect = useCallback(
-    (...args) => { ensureLayerSelected(args[2], args[3]); handleSearchSelect(...args) },
-    [ensureLayerSelected]
-  )
-
-  const onCollectionSelect: typeof handleCollectionSelect = useCallback(
-    (...args) => { ensureLayerSelected(args[2], args[3]); handleCollectionSelect(...args) },
-    [ensureLayerSelected]
-  )
+  const onFeatureSelect = handleSearchSelect
+  const onCollectionSelect = handleCollectionSelect
 
   return (
     <MapContext.Provider value={contextValue}>
@@ -160,6 +159,7 @@ export default function Map() {
             <Layout.Body>
               <GenericMapContainer
                 layerFilters={layerFilters}
+                vectorLayerFilters={vectorLayerFilters}
                 onClearSearch={() => searchRef.current?.clear()}
               />
             </Layout.Body>

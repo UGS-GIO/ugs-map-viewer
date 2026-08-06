@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionHeader } from '@/components/ui/accordion';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight, SlidersHorizontal } from 'lucide-react';
@@ -16,6 +16,7 @@ import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions'
 import { useSidebar } from '@/hooks/use-sidebar';
 import LayerControls from '@/components/maps/layer-controls';
 import { WfsVectorLegend } from '@/components/maps/wfs-vector-legend';
+import { StacRenderLegend } from '@/components/maps/stac-render-legend';
 import { ZoomHintPill } from '@/components/maps/zoom-hint-pill';
 import { useIsMobile } from './use-mobile';
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from '@/lib/constants';
@@ -24,7 +25,6 @@ import { useLayerUrl } from '@/context/layer-url-provider';
 interface LayerAccordionItemProps {
     layerConfig: LayerProps;
     isTopLevel: boolean;
-    parentGroupTitle?: string;
     disableExport?: boolean;
     /** Optional render-prop for content shown inside a group's accordion */
     groupExtrasRender?: (groupTitle: string) => React.ReactNode;
@@ -33,7 +33,7 @@ interface LayerAccordionItemProps {
     /** Optional render-prop for whole-layer stats / charts rendered via the Stats toggle */
     layerStatsRender?: (layerTitle: string) => React.ReactNode;
     /** Optional render-prop overriding a layer's legend content (e.g. an interactive symbology legend). */
-    layerLegendRender?: (layerTitle: string) => React.ReactNode;
+    layerLegendRender?: (layer: LayerProps) => React.ReactNode;
 }
 
 /**
@@ -63,7 +63,7 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
     );
 }
 
-const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: LayerAccordionItemProps) => {
+const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: LayerAccordionItemProps) => {
     const {
         isSelected,
         handleToggleSelection,
@@ -85,6 +85,18 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
         // If it's not a group, it's a single layer. ALWAYS start collapsed.
         return false;
     });
+
+    // A child can be selected from outside the list (search, a filter) while its group
+    // sits collapsed. Expand on the none → some/all transition only, so a group the user
+    // collapsed by hand stays collapsed. (Mount-time selection is handled by the initializer.)
+    const prevCheckboxState = useRef(groupCheckboxState);
+    useEffect(() => {
+        if (layerConfig.type !== 'group') return;
+        if (prevCheckboxState.current === 'none' && groupCheckboxState !== 'none') {
+            setIsUserExpanded(true);
+        }
+        prevCheckboxState.current = groupCheckboxState;
+    }, [groupCheckboxState, layerConfig.type]);
 
     // Get group visibility from shared context (default: true)
     const isGroupLayerVisible = groupVisibility.get(layerConfig.title || '') ?? true;
@@ -182,21 +194,11 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
 
     const { onLayerTurnedOff } = useMap();
 
-    // This handler now explicitly sets the accordion state.
-    // Also enables parent group visibility when selecting a child layer
     const handleLocalToggle = (checked: boolean) => {
         // Notify parent to clear features from results when layer is turned off
         // (handleLayerTurnedOff in useFeatureSelection handles highlight clearing declaratively)
         if (!checked && layerConfig.title) {
             onLayerTurnedOff(layerConfig.title);
-        }
-
-        // When selecting a child layer, ensure parent group is visible
-        if (checked && parentGroupTitle) {
-            const parentVisible = groupVisibility.get(parentGroupTitle) ?? true;
-            if (!parentVisible) {
-                setGroupVisibility(parentGroupTitle, true);
-            }
         }
 
         handleToggleSelection(checked);
@@ -275,7 +277,6 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
                                         disableExport={disableExport}
                                         layerConfig={child}
                                         isTopLevel={false}
-                                        parentGroupTitle={layerConfig.title}
                                         groupExtrasRender={groupExtrasRender}
                                         layerExtrasRender={layerExtrasRender}
                                         layerStatsRender={layerStatsRender}
@@ -294,10 +295,12 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
     // current symbology mode). COG layers render a colorbar from raster stats. Explicit
     // `customLegend` on the config always wins.
     const resolvedCustomLegend =
-        (layerConfig.title ? layerLegendRender?.(layerConfig.title) : undefined)
+        (layerConfig.title ? layerLegendRender?.(layerConfig) : undefined)
         ?? layerConfig.customLegend
         ?? (isCOGLayer(layerConfig) ? <CogLegend layer={layerConfig} /> : undefined)
-        ?? (isWFSLayer(layerConfig) ? <WfsVectorLegend layer={layerConfig} /> : undefined);
+        ?? (isWFSLayer(layerConfig) ? <WfsVectorLegend layer={layerConfig} /> : undefined)
+        // PMTiles layers have no GetLegendGraphic; swatches come from the STAC render.
+        ?? (isPMTilesLayer(layerConfig) ? <StacRenderLegend layer={layerConfig} /> : undefined);
 
     // --- Single Layer Rendering ---
     return (
@@ -373,7 +376,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, parentGroupTitle, disable
 };
 
 
-export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: { config: LayerProps[] | null; disableExport?: boolean; groupExtrasRender?: (groupTitle: string) => React.ReactNode; layerExtrasRender?: (layerTitle: string) => React.ReactNode; layerStatsRender?: (layerTitle: string) => React.ReactNode; layerLegendRender?: (layerTitle: string) => React.ReactNode }) => {
+export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: { config: LayerProps[] | null; disableExport?: boolean; groupExtrasRender?: (groupTitle: string) => React.ReactNode; layerExtrasRender?: (layerTitle: string) => React.ReactNode; layerStatsRender?: (layerTitle: string) => React.ReactNode; layerLegendRender?: (layer: LayerProps) => React.ReactNode }) => {
 
     const layerList = useMemo(() => {
         if (!config) return [];

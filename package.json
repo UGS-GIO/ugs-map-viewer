@@ -60,6 +60,7 @@
     "embla-carousel-react": "^8.3.0",
     "fflate": "^0.8.2",
     "firebase": "^12.3.0",
+    "gdal3.js": "^2.8.1",
     "hyparquet": "^1.25.6",
     "jspdf": "^4.2.0",
     "lucide-react": "^0.544.0",

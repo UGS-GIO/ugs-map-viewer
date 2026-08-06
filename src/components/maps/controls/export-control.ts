@@ -479,10 +479,18 @@ export class ExportControl implements maplibregl.IControl {
         const barHeight = 8 * scale;
         const y = canvasHeight - margin - barHeight;
 
-        // Calculate scale based on map center latitude
-        const center = map.getCenter();
-        const zoom = map.getZoom();
-        const metersPerPixel = (40075016.686 * Math.cos(center.lat * Math.PI / 180)) / Math.pow(2, zoom + 8);
+        // Measure ground distance across a known pixel span at the center of the map
+        // rather than deriving it from zoom. The overlays below are drawn into a canvas
+        // sized to the map's backing store, so convert from CSS pixels to those pixels.
+        const mapCanvas = map.getCanvas();
+        const pixelRatio = mapCanvas.width / mapCanvas.clientWidth;
+        const midX = mapCanvas.clientWidth / 2;
+        const midY = mapCanvas.clientHeight / 2;
+        const span = Math.min(200, mapCanvas.clientWidth);
+        const left = map.unproject([midX - span / 2, midY]);
+        const right = map.unproject([midX + span / 2, midY]);
+        const metersPerCssPixel = left.distanceTo(right) / span;
+        const metersPerPixel = metersPerCssPixel / pixelRatio;
 
         // Find a nice round distance
         const maxBarWidth = 150 * scale;

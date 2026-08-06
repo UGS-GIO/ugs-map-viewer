@@ -117,6 +117,10 @@ interface BaseLayerProps {
     bivariateLegend?: { xLabel: string; yLabel: string };
     /** GeoParquet URL for client-side export. When set, download button in layer controls is enabled. */
     downloadParquetUrl?: string;
+    /** Agency/organization that sources this layer's data, shown in the Data Sources download list (e.g. "Utah Geological Survey", "UGRC"). */
+    sourceAgency?: string;
+    /** Hard-coded external link to the data's home (e.g. a UGRC open-data page or a UGS publication), shown in place of a download button when there's no `downloadParquetUrl`. */
+    sourceUrl?: string;
     /** Zoom range [min, max] where this layer renders. Out-of-range → UI shows "Zoom in to see" hint. Auto-resolved from WMS GetCapabilities or PMTiles header if omitted. */
     visibleZoomRange?: [number, number];
 }
@@ -163,6 +167,18 @@ export interface COGLayerProps extends BaseLayerProps {
  * derives the legend from `legend`. Multiple renders on one layer drive the
  * "Symbolize by" toggle via the `vector_symbology` search param (value = `id`).
  */
+/** One legend entry: a symbology colour + what it represents. `values` (grouped renders) =
+ *  the specific field values this entry rolls up, each with its own shade of the group colour;
+ *  `stroke` = optional swatch outline (flat renders). Each grouped value's `value` is the raw
+ *  data/filter token; `label` (optional) is its display text when the raw token isn't fit to show
+ *  as-is (e.g. shouty-case managed codes) — falls back to `value` when absent. */
+export interface LegendEntry {
+    label: string;
+    color: string;
+    values?: readonly { value: string; color: string; label?: string }[];
+    stroke?: string;
+}
+
 export interface PMTilesRender {
     /** Render id; also the `vector_symbology[title]` value that selects it. */
     id: string;
@@ -172,8 +188,10 @@ export interface PMTilesRender {
     styleUrl: string;
     /** Optional sprite sheet base URL (no extension) for icon renders. */
     sprite?: string;
-    /** Legend swatches (label → color); icon renders carry this explicitly. */
-    legend?: Array<{ label: string; color: string }>;
+    /** Legend swatches; the source of truth for this render's symbology (colour + grouping). */
+    legend?: LegendEntry[];
+    /** Feature attribute this render symbolizes — lets the legend/filter wire to a field. */
+    field?: string;
 }
 
 export interface PMTilesLayerProps extends BaseLayerProps {

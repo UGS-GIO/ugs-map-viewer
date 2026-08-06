@@ -187,3 +187,49 @@ export const toPostgrestPredicates = (
     }
     return parts;
 };
+
+const sqlLiteral = (v: string): string => `'${v.replace(/'/g, "''")}'`;
+const sqlIdent = (v: string): string => `"${v.replace(/"/g, '""')}"`;
+
+const fieldToSqlParts = (field: FilterFieldKind, state: FilterState): string[] => {
+    const v = state[field.field];
+    if (!v) return [];
+    const col = sqlIdent(field.field);
+    switch (field.kind) {
+        case 'multiSelect':
+            if (v.kind !== 'multiSelect' || v.values.length === 0) return [];
+            return [`CAST(${col} AS VARCHAR) IN (${v.values.map(sqlLiteral).join(',')})`];
+        case 'containsAny': {
+            // Comma-delimited cells: match the same way the option list splits them.
+            if (v.kind !== 'containsAny' || v.values.length === 0) return [];
+            const clauses = v.values.map(val => `${col} ILIKE ${sqlLiteral(`%${val}%`)}`);
+            return [`(${clauses.join(' OR ')})`];
+        }
+        case 'range': {
+            if (v.kind !== 'range') return [];
+            const parts: string[] = [];
+            if (v.min != null) parts.push(`${col} >= ${Number(v.min)}`);
+            if (v.max != null) parts.push(`${col} <= ${Number(v.max)}`);
+            return parts;
+        }
+        case 'boolean': {
+            if (v.kind !== 'boolean' || v.value === 'all') return [];
+            const lit = v.value === 'yes' ? field.trueValue ?? 'True' : field.falseValue ?? 'False';
+            return [`CAST(${col} AS VARCHAR) = ${sqlLiteral(lit)}`];
+        }
+    }
+};
+
+/** SQL counterpart of {@link toPostgrestPredicates}, for querying the layer's geoparquet. */
+export const toSqlPredicates = (
+    schema: FilterSchema,
+    state: FilterState,
+    excludeField?: string,
+): string[] => {
+    const parts: string[] = [];
+    for (const f of schema.fields) {
+        if (excludeField && f.field === excludeField) continue;
+        parts.push(...fieldToSqlParts(f, state));
+    }
+    return parts;
+};

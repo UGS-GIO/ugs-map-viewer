@@ -46,7 +46,8 @@ import type { HighlightFeature } from '@/components/maps/types';
 import { useZoomToFeature } from '@/hooks/use-zoom-to-feature';
 import { cn } from '@/lib/utils';
 import { useBulkRelatedTable } from '@/hooks/use-bulk-related-table';
-import { exportTableData } from './table-export-utils';
+import { exportTableData, type TableExportFormat } from './table-export-utils';
+import { EXPORT_FORMATS, GDAL_FORMATS } from '@/lib/export-formats';
 import { ExpandedRelatedTable } from './expanded-related-table';
 import { useTableColumns } from './use-table-columns';
 import { useTableData } from './use-table-data';
@@ -65,6 +66,15 @@ interface QueryResultsTableProps {
 }
 
 const EMPTY_COLUMN_FILTERS: { id: string; value: string }[] = [];
+
+
+// Labels/hints come from the shared export registry so the table menu and the parquet
+// download menu can't drift apart.
+const GDAL_TABLE_FORMATS = GDAL_FORMATS.map(format => ({
+    format,
+    label: EXPORT_FORMATS[format].label,
+    hint: EXPORT_FORMATS[format].hint,
+}));
 
 export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeChange, selectedFeatureRefs = [], onSelectedFeaturesChange, onHighlightChange, disableExport = false }: QueryResultsTableProps) {
     const { zoomTo, zoomToAll } = useZoomToFeature({ onHighlightChange });
@@ -255,7 +265,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
 
     // Export emits all feature properties (not just popupFields/visible columns).
     // Filter state determines row scope; column visibility is UI-only.
-    const handleExport = useCallback((format: 'csv' | 'geojson') => {
+    const handleExport = useCallback((format: TableExportFormat) => {
         const filteredRows = table.getFilteredRowModel().rows.map(r => r.original);
         exportTableData({
             format,
@@ -424,6 +434,12 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             <DropdownMenuItem onClick={() => handleExport('geojson')}>
                                 GeoJSON
                             </DropdownMenuItem>
+                            {GDAL_TABLE_FORMATS.map(({ format, label, hint }) => (
+                                <DropdownMenuItem key={format} onClick={() => handleExport(format)}>
+                                    {label}
+                                    <span className="ml-auto text-xs text-muted-foreground">{hint}</span>
+                                </DropdownMenuItem>
+                            ))}
                             {hasRelatedTables && (
                                 <>
                                     <DropdownMenuSeparator />
