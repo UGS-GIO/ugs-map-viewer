@@ -171,6 +171,14 @@ export function toGeoJSON<T extends Record<string, unknown>>(
   return { type: 'FeatureCollection', features }
 }
 
+/** Save raw bytes under `filename` — for binary formats built elsewhere (e.g. gdal3.js). */
+export function downloadBytes(bytes: Uint8Array, filename: string, mimeType = 'application/octet-stream'): void {
+  // Copy into a fresh ArrayBuffer so the Blob constructor accepts it whatever backs the view.
+  const copy = new Uint8Array(bytes.byteLength)
+  copy.set(bytes)
+  triggerDownload(new Blob([copy], { type: mimeType }), filename)
+}
+
 /**
  * Download data as GeoJSON file
  */

@@ -1,7 +1,7 @@
 import { isValidElement } from 'react';
 import type { RelatedTable, FieldConfig } from '@/lib/types/mapping-types';
 import type { RelatedDataMap } from '@/hooks/use-bulk-related-table';
-import { buildCSV, downloadCsvString, downloadGeoJSON, downloadZip, geojsonToWKT } from '@/lib/download-utils';
+import { buildCSV, downloadBytes, downloadCsvString, downloadGeoJSON, downloadZip, geojsonToWKT } from '@/lib/download-utils';
 import { isInternalColumn } from '@/lib/export-fields';
 import { formatFieldValue } from '@/lib/field-formatting';
 import { formatNumeric } from '@/lib/utils';
@@ -13,8 +13,11 @@ interface MainColumn {
     fieldConfig?: FieldConfig;
 }
 
+/** Formats the table can emit. The gdal ones go through gdal3.js, same as parquet downloads. */
+export type TableExportFormat = 'csv' | 'geojson' | 'gpkg' | 'shp' | 'gdb' | 'fgb';
+
 export interface TableExportParams {
-    format: 'csv' | 'geojson';
+    format: TableExportFormat;
     dataToExport: RowData[];
     layerTitle: string;
     columnConfigs: ColumnConfig[];
@@ -79,9 +82,59 @@ export function exportTableData({
 
     if (format === 'csv') {
         exportAsCSV(dataToExport, filename, mainColumns, effectiveRelated, effectiveDataMaps);
-    } else {
+    } else if (format === 'geojson') {
         exportAsGeoJSON(dataToExport, filename, mainColumns, effectiveRelated, effectiveDataMaps);
+    } else {
+        // Fire and forget: gdal3.js loads lazily, so this resolves after the click.
+        void exportViaGdal(format, dataToExport, filename, mainColumns, effectiveRelated, effectiveDataMaps);
     }
+}
+
+/**
+ * GPKG / SHP / GDB / FGB via gdal3.js. Flat formats can't hold the nested `related`
+ * object the GeoJSON export uses, so related rows ride along as sibling CSVs in a zip.
+ */
+async function exportViaGdal(
+    format: Exclude<TableExportFormat, 'csv' | 'geojson'>,
+    dataToExport: RowData[],
+    filename: string,
+    mainColumns: MainColumn[],
+    relatedTables: RelatedTable[],
+    relatedDataMaps: RelatedDataMap[],
+): Promise<void> {
+    const fields = mainColumns.map(c => c.field);
+    const features = dataToExport.map(row => {
+        const properties: Record<string, unknown> = {};
+        for (const field of fields) {
+            if (field in row.properties) properties[field] = row.properties[field];
+        }
+        return { type: 'Feature' as const, geometry: row.feature.geometry, properties };
+    });
+    const geojson = JSON.stringify({ type: 'FeatureCollection', features });
+
+    // No declared types here (unlike parquet), so a column counts as float only when some
+    // value actually has a fractional part — otherwise GDAL reads it as Integer.
+    const floatCols = fields.filter(field =>
+        dataToExport.some(row => {
+            const v = row.properties[field];
+            return typeof v === 'number' && !Number.isInteger(v);
+        }),
+    );
+
+    const { convertGeoJSON, GDAL_TARGETS } = await import('@/lib/gdal-export');
+    const { bytes, filename: outName } = await convertGeoJSON(geojson, filename, GDAL_TARGETS[format], 4326, fields, floatCols);
+
+    const relatedFiles: Record<string, string> = {};
+    relatedTables.forEach((table, idx) => {
+        const name = safeName(table.fieldLabel || `table-${idx + 1}`);
+        relatedFiles[`related-${name}.csv`] = buildRelatedCsv(dataToExport, table, relatedDataMaps[idx]);
+    });
+
+    if (Object.keys(relatedFiles).length === 0) {
+        downloadBytes(bytes, outName);
+        return;
+    }
+    downloadZip({ [outName]: bytes, ...relatedFiles }, filename);
 }
 
 const FEATURE_KEY_HEADER = '_feature_key';
