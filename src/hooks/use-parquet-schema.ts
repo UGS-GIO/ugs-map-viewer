@@ -24,12 +24,21 @@ const fetchSchema = async (url: string): Promise<ParquetSchema> => {
     return { columns, geometryColumn, hasGeometry: !!geometryColumn, rowCount };
 };
 
-/** Probe a parquet URL's schema once, cache forever. Runs on mount when url is set. */
-export const useParquetSchema = (url: string | undefined) => {
+/**
+ * Probe a parquet URL's schema once, cache forever.
+ *
+ * `enabled` gates *fetching* only — the query key is always keyed on `url`, never
+ * blanked out. That matters for callers like the download menu that want to defer
+ * the fetch until first opened (`enabled: open`) but then close the menu right as
+ * a download starts: blanking the key on close would re-key to an empty-string
+ * cache slot and lose the just-fetched `geometryColumn` mid-export. Keeping the
+ * key stable means the cached result survives regardless of `enabled` toggling.
+ */
+export const useParquetSchema = (url: string | undefined, enabled = true) => {
     return useQuery({
         queryKey: queryKeys.modules.parquetSchema(url ?? ''),
         queryFn: () => fetchSchema(url!),
-        enabled: !!url,
+        enabled: !!url && enabled,
         staleTime: Infinity,
         retry: 1,
     });
