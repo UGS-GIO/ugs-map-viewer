@@ -15,7 +15,7 @@ import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
 import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint } from '@/components/maps/pmtiles-layer-source'
+import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
 import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
 import type maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
@@ -480,27 +480,31 @@ export default function DataMap({
     const map = mapRef.current?.getMap()
     const wmsLayers = visibleWmsLayersRef.current
     const wfsLayers = visibleWfsLayersRef.current
+    const pmtilesLayers = visiblePmtilesLayersRef.current
 
-    // Query WFS layers client-side within polygon bbox
-    let wfsFeatures: WfsLayerFeature[] = []
-    if (map && wfsLayers.length > 0) {
+    // Query client-side vector layers within polygon bbox
+    let vectorFeatures: WfsLayerFeature[] = []
+    if (map && (wfsLayers.length > 0 || pmtilesLayers.length > 0)) {
       const [minX, minY, maxX, maxY] = turfBbox(filter.polygon)
       const sw = map.project([minX, minY])
       const ne = map.project([maxX, maxY])
       const screenBbox: [maplibregl.PointLike, maplibregl.PointLike] = [[sw.x, ne.y], [ne.x, sw.y]]
-      wfsFeatures = queryWfsLayersInScreenBbox(map, screenBbox, wfsLayers)
+      vectorFeatures = [
+        ...queryPmtilesLayersInScreenBbox(map, screenBbox, pmtilesLayers),
+        ...queryWfsLayersInScreenBbox(map, screenBbox, wfsLayers),
+      ]
     }
 
-    // If no WMS layers, just use WFS results directly
+    // If no WMS layers, just use the vector results directly
     if (wmsLayers.length === 0) {
-      if (wfsFeatures.length > 0 && onFeatureClick) {
-        onFeatureClick(wfsFeatures, { additive: false })
+      if (vectorFeatures.length > 0 && onFeatureClick) {
+        onFeatureClick(vectorFeatures, { additive: false })
       }
       return
     }
 
-    // Store WFS features for merging when WMS query completes
-    polygonWfsLayerFeaturesRef.current = wfsFeatures
+    // Store vector features for merging when WMS query completes
+    polygonWfsLayerFeaturesRef.current = vectorFeatures
 
     // Trigger WMS polygon query
     polygonQueryRef.current.mutate({
@@ -637,15 +641,18 @@ export default function DataMap({
       ne: [ne.lng, ne.lat] as [number, number]
     })
 
-    // Query WFS layers client-side in the box area, then merge with WMS results
+    // Query client-side vector layers in the box area, then merge with WMS results
     const screenBbox: [maplibregl.PointLike, maplibregl.PointLike] = [
       [centerX - halfBox, centerY - halfBox],
       [centerX + halfBox, centerY + halfBox]
     ]
-    const wfsFeatures = queryWfsLayersInScreenBbox(map, screenBbox, visibleWfsLayers)
+    const vectorFeatures = [
+      ...queryPmtilesLayersInScreenBbox(map, screenBbox, visiblePmtilesLayers),
+      ...queryWfsLayersInScreenBbox(map, screenBbox, visibleWfsLayers),
+    ]
 
     if (visibleWmsLayers.length === 0) {
-      dispatchFeatures(wfsFeatures, isAdditiveMode)
+      dispatchFeatures(vectorFeatures, isAdditiveMode)
       return
     }
 
@@ -661,12 +668,12 @@ export default function DataMap({
       },
       {
         onSuccess: ({ features: wmsFeatures, truncated }) => {
-          dispatchFeatures([...wmsFeatures, ...wfsFeatures], isAdditiveMode)
+          dispatchFeatures([...wmsFeatures, ...vectorFeatures], isAdditiveMode)
           if (truncated) notifyTruncated()
         },
       }
     )
-  }, [onBoxSelectConfirm, visibleWmsLayers, visibleWfsLayers, boxSelectQuery, wmsUrl, onFeatureClick, isAdditiveMode, layerFilters])
+  }, [onBoxSelectConfirm, visibleWmsLayers, visibleWfsLayers, visiblePmtilesLayers, boxSelectQuery, wmsUrl, onFeatureClick, isAdditiveMode, layerFilters])
 
   // Handle map load
   const handleLoad = useCallback(() => {

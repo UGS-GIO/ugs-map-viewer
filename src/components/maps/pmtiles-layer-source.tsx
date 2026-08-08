@@ -124,17 +124,24 @@ async function loadSpriteSheet(map: maplibregl.Map, base: string): Promise<void>
     }
 }
 
+/** Type + first coordinate — enough to tell co-located-attribute features apart when a source carries no ids. */
+function geometrySignature(geometry: GeoJSON.Geometry): string {
+    if (geometry.type === 'GeometryCollection') return `GeometryCollection:${geometry.geometries.length}`
+    let c: unknown = geometry.coordinates
+    while (Array.isArray(c) && Array.isArray(c[0])) c = c[0]
+    return `${geometry.type}:${Array.isArray(c) ? c.join(',') : ''}`
+}
+
 /**
- * Query rendered PMTiles features at a point (with screen tolerance), mapped to
- * the same `WfsLayerFeature` shape the popup pipeline consumes. Mirrors
- * `queryWfsLayersAtPoint`: it walks every rendered layer tagged
+ * Query rendered PMTiles features in a screen bbox, mapped to the same
+ * `WfsLayerFeature` shape the popup pipeline consumes. Mirrors
+ * `queryWfsLayersInScreenBbox`: it walks every rendered layer tagged
  * `metadata.pmtilesLayer` whose title is among the visible PMTiles layers (a
  * single layer may render as many style sublayers), then dedupes per layer.
  */
-export function queryPmtilesLayersAtPoint(
+export function queryPmtilesLayersInScreenBbox(
     map: maplibregl.Map,
-    point: { x: number; y: number },
-    tolerance: number,
+    bbox: [maplibregl.PointLike, maplibregl.PointLike],
     layers: PMTilesLayerProps[],
 ): WfsLayerFeature[] {
     if (layers.length === 0) return []
@@ -147,20 +154,40 @@ export function queryPmtilesLayersAtPoint(
         .map(l => l.id)
     if (ids.length === 0) return []
 
-    const bbox: [maplibregl.PointLike, maplibregl.PointLike] = [
-        [point.x - tolerance, point.y - tolerance],
-        [point.x + tolerance, point.y + tolerance],
-    ]
-    const features = map.queryRenderedFeatures(bbox, { layers: ids })
-    return features.map(f => {
+    const out: WfsLayerFeature[] = []
+    const seen = new Set<string>()
+    for (const f of map.queryRenderedFeatures(bbox, { layers: ids })) {
         const md = map.getLayer(f.layer.id)?.metadata as { title?: string } | undefined
-        return {
-            id: f.id ?? (f.properties?.ogc_fid as string | number | undefined) ?? 0,
+        const layerTitle = md?.title || 'Unknown Layer'
+        const id = f.id ?? (f.properties?.ogc_fid as string | number | undefined) ?? 0
+        // A single feature comes back many times over an area: once per tile it straddles,
+        // and once per style sublayer of the same layer. Dedupe on the best identity we have —
+        // an unkeyed source falls back to properties + a geometry signature, so two features
+        // that merely share attributes (same box type, different well) stay distinct.
+        const key = `${layerTitle}|${id || `${JSON.stringify(f.properties)}|${geometrySignature(f.geometry)}`}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        out.push({
+            id,
             properties: f.properties as Record<string, unknown>,
             geometry: f.geometry,
-            layerTitle: md?.title || 'Unknown Layer',
-        }
-    })
+            layerTitle,
+        })
+    }
+    return out
+}
+
+/** Screen-tolerance box around a click point. See {@link queryPmtilesLayersInScreenBbox}. */
+export function queryPmtilesLayersAtPoint(
+    map: maplibregl.Map,
+    point: { x: number; y: number },
+    tolerance: number,
+    layers: PMTilesLayerProps[],
+): WfsLayerFeature[] {
+    return queryPmtilesLayersInScreenBbox(map, [
+        [point.x - tolerance, point.y - tolerance],
+        [point.x + tolerance, point.y + tolerance],
+    ], layers)
 }
 
 const OPACITY_PROP: Record<string, string> = {
