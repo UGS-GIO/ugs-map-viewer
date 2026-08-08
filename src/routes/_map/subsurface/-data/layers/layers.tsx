@@ -3,7 +3,6 @@ import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
 import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 import { formatNumeric } from "@/lib/utils";
-import { mergeSampleIntervals, titleCaseGroup } from "@/lib/sample-intervals";
 
 
 export const wellWithTopsLayerName = 'wellswithtops_hascore';
@@ -507,28 +506,21 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
             },
             relatedTables: [
                 {
-                    // Client-side rollup of the SAME enmin_ucrc_boxes rows used by "Core Boxes"
-                    // below: collapses individual box records into contiguous Core/Cuttings
-                    // depth intervals, starting a new interval whenever the gap to the next
-                    // same-type sample exceeds 10 ft. Grouping comes from `box_type_group`,
-                    // which the UCRC app owns (BoxType.category) and the warehouse publishes
-                    // per box — `titleCaseGroup` only display-cases it.
+                    // Contiguous Core/Cuttings depth intervals, merged in the warehouse
+                    // (mart_enmin_ucrc_sampleintervals) — 10 ft gap threshold is domain policy
+                    // and lives with the data, not here.
                     fieldLabel: 'Sample Types',
-                    stacAsset: 'enmin_ucrc_boxes',
+                    stacAsset: 'enmin_ucrc_sampleintervals',
                     displayAs: 'table',
-                    rowsTransform: (rows) => mergeSampleIntervals(rows, {
-                        typeField: 'box_type_group',
-                        groupBy: titleCaseGroup,
-                        topField: 'box_top_ft',
-                        bottomField: 'box_bottom_ft',
-                        notesField: 'notes_public',
-                    }),
                     displayFields: [
                         { field: 'sample_type', label: 'Type' },
                         { field: 'top_ft', label: 'Top (ft)', format: 'number' },
                         { field: 'bottom_ft', label: 'Bottom (ft)', format: 'number' },
+                        { field: 'box_count', label: 'Boxes', format: 'number' },
                         { field: 'notes_public', label: 'Notes', transform: (v) => v || '—' },
                     ],
+                    sortBy: 'top_ft',
+                    sortDirection: 'asc',
                 },
                 {
                     // STAC-backed: url + uwi join filled from the enmin_ucrc_boxes related asset.

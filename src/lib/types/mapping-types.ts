@@ -402,14 +402,6 @@ export interface RelatedTable {
     fetchMode?: 'postgrest' | 'wfs' | 'parquet';
     /** WFS typeName (required when fetchMode is 'wfs'), e.g. 'emp:sco2_with_grid' */
     wfsTypeName?: string;
-    /**
-     * Optional post-fetch aggregation over the FULL row array (not a per-cell transform).
-     * Runs once on the raw fetched rows before displayFields/labelValuePairs are built, so it
-     * can change the row count — e.g. collapsing many raw records into summarized rows
-     * (see `mergeSampleIntervals` for the UCRC Samples table, which merges individual
-     * core/cuttings box records into contiguous depth intervals).
-     */
-    rowsTransform?: (rows: Record<string, unknown>[]) => Record<string, unknown>[];
 }
 
 

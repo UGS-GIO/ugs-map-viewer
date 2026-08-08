@@ -83,24 +83,28 @@ const getColorStyle = (
     return { style: { color }, className: '' };
 };
 
-export const getRelatedTableValues = (
+const getRelatedTableValues = (
     groupedLayerIndex: number,
     data: ProcessedRelatedData[][],
-    relatedTables: RelatedTable[] | undefined
+    relatedTables: RelatedTable[] | undefined,
+    properties: GeoJsonProperties
 ): LabelValuePair[][] => {
     if (!data?.length) return [[{ label: "", value: "No data available" }]];
 
     const table = relatedTables?.[groupedLayerIndex];
     if (!table) return [[{ label: "Invalid index", value: "Invalid index" }]];
 
+    const targetField = properties?.[table.targetField!];
     const tableData = data[groupedLayerIndex];
+
     if (!tableData) return [[{ label: "", value: "No data available" }]];
 
-    // Rows are already scoped to this feature upstream (bulkRelatedData map lookup
-    // keyed by targetValue, in the `data` useMemo below) — no matchingField re-check
-    // needed here, just take whichever rows got labelValuePairs computed.
+    // Each matching item becomes its own row (array of labelValuePairs)
     const tableMatches = tableData
-        .filter(item => item.labelValuePairs)
+        .filter(item =>
+            String(item[table.matchingField!]) === String(targetField) &&
+            item.labelValuePairs
+        )
         .map(item => item.labelValuePairs!);
 
     return tableMatches.length > 0
@@ -284,10 +288,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
             const targetValue = feature?.properties?.[table.targetField!];
             if (!targetValue) return [];
 
-            const fetchedRows = dataMap.get(String(targetValue)) || [];
-            // Optional full-array aggregation (e.g. collapsing raw rows into summarized
-            // intervals) before displayFields/labelValuePairs are computed per row.
-            const rows = table.rowsTransform ? table.rowsTransform(fetchedRows) : fetchedRows;
+            const rows = dataMap.get(String(targetValue)) || [];
 
             // Format like the original hook does - add labelValuePairs
             return rows.map(row => {
@@ -427,7 +428,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
 
     // Handle Related Tables
     (relatedTables || []).forEach((table, tableIndex) => {
-        const groupedValues = getRelatedTableValues(tableIndex, data, relatedTables);
+        const groupedValues = getRelatedTableValues(tableIndex, data, relatedTables, properties);
         const flatValues = groupedValues.flat();
 
         // Skip rendering if no real data (only "No data available" placeholder).
