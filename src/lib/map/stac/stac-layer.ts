@@ -24,11 +24,20 @@ import type {
 } from '@/lib/types/mapping-types';
 import { toTitleCase } from '@/lib/utils';
 
-// Rollup of every serving-topics item, full body included (one fetch, no N+1).
-// `collection.json`'s item links are stale — they don't account for items now
-// nesting under `<schema>/<id>/<id>.json` — so use this instead.
-export const STAC_SERVING_TOPICS_ITEMS_URL =
-    'https://maps-assets.geology.utah.gov/warehouse/stac/ugs-serving-topics/items.json';
+const STAC_SERVING_TOPICS_BASE =
+    'https://maps-assets.geology.utah.gov/warehouse/stac/ugs-serving-topics';
+
+// Item discovery. Entries are compact by design (ugs-warehouse `_index_entry`):
+// assets keep href/type/roles/title only, so this styles a layer but can't resolve
+// related tables — those need `ugs:foreign_keys`/`table:columns` off the full item.
+export const STAC_SERVING_TOPICS_ITEMS_URL = `${STAC_SERVING_TOPICS_BASE}/items.json`;
+
+/** Full item href: the warehouse nests items under `<schema>/<id>/<id>.json`. */
+export function stacItemHref(entry: StacItem): string | undefined {
+    const schema = entry.properties?.['ugs:dbt_schema'];
+    if (typeof schema !== 'string' || !schema) return undefined;
+    return `${STAC_SERVING_TOPICS_BASE}/${schema}/${entry.id}/${entry.id}.json`;
+}
 
 /** One entry of a STAC item's `renders` extension (warehouse-attached). */
 export interface StacRenderEntry {
@@ -49,6 +58,8 @@ export interface StacRenderEntry {
 export interface StacItem {
     id: string;
     bbox?: number[];
+    /** From the index, so assets are trimmed. Distinguishes "not in this doc" from "not published". */
+    partial?: boolean;
     properties: {
         'ugs:layer'?: string;
         'proj:code'?: string;
@@ -127,7 +138,10 @@ function resolveStacRelatedTable(rt: RelatedTable, item: StacItem): RelatedTable
     const matchingField = rt.matchingField ?? fk?.fields?.[0];
     const targetField = rt.targetField ?? fk?.reference?.fields?.[0];
     if (!matchingField || !targetField) {
-        console.error(`[stac] related asset '${rt.stacAsset}' on '${item.id}' has no ugs:foreign_keys; cannot join`);
+        console.error(item.partial
+            // Reading the index, which trims join metadata — hydration failed, warehouse is fine.
+            ? `[stac] related asset '${rt.stacAsset}' on '${item.id}' unresolved: item never hydrated, index entries carry no ugs:foreign_keys`
+            : `[stac] related asset '${rt.stacAsset}' on '${item.id}' has no ugs:foreign_keys; cannot join`);
         return null;
     }
     return {
@@ -223,16 +237,37 @@ interface StacItemsIndexDoc {
     items?: StacItem[];
 }
 
-/** Fetch the serving-topics rollup, indexed by item id. */
+/** Fetch the serving-topics rollup, indexed by item id. Entries are partial — see the URL comment. */
 export async function fetchStacItemIndex(): Promise<Record<string, StacItem>> {
     const res = await fetch(STAC_SERVING_TOPICS_ITEMS_URL);
     if (!res.ok) throw new Error(`STAC items index fetch failed: ${res.status}`);
     const doc: StacItemsIndexDoc = await res.json();
     const index: Record<string, StacItem> = {};
     for (const item of doc.items ?? []) {
-        if (item.id) index[item.id] = item;
+        if (item.id) index[item.id] = { ...item, partial: true };
     }
     return index;
+}
+
+/**
+ * Hydrate an index entry into the full item. On failure returns the entry still flagged
+ * `partial`, so the layer renders from the index's pmtiles + renders instead of vanishing.
+ */
+export async function fetchStacItem(entry: StacItem): Promise<StacItem> {
+    const href = stacItemHref(entry);
+    if (!href) {
+        console.error(`[stac] item '${entry.id}' has no 'ugs:dbt_schema' in the index; cannot hydrate`);
+        return entry;
+    }
+    try {
+        const res = await fetch(href);
+        if (!res.ok) throw new Error(`${res.status}`);
+        const item: StacItem = await res.json();
+        return { ...item, partial: false };
+    } catch (err) {
+        console.error(`[stac] failed to hydrate item '${entry.id}' from ${href}:`, err);
+        return entry;
+    }
 }
 
 /**
@@ -291,15 +326,19 @@ export async function resolveStacLayerTree(layers: LayerProps[]): Promise<LayerP
     if (ids.size === 0) return layers;
 
     const index = await fetchStacItemIndex();
-    const items = new Map<string, StacItem>();
+    const found: StacItem[] = [];
     for (const id of ids) {
-        const item = index[id];
-        if (!item) {
+        const entry = index[id];
+        if (!entry) {
             console.error(`[resolveStacLayerTree] failed to resolve STAC item '${id}': not in serving-topics index`);
             continue;
         }
-        items.set(id, item);
+        found.push(entry);
     }
+    // Related tables need join metadata the index trims off, so read the full items.
+    // Key on the requested id, not the fetched doc's, so lookups can't miss.
+    const hydrated = await Promise.all(found.map(fetchStacItem));
+    const items = new Map(found.map((entry, i) => [entry.id, hydrated[i]] as const));
 
     const mapTree = (list: LayerProps[]): LayerProps[] => {
         const out: LayerProps[] = [];
