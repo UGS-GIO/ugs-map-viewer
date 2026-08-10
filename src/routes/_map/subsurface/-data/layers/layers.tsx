@@ -506,6 +506,23 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
             },
             relatedTables: [
                 {
+                    // Contiguous Core/Cuttings depth intervals, merged in the warehouse
+                    // (mart_enmin_ucrc_sampleintervals) — 10 ft gap threshold is domain policy
+                    // and lives with the data, not here.
+                    fieldLabel: 'Sample Types',
+                    stacAsset: 'enmin_ucrc_sampleintervals',
+                    displayAs: 'table',
+                    displayFields: [
+                        { field: 'sample_type', label: 'Type' },
+                        { field: 'top_ft', label: 'Top (ft)', format: 'number' },
+                        { field: 'bottom_ft', label: 'Bottom (ft)', format: 'number' },
+                        { field: 'box_count', label: 'Boxes', format: 'number' },
+                        { field: 'notes_public', label: 'Notes', transform: (v) => v || '—' },
+                    ],
+                    sortBy: 'top_ft',
+                    sortDirection: 'asc',
+                },
+                {
                     // STAC-backed: url + uwi join filled from the enmin_ucrc_boxes related asset.
                     fieldLabel: 'Core Boxes',
                     stacAsset: 'enmin_ucrc_boxes',
