@@ -1195,6 +1195,29 @@ const utTownshipRangesConfig: WMSLayerProps = {
     }],
 };
 
+// Sections — STAC-driven: pmtilesUrl, sourceLayer, and renders come from the
+// warehouse item `enmin_plss_sections`. Sits just below Township & Range
+// (same PLSS/UGRC source) in both the layer list and the map stack.
+const sectionsLayerName = 'enmin_plss_sections';
+export const sectionsTitle = 'Sections';
+const sectionsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: sectionsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: sectionsLayerName,
+    title: sectionsTitle,
+    visible: false,
+    opacity: 1,
+    visibleZoomRange: [11, 22],
+    sourceAgency: 'UGRC',
+    sourceUrl: 'https://gis.utah.gov/products/sgid/cadastre/plss-sections/',
+    sublayers: [{
+        name: sectionsLayerName,
+        popupEnabled: false,
+        queryable: false,
+    }],
+};
+
 
 // Non Petroleum Wells Layer
 const nonpetrolWellsLayerName = 'nwpd_nonpetroleumwellcatalogwells';
@@ -1396,6 +1419,7 @@ const infrastructureAndLandUseConfig: LayerProps = {
         SITLAConfig,
         utCountiesConfig,
         utTownshipRangesConfig,
+        sectionsConfig,
     ]
 }
 
