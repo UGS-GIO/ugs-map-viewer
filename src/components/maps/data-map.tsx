@@ -733,49 +733,13 @@ export default function DataMap({
     }
   }, [styleLoaded]) // Re-run when style loads (map is ready)
 
-  const handleQueryHere = useCallback((coords: { lng: number; lat: number }) => {
-    const map = mapRef.current?.getMap()
-    if (!map || !onFeatureClick || !hasClickableLayers) return
-
-    const point = map.project([coords.lng, coords.lat])
-
-    // Calculate click buffer bbox for visualization
-    const sw = map.unproject([point.x - clickTolerance, point.y + clickTolerance])
-    const ne = map.unproject([point.x + clickTolerance, point.y - clickTolerance])
-    onClickBufferChange?.({ sw: [sw.lng, sw.lat], ne: [ne.lng, ne.lat] })
-
-    queryAtPoint(map, point, clickTolerance, false)
-  }, [hasClickableLayers, clickTolerance, clickQuery, wmsUrl, onFeatureClick, onClickBufferChange, layerFilters])
-
-  const handleZoomIn = useCallback((coords: { lng: number; lat: number }) => {
-    const map = mapRef.current?.getMap()
-    if (!map) return
-    map.flyTo({ center: [coords.lng, coords.lat], zoom: map.getZoom() + 2 })
-  }, [])
-
-  const handleZoomOut = useCallback((coords: { lng: number; lat: number }) => {
-    const map = mapRef.current?.getMap()
-    if (!map) return
-    map.flyTo({ center: [coords.lng, coords.lat], zoom: Math.max(0, map.getZoom() - 2) })
-  }, [])
-
-  const handleCenterHere = useCallback((coords: { lng: number; lat: number }) => {
-    const map = mapRef.current?.getMap()
-    if (!map) return
-    map.flyTo({ center: [coords.lng, coords.lat] })
-  }, [])
-
   return (
     <>
       <MapContextMenu
         open={contextMenuOpen}
         onOpenChange={setContextMenuOpen}
         coords={contextMenuCoords}
-        onQueryHere={onFeatureClick ? handleQueryHere : undefined}
         onClearSelection={onClearSelection}
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onCenterHere={handleCenterHere}
         onPinLocation={onPinChange ? (coords) => onPinChange(coords) : undefined}
         hasSelection={highlightFeatures.length > 0 || !!pinCoords}
         currentZoom={currentZoomRef.current}
