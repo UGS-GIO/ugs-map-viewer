@@ -10,16 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useToast } from '@/hooks/use-toast'
 import { convertDDToDMS } from '@/lib/map/conversion-utils'
-import {
-  Link,
-  Search,
-  ZoomIn,
-  ZoomOut,
-  Crosshair,
-  Trash2,
-  MapPin,
-  Navigation,
-} from 'lucide-react'
+import { Link, Trash2, MapPin, Navigation } from 'lucide-react'
 
 // Half Esri's LOD 0 scale: their world is 256px at zoom 0, MapLibre's is 512px, so zoom z is Esri level z+1.
 const ESRI_SCALE_CONSTANT = 295828763.8
@@ -32,15 +23,13 @@ export interface ContextMenuCoords {
   screenY: number
 }
 
+// Limited to what the map can't already do. Query/center/zoom at a point live on left-click,
+// drag, scroll, and the NavigationControl.
 interface MapContextMenuProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   coords: ContextMenuCoords | null
-  onQueryHere?: (coords: { lng: number; lat: number }) => void
   onClearSelection?: () => void
-  onZoomIn?: (coords: { lng: number; lat: number }) => void
-  onZoomOut?: (coords: { lng: number; lat: number }) => void
-  onCenterHere?: (coords: { lng: number; lat: number }) => void
   onPinLocation?: (coords: { lat: number; lon: number }) => void
   hasSelection?: boolean
   currentZoom?: number
@@ -50,11 +39,7 @@ export function MapContextMenu({
   open,
   onOpenChange,
   coords,
-  onQueryHere,
   onClearSelection,
-  onZoomIn,
-  onZoomOut,
-  onCenterHere,
   onPinLocation,
   hasSelection = false,
   currentZoom = 10,
@@ -111,46 +96,18 @@ export function MapContextMenu({
   }, [coords, currentZoom, toast, onOpenChange, onPinLocation])
 
   // Open in external map services
-  const handleOpenInMaps = useCallback((service: 'google' | 'apple' | 'osm' | 'bing' | 'ugs') => {
+  const handleOpenInMaps = useCallback((service: 'google' | 'osm' | 'ugs') => {
     if (!coords) return
     const { lat, lng } = coords
     const urls = {
       google: `https://www.google.com/maps?q=${lat},${lng}`,
-      apple: `https://maps.apple.com/?ll=${lat},${lng}&q=${lat},${lng}`,
       osm: `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}&zoom=${Math.round(currentZoom)}`,
-      bing: `https://www.bing.com/maps?cp=${lat}~${lng}&lvl=${Math.round(currentZoom)}`,
       // 2D MapView uses scale, not zoom. Explicit `layers` — the portal only defaults it in 3D.
       ugs: `https://geomap.geology.utah.gov/?lat=${lat}&lng=${lng}&view=map&scale=${zoomToScale(currentZoom)}&layers=100k,reference`,
     }
     window.open(urls[service], '_blank')
     onOpenChange(false)
   }, [coords, currentZoom, onOpenChange])
-
-  // Query features at this location
-  const handleQueryHere = useCallback(() => {
-    if (!coords || !onQueryHere) return
-    onQueryHere({ lng: coords.lng, lat: coords.lat })
-    onOpenChange(false)
-  }, [coords, onQueryHere, onOpenChange])
-
-  // Zoom controls
-  const handleZoomIn = useCallback(() => {
-    if (!coords || !onZoomIn) return
-    onZoomIn({ lng: coords.lng, lat: coords.lat })
-    onOpenChange(false)
-  }, [coords, onZoomIn, onOpenChange])
-
-  const handleZoomOut = useCallback(() => {
-    if (!coords || !onZoomOut) return
-    onZoomOut({ lng: coords.lng, lat: coords.lat })
-    onOpenChange(false)
-  }, [coords, onZoomOut, onOpenChange])
-
-  const handleCenterHere = useCallback(() => {
-    if (!coords || !onCenterHere) return
-    onCenterHere({ lng: coords.lng, lat: coords.lat })
-    onOpenChange(false)
-  }, [coords, onCenterHere, onOpenChange])
 
   const handleClearSelection = useCallback(() => {
     onClearSelection?.()
@@ -200,38 +157,6 @@ export function MapContextMenu({
 
             <DropdownMenuSeparator />
 
-            {/* Query section */}
-            {onQueryHere && (
-              <DropdownMenuItem onClick={handleQueryHere}>
-                <Search className="mr-2 h-4 w-4" />
-                Query Features Here
-              </DropdownMenuItem>
-            )}
-
-            {/* Navigation section */}
-            <DropdownMenuSeparator />
-
-            {onCenterHere && (
-              <DropdownMenuItem onClick={handleCenterHere}>
-                <Crosshair className="mr-2 h-4 w-4" />
-                Center Map Here
-              </DropdownMenuItem>
-            )}
-
-            {onZoomIn && (
-              <DropdownMenuItem onClick={handleZoomIn}>
-                <ZoomIn className="mr-2 h-4 w-4" />
-                Zoom In Here
-              </DropdownMenuItem>
-            )}
-
-            {onZoomOut && (
-              <DropdownMenuItem onClick={handleZoomOut}>
-                <ZoomOut className="mr-2 h-4 w-4" />
-                Zoom Out Here
-              </DropdownMenuItem>
-            )}
-
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <Navigation className="mr-2 h-4 w-4" />
@@ -241,14 +166,8 @@ export function MapContextMenu({
                 <DropdownMenuItem onClick={() => handleOpenInMaps('google')}>
                   Google Maps
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleOpenInMaps('apple')}>
-                  Apple Maps
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleOpenInMaps('osm')}>
                   OpenStreetMap
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleOpenInMaps('bing')}>
-                  Bing Maps
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => handleOpenInMaps('ugs')}>
