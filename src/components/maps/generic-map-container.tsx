@@ -452,9 +452,7 @@ export default function GenericMapContainer({
   const noOtherModeActive = activeDrawShape === 'off' && !boxSelectMode
   const isAdditiveMode = noOtherModeActive && (additiveModeToggled || isShiftHeld)
 
-  // Leftovers from whichever selection mode was active: the drawn filter shape, the frozen
-  // box-select bounds, additive toggle. Every mode transition clears all three — keep this the
-  // single list so the transitions below can't drift apart.
+  // One list of per-mode leftovers — every transition below clears all three.
   const clearSelectionState = useCallback(() => {
     setSpatialFilter(null)
     setBoxSelectBounds(null)

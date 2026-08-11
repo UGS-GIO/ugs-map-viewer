@@ -64,9 +64,7 @@ export function useTerraDraw({
     }
   }
 
-  // Helper to create, wire up, and start Terra Draw.
-  // Every instance must be built here — the 'finish' listener and mode sync are part of
-  // construction, so a rebuilt instance (basemap switch) can't come back deaf.
+  // Build every instance here — a rebuild that skips the 'finish' listener comes back deaf.
   const createTerraDraw = (mapInstance: maplibregl.Map) => {
     cleanupTerraDrawLayers(mapInstance)
 
