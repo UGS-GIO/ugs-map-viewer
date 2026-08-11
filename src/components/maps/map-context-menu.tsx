@@ -21,10 +21,7 @@ import {
   Navigation,
 } from 'lucide-react'
 
-// Scale/zoom conversion for the ArcGIS-based geologic map portal, which takes a map scale
-// rather than a zoom. Esri's Web Mercator LOD 0 is a 256px world (1:591,657,527.59), while
-// MapLibre's is 512px — so MapLibre zoom z lines up with Esri level z+1, and the constant is
-// half of Esri's. See maplibre transform: `worldSize = 512 * 2^zoom`.
+// Half Esri's LOD 0 scale: their world is 256px at zoom 0, MapLibre's is 512px, so zoom z is Esri level z+1.
 const ESRI_SCALE_CONSTANT = 295828763.8
 const zoomToScale = (zoom: number) => Math.round(ESRI_SCALE_CONSTANT / Math.pow(2, zoom))
 
@@ -122,8 +119,7 @@ export function MapContextMenu({
       apple: `https://maps.apple.com/?ll=${lat},${lng}&q=${lat},${lng}`,
       osm: `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}&zoom=${Math.round(currentZoom)}`,
       bing: `https://www.bing.com/maps?cp=${lat}~${lng}&lvl=${Math.round(currentZoom)}`,
-      // 2D MapView uses scale, not zoom. `layers` is sent explicitly: the portal only defaults
-      // it for its 3D view, and the 2D fallback that saves us relies on a typo'd check.
+      // 2D MapView uses scale, not zoom. Explicit `layers` — the portal only defaults it in 3D.
       ugs: `https://geomap.geology.utah.gov/?lat=${lat}&lng=${lng}&view=map&scale=${zoomToScale(currentZoom)}&layers=100k,reference`,
     }
     window.open(urls[service], '_blank')
