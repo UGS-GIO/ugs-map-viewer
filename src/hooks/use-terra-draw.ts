@@ -64,7 +64,9 @@ export function useTerraDraw({
     }
   }
 
-  // Helper to create and start Terra Draw
+  // Helper to create, wire up, and start Terra Draw.
+  // Every instance must be built here — the 'finish' listener and mode sync are part of
+  // construction, so a rebuilt instance (basemap switch) can't come back deaf.
   const createTerraDraw = (mapInstance: maplibregl.Map) => {
     cleanupTerraDrawLayers(mapInstance)
 
@@ -96,28 +98,6 @@ export function useTerraDraw({
       ],
     })
 
-    terraDraw.start()
-    return terraDraw
-  }
-
-  // Initialize Terra Draw when map + style are ready (stable deps only)
-  useEffect(() => {
-    if (!map || !styleLoaded) return
-
-    // Stop existing Terra Draw if present (handles style reloads)
-    if (terraDrawRef.current) {
-      try { terraDrawRef.current.stop() } catch { /* ignore */ }
-      terraDrawRef.current = null
-    }
-
-    const terraDraw = createTerraDraw(map)
-    terraDrawRef.current = terraDraw
-
-    // Sync to current draw mode immediately after initialization
-    if (activeDrawShape !== 'off') {
-      terraDraw.setMode(activeDrawShape)
-    }
-
     // Listen for drawing completion - emit polygon and reset
     terraDraw.on('finish', (id: string | number) => {
       const snapshot = terraDraw.getSnapshot()
@@ -132,6 +112,28 @@ export function useTerraDraw({
       onDrawResetRef.current?.()
     })
 
+    terraDraw.start()
+
+    // Sync to the current draw mode immediately after initialization
+    if (activeDrawShapeRef.current !== 'off') {
+      terraDraw.setMode(activeDrawShapeRef.current)
+    }
+
+    return terraDraw
+  }
+
+  // Initialize Terra Draw when map + style are ready (stable deps only)
+  useEffect(() => {
+    if (!map || !styleLoaded) return
+
+    // Stop existing Terra Draw if present (handles style reloads)
+    if (terraDrawRef.current) {
+      try { terraDrawRef.current.stop() } catch { /* ignore */ }
+      terraDrawRef.current = null
+    }
+
+    terraDrawRef.current = createTerraDraw(map)
+
     // Handle map style changes (basemap switches) - reinitialize Terra Draw
     const handleStyleData = () => {
       // Check if our Terra Draw layers still exist
@@ -141,13 +143,7 @@ export function useTerraDraw({
       // If style changed and we lost our layers, reinitialize
       if (!hasTdLayers && terraDrawRef.current) {
         try { terraDrawRef.current.stop() } catch { /* ignore */ }
-        const newTerraDraw = createTerraDraw(map)
-        terraDrawRef.current = newTerraDraw
-
-        // Restore current mode
-        if (activeDrawShapeRef.current !== 'off') {
-          newTerraDraw.setMode(activeDrawShapeRef.current)
-        }
+        terraDrawRef.current = createTerraDraw(map)
       }
     }
     map.on('styledata', handleStyleData)
@@ -155,7 +151,8 @@ export function useTerraDraw({
     return () => {
       map.off('styledata', handleStyleData)
       try {
-        terraDraw.stop()
+        // Ref, not the local — a style reload may have swapped in a newer instance
+        terraDrawRef.current?.stop()
       } catch {
         // Map may already be destroyed during HMR or unmount
       }
