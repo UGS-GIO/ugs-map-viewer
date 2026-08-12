@@ -5,6 +5,7 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import type { FilterSchema, FilterFieldKind } from '@/lib/filter/types';
+import { useSchemaParquetUrl } from '@/hooks/use-schema-parquet-url';
 
 interface Options {
     schema: FilterSchema;
@@ -12,8 +13,27 @@ interface Options {
     enabled?: boolean;
 }
 
+const snapped = (
+    { min, max }: { min: number; max: number },
+    snap: number | undefined,
+): { min: number; max: number } => (snap && snap > 0
+    ? { min: Math.floor(min / snap) * snap, max: Math.ceil(max / snap) * snap }
+    : { min, max });
+
 export const useFieldRangeExtent = ({ schema, field, enabled = true }: Options) => {
-    return useQuery({
+    const { parquetUrl } = useSchemaParquetUrl(schema);
+
+    const parquetQuery = useQuery({
+        queryKey: ['field-range-extent', 'parquet', parquetUrl, field.field],
+        queryFn: async (): Promise<{ min: number; max: number }> => {
+            const { queryParquetFieldExtent } = await import('@/lib/duckdb/client');
+            return snapped(await queryParquetFieldExtent({ url: parquetUrl!, field: field.field }), field.snapStep);
+        },
+        enabled: enabled && !!parquetUrl,
+        staleTime: 1000 * 60 * 60,
+    });
+
+    const postgrestQuery = useQuery({
         queryKey: ['field-range-extent', schema.recordKey, field.field],
         queryFn: async (): Promise<{ min: number; max: number }> => {
             const headers = { Accept: 'application/json', ...(schema.tableHeaders ?? {}) };
@@ -29,12 +49,11 @@ export const useFieldRangeExtent = ({ schema, field, enabled = true }: Options) 
             ]);
             const rawMin = minRows[0]?.[field.field] ?? 0;
             const rawMax = maxRows[0]?.[field.field] ?? 0;
-            const snap = field.snapStep;
-            return snap && snap > 0
-                ? { min: Math.floor(rawMin / snap) * snap, max: Math.ceil(rawMax / snap) * snap }
-                : { min: rawMin, max: rawMax };
+            return snapped({ min: rawMin, max: rawMax }, field.snapStep);
         },
-        enabled,
+        enabled: enabled && !schema.stacItemId,
         staleTime: 1000 * 60 * 60,
     });
+
+    return schema.stacItemId ? parquetQuery : postgrestQuery;
 };

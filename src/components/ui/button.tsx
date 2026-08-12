@@ -61,9 +61,20 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const Comp = asChild ? Slot : "button"
+    // Slot requires exactly one child — skip the loading/section decoration below.
+    if (asChild) {
+      return (
+        <Slot
+          className={cn(buttonVariants({ variant, size, className }))}
+          ref={ref}
+          {...props}
+        >
+          {children}
+        </Slot>
+      )
+    }
     return (
-      <Comp
+      <button
         className={cn(buttonVariants({ variant, size, className }))}
         disabled={loading || disabled}
         ref={ref}
@@ -79,7 +90,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         {rightSection && loading && (
           <Loader2 className="ml-2 h-4 w-4 animate-spin" />
         )}
-      </Comp>
+      </button>
     )
   }
 )

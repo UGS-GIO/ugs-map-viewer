@@ -18,6 +18,9 @@ export const UCRC_ASSETS_CDN_URL = import.meta.env.DEV
  */
 export const parquetUrl = (name: string) => `${MAPS_ASSETS_CDN_URL}/parquet/${name}/${name}.parquet`;
 
+/** Routes serving unmodified source data — no downloads. Matches their `disableExport`. */
+export const EXPORT_DISABLED_PAGES: readonly string[] = ['hazards'];
+
 // Constants for symbol generation
 export const SYMBOL_CONSTANTS = {
     SVG_WIDTH: 32,

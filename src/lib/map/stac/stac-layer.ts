@@ -24,10 +24,20 @@ import type {
 } from '@/lib/types/mapping-types';
 import { toTitleCase } from '@/lib/utils';
 
-// Serving-topics collection — the vector layers the viewer can render. Items
-// live at `./<id>/<id>.json` relative to this URL.
-export const STAC_SERVING_TOPICS_COLLECTION =
-    'https://maps-assets.geology.utah.gov/warehouse/stac/ugs-serving-topics/collection.json';
+const STAC_SERVING_TOPICS_BASE =
+    'https://maps-assets.geology.utah.gov/warehouse/stac/ugs-serving-topics';
+
+// Item discovery. Entries are compact by design (ugs-warehouse `_index_entry`):
+// assets keep href/type/roles/title only, so this styles a layer but can't resolve
+// related tables — those need `ugs:foreign_keys`/`table:columns` off the full item.
+export const STAC_SERVING_TOPICS_ITEMS_URL = `${STAC_SERVING_TOPICS_BASE}/items.json`;
+
+/** Full item href: the warehouse nests items under `<schema>/<id>/<id>.json`. */
+export function stacItemHref(entry: StacItem): string | undefined {
+    const schema = entry.properties?.['ugs:dbt_schema'];
+    if (typeof schema !== 'string' || !schema) return undefined;
+    return `${STAC_SERVING_TOPICS_BASE}/${schema}/${entry.id}/${entry.id}.json`;
+}
 
 /** One entry of a STAC item's `renders` extension (warehouse-attached). */
 export interface StacRenderEntry {
@@ -39,13 +49,17 @@ export interface StacRenderEntry {
     /** Absolute sprite-sheet base URL (no extension) for icon renders. */
     sprite?: string;
     /** Legend swatches; icon renders carry this explicitly. */
-    legend?: Array<{ label: string; color: string }>;
+    legend?: Array<{ label: string; color: string; values?: readonly { value: string; color: string; label?: string }[]; stroke?: string }>;
+    /** Feature attribute this render symbolizes. */
+    field?: string;
 }
 
 /** The slice of a STAC item we depend on. Extra fields are ignored. */
 export interface StacItem {
     id: string;
     bbox?: number[];
+    /** From the index, so assets are trimmed. Distinguishes "not in this doc" from "not published". */
+    partial?: boolean;
     properties: {
         'ugs:layer'?: string;
         'proj:code'?: string;
@@ -124,7 +138,10 @@ function resolveStacRelatedTable(rt: RelatedTable, item: StacItem): RelatedTable
     const matchingField = rt.matchingField ?? fk?.fields?.[0];
     const targetField = rt.targetField ?? fk?.reference?.fields?.[0];
     if (!matchingField || !targetField) {
-        console.error(`[stac] related asset '${rt.stacAsset}' on '${item.id}' has no ugs:foreign_keys; cannot join`);
+        console.error(item.partial
+            // Reading the index, which trims join metadata — hydration failed, warehouse is fine.
+            ? `[stac] related asset '${rt.stacAsset}' on '${item.id}' unresolved: item never hydrated, index entries carry no ugs:foreign_keys`
+            : `[stac] related asset '${rt.stacAsset}' on '${item.id}' has no ugs:foreign_keys; cannot join`);
         return null;
     }
     return {
@@ -172,7 +189,7 @@ export function stacRendersToPMTiles(renders: Record<string, StacRenderEntry> | 
     for (const [id, r] of Object.entries(renders)) {
         if (!r.style_url) continue;
         if (r.assets && !r.assets.includes('pmtiles')) continue;
-        out.push({ id, title: r.title, styleUrl: r.style_url, sprite: r.sprite, legend: r.legend });
+        out.push({ id, title: r.title, styleUrl: r.style_url, sprite: r.sprite, legend: r.legend, field: r.field });
     }
     return out;
 }
@@ -216,32 +233,41 @@ export function renderSelectOptions(layer: PMTilesLayerProps): Array<{ id: strin
 
 // ─── Catalog fetch + tree resolution ───────────────────────────────────────
 
-interface StacCollection {
-    links?: Array<{ rel: string; href: string; title?: string }>;
+interface StacItemsIndexDoc {
+    items?: StacItem[];
 }
 
-/**
- * Fetch the serving-topics collection and build `itemId → absolute item URL`
- * from its `item` links (relative hrefs resolved against the collection URL).
- */
-export async function fetchStacItemIndex(): Promise<Record<string, string>> {
-    const res = await fetch(STAC_SERVING_TOPICS_COLLECTION);
-    if (!res.ok) throw new Error(`STAC collection fetch failed: ${res.status}`);
-    const collection: StacCollection = await res.json();
-    const index: Record<string, string> = {};
-    for (const link of collection.links ?? []) {
-        if (link.rel !== 'item' || !link.href) continue;
-        const href = new URL(link.href, STAC_SERVING_TOPICS_COLLECTION).toString();
-        const id = href.split('/').pop()?.replace(/\.json$/, '');
-        if (id) index[id] = href;
+/** Fetch the serving-topics rollup, indexed by item id. Entries are partial — see the URL comment. */
+export async function fetchStacItemIndex(): Promise<Record<string, StacItem>> {
+    const res = await fetch(STAC_SERVING_TOPICS_ITEMS_URL);
+    if (!res.ok) throw new Error(`STAC items index fetch failed: ${res.status}`);
+    const doc: StacItemsIndexDoc = await res.json();
+    const index: Record<string, StacItem> = {};
+    for (const item of doc.items ?? []) {
+        if (item.id) index[item.id] = { ...item, partial: true };
     }
     return index;
 }
 
-export async function fetchStacItem(href: string): Promise<StacItem> {
-    const res = await fetch(href);
-    if (!res.ok) throw new Error(`STAC item fetch failed: ${res.status}`);
-    return res.json();
+/**
+ * Hydrate an index entry into the full item. On failure returns the entry still flagged
+ * `partial`, so the layer renders from the index's pmtiles + renders instead of vanishing.
+ */
+export async function fetchStacItem(entry: StacItem): Promise<StacItem> {
+    const href = stacItemHref(entry);
+    if (!href) {
+        console.error(`[stac] item '${entry.id}' has no 'ugs:dbt_schema' in the index; cannot hydrate`);
+        return entry;
+    }
+    try {
+        const res = await fetch(href);
+        if (!res.ok) throw new Error(`${res.status}`);
+        const item: StacItem = await res.json();
+        return { ...item, partial: false };
+    } catch (err) {
+        console.error(`[stac] failed to hydrate item '${entry.id}' from ${href}:`, err);
+        return entry;
+    }
 }
 
 /**
@@ -251,10 +277,7 @@ export async function fetchStacItem(href: string): Promise<StacItem> {
  */
 export async function fetchStacAssetHref(stacItemId: string, assetKey: string): Promise<string | undefined> {
     const index = await fetchStacItemIndex();
-    const href = index[stacItemId];
-    if (!href) return undefined;
-    const item = await fetchStacItem(href);
-    return item.assets?.[assetKey]?.href;
+    return index[stacItemId]?.assets?.[assetKey]?.href;
 }
 
 /** Collect every `stacItemId` referenced in a (possibly nested) layer tree. */
@@ -303,16 +326,19 @@ export async function resolveStacLayerTree(layers: LayerProps[]): Promise<LayerP
     if (ids.size === 0) return layers;
 
     const index = await fetchStacItemIndex();
-    const items = new Map<string, StacItem>();
-    await Promise.all([...ids].map(async (id) => {
-        try {
-            const href = index[id];
-            if (!href) throw new Error(`'${id}' not in serving-topics collection`);
-            items.set(id, await fetchStacItem(href));
-        } catch (err) {
-            console.error(`[resolveStacLayerTree] failed to resolve STAC item '${id}':`, err);
+    const found: StacItem[] = [];
+    for (const id of ids) {
+        const entry = index[id];
+        if (!entry) {
+            console.error(`[resolveStacLayerTree] failed to resolve STAC item '${id}': not in serving-topics index`);
+            continue;
         }
-    }));
+        found.push(entry);
+    }
+    // Related tables need join metadata the index trims off, so read the full items.
+    // Key on the requested id, not the fetched doc's, so lookups can't miss.
+    const hydrated = await Promise.all(found.map(fetchStacItem));
+    const items = new Map(found.map((entry, i) => [entry.id, hydrated[i]] as const));
 
     const mapTree = (list: LayerProps[]): LayerProps[] => {
         const out: LayerProps[] = [];

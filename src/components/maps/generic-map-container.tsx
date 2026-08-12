@@ -11,7 +11,7 @@ import { PopupSheet, PopupSheetRef } from '@/components/maps/popups/popup-sheet'
 import { QueryResultsTable } from '@/components/data-table/query-results-table'
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { flattenDataLayersWithParent, resolveLeafVisibility } from '@/lib/map/layer-utils'
+import { flattenDataLayersWithAncestors, resolveLeafVisibility } from '@/lib/map/layer-utils'
 import { useMapUrlSync, type ViewMode } from '@/hooks/use-map-url-sync'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useSidebar } from '@/hooks/use-sidebar'
@@ -283,13 +283,13 @@ export default function GenericMapContainer({
   const popupSheetRef = useRef<PopupSheetRef>(null)
   const sheetTriggerRef = useRef<HTMLButtonElement>(null)
 
-  // Currently-displayed titles: leaf is checked AND its parent group toggle is on.
+  // Currently-displayed titles: leaf is checked AND every enclosing group toggle is on.
   // Used by the legend fetcher to filter WMS layers without re-deriving runtime state.
   const displayedTitles = useMemo(() => {
     const s = new Set<string>()
-    for (const { layer, parentGroupTitle } of flattenDataLayersWithParent(layersConfig)) {
+    for (const { layer, ancestorGroupTitles } of flattenDataLayersWithAncestors(layersConfig)) {
       const { displayed } = resolveLeafVisibility(
-        layer.title, parentGroupTitle, selectedLayerTitles, groupVisibility,
+        layer.title, ancestorGroupTitles, selectedLayerTitles, groupVisibility,
       )
       if (displayed && layer.title) s.add(layer.title)
     }
@@ -441,14 +441,19 @@ export default function GenericMapContainer({
   const noOtherModeActive = activeDrawShape === 'off' && !boxSelectMode
   const isAdditiveMode = noOtherModeActive && (additiveModeToggled || isShiftHeld)
 
-  // Register callback so startDraw can clear conflicting container state
-  const prepareForDraw = useCallback(() => {
+  // One list of per-mode leftovers — every transition below clears all three.
+  const clearSelectionState = useCallback(() => {
     setSpatialFilter(null)
-    setBoxSelectMode(false)
     setBoxSelectBounds(null)
     setAdditiveModeToggled(false)
-    setToolbarDrawShape('off')
   }, [])
+
+  // Register callback so startDraw can clear conflicting container state
+  const prepareForDraw = useCallback(() => {
+    clearSelectionState()
+    setBoxSelectMode(false)
+    setToolbarDrawShape('off')
+  }, [clearSelectionState])
 
   // Register once (safe - callback is stable)
   registerPrepareForDraw(prepareForDraw)
@@ -459,16 +464,15 @@ export default function GenericMapContainer({
   ) => {
     cancelDraw()
     setToolbarDrawShape('off')
+    clearSelectionState()
     setBoxSelectMode(mode === 'boxSelect')
-    if (mode !== 'boxSelect') setBoxSelectBounds(null)
     setAdditiveModeToggled(mode === 'additive')
-  }, [cancelDraw])
+  }, [cancelDraw, clearSelectionState])
 
   // Toolbar draw toggle — starts draw via context, tracks highlight locally
   const handleToolbarDrawToggle = useCallback((mode: DrawMode) => {
     setBoxSelectMode(false)
-    setBoxSelectBounds(null)
-    setAdditiveModeToggled(false)
+    clearSelectionState()
     if (mode === 'off') {
       cancelDraw()
       setToolbarDrawShape('off')
@@ -476,7 +480,7 @@ export default function GenericMapContainer({
       startDraw(mode, undefined, () => setToolbarDrawShape('off'))
       setToolbarDrawShape(mode)
     }
-  }, [cancelDraw, startDraw])
+  }, [cancelDraw, startDraw, clearSelectionState])
 
   // Called by useTerraDraw when drawing finishes (resets to 'off')
   const handleDrawReset = useCallback(() => {

@@ -61,47 +61,46 @@ export const flattenDataLayers = (layers: LayerProps[]) =>
   flattenLeaves(layers, isDataLayer)
 
 /**
- * Flatten data leaves and tag each with its enclosing group title (or null for
- * top-level layers). Used to compute display visibility against group toggle
- * state from the URL.
+ * Flatten data leaves and tag each with the titles of its enclosing groups,
+ * outermost first (empty for top-level layers). A chain, not a single parent,
+ * so arbitrarily nested trees resolve display visibility correctly.
  */
-export interface DataLeafWithParent {
+export interface DataLeafWithAncestors {
   layer: WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps | PMTilesLayerProps
-  parentGroupTitle: string | null
+  ancestorGroupTitles: string[]
 }
 
-export function flattenDataLayersWithParent(layers: LayerProps[]): DataLeafWithParent[] {
-  const result: DataLeafWithParent[] = []
-  const walk = (arr: LayerProps[], parent: string | null) => {
+export function flattenDataLayersWithAncestors(layers: LayerProps[]): DataLeafWithAncestors[] {
+  const result: DataLeafWithAncestors[] = []
+  const walk = (arr: LayerProps[], ancestors: string[]) => {
     for (const layer of arr) {
       if (isGroupLayer(layer) && layer.layers) {
-        walk(layer.layers, layer.title ?? parent)
+        walk(layer.layers, layer.title ? [...ancestors, layer.title] : ancestors)
       } else if (isDataLayer(layer)) {
-        result.push({ layer, parentGroupTitle: parent })
+        result.push({ layer, ancestorGroupTitles: ancestors })
       }
     }
   }
-  walk(layers, null)
+  walk(layers, [])
   return result
 }
 
 /**
  * Resolve a leaf's runtime visibility against URL state.
  * - `mounted` = checkbox is on (drives `<Source>` presence).
- * - `displayed` = mounted AND parent group toggle on (drives `layout.visibility`).
- * Root-level leaves (no parent group) default to displayed when mounted.
+ * - `displayed` = mounted AND every enclosing group toggle on (drives `layout.visibility`).
+ * Root-level leaves (no enclosing group) default to displayed when mounted, as do
+ * groups with no toggle entry in the URL.
  */
 export function resolveLeafVisibility(
   title: string | undefined,
-  parentGroupTitle: string | null,
+  ancestorGroupTitles: string[],
   selectedTitles: Set<string>,
   groupVisibility: Map<string, boolean>,
 ): { mounted: boolean; displayed: boolean } {
   const mounted = !!title && selectedTitles.has(title)
-  const groupOn = parentGroupTitle === null
-    ? true
-    : (groupVisibility.get(parentGroupTitle) ?? true)
-  return { mounted, displayed: mounted && groupOn }
+  const groupsOn = ancestorGroupTitles.every(group => groupVisibility.get(group) ?? true)
+  return { mounted, displayed: mounted && groupsOn }
 }
 
 // ── Layer search ─────────────────────────────────────────────────────
@@ -119,6 +118,26 @@ export function findLayerByTitle(layers: LayerProps[], title: string): LayerProp
     }
   }
   return null
+}
+
+/**
+ * Titles of every group enclosing `title`, outermost first. Empty when the layer
+ * is top-level or absent. Turning a layer on switches all of these on, since any
+ * ancestor group toggled off hides the whole subtree (`resolveLeafVisibility`).
+ */
+export function findAncestorGroupTitles(layers: LayerProps[], title: string): string[] {
+  // `undefined` = not found in this branch, `[]` = found at top level
+  const walk = (arr: LayerProps[], ancestors: string[]): string[] | undefined => {
+    for (const layer of arr) {
+      if (layer.title === title) return ancestors
+      if (isGroupLayer(layer) && layer.layers) {
+        const found = walk(layer.layers, layer.title ? [...ancestors, layer.title] : ancestors)
+        if (found !== undefined) return found
+      }
+    }
+    return undefined
+  }
+  return walk(layers, []) ?? []
 }
 
 // ── URL parsing & building ───────────────────────────────────────────

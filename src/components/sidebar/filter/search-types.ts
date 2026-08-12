@@ -10,7 +10,6 @@ interface BaseConfig {
 export interface PostgRESTConfig extends BaseConfig {
     type: 'postgREST';
     layerName?: string;
-    crs?: string;
     params?: PostgRESTParams;
     functionName?: string;
     /** Extra parameters passed to the PostgREST function (e.g. { search_scale: 'small' }) */
