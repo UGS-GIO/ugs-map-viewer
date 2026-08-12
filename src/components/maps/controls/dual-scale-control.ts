@@ -63,10 +63,7 @@ export class DualScaleControl implements maplibregl.IControl {
     private updateScale = (): void => {
         if (!this.map || !this.canvas) return;
 
-        const center = this.map.getCenter();
-
-        // Get meters per pixel at center latitude
-        const metersPerPixel = this.getMetersPerPixel(center.lat, this.map.getZoom());
+        const metersPerPixel = this.getMetersPerPixel();
 
         // Calculate distance ranges for min/max width
         const minMeters = metersPerPixel * this.minWidth;
@@ -85,57 +82,47 @@ export class DualScaleControl implements maplibregl.IControl {
         this.render(metricScale, metricWidth, imperialScale, imperialWidth);
     };
 
-    private getMetersPerPixel(latitude: number, zoom: number): number {
-        // Earth's circumference at equator in meters
-        const earthCircumference = 40075016.686;
-        const metersPerPixel = (earthCircumference * Math.cos(latitude * Math.PI / 180)) /
-            (256 * Math.pow(2, zoom));
-        return metersPerPixel;
+    private getMetersPerPixel(): number {
+        // Measure the ground distance across a known pixel span at the center of the
+        // viewport rather than deriving it from zoom, which requires assuming a tile
+        // size (MapLibre uses 512px, not the more commonly quoted 256px) and ignores
+        // pitch and bearing.
+        const canvas = this.map!.getCanvas();
+        const x = canvas.clientWidth / 2;
+        const y = canvas.clientHeight / 2;
+        const span = Math.min(this.maxWidth, canvas.clientWidth);
+        const left = this.map!.unproject([x - span / 2, y]);
+        const right = this.map!.unproject([x + span / 2, y]);
+        return left.distanceTo(right) / span;
     }
 
     private getRoundScale(minDistance: number, maxDistance: number, unit: 'metric' | 'imperial'): { distance: number; label: string } {
         // Nice round numbers to use - find largest that fits between min and max
         const roundNumbers = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000];
 
-        if (unit === 'metric') {
-            // Build list of all possible metric distances
-            const candidates: { distance: number; label: string }[] = [];
-            for (const n of roundNumbers) {
-                // Meters
-                if (n < 1000) {
-                    candidates.push({ distance: n, label: `${n} m` });
-                }
-                // Kilometers
-                candidates.push({ distance: n * 1000, label: `${n} km` });
+        // Distances are expressed in the small unit (meters / feet)
+        const smallUnitLabel = unit === 'metric' ? 'm' : 'ft';
+        const largeUnitLabel = unit === 'metric' ? 'km' : 'mi';
+        const perLargeUnit = unit === 'metric' ? 1000 : FEET_PER_MILE;
+
+        const candidates: { distance: number; label: string }[] = [];
+        for (const n of roundNumbers) {
+            if (n < perLargeUnit) {
+                candidates.push({ distance: n, label: `${n} ${smallUnitLabel}` });
             }
-            // Find largest that fits in range
-            let best = candidates[0];
-            for (const c of candidates) {
-                if (c.distance >= minDistance && c.distance <= maxDistance) {
-                    best = c;
-                }
-            }
-            return best;
-        } else {
-            // Imperial - build list of all possible distances
-            const candidates: { distance: number; label: string }[] = [];
-            for (const n of roundNumbers) {
-                // Feet
-                if (n < FEET_PER_MILE) {
-                    candidates.push({ distance: n, label: `${n} ft` });
-                }
-                // Miles (5280 feet per mile)
-                candidates.push({ distance: n * FEET_PER_MILE, label: `${n} mi` });
-            }
-            // Find largest that fits in range
-            let best = candidates[0];
-            for (const c of candidates) {
-                if (c.distance >= minDistance && c.distance <= maxDistance) {
-                    best = c;
-                }
-            }
-            return best;
+            candidates.push({ distance: n * perLargeUnit, label: `${n} ${largeUnitLabel}` });
         }
+        // Sort ascending so "last one that fits" is genuinely the largest that fits -
+        // the interleaved build order above puts e.g. 1 km before 500 m.
+        candidates.sort((a, b) => a.distance - b.distance);
+
+        let best = candidates[0];
+        for (const c of candidates) {
+            if (c.distance >= minDistance && c.distance <= maxDistance) {
+                best = c;
+            }
+        }
+        return best;
     }
 
     private render(

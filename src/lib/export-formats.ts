@@ -4,7 +4,12 @@
  * dropdown + handler dispatch both pick it up.
  */
 
-export type ExportFormat = 'parquet' | 'geojson' | 'csv';
+export type ExportFormat = 'parquet' | 'geojson' | 'csv' | 'gpkg' | 'shp' | 'gdb' | 'fgb';
+
+/** Formats converted by gdal3.js rather than DuckDB — see `gdal-export.ts`. */
+export const GDAL_FORMATS = ['gpkg', 'shp', 'gdb', 'fgb'] as const;
+export const isGdalFormat = (f: ExportFormat): boolean =>
+    (GDAL_FORMATS as readonly string[]).includes(f);
 
 export interface ExportFormatMeta {
     /** Human-readable label for the menu */
@@ -41,6 +46,36 @@ export const EXPORT_FORMATS: Record<ExportFormat, ExportFormatMeta> = {
         mimeType: 'text/csv',
         requiresGeometry: false,
         hint: '.csv',
+    },
+    gpkg: {
+        label: 'GeoPackage',
+        extension: 'gpkg',
+        mimeType: 'application/geopackage+sqlite3',
+        requiresGeometry: true,
+        hint: '.gpkg',
+    },
+    shp: {
+        label: 'Shapefile',
+        // Zipped sidecars: yields `<stem>.shp.zip`.
+        extension: 'shp.zip',
+        mimeType: 'application/zip',
+        requiresGeometry: true,
+        hint: '.shp.zip',
+    },
+    gdb: {
+        label: 'File Geodatabase',
+        // Zipped .gdb directory: yields `<stem>.gdb.zip`.
+        extension: 'gdb.zip',
+        mimeType: 'application/zip',
+        requiresGeometry: true,
+        hint: '.gdb.zip',
+    },
+    fgb: {
+        label: 'FlatGeobuf',
+        extension: 'fgb',
+        mimeType: 'application/octet-stream',
+        requiresGeometry: true,
+        hint: '.fgb',
     },
 };
 
