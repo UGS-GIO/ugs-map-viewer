@@ -17,10 +17,11 @@ import type {
     WMSLayerProps,
 } from '@/lib/types/mapping-types'
 import {
-    STAC_SERVING_TOPICS_COLLECTION,
+    STAC_SERVING_TOPICS_ITEMS_URL,
     fetchStacItem,
     fetchStacItemIndex,
     resolveStacPMTilesLayer,
+    stacItemHref,
     type StacItem,
 } from '@/lib/map/stac/stac-layer'
 import { loadCogMetadata } from '@/hooks/use-cog-metadata'
@@ -178,23 +179,33 @@ async function buildFromStacItem(item: StacItem, title: string, itemHref?: strin
     throw new Error(`STAC item '${item.id}' has no PMTiles or COG asset to render.`)
 }
 
+/** Fetch a STAC item straight off its URL. The shared `fetchStacItem` hydrates an index
+ *  entry (deriving the href from `ugs:dbt_schema`), which a user-supplied URL has no
+ *  entry for — so the direct-URL path reads the document itself. */
+async function fetchStacItemFromUrl(url: string): Promise<StacItem> {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`STAC item fetch failed: ${res.status}`)
+    return await res.json() as StacItem
+}
+
 /** Resolve a STAC item id (serving-topics collection) or a direct item URL. */
 async function buildFromStac(input: string, title: string): Promise<LayerProps> {
     // Direct item URL?
     if (/^https?:\/\//i.test(input) && input.toLowerCase().endsWith('.json')) {
-        const item = await fetchStacItem(input)
+        const item = await fetchStacItemFromUrl(input)
         // GeoJSON masquerading as .json (no stac_version) → treat as GeoJSON.
         if (!('stac_version' in item) && (item as unknown as { type?: string }).type === 'FeatureCollection') {
             return buildGeoJSONFromUrl(input, title)
         }
         return buildFromStacItem(item, title || item.id, input)
     }
-    // Otherwise treat as an id in the serving-topics collection.
+    // Otherwise treat as an id in the serving-topics collection. The index holds compact
+    // entries; hydrate to the full item so assets/renders are complete.
     const index = await fetchStacItemIndex()
-    const href = index[input]
-    if (!href) throw new Error(`STAC item id '${input}' not found in ${STAC_SERVING_TOPICS_COLLECTION}`)
-    const item = await fetchStacItem(href)
-    return buildFromStacItem(item, title || item.id, href)
+    const entry = index[input]
+    if (!entry) throw new Error(`STAC item id '${input}' not found in ${STAC_SERVING_TOPICS_ITEMS_URL}`)
+    const item = await fetchStacItem(entry)
+    return buildFromStacItem(item, title || item.id, stacItemHref(entry))
 }
 
 export interface BuildFromUrlOptions {
