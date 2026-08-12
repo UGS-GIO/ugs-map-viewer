@@ -6,9 +6,7 @@
  */
 
 // Fully-qualified WFS feature type name backing every displacement layer.
-// The `test_all` suffix is provisional; rename here when the backend table
-// gets its permanent name and every consumer follows.
-export const DISPLACEMENT_TYPE_NAME = 'hazards:merged_displacement_contours_test_all'
+export const DISPLACEMENT_TYPE_NAME = 'hazards:hazards_displacement_contours_review'
 
 // Title of the layer-tree group containing all displacement layers. Used by
 // HazardsReviewLayers to attach the group-level filter slot.
@@ -59,7 +57,7 @@ export function getStyleNameForType(type: DisplacementType): string | undefined 
     return undefined
 }
 
-// Types whose features carry per-year value_inch and have year-driven analytics.
+// Types whose features carry per-year value_inches and have year-driven analytics.
 // Anything outside this set renders on the map but doesn't get a chart card or
 // threshold input — `Vertical Displacement Rate` for example is a multi-year
 // period summary, not a per-year quantity.
@@ -70,16 +68,7 @@ export function isChartedType(t: DisplacementType): t is ChartedType {
     return (CHARTED_TYPES as readonly string[]).includes(t)
 }
 
-// Types whose features have null `year` (period-keyed). Year filter still
-// applies but resolves against `end_date` (the year that closes each
-// observation window) instead of the per-feature `year` column.
-const PERIOD_KEYED_TYPES: ReadonlySet<DisplacementType> = new Set(['Cumulative', 'Vertical Displacement Rate'])
-
-export function isPeriodKeyedType(t: DisplacementType): boolean {
-    return PERIOD_KEYED_TYPES.has(t)
-}
-
-// Human-readable units for each type's value_inch column. Cumulative + VDR
+// Human-readable units for each type's value_inches column. Cumulative + VDR
 // readings span a window (start_date → end_date) so the unit reads "per time
 // period"; Yearly is a per-year measurement, so the unit is unqualified.
 // Surfaced on the sidebar legend (via WMSLayerProps.legendUnit) and the chart

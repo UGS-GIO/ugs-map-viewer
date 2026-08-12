@@ -3,7 +3,7 @@ import { DISPLACEMENT_TYPE_NAME } from './displacement-layers'
 
 /**
  * Bin derived from a single rule in a WMS GetLegendGraphic response. Mirrors
- * the SLD class boundaries on `value_inch`, so the chart's stacked bars and
+ * the SLD class boundaries on `value_inches`, so the chart's stacked bars and
  * swatches use the exact same breaks + colors the map renders with.
  */
 export interface SldBin {
@@ -12,7 +12,15 @@ export interface SldBin {
     min: number          // -Infinity for the lowest open bin
     max: number          // Infinity for the highest open bin
     color: string        // hex from Polygon.fill
-    isZero: boolean      // true for the "within uncertainty" deadband bin
+    isZero: boolean      // true for the "within uncertainty" deadband bin (straddles 0)
+    include: SldComparison[]  // the rule's own comparisons, operators intact
+    exclude: SldComparison[]  // comparisons under its NOT(...) subclause
+}
+
+/** One `value_inches <op> N` test from an SLD rule filter. */
+export interface SldComparison {
+    op: '>=' | '<=' | '>' | '<'
+    value: number
 }
 
 interface LegendRule {
@@ -26,23 +34,56 @@ interface LegendResponse {
     Legend?: Array<{ rules?: LegendRule[] }>
 }
 
+function parseComparisons(text: string): SldComparison[] {
+    const re = /value_inches\s*(>=|<=|>|<)\s*'?(-?\d+(?:\.\d+)?)'?/g
+    const out: SldComparison[] = []
+    let m: RegExpExecArray | null
+    while ((m = re.exec(text)) !== null) {
+        out.push({ op: m[1] as SldComparison['op'], value: parseFloat(m[2]) })
+    }
+    return out
+}
+
 // Parse a SLD CQL-style filter like:
-//   [value_inch >= '-12' AND value_inch < '-8' AND NOT (value_inch >= '-1.2' AND value_inch <= '1.2')]
-// Strips the NOT-deadband subclause, then walks value_inch <op> 'N' pairs to
-// derive {min, max}. Half-open (< / <=) treated the same for binning purposes.
-function parseBoundsFromFilter(filter: string): { min: number; max: number } {
-    const stripped = filter.replace(/\s+AND\s+NOT\s*\([^)]+\)/g, '')
-    const re = /value_inch\s*(>=|<=|>|<)\s*'(-?\d+(?:\.\d+)?)'/g
+//   [value_inches >= '-12' AND value_inches < '-8' AND NOT (value_inches >= '-2' AND value_inches <= '2')]
+// The NOT-deadband subclause is kept, not stripped: it's inclusive at both ends
+// while band bounds are half-open, so values on a shared edge (every contour —
+// they're whole inches) belong to the deadband alone. {min, max} is still
+// derived for ordering and deadband detection.
+export function parseRuleFilter(filter: string): { include: SldComparison[]; exclude: SldComparison[]; min: number; max: number } {
+    const excluded: string[] = []
+    const stripped = filter.replace(/\s*AND\s+NOT\s*\(([^)]+)\)/g, (_full, inner: string) => {
+        excluded.push(inner)
+        return ''
+    })
+    const include = parseComparisons(stripped)
+    const exclude = excluded.flatMap(parseComparisons)
     let min = -Infinity
     let max = Infinity
-    let m: RegExpExecArray | null
-    while ((m = re.exec(stripped)) !== null) {
-        const op = m[1]
-        const v = parseFloat(m[2])
-        if (op === '>=' || op === '>') min = Math.max(min, v)
-        if (op === '<=' || op === '<') max = Math.min(max, v)
+    for (const c of include) {
+        if (c.op === '>=' || c.op === '>') min = Math.max(min, c.value)
+        else max = Math.min(max, c.value)
     }
-    return { min, max }
+    return { include, exclude, min, max }
+}
+
+function satisfies(v: number, c: SldComparison): boolean {
+    switch (c.op) {
+        case '>=': return v >= c.value
+        case '>': return v > c.value
+        case '<=': return v <= c.value
+        case '<': return v < c.value
+    }
+}
+
+// Evaluates the rule the way GeoServer does — same operators, same exclusion. An
+// unparsed filter matches nothing rather than everything, so a style change can't
+// silently turn one class into a catch-all.
+export function binMatches(bin: SldBin, v: number): boolean {
+    if (bin.include.length === 0) return false
+    if (!bin.include.every(c => satisfies(v, c))) return false
+    if (bin.exclude.length > 0 && bin.exclude.every(c => satisfies(v, c))) return false
+    return true
 }
 
 export async function fetchDisplacementSldBins(styleName: string): Promise<SldBin[]> {
@@ -54,14 +95,18 @@ export async function fetchDisplacementSldBins(styleName: string): Promise<SldBi
     const bins: SldBin[] = rules
         .filter(r => r.filter && r.symbolizers?.[0]?.Polygon?.fill)
         .map(r => {
-            const { min, max } = parseBoundsFromFilter(r.filter!)
+            const { include, exclude, min, max } = parseRuleFilter(r.filter!)
             return {
                 name: r.name ?? '',
                 title: r.title ?? '',
                 min,
                 max,
+                include,
+                exclude,
                 color: r.symbolizers![0].Polygon!.fill ?? '#999',
-                isZero: r.name === 'Zero',
+                // The deadband is the one class spanning both signs. Structural,
+                // not by rule name — styles spell it 'Zero', 'excluded', etc.
+                isZero: min < 0 && max > 0,
             }
         })
     // Sort by lower bound so stacked bars + legend swatches read left-to-right.

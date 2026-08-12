@@ -1,5 +1,5 @@
 import type { ExtendedFeature, LayerContentProps } from '@/components/maps/popups/types'
-import { DISPLACEMENT_LAYER_TYPES, isDisplacementLayerTitle, isPeriodKeyedType, type DisplacementType } from './displacement-layers'
+import { DISPLACEMENT_LAYER_TYPES, isDisplacementLayerTitle, type DisplacementType } from './displacement-layers'
 
 interface PopupFilterInputs {
     /** Resolved per-type year (user override or latest from data). Null = still loading for that type. */
@@ -10,8 +10,8 @@ interface PopupFilterInputs {
 /**
  * Returns a predicate that mirrors the year + basin cql clauses on the popup
  * side, so feature cards for non-matching years or unselected basins are hidden
- * inline with the map tiles. Year filter matches the water year column for
- * Yearly, and the end_date year for period-keyed types (Cumulative + VDR).
+ * inline with the map tiles. Year filter matches the `year` column, which holds
+ * the window's closing year for every type.
  *
  * Mirrors the map cql exactly: the year clause only applies once a type's
  * effective year resolves. While it is null (data still loading, or a type
@@ -23,17 +23,12 @@ export function makeDisplacementPopupFeatureFilter({ effectiveYearByType, basins
         const title = layer.layerTitle || layer.groupLayerTitle || ''
         if (!isDisplacementLayerTitle(title)) return true
         const typeValue = DISPLACEMENT_LAYER_TYPES[title]
-        const props = feature.properties as { year?: string; location?: string; end_date?: string } | undefined
+        const props = feature.properties as { year?: number | string; location?: string } | undefined
 
         const effectiveYear = effectiveYearByType[typeValue]
-        if (effectiveYear) {
-            if (isPeriodKeyedType(typeValue)) {
-                const endYear = props?.end_date?.slice(0, 4)
-                if (endYear !== effectiveYear) return false
-            } else {
-                if (props?.year !== effectiveYear) return false
-            }
-        }
+        // Popup properties arrive from WMS GetFeatureInfo, which stringifies the
+        // int `year` column — compare as strings.
+        if (effectiveYear && String(props?.year ?? '') !== effectiveYear) return false
 
         const basins = basinsByType[typeValue]
         if (basins && basins.size > 0) {

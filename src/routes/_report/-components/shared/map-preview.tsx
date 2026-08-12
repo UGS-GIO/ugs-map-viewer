@@ -4,6 +4,7 @@ import { hazardLayerNameMap as importedHazardLayerNameMap } from '@/routes/_repo
 import { PROD_GEOSERVER_URL } from '@/lib/constants';
 import { convertCoordinate, calculateBounds, convertPolygonToWGS84 } from '@/lib/map/conversion-utils';
 import { useScreenshotLoading } from '@/routes/_report/-context/screenshot-loading-context';
+import { calculateScaleBar, type ScaleBarInfo } from '@/routes/_report/-utils/scale-bar';
 
 const hazardLayerNameMap: Record<string, string> = importedHazardLayerNameMap as Record<string, string>;
 
@@ -89,12 +90,6 @@ function getTileBoundsLngLat(tileX: number, tileY: number, zoom: number): { west
     };
 }
 
-/** Scale bar calculation result */
-interface ScaleBarInfo {
-    text: string;
-    pixelWidth: number;
-}
-
 /** Viewport calculation result for map rendering */
 interface Viewport {
     bboxMinX: number;
@@ -107,31 +102,6 @@ interface Viewport {
     height: number;
     zoom: number;
     scaleBar: ScaleBarInfo;
-}
-
-/** Calculate scale bar info */
-function calculateScaleBar(bboxWidthMeters: number, canvasWidth: number, centerLat: number): ScaleBarInfo {
-    const correctedWidth = bboxWidthMeters * Math.cos(centerLat * Math.PI / 180);
-    const metersPerPixel = correctedWidth / canvasWidth;
-    const targetPixels = Math.min(canvasWidth / 5, 150);
-    let distance = targetPixels * metersPerPixel;
-
-    let unit = 'm';
-    if (distance >= 1000) {
-        distance /= 1000;
-        unit = 'km';
-    }
-
-    const niceNumbers = [0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500];
-    let bestDistance = niceNumbers[0];
-    for (const n of niceNumbers) {
-        if (distance >= n * 0.7) bestDistance = n;
-        else break;
-    }
-
-    const actualMeters = unit === 'km' ? bestDistance * 1000 : bestDistance;
-    const pixelWidth = Math.round(actualMeters / metersPerPixel);
-    return { text: `${bestDistance} ${unit}`, pixelWidth: Math.min(pixelWidth, 200) };
 }
 
 /** Calculate viewport bbox that fits polygon with padding */
@@ -426,7 +396,7 @@ export function MapPreview({
                     {scaleInfo && (
                         <div className="absolute bottom-2 left-2 px-2 py-1 bg-background/80 backdrop-blur-sm rounded text-xs flex items-center gap-2 print:bg-background print:border">
                             <span className="text-foreground whitespace-nowrap">Scale:</span>
-                            <div style={{ width: `${scaleInfo.pixelWidth}px`, minWidth: '30px' }} className="h-1 bg-muted-foreground" />
+                            <div style={{ width: `${scaleInfo.pixelWidth}px` }} className="h-1 bg-muted-foreground" />
                             <span className="text-foreground whitespace-nowrap">{scaleInfo.text}</span>
                         </div>
                     )}

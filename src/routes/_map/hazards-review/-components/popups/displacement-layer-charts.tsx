@@ -1,14 +1,15 @@
-import { useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import area from '@turf/area'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { BarChart, Bar, Rectangle, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label as RechartsLabel, type BarShapeProps, type XAxisTickContentProps } from 'recharts'
+import { LegendSwatchGrid, type LegendSwatchItem } from '@/components/maps/legend-swatch-grid'
+import { BarChart, Bar, Rectangle, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label as RechartsLabel, useActiveTooltipLabel, useIsTooltipActive, type BarShapeProps, type XAxisTickContentProps } from 'recharts'
 import type { LayerContentProps } from '@/components/maps/popups/types'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import { useMap } from '@/hooks/use-map'
 import { DISPLACEMENT_LAYER_TYPES, getStyleNameForType, getUnitsLabelForType, isChartedType, isDisplacementLayerTitle, type ChartedType, type DisplacementType } from './displacement-layers'
-import { type SldBin } from './displacement-sld-legend'
+import { binMatches, getZeroBound, type SldBin } from './displacement-sld-legend'
 import {
     getBucketYear,
     useDisplacementFeaturesByType,
@@ -25,6 +26,31 @@ const CHART_HEIGHT_PX = 224
 
 // Round to 1 decimal place for popup display.
 const fmt1 = (n: number): string => n.toFixed(1)
+
+// One chart column: the year plus a signed mi² total per SLD bin name.
+type ChartRow = { year: string; [binName: string]: string | number }
+
+// Stable identity so recharts doesn't see a new content component each render.
+const renderNoTooltip = () => null
+
+// Values stay signed so uplift and subsidence can't cancel out in the legend.
+function sumByBin(rows: ChartRow[]): Record<string, number> {
+    const totals: Record<string, number> = {}
+    for (const row of rows) {
+        for (const [key, value] of Object.entries(row)) {
+            if (key === 'year' || typeof value !== 'number') continue
+            totals[key] = (totals[key] ?? 0) + value
+        }
+    }
+    return totals
+}
+
+// Columns the active year covers: a range for Cumulative, one for Yearly. Shared
+// by the chart's highlight band and the legend's summed readout so they can't drift.
+function isYearInRange(typeValue: ChartedType, selected: string | null, yr: string | undefined): boolean {
+    if (!selected || !yr) return true
+    return typeValue === 'Cumulative' ? yr <= selected : yr === selected
+}
 
 // Resolve a charted type to its SLD style. Wraps getStyleNameForType so chart
 // code can stay strict about charted types without falling back at every call.
@@ -73,11 +99,10 @@ export function renderDisplacementLayerStats(layerTitle: string): React.ReactNod
     return <DisplacementLayerCharts typeValue={typeValue} />
 }
 
-// Locate which SldBin a feature's signed value_inch falls into. Half-open on the
-// upper bound matches the SLD's "value_inch < X" semantics so each feature
-// resolves to exactly one bin.
+// Uses each rule's own predicate, so a value lands where GeoServer would paint it.
+// Given plot bins (deadband excluded), uncertainty values resolve to no bin.
 export function findBin(bins: SldBin[], v: number): SldBin | undefined {
-    return bins.find(b => v >= b.min && v < b.max)
+    return bins.find(b => binMatches(b, v))
 }
 
 // Compute [minLng, minLat, maxLng, maxLat] across a feature collection without
@@ -129,6 +154,16 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     // Drives the map cql, the stacked bar, and every KPI / metric / basin
     // ranking — one honest knob, applied everywhere.
     const threshold = useEffectiveThresholdsIn()[typeValue]
+    const zeroBound = useMemo(() => getZeroBound(sldBins), [sldBins])
+    // One test behind KPI, chart, and basin ranking: clear the reviewer's floor
+    // AND land in a band the map paints. Keeps all three agreeing with the map.
+    const isMeasured = useCallback(
+        (v: number) => Math.abs(v) >= threshold && findBin(plotBins, v) !== undefined,
+        [threshold, plotBins]
+    )
+    const thresholdLabel = zeroBound != null && threshold <= zeroBound
+        ? `|value| > ${fmt1(zeroBound)} in`
+        : `|value| ≥ ${fmt1(threshold)} in`
 
     // Split SLD bins by sign and order each side so the stack reads outward
     // from zero: closest-to-zero bin first, deepest band last. Negative bins
@@ -184,8 +219,8 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
 
     // KPI + advanced metrics use the single SLD-pinned threshold.
     const auditOverThreshold = useMemo(
-        () => filtered.filter(f => Math.abs(f.properties.value_inch) >= threshold),
-        [filtered, threshold]
+        () => filtered.filter(f => isMeasured(f.properties.value_inches)),
+        [filtered, isMeasured]
     )
 
     const totalAreaSqMi = useMemo(
@@ -196,7 +231,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     const maxDisplacement = useMemo(() => {
         let max = 0
         for (const f of filtered) {
-            const v = Math.abs(f.properties.value_inch)
+            const v = Math.abs(f.properties.value_inches)
             if (v > max) max = v
         }
         return max
@@ -222,8 +257,8 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     const stackedAreaByYear = useMemo(() => {
         const yearToBins = new Map<string, Record<string, number>>()
         for (const f of scoped) {
-            const v = f.properties.value_inch
-            if (Math.abs(v) < threshold) continue
+            const v = f.properties.value_inches
+            if (!isMeasured(v)) continue
             const bin = findBin(plotBins, v)
             if (!bin) continue
             const y = getBucketYear(f.properties)
@@ -237,9 +272,33 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             const buckets = yearToBins.get(y)!
             buckets[bin.name] = (buckets[bin.name] ?? 0) + a
         }
-        return Array.from(yearToBins, ([year, b]) => ({ year, ...b }))
+        return Array.from(yearToBins, ([year, b]): ChartRow => ({ year, ...b }))
             .sort((a, b) => a.year.localeCompare(b.year))
-    }, [scoped, threshold, plotBins])
+    }, [scoped, isMeasured, plotBins])
+
+    // Bin names that actually contribute a non-zero segment somewhere in the
+    // currently plotted years — drives the under-chart legend so reviewers
+    // only see swatches for ranges present in view, not every possible SLD
+    // class.
+    const presentBinNames = useMemo(() => {
+        const names = new Set<string>()
+        for (const row of stackedAreaByYear) {
+            for (const [key, value] of Object.entries(row)) {
+                if (key === 'year') continue
+                if (typeof value === 'number' && value !== 0) names.add(key)
+            }
+        }
+        return names
+    }, [stackedAreaByYear])
+
+    const visibleUpliftBins = useMemo(
+        () => upliftBins.filter(b => presentBinNames.has(b.name)),
+        [upliftBins, presentBinNames]
+    )
+    const visibleSubsidenceBins = useMemo(
+        () => subsidenceBins.filter(b => presentBinNames.has(b.name)),
+        [subsidenceBins, presentBinNames]
+    )
 
     // Worst-basin list considers ALL basins (skips the basin filter) so the
     // ranking stays complete; non-selected rows render greyed out when a
@@ -254,9 +313,9 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             if (!yearMatched(f)) continue
             const loc = f.properties.location
             if (!loc) continue
-            const v = f.properties.value_inch
+            const v = f.properties.value_inches
             const a = Math.abs(v)
-            if (a < threshold) continue
+            if (!isMeasured(v)) continue
             const cur = byLocation.get(loc)
             if (!cur) {
                 byLocation.set(loc, { signed: v, abs: a, features: [f] })
@@ -278,7 +337,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             bbox: combinedBbox(locFeatures),
             bin: findBin(plotBins, signed),
         })).sort((a, b) => b.abs - a.abs)
-    }, [qualFiltered, year, threshold, plotBins])
+    }, [qualFiltered, year, isMeasured, plotBins])
 
     // Use the global worst depth (across this type's entire dataset, ignoring
     // year/threshold) as the row-bar denominator so a basin's bar width keeps
@@ -287,7 +346,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     const worstDepth = useMemo(() => {
         let max = 0
         for (const f of qualFiltered) {
-            const a = Math.abs(f.properties.value_inch)
+            const a = Math.abs(f.properties.value_inches)
             if (a > max) max = a
         }
         return max
@@ -324,79 +383,61 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
         }
     }
 
-    // Which year columns are inside the active filter. Cumulative end-years light
-    // every window up to and including the pick, Yearly only the exact match.
-    const isHighlightedYear = (yr: string | undefined) => {
-        if (!year || !yr) return true
-        return typeValue === 'Cumulative' ? yr <= year : yr === year
+    // Hover feeds the legend instead of a floating card — the panel is too narrow
+    // for a tooltip beside the bar without clipping.
+    const [hoveredYear, setHoveredYear] = useState<string | null>(null)
+
+    // Independent of hover, so the range readout survives pointer movement.
+    const rangeRows = useMemo(
+        () => year ? stackedAreaByYear.filter(r => isYearInRange(typeValue, year, r.year)) : [],
+        [stackedAreaByYear, year, typeValue]
+    )
+    const hoveredRow = useMemo(
+        () => hoveredYear ? stackedAreaByYear.find(r => r.year === hoveredYear) ?? null : null,
+        [stackedAreaByYear, hoveredYear]
+    )
+
+    const rangeTotals = useMemo(() => sumByBin(rangeRows), [rangeRows])
+
+    // Two columns only past one year, else both would print the same number.
+    const isRangeMode = rangeRows.length > 1
+
+    const legendSpan = useMemo(() => {
+        if (isRangeMode) return `${rangeRows[0].year}–${rangeRows[rangeRows.length - 1].year}`
+        return hoveredYear ?? year
+    }, [isRangeMode, rangeRows, hoveredYear, year])
+
+    // Magnitudes only — the Uplift/Subsidence split already carries direction.
+    const fmtArea = (v: number | undefined): string => v ? fmt1(Math.abs(v)) : '—'
+
+    // Range mode puts the unit in the header; single-column keeps it inline.
+    const legendValueFor = (binName: string): string | undefined => {
+        if (isRangeMode) return fmtArea(rangeTotals[binName])
+        const row = hoveredRow ?? rangeRows[0]
+        if (!row) return undefined
+        const v = row[binName]
+        return typeof v === 'number' && v !== 0 ? `${fmt1(Math.abs(v))} mi²` : '—'
     }
 
-    // Per-segment highlight via the Bar `shape` render prop — replaces the
-    // deprecated <Cell> children (recharts v3 routes per-datum styling through
-    // `shape`). Dims segments outside the active year. The dim is deliberately
-    // mild: the band below is what marks the selection, so off-year bars only
-    // need to recede, not disappear — at a heavier dim they wash out entirely
-    // against the light theme's background and the chart loses its context.
-    // Only geometry + fill are forwarded to Rectangle so non-DOM Bar props
-    // (payload, tooltipPosition, …) can't leak onto the SVG path.
-    const renderHighlightBar = (props: BarShapeProps) => {
-        const { x, y, width, height, fill } = props
-        const highlighted = isHighlightedYear(props.payload?.year as string | undefined)
-        return <Rectangle x={x} y={y} width={width} height={height} fill={fill} fillOpacity={highlighted ? 1 : 0.45} />
+    // Em dash while idle so the column doesn't appear and vanish under the pointer.
+    const legendHoverValueFor = (binName: string): string | undefined => {
+        if (!isRangeMode) return undefined
+        if (!hoveredRow) return '—'
+        const v = hoveredRow[binName]
+        return typeof v === 'number' && v !== 0 ? fmt1(Math.abs(v)) : '—'
     }
 
-    // Full-height tint band behind the active year's column(s). Opacity alone
-    // can't mark the selection when a year's segments are only a pixel or two
-    // tall (calm years, or a high threshold) — there's nothing to dim. The band
-    // spans the whole plot, so which column is active stays legible at any
-    // magnitude. Bar `background` rects are already sized to the category band
-    // (`y: plotTop, height: plotHeight`) and render beneath the bars.
-    const renderYearBand = (props: BarShapeProps) => {
-        const { x, y, width, height } = props
-        if (!year || !isHighlightedYear(props.payload?.year as string | undefined)) return <g />
-        return (
-            <Rectangle
-                x={x}
-                y={y}
-                width={width}
-                height={height}
-                fill="currentColor"
-                fillOpacity={0.1}
-                stroke="currentColor"
-                strokeOpacity={0.3}
-                strokeWidth={1}
-            />
-        )
-    }
-
-    // Bold + full-contrast tick for the selected year, muted for the rest — a
-    // second, unambiguous read of the pick (exact match even for Cumulative,
-    // where the band covers the whole accumulation window up to that year).
-    const renderYearTick = (props: XAxisTickContentProps) => {
-        const value = String(props.payload?.value ?? '')
-        const selected = value === year
-        return (
-            <text
-                x={props.x}
-                y={props.y}
-                dy={11}
-                textAnchor="middle"
-                fill="currentColor"
-                fontSize={11}
-                fontWeight={selected ? 700 : 400}
-                fillOpacity={selected ? 1 : 0.6}
-            >
-                {value}
-            </text>
-        )
-    }
+    const selectYear = useCallback(
+        (label: string) => setYearOverride(typeValue, label),
+        [setYearOverride, typeValue]
+    )
 
     if (isError) return <div className="text-xs text-destructive mb-2">Failed to load stats.</div>
 
     return (
         <div className="mb-3 flex flex-col gap-3 px-2 py-1">
             <div className="grid grid-cols-2 gap-2">
-                <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={`|value| ≥ ${fmt1(threshold)} in`} />
+                <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={thresholdLabel} />
                 <KPI label="Max |value|" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
                 <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
                 <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
@@ -411,61 +452,54 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                         </Button>
                     )}
                 </div>
-                <p className="text-xs text-muted-foreground mb-1">Bars above zero = uplift, below zero = subsidence. Stacked by displacement range (in); colors match the map. Click a year column to filter to that year — the shaded column is the active {yearAxisLabel.toLowerCase()}.</p>
-                <div className="w-full" style={{ height: CHART_HEIGHT_PX }}>
+                <p className="text-xs text-muted-foreground mb-1">Bars above zero = uplift, below zero = subsidence. Stacked by displacement range (in); colors match the map. Hover a column to read its per-range areas in the legend below; click to filter to that year — the shaded column is the active {yearAxisLabel.toLowerCase()}.</p>
+                <div
+                    // Recharts focuses the SVG on click, which Chrome counts as
+                    // focus-visible — any ring here fires on every mouse click.
+                    className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none"
+                    style={{ height: CHART_HEIGHT_PX }}
+                >
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
-                        // Fixed numeric height so recharts' ResponsiveContainer never
-                        // renders at calculatedHeight <= 0 — that path logs a width/height
-                        // warning on every mount (recharts v3 logs in prod too). Width
-                        // stays responsive at 100%. Wrapper + chart share CHART_HEIGHT_PX
-                        // so there's one source of truth for the height.
-                        <ResponsiveContainer width="100%" height={CHART_HEIGHT_PX}>
-                            <BarChart
-                                data={stackedAreaByYear}
-                                margin={{ top: 16, right: 4, bottom: 0, left: 0 }}
-                                stackOffset="sign"
-                                onClick={(state) => {
-                                    const label = state?.activeLabel
-                                    if (typeof label === 'string' && label) setYearOverride(typeValue, label)
-                                }}
-                                style={{ cursor: 'pointer' }}
-                            >
-                                <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
-                                <XAxis dataKey="year" stroke="currentColor" tick={renderYearTick} height={20} />
-                                <YAxis
-                                    stroke="currentColor"
-                                    tick={{ fill: 'currentColor', fontSize: 11 }}
-                                    width={60}
-                                    tickMargin={2}
-                                    tickFormatter={(v: number) => `${fmt1(Math.abs(v))} mi²`}
-                                >
-                                    <RechartsLabel value="↑ Uplift · Subsidence ↓ (mi²)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
-                                </YAxis>
-                                <ReferenceLine y={0} stroke="currentColor" strokeOpacity={0.5} />
-                                <Tooltip
-                                    cursor={{ fill: 'currentColor', fillOpacity: 0.05 }}
-                                    content={<StackedBarTooltip />}
-                                />
-                                {stackedBinOrder.map((bin, i) => (
-                                    <Bar
-                                        key={bin.name}
-                                        dataKey={bin.name}
-                                        stackId="rate"
-                                        fill={bin.color}
-                                        name={bin.title}
-                                        shape={renderHighlightBar}
-                                        // First stack member only — every Bar in the stack paints
-                                        // the same full-height background rect, so leaving it on
-                                        // all of them just stacks identical bands on each other.
-                                        background={i === 0 ? renderYearBand : undefined}
-                                    />
-                                ))}
-                            </BarChart>
-                        </ResponsiveContainer>
+                        <StackedYearChart
+                            data={stackedAreaByYear}
+                            bins={stackedBinOrder}
+                            year={year}
+                            typeValue={typeValue}
+                            onHover={setHoveredYear}
+                            onSelectYear={selectYear}
+                        />
                     )}
                 </div>
+                {(visibleUpliftBins.length > 0 || visibleSubsidenceBins.length > 0) && (
+                    <div className="mt-2 flex flex-col gap-1 px-2">
+                        <div className="flex items-baseline justify-between text-xs text-muted-foreground">
+                            <span>
+                                {legendSpan ? <>Area by range · <span className="font-medium text-foreground">{legendSpan}</span>{!isRangeMode && hoveredYear ? ' (hovered)' : ''}</> : 'Area by range'}
+                            </span>
+                            {isRangeMode && <span>mi²</span>}
+                        </div>
+                        {isRangeMode ? (
+                            <>
+                                {/* Captions match LegendSwatchGrid's two numeric columns. */}
+                                <div className="flex items-baseline text-[10px] uppercase tracking-wide text-muted-foreground">
+                                    <span className="ml-auto shrink-0 pl-1 min-w-[4.25rem] text-right">range</span>
+                                    <span className="shrink-0 pl-2 min-w-[4.25rem] text-right">{hoveredYear ?? 'hover'}</span>
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <ChartLegendGroup label="Uplift" bins={visibleUpliftBins} valueFor={legendValueFor} secondaryValueFor={legendHoverValueFor} />
+                                    <ChartLegendGroup label="Subsidence" bins={visibleSubsidenceBins} valueFor={legendValueFor} secondaryValueFor={legendHoverValueFor} />
+                                </div>
+                            </>
+                        ) : (
+                            <div className="grid grid-cols-2 gap-x-3">
+                                <ChartLegendGroup label="Uplift" bins={visibleUpliftBins} valueFor={legendValueFor} />
+                                <ChartLegendGroup label="Subsidence" bins={visibleSubsidenceBins} valueFor={legendValueFor} />
+                            </div>
+                        )}
+                    </div>
+                )}
                 <p className="mt-2 px-2 text-xs italic text-muted-foreground">
-                    Units: {getUnitsLabelForType(typeValue)}. Swatch colors are defined in the layer's Legend.
+                    Units: {getUnitsLabelForType(typeValue)}.
                 </p>
             </div>
 
@@ -608,37 +642,146 @@ function BasinList({
     )
 }
 
-// Custom tooltip for the stacked-bar chart: shows the year as header, then a
-// colored swatch + bin title + mi² per non-zero stack segment so reviewers can
-// see which depth bins contributed to that year without leaving the chart.
-interface TooltipEntry {
-    name?: string
-    value?: number
-    color?: string
+interface StackedYearChartProps {
+    data: ChartRow[]
+    bins: SldBin[]
+    year: string | null
+    typeValue: ChartedType
+    onHover: (year: string | null) => void
+    onSelectYear: (year: string) => void
 }
-function StackedBarTooltip({ active, payload, label }: { active?: boolean; payload?: TooltipEntry[]; label?: string | number }) {
-    if (!active || !payload || payload.length === 0) return null
-    // Signed values: subsidence rows arrive negative, uplift positive. Show
-    // unsigned magnitudes to the user — direction is already conveyed by which
-    // side of zero the bar sits on (and by the row's bin range in its name).
-    const rows = payload.filter(p => typeof p.value === 'number' && Math.abs(p.value as number) > 0)
-    if (rows.length === 0) return null
+
+// Memoized: the parent re-renders per hover to refresh the legend, and dragging
+// this subtree along cost ~160ms a column. No prop here changes while hovering.
+const StackedYearChart = memo(function StackedYearChart({ data, bins, year, typeValue, onHover, onSelectYear }: StackedYearChartProps) {
+    const isHighlightedYear = (yr: string | undefined) => isYearInRange(typeValue, year, yr)
+
+    // Per-segment highlight via the Bar `shape` render prop — recharts v3 routes
+    // per-datum styling through `shape` rather than the deprecated <Cell>. The dim
+    // on off-year segments is deliberately mild: the band below marks the
+    // selection, and a heavier dim washes them out against the light theme.
+    // Only geometry + fill reach Rectangle so non-DOM Bar props can't leak onto
+    // the SVG path.
+    const renderHighlightBar = (props: BarShapeProps) => {
+        const { x, y, width, height, fill } = props
+        const highlighted = isHighlightedYear(props.payload?.year as string | undefined)
+        return <Rectangle x={x} y={y} width={width} height={height} fill={fill} fillOpacity={highlighted ? 1 : 0.45} />
+    }
+
+    // Full-height tint band behind the active year's column(s). Opacity alone
+    // can't mark a selection whose segments are a pixel tall (calm years, high
+    // threshold) — there's nothing to dim. Fill only: a stroke reads as a box
+    // drawn around every bar once a Cumulative range spans several columns.
+    const renderYearBand = (props: BarShapeProps) => {
+        const { x, y, width, height } = props
+        if (!year || !isHighlightedYear(props.payload?.year as string | undefined)) return <g />
+        return <Rectangle x={x} y={y} width={width} height={height} fill="currentColor" fillOpacity={0.1} />
+    }
+
+    // Bold + full-contrast tick for the selected year, muted for the rest — a
+    // second read of the pick (exact match even for Cumulative, where the band
+    // covers the whole accumulation window up to that year).
+    const renderYearTick = (props: XAxisTickContentProps) => {
+        const value = String(props.payload?.value ?? '')
+        const selected = value === year
+        return (
+            <text
+                x={props.x}
+                y={props.y}
+                dy={11}
+                textAnchor="middle"
+                fill="currentColor"
+                fontSize={11}
+                fontWeight={selected ? 700 : 400}
+                fillOpacity={selected ? 1 : 0.6}
+            >
+                {value}
+            </text>
+        )
+    }
+
     return (
-        <div className="rounded border border-border bg-popover px-2 py-1.5 text-xs text-popover-foreground shadow-sm">
-            <div className="font-medium mb-1">{label}</div>
-            <div className="flex flex-col gap-0.5">
-                {rows.map(r => (
-                    <div key={r.name} className="flex items-center gap-1.5">
-                        <span
-                            className="inline-block h-2.5 w-2.5 ring-1 ring-foreground/40"
-                            style={{ background: r.color }}
-                            aria-hidden
-                        />
-                        <span className="flex-1">{r.name}</span>
-                        <span className="tabular-nums">{fmt1(Math.abs((r.value as number) ?? 0))} mi²</span>
-                    </div>
+        // Fixed numeric height so recharts' ResponsiveContainer never renders at
+        // calculatedHeight <= 0 — that path logs a width/height warning on every
+        // mount (recharts v3 logs in prod too). Width stays responsive at 100%.
+        <ResponsiveContainer width="100%" height={CHART_HEIGHT_PX}>
+            <BarChart
+                data={data}
+                margin={{ top: 16, right: 4, bottom: 0, left: 0 }}
+                stackOffset="sign"
+                onClick={(state) => {
+                    const label = state?.activeLabel
+                    if (typeof label === 'string' && label) onSelectYear(label)
+                }}
+                style={{ cursor: 'pointer' }}
+            >
+                <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
+                <XAxis dataKey="year" stroke="currentColor" tick={renderYearTick} height={20} />
+                <YAxis
+                    stroke="currentColor"
+                    tick={{ fill: 'currentColor', fontSize: 11 }}
+                    width={60}
+                    tickMargin={2}
+                    tickFormatter={(v: number) => `${fmt1(Math.abs(v))} mi²`}
+                >
+                    <RechartsLabel value="↑ Uplift · Subsidence ↓ (mi²)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
+                </YAxis>
+                <ReferenceLine y={0} stroke="currentColor" strokeOpacity={0.5} />
+                <HoveredYearReporter onHover={onHover} />
+                {/* Kept for the column highlight; the readout lives in the legend. */}
+                <Tooltip cursor={{ fill: 'currentColor', fillOpacity: 0.05 }} content={renderNoTooltip} />
+                {bins.map((bin, i) => (
+                    <Bar
+                        key={bin.name}
+                        dataKey={bin.name}
+                        stackId="rate"
+                        fill={bin.color}
+                        name={bin.title}
+                        shape={renderHighlightBar}
+                        // First stack member only — every Bar in the stack paints the
+                        // same full-height background rect, so leaving it on all of
+                        // them just stacks identical bands on each other.
+                        background={i === 0 ? renderYearBand : undefined}
+                    />
                 ))}
-            </div>
+            </BarChart>
+        </ResponsiveContainer>
+    )
+})
+
+// Renders nothing — reports the hovered column to the parent. The recharts
+// hooks only resolve inside <BarChart>, so reading hover state means living in
+// the tree; the effect keeps the parent's setState out of render.
+function HoveredYearReporter({ onHover }: { onHover: (year: string | null) => void }) {
+    const isActive = useIsTooltipActive()
+    const label = useActiveTooltipLabel()
+    const hovered = isActive && typeof label === 'string' ? label : null
+
+    useEffect(() => {
+        onHover(hovered)
+    }, [hovered, onHover])
+
+    return null
+}
+
+// Under-chart legend group (Uplift / Subsidence column). Only ever receives
+// bins that actually contributed a segment to the currently plotted years
+// (see `presentBinNames` above) — a full static legend of every SLD class
+// regardless of what's on screen duplicates the layer's separate Legend tab
+// for no benefit; this one only shows what a reviewer can actually see.
+function ChartLegendGroup({ label, bins, valueFor, secondaryValueFor }: { label: string; bins: SldBin[]; valueFor?: (binName: string) => string | undefined; secondaryValueFor?: (binName: string) => string | undefined }) {
+    if (bins.length === 0) return null
+    const items: LegendSwatchItem[] = bins.map(b => ({
+        key: b.name,
+        label: b.title,
+        color: b.color,
+        value: valueFor?.(b.name),
+        secondaryValue: secondaryValueFor?.(b.name),
+    }))
+    return (
+        <div className="flex flex-col gap-1 min-w-0">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
+            <LegendSwatchGrid items={items} columns="single" />
         </div>
     )
 }

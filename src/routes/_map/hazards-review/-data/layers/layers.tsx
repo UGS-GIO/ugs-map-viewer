@@ -994,6 +994,9 @@ const aquifersCombinedConfig: WMSLayerProps = {
                 'Publication': { field: 'publication', type: 'string' },
                 'DOI': { field: 'doi', type: 'string' },
                 'Office': { field: 'office_1', type: 'string' },
+                'HUC 1': { field: 'huc_1', type: 'string' },
+                'HUC 2': { field: 'huc_2', type: 'string' },
+                'HUC 3': { field: 'huc_3', type: 'string' },
             }
         },
     ],
@@ -1006,10 +1009,9 @@ const displacementPopupFields = {
     'Location': { field: 'location', type: 'string' },
     'Type': { field: 'type', type: 'string' },
     'Year': { field: 'year', type: 'string' },
-    'Period': { field: 'period', type: 'string' },
     'Period Start': { field: 'start_date', type: 'string' },
     'Period End': { field: 'end_date', type: 'string' },
-    'Displacement (in)': { field: 'value_inch', type: 'number', format: 'oneDecimal' },
+    'Displacement (in)': { field: 'value_inches', type: 'number', format: 'oneDecimal' },
     'Data Quality': { field: 'data_qual', type: 'string' },
     'Valid Pixels (%)': { field: 'pct_valid', type: 'number', format: 'oneDecimal' },
 } as const;

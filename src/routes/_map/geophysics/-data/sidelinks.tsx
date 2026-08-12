@@ -1,6 +1,6 @@
-import { House, Info as InfoIcon, Layers as LayersIcon, Settings } from 'lucide-react'
+import { House, Info as InfoIcon, Layers as LayersIcon, MessageSquare, Settings } from 'lucide-react'
 import Info from '@/components/sidebar/info'
-import Layers from '@/components/sidebar/layers'
+import GeophysicsLayers from '../-components/sidebar/geophysics-layers'
 import MapConfigurations from '@/routes/_map/wetlands/-components/sidebar/map-configurations/map-configurations'
 
 export interface NavLink {
@@ -33,7 +33,7 @@ export const sidelinks: SideLink[] = [
     title: 'Layers',
     label: '',
     icon: <LayersIcon className='stroke-foreground' />,
-    component: Layers, // Direct component reference
+    component: GeophysicsLayers, // Geophysics variant: interactive Power Plants legend
   },
   {
     title: 'Map Configurations',
@@ -41,4 +41,10 @@ export const sidelinks: SideLink[] = [
     icon: <Settings className='stroke-foreground' />,
     component: MapConfigurations, // Direct component reference
   },
+  {
+    title: 'Feedback',
+    label: '',
+    href: 'https://docs.google.com/forms/d/e/1FAIpQLScDCUrestiLU92klqWdYSgiXrDawMlLWFRXI5ZhLnZQM0qnfA/viewform',
+    icon: <MessageSquare className='text-ring' />,
+  }
 ];
