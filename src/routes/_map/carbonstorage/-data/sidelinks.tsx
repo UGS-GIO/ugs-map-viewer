@@ -1,6 +1,6 @@
 import { House, Info as InfoIcon, Layers as LayersIcon, Settings, ExternalLink, MessageSquare } from 'lucide-react'
 import Info from '@/components/sidebar/info'
-import Layers from '@/components/sidebar/layers'
+import CarbonStorageLayers from '../-components/sidebar/carbonstorage-layers'
 import MapConfigurations from '../-components/sidebar/map-configurations/map-configurations'
 
 export interface NavLink {
@@ -33,7 +33,7 @@ export const sidelinks: SideLink[] = [
     title: 'Layers',
     label: '',
     icon: <LayersIcon className='stroke-foreground' />,
-    component: Layers, // Direct component reference
+    component: CarbonStorageLayers, // Carbon storage variant: interactive Power Plants legend
   },
   {
     title: 'Map Configurations',

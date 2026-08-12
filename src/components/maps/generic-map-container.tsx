@@ -452,14 +452,19 @@ export default function GenericMapContainer({
   const noOtherModeActive = activeDrawShape === 'off' && !boxSelectMode
   const isAdditiveMode = noOtherModeActive && (additiveModeToggled || isShiftHeld)
 
-  // Register callback so startDraw can clear conflicting container state
-  const prepareForDraw = useCallback(() => {
+  // One list of per-mode leftovers — every transition below clears all three.
+  const clearSelectionState = useCallback(() => {
     setSpatialFilter(null)
-    setBoxSelectMode(false)
     setBoxSelectBounds(null)
     setAdditiveModeToggled(false)
-    setToolbarDrawShape('off')
   }, [])
+
+  // Register callback so startDraw can clear conflicting container state
+  const prepareForDraw = useCallback(() => {
+    clearSelectionState()
+    setBoxSelectMode(false)
+    setToolbarDrawShape('off')
+  }, [clearSelectionState])
 
   // Register once (safe - callback is stable)
   registerPrepareForDraw(prepareForDraw)
@@ -470,16 +475,15 @@ export default function GenericMapContainer({
   ) => {
     cancelDraw()
     setToolbarDrawShape('off')
+    clearSelectionState()
     setBoxSelectMode(mode === 'boxSelect')
-    if (mode !== 'boxSelect') setBoxSelectBounds(null)
     setAdditiveModeToggled(mode === 'additive')
-  }, [cancelDraw])
+  }, [cancelDraw, clearSelectionState])
 
   // Toolbar draw toggle — starts draw via context, tracks highlight locally
   const handleToolbarDrawToggle = useCallback((mode: DrawMode) => {
     setBoxSelectMode(false)
-    setBoxSelectBounds(null)
-    setAdditiveModeToggled(false)
+    clearSelectionState()
     if (mode === 'off') {
       cancelDraw()
       setToolbarDrawShape('off')
@@ -487,7 +491,7 @@ export default function GenericMapContainer({
       startDraw(mode, undefined, () => setToolbarDrawShape('off'))
       setToolbarDrawShape(mode)
     }
-  }, [cancelDraw, startDraw])
+  }, [cancelDraw, startDraw, clearSelectionState])
 
   // Called by useTerraDraw when drawing finishes (resets to 'off')
   const handleDrawReset = useCallback(() => {

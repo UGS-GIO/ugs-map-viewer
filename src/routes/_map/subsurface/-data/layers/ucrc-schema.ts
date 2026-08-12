@@ -6,6 +6,7 @@ export const ucrcFilterSchema: FilterSchema = {
     recordKey: ucrcWellsWMSTitle,
     tableUrl: `${PROD_POSTGREST_URL}/enmin_ucrc_wells_current`,
     tableHeaders: { 'Accept-Profile': 'emp' },
+    stacItemId: 'enmin_ucrc_wells',
     fields: [
         {
             kind: 'multiSelect',
