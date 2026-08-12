@@ -9,7 +9,6 @@ import type { FilterSpecification } from 'maplibre-gl'
 import {
     DISPLACEMENT_LAYER_TYPES,
     isChartedType,
-    isPeriodKeyedType,
     type DisplacementLayerTitle,
     type DisplacementType,
 } from './displacement-layers'
@@ -28,12 +27,8 @@ export function useDisplacementVectorFilters(): Record<string, FilterSpecificati
 
             const effectiveYear = yearOverridesByType[typeValue] ?? latestByType[typeValue] ?? null
             if (effectiveYear) {
-                if (isPeriodKeyedType(typeValue)) {
-                    // period-keyed: match the observation window closing that year (end_date's year).
-                    clauses.push(['==', ['slice', ['to-string', ['get', 'end_date']], 0, 4], String(effectiveYear)])
-                } else {
-                    clauses.push(['==', ['to-string', ['get', 'year']], String(effectiveYear)])
-                }
+                // `year` holds the window's closing year for every type — same clause as the cql twin.
+                clauses.push(['==', ['to-string', ['get', 'year']], String(effectiveYear)])
             }
             if (isChartedType(typeValue)) {
                 const t = effective[typeValue]

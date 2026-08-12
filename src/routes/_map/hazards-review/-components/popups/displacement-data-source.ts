@@ -7,7 +7,7 @@ import { createContext, useContext } from 'react';
 import type { Polygon } from 'geojson';
 import { withConnection, escapeSql, normalizeRow } from '@/lib/duckdb/client';
 import type { DisplacementFeature, DisplacementProps } from './use-displacement-queries';
-import type { SldBin } from './displacement-sld-legend';
+import type { SldBin, SldComparison } from './displacement-sld-legend';
 
 // parquet source also carries the per-GeoServer-style-name GL style URL, so displacement bins (chart
 // breaks + colors) come from the review GL style — never GeoServer SLD.
@@ -22,28 +22,34 @@ export function parseGlStyleBins(style: {
 }): SldBin[] {
     const bins: SldBin[] = [];
     const seen = new Set<string>();
-    const bounds = (filter: unknown): { min: number; max: number } | null => {
-        let min = -Infinity, max = Infinity, found = false;
-        const walk = (e: unknown) => {
+    // GL twin of parseRuleFilter: the negated deadband subclause is captured as `exclude`, not
+    // dropped. binMatches needs both lists — an empty `include` matches nothing, so a bin whose
+    // comparisons we fail to parse is skipped rather than becoming a silent catch-all.
+    const bounds = (filter: unknown): { include: SldComparison[]; exclude: SldComparison[]; min: number; max: number } | null => {
+        const include: SldComparison[] = [];
+        const exclude: SldComparison[] = [];
+        const walk = (e: unknown, into: SldComparison[]) => {
             if (!Array.isArray(e)) return;
             const op = e[0];
-            if (op === '!') return; // skip the negated deadband exclusion
-            if (op === 'all' || op === 'any') { e.slice(1).forEach(walk); return; }
+            if (op === '!') { e.slice(1).forEach((sub) => walk(sub, exclude)); return; }
+            if (op === 'all' || op === 'any') { e.slice(1).forEach((sub) => walk(sub, into)); return; }
             if (op === '>=' || op === '>' || op === '<=' || op === '<') {
                 const g = e[1], v = e[2];
                 // Styles seeded from the SLD used `value_inch`; the warehouse tiles they style expose
                 // `value_inches`, so published styles now filter on the latter. Accept either.
                 const isValueField = Array.isArray(g) && g[0] === 'get'
                     && (g[1] === 'value_inch' || g[1] === 'value_inches');
-                if (isValueField && typeof v === 'number') {
-                    found = true;
-                    if (op === '>=' || op === '>') min = Math.max(min, v);
-                    if (op === '<=' || op === '<') max = Math.min(max, v);
-                }
+                if (isValueField && typeof v === 'number') into.push({ op, value: v });
             }
         };
-        walk(filter);
-        return found ? { min, max } : null;
+        walk(filter, include);
+        if (include.length === 0) return null;
+        let min = -Infinity, max = Infinity;
+        for (const c of include) {
+            if (c.op === '>=' || c.op === '>') min = Math.max(min, c.value);
+            else max = Math.min(max, c.value);
+        }
+        return { include, exclude, min, max };
     };
     for (const l of style.layers ?? []) {
         if (l.type !== 'fill') continue;
@@ -70,6 +76,8 @@ export function parseGlStyleBins(style: {
             max: b.max,
             color,
             isZero,
+            include: b.include,
+            exclude: b.exclude,
         });
     }
     bins.sort((a, b) => a.min - b.min);
@@ -110,9 +118,9 @@ export const sourceKey = (s: DisplacementDataSource): string => (s.kind === 'par
 export async function fetchDisplacementFromParquet(parquetUrl: string): Promise<DisplacementFeature[]> {
   // Only the columns the charts/filters need — NOT geom (large WKB; combinedBbox uses the bbox_* cols).
   const rows = await withConnection(async (conn) => {
-    // Cast the date columns to ISO strings — they're timestamps in the parquet, and getBucketYear does
-    // end_date.slice(0,4). Without the cast duckdb hands back epoch ms and the "year" reads off that
-    // (e.g. "1728…"), breaking the year selector + all year-bucketed charts.
+    // Cast the date columns to ISO strings — they're timestamps in the parquet and DisplacementProps
+    // types them as strings (popups render them verbatim). Without the cast duckdb hands back epoch ms.
+    // Year bucketing reads the int `year` column, not these.
     const res = await conn.query(
       `SELECT location, type, year,
               CAST(start_date AS VARCHAR) AS start_date, CAST(end_date AS VARCHAR) AS end_date,
@@ -131,10 +139,10 @@ export async function fetchDisplacementFromParquet(parquetUrl: string): Promise<
     const properties: DisplacementProps = {
       location: r.location != null ? String(r.location) : '',
       type: r.type as DisplacementProps['type'],
-      year: r.year != null ? String(r.year) : null,
+      year: r.year != null ? Number(r.year) : null,
       start_date: r.start_date != null ? String(r.start_date) : null,
       end_date: r.end_date != null ? String(r.end_date) : null,
-      value_inch: r.value_inches != null ? Number(r.value_inches) : 0,
+      value_inches: r.value_inches != null ? Number(r.value_inches) : 0,
       pct_valid: r.pct_valid != null ? Number(r.pct_valid) : null,
       data_qual: r.data_qual != null ? String(r.data_qual) : null,
     };
