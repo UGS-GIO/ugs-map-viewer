@@ -1222,7 +1222,7 @@ const sectionsConfig: PMTilesLayerProps = {
 // Non Petroleum Wells Layer — STAC-driven: pmtilesUrl, sourceLayer, and
 // renders come from the warehouse item `enmin_non_petroleum_wells`.
 const nonpetrolWellsLayerName = 'enmin_non_petroleum_wells';
-const nonpetrolWellsTitle = 'Non-Petroleum Wells';
+const nonpetrolWellsTitle = 'Exploration Boreholes - Downhole Data';
 const nonpetrolWellsConfig: PMTilesLayerProps = {
   type: 'pmtiles',
   stacItemId: nonpetrolWellsLayerName,
