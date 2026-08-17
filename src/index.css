@@ -181,6 +181,16 @@ body > #root {
   #utah-design-system {
     display: none !important;
   }
+
+  /* Paper is forced white (report print-styles.css) but `.dark` stays on <html>,
+     so a dark-theme user would otherwise print the white logo onto white. Pin the
+     printed logo to the navy copy regardless of theme. */
+  .ugs-logo-navy {
+    display: inline !important;
+  }
+  .ugs-logo-white {
+    display: none !important;
+  }
 }
 
 @layer utilities {
