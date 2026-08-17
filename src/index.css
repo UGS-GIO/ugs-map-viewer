@@ -3,77 +3,79 @@
 @tailwind utilities;
 
 @layer base {
+  /* Design tokens — State of Utah Design System palette (neutral grays, Utah blue
+     primary, gold brand accent, #ba0000 danger). Same values as the ugs-warehouse
+     and ugs-soil-water-model viewers so every UGS app matches the official Utah
+     header that now sits above this app.
+
+     NOTE: `--accent` keeps its shadcn meaning (subtle hover surface), NOT the UDS
+     gold — shadcn primitives use `hover:bg-accent` everywhere. The UDS gold lives
+     in its own `--gold` token (`bg-gold`, `text-gold`). */
   :root {
-    --background: 0 0% 98%;
-    --foreground: 31 50% 10%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 20%;            /* UDS gray-dark #333 */
     --card: 0 0% 100%;
-    --card-foreground: 31 50% 10%;
+    --card-foreground: 0 0% 20%;
     --popover: 0 0% 100%;
-    --popover-foreground: 30 2% 18%;
-    --primary: 28 95% 36%;
-    --primary-foreground: 60 9.1% 97.8%;
-    --secondary: 20 5.9% 90%;
-    --secondary-foreground: 24 9.8% 10%;
-    --muted: 60 4.8% 95.9%;
-    --muted-foreground: 25 5.3% 44.7%;
-    --accent: 60 4.8% 95.9%;
-    --accent-foreground: 24 9.8% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 60 9.1% 97.8%;
-    --border: 20 5.9% 90%;
-    --input: 20 5.9% 90%;
-    --ring: 31 97.2% 41.8%;
-    --radius: 0.5rem;
+    --popover-foreground: 0 0% 20%;
+    --primary: 222 76% 52%;            /* UDS Utah blue #2765e4 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 20%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 38%;      /* UDS gray-medium #616161 */
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 20%;
+    --gold: 41 54% 47%;                /* UDS gold */
+    --gold-foreground: 0 0% 100%;
+    --destructive: 0 100% 36%;         /* UDS danger #ba0000 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 84%;                /* UDS gray-border #d7d7d7 */
+    --input: 0 0% 84%;
+    --ring: 222 76% 52%;
+    --radius: 0.25rem;                 /* UDS corners are near-square */
     --header-height: 3.5rem;
-    --chart-1: ;
-    --chart-2: ;
-    --chart-3: ;
-    --chart-4: ;
-    --chart-5: ;
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-foreground: 0 0% 20%;
+    --sidebar-primary: 222 76% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 20%;
+    --sidebar-border: 0 0% 84%;
+    --sidebar-ring: 222 76% 52%;
   }
 
   .dark {
-    --background: 0 0% 21%;
-    --foreground: 60 9.1% 97.8%;
-    --card: 0 0% 21%;
-    --card-foreground: 60 9.1% 97.8%;
-    --popover: 0 0% 21%;
-    --popover-foreground: 60 9.1% 97.8%;
-    --primary: 27 84% 55%;
-    --primary-foreground: 60 9.1% 97.8%;
-    --secondary: 0 0% 25%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 12 6.5% 15.1%;
-    --muted-foreground: 24 5.4% 63.9%;
-    --accent: 0 0% 17%;
-    --accent-foreground: 60 9.1% 97.8%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 60 9.1% 97.8%;
-    --border: 12 6.5% 15.1%;
-    --input: 12 6.5% 15.1%;
-    --ring: 31 97.2% 41.8%;
-    --chart-1: ;
-    --chart-2: ;
-    --chart-3: ;
-    --chart-4: ;
-    --chart-5: ;
-    color-scheme: dark; /* changing the scrollbar color */ 
-    --sidebar-background: 240 5.9% 10%; 
-    --sidebar-foreground: 240 4.8% 95.9%; 
-    --sidebar-primary: 224.3 76.3% 48%; 
-    --sidebar-primary-foreground: 0 0% 100%; 
-    --sidebar-accent: 240 3.7% 15.9%; 
-    --sidebar-accent-foreground: 240 4.8% 95.9%; 
-    --sidebar-border: 240 3.7% 15.9%; 
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 0 0% 12%;
+    --foreground: 0 0% 96%;
+    --card: 0 0% 16%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 16%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 222 70% 64%;
+    --primary-foreground: 0 0% 10%;
+    --secondary: 0 0% 22%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 68%;
+    --accent: 0 0% 24%;
+    --accent-foreground: 0 0% 96%;
+    --gold: 41 50% 52%;
+    --gold-foreground: 0 0% 10%;
+    --destructive: 0 72% 60%;
+    --destructive-foreground: 0 0% 10%;
+    --border: 0 0% 28%;
+    --input: 0 0% 28%;
+    --ring: 222 70% 64%;
+    color-scheme: dark; /* changing the scrollbar color */
+    --sidebar-background: 0 0% 14%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-primary: 222 70% 64%;
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-accent: 0 0% 24%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 0 0% 28%;
+    --sidebar-ring: 222 70% 64%;
   }
 
   /* styles.css */
@@ -108,23 +110,76 @@
   * {
     @apply border-border;
   }
-  html, body {
-    @apply overflow-x-hidden;
-  }
   body {
-    @apply min-h-svh w-full bg-background text-foreground;
-  }
-  body > #root {
-    @apply h-svh overflow-x-hidden;
+    @apply bg-background text-foreground;
   }
 }
 
-@layer base {
-  * {
-    @apply border-border;
+/* ===== App shell =====
+   The official Utah header renders itself into the DOM outside React (mounted in
+   main.tsx), as a sibling of #root. Body is the flex column that stacks it above
+   the app; #root takes the remaining height, so the app's own `h-full` containers
+   resolve against the space left under the header instead of the full viewport. */
+html,
+body {
+  margin: 0;
+  height: 100dvh; /* dvh = correct viewport on mobile (excludes URL bar) */
+  width: 100%;
+  overflow: hidden;
+}
+body {
+  display: flex;
+  flex-direction: column;
+}
+#utah-design-system {
+  flex: none;
+}
+body > #root {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative; /* map shells position against the area under the header */
+  overflow-x: hidden;
+}
+
+/* The official Utah header is ALWAYS light (state identity + a light-optimized
+   logo that can't change), so pin it to a light color scheme — otherwise the dark
+   app body's light text inherits in and vanishes on the header's white bg. The DS
+   renders as `body > header.utah-design-system.utds-header` (the mount div ends up
+   empty), so target the header element. */
+.utah-design-system.utds-header {
+  color: hsl(0 0% 20%);
+  color-scheme: light;
+}
+
+/* Keep the agency title on one line — the DS lets it wrap ("Utah Geological /
+   Survey") on narrow screens, which looks broken. */
+.utds-header .utds-title-wrapper .utds-title-wrapper__title {
+  white-space: nowrap !important;
+}
+
+/* MOBILE: hide the DS title band — the big header eats phone screen and the
+   sidebar's top bar already carries the UGS logo + app name there. The tiny
+   "official website of Utah" strip is a SEPARATE `div.utah-design-system`, so
+   hiding the <header> keeps the required disclosure. */
+@media (max-width: 767px) {
+  header.utah-design-system.utds-header {
+    display: none;
   }
-  body {
-    @apply bg-background text-foreground;
+}
+
+/* The DS "official website" disclosure panel's COLLAPSED state (`visually-hidden`)
+   fails to clip on mobile — its content bleeds down over the page. Force the
+   collapsed wrapper hidden; expanding removes `visually-hidden`, so "Here is how
+   you know" still opens normally. */
+.utds-official-website-popup__wrapper.visually-hidden {
+  display: none !important;
+}
+
+/* Printed reports are the app's own document — drop the state chrome. */
+@media print {
+  .utah-design-system,
+  #utah-design-system {
+    display: none !important;
   }
 }
 
@@ -147,6 +202,28 @@
   .faded-bottom {
     @apply after:pointer-events-none after:absolute after:bottom-0 after:left-0 after:hidden after:h-32 after:w-full after:bg-[linear-gradient(180deg,_transparent_10%,_hsl(var(--background))_70%)] after:md:block;
   }
+}
+
+/* UDS display font "UT Industry" — REFERENCED from the official Utah CDN (the font
+   is licensed; the DS itself loads it this way). Not self-hosted/redistributed.
+   Used for headings via `font-display`; the app UI stays in Source Sans. */
+@font-face {
+  font-family: 'UT Industry';
+  font-weight: 400;
+  font-display: swap;
+  src: url('https://cdn.utah.gov/design-system/fonts/ut-industry/woff2/UTIndustry-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'UT Industry';
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://cdn.utah.gov/design-system/fonts/ut-industry/woff2/UTIndustry-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'UT Industry';
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://cdn.utah.gov/design-system/fonts/ut-industry/woff2/UTIndustry-Bold.woff2') format('woff2');
 }
 
 /* MapLibre control overrides — unlayered to beat maplibre-gl.css specificity */

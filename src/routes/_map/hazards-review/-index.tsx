@@ -49,7 +49,7 @@ export default function Map() {
   return (
     <MapContext.Provider value={contextValue}>
       <TourAutoStart route="hazards" />
-      <div className="relative h-svh overflow-hidden bg-background">
+      <div className="relative h-full overflow-hidden bg-background">
         <AlertDialog open={showWelcomeDialog} onOpenChange={setShowWelcomeDialog}>
         <AlertDialogContent className="max-w-2xl">
           <AlertDialogHeader>

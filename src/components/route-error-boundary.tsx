@@ -53,7 +53,7 @@ export function RouteErrorBoundary({ error }: RouteErrorBoundaryProps) {
     const { title, message } = getErrorInfo();
 
     return (
-        <div className="flex h-screen w-full items-center justify-center bg-background px-4">
+        <div className="flex h-full w-full items-center justify-center bg-background px-4">
             <div className="w-full max-w-md">
                 <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-6">
                     {/* Error Icon */}

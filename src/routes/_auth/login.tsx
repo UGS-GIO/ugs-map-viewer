@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Shield } from 'lucide-react'
+import utahLogo from '@/assets/utah-logo.png'
 
 const loginSearchSchema = z.object({
     redirectTo: z.string().optional(),
@@ -53,7 +54,7 @@ function LoginPage() {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
+            <div className="flex items-center justify-center min-h-full">
                 <div className="flex items-center space-x-2">
                     <Loader2 className="h-4 w-4 animate-spin" />
                     <span>Loading...</span>
@@ -63,14 +64,14 @@ function LoginPage() {
     }
 
     return (
-        <div className="flex items-center justify-center min-h-screen bg-background p-4">
+        <div className="flex items-center justify-center min-h-full bg-background p-4">
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
                     <div className="flex justify-center mb-4">
                         <img
-                            src="/logo_main.png"
+                            src={utahLogo}
                             alt="Utah Geological Survey"
-                            className="h-12 w-auto"
+                            className="h-12 w-auto rounded-sm dark:bg-white dark:p-1"
                         />
                     </div>
                     <CardTitle className="text-2xl">Utah Geological Survey</CardTitle>
@@ -97,7 +98,7 @@ function LoginPage() {
                     <Button
                         onClick={handleLogin}
                         disabled={isAuthenticating}
-                        className="w-full bg-orange-500 hover:bg-orange-600"
+                        className="w-full"
                         size="lg"
                     >
                         {isAuthenticating ? (

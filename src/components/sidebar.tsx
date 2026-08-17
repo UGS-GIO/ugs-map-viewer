@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link } from '@/components/ui/link';
+import utahLogo from '@/assets/utah-logo.png';
 import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links';
 import { useGetCurrentPage } from '@/hooks/use-get-current-page';
 import { getAppTitle } from '@/lib/app-titles';
@@ -125,8 +126,11 @@ export default function Sidebar({ className }: SidebarProps) {
 
   return (
     <aside
+      // Absolute, not fixed: the app shell now sits under the official Utah header,
+      // so the sidebar spans the map area (the positioned route container) rather
+      // than the whole viewport, which would slide it up under the header.
       className={cn(
-        "fixed left-0 right-0 top-0 z-50 w-full border-b md:border-b-0 md:border-r-2 md:border-r-muted md:bottom-0 md:right-auto md:h-svh",
+        "absolute left-0 right-0 top-0 z-50 w-full border-b md:border-b-0 md:border-r-2 md:border-r-muted md:bottom-0 md:right-auto md:h-full",
         !isDragging && "transition-[width] duration-200 ease-linear",
         className
       )}
@@ -134,11 +138,11 @@ export default function Sidebar({ className }: SidebarProps) {
     >
       <div
         onClick={() => setNavOpened(false)}
-        className={`absolute inset-0 transition-opacity duration-700 ${navOpened ? 'h-svh opacity-50' : 'h-0 opacity-0'
+        className={`absolute inset-0 transition-opacity duration-700 ${navOpened ? 'h-full opacity-50' : 'h-0 opacity-0'
           } w-full bg-black md:hidden`}
       />
 
-      <Layout fixed className={cn('md:h-full', navOpened && 'h-svh')}>
+      <Layout fixed className={cn('md:h-full', navOpened && 'h-full')}>
         {/* Header */}
         <Layout.Header
           sticky
@@ -147,15 +151,19 @@ export default function Sidebar({ className }: SidebarProps) {
           <div className={`flex items-center ${!isCollapsed ? 'gap-4' : 'w-full'}`}>
             <Link to="https://geology.utah.gov/" className="cursor-pointer flex items-center justify-center w-10">
               <img
-                src='/logo_main.png'
+                src={utahLogo}
                 alt='Utah Geological Survey Logo'
-                className={`transition-all duration-300 ${isCollapsed ? 'h-8 w-7' : 'h-8 w-[1.75rem]'}`}
+                // The state logo is navy on transparent — it disappears against the
+                // dark theme, so give it a white chip there.
+                className='h-8 w-auto rounded-sm transition-all duration-300 dark:bg-white dark:p-0.5'
               />
             </Link>
             {!isCollapsed && (
               <div className="flex flex-col justify-end truncate transition-all duration-300">
-                <span className='font-medium text-wrap'>{appTitle}</span>
-                <span className='text-sm'>Utah Geological Survey</span>
+                <span className='font-display font-medium text-wrap'>{appTitle}</span>
+                {/* Agency name only where the official header is hidden (mobile) —
+                    on desktop the Utah header already carries it. */}
+                <span className='text-sm text-muted-foreground md:hidden'>Utah Geological Survey</span>
               </div>
             )}
           </div>

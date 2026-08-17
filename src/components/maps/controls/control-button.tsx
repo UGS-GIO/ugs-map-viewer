@@ -26,9 +26,9 @@ export function ControlButton({
       className={cn(
         'flex size-[29px] cursor-pointer items-center justify-center border-none text-foreground',
         'hover:!bg-black/5 dark:hover:!bg-white/10',
-        active && '!bg-amber-500 text-white hover:!bg-amber-600',
+        active && '!bg-primary text-primary-foreground hover:!bg-primary/90',
         disabled && 'cursor-not-allowed opacity-40',
-        variant === 'danger' && !active && 'text-red-600',
+        variant === 'danger' && !active && 'text-destructive',
         className,
       )}
       disabled={disabled}

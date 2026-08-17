@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Share2, Printer, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import utahLogo from "@/assets/utah-logo.png";
 
 interface ReportHeaderProps {
     onPrint?: () => void;
@@ -32,9 +33,9 @@ export const ReportHeader = ({ onPrint, testAllHazards = false }: ReportHeaderPr
             <div className="flex items-center gap-3">
                 <Link to="https://geology.utah.gov/" className="cursor-pointer flex-shrink-0">
                     <img
-                        src='/logo_main.png'
+                        src={utahLogo}
                         alt='Utah Geological Survey Logo'
-                        className="h-9 w-auto"
+                        className="h-9 w-auto rounded-sm dark:bg-white dark:p-0.5"
                     />
                 </Link>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">

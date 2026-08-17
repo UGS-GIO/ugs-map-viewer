@@ -175,7 +175,7 @@ export default function Map() {
   return (
     <MapContext.Provider value={contextValue}>
       <TourAutoStart route="ccs" />
-      <div className="relative h-svh overflow-hidden bg-background">
+      <div className="relative h-full overflow-hidden bg-background">
         <Sidebar />
         <main
           id="content"

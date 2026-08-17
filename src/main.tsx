@@ -1,17 +1,48 @@
+import '@fontsource-variable/source-sans-3' // Utah Design System body font, self-hosted
+import '@utahdts/utah-design-system-header/css'
 import '@/index.css'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
+import { loadHeader, type SettingsInput, setUtahHeaderSettings } from '@utahdts/utah-design-system-header'
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from '@/context/theme-provider'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import proj4 from 'proj4'
+import utahLogo from '@/assets/utah-logo.png'
 import { setupPMTilesProtocol } from '@/lib/map/pmtiles/setup'
 import { setupCOGProtocol } from '@/lib/map/cog/setup'
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
+
+// Mount the official State of Utah header ONCE, imperatively — the design system
+// package renders itself into the DOM outside React (as a sibling of #root), so
+// this is a module-scope side effect at startup, NOT a component effect. index.css
+// stacks it above #root and hides its title band on mobile, where the sidebar's top
+// bar carries the logo + app name instead.
+const headerSettings: SettingsInput = {
+  title: 'Utah Geological Survey',
+  showTitle: true,
+  size: 'SMALL',
+  titleUrl: 'https://geology.utah.gov',
+  logo: { imageUrl: utahLogo },
+  mainMenu: false, // portal navigation lives in the app sidebar
+  utahId: false,
+  footer: null, // required legal links live in the in-app map footer
+}
+setUtahHeaderSettings(headerSettings)
+loadHeader()
+
+// Apply the stored theme before first paint. ThemeProvider does the same in an
+// effect, which lands after the first paint — enough for a light flash on a dark
+// map, and very visible now that the light Utah header sits above the app.
+const storedTheme = localStorage.getItem('vite-ui-theme') ?? 'dark'
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+document.documentElement.classList.add(
+  storedTheme === 'system' ? (prefersDark ? 'dark' : 'light') : storedTheme
+)
 
 // Initialize PMTiles protocol (runs once at app start)
 setupPMTilesProtocol()

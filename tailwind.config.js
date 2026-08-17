@@ -20,6 +20,12 @@ module.exports = {
     		screens: {
     			tall: { raw: '(min-height: 1080px)' }
     		},
+    		fontFamily: {
+    			// Utah Design System typography: Source Sans 3 for UI (self-hosted via
+    			// @fontsource-variable), UT Industry for display headings (Utah CDN).
+    			sans: ['"Source Sans 3 Variable"', '"Source Sans 3"', 'system-ui', 'Helvetica', 'Arial', 'sans-serif'],
+    			display: ['"UT Industry"', 'Georgia', 'serif']
+    		},
     		zIndex: {
     			tooltip: 'var(--calcite-tooltip-z-index, 9999)'
     		},
@@ -48,6 +54,12 @@ module.exports = {
     			accent: {
     				DEFAULT: 'hsl(var(--accent))',
     				foreground: 'hsl(var(--accent-foreground))'
+    			},
+    			// UDS brand gold. Separate from `accent` because shadcn primitives use
+    			// `accent` as the subtle hover surface, not as a brand color.
+    			gold: {
+    				DEFAULT: 'hsl(var(--gold))',
+    				foreground: 'hsl(var(--gold-foreground))'
     			},
     			popover: {
     				DEFAULT: 'hsl(var(--popover))',

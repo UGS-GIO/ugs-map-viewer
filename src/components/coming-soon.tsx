@@ -1,17 +1,18 @@
 import { Image } from '@/components/ui/image'
 import { SimpleRouteList } from '@/components/ui/route-list'
+import utahLogo from '@/assets/utah-logo.png'
 
 export default function ComingSoon() {
   return (
-    <div className='min-h-svh flex flex-col items-center justify-center p-4'>
-      <div className="w-10/12 max-w-xs sm:max-w-sm mb-4">
+    <div className='min-h-full flex flex-col items-center justify-center p-4'>
+      <div className="mb-4">
         <Image
-          src="/logo_main.png"
-          alt="UGS Logo"
-          className="w-full h-auto object-contain"
+          src={utahLogo}
+          alt="Utah Geological Survey Logo"
+          className="h-24 w-auto rounded object-contain dark:bg-white dark:p-1"
         />
       </div>
-      <h1 className='text-4xl font-bold leading-tight text-center'>Coming Soon</h1>
+      <h1 className='font-display text-4xl font-bold leading-tight text-center'>Coming Soon</h1>
       <p className='text-center text-muted-foreground'>
         This page has not been created yet. <br />
         Stay tuned!
