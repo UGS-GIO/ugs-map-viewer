@@ -151,10 +151,18 @@ body > #root {
   color-scheme: light;
 }
 
-/* Keep the agency title on one line — the DS lets it wrap ("Utah Geological /
-   Survey") on narrow screens, which looks broken. */
-.utds-header .utds-title-wrapper .utds-title-wrapper__title {
-  white-space: nowrap !important;
+/* The DS sizes its logo slot for a square agency seal (~35px). Ours is the wide
+   UGS lockup carrying the wordmark, so give it room to be read — height drives the
+   width, and the DS title text is off (main.tsx). */
+.utds-header .utds-title-wrapper__logo {
+  height: auto;
+  max-width: none;
+}
+.utds-header .utds-title-wrapper__logo img {
+  height: 2.75rem;
+  width: auto;
+  max-width: none;
+  object-fit: contain;
 }
 
 /* MOBILE: hide the DS title band — the big header eats phone screen and the

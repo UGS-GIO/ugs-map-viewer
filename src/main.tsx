@@ -10,7 +10,7 @@ import { ThemeProvider } from '@/context/theme-provider'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import proj4 from 'proj4'
-import ugsMark from '@/assets/ugs-mark.png'
+import ugsLockup from '@/assets/ugs-logo-blue.png'
 import { setupPMTilesProtocol } from '@/lib/map/pmtiles/setup'
 import { setupCOGProtocol } from '@/lib/map/cog/setup'
 
@@ -24,10 +24,13 @@ import { routeTree } from './routeTree.gen'
 // bar carries the logo + app name instead.
 const headerSettings: SettingsInput = {
   title: 'Utah Geological Survey',
-  showTitle: true,
+  // The official UGS lockup already draws the agency name in the agency's own
+  // wordmark, so the DS title text is off — otherwise the header says it twice, in
+  // two different typefaces. `title` stays set for the accessible name.
+  showTitle: false,
   size: 'SMALL',
   titleUrl: 'https://geology.utah.gov',
-  logo: { imageUrl: ugsMark }, // mark only — the header renders the agency name itself
+  logo: { imageUrl: ugsLockup }, // navy lockup: the DS header is always light
   mainMenu: false, // portal navigation lives in the app sidebar
   utahId: false,
   footer: null, // required legal links live in the in-app map footer

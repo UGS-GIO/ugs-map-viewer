@@ -146,24 +146,24 @@ export default function Sidebar({ className }: SidebarProps) {
         {/* Header */}
         <Layout.Header
           sticky
-          className={`z-50 flex justify-between shadow-sm px-4 md:px-1`}
+          className={cn('z-50 flex justify-between shadow-sm px-4', isCollapsed && 'md:px-2')}
         >
           <div className={`flex items-center min-w-0 ${!isCollapsed ? 'gap-3' : 'w-full justify-center'}`}>
             <Link
               to="https://geology.utah.gov/"
               className={cn('cursor-pointer flex items-center justify-center', isCollapsed && 'w-10')}
             >
-              {/* Collapsed there is only room for the hexagon; expanded, the full
-                  lockup carries the agency name — which matters on mobile, where the
-                  official Utah header is hidden. */}
-              {isCollapsed
-                ? <UgsLogo variant='mark' className='h-8 w-auto' />
-                : <UgsLogo className='h-9 w-auto shrink-0' />}
+              {/* Mark only: the Utah header above already carries the UGS lockup. */}
+              <UgsLogo variant='mark' className='h-8 w-auto shrink-0' />
             </Link>
             {!isCollapsed && (
               <>
                 <div className='h-8 w-px shrink-0 bg-border' aria-hidden='true' />
-                <span className='font-display font-medium truncate'>{appTitle}</span>
+                <div className='flex flex-col justify-center min-w-0'>
+                  <span className='font-display font-medium truncate'>{appTitle}</span>
+                  {/* Agency name only where the Utah header is hidden (mobile). */}
+                  <span className='text-xs text-muted-foreground truncate md:hidden'>Utah Geological Survey</span>
+                </div>
               </>
             )}
           </div>
