@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Shield } from 'lucide-react'
-import utahLogo from '@/assets/utah-logo.png'
+import { UgsLogo } from '@/components/ugs-logo'
 
 const loginSearchSchema = z.object({
     redirectTo: z.string().optional(),
@@ -68,14 +68,12 @@ function LoginPage() {
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
                     <div className="flex justify-center mb-4">
-                        <img
-                            src={utahLogo}
-                            alt="Utah Geological Survey"
-                            className="h-12 w-auto rounded-sm dark:bg-white dark:p-1"
-                        />
+                        <UgsLogo className="h-12 w-auto max-w-full" />
                     </div>
-                    <CardTitle className="text-2xl">Utah Geological Survey</CardTitle>
-                    <CardDescription>Hazards Review Portal</CardDescription>
+                    {/* The lockup already says "Utah Geological Survey" — the title
+                        names the app instead of repeating the agency. */}
+                    <CardTitle className="font-display text-2xl">Hazards Review Portal</CardTitle>
+                    <CardDescription>Sign in to review and comment on hazard mapping.</CardDescription>
                 </CardHeader>
 
                 <CardContent className="space-y-4">

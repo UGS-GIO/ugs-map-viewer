@@ -10,7 +10,7 @@ import { ThemeProvider } from '@/context/theme-provider'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import proj4 from 'proj4'
-import utahLogo from '@/assets/utah-logo.png'
+import ugsMark from '@/assets/ugs-mark.png'
 import { setupPMTilesProtocol } from '@/lib/map/pmtiles/setup'
 import { setupCOGProtocol } from '@/lib/map/cog/setup'
 
@@ -27,7 +27,7 @@ const headerSettings: SettingsInput = {
   showTitle: true,
   size: 'SMALL',
   titleUrl: 'https://geology.utah.gov',
-  logo: { imageUrl: utahLogo },
+  logo: { imageUrl: ugsMark }, // mark only — the header renders the agency name itself
   mainMenu: false, // portal navigation lives in the app sidebar
   utahId: false,
   footer: null, // required legal links live in the in-app map footer

@@ -29,7 +29,7 @@ import { ReportGroupSection } from '@/routes/_report/-components/content/report-
 import { ReportResources } from '@/routes/_report/-components/content/report-resources'
 import '@/routes/_report/-components/shared/print-styles.css'
 import heroImage from '@/assets/geologic-hazards-banner-alstrom-point-1920px.webp'
-import utahLogo from '@/assets/utah-logo.png'
+import { UgsLogo } from '@/components/ugs-logo'
 import { Banner, BannerIcon, BannerTitle } from '@/components/ui/banner'
 import { toast } from "sonner"
 import { ReportHeader } from './layouts/report-header'
@@ -318,11 +318,8 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                                 <h1 className="font-bold">Geological Hazards Mapping and Data Custom Report</h1>
                                 <p className="text-sm text-foreground/80">Utah Geological Survey</p>
                             </div>
-                            <img
-                                src={utahLogo}
-                                alt='Utah Geological Survey Logo'
-                                className="print-logo-header w-auto"
-                            />
+                            {/* Mark only — the agency name is printed to its left. */}
+                            <UgsLogo variant='mark' className="print-logo-header w-auto" />
                         </div>
                         <p className="text-foreground/80 mt-2">
                             Report Generated on: {new Date().toLocaleString()}

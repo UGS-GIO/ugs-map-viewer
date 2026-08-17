@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Link } from '@/components/ui/link';
-import utahLogo from '@/assets/utah-logo.png';
+import { UgsLogo } from '@/components/ugs-logo';
 import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links';
 import { useGetCurrentPage } from '@/hooks/use-get-current-page';
 import { getAppTitle } from '@/lib/app-titles';
@@ -148,23 +148,23 @@ export default function Sidebar({ className }: SidebarProps) {
           sticky
           className={`z-50 flex justify-between shadow-sm px-4 md:px-1`}
         >
-          <div className={`flex items-center ${!isCollapsed ? 'gap-4' : 'w-full'}`}>
-            <Link to="https://geology.utah.gov/" className="cursor-pointer flex items-center justify-center w-10">
-              <img
-                src={utahLogo}
-                alt='Utah Geological Survey Logo'
-                // The state logo is navy on transparent — it disappears against the
-                // dark theme, so give it a white chip there.
-                className='h-8 w-auto rounded-sm transition-all duration-300 dark:bg-white dark:p-0.5'
-              />
+          <div className={`flex items-center min-w-0 ${!isCollapsed ? 'gap-3' : 'w-full justify-center'}`}>
+            <Link
+              to="https://geology.utah.gov/"
+              className={cn('cursor-pointer flex items-center justify-center', isCollapsed && 'w-10')}
+            >
+              {/* Collapsed there is only room for the hexagon; expanded, the full
+                  lockup carries the agency name — which matters on mobile, where the
+                  official Utah header is hidden. */}
+              {isCollapsed
+                ? <UgsLogo variant='mark' className='h-8 w-auto' />
+                : <UgsLogo className='h-9 w-auto shrink-0' />}
             </Link>
             {!isCollapsed && (
-              <div className="flex flex-col justify-end truncate transition-all duration-300">
-                <span className='font-display font-medium text-wrap'>{appTitle}</span>
-                {/* Agency name only where the official header is hidden (mobile) —
-                    on desktop the Utah header already carries it. */}
-                <span className='text-sm text-muted-foreground md:hidden'>Utah Geological Survey</span>
-              </div>
+              <>
+                <div className='h-8 w-px shrink-0 bg-border' aria-hidden='true' />
+                <span className='font-display font-medium truncate'>{appTitle}</span>
+              </>
             )}
           </div>
 

@@ -1,0 +1,13 @@
+- generic [active] [ref=f78e1]:
+  - link "Skip to main content" [ref=f78e2] [cursor=pointer]:
+    - /url: "#main-content"
+  - generic [ref=f78e3]:
+    - generic [ref=f78e4]:
+      - text: An official website of the state of Utah.
+      - button "Here is how you know" [ref=f78e5] [cursor=pointer]
+    - text:  
+  - banner "Utah.gov Header" [ref=f78e9]:
+    - link "Utah Geological Survey" [ref=f78e11] [cursor=pointer]:
+      - /url: https://geology.utah.gov
+  - generic [ref=f78e14]:
+    - region "Notifications alt+T"
