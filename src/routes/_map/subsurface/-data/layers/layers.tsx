@@ -6,14 +6,15 @@ import { formatNumeric } from "@/lib/utils";
 
 
 export const wellWithTopsLayerName = 'wellswithtops_hascore';
-export const wellWithTopsWMSTitle = 'Oil and Gas Wells (Source: Utah Division of Oil, Gas & Mining)';
+export const wellWithTopsWMSTitle = 'Oil and Gas Wells';
 const wellWithTopsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: wellWithTopsWMSTitle,
+    subtitle: 'Utah Division of Oil, Gas & Mining',
     visible: false,
     crs: 'EPSG:26912',
-    sourceAgency: 'Utah Geological Survey',
+    sourceAgency: 'Utah Division of Oil, Gas & Mining',
     sourceUrl: 'https://gis.utah.gov/products/sgid/energy/oil-gas-wells/',
     sublayers: [
         {
@@ -423,31 +424,6 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     ],
 };
 
-// Pipelines WMS Layer
-const pipelinesLayerName = 'pipelines';
-const pipelinesWMSTitle = 'Pipelines';
-const pipelinesWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: pipelinesWMSTitle,
-    visible: false,
-    crs: 'EPSG:3857',
-    sourceAgency: 'UGRC and Utah Geological Survey',
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${pipelinesLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'Operator': { field: 'operator', type: 'string' },
-                'Commodity': { field: 'commodity', type: 'string' },
-                'Acronym': { field: 'acronym', type: 'string' },
-                'Code Remarks': { field: 'coderemarks', type: 'string' }
-            },
-        },
-    ],
-};
-
 // UCRC Collection Layer — rendered client-side via WFS for instant filtering and richer symbology
 const ucrcWellsLayerName = 'enmin_ucrc_wells_current';
 // PMTiles tile source-layer = STAC item id (not the `_current` DB view name).
@@ -559,7 +535,6 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                         { field: 'box_top_ft', label: 'Top (ft)', format: 'number' },
                         { field: 'box_bottom_ft', label: 'Bottom (ft)', format: 'number' },
                         { field: 'cored_formation', label: 'Formation' },
-                        { field: 'notes_public', label: 'Notes', transform: (v) => v || '—' },
                         {
                             field: 'pk',
                             label: 'Photos',
@@ -576,6 +551,7 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                                 />
                             ),
                         },
+                        { field: 'notes_public', label: 'Notes', transform: (v) => v || '—' },
                     ],
                     sortBy: 'box_number',
                     sortDirection: 'asc',
@@ -626,7 +602,6 @@ const infrastructureAndLandUseConfig: LayerProps = {
         basinsWMSConfig,
         metalMiningDistrictsConfig,
         SITLAConfig,
-        pipelinesWMSConfig,
         utCountiesConfig,
         utTownshipRangesConfig,
         sectionsConfig,
