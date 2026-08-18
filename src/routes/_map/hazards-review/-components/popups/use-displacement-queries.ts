@@ -184,6 +184,25 @@ export function useDisplacementDataQualsForType(type: DisplacementType): string[
     return useDistinctByType(type, extractDataQual, sortByDataQualOrder)
 }
 
+// Distinct |value_inches| magnitudes present for a type, ascending. Backs the
+// threshold dropdown: an edge only earns a slot when real features sit in the
+// band above it, so an SLD class the data never fills (e.g. Cumulative's
+// 1–3 in band) doesn't yield a redundant option that filters identically to the
+// next one.
+export function useDisplacementValueMagnitudesForType(type: DisplacementType): number[] {
+    const select = useCallback((features: DisplacementFeature[]) => {
+        const set = new Set<number>()
+        for (const f of features) {
+            if (f.properties.type !== type) continue
+            const v = f.properties.value_inches
+            if (typeof v === 'number' && Number.isFinite(v)) set.add(Math.abs(v))
+        }
+        return Array.from(set).sort((a, b) => a - b)
+    }, [type])
+    const { data = [] } = useQuery({ ...displacementFeaturesQueryOptions(), select })
+    return data
+}
+
 // Latest year present for a given type — Yearly uses water year, period-keyed
 // types use end_date year. Drives the default selection when no explicit
 // override is in place (the year filter is mandatory: no "all years" sentinel
