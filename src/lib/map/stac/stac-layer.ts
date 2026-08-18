@@ -64,6 +64,8 @@ export interface StacItem {
         'ugs:layer'?: string;
         'proj:code'?: string;
         'ugs:row_count'?: number;
+        /** Who to credit/contact for the data — agency, or agency + named authors. Full items only; the index trims it. */
+        'ugs:point_of_contact'?: string;
         /** Renders block. Warehouse emits it namespaced as `ugs:renders`; older items used `renders`. */
         'ugs:renders'?: Record<string, StacRenderEntry>;
         renders?: Record<string, StacRenderEntry>;
@@ -309,6 +311,9 @@ function mergeStacIntoLayer(layer: PMTilesLayerProps, item: StacItem): PMTilesLa
         renders: renders.length > 0 ? renders : layer.renders,
         defaultRenderId: layer.defaultRenderId ?? renders[0]?.id,
         downloadParquetUrl: layer.downloadParquetUrl ?? parquetHref(item),
+        // Credit line under the layer title. STAC is the source of truth; an
+        // app-authored `subtitle` still wins so a layer can override it.
+        subtitle: layer.subtitle ?? item.properties['ugs:point_of_contact'],
         sublayers: resolveSublayerRelatedTables(layer.sublayers, item),
     };
 }

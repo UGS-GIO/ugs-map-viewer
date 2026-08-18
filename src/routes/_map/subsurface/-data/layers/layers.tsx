@@ -11,7 +11,7 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: wellWithTopsWMSTitle,
-    subtitle: 'Source: Utah Division of Oil, Gas & Mining',
+    subtitle: 'Utah Division of Oil, Gas & Mining',
     visible: false,
     crs: 'EPSG:26912',
     sourceAgency: 'Utah Division of Oil, Gas & Mining',

@@ -257,9 +257,9 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                     <h3 className="font-medium text-md">
                                         {layerConfig.title}
                                     </h3>
-                                    {layerConfig.subtitle && (
+                                    {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
                                         <p className="text-xs font-normal text-muted-foreground">
-                                            {layerConfig.subtitle}
+                                            {layerConfig.subtitle ?? layerConfig.sourceAgency}
                                         </p>
                                     )}
                                 </div>
@@ -344,9 +344,9 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                 >
                                     {layerConfig.title}
                                 </h3>
-                                {layerConfig.subtitle && (
+                                {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
                                     <p className="text-xs font-normal text-muted-foreground">
-                                        {layerConfig.subtitle}
+                                        {layerConfig.subtitle ?? layerConfig.sourceAgency}
                                     </p>
                                 )}
                             </div>
