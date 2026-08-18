@@ -74,7 +74,11 @@ const seamlessGeolunitsLayerName = 'mapping_geolunits_500k'
 const seamlessGeolunitsWMSTitle = 'Geologic Units (500k)';
 const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/mapping/wms`,
+    // Global /wms endpoint: extent/zoom-to lookups match the workspace-qualified
+    // sublayer name (mapping:mapping_geolunits_500k), which only appears in the
+    // global GetCapabilities — the workspace-scoped /mapping/wms lists it
+    // unqualified, so zoom-to silently no-ops (ALL-4953).
+    url: `${PROD_GEOSERVER_URL}/wms`,
     title: seamlessGeolunitsWMSTitle,
     opacity: 0.5,
     visible: false,
