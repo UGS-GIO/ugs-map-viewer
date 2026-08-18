@@ -60,9 +60,10 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
 
     return (
         <div className="flex flex-col gap-2 px-1 py-1">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vertical Displacement</div>
             <div className="grid grid-cols-2 gap-x-3 text-xs text-foreground">
-                <LegendGroup label="Uplift (above zero)" bins={upliftBins} />
-                <LegendGroup label="Subsidence (below zero)" bins={subsidenceBins} />
+                <LegendGroup label="Uplift" bins={upliftBins} />
+                <LegendGroup label="Subsidence" bins={subsidenceBins} />
             </div>
             {zeroBin && (
                 <div className="border-t border-border/60 pt-1.5">
