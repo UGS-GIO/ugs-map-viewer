@@ -1195,11 +1195,6 @@ const utTownshipRangesConfig: WMSLayerProps = {
     }],
 };
 
-const nonpetrolWellsLayerName = 'nwpd_nonpetroleumwellcatalogwells';
-const nonpetrolWellsTitle = 'Non-Petroleum Wells';
-const nonpetrolWellsConfig: WMSLayerProps = {
-  type: 'wms',
-  url: `${PROD_GEOSERVER_URL}/wms`,
 // Sections — STAC-driven: pmtilesUrl, sourceLayer, and renders come from the
 // warehouse item `enmin_plss_sections`. Sits just below Township & Range
 // (same PLSS/UGRC source) in both the layer list and the map stack.
