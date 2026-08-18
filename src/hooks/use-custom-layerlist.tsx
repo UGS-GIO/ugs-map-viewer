@@ -331,11 +331,18 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                             />
                         )}
                         <AccordionTrigger>
-                            <h3
-                                className={`text-md font-medium text-left ${zoomHint ? 'text-muted-foreground italic' : ''}`}
-                            >
-                                {layerConfig.title}
-                            </h3>
+                            <div className="text-left">
+                                <h3
+                                    className={`text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}
+                                >
+                                    {layerConfig.title}
+                                </h3>
+                                {layerConfig.subtitle && (
+                                    <p className="text-xs font-normal text-muted-foreground">
+                                        {layerConfig.subtitle}
+                                    </p>
+                                )}
+                            </div>
                         </AccordionTrigger>
                     </AccordionHeader>
                     {zoomHint && visibleZoomRange && (
