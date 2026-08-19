@@ -1,26 +1,12 @@
 /**
- * Regression guard for ALL-4953 — "zoom to" silently did nothing on the
- * "Geologic Units (500k)" layer in the layer list.
+ * Regression guard for ALL-4953: "zoom to" silently no-ops on a GeoServer WMS
+ * layer whose config uses a workspace-scoped `/{ws}/wms`. The extent lookup
+ * searches GetCapabilities for the qualified sublayer name
+ * (`mapping:mapping_geolunits_500k`), which only the global `/wms` lists — a
+ * workspace service lists it unqualified, so the extent resolves null.
  *
- * The layer-extent lookup (src/hooks/use-layer-extent.ts) fetches WMS
- * GetCapabilities from a layer's `url` and searches it for that layer's
- * *workspace-qualified* sublayer name (e.g. `mapping:mapping_geolunits_500k`).
- * GeoServer only lists layers under their qualified names in the GLOBAL `/wms`
- * capabilities document; a workspace-scoped virtual service such as
- * `/mapping/wms` lists them UNqualified (`mapping_geolunits_500k`). So when a
- * config points at `/mapping/wms`, the qualified name is never found, the
- * extent resolves to null, and `map.fitBounds` is never called — zoom-to
- * no-ops with no error surfaced.
- *
- * Invariant (checked across EVERY map route's config, not just the ones that
- * carried the bug): a WMS layer served by our GeoServer must
- *   1. use the global `/wms` endpoint, never a workspace-scoped `/{ws}/wms`, and
- *   2. carry workspace-qualified sublayer names — the qualified name is what the
- *      global GetCapabilities lists, so an unqualified name would break the same
- *      lookup even on the correct endpoint.
- *
- * Route configs are discovered dynamically, so a newly added route (or a fresh
- * `/mapping/wms` slip in an existing one) is covered automatically.
+ * Invariant, checked across every map route's config: a GeoServer WMS layer
+ * uses the global `/wms` endpoint and carries qualified (`ws:name`) sublayers.
  */
 import { describe, it, expect } from 'vitest'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
