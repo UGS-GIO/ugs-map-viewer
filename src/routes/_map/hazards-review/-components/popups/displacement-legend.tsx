@@ -9,7 +9,7 @@ import {
     isDisplacementLayerTitle,
     type DisplacementType,
 } from './displacement-layers'
-import { type SldBin } from './displacement-sld-legend'
+import { magnitudeLabel, type SldBin } from './displacement-sld-legend'
 
 /**
  * `layerLegendRender` for the hazards-review layer list. Replaces the default
@@ -25,8 +25,8 @@ export function renderDisplacementLegend(layer: LayerProps): React.ReactNode {
     return <DisplacementLegend typeValue={typeValue} />
 }
 
-function toSwatchItems(bins: SldBin[]) {
-    return bins.map(b => ({ key: b.name, label: b.title, color: b.color }))
+function toSwatchItems(bins: SldBin[], label: (b: SldBin) => string = b => b.title) {
+    return bins.map(b => ({ key: b.name, label: label(b), color: b.color }))
 }
 
 function LegendGroup({ label, bins }: { label: string; bins: SldBin[] }) {
@@ -34,7 +34,7 @@ function LegendGroup({ label, bins }: { label: string; bins: SldBin[] }) {
     return (
         <div className="flex flex-col gap-1 min-w-0">
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-            <LegendSwatchGrid items={toSwatchItems(bins)} columns="single" />
+            <LegendSwatchGrid items={toSwatchItems(bins, magnitudeLabel)} columns="single" />
         </div>
     )
 }
