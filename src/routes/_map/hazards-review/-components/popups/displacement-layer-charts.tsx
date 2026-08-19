@@ -9,7 +9,7 @@ import type { LayerContentProps } from '@/components/maps/popups/types'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import { useMap } from '@/hooks/use-map'
 import { DISPLACEMENT_LAYER_TYPES, getStyleNameForType, getUnitsLabelForType, isChartedType, isDisplacementLayerTitle, type ChartedType, type DisplacementType } from './displacement-layers'
-import { binMatches, getZeroBound, type SldBin } from './displacement-sld-legend'
+import { binMatches, getZeroBound, magnitudeLabel, type SldBin } from './displacement-sld-legend'
 import {
     getBucketYear,
     useDisplacementFeaturesByType,
@@ -472,6 +472,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                 </div>
                 {(visibleUpliftBins.length > 0 || visibleSubsidenceBins.length > 0) && (
                     <div className="mt-2 flex flex-col gap-1 px-2">
+                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vertical Displacement</div>
                         <div className="flex items-baseline justify-between text-xs text-muted-foreground">
                             <span>
                                 {legendSpan ? <>Area by range · <span className="font-medium text-foreground">{legendSpan}</span>{!isRangeMode && hoveredYear ? ' (hovered)' : ''}</> : 'Area by range'}
@@ -773,7 +774,7 @@ function ChartLegendGroup({ label, bins, valueFor, secondaryValueFor }: { label:
     if (bins.length === 0) return null
     const items: LegendSwatchItem[] = bins.map(b => ({
         key: b.name,
-        label: b.title,
+        label: magnitudeLabel(b),
         color: b.color,
         value: valueFor?.(b.name),
         secondaryValue: secondaryValueFor?.(b.name),

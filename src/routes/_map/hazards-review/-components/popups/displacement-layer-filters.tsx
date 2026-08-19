@@ -23,8 +23,8 @@ function isDefaultDataQuals(excluded: ReadonlySet<string>): boolean {
     return excluded.size === DEFAULT_EXCLUDED_DATA_QUALS.length
         && DEFAULT_EXCLUDED_DATA_QUALS.every(q => excluded.has(q))
 }
-import { useDisplacementBasinsForType, useDisplacementBasinYearIndexForType, useDisplacementDataQualsForType, useDisplacementSldBins, useDisplacementYearsForType } from './use-displacement-queries'
-import { type SldBin } from './displacement-sld-legend'
+import { useDisplacementBasinsForType, useDisplacementBasinYearIndexForType, useDisplacementDataQualsForType, useDisplacementSldBins, useDisplacementValueMagnitudesForType, useDisplacementYearsForType } from './use-displacement-queries'
+import { getPopulatedBinBoundaries } from './displacement-thresholds'
 
 // Label the year dropdown by type semantics: 'Water Year' for Yearly,
 // 'Period End Year' for Cumulative + Vertical Displacement Rate.
@@ -255,22 +255,6 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
     )
 }
 
-// Positive bin edges from the SLD response, deduped + sorted ascending. These
-// are the only meaningful threshold values (any |value_inches| between two edges
-// yields the same filtered set). The smallest edge is the SLD's "Zero" deadband
-// bound, so every option is >= the deadband by construction — the UI can't drop
-// the threshold below the uncertainty band.
-function getBinBoundaries(bins: SldBin[]): number[] {
-    const edges = new Set<number>()
-    for (const b of bins) {
-        if (b.isZero) continue
-        for (const v of [b.min, b.max]) {
-            if (Number.isFinite(v)) edges.add(Math.abs(v))
-        }
-    }
-    return Array.from(edges).filter(v => v > 0).sort((a, b) => a - b)
-}
-
 interface ThresholdSelectProps {
     typeValue: ChartedType
     currentThresholdIn: number
@@ -278,20 +262,28 @@ interface ThresholdSelectProps {
     onReset: () => void
 }
 
-// Threshold as a predefined dropdown of SLD bin edges. The first option is the
-// SLD default (the Zero-deadband bound); selecting it resets to default.
-// Selecting a larger edge tightens the filter on |value| (both signs) across the
-// map, chart, and stats. Below-default values aren't offered — the deadband is
-// measurement noise, so reviewers can only raise the bar, not lower it.
+// Threshold as a dropdown of the SLD bin edges the data actually fills (see
+// getPopulatedBinBoundaries — empty-band edges are dropped so no two options
+// filter to the same set). The first, smallest offered edge is the per-type
+// default (marked "· default") and is exactly what the effective threshold
+// resolves to when unset, so the map, chart, and dropdown all agree. Picking it
+// resets to that default; larger edges tighten the filter on |value| (both
+// signs). Below the default isn't offered — that band is the measurement-noise
+// deadband, which the chart and (at the default) the map both exclude.
 function ThresholdSelect({ typeValue, currentThresholdIn, onChange, onReset }: ThresholdSelectProps) {
     const styleName = getStyleNameForType(typeValue) ?? ''
     const { data: sldBins = [] } = useDisplacementSldBins(styleName)
-    const boundaries = useMemo(() => getBinBoundaries(sldBins), [sldBins])
+    const magnitudes = useDisplacementValueMagnitudesForType(typeValue)
+    const boundaries = useMemo(() => getPopulatedBinBoundaries(sldBins, magnitudes), [sldBins, magnitudes])
     if (boundaries.length === 0) return null
 
     const fmt = (n: number) => n.toFixed(1)
     const defaultThreshold = boundaries[0]
-    const selected = fmt(currentThresholdIn)
+    // currentThresholdIn (the effective threshold) defaults to this same floor,
+    // so normally it equals defaultThreshold. Clamp up only so a stale sub-floor
+    // override (e.g. an old URL) can't render blank against options that start at
+    // the floor.
+    const selected = fmt(Math.max(currentThresholdIn, defaultThreshold))
 
     return (
         <div className="flex flex-col gap-1 rounded border border-dashed border-border p-2">

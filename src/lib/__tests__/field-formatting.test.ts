@@ -6,6 +6,8 @@ import {
   formatWithDecimalPlaces,
   getNumberFieldTransform,
   formatFieldValue,
+  formatDate,
+  capitalizeFirst,
 } from '../field-formatting';
 import type {
   NumberPopupFieldConfig,
@@ -114,5 +116,48 @@ describe('formatFieldValue', () => {
 
     const noTransform: CustomPopupFieldConfig = { type: 'custom', field: 'computed' };
     expect(formatFieldValue(noTransform, 'ignored')).toBe('');
+  });
+});
+
+// ── formatDate: monthYear ────────────────────────────────────────────────
+
+describe('formatDate monthYear', () => {
+  it('formats an ISO datetime as MM-YYYY', () => {
+    expect(formatDate('2017-10-20T00:00:00Z', 'monthYear')).toBe('10-2017');
+  });
+
+  it('reads UTC so a UTC-midnight first-of-month stays in that month', () => {
+    // 2023-10-01T00:00:00Z is 2023-09-30 in local time west of UTC (e.g. Denver);
+    // it must still render as 10-2023, not 09-2023.
+    expect(formatDate('2023-10-01T00:00:00Z', 'monthYear')).toBe('10-2023');
+  });
+
+  it('zero-pads single-digit months', () => {
+    expect(formatDate('2024-01-15T00:00:00Z', 'monthYear')).toBe('01-2024');
+  });
+
+  it('returns empty for null/empty and echoes unparseable input', () => {
+    expect(formatDate(null, 'monthYear')).toBe('');
+    expect(formatDate('', 'monthYear')).toBe('');
+    expect(formatDate('not-a-date', 'monthYear')).toBe('not-a-date');
+  });
+});
+
+// ── capitalizeFirst ──────────────────────────────────────────────────────
+
+describe('capitalizeFirst', () => {
+  it('capitalizes only the first character', () => {
+    expect(capitalizeFirst('high')).toBe('High');
+    expect(capitalizeFirst('medium')).toBe('Medium');
+    expect(capitalizeFirst('very low')).toBe('Very low');
+  });
+
+  it('leaves already-capitalized input unchanged', () => {
+    expect(capitalizeFirst('Medium')).toBe('Medium');
+  });
+
+  it('passes through empty and null', () => {
+    expect(capitalizeFirst('')).toBe('');
+    expect(capitalizeFirst(null)).toBe(null);
   });
 });

@@ -122,3 +122,15 @@ export function getZeroBound(bins: SldBin[]): number | null {
     if (!zero) return null
     return Math.max(Math.abs(zero.min), Math.abs(zero.max))
 }
+
+// Unsigned-magnitude label for a non-deadband bin, so a subsidence bin reads
+// "3 – 5 in" (how deep it subsided) instead of "-5 – -3 in". Direction is already
+// carried by the Uplift/Subsidence column and the color, so the sign is redundant
+// and "negative subsidence" is confusing. Derived from the bin's own bounds, so it
+// tracks the SLD. Not meaningful for the deadband bin, which keeps its own title.
+export function magnitudeLabel(bin: SldBin): string {
+    const lo = Math.min(Math.abs(bin.min), Math.abs(bin.max))
+    const hi = Math.max(Math.abs(bin.min), Math.abs(bin.max))
+    if (!Number.isFinite(hi)) return `> ${lo} in`
+    return `${lo} – ${hi} in`
+}

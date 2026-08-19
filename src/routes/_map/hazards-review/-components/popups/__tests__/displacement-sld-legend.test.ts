@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { binMatches, parseRuleFilter, type SldBin } from '../displacement-sld-legend'
+import { binMatches, magnitudeLabel, parseRuleFilter, type SldBin } from '../displacement-sld-legend'
 
 const DEADBAND = "NOT (value_inches >= '-1' AND value_inches <= '1')"
 
@@ -46,5 +46,24 @@ describe('binMatches', () => {
 
     it('matches nothing when the filter did not parse', () => {
         expect(binMatches(bin([], []), 5)).toBe(false)
+    })
+})
+
+describe('magnitudeLabel', () => {
+    const b = (min: number, max: number): SldBin => ({
+        name: 'x', title: 'x', min, max, color: '#000', isZero: false, include: [], exclude: [],
+    })
+
+    it('renders a subsidence bin as an unsigned range (no "-5 – -3")', () => {
+        expect(magnitudeLabel(b(-5, -3))).toBe('3 – 5 in')
+    })
+
+    it('renders an uplift bin as a range', () => {
+        expect(magnitudeLabel(b(3, 5))).toBe('3 – 5 in')
+    })
+
+    it('renders an open tail with a > prefix, either sign', () => {
+        expect(magnitudeLabel(b(9, Infinity))).toBe('> 9 in')
+        expect(magnitudeLabel(b(-Infinity, -13))).toBe('> 13 in')
     })
 })

@@ -1,5 +1,6 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { queryOptions, useQuery } from '@tanstack/react-query'
+import { getPopulatedBinBoundaries } from './displacement-thresholds'
 import type { Feature, Polygon, MultiPolygon } from 'geojson'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
@@ -182,6 +183,40 @@ export function useDisplacementBasinYearIndexForType(type: DisplacementType): Di
 
 export function useDisplacementDataQualsForType(type: DisplacementType): string[] {
     return useDistinctByType(type, extractDataQual, sortByDataQualOrder)
+}
+
+// Distinct |value_inches| magnitudes present for a type, ascending. Backs the
+// threshold dropdown: an edge only earns a slot when real features sit in the
+// band above it, so an SLD class the data never fills (e.g. Cumulative's
+// 1–3 in band) doesn't yield a redundant option that filters identically to the
+// next one.
+export function useDisplacementValueMagnitudesForType(type: DisplacementType): number[] {
+    const select = useCallback((features: DisplacementFeature[]) => {
+        const set = new Set<number>()
+        for (const f of features) {
+            if (f.properties.type !== type) continue
+            const v = f.properties.value_inches
+            if (typeof v === 'number' && Number.isFinite(v)) set.add(Math.abs(v))
+        }
+        return Array.from(set).sort((a, b) => a - b)
+    }, [type])
+    const { data = [] } = useQuery({ ...displacementFeaturesQueryOptions(), select })
+    return data
+}
+
+// The per-type default threshold: the smallest data-populated SLD edge (see
+// getPopulatedBinBoundaries). Used as the effective default so the map, chart and
+// threshold dropdown all agree, and so the map hides the measurement-noise
+// deadband by default the way the chart already does. null until both the SLD and
+// features have loaded — callers fall back to the SLD deadband, then a constant.
+export function useDisplacementDefaultThresholdForType(type: DisplacementType): number | null {
+    const styleName = getStyleNameForType(type) ?? ''
+    const { data: bins = [] } = useDisplacementSldBins(styleName)
+    const magnitudes = useDisplacementValueMagnitudesForType(type)
+    return useMemo(() => {
+        const edges = getPopulatedBinBoundaries(bins, magnitudes)
+        return edges.length > 0 ? edges[0] : null
+    }, [bins, magnitudes])
 }
 
 // Latest year present for a given type — Yearly uses water year, period-keyed

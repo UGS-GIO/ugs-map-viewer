@@ -1,11 +1,13 @@
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE, PROD_POSTGREST_URL, GEN_GIS_WORKSPACE } from "@/lib/constants";
-import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { FieldConfig, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { capitalizeFirst } from "@/lib/field-formatting";
 import {
     DISPLACEMENT_LAYERS,
     DISPLACEMENT_TYPE_NAME,
     LAND_SUBSIDENCE_GROUP_TITLE,
     getUnitsLabelForType,
     type DisplacementLayerTitle,
+    type DisplacementType,
 } from "../../-components/popups/displacement-layers";
 import GeoJSON from "geojson";
 
@@ -991,8 +993,6 @@ const aquifersCombinedConfig: WMSLayerProps = {
             queryable: true,
             popupFields: {
                 'Name': { field: 'name', type: 'string' },
-                'Publication': { field: 'publication', type: 'string' },
-                'DOI': { field: 'doi', type: 'string' },
                 'Office': { field: 'office_1', type: 'string' },
                 'HUC 1': { field: 'huc_1', type: 'string' },
                 'HUC 2': { field: 'huc_2', type: 'string' },
@@ -1005,16 +1005,24 @@ const aquifersCombinedConfig: WMSLayerProps = {
 // The registry already provides the workspace-qualified type name and per-title
 // type + style metadata, so layer configs just look up what they need.
 const DISPLACEMENT_CONTOURS_LAYER = DISPLACEMENT_TYPE_NAME;
-const displacementPopupFields = {
-    'Location': { field: 'location', type: 'string' },
-    'Type': { field: 'type', type: 'string' },
-    'Year': { field: 'year', type: 'string' },
-    'Period Start': { field: 'start_date', type: 'string' },
-    'Period End': { field: 'end_date', type: 'string' },
-    'Displacement (in)': { field: 'value_inches', type: 'number', format: 'oneDecimal' },
-    'Data Quality': { field: 'data_qual', type: 'string' },
-    'Valid Pixels (%)': { field: 'pct_valid', type: 'number', format: 'oneDecimal' },
-} as const;
+
+// Popup fields for the displacement layers, built per type. The Displacement
+// unit reflects the reading — Vertical Displacement Rate is in/year, Cumulative
+// and Yearly are an amount in inches. Year is intentionally omitted: the period
+// (Period Start → Period End, rendered MM-YYYY) already carries the timeframe.
+// Data Quality is normalized to first-letter caps ("high" -> "High").
+function makeDisplacementPopupFields(typeValue: DisplacementType): Record<string, FieldConfig> {
+    const displacementUnit = typeValue === 'Vertical Displacement Rate' ? 'in/year' : 'in';
+    return {
+        'Location': { field: 'location', type: 'string' },
+        'Type': { field: 'type', type: 'string' },
+        'Period Start': { field: 'start_date', type: 'date', format: 'monthYear' },
+        'Period End': { field: 'end_date', type: 'date', format: 'monthYear' },
+        [`Displacement (${displacementUnit})`]: { field: 'value_inches', type: 'number' },
+        'Data Quality': { field: 'data_qual', type: 'string', transform: capitalizeFirst },
+        'Valid Pixels (%)': { field: 'pct_valid', type: 'number' },
+    };
+}
 
 function makeDisplacementContoursConfig(title: DisplacementLayerTitle): WMSLayerProps {
     const { type: typeValue, styleName } = DISPLACEMENT_LAYERS[title];
@@ -1031,7 +1039,7 @@ function makeDisplacementContoursConfig(title: DisplacementLayerTitle): WMSLayer
                 name: DISPLACEMENT_CONTOURS_LAYER,
                 popupEnabled: true,
                 queryable: true,
-                popupFields: displacementPopupFields,
+                popupFields: makeDisplacementPopupFields(typeValue),
             },
         ],
     };

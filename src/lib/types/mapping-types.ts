@@ -62,7 +62,7 @@ export interface NumberPopupFieldConfig extends BaseFieldConfig {
 // Date-specific field configuration
 export interface DatePopupFieldConfig extends BaseFieldConfig {
     type: 'date';
-    format?: 'iso' | 'short' | 'long';
+    format?: 'iso' | 'short' | 'long' | 'monthYear';
 }
 
 // Custom-specific field configuration
