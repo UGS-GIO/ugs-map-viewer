@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getPopulatedBinBoundaries } from '../displacement-layer-filters'
+import { getPopulatedBinBoundaries } from '../displacement-thresholds'
 import type { SldBin } from '../displacement-sld-legend'
 
 const bin = (min: number, max: number, isZero = false): SldBin => ({

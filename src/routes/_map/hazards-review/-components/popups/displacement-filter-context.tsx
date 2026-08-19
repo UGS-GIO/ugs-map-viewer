@@ -9,7 +9,7 @@ import {
     type DisplacementLayerTitle,
     type DisplacementType,
 } from './displacement-layers'
-import { useDisplacementLatestYearByType, useDisplacementSldZeroBound } from './use-displacement-queries'
+import { useDisplacementDefaultThresholdForType, useDisplacementLatestYearByType, useDisplacementSldZeroBound } from './use-displacement-queries'
 
 // Re-export the type predicates + token sets so existing call sites keep
 // importing from this module — the canonical definitions now live in
@@ -263,18 +263,22 @@ export function useEffectiveYear(type: DisplacementType): string | null {
 
 /**
  * Resolve the effective threshold per charted type: the reviewer's override if
- * set, else the SLD's "Zero" deadband, else FALLBACK_THRESHOLD_IN while the SLD
- * loads. This single value drives the map cql, the stacked bar, AND the KPIs —
- * one honest knob, no visual-vs-audit split.
+ * set, else the per-type default — the smallest data-populated SLD edge, so the
+ * map, chart and dropdown agree and the map hides the deadband by default like
+ * the chart — else the SLD's "Zero" deadband, else FALLBACK_THRESHOLD_IN while
+ * things load. This single value drives the map cql, the stacked bar, AND the
+ * KPIs — one honest knob, no visual-vs-audit split.
  */
 export function useEffectiveThresholdsIn(): Record<ChartedType, number> {
     const { thresholdsIn } = useDisplacementFilters()
+    const cumulativeFloor = useDisplacementDefaultThresholdForType('Cumulative')
+    const yearlyFloor = useDisplacementDefaultThresholdForType('Yearly')
     const cumulativeSld = useDisplacementSldZeroBound('Cumulative')
     const yearlySld = useDisplacementSldZeroBound('Yearly')
     return useMemo(() => ({
-        'Cumulative': thresholdsIn['Cumulative'] ?? cumulativeSld ?? FALLBACK_THRESHOLD_IN['Cumulative'],
-        'Yearly': thresholdsIn['Yearly'] ?? yearlySld ?? FALLBACK_THRESHOLD_IN['Yearly'],
-    }), [thresholdsIn, cumulativeSld, yearlySld])
+        'Cumulative': thresholdsIn['Cumulative'] ?? cumulativeFloor ?? cumulativeSld ?? FALLBACK_THRESHOLD_IN['Cumulative'],
+        'Yearly': thresholdsIn['Yearly'] ?? yearlyFloor ?? yearlySld ?? FALLBACK_THRESHOLD_IN['Yearly'],
+    }), [thresholdsIn, cumulativeFloor, yearlyFloor, cumulativeSld, yearlySld])
 }
 
 /**

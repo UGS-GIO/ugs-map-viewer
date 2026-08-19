@@ -1,5 +1,6 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import { queryOptions, useQuery } from '@tanstack/react-query'
+import { getPopulatedBinBoundaries } from './displacement-thresholds'
 import type { Feature, Polygon, MultiPolygon } from 'geojson'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
@@ -201,6 +202,21 @@ export function useDisplacementValueMagnitudesForType(type: DisplacementType): n
     }, [type])
     const { data = [] } = useQuery({ ...displacementFeaturesQueryOptions(), select })
     return data
+}
+
+// The per-type default threshold: the smallest data-populated SLD edge (see
+// getPopulatedBinBoundaries). Used as the effective default so the map, chart and
+// threshold dropdown all agree, and so the map hides the measurement-noise
+// deadband by default the way the chart already does. null until both the SLD and
+// features have loaded — callers fall back to the SLD deadband, then a constant.
+export function useDisplacementDefaultThresholdForType(type: DisplacementType): number | null {
+    const styleName = getStyleNameForType(type) ?? ''
+    const { data: bins = [] } = useDisplacementSldBins(styleName)
+    const magnitudes = useDisplacementValueMagnitudesForType(type)
+    return useMemo(() => {
+        const edges = getPopulatedBinBoundaries(bins, magnitudes)
+        return edges.length > 0 ? edges[0] : null
+    }, [bins, magnitudes])
 }
 
 // Latest year present for a given type — Yearly uses water year, period-keyed
