@@ -1,4 +1,4 @@
-import { FillSymbolizer, GraphicFillData, LineCap, LineJoin, StrokeSymbolizer, Symbolizer } from "@/lib/types/geoserver-types";
+import { FillSymbolizer, GraphicFillData, GraphicStrokeData, LineCap, LineJoin, StrokeSymbolizer, Symbolizer } from "@/lib/types/geoserver-types";
 import { createEmptySVG } from "@/lib/legend/symbol-generator";
 import { SYMBOL_CONSTANTS } from "@/lib/constants";
 
@@ -55,6 +55,7 @@ export function createPolygonSymbol(symbolizers: Symbolizer[]): SVGSVGElement {
     let strokeDasharray = "";
     let hasGraphicFill = false;
     let graphicFillPattern: SVGElement | null = null;
+    let graphicStrokeData: GraphicStrokeData | null = null;
 
     const PolygonSymbolizer = symbolizers.find(symbolizer => 'Polygon' in symbolizer)?.Polygon as StrokeSymbolizer;
 
@@ -73,6 +74,12 @@ export function createPolygonSymbol(symbolizers: Symbolizer[]): SVGSVGElement {
                 graphicFillPattern = createGraphicFillPatternElement(graphicFill);
             } else if ('fill' in symbolizer.Polygon) {
                 fillColorWithOpacity = handleFillSymbolizer(symbolizer.Polygon);
+            }
+
+            // Check for GraphicStroke (hachured / tick borders, e.g. the closed-basin depression symbol)
+            const graphicStroke = polygonData.GraphicStroke || polygonData['graphic-stroke'];
+            if (graphicStroke) {
+                graphicStrokeData = graphicStroke;
             }
 
             if ('stroke' in symbolizer.Polygon) {
@@ -125,7 +132,56 @@ export function createPolygonSymbol(symbolizers: Symbolizer[]): SVGSVGElement {
     }
 
     svg.appendChild(rect);
+
+    // GraphicStroke -> inward tick marks perpendicular to the rect border (ends meeting the edge).
+    // Renders the closed-basin / depression hachure symbol a fill pattern can't convey.
+    if (graphicStrokeData) {
+        appendBorderTicks(svg, graphicStrokeData, strokeColorWithOpacity);
+    }
+
     return svg;
+}
+
+/**
+ * Appends inward-pointing tick marks perpendicular to each edge of the legend rect, with the outer
+ * end meeting the border — the hachured closed-basin/depression symbol. Used when a polygon
+ * symbolizer carries a GraphicStroke (which the plain rect + fill-pattern path cannot represent).
+ * @param svg - The swatch SVG to append ticks to.
+ * @param graphicStroke - GraphicStroke data; its first graphic's stroke color/width style the ticks.
+ * @param fallbackStroke - Stroke color to fall back to when the graphic mark carries none.
+ */
+function appendBorderTicks(svg: SVGSVGElement, graphicStroke: GraphicStrokeData, fallbackStroke: string): void {
+    const mark = graphicStroke.graphics?.[0];
+    const stroke = mark?.stroke || fallbackStroke;
+    const strokeWidth = mark?.["stroke-width"] || "1";
+
+    // Rect geometry matches the rect drawn in createPolygonSymbol.
+    const x0 = SYMBOL_CONSTANTS.LINE_START_X, y0 = 3, w = 28, h = 14;
+    const x1 = x0 + w, y1 = y0 + h;
+    const tickLen = 4;   // inward length, perpendicular to the edge
+    const gap = 4.5;     // spacing along each edge
+
+    const lines: [number, number, number, number][] = [];
+    for (let dx = gap; dx < w; dx += gap) {
+        lines.push([x0 + dx, y0, x0 + dx, y0 + tickLen]);  // top edge -> ticks point down (inward)
+        lines.push([x0 + dx, y1, x0 + dx, y1 - tickLen]);  // bottom edge -> point up
+    }
+    for (let dy = gap; dy < h; dy += gap) {
+        lines.push([x0, y0 + dy, x0 + tickLen, y0 + dy]);  // left edge -> point right
+        lines.push([x1, y0 + dy, x1 - tickLen, y0 + dy]);  // right edge -> point left
+    }
+
+    for (const [ax, ay, bx, by] of lines) {
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", ax.toString());
+        line.setAttribute("y1", ay.toString());
+        line.setAttribute("x2", bx.toString());
+        line.setAttribute("y2", by.toString());
+        line.setAttribute("stroke", stroke);
+        line.setAttribute("stroke-width", strokeWidth);
+        line.setAttribute("stroke-linecap", "round");
+        svg.appendChild(line);
+    }
 }
 
 /**
