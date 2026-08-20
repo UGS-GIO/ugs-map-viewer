@@ -76,9 +76,12 @@ export function createPolygonSymbol(symbolizers: Symbolizer[]): SVGSVGElement {
                 fillColorWithOpacity = handleFillSymbolizer(symbolizer.Polygon);
             }
 
-            // Check for GraphicStroke (hachured / tick borders, e.g. the closed-basin depression symbol)
+            // A polygon GraphicStroke whose mark is a tick (shape://vertline / horline) renders as inward
+            // border hachures (the closed-basin/depression symbol). Any other stroke graphic is left as the
+            // plain box (the prior behavior) rather than being misrepresented as ticks.
             const graphicStroke = polygonData.GraphicStroke || polygonData['graphic-stroke'];
-            if (graphicStroke) {
+            const graphicStrokeMark = graphicStroke?.graphics?.[0]?.mark?.toLowerCase() ?? '';
+            if (graphicStroke && (graphicStrokeMark.includes('vertline') || graphicStrokeMark.includes('horline'))) {
                 graphicStrokeData = graphicStroke;
             }
 

@@ -3,27 +3,38 @@ import { describe, it, expect } from 'vitest';
 import { createPolygonSymbol } from '../polygon';
 import type { Symbolizer } from '../../../types/geoserver-types';
 
+const borderSymbolizer: Symbolizer = { Polygon: { stroke: '#5B6470', 'stroke-width': '1.2' } };
+const graphicStrokeSymbolizer = (mark: string): Symbolizer => ({
+    Polygon: { 'graphic-stroke': { size: '6', graphics: [{ mark, stroke: '#5B6470', 'stroke-width': '1' }] } },
+});
+
 describe('createPolygonSymbol', () => {
-    it('renders inward perpendicular border ticks for a polygon graphic-stroke (closed-basin hachures)', () => {
-        // Mirrors GetLegendGraphic JSON: a solid border symbolizer + a graphic-stroke symbolizer.
-        const symbolizers: Symbolizer[] = [
-            { Polygon: { stroke: '#5B6470', 'stroke-width': '1.2' } },
-            { Polygon: { 'graphic-stroke': { size: '6', graphics: [{ mark: 'shape://vertline', stroke: '#5B6470', 'stroke-width': '1' }] } } },
-        ];
+    it('draws inward ticks on all four edges for a vertline graphic-stroke (closed-basin symbol)', () => {
+        const svg = createPolygonSymbol([borderSymbolizer, graphicStrokeSymbolizer('shape://vertline')]);
+        expect(svg.querySelectorAll('rect')).toHaveLength(1);
 
-        const svg = createPolygonSymbol(symbolizers);
+        const lines = Array.from(svg.querySelectorAll('line'));
+        expect(lines).toHaveLength(18); // 6 top + 6 bottom + 3 left + 3 right on the 28x14 rect
 
-        expect(svg.querySelectorAll('rect')).toHaveLength(1); // the hollow box
-        const lines = svg.querySelectorAll('line');
-        expect(lines.length).toBeGreaterThan(8); // ticks on all four edges
+        // every tick meets one of the four rect edges (top y=3, bottom y=17, left x=2, right x=30)
+        const onTop = lines.filter(l => l.getAttribute('y1') === '3').length;
+        const onBottom = lines.filter(l => l.getAttribute('y1') === '17').length;
+        const onLeft = lines.filter(l => l.getAttribute('x1') === '2').length;
+        const onRight = lines.filter(l => l.getAttribute('x1') === '30').length;
+        expect([onTop, onBottom, onLeft, onRight].every(n => n > 0)).toBe(true);
+        expect(onTop + onBottom + onLeft + onRight).toBe(18);
 
-        // ticks are styled from the graphic mark, and each meets a rect edge (x in {2,30} or y in {3,17})
-        const edges = new Set(['2', '30', '3', '17']);
-        lines.forEach(line => {
-            expect(line.getAttribute('stroke')).toBe('#5B6470');
-            const onEdge = edges.has(line.getAttribute('x1')!) || edges.has(line.getAttribute('y1')!);
-            expect(onEdge).toBe(true);
+        // styled from the graphic mark
+        lines.forEach(l => {
+            expect(l.getAttribute('stroke')).toBe('#5B6470');
+            expect(l.getAttribute('stroke-width')).toBe('1');
         });
+    });
+
+    it('does not draw ticks for a non-tick graphic-stroke mark (leaves the plain box)', () => {
+        const svg = createPolygonSymbol([borderSymbolizer, graphicStrokeSymbolizer('shape://slash')]);
+        expect(svg.querySelectorAll('line')).toHaveLength(0);
+        expect(svg.querySelectorAll('rect')).toHaveLength(1);
     });
 
     it('draws no ticks when there is no graphic-stroke', () => {
