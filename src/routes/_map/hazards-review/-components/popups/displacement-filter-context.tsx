@@ -296,8 +296,11 @@ function quoteCqlLiteral(value: string): string {
 export function useDisplacementLayerFilters(): Record<string, string> {
     const { yearOverridesByType, basinsByType, excludedDataQualsByType } = useDisplacementFilters()
     const effective = useEffectiveThresholdsIn()
+    const cumulativeSld = useDisplacementSldZeroBound('Cumulative')
+    const yearlySld = useDisplacementSldZeroBound('Yearly')
     const latestByType = useDisplacementLatestYearByType()
     return useMemo(() => {
+        const zeroBoundByType: Record<ChartedType, number | null> = { 'Cumulative': cumulativeSld, 'Yearly': yearlySld }
         const out: Record<DisplacementLayerTitle, string> = {} as Record<DisplacementLayerTitle, string>
         for (const [title, typeValue] of Object.entries(DISPLACEMENT_LAYER_TYPES) as [DisplacementLayerTitle, DisplacementType][]) {
             const clauses: string[] = []
@@ -311,6 +314,14 @@ export function useDisplacementLayerFilters(): Record<string, string> {
                 const thresholdIn = effective[typeValue]
                 if (thresholdIn > 0) {
                     clauses.push(`(value_inches >= ${thresholdIn} OR value_inches <= ${-thresholdIn})`)
+                }
+                // Exclude the SLD "within uncertainty" deadband so the map matches
+                // the chart (which never plots deadband features) — including during
+                // the load window before the data-driven default tightens past the
+                // bound, otherwise the ±deadband contours flash in and back out.
+                const zeroBound = zeroBoundByType[typeValue]
+                if (zeroBound != null && zeroBound > 0) {
+                    clauses.push(`(value_inches > ${zeroBound} OR value_inches < ${-zeroBound})`)
                 }
             }
             const basins = basinsByType[typeValue]
@@ -329,5 +340,5 @@ export function useDisplacementLayerFilters(): Record<string, string> {
             if (clauses.length > 0) out[title] = clauses.join(' AND ')
         }
         return out
-    }, [yearOverridesByType, latestByType, effective, basinsByType, excludedDataQualsByType])
+    }, [yearOverridesByType, latestByType, effective, cumulativeSld, yearlySld, basinsByType, excludedDataQualsByType])
 }
