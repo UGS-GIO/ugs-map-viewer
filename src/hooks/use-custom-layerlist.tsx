@@ -313,6 +313,9 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                         <AccordionContent>
                             {variants.length > 1 && (
                                 <div className="mx-8 mb-1 mt-2">
+                                    {/* "Show on map" — a variantSelector picks which mutually-exclusive
+                                        variant the map paints; the label makes that explicit. */}
+                                    <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Show on map</div>
                                     <div
                                         role="radiogroup"
                                         aria-label={`${layerConfig.title ?? 'Layer'}: choose a surface`}
