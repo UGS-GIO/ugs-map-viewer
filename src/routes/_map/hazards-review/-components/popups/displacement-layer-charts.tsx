@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { Maximize2 } from 'lucide-react'
 import area from '@turf/area'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,6 +18,7 @@ import {
     type DisplacementFeature,
 } from './use-displacement-queries'
 import { deepestSubsidenceByYear } from './displacement-analytics'
+import { DisplacementDetailDialog } from './displacement-detail-dialog'
 
 const SQM_TO_SQMI = 1 / 2_589_988.110336
 
@@ -402,6 +404,8 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     // Hover feeds the legend instead of a floating card — the panel is too narrow
     // for a tooltip beside the bar without clipping.
     const [hoveredYear, setHoveredYear] = useState<string | null>(null)
+    // Pop-out ("Expand") for the full depth + area detail in a wider modal.
+    const [detailOpen, setDetailOpen] = useState(false)
 
     // Independent of hover, so the range readout survives pointer movement.
     const rangeRows = useMemo(
@@ -460,10 +464,15 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             </div>
 
             <div>
-                <h4 className="text-xs font-medium mb-1">Subsidence depth by {yearAxisLabel}</h4>
+                <div className="flex items-center justify-between mb-1">
+                    <h4 className="text-xs font-medium">Subsidence depth by {yearAxisLabel}</h4>
+                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => setDetailOpen(true)}>
+                        Expand <Maximize2 className="h-3 w-3" aria-hidden="true" />
+                    </Button>
+                </div>
                 <p className="text-xs text-muted-foreground mb-1">
                     Deepest measured subsidence each {yearAxisLabel.toLowerCase()}, in inches — honors the threshold and data-quality filters.
-                    {typeValue === 'Yearly' && ' The first year carries the multi-year baseline, not a single-year change — read its spike with that in mind.'}
+                    {typeValue === 'Yearly' && ' The first year carries the multi-year baseline, not a single-year change.'}
                 </p>
                 {/* TODO(ALL-5673): rebaseline/mark the Yearly seed year instead of only captioning it — belongs with the pop-out step of the redesign. */}
                 <div className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none" style={{ height: CHART_HEIGHT_PX }}>
@@ -545,6 +554,19 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                 removeBasin={removeBasin}
                 zoomToBboxes={zoomToBboxes}
             />
+
+            {detailOpen && (
+                <DisplacementDetailDialog
+                    open={detailOpen}
+                    onOpenChange={setDetailOpen}
+                    typeValue={typeValue}
+                    scoped={scoped}
+                    threshold={threshold}
+                    plotBins={plotBins}
+                    lineColor={subsidenceBins[subsidenceBins.length - 1]?.color ?? 'currentColor'}
+                    yearAxisLabel={yearAxisLabel}
+                />
+            )}
         </div>
     )
 }
