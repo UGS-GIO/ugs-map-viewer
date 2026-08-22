@@ -689,7 +689,7 @@ export function BasinList({
     unit = 'in',
     formatValue = fmt1,
     heading = 'Subsidence by Basin',
-    caption = 'Basins ranked by their deepest contour value. Click a row to drill the panel into that basin; unselected rows grey out while one is active. "Back to statewide" up top clears the selection.',
+    caption = 'Basins ranked by their deepest contour value. Click a row to focus the panel on that basin; unselected rows grey out while one is active.',
     emptyText = 'No basins above threshold.',
 }: BasinListProps) {
     const [page, setPage] = useState(0)

@@ -1,5 +1,7 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { ChevronLeft, MapPin, Maximize2 } from 'lucide-react'
 import area from '@turf/area'
+import { Button } from '@/components/ui/button'
 import { useDisplacementFilters } from './displacement-filter-context'
 import {
     useDisplacementFeaturesByType,
@@ -8,6 +10,8 @@ import {
 } from './use-displacement-queries'
 import { getShortUnitForType, getStyleNameForType } from './displacement-layers'
 import { BasinList, KPI, combinedBbox, findBin, useZoomToBboxes } from './displacement-layer-charts'
+import { DisplacementAnalysisDialog } from './displacement-analysis-dialog'
+import { renderDisplacementLayerFilters } from './displacement-layer-filters'
 
 // Vertical Displacement Rate is a velocity snapshot (in/year over each basin's
 // full record), not a per-year time series — so it gets a lean stats panel:
@@ -20,11 +24,13 @@ const fmt1 = (n: number): string => n.toFixed(1)
 // Rate magnitudes are small (SLD bands start at 0.075 in/yr), so two decimals.
 const fmt2 = (n: number): string => n.toFixed(2)
 
-export function DisplacementRateStats() {
-    const { basinsByType, excludedDataQualsByType, addBasin, removeBasin } = useDisplacementFilters()
+export function DisplacementRateStats({ layerTitle }: { layerTitle: string }) {
+    const { basinsByType, excludedDataQualsByType, addBasin, removeBasin, clearBasins } = useDisplacementFilters()
     const selectedBasins = basinsByType[RATE_TYPE]
     const basinFilterActive = selectedBasins.size > 0
     const zoomToBboxes = useZoomToBboxes()
+    const scopeLabelRef = useRef<HTMLDivElement>(null)
+    const [analysisOpen, setAnalysisOpen] = useState(false)
 
     const styleName = getStyleNameForType(RATE_TYPE) ?? ''
     const { data: features = [], isLoading: featuresLoading } = useDisplacementFeaturesByType(RATE_TYPE)
@@ -130,31 +136,96 @@ export function DisplacementRateStats() {
 
     const unit = getShortUnitForType(RATE_TYPE)
 
+    // KPIs + ranking built once, reused in the sidebar column and the "Expand"
+    // analysis view (no charts — Rate is a snapshot, not a time series).
+    const kpiCards = (
+        <>
+            <KPI label="Max rate" value={isLoading ? '—' : `${fmt2(maxRate)} ${unit}`} sub="fastest basin" />
+            <KPI label="Measured area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub="above deadband" />
+            <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
+            <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
+        </>
+    )
+    const rankingNode = (
+        <BasinList
+            basinsByDepth={basinsByRate}
+            basinFilterActive={basinFilterActive}
+            selectedBasins={selectedBasins}
+            typeValue={RATE_TYPE}
+            worstDepth={worstRate}
+            isLoading={isLoading}
+            addBasin={addBasin}
+            removeBasin={removeBasin}
+            zoomToBboxes={zoomToBboxes}
+            unit={unit}
+            formatValue={fmt2}
+            heading="Subsidence rate by basin"
+            caption="Basins ranked by their fastest subsidence rate. Click a row to filter + zoom to that basin; unselected rows grey out while one is active."
+            emptyText="No basins above the rate deadband."
+        />
+    )
+    const scope = basinFilterActive
+        ? (selectedBasins.size === 1 ? [...selectedBasins][0] : `${selectedBasins.size} basins`)
+        : 'Statewide'
+    const scopeSummary = `${scope} · Rate${period ? ` · ${period.from}–${period.to}` : ''}`
+
     return (
         <div className="mb-3 flex flex-col gap-3 px-2 py-1">
-            <div className="grid grid-cols-2 gap-2">
-                <KPI label="Max rate" value={isLoading ? '—' : `${fmt2(maxRate)} ${unit}`} sub="fastest basin" />
-                <KPI label="Measured area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub="above deadband" />
-                <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
-                <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
+            {/* Scope bar: statewide by default, or the drilled-in basin(s) with a
+                one-click way back — mirrors the charted panels so the surfaces stay
+                consistent. The by-basin ranking below is the drill-in entry point
+                (click a row to scope the KPIs + zoom to that basin). Expand shares
+                this header row since Rate has no chart heading to anchor it to. */}
+            <div className="flex items-center justify-between gap-2">
+                <div ref={scopeLabelRef} tabIndex={-1} className="flex min-w-0 items-center gap-1.5 text-xs focus:outline-none" aria-live="polite">
+                    <MapPin className={`h-3 w-3 shrink-0 ${basinFilterActive ? 'text-foreground' : 'text-muted-foreground'}`} aria-hidden="true" />
+                    {basinFilterActive ? (
+                        <span className="truncate font-medium text-foreground" title={[...selectedBasins].join(', ')}>
+                            {selectedBasins.size === 1 ? [...selectedBasins][0] : `${selectedBasins.size} basins`}
+                        </span>
+                    ) : (
+                        <span className="text-muted-foreground">Statewide</span>
+                    )}
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                    {basinFilterActive && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 gap-1 px-2 text-xs"
+                            onClick={() => {
+                                // "Back to statewide": clear the filter and zoom the
+                                // camera back out to every basin's extent (basinsByRate
+                                // ignores the basin filter, so it always holds them all).
+                                clearBasins(RATE_TYPE)
+                                zoomToBboxes(basinsByRate.map(b => b.bbox))
+                                scopeLabelRef.current?.focus()
+                            }}
+                        >
+                            <ChevronLeft className="h-3 w-3" aria-hidden="true" />
+                            Back to statewide
+                        </Button>
+                    )}
+                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => setAnalysisOpen(true)}>
+                        Expand <Maximize2 className="h-3 w-3" aria-hidden="true" />
+                    </Button>
+                </div>
             </div>
 
-            <BasinList
-                basinsByDepth={basinsByRate}
-                basinFilterActive={basinFilterActive}
-                selectedBasins={selectedBasins}
-                typeValue={RATE_TYPE}
-                worstDepth={worstRate}
-                isLoading={isLoading}
-                addBasin={addBasin}
-                removeBasin={removeBasin}
-                zoomToBboxes={zoomToBboxes}
-                unit={unit}
-                formatValue={fmt2}
-                heading="Subsidence rate by basin"
-                caption="Basins ranked by their fastest subsidence rate. Click a row to filter + zoom to that basin; unselected rows grey out while one is active."
-                emptyText="No basins above the rate deadband."
-            />
+            <div className="grid grid-cols-2 gap-2">{kpiCards}</div>
+            {rankingNode}
+
+            {analysisOpen && (
+                <DisplacementAnalysisDialog
+                    open={analysisOpen}
+                    onOpenChange={setAnalysisOpen}
+                    title="Displacement (InSAR)"
+                    scopeSummary={scopeSummary}
+                    filtersSlot={renderDisplacementLayerFilters(layerTitle)}
+                    kpisSlot={<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{kpiCards}</div>}
+                    rankingSlot={rankingNode}
+                />
+            )}
         </div>
     )
 }

@@ -15,7 +15,7 @@ export function renderDisplacementLayerPanel(layerTitle: string): React.ReactNod
     // Rate is a velocity snapshot — a lean KPI + basin-rate ranking, not the
     // time-series stats the charted (Cumulative/Yearly) surfaces get.
     const stats = DISPLACEMENT_LAYER_TYPES[layerTitle] === 'Vertical Displacement Rate'
-        ? <DisplacementRateStats />
+        ? <DisplacementRateStats layerTitle={layerTitle} />
         : renderDisplacementLayerStats(layerTitle)
     if (!filters && !stats) return null
     return (
