@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LegendSwatchGrid, type LegendSwatchItem } from '@/components/maps/legend-swatch-grid'
-import { BarChart, Bar, Rectangle, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label as RechartsLabel, useActiveTooltipLabel, useIsTooltipActive, type BarShapeProps, type XAxisTickContentProps } from 'recharts'
+import { BarChart, Bar, LineChart, Line, Rectangle, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label as RechartsLabel, useActiveTooltipLabel, useIsTooltipActive, type BarShapeProps, type XAxisTickContentProps } from 'recharts'
 import type { LayerContentProps } from '@/components/maps/popups/types'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import { useMap } from '@/hooks/use-map'
@@ -16,6 +16,7 @@ import {
     useDisplacementSldBins,
     type DisplacementFeature,
 } from './use-displacement-queries'
+import { deepestSubsidenceByYear } from './displacement-analytics'
 
 const SQM_TO_SQMI = 1 / 2_589_988.110336
 
@@ -202,6 +203,21 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             ? qualFiltered
             : qualFiltered.filter(f => selectedBasins.has(f.properties.location)),
         [qualFiltered, selectedBasins]
+    )
+
+    // Deepest MEASURED subsidence (in) per closing year for the current scope —
+    // the depth-over-time series. Gated through `isMeasured` so it honors the
+    // threshold and excludes the SLD "Zero" deadband exactly like the KPIs,
+    // stacked bars, and basin ranking (one honest knob everywhere). Pre-filtered
+    // to subsidence (value_inches < 0) so an uplift-only year can't plot a
+    // misleading 0. Uses all years (not the year filter): a trend needs the
+    // whole record, not just the selected year.
+    const depthByYear = useMemo(
+        () => Array.from(
+            deepestSubsidenceByYear(scoped.filter(f => f.properties.value_inches < 0 && isMeasured(f.properties.value_inches))),
+            ([yr, depthIn]) => ({ year: yr, depthIn }),
+        ).sort((a, b) => a.year.localeCompare(b.year)),
+        [scoped, isMeasured],
     )
 
     // Year filter resolution: Yearly matches `year`; Cumulative matches the
@@ -441,6 +457,20 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                 <KPI label="Max |value|" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
                 <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
                 <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
+            </div>
+
+            <div>
+                <h4 className="text-xs font-medium mb-1">Subsidence depth by {yearAxisLabel}</h4>
+                <p className="text-xs text-muted-foreground mb-1">
+                    Deepest measured subsidence each {yearAxisLabel.toLowerCase()}, in inches — honors the threshold and data-quality filters.
+                    {typeValue === 'Yearly' && ' The first year carries the multi-year baseline, not a single-year change — read its spike with that in mind.'}
+                </p>
+                {/* TODO(ALL-5673): rebaseline/mark the Yearly seed year instead of only captioning it — belongs with the pop-out step of the redesign. */}
+                <div className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none" style={{ height: CHART_HEIGHT_PX }}>
+                    {isLoading ? <Skeleton className="h-full w-full" /> : (
+                        <DepthByYearChart data={depthByYear} lineColor={subsidenceBins[subsidenceBins.length - 1]?.color ?? 'currentColor'} />
+                    )}
+                </div>
             </div>
 
             <div>
@@ -746,6 +776,42 @@ const StackedYearChart = memo(function StackedYearChart({ data, bins, year, type
                     />
                 ))}
             </BarChart>
+        </ResponsiveContainer>
+    )
+})
+
+interface DepthPoint { year: string; depthIn: number }
+
+// Depth-over-time line: deepest subsidence (in) per year for the current scope.
+// The clean, monotonic read of "how deep, and getting deeper" that the stacked
+// area (which encodes affected extent, not depth) can't show. ALL-5673 step 1;
+// the stack moves into the pop-out as exceedance lines in a later step.
+// Memoized like its sibling StackedYearChart: the parent re-renders on every
+// hover of the stacked chart (to refresh the legend), and both props here are
+// stable, so memo makes those hover re-renders a no-op.
+const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor }: { data: DepthPoint[]; lineColor: string }) {
+    return (
+        <ResponsiveContainer width="100%" height={CHART_HEIGHT_PX}>
+            <LineChart data={data} margin={{ top: 16, right: 4, bottom: 0, left: 0 }}>
+                <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
+                <XAxis dataKey="year" stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} height={20} />
+                <YAxis
+                    stroke="currentColor"
+                    tick={{ fill: 'currentColor', fontSize: 11 }}
+                    width={52}
+                    tickMargin={2}
+                    tickFormatter={(v: number) => `${fmt1(v)} in`}
+                >
+                    <RechartsLabel value="Subsidence (in)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
+                </YAxis>
+                <Tooltip
+                    cursor={{ stroke: 'currentColor', strokeOpacity: 0.2 }}
+                    contentStyle={{ fontSize: 11, background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 6, color: 'hsl(var(--popover-foreground))' }}
+                    labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                    formatter={(value) => [`${fmt1(Number(value))} in`, 'Deepest subsidence']}
+                />
+                <Line type="monotone" dataKey="depthIn" stroke={lineColor} strokeWidth={2} dot={{ r: 2, fill: lineColor }} activeDot={{ r: 3 }} isAnimationActive={false} />
+            </LineChart>
         </ResponsiveContainer>
     )
 })
