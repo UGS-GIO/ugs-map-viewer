@@ -4,6 +4,7 @@ import type { LayerProps } from '@/lib/types/mapping-types'
 import { useDisplacementSldBins } from './use-displacement-queries'
 import {
     DISPLACEMENT_LAYER_TYPES,
+    getShortUnitForType,
     getStyleNameForType,
     getUnitsLabelForType,
     isDisplacementLayerTitle,
@@ -29,12 +30,12 @@ function toSwatchItems(bins: SldBin[], label: (b: SldBin) => string = b => b.tit
     return bins.map(b => ({ key: b.name, label: label(b), color: b.color }))
 }
 
-function LegendGroup({ label, bins }: { label: string; bins: SldBin[] }) {
+function LegendGroup({ label, bins, unit }: { label: string; bins: SldBin[]; unit: string }) {
     if (bins.length === 0) return <div />
     return (
         <div className="flex flex-col gap-1 min-w-0">
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-            <LegendSwatchGrid items={toSwatchItems(bins, magnitudeLabel)} columns="single" />
+            <LegendSwatchGrid items={toSwatchItems(bins, b => magnitudeLabel(b, unit))} columns="single" />
         </div>
     )
 }
@@ -55,6 +56,8 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
         [bins],
     )
 
+    const unit = getShortUnitForType(typeValue)
+
     if (isLoading) return <div className="px-1 py-1 text-xs text-muted-foreground">Loading legend…</div>
     if (bins.length === 0) return null
 
@@ -62,8 +65,8 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
         <div className="flex flex-col gap-2 px-1 py-1">
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vertical Displacement</div>
             <div className="grid grid-cols-2 gap-x-3 text-xs text-foreground">
-                <LegendGroup label="Uplift" bins={upliftBins} />
-                <LegendGroup label="Subsidence" bins={subsidenceBins} />
+                <LegendGroup label="Uplift" bins={upliftBins} unit={unit} />
+                <LegendGroup label="Subsidence" bins={subsidenceBins} unit={unit} />
             </div>
             {zeroBin && (
                 <div className="border-t border-border/60 pt-1.5">
