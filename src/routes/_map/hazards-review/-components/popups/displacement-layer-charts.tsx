@@ -500,6 +500,21 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                 <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
             </div>
 
+            {/* Ranking sits right under the summary — it's the statewide "which
+                basins" answer and the drill-in entry point. The time-series
+                detail (depth, extent) follows below, master/detail style. */}
+            <BasinList
+                basinsByDepth={basinsByDepth}
+                basinFilterActive={basinFilterActive}
+                selectedBasins={selectedBasins}
+                typeValue={typeValue}
+                worstDepth={worstDepth}
+                isLoading={isLoading}
+                addBasin={addBasin}
+                removeBasin={removeBasin}
+                zoomToBboxes={zoomToBboxes}
+            />
+
             <div>
                 <div className="flex items-center justify-between mb-1">
                     <h4 className="text-xs font-medium">Subsidence depth by {yearAxisLabel}</h4>
@@ -579,18 +594,6 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                     Units: {getUnitsLabelForType(typeValue)}.
                 </p>
             </div>
-
-            <BasinList
-                basinsByDepth={basinsByDepth}
-                basinFilterActive={basinFilterActive}
-                selectedBasins={selectedBasins}
-                typeValue={typeValue}
-                worstDepth={worstDepth}
-                isLoading={isLoading}
-                addBasin={addBasin}
-                removeBasin={removeBasin}
-                zoomToBboxes={zoomToBboxes}
-            />
 
             {detailOpen && (
                 <DisplacementDetailDialog
