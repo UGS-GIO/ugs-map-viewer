@@ -19,7 +19,8 @@ import {
 } from './use-displacement-queries'
 import { deepestSubsidenceByYear } from './displacement-analytics'
 import { DisplacementDetailCharts } from './displacement-detail-charts'
-import { DisplacementAnalysisDialog } from './displacement-analysis-dialog'
+import { DisplacementAnalysisLayout } from './displacement-analysis-layout'
+import { useDisplacementAnalysis } from './displacement-analysis-context'
 import { renderDisplacementLayerFilters } from './displacement-layer-filters'
 
 const SQM_TO_SQMI = 1 / 2_589_988.110336
@@ -166,8 +167,13 @@ export function useZoomToBboxes() {
     }, [map])
 }
 
-function DisplacementLayerCharts({ typeValue, layerTitle }: { typeValue: ChartedType; layerTitle: string }) {
+// `mode='panel'` (default) is the compact sidebar column; `mode='analysis'` is the
+// body of the wide pop-out (rendered by DisplacementAnalysisHost). Both share the
+// same compute — analysis mode just lays the slots out as a dashboard and drops the
+// scope bar (the pop-out header carries the surface switch instead).
+export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' }: { typeValue: ChartedType; layerTitle: string; mode?: 'panel' | 'analysis' }) {
     const { yearOverridesByType, basinsByType, excludedDataQualsByType, addBasin, removeBasin, clearBasins, setYearOverride } = useDisplacementFilters()
+    const { openAnalysis } = useDisplacementAnalysis()
     const yearOverride = yearOverridesByType[typeValue]
     // Year is mandatory now (no "all years" sentinel): falls back to the
     // latest available year for this type while the user hasn't picked one.
@@ -408,8 +414,6 @@ function DisplacementLayerCharts({ typeValue, layerTitle }: { typeValue: Charted
     // Hover feeds the legend instead of a floating card — the panel is too narrow
     // for a tooltip beside the bar without clipping.
     const [hoveredYear, setHoveredYear] = useState<string | null>(null)
-    // Pop-out ("Expand") for the full depth + area detail in a wider modal.
-    const [detailOpen, setDetailOpen] = useState(false)
     // "Back to statewide" unmounts itself on click; move focus here so keyboard
     // users don't get dropped to <body>. The scope label is always rendered.
     const scopeLabelRef = useRef<HTMLDivElement>(null)
@@ -492,6 +496,29 @@ function DisplacementLayerCharts({ typeValue, layerTitle }: { typeValue: Charted
         : 'Statewide'
     const scopeSummary = `${scope} · ${typeValue}${period ? ` · ${period.from}–${period.to}` : ''}`
 
+    // Wide pop-out body: same KPIs + ranking + detail charts as the sidebar, laid
+    // out as a dashboard. The host owns the Dialog + surface switch + scope summary.
+    if (mode === 'analysis') {
+        return (
+            <DisplacementAnalysisLayout
+                scopeSummary={scopeSummary}
+                filtersSlot={renderDisplacementLayerFilters(layerTitle)}
+                kpisSlot={<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{kpiCards}</div>}
+                rankingSlot={rankingNode}
+                chartsSlot={
+                    <DisplacementDetailCharts
+                        typeValue={typeValue}
+                        scoped={scoped}
+                        threshold={threshold}
+                        plotBins={plotBins}
+                        lineColor={lineColor}
+                        yearAxisLabel={yearAxisLabel}
+                    />
+                }
+            />
+        )
+    }
+
     return (
         <div className="mb-3 flex flex-col gap-3 px-2 py-1">
             {/* Scope bar: statewide by default, or the drilled-in basin(s) with a
@@ -544,7 +571,7 @@ function DisplacementLayerCharts({ typeValue, layerTitle }: { typeValue: Charted
             <div>
                 <div className="flex items-center justify-between mb-1">
                     <h4 className="text-xs font-medium">Subsidence depth by {yearAxisLabel}</h4>
-                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => setDetailOpen(true)}>
+                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => { if (isDisplacementLayerTitle(layerTitle)) openAnalysis(layerTitle) }}>
                         Expand <Maximize2 className="h-3 w-3" aria-hidden="true" />
                     </Button>
                 </div>
@@ -620,28 +647,6 @@ function DisplacementLayerCharts({ typeValue, layerTitle }: { typeValue: Charted
                     Units: {getUnitsLabelForType(typeValue)}.
                 </p>
             </div>
-
-            {detailOpen && (
-                <DisplacementAnalysisDialog
-                    open={detailOpen}
-                    onOpenChange={setDetailOpen}
-                    title="Displacement (InSAR)"
-                    scopeSummary={scopeSummary}
-                    filtersSlot={renderDisplacementLayerFilters(layerTitle)}
-                    kpisSlot={<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{kpiCards}</div>}
-                    rankingSlot={rankingNode}
-                    chartsSlot={
-                        <DisplacementDetailCharts
-                            typeValue={typeValue}
-                            scoped={scoped}
-                            threshold={threshold}
-                            plotBins={plotBins}
-                            lineColor={lineColor}
-                            yearAxisLabel={yearAxisLabel}
-                        />
-                    }
-                />
-            )}
         </div>
     )
 }

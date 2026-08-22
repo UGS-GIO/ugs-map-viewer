@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef } from 'react'
 import { ChevronLeft, MapPin, Maximize2 } from 'lucide-react'
 import area from '@turf/area'
 import { Button } from '@/components/ui/button'
@@ -8,9 +8,10 @@ import {
     useDisplacementSldBins,
     type DisplacementFeature,
 } from './use-displacement-queries'
-import { getShortUnitForType, getStyleNameForType } from './displacement-layers'
+import { getShortUnitForType, getStyleNameForType, isDisplacementLayerTitle } from './displacement-layers'
 import { BasinList, KPI, combinedBbox, findBin, useZoomToBboxes } from './displacement-layer-charts'
-import { DisplacementAnalysisDialog } from './displacement-analysis-dialog'
+import { DisplacementAnalysisLayout } from './displacement-analysis-layout'
+import { useDisplacementAnalysis } from './displacement-analysis-context'
 import { renderDisplacementLayerFilters } from './displacement-layer-filters'
 
 // Vertical Displacement Rate is a velocity snapshot (in/year over each basin's
@@ -24,13 +25,17 @@ const fmt1 = (n: number): string => n.toFixed(1)
 // Rate magnitudes are small (SLD bands start at 0.075 in/yr), so two decimals.
 const fmt2 = (n: number): string => n.toFixed(2)
 
-export function DisplacementRateStats({ layerTitle }: { layerTitle: string }) {
+// `mode='panel'` (default) is the compact sidebar column; `mode='analysis'` is the
+// body of the wide pop-out (rendered by DisplacementAnalysisHost) — same KPIs +
+// ranking, no charts (Rate is a snapshot), and no scope bar (the pop-out header
+// carries the surface switch).
+export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTitle: string; mode?: 'panel' | 'analysis' }) {
     const { basinsByType, excludedDataQualsByType, addBasin, removeBasin, clearBasins } = useDisplacementFilters()
+    const { openAnalysis } = useDisplacementAnalysis()
     const selectedBasins = basinsByType[RATE_TYPE]
     const basinFilterActive = selectedBasins.size > 0
     const zoomToBboxes = useZoomToBboxes()
     const scopeLabelRef = useRef<HTMLDivElement>(null)
-    const [analysisOpen, setAnalysisOpen] = useState(false)
 
     const styleName = getStyleNameForType(RATE_TYPE) ?? ''
     const { data: features = [], isLoading: featuresLoading } = useDisplacementFeaturesByType(RATE_TYPE)
@@ -169,6 +174,19 @@ export function DisplacementRateStats({ layerTitle }: { layerTitle: string }) {
         : 'Statewide'
     const scopeSummary = `${scope} · Rate${period ? ` · ${period.from}–${period.to}` : ''}`
 
+    // Wide pop-out body: KPIs + basin-rate ranking, no charts (Rate is a snapshot).
+    // The host owns the Dialog + surface switch + scope summary.
+    if (mode === 'analysis') {
+        return (
+            <DisplacementAnalysisLayout
+                scopeSummary={scopeSummary}
+                filtersSlot={renderDisplacementLayerFilters(layerTitle)}
+                kpisSlot={<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{kpiCards}</div>}
+                rankingSlot={rankingNode}
+            />
+        )
+    }
+
     return (
         <div className="mb-3 flex flex-col gap-3 px-2 py-1">
             {/* Scope bar: statewide by default, or the drilled-in basin(s) with a
@@ -206,7 +224,7 @@ export function DisplacementRateStats({ layerTitle }: { layerTitle: string }) {
                             Back to statewide
                         </Button>
                     )}
-                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => setAnalysisOpen(true)}>
+                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => { if (isDisplacementLayerTitle(layerTitle)) openAnalysis(layerTitle) }}>
                         Expand <Maximize2 className="h-3 w-3" aria-hidden="true" />
                     </Button>
                 </div>
@@ -214,18 +232,6 @@ export function DisplacementRateStats({ layerTitle }: { layerTitle: string }) {
 
             <div className="grid grid-cols-2 gap-2">{kpiCards}</div>
             {rankingNode}
-
-            {analysisOpen && (
-                <DisplacementAnalysisDialog
-                    open={analysisOpen}
-                    onOpenChange={setAnalysisOpen}
-                    title="Displacement (InSAR)"
-                    scopeSummary={scopeSummary}
-                    filtersSlot={renderDisplacementLayerFilters(layerTitle)}
-                    kpisSlot={<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{kpiCards}</div>}
-                    rankingSlot={rankingNode}
-                />
-            )}
         </div>
     )
 }
