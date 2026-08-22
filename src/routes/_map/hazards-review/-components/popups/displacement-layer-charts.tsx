@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ChevronLeft, MapPin, Maximize2 } from 'lucide-react'
 import area from '@turf/area'
 import { Button } from '@/components/ui/button'
@@ -406,6 +406,9 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     const [hoveredYear, setHoveredYear] = useState<string | null>(null)
     // Pop-out ("Expand") for the full depth + area detail in a wider modal.
     const [detailOpen, setDetailOpen] = useState(false)
+    // "Back to statewide" unmounts itself on click; move focus here so keyboard
+    // users don't get dropped to <body>. The scope label is always rendered.
+    const scopeLabelRef = useRef<HTMLDivElement>(null)
 
     // Independent of hover, so the range readout survives pointer movement.
     const rangeRows = useMemo(
@@ -460,7 +463,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                 one-click way back. The Subsidence-by-Basin ranking below is the
                 drill-in entry point (click a row to scope everything to it). */}
             <div className="flex items-center justify-between gap-2">
-                <div className="flex min-w-0 items-center gap-1.5 text-xs" aria-live="polite">
+                <div ref={scopeLabelRef} tabIndex={-1} className="flex min-w-0 items-center gap-1.5 text-xs focus:outline-none" aria-live="polite">
                     <MapPin className={`h-3 w-3 shrink-0 ${basinFilterActive ? 'text-foreground' : 'text-muted-foreground'}`} aria-hidden="true" />
                     {basinFilterActive ? (
                         <span className="truncate font-medium text-foreground" title={[...selectedBasins].join(', ')}>
@@ -485,6 +488,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                             // "go statewide" action.
                             clearBasins(typeValue)
                             zoomToBboxes(basinsByDepth.map(b => b.bbox))
+                            scopeLabelRef.current?.focus()
                         }}
                     >
                         <ChevronLeft className="h-3 w-3" aria-hidden="true" />

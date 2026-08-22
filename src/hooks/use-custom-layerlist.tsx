@@ -471,9 +471,19 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
     );
 
     // Embedded (active child of a variantSelector group): the group already owns
-    // the header/switch/title, so render only the controls.
+    // the header/switch/title, so render only the controls (plus the zoom hint,
+    // for any future variant child that declares a visibleZoomRange).
     if (embedded) {
-        return <div className="mt-1">{layerControls}</div>;
+        return (
+            <div className="mt-1">
+                {zoomHint && visibleZoomRange && (
+                    <div className="px-2 pb-2">
+                        <ZoomHintPill direction={zoomHint} range={visibleZoomRange} onClick={handleZoomToVisibleRange} />
+                    </div>
+                )}
+                {layerControls}
+            </div>
+        );
     }
 
     return (
