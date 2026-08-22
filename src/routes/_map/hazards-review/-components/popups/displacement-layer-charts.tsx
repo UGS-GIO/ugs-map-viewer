@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { Maximize2 } from 'lucide-react'
+import { ChevronLeft, MapPin, Maximize2 } from 'lucide-react'
 import area from '@turf/area'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -134,7 +134,7 @@ function combinedBbox(features: DisplacementFeature[]): [number, number, number,
 }
 
 function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
-    const { yearOverridesByType, basinsByType, excludedDataQualsByType, addBasin, removeBasin, setYearOverride } = useDisplacementFilters()
+    const { yearOverridesByType, basinsByType, excludedDataQualsByType, addBasin, removeBasin, clearBasins, setYearOverride } = useDisplacementFilters()
     const yearOverride = yearOverridesByType[typeValue]
     // Year is mandatory now (no "all years" sentinel): falls back to the
     // latest available year for this type while the user hasn't picked one.
@@ -456,6 +456,43 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
 
     return (
         <div className="mb-3 flex flex-col gap-3 px-2 py-1">
+            {/* Scope bar: statewide by default, or the drilled-in basin(s) with a
+                one-click way back. The Subsidence-by-Basin ranking below is the
+                drill-in entry point (click a row to scope everything to it). */}
+            <div className="flex items-center justify-between gap-2">
+                <div className="flex min-w-0 items-center gap-1.5 text-xs" aria-live="polite">
+                    <MapPin className={`h-3 w-3 shrink-0 ${basinFilterActive ? 'text-foreground' : 'text-muted-foreground'}`} aria-hidden="true" />
+                    {basinFilterActive ? (
+                        <span className="truncate font-medium text-foreground" title={[...selectedBasins].join(', ')}>
+                            {selectedBasins.size === 1 ? [...selectedBasins][0] : `${selectedBasins.size} basins`}
+                        </span>
+                    ) : (
+                        <span className="text-muted-foreground">Statewide</span>
+                    )}
+                </div>
+                {basinFilterActive && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 shrink-0 gap-1 px-2 text-xs"
+                        onClick={() => {
+                            // "Back to statewide" restores the statewide view,
+                            // camera included — fit to the extent of all basins
+                            // (basinsByDepth ignores the basin filter, so it always
+                            // holds every basin). Drill-in zooms in; this zooms back
+                            // out. Deselecting the last basin via a ranking row stays
+                            // filter-only — a per-basin toggle, not an explicit
+                            // "go statewide" action.
+                            clearBasins(typeValue)
+                            zoomToBboxes(basinsByDepth.map(b => b.bbox))
+                        }}
+                    >
+                        <ChevronLeft className="h-3 w-3" aria-hidden="true" />
+                        Back to statewide
+                    </Button>
+                )}
+            </div>
+
             <div className="grid grid-cols-2 gap-2">
                 <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={thresholdLabel} />
                 <KPI label="Max |value|" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
@@ -615,7 +652,7 @@ function BasinList({
     return (
         <div>
             <h4 className="text-xs font-medium mb-1">Subsidence by Basin</h4>
-            <p className="text-xs text-muted-foreground mb-2">Basins ranked by their deepest contour value. Click a row to zoom + filter to that basin. Unselected basins grey out when a filter is active. Use the basin filter above to clear a selection.</p>
+            <p className="text-xs text-muted-foreground mb-2">Basins ranked by their deepest contour value. Click a row to drill the panel into that basin; unselected rows grey out while one is active. "Back to statewide" up top clears the selection.</p>
             {isLoading ? (
                 <Skeleton className="h-40 w-full" />
             ) : total === 0 ? (
