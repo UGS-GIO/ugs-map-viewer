@@ -1,6 +1,7 @@
 import { renderDisplacementLayerFilters } from './displacement-layer-filters'
 import { renderDisplacementLayerStats } from './displacement-layer-charts'
-import { isDisplacementLayerTitle } from './displacement-layers'
+import { DisplacementRateStats } from './displacement-rate-stats'
+import { DISPLACEMENT_LAYER_TYPES, isDisplacementLayerTitle } from './displacement-layers'
 
 // Combined Filters + Stats panel for displacement layers (ALL-4819). Sits
 // behind LayerControls' single "Filters" toggle so reviewers get basin/year/
@@ -11,7 +12,11 @@ import { isDisplacementLayerTitle } from './displacement-layers'
 export function renderDisplacementLayerPanel(layerTitle: string): React.ReactNode {
     if (!isDisplacementLayerTitle(layerTitle)) return null
     const filters = renderDisplacementLayerFilters(layerTitle)
-    const stats = renderDisplacementLayerStats(layerTitle)
+    // Rate is a velocity snapshot — a lean KPI + basin-rate ranking, not the
+    // time-series stats the charted (Cumulative/Yearly) surfaces get.
+    const stats = DISPLACEMENT_LAYER_TYPES[layerTitle] === 'Vertical Displacement Rate'
+        ? <DisplacementRateStats />
+        : renderDisplacementLayerStats(layerTitle)
     if (!filters && !stats) return null
     return (
         <div className="flex flex-col">

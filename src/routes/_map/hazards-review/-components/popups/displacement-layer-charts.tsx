@@ -111,7 +111,7 @@ export function findBin(bins: SldBin[], v: number): SldBin | undefined {
 // Compute [minLng, minLat, maxLng, maxLat] across a feature collection without
 // pulling in turf. Walks Polygon/MultiPolygon coordinate trees recursively and
 // skips non-finite numbers so a single bad coord pair can't poison fitBounds.
-function combinedBbox(features: DisplacementFeature[]): [number, number, number, number] | null {
+export function combinedBbox(features: DisplacementFeature[]): [number, number, number, number] | null {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
     const visit = (node: unknown): void => {
         if (Array.isArray(node) && typeof node[0] === 'number' && typeof node[1] === 'number') {
@@ -131,6 +131,37 @@ function combinedBbox(features: DisplacementFeature[]): [number, number, number,
     if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) return null
     if (minX > maxX || minY > maxY) return null
     return [minX, minY, maxX, maxY]
+}
+
+// Fit the map to a set of precomputed basin bboxes. Deferred a frame so it never
+// lands mid-render, animate:false to dodge MapLibre's overlapping-tween errors on
+// rapid basin toggles. Shared by the charted stats and the rate stats.
+export function useZoomToBboxes() {
+    const { map } = useMap()
+    return useCallback((bboxes: ([number, number, number, number] | null)[]) => {
+        if (!map) return
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+        for (const bb of bboxes) {
+            if (!bb) continue
+            if (bb[0] < minX) minX = bb[0]
+            if (bb[1] < minY) minY = bb[1]
+            if (bb[2] > maxX) maxX = bb[2]
+            if (bb[3] > maxY) maxY = bb[3]
+        }
+        if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) return
+        if (minX > maxX || minY > maxY) return
+        try {
+            requestAnimationFrame(() => {
+                try {
+                    map.fitBounds([[minX, minY], [maxX, maxY]], { padding: 60, maxZoom: 12, animate: false })
+                } catch (err) {
+                    console.warn('zoomToBboxes: fitBounds failed', err, { minX, minY, maxX, maxY })
+                }
+            })
+        } catch (err) {
+            console.warn('zoomToBboxes: scheduling failed', err)
+        }
+    }, [map])
 }
 
 function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
@@ -370,36 +401,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
         return max
     }, [qualFiltered])
 
-    const { map } = useMap()
-    // Combine precomputed basin bboxes (cheap min/max math) and pan once.
-    function zoomToBboxes(bboxes: ([number, number, number, number] | null)[]) {
-        if (!map) return
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-        for (const bb of bboxes) {
-            if (!bb) continue
-            if (bb[0] < minX) minX = bb[0]
-            if (bb[1] < minY) minY = bb[1]
-            if (bb[2] > maxX) maxX = bb[2]
-            if (bb[3] > maxY) maxY = bb[3]
-        }
-        if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) return
-        if (minX > maxX || minY > maxY) return
-        try {
-            // Defer fitBounds to the next frame so it never lands inside an
-            // in-flight render. animate:false skips the camera tween entirely,
-            // sidestepping MapLibre's 'transition already running' errors when
-            // rapid basin toggles queue overlapping fitBounds calls.
-            requestAnimationFrame(() => {
-                try {
-                    map.fitBounds([[minX, minY], [maxX, maxY]], { padding: 60, maxZoom: 12, animate: false })
-                } catch (err) {
-                    console.warn('zoomToBboxes: fitBounds failed', err, { minX, minY, maxX, maxY })
-                }
-            })
-        } catch (err) {
-            console.warn('zoomToBboxes: scheduling failed', err)
-        }
-    }
+    const zoomToBboxes = useZoomToBboxes()
 
     // Hover feeds the legend instead of a floating card — the panel is too narrow
     // for a tooltip beside the bar without clipping.
@@ -625,17 +627,27 @@ interface BasinListProps {
     }>
     basinFilterActive: boolean
     selectedBasins: ReadonlySet<string>
-    typeValue: ChartedType
+    typeValue: DisplacementType
     worstDepth: number
     isLoading: boolean
     addBasin: (type: DisplacementType, location: string) => void
     removeBasin: (type: DisplacementType, location: string) => void
     zoomToBboxes: (bboxes: ([number, number, number, number] | null)[]) => void
+    /** Row value unit — "in" for displacement surfaces, "in/year" for Rate. */
+    unit?: string
+    /** Row value formatter; defaults to 1-decimal. Rate passes 2-decimal (small values). */
+    formatValue?: (n: number) => string
+    /** Section heading; defaults to the depth-ranking title. */
+    heading?: string
+    /** Caption under the heading. */
+    caption?: string
+    /** Empty-state text when no basin clears the measurement floor. */
+    emptyText?: string
 }
 
 const BASIN_PAGE_SIZE = 10
 
-function BasinList({
+export function BasinList({
     basinsByDepth,
     basinFilterActive,
     selectedBasins,
@@ -645,6 +657,11 @@ function BasinList({
     addBasin,
     removeBasin,
     zoomToBboxes,
+    unit = 'in',
+    formatValue = fmt1,
+    heading = 'Subsidence by Basin',
+    caption = 'Basins ranked by their deepest contour value. Click a row to drill the panel into that basin; unselected rows grey out while one is active. "Back to statewide" up top clears the selection.',
+    emptyText = 'No basins above threshold.',
 }: BasinListProps) {
     const [page, setPage] = useState(0)
     const total = basinsByDepth.length
@@ -658,12 +675,12 @@ function BasinList({
 
     return (
         <div>
-            <h4 className="text-xs font-medium mb-1">Subsidence by Basin</h4>
-            <p className="text-xs text-muted-foreground mb-2">Basins ranked by their deepest contour value. Click a row to drill the panel into that basin; unselected rows grey out while one is active. "Back to statewide" up top clears the selection.</p>
+            <h4 className="text-xs font-medium mb-1">{heading}</h4>
+            <p className="text-xs text-muted-foreground mb-2">{caption}</p>
             {isLoading ? (
                 <Skeleton className="h-40 w-full" />
             ) : total === 0 ? (
-                <p className="text-xs text-muted-foreground">No basins above threshold.</p>
+                <p className="text-xs text-muted-foreground">{emptyText}</p>
             ) : (
                 <>
                     <div className="flex flex-col gap-1">
@@ -702,7 +719,7 @@ function BasinList({
                                             <div className="h-full" style={{ width: `${pct}%`, background: color }} />
                                         </div>
                                     </div>
-                                    <span className="tabular-nums text-xs text-muted-foreground whitespace-nowrap">{fmt1(b.abs)} in</span>
+                                    <span className="tabular-nums text-xs text-muted-foreground whitespace-nowrap">{formatValue(b.abs)} {unit}</span>
                                 </button>
                             )
                         })}
@@ -919,7 +936,7 @@ function ChartLegendGroup({ label, bins, valueFor, secondaryValueFor }: { label:
     )
 }
 
-function KPI({ label, value, sub }: { label: string; value: string; sub?: string }) {
+export function KPI({ label, value, sub }: { label: string; value: string; sub?: string }) {
     return (
         <Card>
             <CardHeader className="p-2 pb-0">
