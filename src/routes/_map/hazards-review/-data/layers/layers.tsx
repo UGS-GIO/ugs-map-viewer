@@ -1024,13 +1024,23 @@ function makeDisplacementPopupFields(typeValue: DisplacementType): Record<string
     };
 }
 
-function makeDisplacementContoursConfig(title: DisplacementLayerTitle): WMSLayerProps {
+// Short caption for the surface switch in the consolidated entry. Vertical
+// Displacement Rate shortens to "Rate"; the others read as their type name.
+function displacementVariantLabel(typeValue: DisplacementType): string {
+    return typeValue === 'Vertical Displacement Rate' ? 'Rate' : typeValue;
+}
+
+// `visible` seeds the default map selection (getDefaultSelected). Inside the
+// variant group only ONE surface should default on, so callers opt a single
+// surface in and leave the rest off.
+function makeDisplacementContoursConfig(title: DisplacementLayerTitle, visible = false): WMSLayerProps {
     const { type: typeValue, styleName } = DISPLACEMENT_LAYERS[title];
     return {
         type: 'wms',
         url: `${PROD_GEOSERVER_URL}/wms`,
         title,
-        visible: true,
+        visible,
+        variantLabel: displacementVariantLabel(typeValue),
         styleName,
         legendUnit: getUnitsLabelForType(typeValue),
         customLayerParameters: { cql_filter: `type='${typeValue}'` },
@@ -1045,9 +1055,32 @@ function makeDisplacementContoursConfig(title: DisplacementLayerTitle): WMSLayer
     };
 }
 
-const displacementCumulativeConfig = makeDisplacementContoursConfig('Displacement Contours - Cumulative');
+// The three InSAR surfaces are one GeoServer layer shown three ways (each config
+// differs only by style + a `type='…'` cql clause). They collapse into a single
+// variantSelector entry: one sidebar row with a surface switch that keeps exactly
+// one surface selected at a time. Adding a fourth surface = adding a child here.
+// Cumulative defaults on (the primary read); the map/stats/legend all follow the
+// active surface automatically because only the selected child ever renders.
+const displacementCumulativeConfig = makeDisplacementContoursConfig('Displacement Contours - Cumulative', true);
 const displacementYearlyConfig = makeDisplacementContoursConfig('Displacement Contours - Yearly');
 const displacementVerticalDisplacementRateConfig = makeDisplacementContoursConfig('Displacement Contours - Vertical Displacement Rate');
+
+const displacementInsarGroup: LayerProps = {
+    type: 'group',
+    title: 'Displacement (InSAR)',
+    subtitle: 'Cumulative, yearly & rate surfaces',
+    variantSelector: true,
+    // No explicit `visible`: let getDefaultGroupVisibility derive it from the
+    // selected surface. A hard `false` here would be a phantom map-visibility gate
+    // (resolveLeafVisibility ANDs every ancestor group), so the default-on surface
+    // wouldn't paint even after the parent group is switched on. The parent "Land
+    // Subsidence" group remains the single intended gate.
+    layers: [
+        displacementCumulativeConfig,
+        displacementYearlyConfig,
+        displacementVerticalDisplacementRateConfig,
+    ],
+};
 
 const extraLayersConfig: LayerProps = {
     type: 'group',
@@ -1056,9 +1089,7 @@ const extraLayersConfig: LayerProps = {
     layers: [
         earthFissureWMSConfig,
         aquifersCombinedConfig,
-        displacementCumulativeConfig,
-        displacementYearlyConfig,
-        displacementVerticalDisplacementRateConfig,
+        displacementInsarGroup,
     ],
 };
 

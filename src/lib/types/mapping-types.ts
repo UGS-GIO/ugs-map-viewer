@@ -125,6 +125,8 @@ interface BaseLayerProps {
     sourceUrl?: string;
     /** Zoom range [min, max] where this layer renders. Out-of-range → UI shows "Zoom in to see" hint. Auto-resolved from WMS GetCapabilities or PMTiles header if omitted. */
     visibleZoomRange?: [number, number];
+    /** Short label for this layer when it's a child of a `variantSelector` group (the segmented-switch caption, e.g. "Cumulative"). Falls back to `title` if unset. */
+    variantLabel?: string;
 }
 
 export interface WMSLayerProps extends BaseLayerProps {
@@ -305,6 +307,15 @@ export interface WFSLayerProps extends BaseLayerProps {
 export interface GroupLayerProps extends BaseLayerProps {
     type: 'group';
     layers?: LayerProps[];
+    /**
+     * Render this group as a single entry with a segmented "surface" switch that
+     * keeps exactly ONE child selected at a time (mutually-exclusive variants of
+     * the same dataset), instead of the default multi-select child list. The
+     * children supply the switch options (via `variantLabel`); the active child's
+     * own controls/legend/filters render below the switch. Opt-in — groups
+     * without this flag render unchanged.
+     */
+    variantSelector?: boolean;
 }
 
 
