@@ -18,7 +18,9 @@ import {
     type DisplacementFeature,
 } from './use-displacement-queries'
 import { deepestSubsidenceByYear } from './displacement-analytics'
-import { DisplacementDetailDialog } from './displacement-detail-dialog'
+import { DisplacementDetailCharts } from './displacement-detail-charts'
+import { DisplacementAnalysisDialog } from './displacement-analysis-dialog'
+import { renderDisplacementLayerFilters } from './displacement-layer-filters'
 
 const SQM_TO_SQMI = 1 / 2_589_988.110336
 
@@ -99,7 +101,7 @@ export function renderDisplacementLayerStats(layerTitle: string): React.ReactNod
     if (!isDisplacementLayerTitle(layerTitle)) return null
     const typeValue = DISPLACEMENT_LAYER_TYPES[layerTitle]
     if (!isChartedType(typeValue)) return null
-    return <DisplacementLayerCharts typeValue={typeValue} />
+    return <DisplacementLayerCharts typeValue={typeValue} layerTitle={layerTitle} />
 }
 
 // Uses each rule's own predicate, so a value lands where GeoServer would paint it.
@@ -164,7 +166,7 @@ export function useZoomToBboxes() {
     }, [map])
 }
 
-function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
+function DisplacementLayerCharts({ typeValue, layerTitle }: { typeValue: ChartedType; layerTitle: string }) {
     const { yearOverridesByType, basinsByType, excludedDataQualsByType, addBasin, removeBasin, clearBasins, setYearOverride } = useDisplacementFilters()
     const yearOverride = yearOverridesByType[typeValue]
     // Year is mandatory now (no "all years" sentinel): falls back to the
@@ -459,6 +461,37 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
 
     if (isError) return <div className="text-xs text-destructive mb-2">Failed to load stats.</div>
 
+    // Deepest-band color for the depth line — shared by the sidebar chart, the
+    // pop-out charts, and (when the deep band isn't present) a currentColor fallback.
+    const lineColor = subsidenceBins[subsidenceBins.length - 1]?.color ?? 'currentColor'
+    // KPIs + ranking are built once and reused in both the sidebar column and the
+    // wide "Expand" analysis view, so the two never drift.
+    const kpiCards = (
+        <>
+            <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={thresholdLabel} />
+            <KPI label="Max |value|" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
+            <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
+            <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
+        </>
+    )
+    const rankingNode = (
+        <BasinList
+            basinsByDepth={basinsByDepth}
+            basinFilterActive={basinFilterActive}
+            selectedBasins={selectedBasins}
+            typeValue={typeValue}
+            worstDepth={worstDepth}
+            isLoading={isLoading}
+            addBasin={addBasin}
+            removeBasin={removeBasin}
+            zoomToBboxes={zoomToBboxes}
+        />
+    )
+    const scope = basinFilterActive
+        ? (selectedBasins.size === 1 ? [...selectedBasins][0] : `${selectedBasins.size} basins`)
+        : 'Statewide'
+    const scopeSummary = `${scope} · ${typeValue}${period ? ` · ${period.from}–${period.to}` : ''}`
+
     return (
         <div className="mb-3 flex flex-col gap-3 px-2 py-1">
             {/* Scope bar: statewide by default, or the drilled-in basin(s) with a
@@ -500,26 +533,13 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-                <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={thresholdLabel} />
-                <KPI label="Max |value|" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
-                <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
-                <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
+                {kpiCards}
             </div>
 
             {/* Ranking sits right under the summary — it's the statewide "which
                 basins" answer and the drill-in entry point. The time-series
                 detail (depth, extent) follows below, master/detail style. */}
-            <BasinList
-                basinsByDepth={basinsByDepth}
-                basinFilterActive={basinFilterActive}
-                selectedBasins={selectedBasins}
-                typeValue={typeValue}
-                worstDepth={worstDepth}
-                isLoading={isLoading}
-                addBasin={addBasin}
-                removeBasin={removeBasin}
-                zoomToBboxes={zoomToBboxes}
-            />
+            {rankingNode}
 
             <div>
                 <div className="flex items-center justify-between mb-1">
@@ -535,7 +555,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                 {/* TODO(ALL-5673): rebaseline/mark the Yearly seed year instead of only captioning it — belongs with the pop-out step of the redesign. */}
                 <div className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none" style={{ height: CHART_HEIGHT_PX }}>
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
-                        <DepthByYearChart data={depthByYear} lineColor={subsidenceBins[subsidenceBins.length - 1]?.color ?? 'currentColor'} markSeedYear={typeValue === 'Yearly'} />
+                        <DepthByYearChart data={depthByYear} lineColor={lineColor} markSeedYear={typeValue === 'Yearly'} />
                     )}
                 </div>
             </div>
@@ -602,15 +622,24 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             </div>
 
             {detailOpen && (
-                <DisplacementDetailDialog
+                <DisplacementAnalysisDialog
                     open={detailOpen}
                     onOpenChange={setDetailOpen}
-                    typeValue={typeValue}
-                    scoped={scoped}
-                    threshold={threshold}
-                    plotBins={plotBins}
-                    lineColor={subsidenceBins[subsidenceBins.length - 1]?.color ?? 'currentColor'}
-                    yearAxisLabel={yearAxisLabel}
+                    title="Displacement (InSAR)"
+                    scopeSummary={scopeSummary}
+                    filtersSlot={renderDisplacementLayerFilters(layerTitle)}
+                    kpisSlot={<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{kpiCards}</div>}
+                    rankingSlot={rankingNode}
+                    chartsSlot={
+                        <DisplacementDetailCharts
+                            typeValue={typeValue}
+                            scoped={scoped}
+                            threshold={threshold}
+                            plotBins={plotBins}
+                            lineColor={lineColor}
+                            yearAxisLabel={yearAxisLabel}
+                        />
+                    }
                 />
             )}
         </div>
