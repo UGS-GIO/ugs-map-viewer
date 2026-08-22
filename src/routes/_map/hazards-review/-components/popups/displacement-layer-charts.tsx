@@ -535,7 +535,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                 {/* TODO(ALL-5673): rebaseline/mark the Yearly seed year instead of only captioning it — belongs with the pop-out step of the redesign. */}
                 <div className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none" style={{ height: CHART_HEIGHT_PX }}>
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
-                        <DepthByYearChart data={depthByYear} lineColor={subsidenceBins[subsidenceBins.length - 1]?.color ?? 'currentColor'} />
+                        <DepthByYearChart data={depthByYear} lineColor={subsidenceBins[subsidenceBins.length - 1]?.color ?? 'currentColor'} markSeedYear={typeValue === 'Yearly'} />
                     )}
                 </div>
             </div>
@@ -872,7 +872,27 @@ interface DepthPoint { year: string; depthIn: number }
 // Memoized like its sibling StackedYearChart: the parent re-renders on every
 // hover of the stacked chart (to refresh the legend), and both props here are
 // stable, so memo makes those hover re-renders a no-op.
-const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor }: { data: DepthPoint[]; lineColor: string }) {
+const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markSeedYear = false }: { data: DepthPoint[]; lineColor: string; markSeedYear?: boolean }) {
+    // The Yearly seed epoch carries the multi-year baseline (Yearly==Cumulative by
+    // construction), so it's the single deepest point — not a real one-year spike.
+    // Flag that point (the max, not index 0 — the record may start before the seed)
+    // with a hollow ring + label so reviewers read it as the baseline it is.
+    const seedIndex = markSeedYear && data.length > 0
+        ? data.reduce((mi, d, i, arr) => (d.depthIn > arr[mi].depthIn ? i : mi), 0)
+        : -1
+    const renderDot = (props: { cx?: number; cy?: number; index?: number; key?: string | number | bigint | null }) => {
+        const { cx, cy, index, key } = props
+        if (cx == null || cy == null) return <g key={key} />
+        if (index === seedIndex) {
+            return (
+                <g key={key}>
+                    <circle cx={cx} cy={cy} r={4} fill="hsl(var(--background))" stroke={lineColor} strokeWidth={2} />
+                    <text x={cx + 7} y={cy + 3} fontSize={9} fill="currentColor" fillOpacity={0.7}>baseline</text>
+                </g>
+            )
+        }
+        return <circle key={key} cx={cx} cy={cy} r={2} fill={lineColor} />
+    }
     return (
         <ResponsiveContainer width="100%" height={CHART_HEIGHT_PX}>
             <LineChart data={data} margin={{ top: 16, right: 4, bottom: 0, left: 0 }}>
@@ -893,7 +913,7 @@ const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor }: { d
                     labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
                     formatter={(value) => [`${fmt1(Number(value))} in`, 'Deepest subsidence']}
                 />
-                <Line type="monotone" dataKey="depthIn" stroke={lineColor} strokeWidth={2} dot={{ r: 2, fill: lineColor }} activeDot={{ r: 3 }} isAnimationActive={false} />
+                <Line type="monotone" dataKey="depthIn" stroke={lineColor} strokeWidth={2} dot={renderDot} activeDot={{ r: 3 }} isAnimationActive={false} />
             </LineChart>
         </ResponsiveContainer>
     )

@@ -110,6 +110,26 @@ export const DisplacementDetailDialog = memo(function DisplacementDetailDialog({
         labelStyle: { color: 'hsl(var(--popover-foreground))' },
     }
 
+    // Flag the Yearly seed epoch as a baseline, not a real per-year spike — same
+    // treatment as the sidebar depth chart. The seed carries the multi-year
+    // baseline, so it's the deepest point (max), not necessarily the first.
+    const seedIndex = (typeValue === 'Yearly' && depthKey === 'cumulativeDepth' && rows.length > 0)
+        ? rows.reduce((mi, r, i, arr) => ((r.cumulativeDepth ?? -Infinity) > (arr[mi].cumulativeDepth ?? -Infinity) ? i : mi), 0)
+        : -1
+    const renderDepthDot = (props: { cx?: number; cy?: number; index?: number; key?: string | number | bigint | null }) => {
+        const { cx, cy, index, key } = props
+        if (cx == null || cy == null) return <g key={key} />
+        if (index === seedIndex) {
+            return (
+                <g key={key}>
+                    <circle cx={cx} cy={cy} r={4} fill="hsl(var(--background))" stroke={lineColor} strokeWidth={2} />
+                    <text x={cx + 7} y={cy + 3} fontSize={9} fill="currentColor" fillOpacity={0.7}>baseline</text>
+                </g>
+            )
+        }
+        return <circle key={key} cx={cx} cy={cy} r={2} fill={lineColor} />
+    }
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-3xl">
@@ -146,7 +166,7 @@ export const DisplacementDetailDialog = memo(function DisplacementDetailDialog({
                                             <RechartsLabel value="Subsidence (in)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
                                         </YAxis>
                                         <Tooltip {...tooltipStyle} formatter={(value) => [value == null ? '—' : `${fmt1(Number(value))} in`, depthKey === 'yearlyChange' ? 'This year' : 'Deepest']} />
-                                        <Line type="monotone" dataKey={depthKey} stroke={lineColor} strokeWidth={2} dot={{ r: 2, fill: lineColor }} activeDot={{ r: 3 }} isAnimationActive={false} connectNulls={false} />
+                                        <Line type="monotone" dataKey={depthKey} stroke={lineColor} strokeWidth={2} dot={renderDepthDot} activeDot={{ r: 3 }} isAnimationActive={false} connectNulls={false} />
                                     </LineChart>
                                 </ResponsiveContainer>
                             </div>
