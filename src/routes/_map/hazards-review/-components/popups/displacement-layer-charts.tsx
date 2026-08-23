@@ -1,5 +1,5 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, MapPin } from 'lucide-react'
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { ChevronDown, ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
 import area from '@turf/area'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -427,6 +427,10 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     // "Back to statewide" unmounts itself on click; move focus here so keyboard
     // users don't get dropped to <body>. The scope label is always rendered.
     const scopeLabelRef = useRef<HTMLDivElement>(null)
+    // The dense uplift/subsidence-by-area chart is tucked in a collapsed "Advanced"
+    // section so the simplified read (summary + depth + area + ranking) leads.
+    const [advancedOpen, setAdvancedOpen] = useState(false)
+    const advancedId = useId()
 
     // Independent of hover, so the range readout survives pointer movement.
     const rangeRows = useMemo(
@@ -538,6 +542,25 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
         )
     }
 
+    // One-sentence, scope-aware read of the panel — the questions a person asks
+    // (how deep, how many basins, how much area) in plain prose. Subject is "land"
+    // so the verb agrees whether whereText is one basin or "N basins".
+    // The ranking ignores the basin filter (stays complete), so its top entry is
+    // the STATEWIDE deepest basin — which wouldn't match the scoped hero number
+    // when drilled into one basin. The summary already names that basin, so drop
+    // the "· basin" suffix then.
+    const deepestBasin = basinFilterActive && selectedBasins.size === 1 ? undefined : basinsByDepth[0]?.location
+    const whereText = basinFilterActive && selectedBasins.size === 1
+        ? [...selectedBasins][0]
+        : `${distinctBasins} ${distinctBasins === 1 ? 'basin' : 'basins'}`
+    let summaryLine: string
+    if (isLoading) summaryLine = 'Loading…'
+    else if (distinctBasins === 0) summaryLine = 'No measured subsidence in the current filters.'
+    else if (typeValue === 'Cumulative')
+        summaryLine = `Since ${period?.from ?? '—'}, land in ${whereText} has sunk up to ${fmt1(maxDisplacement)} in — about ${fmt1(totalAreaSqMi)} mi² is subsiding now.`
+    else
+        summaryLine = `In ${year ?? '—'}, land in ${whereText} sank up to ${fmt1(maxDisplacement)} in — about ${fmt1(totalAreaSqMi)} mi² subsided.`
+
     return (
         <div className="mb-3 flex flex-col gap-3 px-2 py-1">
             {/* Scope bar: statewide by default, or the drilled-in basin(s) with a
@@ -578,22 +601,19 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                 )}
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-                {kpiCards}
-            </div>
+            {/* Plain-language summary — the whole panel in one sentence. */}
+            <p className="text-sm leading-snug text-foreground">{summaryLine}</p>
 
-            {/* Ranking sits right under the summary — it's the statewide "which
-                basins" answer and the drill-in entry point. The time-series
-                detail (depth, extent) follows below, master/detail style. */}
-            {rankingNode}
-
+            {/* Depth is the hero: how deep now + the trend. Down = sinking more. */}
             <div>
-                <h4 className="mb-1 text-xs font-medium">Subsidence depth by {yearAxisLabel}</h4>
-                <p className="text-xs text-muted-foreground mb-1">
-                    Deepest measured subsidence each {yearAxisLabel.toLowerCase()}, in inches — honors the threshold and data-quality filters.
+                <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-semibold tabular-nums text-foreground">{isLoading || distinctBasins === 0 ? '—' : fmt1(maxDisplacement)}</span>
+                    <span className="text-xs text-muted-foreground">in deepest{deepestBasin ? ` · ${deepestBasin}` : ''}</span>
+                </div>
+                <p className="mb-1 mt-0.5 text-xs text-muted-foreground">
+                    Deepest measured subsidence each {yearAxisLabel.toLowerCase()}.
                     {typeValue === 'Yearly' && ' The first year carries the multi-year baseline, not a single-year change.'}
                 </p>
-                {/* TODO(ALL-5673): rebaseline/mark the Yearly seed year instead of only captioning it — belongs with the pop-out step of the redesign. */}
                 <div className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none" style={{ height: CHART_HEIGHT_PX }}>
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
                         <DepthByYearChart data={depthByYear} lineColor={lineColor} markSeedYear={typeValue === 'Yearly'} />
@@ -601,7 +621,38 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                 </div>
             </div>
 
+            {/* Extent as one number — the map beside the panel shows where. */}
             <div>
+                <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-semibold tabular-nums text-foreground">{isLoading || distinctBasins === 0 ? '—' : fmt1(totalAreaSqMi)}</span>
+                    <span className="text-xs text-muted-foreground">mi² subsiding · {thresholdLabel}</span>
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground">Where it's sinking is shaded on the map.</p>
+            </div>
+
+            {/* Worst basins — the intuitive ranking, and the drill-in entry point
+                (click a row to scope everything to that basin). */}
+            {rankingNode}
+
+            {/* Advanced (collapsed): the dense uplift & subsidence-by-area detail.
+                Tucked away so the simplified read above leads; the wide "Expand"
+                pop-out is the other route to the full detail. */}
+            <div className="flex flex-col gap-1">
+                <button
+                    type="button"
+                    onClick={() => setAdvancedOpen(o => !o)}
+                    aria-expanded={advancedOpen}
+                    aria-controls={advancedId}
+                    className="flex items-center gap-1 self-start rounded px-1 -ml-1 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                    {advancedOpen
+                        ? <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                        : <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />}
+                    <span>Advanced · uplift &amp; subsidence by area</span>
+                </button>
+                {advancedOpen && (
+                <div id={advancedId}>
+                <div>
                 <div className="flex items-center justify-between mb-1">
                     <h4 className="text-xs font-medium">Uplift &amp; Subsidence by {yearAxisLabel}</h4>
                     {yearOverride !== null && (
@@ -660,6 +711,9 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                 <p className="mt-2 px-2 text-xs italic text-muted-foreground">
                     Units: {getUnitsLabelForType(typeValue)}.
                 </p>
+                </div>
+                </div>
+                )}
             </div>
         </div>
     )

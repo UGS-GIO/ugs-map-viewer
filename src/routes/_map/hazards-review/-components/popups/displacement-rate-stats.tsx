@@ -185,6 +185,20 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
         )
     }
 
+    // One-sentence, scope-aware read — rate is a velocity snapshot, so it reads
+    // "subsiding at up to X in/year", not a cumulative depth.
+    // The ranking ignores the basin filter (stays complete), so its top entry is
+    // the STATEWIDE fastest basin — drop the "· basin" suffix when drilled into one
+    // (the summary already names it, and the hero number is scope-filtered).
+    const fastestBasin = basinFilterActive && selectedBasins.size === 1 ? undefined : basinsByRate[0]?.location
+    const whereText = basinFilterActive && selectedBasins.size === 1
+        ? [...selectedBasins][0]
+        : `${distinctBasins} ${distinctBasins === 1 ? 'basin' : 'basins'}`
+    let summaryLine: string
+    if (isLoading) summaryLine = 'Loading…'
+    else if (distinctBasins === 0) summaryLine = 'No basins above the rate deadband in the current filters.'
+    else summaryLine = `Land in ${whereText} is subsiding at up to ${fmt2(maxRate)} in/year — about ${fmt1(totalAreaSqMi)} mi² is subsiding now.`
+
     return (
         <div className="mb-3 flex flex-col gap-3 px-2 py-1">
             {/* Scope bar: statewide by default, or the drilled-in basin(s) with a
@@ -222,7 +236,26 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
                 )}
             </div>
 
-            <div className="grid grid-cols-2 gap-2">{kpiCards}</div>
+            {/* Plain-language summary — the whole panel in one sentence. */}
+            <p className="text-sm leading-snug text-foreground">{summaryLine}</p>
+
+            {/* Rate is the hero: how fast the ground is moving. No time chart —
+                rate is a single snapshot over each basin's record. */}
+            <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-semibold tabular-nums text-foreground">{isLoading || distinctBasins === 0 ? '—' : fmt2(maxRate)}</span>
+                <span className="text-xs text-muted-foreground">in/year fastest{fastestBasin ? ` · ${fastestBasin}` : ''}</span>
+            </div>
+
+            {/* Extent as one number — the map beside the panel shows where. */}
+            <div>
+                <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-semibold tabular-nums text-foreground">{isLoading || distinctBasins === 0 ? '—' : fmt1(totalAreaSqMi)}</span>
+                    <span className="text-xs text-muted-foreground">mi² subsiding · above the rate deadband</span>
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground">Where it's sinking is shaded on the map.</p>
+            </div>
+
+            {/* Worst basins — the intuitive ranking + drill-in entry point. */}
             {rankingNode}
         </div>
     )
