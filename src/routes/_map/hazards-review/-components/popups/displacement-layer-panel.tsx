@@ -1,7 +1,26 @@
+import { Maximize2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { renderDisplacementLayerFilters } from './displacement-layer-filters'
 import { renderDisplacementLayerStats } from './displacement-layer-charts'
 import { DisplacementRateStats } from './displacement-rate-stats'
+import { useDisplacementAnalysis } from './displacement-analysis-context'
 import { DISPLACEMENT_LAYER_TYPES, isDisplacementLayerTitle } from './displacement-layers'
+
+// "Expand" is a panel-level action (it pops the WHOLE panel into the wide analysis
+// view), so it sits at the very top of the panel — above the filter controls and
+// stats — rather than beside any one chart. Its own component so it can call the
+// analysis context hook (the panel entry below is a plain render function).
+function PanelExpandButton({ layerTitle }: { layerTitle: string }) {
+    const { openAnalysis } = useDisplacementAnalysis()
+    if (!isDisplacementLayerTitle(layerTitle)) return null
+    return (
+        <div className="flex justify-end px-2 pt-1">
+            <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => openAnalysis(layerTitle)}>
+                Expand <Maximize2 className="h-3 w-3" aria-hidden="true" />
+            </Button>
+        </div>
+    )
+}
 
 // Combined Filters + Stats panel for displacement layers (ALL-4819). Sits
 // behind LayerControls' single "Filters" toggle so reviewers get basin/year/
@@ -20,6 +39,7 @@ export function renderDisplacementLayerPanel(layerTitle: string): React.ReactNod
     if (!filters && !stats) return null
     return (
         <div className="flex flex-col">
+            <PanelExpandButton layerTitle={layerTitle} />
             {filters}
             {stats && <div className="mt-1 border-t border-border/60 pt-2">{stats}</div>}
         </div>

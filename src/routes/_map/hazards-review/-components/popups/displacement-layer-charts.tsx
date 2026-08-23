@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, MapPin, Maximize2 } from 'lucide-react'
+import { ChevronLeft, MapPin } from 'lucide-react'
 import area from '@turf/area'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,7 +20,6 @@ import {
 import { deepestSubsidenceByYear } from './displacement-analytics'
 import { DisplacementDetailCharts } from './displacement-detail-charts'
 import { DisplacementAnalysisLayout } from './displacement-analysis-layout'
-import { useDisplacementAnalysis } from './displacement-analysis-context'
 import { renderDisplacementLayerFilters } from './displacement-layer-filters'
 
 const SQM_TO_SQMI = 1 / 2_589_988.110336
@@ -173,7 +172,6 @@ export function useZoomToBboxes() {
 // scope bar (the pop-out header carries the surface switch instead).
 export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' }: { typeValue: ChartedType; layerTitle: string; mode?: 'panel' | 'analysis' }) {
     const { yearOverridesByType, basinsByType, excludedDataQualsByType, addBasin, removeBasin, clearBasins, setYearOverride } = useDisplacementFilters()
-    const { openAnalysis } = useDisplacementAnalysis()
     const yearOverride = yearOverridesByType[typeValue]
     // Year is mandatory now (no "all years" sentinel): falls back to the
     // latest available year for this type while the user hasn't picked one.
@@ -535,36 +533,28 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                         <span className="text-muted-foreground">Statewide</span>
                     )}
                 </div>
-                {/* Expand (whole panel → analysis view) lives in this header row on
-                    every surface, so it reads as "expand the panel" — not "expand
-                    this chart" — and stays consistent with the Rate panel. */}
-                <div className="flex shrink-0 items-center gap-1">
-                    {basinFilterActive && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 gap-1 px-2 text-xs"
-                            onClick={() => {
-                                // "Back to statewide" restores the statewide view,
-                                // camera included — fit to the extent of all basins
-                                // (basinsByDepth ignores the basin filter, so it always
-                                // holds every basin). Drill-in zooms in; this zooms back
-                                // out. Deselecting the last basin via a ranking row stays
-                                // filter-only — a per-basin toggle, not an explicit
-                                // "go statewide" action.
-                                clearBasins(typeValue)
-                                zoomToBboxes(basinsByDepth.map(b => b.bbox))
-                                scopeLabelRef.current?.focus()
-                            }}
-                        >
-                            <ChevronLeft className="h-3 w-3" aria-hidden="true" />
-                            Back to statewide
-                        </Button>
-                    )}
-                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => { if (isDisplacementLayerTitle(layerTitle)) openAnalysis(layerTitle) }}>
-                        Expand <Maximize2 className="h-3 w-3" aria-hidden="true" />
+                {basinFilterActive && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 shrink-0 gap-1 px-2 text-xs"
+                        onClick={() => {
+                            // "Back to statewide" restores the statewide view,
+                            // camera included — fit to the extent of all basins
+                            // (basinsByDepth ignores the basin filter, so it always
+                            // holds every basin). Drill-in zooms in; this zooms back
+                            // out. Deselecting the last basin via a ranking row stays
+                            // filter-only — a per-basin toggle, not an explicit
+                            // "go statewide" action.
+                            clearBasins(typeValue)
+                            zoomToBboxes(basinsByDepth.map(b => b.bbox))
+                            scopeLabelRef.current?.focus()
+                        }}
+                    >
+                        <ChevronLeft className="h-3 w-3" aria-hidden="true" />
+                        Back to statewide
                     </Button>
-                </div>
+                )}
             </div>
 
             <div className="grid grid-cols-2 gap-2">

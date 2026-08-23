@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef } from 'react'
-import { ChevronLeft, MapPin, Maximize2 } from 'lucide-react'
+import { ChevronLeft, MapPin } from 'lucide-react'
 import area from '@turf/area'
 import { Button } from '@/components/ui/button'
 import { useDisplacementFilters } from './displacement-filter-context'
@@ -8,10 +8,9 @@ import {
     useDisplacementSldBins,
     type DisplacementFeature,
 } from './use-displacement-queries'
-import { getShortUnitForType, getStyleNameForType, isDisplacementLayerTitle } from './displacement-layers'
+import { getShortUnitForType, getStyleNameForType } from './displacement-layers'
 import { BasinList, KPI, combinedBbox, findBin, useZoomToBboxes } from './displacement-layer-charts'
 import { DisplacementAnalysisLayout } from './displacement-analysis-layout'
-import { useDisplacementAnalysis } from './displacement-analysis-context'
 import { renderDisplacementLayerFilters } from './displacement-layer-filters'
 
 // Vertical Displacement Rate is a velocity snapshot (in/year over each basin's
@@ -31,7 +30,6 @@ const fmt2 = (n: number): string => n.toFixed(2)
 // carries the surface switch).
 export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTitle: string; mode?: 'panel' | 'analysis' }) {
     const { basinsByType, excludedDataQualsByType, addBasin, removeBasin, clearBasins } = useDisplacementFilters()
-    const { openAnalysis } = useDisplacementAnalysis()
     const selectedBasins = basinsByType[RATE_TYPE]
     const basinFilterActive = selectedBasins.size > 0
     const zoomToBboxes = useZoomToBboxes()
@@ -192,8 +190,7 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
             {/* Scope bar: statewide by default, or the drilled-in basin(s) with a
                 one-click way back — mirrors the charted panels so the surfaces stay
                 consistent. The by-basin ranking below is the drill-in entry point
-                (click a row to scope the KPIs + zoom to that basin). Expand shares
-                this header row since Rate has no chart heading to anchor it to. */}
+                (click a row to scope the KPIs + zoom to that basin). */}
             <div className="flex items-center justify-between gap-2">
                 <div ref={scopeLabelRef} tabIndex={-1} className="flex min-w-0 items-center gap-1.5 text-xs focus:outline-none" aria-live="polite">
                     <MapPin className={`h-3 w-3 shrink-0 ${basinFilterActive ? 'text-foreground' : 'text-muted-foreground'}`} aria-hidden="true" />
@@ -205,29 +202,24 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
                         <span className="text-muted-foreground">Statewide</span>
                     )}
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
-                    {basinFilterActive && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 gap-1 px-2 text-xs"
-                            onClick={() => {
-                                // "Back to statewide": clear the filter and zoom the
-                                // camera back out to every basin's extent (basinsByRate
-                                // ignores the basin filter, so it always holds them all).
-                                clearBasins(RATE_TYPE)
-                                zoomToBboxes(basinsByRate.map(b => b.bbox))
-                                scopeLabelRef.current?.focus()
-                            }}
-                        >
-                            <ChevronLeft className="h-3 w-3" aria-hidden="true" />
-                            Back to statewide
-                        </Button>
-                    )}
-                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => { if (isDisplacementLayerTitle(layerTitle)) openAnalysis(layerTitle) }}>
-                        Expand <Maximize2 className="h-3 w-3" aria-hidden="true" />
+                {basinFilterActive && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 shrink-0 gap-1 px-2 text-xs"
+                        onClick={() => {
+                            // "Back to statewide": clear the filter and zoom the
+                            // camera back out to every basin's extent (basinsByRate
+                            // ignores the basin filter, so it always holds them all).
+                            clearBasins(RATE_TYPE)
+                            zoomToBboxes(basinsByRate.map(b => b.bbox))
+                            scopeLabelRef.current?.focus()
+                        }}
+                    >
+                        <ChevronLeft className="h-3 w-3" aria-hidden="true" />
+                        Back to statewide
                     </Button>
-                </div>
+                )}
             </div>
 
             <div className="grid grid-cols-2 gap-2">{kpiCards}</div>
