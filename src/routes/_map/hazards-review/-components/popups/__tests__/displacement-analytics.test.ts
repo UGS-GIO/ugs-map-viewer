@@ -46,16 +46,17 @@ describe('deepestSubsidenceByBasin', () => {
 })
 
 describe('deepestSubsidenceByYear', () => {
-    it('keeps the deepest sink per closing year and skips null years', () => {
+    it('keeps the deepest sink per closing year with its basin, and skips null years', () => {
         const m = deepestSubsidenceByYear([
             feat('A', -5, 2019),
             feat('A', -11, 2020), feat('B', -3, 2020),
-            feat('A', 2, 2018), // uplift → depth 0
+            feat('C', 2, 2018), // uplift → depth 0
             feat('A', -9, null), // no year → skipped
         ])
-        expect(m.get('2019')).toBe(5)
-        expect(m.get('2020')).toBe(11)
-        expect(m.get('2018')).toBe(0)
+        expect(m.get('2019')).toEqual({ depthIn: 5, location: 'A' })
+        // 2020: A (-11 → depth 11) is deeper than B (-3), so it carries the basin.
+        expect(m.get('2020')).toEqual({ depthIn: 11, location: 'A' })
+        expect(m.get('2018')).toEqual({ depthIn: 0, location: 'C' })
         expect(m.has('2017')).toBe(false)
         expect(m.size).toBe(3)
     })

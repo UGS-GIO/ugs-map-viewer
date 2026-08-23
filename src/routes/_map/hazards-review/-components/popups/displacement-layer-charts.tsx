@@ -254,7 +254,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     const depthByYear = useMemo(
         () => Array.from(
             deepestSubsidenceByYear(scoped.filter(f => f.properties.value_inches < 0 && isMeasured(f.properties.value_inches))),
-            ([yr, depthIn]) => ({ year: yr, depthIn }),
+            ([yr, d]) => ({ year: yr, depthIn: d.depthIn, location: d.location }),
         ).sort((a, b) => a.year.localeCompare(b.year)),
         [scoped, isMeasured],
     )
@@ -616,12 +616,12 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                     <span className="text-xs text-muted-foreground">in deepest{deepestBasin ? ` · ${deepestBasin}` : ''}</span>
                 </div>
                 <p className="mb-1 mt-0.5 text-xs text-muted-foreground">
-                    Deepest measured subsidence each {yearAxisLabel.toLowerCase()}.
+                    Deepest reading each {yearAxisLabel.toLowerCase()} (hover for the basin). Click a point to jump to that year.
                     {typeValue === 'Yearly' && ' The first year carries the multi-year baseline, not a single-year change.'}
                 </p>
                 <div className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none" style={{ height: CHART_HEIGHT_PX }}>
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
-                        <DepthByYearChart data={depthByYear} lineColor={lineColor} markSeedYear={typeValue === 'Yearly'} />
+                        <DepthByYearChart data={depthByYear} lineColor={lineColor} markSeedYear={typeValue === 'Yearly'} selectedYear={year} onSelectYear={selectYear} />
                     )}
                 </div>
             </section>
@@ -974,7 +974,7 @@ const StackedYearChart = memo(function StackedYearChart({ data, bins, year, type
     )
 })
 
-interface DepthPoint { year: string; depthIn: number }
+interface DepthPoint { year: string; depthIn: number; location?: string | null }
 
 // Depth-over-time line: deepest subsidence (in) per year for the current scope.
 // The clean, monotonic read of "how deep, and getting deeper" that the stacked
@@ -983,7 +983,7 @@ interface DepthPoint { year: string; depthIn: number }
 // Memoized like its sibling StackedYearChart: the parent re-renders on every
 // hover of the stacked chart (to refresh the legend), and both props here are
 // stable, so memo makes those hover re-renders a no-op.
-const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markSeedYear = false }: { data: DepthPoint[]; lineColor: string; markSeedYear?: boolean }) {
+const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markSeedYear = false, selectedYear = null, onSelectYear }: { data: DepthPoint[]; lineColor: string; markSeedYear?: boolean; selectedYear?: string | null; onSelectYear?: (year: string) => void }) {
     // The Yearly seed epoch carries the multi-year baseline (Yearly==Cumulative by
     // construction), so it's the single deepest point — not a real one-year spike.
     // Flag that point (the max, not index 0 — the record may start before the seed)
@@ -1004,9 +1004,17 @@ const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markS
         }
         return <circle key={key} cx={cx} cy={cy} r={2} fill={lineColor} />
     }
+    // Click a year to set it as the active year (syncs with the year dropdown via
+    // the shared setYearOverride). recharts hands the clicked category as activeLabel.
+    const handleClick = onSelectYear
+        ? (state: { activeLabel?: string | number }) => {
+            const label = state?.activeLabel
+            if (typeof label === 'string' && label) onSelectYear(label)
+        }
+        : undefined
     return (
         <ResponsiveContainer width="100%" height={CHART_HEIGHT_PX}>
-            <LineChart data={data} margin={{ top: 16, right: 4, bottom: 0, left: 0 }}>
+            <LineChart data={data} margin={{ top: 16, right: 4, bottom: 0, left: 0 }} onClick={handleClick} style={onSelectYear ? { cursor: 'pointer' } : undefined}>
                 <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
                 <XAxis dataKey="year" stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} height={20} />
                 <YAxis
@@ -1018,11 +1026,21 @@ const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markS
                 >
                     <RechartsLabel value="Subsidence (in)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
                 </YAxis>
+                {/* Vertical marker at the selected year so the chart responds to the
+                    year dropdown (and to a click on the chart) — otherwise the line,
+                    which always spans the whole record, looks inert when you switch. */}
+                {selectedYear && data.some(d => d.year === selectedYear) && (
+                    <ReferenceLine x={selectedYear} stroke="currentColor" strokeOpacity={0.4} strokeDasharray="3 3" />
+                )}
                 <Tooltip
                     cursor={{ stroke: 'currentColor', strokeOpacity: 0.2 }}
                     contentStyle={{ fontSize: 11, background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 6, color: 'hsl(var(--popover-foreground))' }}
                     labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                    formatter={(value) => [`${fmt1(Number(value))} in`, 'Deepest subsidence']}
+                    itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                    formatter={(value, _name, item) => {
+                        const loc = (item?.payload as DepthPoint | undefined)?.location
+                        return [`${fmt1(Number(value))} in`, loc ? `Deepest · ${loc}` : 'Deepest subsidence']
+                    }}
                 />
                 <Line type="monotone" dataKey="depthIn" stroke={lineColor} strokeWidth={2} dot={renderDot} activeDot={{ r: 3 }} isAnimationActive={false} />
             </LineChart>

@@ -44,6 +44,8 @@ interface DetailRow {
     cumulativeDepth: number | null
     yearlyChange: number | null
     areaTotal: number
+    /** Basin of the deepest reading that year — surfaced in the hover. */
+    location: string | null
     [exKey: string]: string | number | null
 }
 
@@ -85,10 +87,11 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
         const years = Array.from(new Set([...depthMap.keys(), ...areaTotalMap.keys()])).sort()
         let prev: number | null = null
         return years.map(y => {
-            const cum = depthMap.get(y) ?? 0
+            const dv = depthMap.get(y)
+            const cum = dv?.depthIn ?? 0
             const change = prev === null ? null : cum - prev
             prev = cum
-            const row: DetailRow = { year: y, cumulativeDepth: cum, yearlyChange: change, areaTotal: areaTotalMap.get(y) ?? 0 }
+            const row: DetailRow = { year: y, cumulativeDepth: cum, yearlyChange: change, areaTotal: areaTotalMap.get(y) ?? 0, location: dv?.location ?? null }
             exceedance.forEach((x, i) => { row[x.key] = exMaps[i].get(y) ?? 0 })
             return row
         })
@@ -97,6 +100,9 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
     const tooltipStyle = {
         contentStyle: { fontSize: 11, background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 6, color: 'hsl(var(--popover-foreground))' },
         labelStyle: { color: 'hsl(var(--popover-foreground))' },
+        // Keep the value text in the readable popover ink — recharts otherwise
+        // colors it with the series stroke (deep-subsidence red), unreadable on dark.
+        itemStyle: { color: 'hsl(var(--popover-foreground))' },
     }
 
     // Flag the Yearly seed epoch (the deepest point — it carries the multi-year
@@ -145,7 +151,11 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
                             <YAxis stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} width={52} tickFormatter={(v: number) => fmt1(v)}>
                                 <RechartsLabel value="Subsidence (in)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
                             </YAxis>
-                            <Tooltip {...tooltipStyle} formatter={(value) => [value == null ? '—' : `${fmt1(Number(value))} in`, depthKey === 'yearlyChange' ? 'Yearly change' : 'Deepest subsidence']} />
+                            <Tooltip {...tooltipStyle} formatter={(value, _name, item) => {
+                                const loc = (item?.payload as DetailRow | undefined)?.location
+                                const label = depthKey === 'yearlyChange' ? 'Yearly change' : (loc ? `Deepest · ${loc}` : 'Deepest subsidence')
+                                return [value == null ? '—' : `${fmt1(Number(value))} in`, label]
+                            }} />
                             <Line type="monotone" dataKey={depthKey} stroke={lineColor} strokeWidth={2} dot={renderDepthDot} activeDot={{ r: 3 }} isAnimationActive={false} connectNulls={false} />
                         </LineChart>
                     </ResponsiveContainer>

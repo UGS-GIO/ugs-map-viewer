@@ -42,22 +42,31 @@ export function deepestSubsidenceByBasin(features: DisplacementFeature[]): Map<s
     return out
 }
 
+/** A year's deepest subsidence reading, plus the basin it was measured in. */
+export interface YearDepth {
+    depthIn: number
+    /** Location (basin) of the deepest feature that year; null if the feature has none. */
+    location: string | null
+}
+
 /**
  * Deepest subsidence (inches) per closing year — the depth-over-time series for
- * a scope. Note the deliberate asymmetry with {@link deepestSubsidenceByBasin}:
- * a year whose only motion is uplift is KEPT here at depth 0 (a continuous time
- * axis shouldn't silently drop interior years), whereas an uplift-only basin is
- * dropped from the ranking. Callers that want a strictly-subsidence series
- * pre-filter their features to `value_inches < 0` before calling.
+ * a scope — carrying the basin the deepest reading came from (the deepest point
+ * can move between basins year to year, so callers surface it in the hover). Note
+ * the deliberate asymmetry with {@link deepestSubsidenceByBasin}: a year whose
+ * only motion is uplift is KEPT here at depth 0 (a continuous time axis shouldn't
+ * silently drop interior years), whereas an uplift-only basin is dropped from the
+ * ranking. Callers that want a strictly-subsidence series pre-filter their
+ * features to `value_inches < 0` before calling.
  */
-export function deepestSubsidenceByYear(features: DisplacementFeature[]): Map<string, number> {
-    const out = new Map<string, number>()
+export function deepestSubsidenceByYear(features: DisplacementFeature[]): Map<string, YearDepth> {
+    const out = new Map<string, YearDepth>()
     for (const f of features) {
         const y = bucketYear(f)
         if (!y) continue
         const depth = subsidenceDepthIn(f)
         const cur = out.get(y)
-        if (cur === undefined || depth > cur) out.set(y, depth)
+        if (cur === undefined || depth > cur.depthIn) out.set(y, { depthIn: depth, location: f.properties.location ?? null })
     }
     return out
 }
