@@ -535,28 +535,36 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                         <span className="text-muted-foreground">Statewide</span>
                     )}
                 </div>
-                {basinFilterActive && (
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 shrink-0 gap-1 px-2 text-xs"
-                        onClick={() => {
-                            // "Back to statewide" restores the statewide view,
-                            // camera included — fit to the extent of all basins
-                            // (basinsByDepth ignores the basin filter, so it always
-                            // holds every basin). Drill-in zooms in; this zooms back
-                            // out. Deselecting the last basin via a ranking row stays
-                            // filter-only — a per-basin toggle, not an explicit
-                            // "go statewide" action.
-                            clearBasins(typeValue)
-                            zoomToBboxes(basinsByDepth.map(b => b.bbox))
-                            scopeLabelRef.current?.focus()
-                        }}
-                    >
-                        <ChevronLeft className="h-3 w-3" aria-hidden="true" />
-                        Back to statewide
+                {/* Expand (whole panel → analysis view) lives in this header row on
+                    every surface, so it reads as "expand the panel" — not "expand
+                    this chart" — and stays consistent with the Rate panel. */}
+                <div className="flex shrink-0 items-center gap-1">
+                    {basinFilterActive && (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 gap-1 px-2 text-xs"
+                            onClick={() => {
+                                // "Back to statewide" restores the statewide view,
+                                // camera included — fit to the extent of all basins
+                                // (basinsByDepth ignores the basin filter, so it always
+                                // holds every basin). Drill-in zooms in; this zooms back
+                                // out. Deselecting the last basin via a ranking row stays
+                                // filter-only — a per-basin toggle, not an explicit
+                                // "go statewide" action.
+                                clearBasins(typeValue)
+                                zoomToBboxes(basinsByDepth.map(b => b.bbox))
+                                scopeLabelRef.current?.focus()
+                            }}
+                        >
+                            <ChevronLeft className="h-3 w-3" aria-hidden="true" />
+                            Back to statewide
+                        </Button>
+                    )}
+                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => { if (isDisplacementLayerTitle(layerTitle)) openAnalysis(layerTitle) }}>
+                        Expand <Maximize2 className="h-3 w-3" aria-hidden="true" />
                     </Button>
-                )}
+                </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -569,12 +577,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
             {rankingNode}
 
             <div>
-                <div className="flex items-center justify-between mb-1">
-                    <h4 className="text-xs font-medium">Subsidence depth by {yearAxisLabel}</h4>
-                    <Button variant="ghost" size="sm" className="h-6 gap-1 px-2 text-xs" onClick={() => { if (isDisplacementLayerTitle(layerTitle)) openAnalysis(layerTitle) }}>
-                        Expand <Maximize2 className="h-3 w-3" aria-hidden="true" />
-                    </Button>
-                </div>
+                <h4 className="mb-1 text-xs font-medium">Subsidence depth by {yearAxisLabel}</h4>
                 <p className="text-xs text-muted-foreground mb-1">
                     Deepest measured subsidence each {yearAxisLabel.toLowerCase()}, in inches — honors the threshold and data-quality filters.
                     {typeValue === 'Yearly' && ' The first year carries the multi-year baseline, not a single-year change.'}
