@@ -127,6 +127,8 @@ interface BaseLayerProps {
     visibleZoomRange?: [number, number];
     /** Short label for this layer when it's a child of a `variantSelector` group (the segmented-switch caption, e.g. "Cumulative"). Falls back to `title` if unset. */
     variantLabel?: string;
+    /** One-line plain-language description of this variant, shown under the surface switch to explain what it means and how it relates to the map. */
+    variantDescription?: string;
 }
 
 export interface WMSLayerProps extends BaseLayerProps {

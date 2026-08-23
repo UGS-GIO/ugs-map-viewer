@@ -1030,6 +1030,20 @@ function displacementVariantLabel(typeValue: DisplacementType): string {
     return typeValue === 'Vertical Displacement Rate' ? 'Rate' : typeValue;
 }
 
+// One-line, plain-language explainer shown under the surface switch — "Cumulative"
+// vs "Yearly" is jargon, so spell out what each means and how it relates to the map
+// (the #1 confusion for non-specialists).
+function displacementVariantDescription(typeValue: DisplacementType): string {
+    switch (typeValue) {
+        case 'Yearly':
+            return 'Subsidence during the selected year only — years stand alone and don’t add up to the cumulative total.';
+        case 'Vertical Displacement Rate':
+            return 'How fast the ground is sinking now, in inches per year — a speed, not a total.';
+        default: // Cumulative
+            return 'Total subsidence since monitoring began — the map shows the running total through the selected year, so it only grows.';
+    }
+}
+
 // `visible` seeds the default map selection (getDefaultSelected). Inside the
 // variant group only ONE surface should default on, so callers opt a single
 // surface in and leave the rest off.
@@ -1041,6 +1055,7 @@ function makeDisplacementContoursConfig(title: DisplacementLayerTitle, visible =
         title,
         visible,
         variantLabel: displacementVariantLabel(typeValue),
+        variantDescription: displacementVariantDescription(typeValue),
         styleName,
         legendUnit: getUnitsLabelForType(typeValue),
         customLayerParameters: { cql_filter: `type='${typeValue}'` },

@@ -343,6 +343,11 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                             );
                                         })}
                                     </div>
+                                    {/* Plain-language explainer for the active surface — the switch
+                                        labels alone ("Cumulative"/"Yearly") are jargon. */}
+                                    {activeChild?.variantDescription && (
+                                        <p className="mt-1.5 text-xs leading-snug text-muted-foreground">{activeChild.variantDescription}</p>
+                                    )}
                                 </div>
                             )}
                             {activeChild && (
