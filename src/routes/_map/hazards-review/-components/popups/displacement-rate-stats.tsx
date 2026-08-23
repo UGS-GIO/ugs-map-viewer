@@ -144,7 +144,7 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
     const kpiCards = (
         <>
             <KPI label="Max rate" value={isLoading ? '—' : `${fmt2(maxRate)} ${unit}`} sub="fastest basin" />
-            <KPI label="Measured area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub="above deadband" />
+            <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub="above deadband" />
             <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
             <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
         </>

@@ -16,6 +16,8 @@ import {
     type ChartedType,
     type DisplacementType,
 } from './displacement-layers'
+import { useDisplacementBasinsForType, useDisplacementBasinYearIndexForType, useDisplacementDataQualsForType, useDisplacementSldBins, useDisplacementValueMagnitudesForType, useDisplacementYearsForType } from './use-displacement-queries'
+import { getPopulatedBinBoundaries } from './displacement-thresholds'
 
 // Compare a live exclusion set against the high/medium default so "dirty" means
 // "the reviewer changed data-quality from the default", not "anything excluded".
@@ -23,8 +25,6 @@ function isDefaultDataQuals(excluded: ReadonlySet<string>): boolean {
     return excluded.size === DEFAULT_EXCLUDED_DATA_QUALS.length
         && DEFAULT_EXCLUDED_DATA_QUALS.every(q => excluded.has(q))
 }
-import { useDisplacementBasinsForType, useDisplacementBasinYearIndexForType, useDisplacementDataQualsForType, useDisplacementSldBins, useDisplacementValueMagnitudesForType, useDisplacementYearsForType } from './use-displacement-queries'
-import { getPopulatedBinBoundaries } from './displacement-thresholds'
 
 // Label the year dropdown by type semantics: 'Water Year' for Yearly,
 // 'Period End Year' for Cumulative + Vertical Displacement Rate.
@@ -219,7 +219,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                         {refineOpen
                             ? <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
                             : <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />}
-                        <span>Refine · data quality, threshold</span>
+                        <span>Refine · data quality{isCharted ? ', threshold' : ''}</span>
                         {refineDirty && <span className="ml-1 font-medium text-foreground">· modified</span>}
                     </button>
                     {refineOpen && (

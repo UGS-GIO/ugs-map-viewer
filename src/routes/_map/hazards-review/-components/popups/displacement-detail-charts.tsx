@@ -142,10 +142,10 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
                         <LineChart data={rows} syncId={syncId} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                             <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
                             <XAxis dataKey="year" stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} height={20} />
-                            <YAxis stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} width={52} tickFormatter={(v: number) => `${fmt1(v)} in`}>
+                            <YAxis stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} width={52} tickFormatter={(v: number) => fmt1(v)}>
                                 <RechartsLabel value="Subsidence (in)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
                             </YAxis>
-                            <Tooltip {...tooltipStyle} formatter={(value) => [value == null ? '—' : `${fmt1(Number(value))} in`, depthKey === 'yearlyChange' ? 'This year' : 'Deepest']} />
+                            <Tooltip {...tooltipStyle} formatter={(value) => [value == null ? '—' : `${fmt1(Number(value))} in`, depthKey === 'yearlyChange' ? 'Yearly change' : 'Deepest subsidence']} />
                             <Line type="monotone" dataKey={depthKey} stroke={lineColor} strokeWidth={2} dot={renderDepthDot} activeDot={{ r: 3 }} isAnimationActive={false} connectNulls={false} />
                         </LineChart>
                     </ResponsiveContainer>

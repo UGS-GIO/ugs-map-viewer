@@ -272,27 +272,34 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
 
     const yearAxisLabel = typeValue === 'Cumulative' ? 'Period End Year' : 'Water Year'
 
-    // KPI + advanced metrics use the single SLD-pinned threshold.
-    const auditOverThreshold = useMemo(
-        () => filtered.filter(f => isMeasured(f.properties.value_inches)),
+    // The "Subsiding Area" / "Max subsidence" / "Basins" KPIs describe subsidence,
+    // so gate to subsidence (value_inches < 0) above the SLD-pinned threshold —
+    // matching the depth chart, the pop-out, and Rate (which is subsidence-only).
+    // Uplift stays visible in the stacked Uplift/Subsidence chart + the map; it's
+    // never netted into these subsidence metrics. (The stacked chart keeps its own
+    // both-signs gate — only these scalar/ranking paths are subsidence-only.)
+    const measuredSubsidence = useMemo(
+        () => filtered.filter(f => f.properties.value_inches < 0 && isMeasured(f.properties.value_inches)),
         [filtered, isMeasured]
     )
 
     const totalAreaSqMi = useMemo(
-        () => auditOverThreshold.reduce((acc, f) => acc + area(f) * SQM_TO_SQMI, 0),
-        [auditOverThreshold]
+        () => measuredSubsidence.reduce((acc, f) => acc + area(f) * SQM_TO_SQMI, 0),
+        [measuredSubsidence]
     )
 
+    // Deepest subsidence reading in the selected year (magnitude of the most
+    // negative measured value). Subsidence-only so "Max subsidence" is accurate.
     const maxDisplacement = useMemo(() => {
         let max = 0
-        for (const f of filtered) {
-            const v = Math.abs(f.properties.value_inches)
-            if (v > max) max = v
+        for (const f of measuredSubsidence) {
+            const a = Math.abs(f.properties.value_inches)
+            if (a > max) max = a
         }
         return max
-    }, [filtered])
+    }, [measuredSubsidence])
 
-    const distinctBasins = useMemo(() => new Set(filtered.map(f => f.properties.location)).size, [filtered])
+    const distinctBasins = useMemo(() => new Set(measuredSubsidence.map(f => f.properties.location)).size, [measuredSubsidence])
 
     // Period spans the full window: earliest window-start year → latest window-end
     // year. For Cumulative this reads start_date (fixed 2017) through the chosen
@@ -369,6 +376,9 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
             const loc = f.properties.location
             if (!loc) continue
             const v = f.properties.value_inches
+            // Subsidence only — the ranking is "Subsidence by Basin", so an
+            // uplift-dominated basin must not appear (matches Rate's basinsByRate).
+            if (v >= 0) continue
             const a = Math.abs(v)
             if (!isMeasured(v)) continue
             const cur = byLocation.get(loc)
@@ -401,7 +411,9 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     const worstDepth = useMemo(() => {
         let max = 0
         for (const f of qualFiltered) {
-            const a = Math.abs(f.properties.value_inches)
+            const v = f.properties.value_inches
+            if (v >= 0) continue // subsidence only, so bars scale against deepest subsidence (not uplift)
+            const a = Math.abs(v)
             if (a > max) max = a
         }
         return max
@@ -426,15 +438,24 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
         [stackedAreaByYear, hoveredYear]
     )
 
-    const rangeTotals = useMemo(() => sumByBin(rangeRows), [rangeRows])
+    // The default legend column shows the SELECTED year's per-band area — for
+    // Cumulative that's the cumulative snapshot painted on the map at that year.
+    // NOT a cross-year sum: Cumulative rows are running-total snapshots, so summing
+    // a persistent band across years would count it once per year (a 100 mi² band
+    // present 9 years would read 900 mi²).
+    const rangeTotals = useMemo<Record<string, number>>(() => {
+        const selectedRow = year ? stackedAreaByYear.find(r => r.year === year) : null
+        return selectedRow ? sumByBin([selectedRow]) : {}
+    }, [stackedAreaByYear, year])
 
     // Two columns only past one year, else both would print the same number.
     const isRangeMode = rangeRows.length > 1
 
     const legendSpan = useMemo(() => {
-        if (isRangeMode) return `${rangeRows[0].year}–${rangeRows[rangeRows.length - 1].year}`
-        return hoveredYear ?? year
-    }, [isRangeMode, rangeRows, hoveredYear, year])
+        // Both modes label the readout with the selected year (the snapshot shown),
+        // not a multi-year span — the number is that year's area, not an aggregate.
+        return hoveredYear && !isRangeMode ? hoveredYear : year
+    }, [isRangeMode, hoveredYear, year])
 
     // Magnitudes only — the Uplift/Subsidence split already carries direction.
     const fmtArea = (v: number | undefined): string => v ? fmt1(Math.abs(v)) : '—'
@@ -471,7 +492,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     const kpiCards = (
         <>
             <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={thresholdLabel} />
-            <KPI label="Max |value|" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
+            <KPI label="Max subsidence" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
             <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
             <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
         </>
@@ -612,7 +633,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vertical Displacement</div>
                         <div className="flex items-baseline justify-between text-xs text-muted-foreground">
                             <span>
-                                {legendSpan ? <>Area by range · <span className="font-medium text-foreground">{legendSpan}</span>{!isRangeMode && hoveredYear ? ' (hovered)' : ''}</> : 'Area by range'}
+                                {legendSpan ? <>Area · <span className="font-medium text-foreground">{legendSpan}</span>{!isRangeMode && hoveredYear ? ' (hovered)' : ''}</> : 'Area'}
                             </span>
                             {isRangeMode && <span>mi²</span>}
                         </div>
@@ -620,7 +641,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                             <>
                                 {/* Captions match LegendSwatchGrid's two numeric columns. */}
                                 <div className="flex items-baseline text-[10px] uppercase tracking-wide text-muted-foreground">
-                                    <span className="ml-auto shrink-0 pl-1 min-w-[4.25rem] text-right">range</span>
+                                    <span className="ml-auto shrink-0 pl-1 min-w-[4.25rem] text-right">{year}</span>
                                     <span className="shrink-0 pl-2 min-w-[4.25rem] text-right">{hoveredYear ?? 'hover'}</span>
                                 </div>
                                 <div className="flex flex-col gap-2">
