@@ -236,27 +236,38 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
                 )}
             </div>
 
-            {/* Plain-language summary — the whole panel in one sentence. */}
-            <p className="text-sm leading-snug text-foreground">{summaryLine}</p>
+            {/* Summary in a quiet box — the TL;DR the labeled sections below break
+                down (How fast / How much / Where), keeping words tied to numbers. */}
+            <p className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm leading-snug text-foreground">
+                {summaryLine}
+            </p>
 
-            {/* Rate is the hero: how fast the ground is moving. No time chart —
-                rate is a single snapshot over each basin's record. */}
-            <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-semibold tabular-nums text-foreground">{isLoading || distinctBasins === 0 ? '—' : fmt2(maxRate)}</span>
-                <span className="text-xs text-muted-foreground">in/year fastest{fastestBasin ? ` · ${fastestBasin}` : ''}</span>
-            </div>
+            {/* How fast — the hero. No time chart; rate is a single snapshot over
+                each basin's full record. */}
+            <section className="border-t border-border/60 pt-3">
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">How fast · subsidence rate</p>
+                <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-semibold tabular-nums text-foreground">{isLoading || distinctBasins === 0 ? '—' : fmt2(maxRate)}</span>
+                    <span className="text-xs text-muted-foreground">in/year fastest{fastestBasin ? ` · ${fastestBasin}` : ''}</span>
+                </div>
+            </section>
 
-            {/* Extent as one number — the map beside the panel shows where. */}
-            <div>
+            {/* How much — one number; the map beside the panel shows where. */}
+            <section className="border-t border-border/60 pt-3">
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">How much · area subsiding</p>
                 <div className="flex items-baseline gap-2">
                     <span className="text-2xl font-semibold tabular-nums text-foreground">{isLoading || distinctBasins === 0 ? '—' : fmt1(totalAreaSqMi)}</span>
-                    <span className="text-xs text-muted-foreground">mi² subsiding · above the rate deadband</span>
+                    <span className="text-xs text-muted-foreground">mi² · above the rate deadband</span>
                 </div>
-                <p className="mt-0.5 text-xs text-muted-foreground">Where it's sinking is shaded on the map.</p>
-            </div>
+                <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                    <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" /> Shaded on the map.
+                </p>
+            </section>
 
-            {/* Worst basins — the intuitive ranking + drill-in entry point. */}
-            {rankingNode}
+            {/* Where — the basin ranking + drill-in entry point. */}
+            <section className="border-t border-border/60 pt-3">
+                {rankingNode}
+            </section>
         </div>
     )
 }
