@@ -116,7 +116,7 @@ function LoginPage() {
                         <Alert>
                             <AlertDescription className="overflow-hidden text-ellipsis break-words">
                                 You will be redirected to:
-                                <code className="bg-muted px-1 rounded text-xs break-all">
+                                <code className="bg-muted px-1 rounded-md text-xs break-all">
                                     {redirectTo}
                                 </code>
                             </AlertDescription>

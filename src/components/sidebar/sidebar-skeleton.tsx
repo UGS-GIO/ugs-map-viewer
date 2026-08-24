@@ -12,7 +12,7 @@ export function NavSkeleton({ className }: NavSkeletonProps) {
             {/* Skeleton for the Left Icon Bar (Desktop) */}
             <div className='hidden md:flex flex-col items-center gap-4 pt-2 border-r p-2'>
                 {[...Array(6)].map((_, i) => (
-                    <Skeleton key={i} className='h-10 w-10 rounded' />
+                    <Skeleton key={i} className='h-10 w-10 rounded-md' />
                 ))}
             </div>
 

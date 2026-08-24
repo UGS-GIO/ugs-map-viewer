@@ -25,7 +25,7 @@ const MapShell = ({ search, actions, children }: MapShellProps) => {
         <div className="grid h-full grid-rows-[auto_1fr_auto] overflow-hidden bg-background">
             <a
                 href="#content"
-                className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-[100] focus:rounded focus:bg-background focus:px-3 focus:py-2 focus:ring-2 focus:ring-ring"
+                className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-[100] focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:ring-2 focus:ring-ring"
             >
                 Skip to map
             </a>
