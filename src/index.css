@@ -27,7 +27,7 @@
     --border: 0 0% 84%;                /* UDS gray-border #d7d7d7 */
     --input: 0 0% 84%;
     --ring: 222 76% 52%;
-    --radius: 0.25rem;                 /* UDS corners are near-square */
+    --radius: 0.375rem;                /* rounded-md lands on 4px, matching the cards */
     --header-height: 3.5rem;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 0 0% 20%;
