@@ -3,6 +3,13 @@ import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/
 // Wetland Survey Sites — STAC-driven: pmtilesUrl, sourceLayer, renders and parquet come from
 // the warehouse item `wetlands_plants_site`. ALL-5623.
 //
+// NOT VISIBLE YET (ALL-5625): wetlands_plants_site has no `ugs:renders` in STAC yet, and a
+// PMTiles layer with zero renders + no styleUrl never gets a style fragment — data-map.tsx
+// only renders layers with one loaded (see the pmtilesFragments.get(layer.title) gate), so
+// this layer is silently dropped from the map today. No error, it just doesn't draw. This is
+// wired up correctly and will appear once a render ships (ugs-styles → STAC ugs:renders),
+// not a bug here. Per ALL-3726: yellow for exact locations, red for confidential/approximate.
+//
 // PRIVACY: sites with privacystatus === 'Confidential' are geocoded to their true, exact
 // location in the warehouse today (dataELT passes `geom` through untouched — see the
 // wetlands_plants_site lineage). The old app's About text promises these show at "a randomly
