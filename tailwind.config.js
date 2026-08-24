@@ -61,6 +61,7 @@ module.exports = {
     				DEFAULT: 'hsl(var(--gold))',
     				foreground: 'hsl(var(--gold-foreground))'
     			},
+    			link: 'hsl(var(--link))',
     			'utah-blue': {
     				DEFAULT: 'hsl(var(--utah-blue))',
     				foreground: 'hsl(var(--utah-blue-foreground))'

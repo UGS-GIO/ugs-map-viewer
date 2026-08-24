@@ -8,7 +8,7 @@ const linkVariants = cva(
     {
         variants: {
             variant: {
-                primary: 'text-primary', // Uses your CSS variable for primary
+                primary: 'text-link',
                 foreground: 'text-foreground', // Uses your CSS variable for foreground
             },
         },
