@@ -107,6 +107,8 @@ export type ExtendedSublayerProperties = {
 interface BaseLayerProps {
     type: 'feature' | 'tile' | 'map-image' | 'geojson' | 'imagery' | 'wms' | 'group' | 'pmtiles' | 'cog' | 'wfs';
     title: string;
+    /** Secondary line rendered under the title in the layer list and the Data Sources list — use it for sourcing ("Source: Utah Division of Oil, Gas & Mining") instead of packing it into `title`, which is also the layer's URL-state key. */
+    subtitle?: string;
     url?: string;
     visible?: boolean;
     options?: any;

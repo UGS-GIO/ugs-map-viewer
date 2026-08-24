@@ -1219,19 +1219,22 @@ const sectionsConfig: PMTilesLayerProps = {
 };
 
 
-// Non Petroleum Wells Layer
-const nonpetrolWellsLayerName = 'nwpd_nonpetroleumwellcatalogwells';
-const nonpetrolWellsTitle = 'Non-Petroleum Wells';
-const nonpetrolWellsConfig: WMSLayerProps = {
-  type: 'wms',
-  url: `${PROD_GEOSERVER_URL}/wms`,
+// Non Petroleum Wells Layer — STAC-driven: pmtilesUrl, sourceLayer, and
+// renders come from the warehouse item `enmin_non_petroleum_wells`.
+const nonpetrolWellsLayerName = 'enmin_non_petroleum_wells';
+const nonpetrolWellsTitle = 'Exploration Boreholes - Downhole Data';
+const nonpetrolWellsConfig: PMTilesLayerProps = {
+  type: 'pmtiles',
+  stacItemId: nonpetrolWellsLayerName,
+  pmtilesUrl: '',
+  sourceLayer: nonpetrolWellsLayerName,
   title: nonpetrolWellsTitle,
   visible: false,
-  crs: 'EPSG:3857',
+  opacity: 1,
   sourceAgency: 'Utah Geological Survey',
   sublayers: [
     {
-      name: `${ENERGY_MINERALS_WORKSPACE}:${nonpetrolWellsLayerName}`,
+      name: nonpetrolWellsLayerName,
       popupEnabled: true,
       queryable: true,
       popupFields: {

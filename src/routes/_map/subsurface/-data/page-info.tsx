@@ -56,13 +56,10 @@ const mapDetails = (
             The UCRC’s collection also includes cataloged outcrop samples (mostly from graduate student projects and state geologic mapping efforts), cuttings from water and geothermal wells, sidewall plugs from drill holes, thin sections, and numerous other hand samples. In addition, the UCRC has a vast archive of analytical data related to the collection, with ongoing efforts to make this information available through this web portal.
         </p>
         <p>
-             The UCRC inventory can be searched using this online map or the entire database can be downloaded as a spreadsheet. If you have any questions regarding the UCRC’s collection or would like to look at any of the samples, please contact the UCRC at 801-537-3359.  
+             The UCRC inventory can be searched using this online map. If you have any questions regarding the UCRC’s collection or would like to look at any of the samples, please contact the UCRC at 801-537-3359.  
         </p>
         <p>
             <strong>Related Information:</strong>
-        </p>
-        <p>
-            <Link to="https://geology.utah.gov/docs/xls/ucrc_cores.xlsx">UCRC Inventory Database</Link> (xlsx)
         </p>
         <p>
             <Link to="https://geology.utah.gov/about-us/utah-core-research-center/">Utah Core Research Center</Link>

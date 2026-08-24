@@ -6,14 +6,15 @@ import { formatNumeric } from "@/lib/utils";
 
 
 export const wellWithTopsLayerName = 'wellswithtops_hascore';
-export const wellWithTopsWMSTitle = 'Oil and Gas Wells (Source: Utah Division of Oil, Gas & Mining)';
+export const wellWithTopsWMSTitle = 'Oil and Gas Wells';
 const wellWithTopsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: wellWithTopsWMSTitle,
+    subtitle: 'Utah Division of Oil, Gas & Mining',
     visible: false,
     crs: 'EPSG:26912',
-    sourceAgency: 'Utah Geological Survey',
+    sourceAgency: 'Utah Division of Oil, Gas & Mining',
     sourceUrl: 'https://gis.utah.gov/products/sgid/energy/oil-gas-wells/',
     sublayers: [
         {
@@ -211,19 +212,22 @@ const basinsWMSConfig: WMSLayerProps = {
     ],
 };
 
-// Non Petroleum Wells Layer
-const nonpetrolWellsLayerName = 'nwpd_nonpetroleumwellcatalogwells';
+// Non Petroleum Wells Layer — STAC-driven: pmtilesUrl, sourceLayer, and
+// renders come from the warehouse item `enmin_non_petroleum_wells`.
+const nonpetrolWellsLayerName = 'enmin_non_petroleum_wells';
 const nonpetrolWellsTitle = 'Exploration Boreholes - Downhole Data';
-const nonpetrolWellsConfig: WMSLayerProps = {
-  type: 'wms',
-  url: `${PROD_GEOSERVER_URL}/wms`,
+const nonpetrolWellsConfig: PMTilesLayerProps = {
+  type: 'pmtiles',
+  stacItemId: nonpetrolWellsLayerName,
+  pmtilesUrl: '',
+  sourceLayer: nonpetrolWellsLayerName,
   title: nonpetrolWellsTitle,
   visible: false,
-  crs: 'EPSG:3857',
+  opacity: 1,
   sourceAgency: 'Utah Geological Survey',
   sublayers: [
     {
-      name: `${ENERGY_MINERALS_WORKSPACE}:${nonpetrolWellsLayerName}`,
+      name: nonpetrolWellsLayerName,
       popupEnabled: true,
       queryable: true,
       popupFields: {
@@ -401,7 +405,7 @@ const seamlessGeolunitsLayerName = 'mapping_geolunits_500k';
 export const seamlessGeolunitsWMSTitle = 'Geologic Units (500k)';
 const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/mapping/wms`,
+    url: `${PROD_GEOSERVER_URL}/wms`,
     title: seamlessGeolunitsWMSTitle,
     opacity: 0.5,
     visible: false,
@@ -415,31 +419,6 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
             queryable: true,
             popupFields: {
                 'Unit Description': { field: 'unit_name', type: 'string' },
-            },
-        },
-    ],
-};
-
-// Pipelines WMS Layer
-const pipelinesLayerName = 'pipelines';
-const pipelinesWMSTitle = 'Pipelines';
-const pipelinesWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: pipelinesWMSTitle,
-    visible: false,
-    crs: 'EPSG:3857',
-    sourceAgency: 'UGRC and Utah Geological Survey',
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${pipelinesLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'Operator': { field: 'operator', type: 'string' },
-                'Commodity': { field: 'commodity', type: 'string' },
-                'Acronym': { field: 'acronym', type: 'string' },
-                'Code Remarks': { field: 'coderemarks', type: 'string' }
             },
         },
     ],
@@ -556,7 +535,6 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                         { field: 'box_top_ft', label: 'Top (ft)', format: 'number' },
                         { field: 'box_bottom_ft', label: 'Bottom (ft)', format: 'number' },
                         { field: 'cored_formation', label: 'Formation' },
-                        { field: 'notes_public', label: 'Notes', transform: (v) => v || '—' },
                         {
                             field: 'pk',
                             label: 'Photos',
@@ -573,6 +551,7 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                                 />
                             ),
                         },
+                        { field: 'notes_public', label: 'Notes', transform: (v) => v || '—' },
                     ],
                     sortBy: 'box_number',
                     sortDirection: 'asc',
@@ -623,7 +602,6 @@ const infrastructureAndLandUseConfig: LayerProps = {
         basinsWMSConfig,
         metalMiningDistrictsConfig,
         SITLAConfig,
-        pipelinesWMSConfig,
         utCountiesConfig,
         utTownshipRangesConfig,
         sectionsConfig,
