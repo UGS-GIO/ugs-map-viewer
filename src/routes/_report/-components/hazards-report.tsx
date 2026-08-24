@@ -318,7 +318,6 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                                 <h1 className="font-bold">Geological Hazards Mapping and Data Custom Report</h1>
                                 <p className="text-sm text-foreground/80">Utah Geological Survey</p>
                             </div>
-                            {/* Mark only — the agency name is printed to its left. */}
                             <UgsLogo variant='mark' className="print-logo-header w-auto" />
                         </div>
                         <p className="text-foreground/80 mt-2">

@@ -70,8 +70,6 @@ function LoginPage() {
                     <div className="flex justify-center mb-4">
                         <UgsLogo className="h-12 w-auto max-w-full" />
                     </div>
-                    {/* The lockup already says "Utah Geological Survey" — the title
-                        names the app instead of repeating the agency. */}
                     <CardTitle className="font-display text-2xl">Hazards Review Portal</CardTitle>
                     <CardDescription>Sign in to review and comment on hazard mapping.</CardDescription>
                 </CardHeader>

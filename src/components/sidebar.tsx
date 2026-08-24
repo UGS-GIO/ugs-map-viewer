@@ -126,9 +126,6 @@ export default function Sidebar({ className }: SidebarProps) {
 
   return (
     <aside
-      // Absolute, not fixed: the app shell now sits under the official Utah header,
-      // so the sidebar spans the map area (the positioned route container) rather
-      // than the whole viewport, which would slide it up under the header.
       className={cn(
         "absolute left-0 right-0 top-0 z-50 w-full border-b md:border-b-0 md:border-r-2 md:border-r-muted md:bottom-0 md:right-auto md:h-full",
         !isDragging && "transition-[width] duration-200 ease-linear",
@@ -153,7 +150,6 @@ export default function Sidebar({ className }: SidebarProps) {
               to="https://geology.utah.gov/"
               className={cn('cursor-pointer flex items-center justify-center', isCollapsed && 'w-10')}
             >
-              {/* Mark only: the Utah header above already carries the UGS lockup. */}
               <UgsLogo variant='mark' className='h-8 w-auto shrink-0' />
             </Link>
             {!isCollapsed && (
@@ -161,7 +157,6 @@ export default function Sidebar({ className }: SidebarProps) {
                 <div className='h-8 w-px shrink-0 bg-border' aria-hidden='true' />
                 <div className='flex flex-col justify-center min-w-0'>
                   <span className='font-display font-medium truncate'>{appTitle}</span>
-                  {/* Agency name only where the Utah header is hidden (mobile). */}
                   <span className='text-xs text-muted-foreground truncate md:hidden'>Utah Geological Survey</span>
                 </div>
               </>

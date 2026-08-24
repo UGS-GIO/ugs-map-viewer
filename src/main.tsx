@@ -1,4 +1,4 @@
-import '@fontsource-variable/source-sans-3' // Utah Design System body font, self-hosted
+import '@fontsource-variable/source-sans-3'
 import '@utahdts/utah-design-system-header/css'
 import '@/index.css'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -17,30 +17,19 @@ import { setupCOGProtocol } from '@/lib/map/cog/setup'
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
 
-// Mount the official State of Utah header ONCE, imperatively — the design system
-// package renders itself into the DOM outside React (as a sibling of #root), so
-// this is a module-scope side effect at startup, NOT a component effect. index.css
-// stacks it above #root and hides its title band on mobile, where the sidebar's top
-// bar carries the logo + app name instead.
 const headerSettings: SettingsInput = {
   title: 'Utah Geological Survey',
-  // The official UGS lockup already draws the agency name in the agency's own
-  // wordmark, so the DS title text is off — otherwise the header says it twice, in
-  // two different typefaces. `title` stays set for the accessible name.
   showTitle: false,
   size: 'SMALL',
   titleUrl: 'https://geology.utah.gov',
-  logo: { imageUrl: ugsLockup }, // navy lockup: the DS header is always light
-  mainMenu: false, // portal navigation lives in the app sidebar
+  logo: { imageUrl: ugsLockup },
+  mainMenu: false,
   utahId: false,
-  footer: null, // required legal links live in the in-app map footer
+  footer: null,
 }
 setUtahHeaderSettings(headerSettings)
 loadHeader()
 
-// Apply the stored theme before first paint. ThemeProvider does the same in an
-// effect, which lands after the first paint — enough for a light flash on a dark
-// map, and very visible now that the light Utah header sits above the app.
 const storedTheme = localStorage.getItem('vite-ui-theme') ?? 'dark'
 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
 document.documentElement.classList.add(
