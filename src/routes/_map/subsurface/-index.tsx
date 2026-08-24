@@ -2,8 +2,7 @@ import { useMemo, useEffect, useRef } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import { Layout } from '@/components/layout/layout'
 import { TopNav } from '@/components/top-nav'
-import { MapFooter } from '@/components/maps/map-footer'
-import { cn } from '@/lib/utils'
+import { MapFooterBar } from '@/components/maps/map-footer-bar'
 import GenericMapContainer from '@/components/maps/generic-map-container'
 import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
@@ -175,8 +174,9 @@ export default function Map() {
   return (
     <MapContext.Provider value={contextValue}>
       <TourAutoStart route="ccs" />
-      <div className="relative h-full overflow-hidden bg-background">
-        <Sidebar />
+      <div className="relative flex h-full flex-col overflow-hidden bg-background">
+        <div className="relative flex-1 min-h-0">
+            <Sidebar />
         <main
           id="content"
           className="overflow-x-hidden pt-[var(--header-height)] transition-[margin] duration-200 ease-linear md:overflow-y-hidden md:pt-0 h-full"
@@ -211,9 +211,10 @@ export default function Map() {
             </Layout.Body>
 
             {/* ===== Footer ===== */}
-            <Layout.Footer className={cn('hidden md:flex z-20')} dynamicContent={<MapFooter />} />
           </Layout>
         </main>
+          </div>
+          <MapFooterBar />
       </div>
     </MapContext.Provider>
   )

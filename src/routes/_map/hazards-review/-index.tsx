@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { Layout } from '@/components/layout/layout';
 import { TopNav } from '@/components/top-nav';
-import { MapFooter } from '@/components/maps/map-footer';
-import { cn } from '@/lib/utils';
+import { MapFooterBar } from '@/components/maps/map-footer-bar'
 import GenericMapContainer from '@/components/maps/generic-map-container';
 import Sidebar from '@/components/sidebar';
 import { useSidebar } from '@/hooks/use-sidebar';
@@ -49,7 +48,8 @@ export default function Map() {
   return (
     <MapContext.Provider value={contextValue}>
       <TourAutoStart route="hazards" />
-      <div className="relative h-full overflow-hidden bg-background">
+      <div className="relative flex h-full flex-col overflow-hidden bg-background">
+        <div className="relative flex-1 min-h-0">
         <AlertDialog open={showWelcomeDialog} onOpenChange={setShowWelcomeDialog}>
         <AlertDialogContent className="max-w-2xl">
           <AlertDialogHeader>
@@ -136,10 +136,10 @@ export default function Map() {
           <Layout.Body>
             <GenericMapContainer />
           </Layout.Body>
-
-          <Layout.Footer className={cn('hidden md:flex z-20')} dynamicContent={<MapFooter />} />
         </Layout>
       </main>
+        </div>
+        <MapFooterBar />
     </div>
     </MapContext.Provider>
   )
