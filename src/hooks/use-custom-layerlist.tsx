@@ -271,7 +271,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                     content={groupExtrasRender?.(layerConfig.title)}
                                 />
                             )}
-                            <div className="flex items-center space-x-2">
+                            <div className="ml-4 flex items-center gap-2 px-2 py-1">
                                 <Checkbox
                                     checked={groupCheckboxState === 'all'}
                                     onCheckedChange={handleSelectAllToggle}
