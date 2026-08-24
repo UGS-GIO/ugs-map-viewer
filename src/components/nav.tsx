@@ -31,6 +31,7 @@ interface NavProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export default function Nav({
+  id,
   links,
   isCollapsed,
   setIsCollapsed,
@@ -83,7 +84,7 @@ export default function Nav({
     : null
 
   return (
-    <div className="flex flex-1 overflow-hidden" >
+    <div id={id} className="flex flex-1 overflow-hidden">
       <div className="hidden md:flex flex-col items-center gap-4 pt-2 border-r px-1" data-tour="sidebar-icons">
         {links.map((link, index) => (
           <NavLinkIcon
