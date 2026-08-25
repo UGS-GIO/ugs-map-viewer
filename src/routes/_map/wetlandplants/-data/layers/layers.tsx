@@ -98,6 +98,44 @@ const wetlandDashboardSitesConfig: PMTilesLayerProps = {
     ],
 };
 
+// EcoRegional Groups — STAC-driven from warehouse item `wetlands_plants_ecoregion`. ALL-5632.
+// Level III (+ EPA region / state) ecoregion polygons used to classify Wetland Survey Sites
+// into the "Central Basin and Range" / "Wasatch and Uinta Mountains" / etc. wetland classes
+// the old app's About text describes (see https://wetlandplants.geology.utah.gov/).
+//
+// NOT VISIBLE YET (ALL-5633): same gotcha as wetlands_plants_site (ALL-5625) — this STAC item
+// has no `ugs:renders` yet, and a PMTiles layer with zero renders never gets a style fragment,
+// so data-map.tsx silently drops it from the map today. Wired up correctly; will appear once
+// a render ships.
+const ecoregionLayerName = 'wetlands_plants_ecoregion';
+export const ecoregionTitle = 'EcoRegional Groups';
+const ecoregionConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: ecoregionLayerName,
+    pmtilesUrl: '',
+    sourceLayer: ecoregionLayerName,
+    title: ecoregionTitle,
+    visible: false,
+    sourceAgency: 'Utah Geological Survey',
+    opacity: 0.5,
+    sublayers: [
+        {
+            name: ecoregionLayerName,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Ecoregional Group': { field: 'ecoregionalgroup', type: 'string' },
+                'Level III Ecoregion': { field: 'us_l3name', type: 'string' },
+                'Level III Code': { field: 'us_l3code', type: 'string' },
+                'Level II Ecoregion': { field: 'na_l2name', type: 'string' },
+                'Level I Ecoregion': { field: 'na_l1name', type: 'string' },
+                'EPA Region': { field: 'epa_region', type: 'number' },
+                'State': { field: 'state_name', type: 'string' },
+            },
+        },
+    ],
+};
+
 // Land Ownership (SITLA) — ALL-5630. Not yet in the warehouse; copied source/naming from the
 // same layer already used in geophysics (src/routes/_map/geophysics/-data/layers/layers.tsx)
 // per the ticket's own instruction to reuse it rather than re-source it.
@@ -112,6 +150,7 @@ const landOwnershipConfig: ArcGISMapServerLayerProps = {
 const layersConfig: LayerProps[] = [
     wetlandSurveySitesConfig,
     wetlandDashboardSitesConfig,
+    ecoregionConfig,
     landOwnershipConfig,
 ];
 
