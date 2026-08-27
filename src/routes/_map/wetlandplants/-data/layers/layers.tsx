@@ -59,40 +59,32 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
     ],
 };
 
-// Wetland Dashboard Site Attributes — STAC-driven from warehouse item
-// `wetlands_wetdash_siteattributes`. NOTE: despite the name suggesting it's a child/related
-// table of Wetland Survey Sites, the two datasets do NOT share a join key today — sitecode
-// (e.g. "CB-038") on plants_site has no overlap with siteid (e.g. "5971926_ip2_ref2015") on
-// this table, row counts differ (654 vs 1563), and neither STAC item carries
-// `ugs:foreign_keys`. Shipping it as its own independent layer instead of a related-table
-// popup until the relationship (if any) is confirmed with Nate and the warehouse publishes
-// the join metadata.
-const wetlandDashboardSitesLayerName = 'wetlands_wetdash_siteattributes';
-export const wetlandDashboardSitesTitle = 'Wetland Dashboard Sites';
-const wetlandDashboardSitesConfig: PMTilesLayerProps = {
+// Watershed (HUC8) Boundaries — ALL-5628/ALL-5752. STAC-driven from warehouse item
+// `wetlands_plants_huc8` (columns confirmed against the live STAC item's table:columns —
+// it's `name`/`huc8`, not `huc_name` like the old wetdash table). Supplementary boundary
+// layer, off by default — same pattern as EcoRegional Groups. Popup fields match the old
+// app's hucLayer popup (map.js: Name + HUC8 only). NOTE: like EcoRegional Groups,
+// `wetlands_plants_huc8` has no `ugs:renders` in STAC yet, so this is wired up correctly but
+// stays invisible on the map until a style ships (ALL-5629).
+const huc8LayerName = 'wetlands_plants_huc8';
+export const huc8Title = 'Watershed (HUC8) Boundaries';
+const huc8Config: PMTilesLayerProps = {
     type: 'pmtiles',
-    stacItemId: wetlandDashboardSitesLayerName,
+    stacItemId: huc8LayerName,
     pmtilesUrl: '',
-    sourceLayer: wetlandDashboardSitesLayerName,
-    title: wetlandDashboardSitesTitle,
-    subtitle: 'Wetland dashboard site attributes',
+    sourceLayer: huc8LayerName,
+    title: huc8Title,
     visible: false,
     sourceAgency: 'Utah Geological Survey',
-    opacity: 1,
+    opacity: 0.5,
     sublayers: [
         {
-            name: wetlandDashboardSitesLayerName,
-            popupEnabled: false,
+            name: huc8LayerName,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
-                'Name': { field: 'name', type: 'string' },
-                'Site ID': { field: 'siteid', type: 'string' },
-                'Ecoregion': { field: 'ecoregion', type: 'string' },
-                'Watershed (HUC8)': { field: 'huc_name', type: 'string' },
-                'System Class': { field: 'sysclass', type: 'string' },
-                'Wetland Type': { field: 'wet_type', type: 'string' },
-                'Project': { field: 'project', type: 'string' },
-                'Date': { field: 'date', type: 'date' },
+                'Watershed Name': { field: 'name', type: 'string' },
+                'HUC8 Code': { field: 'huc8', type: 'string' },
             },
         },
     ],
@@ -111,7 +103,7 @@ const landOwnershipConfig: ArcGISMapServerLayerProps = {
 
 const layersConfig: LayerProps[] = [
     wetlandSurveySitesConfig,
-    wetlandDashboardSitesConfig,
+    huc8Config,
     landOwnershipConfig,
 ];
 
