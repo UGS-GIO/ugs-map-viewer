@@ -3,6 +3,7 @@ import { useQueries } from '@tanstack/react-query'
 import type { FeatureCollection, Geometry } from 'geojson'
 import type { WFSLayerProps } from '@/lib/types/mapping-types'
 import { queryKeys } from '@/lib/query-keys'
+import { jitterFeatureCollection } from '@/lib/map/geo/jitter-point'
 import type maplibregl from 'maplibre-gl'
 
 /** Feature returned from client-side WFS layer queries */
@@ -14,24 +15,29 @@ export interface WfsLayerFeature {
 }
 
 /**
- * Fetch GeoJSON data from a WFS GetFeature request
+ * Fetch GeoJSON data from a WFS GetFeature request, or from `rawGeoJsonUrl` directly when set
+ * (non-GeoServer sources — see the field's doc comment on WFSLayerProps). Applies `layer.jitter`
+ * to the result if configured.
  */
 async function fetchWfsGeoJson(layer: WFSLayerProps): Promise<FeatureCollection<Geometry>> {
-  const params = new URLSearchParams({
-    service: 'WFS',
-    version: '2.0.0',
-    request: 'GetFeature',
-    typeNames: layer.typeName,
-    outputFormat: 'application/json',
-    srsName: layer.crs || 'EPSG:4326',
-  })
-  const url = `${layer.wfsUrl}?${params.toString()}`
+  const url = layer.rawGeoJsonUrl ?? (() => {
+    const params = new URLSearchParams({
+      service: 'WFS',
+      version: '2.0.0',
+      request: 'GetFeature',
+      typeNames: layer.typeName,
+      outputFormat: 'application/json',
+      srsName: layer.crs || 'EPSG:4326',
+    })
+    return `${layer.wfsUrl}?${params.toString()}`
+  })()
 
   const response = await fetch(url)
   if (!response.ok) {
-    throw new Error(`WFS request failed: ${response.status} ${response.statusText}`)
+    throw new Error(`${layer.rawGeoJsonUrl ? 'GeoJSON' : 'WFS'} request failed: ${response.status} ${response.statusText}`)
   }
-  return response.json()
+  const data: FeatureCollection<Geometry> = await response.json()
+  return layer.jitter ? jitterFeatureCollection(data, layer.jitter.seedField, layer.jitter.maxOffsetMeters) as FeatureCollection<Geometry> : data
 }
 
 /**
@@ -92,7 +98,7 @@ export function queryWfsLayersAtPoint(
 export function useWfsLayerData(layers: WFSLayerProps[]) {
   const queries = useQueries({
     queries: layers.map(layer => ({
-      queryKey: queryKeys.layers.wfsData(layer.wfsUrl, layer.typeName),
+      queryKey: queryKeys.layers.wfsData(layer.rawGeoJsonUrl ?? layer.wfsUrl, layer.typeName),
       queryFn: () => fetchWfsGeoJson(layer),
       staleTime: Infinity, // WFS data rarely changes within a session
       gcTime: 1000 * 60 * 30, // Keep in cache for 30 minutes
