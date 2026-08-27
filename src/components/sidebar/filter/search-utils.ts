@@ -44,6 +44,23 @@ export function resultHasData(result: QueryResultWrapper): boolean {
     return false;
 }
 
+/**
+ * Resolve the index of the source to pre-select on load, matched by its authored
+ * `sourceName`. Matching by name (not a hardcoded index) keeps the default stable if
+ * the source list is reordered; matching the authored field rather than the derived
+ * display name avoids depending on getSourceDisplayName's formatting fallback. Returns
+ * null when no name is given or none matches, which the combobox treats as "no source
+ * pre-selected" (search all).
+ */
+export function resolveDefaultSourceIndex(
+    config: SearchSourceConfig[],
+    defaultSourceName?: string,
+): number | null {
+    if (!defaultSourceName) return null;
+    const index = config.findIndex(source => source.sourceName === defaultSourceName);
+    return index >= 0 ? index : null;
+}
+
 export function getSourceDisplayName(sourceConfig: SearchSourceConfig): string {
     if (sourceConfig.sourceName) return sourceConfig.sourceName;
     let name = '';
