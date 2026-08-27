@@ -50,7 +50,7 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
     return (
         <div className="mx-8 mt-2">
             <Collapsible open={open} onOpenChange={setOpen}>
-                <CollapsibleTrigger className="flex w-full items-center gap-1.5 rounded border border-border bg-muted/40 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted">
+                <CollapsibleTrigger className="flex w-full items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted">
                     <ChevronRight className={`h-3 w-3 transition-transform ${open ? 'rotate-90' : ''}`} />
                     <SlidersHorizontal className="h-3 w-3" />
                     <span>Filters</span>
@@ -238,7 +238,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
         const childLayers = [...(layerConfig.layers || [])];
 
         return (
-            <div className="mr-2 border border-secondary rounded my-1">
+            <div className="mr-2 border border-secondary rounded-md my-1">
                 <Accordion
                     type="single"
                     collapsible
@@ -271,7 +271,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                     content={groupExtrasRender?.(layerConfig.title)}
                                 />
                             )}
-                            <div className="flex items-center space-x-2">
+                            <div className="ml-4 flex items-center gap-2 px-2 py-1">
                                 <Checkbox
                                     checked={groupCheckboxState === 'all'}
                                     onCheckedChange={handleSelectAllToggle}
@@ -311,7 +311,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
 
     // --- Single Layer Rendering ---
     return (
-        <div className={`mr-2 my-1 ${isTopLevel ? 'border border-secondary rounded' : ''}`}>
+        <div className={`mr-2 my-1 ${isTopLevel ? 'border border-secondary rounded-md' : ''}`}>
             <Accordion
                 type="single"
                 collapsible

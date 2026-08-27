@@ -73,7 +73,7 @@ export function RouteErrorBoundary({ error }: RouteErrorBoundaryProps) {
 
                     {/* Error Details (Dev mode) */}
                     {process.env.NODE_ENV === 'development' && rawErrorMessage && (
-                        <div className="mb-4 rounded bg-muted p-3">
+                        <div className="mb-4 rounded-md bg-muted p-3">
                             <p className="text-xs font-mono text-muted-foreground">
                                 {rawErrorMessage}
                             </p>

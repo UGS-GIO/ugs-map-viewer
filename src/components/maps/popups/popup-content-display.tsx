@@ -76,7 +76,7 @@ const getColorStyle = (
     if (mode === 'background') {
         return {
             style: { backgroundColor: color, color: '#1a1a1a' },
-            className: 'px-1.5 py-0.5 rounded inline-block',
+            className: 'px-1.5 py-0.5 rounded-md inline-block',
         };
     }
 
@@ -215,7 +215,7 @@ function CollapsibleSection({ label, count, children }: { label: string; count?:
                 onClick={() => setIsOpen(o => !o)}
                 aria-expanded={isOpen}
                 aria-controls={contentId}
-                className="flex items-center gap-1 font-bold text-foreground hover:text-foreground/80 hover:bg-muted/50 rounded px-1 -ml-1 transition-colors w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex items-center gap-1 font-bold text-foreground hover:text-foreground/80 hover:bg-muted/50 rounded-md px-1 -ml-1 transition-colors w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
                 {isOpen
                     ? <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />

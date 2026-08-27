@@ -95,7 +95,7 @@ export function RouteList() {
                             <CardTitle className="text-lg">
                                 <Link
                                     to={route.fullPath}
-                                    className="text-foreground hover:text-primary transition-colors"
+                                    className="text-foreground hover:text-link transition-colors"
                                 >
                                     {route.title}
                                 </Link>
@@ -110,7 +110,7 @@ export function RouteList() {
                             </p>
                             <Link
                                 to={route.fullPath}
-                                className="inline-flex items-center text-sm font-medium text-primary hover:underline"
+                                className="inline-flex items-center text-sm font-medium text-link hover:underline"
                             >
                                 Visit page →
                             </Link>
@@ -159,7 +159,7 @@ export function SimpleRouteList() {
                             <CardTitle className="text-lg">
                                 <Link
                                     to={route.fullPath}
-                                    className="text-foreground hover:text-primary transition-colors"
+                                    className="text-foreground hover:text-link transition-colors"
                                 >
                                     {route.title}
                                 </Link>
@@ -174,7 +174,7 @@ export function SimpleRouteList() {
                             </p>
                             <Link
                                 to={route.fullPath}
-                                className="inline-flex items-center text-sm font-medium text-primary hover:underline"
+                                className="inline-flex items-center text-sm font-medium text-link hover:underline"
                             >
                                 Visit page →
                             </Link>
