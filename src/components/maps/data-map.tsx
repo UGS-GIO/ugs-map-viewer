@@ -13,10 +13,11 @@ import {
 import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
-import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
+import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, isGeoJSONLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
-import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
+import { GeoJSONLayerSource, getGeojsonLayerId, queryGeojsonLayersAtPoint } from '@/components/maps/geojson-layer-source'
+import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps, GeoJSONLayerProps } from '@/lib/types/mapping-types'
 import type maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 
@@ -37,7 +38,7 @@ import { toast } from 'sonner'
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps } from './types'
 
-type DataLayer = WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps | PMTilesLayerProps
+type DataLayer = WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps | PMTilesLayerProps | GeoJSONLayerProps
 
 // MapLibre layer id used for z-order lookups. Keep prefixes stable — popup/query code greps for them.
 function getLayerId(layer: DataLayer): string {
@@ -45,6 +46,7 @@ function getLayerId(layer: DataLayer): string {
   if (isWFSLayer(layer)) return `${getWfsSourceId(layer)}-circle`
   if (isCOGLayer(layer)) return `cog-layer-${layer.title}`
   if (isPMTilesLayer(layer)) return getPmtilesLayerId(layer)
+  if (isGeoJSONLayer(layer)) return getGeojsonLayerId(layer)
   return `arcgis-layer-${layer.title}`
 }
 
@@ -343,12 +345,16 @@ export default function DataMap({
     () => mountedPmtilesLayers.filter(l => displayedTitles.has(l.title || '')),
     [mountedPmtilesLayers, displayedTitles],
   )
+  const visibleGeojsonLayers = useMemo(
+    () => mountedLayerList.filter(isGeoJSONLayer).filter(l => displayedTitles.has(l.title || '')),
+    [mountedLayerList, displayedTitles],
+  )
   // Vector buffer box is meaningful only when a vector layer is the click target; raster sampling alone uses the pixel highlight.
-  const hasVectorClickTarget = useMemo(() => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visiblePmtilesLayers.length > 0, [visibleWmsLayers, visibleWfsLayers, visiblePmtilesLayers])
-  // Any clickable layer (WMS / WFS / COG / PMTiles) gates the click handler + URL-state restore.
+  const hasVectorClickTarget = useMemo(() => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visiblePmtilesLayers.length > 0 || visibleGeojsonLayers.length > 0, [visibleWmsLayers, visibleWfsLayers, visiblePmtilesLayers, visibleGeojsonLayers])
+  // Any clickable layer (WMS / WFS / COG / PMTiles / GeoJSON) gates the click handler + URL-state restore.
   const hasClickableLayers = useMemo(
-    () => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visibleCogLayers.length > 0 || visiblePmtilesLayers.length > 0,
-    [visibleWmsLayers, visibleWfsLayers, visibleCogLayers, visiblePmtilesLayers],
+    () => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visibleCogLayers.length > 0 || visiblePmtilesLayers.length > 0 || visibleGeojsonLayers.length > 0,
+    [visibleWmsLayers, visibleWfsLayers, visibleCogLayers, visiblePmtilesLayers, visibleGeojsonLayers],
   )
   const cogClickPoint = useMemo(
     () => clickBufferBounds ? getBboxCenter(clickBufferBounds) : null,
@@ -389,6 +395,8 @@ export default function DataMap({
   visibleWfsLayersRef.current = visibleWfsLayers
   const visiblePmtilesLayersRef = useRef(visiblePmtilesLayers)
   visiblePmtilesLayersRef.current = visiblePmtilesLayers
+  const visibleGeojsonLayersRef = useRef(visibleGeojsonLayers)
+  visibleGeojsonLayersRef.current = visibleGeojsonLayers
 
   // Ref to store WFS features from polygon query (populated before WMS query completes)
   const polygonWfsLayerFeaturesRef = useRef<WfsLayerFeature[]>([])
@@ -446,7 +454,8 @@ export default function DataMap({
   ) {
     const wfsFeatures = queryWfsLayersAtPoint(map, point, tolerance, visibleWfsLayersRef.current)
     const pmtilesFeatures = queryPmtilesLayersAtPoint(map, point, tolerance, visiblePmtilesLayersRef.current)
-    const vectorFeatures = [...pmtilesFeatures, ...wfsFeatures]
+    const geojsonFeatures = queryGeojsonLayersAtPoint(map, point, tolerance, visibleGeojsonLayersRef.current)
+    const vectorFeatures = [...pmtilesFeatures, ...wfsFeatures, ...geojsonFeatures]
 
     if (visibleWmsLayersRef.current.length === 0) {
       dispatchFeatures(vectorFeatures, additive, options)
@@ -843,6 +852,17 @@ export default function DataMap({
                 activeSymbology={activeSymbology}
                 beforeId={beforeId}
                 layerFilter={vectorLayerFilters[layer.title]}
+                hidden={hidden}
+                opacity={opacity}
+              />
+            )
+          }
+          if (isGeoJSONLayer(layer)) {
+            return (
+              <GeoJSONLayerSource
+                key={layer.title}
+                layer={layer}
+                beforeId={beforeId}
                 hidden={hidden}
                 opacity={opacity}
               />

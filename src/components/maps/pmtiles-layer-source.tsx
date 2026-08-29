@@ -223,7 +223,10 @@ export function PMTilesLayerSource({
     const { current: mapRef } = useMap()
     const sourceId = getPmtilesSourceId(layer)
     const render = activeRenderOf(layer, activeSymbology)
-    const url = layer.pmtilesUrl.startsWith('http')
+    // `local` archives are File-backed: `pmtilesUrl` is the protocol key (the file
+    // name) registered via registerLocalPMTiles, so it must be used verbatim —
+    // prefixing an origin would turn it into a URL the protocol tries to fetch.
+    const url = layer.local || layer.pmtilesUrl.startsWith('http')
         ? `pmtiles://${layer.pmtilesUrl}`
         : `pmtiles://${window.location.origin}${layer.pmtilesUrl}`
 

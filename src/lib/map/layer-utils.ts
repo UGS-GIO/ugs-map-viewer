@@ -1,12 +1,15 @@
 /**
  * Layer type guards, traversal, and URL parsing utilities
  */
-import type { LayerProps, WMSLayerProps, WFSLayerProps, PMTilesLayerProps, COGLayerProps, GroupLayerProps, ArcGISMapServerLayerProps } from '@/lib/types/mapping-types'
+import type { LayerProps, WMSLayerProps, WFSLayerProps, PMTilesLayerProps, COGLayerProps, GroupLayerProps, ArcGISMapServerLayerProps, GeoJSONLayerProps } from '@/lib/types/mapping-types'
 
 // ── Type guards ──────────────────────────────────────────────────────
 
 export const isWMSLayer = (layer: LayerProps): layer is WMSLayerProps =>
   layer.type === 'wms'
+
+export const isGeoJSONLayer = (layer: LayerProps): layer is GeoJSONLayerProps =>
+  layer.type === 'geojson'
 
 export const isWFSLayer = (layer: LayerProps): layer is WFSLayerProps =>
   layer.type === 'wfs'
@@ -54,8 +57,8 @@ export const flattenWfsLayers = (layers: LayerProps[]) =>
 export const flattenArcGisLayers = (layers: LayerProps[]) =>
   flattenLeaves(layers, isArcGISMapServerLayer)
 
-export const isDataLayer = (layer: LayerProps): layer is WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps | PMTilesLayerProps =>
-  isWMSLayer(layer) || isWFSLayer(layer) || isArcGISMapServerLayer(layer) || isCOGLayer(layer) || isPMTilesLayer(layer)
+export const isDataLayer = (layer: LayerProps): layer is WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps | PMTilesLayerProps | GeoJSONLayerProps =>
+  isWMSLayer(layer) || isWFSLayer(layer) || isArcGISMapServerLayer(layer) || isCOGLayer(layer) || isPMTilesLayer(layer) || isGeoJSONLayer(layer)
 
 export const flattenDataLayers = (layers: LayerProps[]) =>
   flattenLeaves(layers, isDataLayer)
@@ -66,7 +69,7 @@ export const flattenDataLayers = (layers: LayerProps[]) =>
  * so arbitrarily nested trees resolve display visibility correctly.
  */
 export interface DataLeafWithAncestors {
-  layer: WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps | PMTilesLayerProps
+  layer: WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps | PMTilesLayerProps | GeoJSONLayerProps
   ancestorGroupTitles: string[]
 }
 

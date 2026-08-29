@@ -115,6 +115,12 @@ interface BaseLayerProps {
     opacity?: number;
     maxZoomLevel?: number;
     customLegend?: React.ReactNode;
+    /** True for layers the user added at runtime (add-layer feature), not build-time config. Drives the remove button + "My Layers" grouping. */
+    userAdded?: boolean;
+    /** A user layer whose data lives only in the browser (uploaded file). Not shareable via URL. */
+    local?: boolean;
+    /** IndexedDB record id backing a `local` upload; used to re-hydrate it on reload. */
+    idbKey?: string;
     /** Structured bivariate legend config — works in both sidebar and print export */
     bivariateLegend?: { xLabel: string; yLabel: string };
     /** GeoParquet URL for client-side export. When set, download button in layer controls is enabled. */
@@ -307,8 +313,25 @@ export interface GroupLayerProps extends BaseLayerProps {
     alwaysShowInReview?: boolean;
 }
 
+/**
+ * A GeoJSON vector layer. Data is supplied one of two ways:
+ *  - `geojsonUrl` — a remote GeoJSON URL (fetched by MapLibre; shareable via `?userLayers=`).
+ *  - `data` — an inline FeatureCollection (uploaded files, hydrated from IndexedDB; NOT in the URL).
+ * Rendered generically as fill + line + circle sublayers filtered by geometry type.
+ * Primarily produced by the user "add layer" flow; no build-time configs use it yet.
+ */
+export interface GeoJSONLayerProps extends BaseLayerProps {
+    type: 'geojson';
+    /** Remote GeoJSON URL. MapLibre fetches it directly. */
+    geojsonUrl?: string;
+    /** Inline FeatureCollection (uploads / IndexedDB-hydrated). */
+    data?: FeatureCollection;
+    /** Fill/stroke/circle colour. Defaults to a hash of `title` when omitted. */
+    color?: string;
+}
 
-export type LayerProps = WMSLayerProps | PMTilesLayerProps | COGLayerProps | WFSLayerProps | GroupLayerProps | ArcGISMapServerLayerProps | BaseLayerProps;
+
+export type LayerProps = WMSLayerProps | PMTilesLayerProps | COGLayerProps | WFSLayerProps | GroupLayerProps | ArcGISMapServerLayerProps | GeoJSONLayerProps | BaseLayerProps;
 
 export type MapImageLayerRenderer = {
     type: 'map-image-renderer';

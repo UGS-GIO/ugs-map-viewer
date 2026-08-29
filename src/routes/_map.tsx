@@ -1,6 +1,7 @@
 import { LayerUrlProvider } from '@/context/layer-url-provider';
 import { SidebarProvider } from '@/context/sidebar-provider';
 import { MapInstanceProvider } from '@/context/map-instance-context';
+import { UserLayersProvider } from '@/context/user-layers-provider';
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { z } from 'zod'
 import { RouteErrorBoundary } from '@/components/route-error-boundary'
@@ -50,6 +51,19 @@ const mapSearchSchema = z.object({
     layer_styles: z.record(z.string()).optional(),
     // Active symbology mode for vector (WFS) layers (format: Layer Title: mode-key, e.g. 'box-type')
     vector_symbology: z.record(z.string()).optional(),
+    // Runtime user-added remote layers, as compact rebuildable recipes (shareable).
+    // Uploaded-file layers are NOT here — they live in browser IndexedDB.
+    userLayers: z.preprocess((val) => {
+        if (typeof val === 'string') {
+            try { return JSON.parse(val); } catch { return undefined; }
+        }
+        return val;
+    }, z.array(z.object({
+        url: z.string(),
+        title: z.string(),
+        format: z.enum(['pmtiles', 'geojson', 'cog', 'wms', 'stac', 'unknown']).optional(),
+        wmsLayerName: z.string().optional(),
+    })).optional()),
 }).strip()
 
 export type MapSearchParams = z.infer<typeof mapSearchSchema>;
@@ -61,11 +75,13 @@ export const Route = createFileRoute('/_map')({
     errorComponent: RouteErrorBoundary,
     component: () => (
         <MapInstanceProvider>
-            <LayerUrlProvider>
-                <SidebarProvider>
-                    <Outlet />
-                </SidebarProvider>
-            </LayerUrlProvider>
+            <UserLayersProvider>
+                <LayerUrlProvider>
+                    <SidebarProvider>
+                        <Outlet />
+                    </SidebarProvider>
+                </LayerUrlProvider>
+            </UserLayersProvider>
         </MapInstanceProvider>
     ),
 })
