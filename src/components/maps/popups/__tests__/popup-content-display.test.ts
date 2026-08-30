@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildGalleryImages } from '../popup-content-display'
+import { buildGalleryImages, buildCoreDocItems } from '../popup-content-display'
 import type { RelatedTable } from '@/lib/types/mapping-types'
 
 const galleryTable: RelatedTable = {
@@ -86,5 +86,48 @@ describe('buildGalleryImages', () => {
         expect(result).toHaveLength(1)
         expect(result[0].url).toBe('https://cdn.example.com/site.jpg')
         expect(result[0].label).toBe('Site Photo')
+    })
+})
+
+// Core-docs accordion: well-level file attachments (reports, logs, lab results) shown as
+// one collapsible item per document. Fixtures below are real rows #209 would publish.
+const docTable: RelatedTable = {
+    fieldLabel: 'Core Docs',
+    matchingField: 'uwi',
+    targetField: 'uwi',
+    url: 'https://example.com/docs',
+    headers: {},
+    displayAs: 'accordion',
+    docBaseUrl: 'https://ucrc-assets.geology.utah.gov',
+}
+
+describe('buildCoreDocItems', () => {
+    it('returns [] for a non-accordion table', () => {
+        const listTable: RelatedTable = { ...docTable, displayAs: 'list' }
+        expect(buildCoreDocItems(listTable, [{ pk: 1, filename: 'a.pdf', gcs_path: 'x/a.pdf' }])).toEqual([])
+    })
+
+    it('builds one item per doc: filename label + encoded CDN href, preserving path slashes', () => {
+        const rows = [{
+            pk: 11, filename: 'Rector 8X Completion Coregraph(1.0).pdf', notes: '',
+            gcs_path: 'attachments/wells/05103070430000/Rector 8X Completion Coregraph(1.0).pdf',
+        }]
+        const [item] = buildCoreDocItems(docTable, rows)
+        expect(item.key).toBe('11')
+        expect(item.label).toBe('Rector 8X Completion Coregraph(1.0).pdf')
+        // spaces → %20, slashes preserved (encodeURI, not encodeURIComponent)
+        expect(item.href).toBe('https://ucrc-assets.geology.utah.gov/attachments/wells/05103070430000/Rector%208X%20Completion%20Coregraph(1.0).pdf')
+        expect(item.notes).toBeUndefined()
+    })
+
+    it('includes trimmed notes when present', () => {
+        const rows = [{ pk: 9, filename: 'summary.xlsx', gcs_path: 'x/summary.xlsx', notes: '  TESTING  ' }]
+        expect(buildCoreDocItems(docTable, rows)[0].notes).toBe('TESTING')
+    })
+
+    it('omits href when gcs_path or docBaseUrl is missing', () => {
+        expect(buildCoreDocItems(docTable, [{ pk: 1, filename: 'a.pdf', gcs_path: '' }])[0].href).toBeUndefined()
+        const noBase: RelatedTable = { ...docTable, docBaseUrl: undefined }
+        expect(buildCoreDocItems(noBase, [{ pk: 1, filename: 'a.pdf', gcs_path: 'x/a.pdf' }])[0].href).toBeUndefined()
     })
 })
