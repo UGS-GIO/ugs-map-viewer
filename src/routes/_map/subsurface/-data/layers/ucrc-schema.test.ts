@@ -4,8 +4,8 @@ import { toMaplibreFilter, toCql, toPostgrestPredicates } from '@/lib/filter/gen
 import type { FilterState } from '@/lib/filter/types'
 
 // Item 3: "core docs available filter yes/no/all". A boolean filter on the served
-// has_core_docs flag, mirroring the existing Has Core Photos filter. Test data below are the
-// three real wells that #209 will flag as having docs, plus one without.
+// has_core_docs flag, mirroring the existing Has Core Photos filter. Synthetic wells below:
+// three flagged as having docs, one without.
 describe('UCRC "Has Core Docs" filter (item 3)', () => {
     it('is declared as a yes/no/all boolean on has_core_docs', () => {
         const field = ucrcFilterSchema.fields.find(f => f.field === 'has_core_docs')
@@ -37,12 +37,12 @@ describe('UCRC "Has Core Docs" filter (item 3)', () => {
         const field = expr[1][1]
         const want = expr[2]
         const wells: Record<string, unknown>[] = [
-            { uwi: '4300750099B000', has_core_docs: true },   // MUDDY 08-18-1
-            { uwi: '0510370000S000', has_core_docs: true },   // PR-15-7C
-            { uwi: '05103070430000', has_core_docs: true },   // E. Rector 8X
-            { uwi: '9999999999999', has_core_docs: false },   // no docs
+            { uwi: 'W-A', has_core_docs: true },
+            { uwi: 'W-B', has_core_docs: true },
+            { uwi: 'W-C', has_core_docs: true },
+            { uwi: 'W-NONE', has_core_docs: false },
         ]
         const kept = wells.filter(w => w[field] === want).map(w => w.uwi)
-        expect(kept).toEqual(['4300750099B000', '0510370000S000', '05103070430000'])
+        expect(kept).toEqual(['W-A', 'W-B', 'W-C'])
     })
 })

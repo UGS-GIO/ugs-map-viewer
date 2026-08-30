@@ -90,7 +90,7 @@ describe('buildGalleryImages', () => {
 })
 
 // Core-docs accordion: well-level file attachments (reports, logs, lab results) shown as
-// one collapsible item per document. Fixtures below are real rows #209 would publish.
+// one collapsible item per document. Fixtures below are synthetic.
 const docTable: RelatedTable = {
     fieldLabel: 'Core Docs',
     matchingField: 'uwi',
@@ -109,20 +109,20 @@ describe('buildCoreDocItems', () => {
 
     it('builds one item per doc: filename label + encoded CDN href, preserving path slashes', () => {
         const rows = [{
-            pk: 11, filename: 'Rector 8X Completion Coregraph(1.0).pdf', notes: '',
-            gcs_path: 'attachments/wells/05103070430000/Rector 8X Completion Coregraph(1.0).pdf',
+            pk: 1, filename: 'core report (1.0).pdf', notes: '',
+            gcs_path: 'docs/well-a/core report (1.0).pdf',
         }]
         const [item] = buildCoreDocItems(docTable, rows)
-        expect(item.key).toBe('11')
-        expect(item.label).toBe('Rector 8X Completion Coregraph(1.0).pdf')
+        expect(item.key).toBe('1')
+        expect(item.label).toBe('core report (1.0).pdf')
         // spaces → %20, slashes preserved (encodeURI, not encodeURIComponent)
-        expect(item.href).toBe('https://ucrc-assets.geology.utah.gov/attachments/wells/05103070430000/Rector%208X%20Completion%20Coregraph(1.0).pdf')
+        expect(item.href).toBe('https://ucrc-assets.geology.utah.gov/docs/well-a/core%20report%20(1.0).pdf')
         expect(item.notes).toBeUndefined()
     })
 
     it('includes trimmed notes when present', () => {
-        const rows = [{ pk: 9, filename: 'summary.xlsx', gcs_path: 'x/summary.xlsx', notes: '  TESTING  ' }]
-        expect(buildCoreDocItems(docTable, rows)[0].notes).toBe('TESTING')
+        const rows = [{ pk: 2, filename: 'summary.xlsx', gcs_path: 'docs/well-a/summary.xlsx', notes: '  a note  ' }]
+        expect(buildCoreDocItems(docTable, rows)[0].notes).toBe('a note')
     })
 
     it('omits href when gcs_path or docBaseUrl is missing', () => {
