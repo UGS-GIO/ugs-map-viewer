@@ -31,7 +31,7 @@ export const ucrcFilterSchema: FilterSchema = {
         {
             kind: 'boolean',
             field: 'has_attachments',
-            label: 'Has Core Docs',
+            label: 'Has Documents',
             trueValue: 'True',
             falseValue: 'False',
         },

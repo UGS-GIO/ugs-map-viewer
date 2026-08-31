@@ -6,10 +6,10 @@ import type { FilterState } from '@/lib/filter/types'
 // Item 3: "core docs available filter yes/no/all". A boolean filter on the served
 // has_attachments flag, mirroring the existing Has Core Photos filter. Synthetic wells below:
 // three flagged as having docs, one without.
-describe('UCRC "Has Core Docs" filter (item 3)', () => {
+describe('UCRC "Has Documents" filter (item 3)', () => {
     it('is declared as a yes/no/all boolean on has_attachments', () => {
         const field = ucrcFilterSchema.fields.find(f => f.field === 'has_attachments')
-        expect(field).toMatchObject({ kind: 'boolean', label: 'Has Core Docs' })
+        expect(field).toMatchObject({ kind: 'boolean', label: 'Has Documents' })
     })
 
     it('yes → constrains the map / CQL / PostgREST to wells that have docs', () => {
