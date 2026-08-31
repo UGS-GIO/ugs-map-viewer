@@ -207,25 +207,22 @@ export function buildGalleryImages(
     return [...fromImageFields, ...fromRelatedTables]
 }
 
-export interface CoreDocItem {
+export interface AccordionEntry {
     key: string;
     label: string;
     href?: string;
     notes?: string;
 }
 
-// --- Core-docs Accordion Builder ---
-// Well-level file attachments (reports, logs, lab results) → one item per document, for the
-// 'accordion' displayAs. Core docs attach to the well, not a box (unlike photos), so there's
-// nothing to group by — each doc is its own collapsible item. Uses encodeURI (NOT
-// encodeURIComponent) so the gcs_path's slashes survive while spaces in filenames are escaped;
-// encodeURIComponent would turn the path separators into %2F and 404 the CDN link.
-export function buildCoreDocItems(
+// One collapsible entry per row, for the 'accordion' displayAs. encodeURI, NOT
+// encodeURIComponent: the path's slashes have to survive while spaces in filenames are escaped —
+// encodeURIComponent turns the separators into %2F and 404s the link.
+export function buildAccordionEntries(
     table: RelatedTable,
     rows: Record<string, unknown>[]
-): CoreDocItem[] {
+): AccordionEntry[] {
     if (table.displayAs !== 'accordion') return []
-    const base = table.docBaseUrl
+    const base = table.itemBaseUrl
     return rows.map((row, i) => {
         const path = row.gcs_path ? String(row.gcs_path) : ''
         const notes = row.notes ? String(row.notes).trim() : ''
@@ -498,8 +495,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
         let innerContent: JSX.Element;
 
         if (table.displayAs === 'accordion') {
-            // Core docs: one collapsible item per well-level document (filename → notes + open link).
-            const docs = buildCoreDocItems(table, (data[tableIndex] ?? []) as Record<string, unknown>[]);
+            const docs = buildAccordionEntries(table, (data[tableIndex] ?? []) as Record<string, unknown>[]);
             innerContent = (
                 <Accordion type="multiple" className="space-y-1">
                     {docs.map(doc => (
