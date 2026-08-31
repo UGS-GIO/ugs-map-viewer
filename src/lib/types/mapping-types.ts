@@ -107,6 +107,8 @@ export type ExtendedSublayerProperties = {
 interface BaseLayerProps {
     type: 'feature' | 'tile' | 'map-image' | 'geojson' | 'imagery' | 'wms' | 'group' | 'pmtiles' | 'cog' | 'wfs';
     title: string;
+    /** Secondary line rendered under the title in the layer list and the Data Sources list — use it for sourcing ("Source: Utah Division of Oil, Gas & Mining") instead of packing it into `title`, which is also the layer's URL-state key. */
+    subtitle?: string;
     url?: string;
     visible?: boolean;
     options?: any;
@@ -382,8 +384,8 @@ export interface RelatedTable {
     logicalOperator?: string;
     sortBy?: string;
     sortDirection?: 'asc' | 'desc';
-    /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers, 'gallery' renders a photo gallery */
-    displayAs?: 'list' | 'table' | 'gallery';
+    /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers, 'gallery' renders a photo gallery, 'accordion' renders one collapsible item per row */
+    displayAs?: 'list' | 'table' | 'gallery' | 'accordion';
     /** Render in a collapsible accordion. Defaults to true when `fieldLabel` is set, else inline. */
     collapsible?: boolean;
     /** Required when displayAs is 'gallery'. Field name containing the full-size image URL */
@@ -396,6 +398,8 @@ export interface RelatedTable {
     galleryLabelField?: string;
     /** Optional base URL prepended to gallery URL field values */
     galleryBaseUrl?: string;
+    /** Optional base URL prepended to a row's `storage_path` (displayAs 'accordion') to build its open/download link */
+    itemBaseUrl?: string;
     /** Optional metadata fields to display alongside the image in the lightbox */
     galleryMetadataFields?: { field: string; label: string }[];
     /** Fetch mode: 'postgrest' (default), 'wfs' for GeoServer WFS, or 'parquet' for STAC geoparquet via duckdb-wasm */

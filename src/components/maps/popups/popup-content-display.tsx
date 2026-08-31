@@ -25,6 +25,7 @@ import {
 import { PopupImageGallery, type GalleryImage } from "@/components/maps/popups/popup-image-gallery";
 import { relatedRowToGalleryImage } from "@/lib/gallery-utils";
 import { sanitizeFilename } from "@/lib/download-utils";
+import { Accordion, AccordionItem, AccordionContent, AccordionTrigger } from "@/components/ui/accordion";
 import {
     isNumberField,
     isStringField,
@@ -204,6 +205,34 @@ export function buildGalleryImages(
     })
 
     return [...fromImageFields, ...fromRelatedTables]
+}
+
+export interface AccordionEntry {
+    key: string;
+    label: string;
+    href?: string;
+    notes?: string;
+}
+
+// One collapsible entry per row, for the 'accordion' displayAs. encodeURI, NOT
+// encodeURIComponent: the path's slashes have to survive while spaces in filenames are escaped —
+// encodeURIComponent turns the separators into %2F and 404s the link.
+export function buildAccordionEntries(
+    table: RelatedTable,
+    rows: Record<string, unknown>[]
+): AccordionEntry[] {
+    if (table.displayAs !== 'accordion') return []
+    const base = table.itemBaseUrl
+    return rows.map((row, i) => {
+        const path = row.storage_path ? String(row.storage_path) : ''
+        const notes = row.notes ? String(row.notes).trim() : ''
+        return {
+            key: String(row.pk ?? i),
+            label: String(row.filename ?? 'Document'),
+            href: base && path ? encodeURI(`${base}/${path}`) : undefined,
+            notes: notes || undefined,
+        }
+    })
 }
 
 function CollapsibleSection({ label, count, children }: { label: string; count?: number; children: ReactNode }) {
@@ -465,7 +494,24 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
 
         let innerContent: JSX.Element;
 
-        if (useTableFormat) {
+        if (table.displayAs === 'accordion') {
+            const docs = buildAccordionEntries(table, (data[tableIndex] ?? []) as Record<string, unknown>[]);
+            innerContent = (
+                <Accordion type="multiple" className="space-y-1">
+                    {docs.map(doc => (
+                        <AccordionItem key={doc.key} value={doc.key} className="border rounded px-2">
+                            <AccordionTrigger className="py-1.5 text-xs">{doc.label}</AccordionTrigger>
+                            <AccordionContent className="text-xs space-y-1">
+                                {doc.notes && <p className="text-muted-foreground">{doc.notes}</p>}
+                                {doc.href
+                                    ? <a href={doc.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary underline decoration-1">Open / download <ExternalLink size={12} /></a>
+                                    : <p className="text-muted-foreground italic">No file link</p>}
+                            </AccordionContent>
+                        </AccordionItem>
+                    ))}
+                </Accordion>
+            );
+        } else if (useTableFormat) {
             // Sortable: raw rows + column defs (TanStack) so sorting is numeric/
             // alphabetical on the underlying values, not the rendered cells.
             innerContent = (
@@ -503,7 +549,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
         );
 
         const totalWords = flatValues.map(v => String(v.value)).join(" ").split(/\s+/).length;
-        const isLongContent = useTableFormat || totalWords > 20 || flatValues.length > 3;
+        const isLongContent = useTableFormat || table.displayAs === 'accordion' || totalWords > 20 || flatValues.length > 3;
         // 'above' sorts related tables before the feature fields (which start at 0); 'below' (default) after them.
         const relatedIndex = (relatedTablesPosition === 'above' ? -1000 : 1000) + tableIndex;
         contentItems.push({ content: relatedContent, isLongContent, originalIndex: relatedIndex });
