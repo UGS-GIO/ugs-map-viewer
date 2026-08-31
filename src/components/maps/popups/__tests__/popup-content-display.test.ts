@@ -104,13 +104,13 @@ const docTable: RelatedTable = {
 describe('buildAccordionEntries', () => {
     it('returns [] for a non-accordion table', () => {
         const listTable: RelatedTable = { ...docTable, displayAs: 'list' }
-        expect(buildAccordionEntries(listTable, [{ pk: 1, filename: 'a.pdf', gcs_path: 'x/a.pdf' }])).toEqual([])
+        expect(buildAccordionEntries(listTable, [{ pk: 1, filename: 'a.pdf', storage_path: 'x/a.pdf' }])).toEqual([])
     })
 
     it('builds one item per doc: filename label + encoded CDN href, preserving path slashes', () => {
         const rows = [{
             pk: 1, filename: 'core report (1.0).pdf', notes: '',
-            gcs_path: 'docs/well-a/core report (1.0).pdf',
+            storage_path: 'docs/well-a/core report (1.0).pdf',
         }]
         const [item] = buildAccordionEntries(docTable, rows)
         expect(item.key).toBe('1')
@@ -121,13 +121,13 @@ describe('buildAccordionEntries', () => {
     })
 
     it('includes trimmed notes when present', () => {
-        const rows = [{ pk: 2, filename: 'summary.xlsx', gcs_path: 'docs/well-a/summary.xlsx', notes: '  a note  ' }]
+        const rows = [{ pk: 2, filename: 'summary.xlsx', storage_path: 'docs/well-a/summary.xlsx', notes: '  a note  ' }]
         expect(buildAccordionEntries(docTable, rows)[0].notes).toBe('a note')
     })
 
-    it('omits href when gcs_path or itemBaseUrl is missing', () => {
-        expect(buildAccordionEntries(docTable, [{ pk: 1, filename: 'a.pdf', gcs_path: '' }])[0].href).toBeUndefined()
+    it('omits href when storage_path or itemBaseUrl is missing', () => {
+        expect(buildAccordionEntries(docTable, [{ pk: 1, filename: 'a.pdf', storage_path: '' }])[0].href).toBeUndefined()
         const noBase: RelatedTable = { ...docTable, itemBaseUrl: undefined }
-        expect(buildAccordionEntries(noBase, [{ pk: 1, filename: 'a.pdf', gcs_path: 'x/a.pdf' }])[0].href).toBeUndefined()
+        expect(buildAccordionEntries(noBase, [{ pk: 1, filename: 'a.pdf', storage_path: 'x/a.pdf' }])[0].href).toBeUndefined()
     })
 })

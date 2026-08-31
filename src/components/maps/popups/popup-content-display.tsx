@@ -224,7 +224,7 @@ export function buildAccordionEntries(
     if (table.displayAs !== 'accordion') return []
     const base = table.itemBaseUrl
     return rows.map((row, i) => {
-        const path = row.gcs_path ? String(row.gcs_path) : ''
+        const path = row.storage_path ? String(row.storage_path) : ''
         const notes = row.notes ? String(row.notes).trim() : ''
         return {
             key: String(row.pk ?? i),
