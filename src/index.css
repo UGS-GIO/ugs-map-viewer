@@ -137,22 +137,54 @@ body > #root {
   overflow-x: hidden;
 }
 
-/* The Utah header is always light; without this the dark body's text inherits in. */
+/* Light mode keeps the official palette; without the explicit colour the dark body's near-white
+   text inherits into the white band and disappears. */
 .utah-design-system.utds-header {
   color: hsl(0 0% 20%);
   color-scheme: light;
 }
 
-/* The DS slot assumes a square seal; ours is the wide lockup. */
-.utds-header .utds-title-wrapper__logo {
+/* The DS ships no dark header: `.utds-header` hardcodes `background-color: white` with no variable
+   to flip, so the band is themed from our tokens here. The only departure from the official palette. */
+.dark .utah-design-system.utds-header {
+  background-color: hsl(var(--card));
+  border-bottom-color: hsl(var(--border)) !important; /* the DS sets its own with !important */
+  color: hsl(var(--foreground));
+  --header-title-color: hsl(var(--foreground)); /* the DS's own var, for the title link */
+  color-scheme: dark;
+}
+
+/* The DS slot is a 35px square seal; ours is the wide lockup. The whole flex chain has to size off
+   the image — height the <img> alone and the 52px mark centres in a 35px box, bleeding past the
+   band's bottom border. */
+.utds-header .utds-logo-wrapper,
+.utds-header .utds-title-wrapper,
+.utds-header .utds-title-wrapper__logo,
+.utds-header .ugs-header-lockup {
   height: auto;
   max-width: none;
+}
+.utds-header .ugs-header-lockup {
+  display: flex;
+  align-items: center;
 }
 .utds-header .utds-title-wrapper__logo img {
   height: 3.25rem;
   width: auto;
+  max-height: none;
   max-width: none;
   object-fit: contain;
+}
+/* The header mounts outside #root, so it can't use Tailwind's `dark:` utilities from a component -
+   pick the ink here. Print pins navy further down. */
+.utds-header .ugs-logo-white {
+  display: none;
+}
+.dark .utds-header .ugs-logo-navy {
+  display: none;
+}
+.dark .utds-header .ugs-logo-white {
+  display: block;
 }
 
 /* Mobile: hide the title band only — the disclosure strip is a separate element. */

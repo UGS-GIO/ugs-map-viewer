@@ -10,7 +10,8 @@ import { ThemeProvider } from '@/context/theme-provider'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import proj4 from 'proj4'
-import ugsLockup from '@/assets/ugs-logo-blue.png'
+import ugsLockupNavy from '@/assets/ugs-logo-blue.png'
+import ugsLockupWhite from '@/assets/ugs-logo-white.png'
 import { setupPMTilesProtocol } from '@/lib/map/pmtiles/setup'
 import { setupCOGProtocol } from '@/lib/map/cog/setup'
 
@@ -22,7 +23,16 @@ const headerSettings: SettingsInput = {
   showTitle: false,
   size: 'SMALL',
   titleUrl: 'https://geology.utah.gov',
-  logo: { imageUrl: ugsLockup },
+  // The DS renders this through `renderDOMSingle`: it must stay a single root element. It also
+  // stamps its own `alt` on that root, which is inert on a <span> — so name both images here. Only
+  // one is ever displayed, and `display: none` keeps the other out of the name computation.
+  logo: {
+    htmlString:
+      `<span class="ugs-header-lockup">` +
+      `<img src="${ugsLockupNavy}" alt="Utah Geological Survey" class="ugs-logo-navy" />` +
+      `<img src="${ugsLockupWhite}" alt="Utah Geological Survey" class="ugs-logo-white" />` +
+      `</span>`,
+  },
   mainMenu: false,
   utahId: false,
   footer: null,
