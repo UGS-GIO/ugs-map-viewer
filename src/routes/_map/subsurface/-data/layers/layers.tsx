@@ -205,7 +205,10 @@ const basinsConfig: PMTilesLayerProps = {
         {
             name: basinsLayerName,
             popupEnabled: false,
-            queryable: true,
+            // Selection off: the basins span many tiles, and a click highlights only the clipped
+            // fragment from the tile that answered. Re-enable once the click path resolves full
+            // geometry rather than the tile's piece.
+            queryable: false,
             popupFields: {
                 'Feature': { field: 'feature', type: 'string' },
                 'Label': { field: 'label', type: 'string' },
