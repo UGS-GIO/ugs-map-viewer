@@ -7,7 +7,7 @@ export default function ComingSoon() {
       <div className="mb-6">
         <UgsLogo className="h-16 w-auto max-w-full object-contain sm:h-20" />
       </div>
-      <h1 className='font-display text-4xl font-bold leading-tight text-center'>Coming Soon</h1>
+      <h1 className='font-display text-4xl font-semibold leading-tight text-center'>Coming Soon</h1>
       <p className='text-center text-muted-foreground'>
         This page has not been created yet. <br />
         Stay tuned!

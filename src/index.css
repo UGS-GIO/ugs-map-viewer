@@ -235,26 +235,6 @@ body > #root {
   }
 }
 
-/* UT Industry is licensed — referenced from the Utah CDN, not redistributed. */
-@font-face {
-  font-family: 'UT Industry';
-  font-weight: 400;
-  font-display: swap;
-  src: url('https://cdn.utah.gov/design-system/fonts/ut-industry/woff2/UTIndustry-Regular.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'UT Industry';
-  font-weight: 500;
-  font-display: swap;
-  src: url('https://cdn.utah.gov/design-system/fonts/ut-industry/woff2/UTIndustry-Medium.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'UT Industry';
-  font-weight: 700;
-  font-display: swap;
-  src: url('https://cdn.utah.gov/design-system/fonts/ut-industry/woff2/UTIndustry-Bold.woff2') format('woff2');
-}
-
 /* MapLibre control overrides — unlayered to beat maplibre-gl.css specificity */
 .maplibregl-ctrl.maplibregl-ctrl-group button {
   display: flex;
