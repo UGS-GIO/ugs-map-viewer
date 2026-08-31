@@ -177,14 +177,13 @@ body > #root {
 .utds-header .utds-title-wrapper {
   border-radius: var(--radius);
 }
+.utds-header .utds-title-wrapper:hover,
 .utds-header .utds-title-wrapper:focus,
 .utds-header .utds-title-wrapper:focus-visible {
   outline: 2px solid hsl(var(--utah-blue));
   outline-offset: 3px;
 }
-.utds-header .utds-title-wrapper:hover {
-  outline: none;
-}
+.dark .utds-header .utds-title-wrapper:hover,
 .dark .utds-header .utds-title-wrapper:focus,
 .dark .utds-header .utds-title-wrapper:focus-visible {
   outline-color: hsl(var(--foreground));
