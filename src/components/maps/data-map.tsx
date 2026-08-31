@@ -339,8 +339,15 @@ export default function DataMap({
     () => mountedLayerList.filter(isCOGLayer).filter(l => displayedTitles.has(l.title)),
     [mountedLayerList, displayedTitles],
   )
+  // `queryable: false` opts a layer out of click queries, the same flag WFS and raster already
+  // honour. Tiles clip geometry at their edges, so a clicked polygon highlights as the tile-shaped
+  // fragment the query returned; a layer can turn selection off until that's solved centrally.
   const visiblePmtilesLayers = useMemo(
-    () => mountedPmtilesLayers.filter(l => displayedTitles.has(l.title || '')),
+    () => mountedPmtilesLayers.filter(l => {
+      if (!displayedTitles.has(l.title || '')) return false
+      const subs = l.sublayers ?? []
+      return subs.length === 0 || subs.some(sub => sub.queryable !== false)
+    }),
     [mountedPmtilesLayers, displayedTitles],
   )
   // Vector buffer box is meaningful only when a vector layer is the click target; raster sampling alone uses the pixel highlight.
