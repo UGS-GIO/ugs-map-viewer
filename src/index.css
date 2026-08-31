@@ -154,6 +154,16 @@ body > #root {
   color-scheme: dark;
 }
 
+/* The lockup link takes the browser's default focus ring, which on the dark band paints as a
+   light plate behind the mark. Draw a ring on the band instead. */
+.utds-header .utds-title-wrapper:focus,
+.utds-header .utds-title-wrapper:focus-visible {
+  background-color: transparent;
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
 /* The DS slot is a 35px square seal; ours is the wide lockup. The whole flex chain has to size off
    the image — height the <img> alone and the 52px mark centres in a 35px box, bleeding past the
    band's bottom border. */

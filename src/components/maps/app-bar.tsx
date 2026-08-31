@@ -1,7 +1,5 @@
 import { Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Link } from '@/components/ui/link'
-import { UgsLogo } from '@/components/ugs-logo'
 import { TopNav } from '@/components/top-nav'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useGetCurrentPage } from '@/hooks/use-get-current-page'
@@ -37,10 +35,8 @@ const AppBar = ({ search, actions }: AppBarProps) => {
                 {navOpened ? <X /> : <Menu />}
             </Button>
 
-            <Link to="https://geology.utah.gov/" className="shrink-0">
-                <UgsLogo variant="mark" className="h-8 w-auto" />
-            </Link>
-
+            {/* No UGS mark here: the state header above already carries the beehive, and a second
+                copy 60px below it read as a duplicate. Same call as the warehouse viewer. */}
             <h1 className="min-w-0 truncate font-display text-base font-medium md:text-lg">{appTitle}</h1>
 
             <div className="ml-auto flex min-w-0 items-center gap-2 md:gap-4">
