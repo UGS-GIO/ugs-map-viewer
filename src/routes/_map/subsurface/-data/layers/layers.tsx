@@ -188,9 +188,8 @@ const oilGasFieldsWMSConfig: WMSLayerProps = {
     ],
 };
 
-// UCRC Basins — STAC-driven: pmtilesUrl, sourceLayer, renders and downloadParquetUrl come from
-// the warehouse item `enmin_ucrc_basins`. `sourceLayer` is the item id, not `ugs:layer`
-// (`enmin_ucrc_basins_current`), which names the DB view the tiles were built from.
+// UCRC Basins — STAC-driven: pmtilesUrl, sourceLayer, renders and
+// downloadParquetUrl come from the warehouse item `enmin_ucrc_basins`.
 const basinsLayerName = 'enmin_ucrc_basins';
 const basinsTitle = 'Basins';
 const basinsConfig: PMTilesLayerProps = {
