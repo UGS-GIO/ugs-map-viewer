@@ -154,17 +154,36 @@ body > #root {
   color-scheme: dark;
 }
 
-/* The lockup link takes the browser's default focus ring, which on the dark band paints as a
-   light plate behind the mark. Draw a ring instead, in the state chrome's own colour rather than
-   the brand orange, and give the artwork room so the ring doesn't sit on the band's edges. */
+/* Hover and focus on the lockup must never paint a plate behind the mark — on the dark band it
+   reads as a white sticker. Kill every background/shadow the DS or the UA can put on the link or
+   anything inside it, in every interaction state, then draw our own ring for focus. */
+.utds-header .utds-logo-wrapper,
+.utds-header .utds-logo-wrapper:hover,
+.utds-header .utds-title-wrapper,
+.utds-header .utds-title-wrapper:link,
+.utds-header .utds-title-wrapper:visited,
+.utds-header .utds-title-wrapper:hover,
+.utds-header .utds-title-wrapper:focus,
+.utds-header .utds-title-wrapper:focus-within,
+.utds-header .utds-title-wrapper:focus-visible,
+.utds-header .utds-title-wrapper:active,
+.utds-header .utds-title-wrapper *,
+.utds-header .utds-title-wrapper:hover *,
+.utds-header .utds-title-wrapper:focus * {
+  background: transparent !important;
+  box-shadow: none !important;
+  text-decoration: none !important;
+}
 .utds-header .utds-title-wrapper {
   border-radius: var(--radius);
 }
 .utds-header .utds-title-wrapper:focus,
 .utds-header .utds-title-wrapper:focus-visible {
-  background-color: transparent;
   outline: 2px solid hsl(var(--utah-blue));
   outline-offset: 3px;
+}
+.utds-header .utds-title-wrapper:hover {
+  outline: none;
 }
 .dark .utds-header .utds-title-wrapper:focus,
 .dark .utds-header .utds-title-wrapper:focus-visible {
