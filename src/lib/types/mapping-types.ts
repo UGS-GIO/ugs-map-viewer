@@ -398,7 +398,7 @@ export interface RelatedTable {
     galleryLabelField?: string;
     /** Optional base URL prepended to gallery URL field values */
     galleryBaseUrl?: string;
-    /** Optional base URL prepended to a row's `gcs_path` (displayAs 'accordion') to build its open/download link */
+    /** Optional base URL prepended to a row's `storage_path` (displayAs 'accordion') to build its open/download link */
     itemBaseUrl?: string;
     /** Optional metadata fields to display alongside the image in the lightbox */
     galleryMetadataFields?: { field: string; label: string }[];
