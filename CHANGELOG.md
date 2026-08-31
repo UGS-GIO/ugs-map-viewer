@@ -1,3 +1,21 @@
+## 2.9.0 (2026-08-31)
+
+* **feat**(`common`): switch non petroleum wells to stac/pmtiles source  (#516) ([516](///issues/516))
+* **fix**(`common`): compare boolean filters as booleans so the legend keeps its options (#547) ([547](///issues/547))
+* **fix**(`common`): correct geologic map portal scale, MapLibre zoom is one Esri level off (#513) ([513](///issues/513))
+* **fix**(`common`): include PMTiles in area select, reset draw mode and clear old shapes (#512) ([512](///issues/512))
+* **fix**(`common`): resolve STAC layers from the full item, and source Sample Types from the warehouse (#491) ([491](///issues/491))
+* ****: [ALL-4953] fix: zoom-to does nothing on Geologic Units (500k) — workspace-scoped WMS endpoint (#519) ([519](///issues/519))
+* ****: [ALL-5649] feat(hazards): render GraphicStroke border ticks in polygon WMS legends (#530) ([530](///issues/530))
+* ****: Develop => Master (#544) ([544](///issues/544)) ([491](///issues/491)) ([512](///issues/512)) ([513](///issues/513)) ([515](///issues/515)) ([516](///issues/516)) ([518](///issues/518)) ([519](///issues/519)) ([530](///issues/530)) ([533](///issues/533)) ([539](///issues/539)) ([545](///issues/545)) ([547](///issues/547)) ([542](///issues/542)) ([209](///issues/209))
+* **feat**: add sections PMTiles layer to subsurface and carbonstorage (#515) ([515](///issues/515))
+* ****: Merge pull request #511 from UGS-GIO/chore/sync-master-to-develop ([511](///issues/511))
+* **feat**(`subsurface`): default search to UCRC Collection and list it first (#539) ([539](///issues/539))
+* **feat**(`subsurface`): serve UCRC Basins from warehouse PMTiles instead of GeoServer WMS (#545) ([545](///issues/545))
+* **feat**(`subsurface`): stack layer source under title, drop pipelines and database download (#518) ([518](///issues/518))
+* **feat**(`subsurface`): UCRC core docs popup accordion + "Has Core Docs" filter [ALL-5760] (#542) ([542](///issues/542)) ([209](///issues/209))
+* **feat**(`wetlandplants`): add warehouse-sourced survey site and land ownership layers (#533) ([533](///issues/533))
+
 ## 2.8.0 (2026-08-06)
 
 * **feat**(`common`): full-dataset downloads in the Data Sources panel (#498) ([498](///issues/498))
