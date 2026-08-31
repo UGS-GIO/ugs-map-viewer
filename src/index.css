@@ -155,13 +155,20 @@ body > #root {
 }
 
 /* The lockup link takes the browser's default focus ring, which on the dark band paints as a
-   light plate behind the mark. Draw a ring on the band instead. */
+   light plate behind the mark. Draw a ring instead, in the state chrome's own colour rather than
+   the brand orange, and give the artwork room so the ring doesn't sit on the band's edges. */
+.utds-header .utds-title-wrapper {
+  border-radius: var(--radius);
+}
 .utds-header .utds-title-wrapper:focus,
 .utds-header .utds-title-wrapper:focus-visible {
   background-color: transparent;
-  outline: 2px solid hsl(var(--ring));
-  outline-offset: 2px;
-  border-radius: var(--radius);
+  outline: 2px solid hsl(var(--utah-blue));
+  outline-offset: 3px;
+}
+.dark .utds-header .utds-title-wrapper:focus,
+.dark .utds-header .utds-title-wrapper:focus-visible {
+  outline-color: hsl(var(--foreground));
 }
 
 /* The DS slot is a 35px square seal; ours is the wide lockup. The whole flex chain has to size off
@@ -179,7 +186,7 @@ body > #root {
   align-items: center;
 }
 .utds-header .utds-title-wrapper__logo img {
-  height: 3.25rem;
+  height: 2.75rem;
   width: auto;
   max-height: none;
   max-width: none;
