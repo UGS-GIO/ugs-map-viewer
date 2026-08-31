@@ -188,20 +188,23 @@ const oilGasFieldsWMSConfig: WMSLayerProps = {
     ],
 };
 
-// UCRC Basins
-const basinsLayerName = 'enmin_ucrc_basins_current';
-const basinsWMSTitle = 'Basins';
-const basinsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: basinsWMSTitle,
+// UCRC Basins — STAC-driven: pmtilesUrl, sourceLayer, renders and downloadParquetUrl come from
+// the warehouse item `enmin_ucrc_basins`. `sourceLayer` is the item id, not `ugs:layer`
+// (`enmin_ucrc_basins_current`), which names the DB view the tiles were built from.
+const basinsLayerName = 'enmin_ucrc_basins';
+const basinsTitle = 'Basins';
+const basinsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: basinsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: basinsLayerName,
+    title: basinsTitle,
     visible: false,
-    crs: 'EPSG:3857',
-    downloadParquetUrl: parquetUrl("enmin_ucrc_basins"),
+    opacity: 1,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${basinsLayerName}`,
+            name: basinsLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
@@ -599,7 +602,7 @@ const infrastructureAndLandUseConfig: LayerProps = {
     visible: false,
     layers: [
         oilGasFieldsWMSConfig,
-        basinsWMSConfig,
+        basinsConfig,
         metalMiningDistrictsConfig,
         SITLAConfig,
         utCountiesConfig,
