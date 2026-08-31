@@ -13,10 +13,13 @@ interface UgsLogoProps {
 export function UgsLogo({ variant = 'lockup', className, alt = 'Utah Geological Survey' }: UgsLogoProps) {
   const [navy, white] = variant === 'mark' ? [mark, markWhite] : [lockupBlue, lockupWhite]
 
+  // Both inks are decorative: whichever one the theme hides would otherwise take the alt text with
+  // it, leaving a bare logo link nameless in that theme.
   return (
     <>
-      <img src={navy} alt={alt} className={cn('ugs-logo-navy dark:hidden', className)} />
+      <img src={navy} alt='' aria-hidden='true' className={cn('ugs-logo-navy dark:hidden', className)} />
       <img src={white} alt='' aria-hidden='true' className={cn('ugs-logo-white hidden dark:block', className)} />
+      <span className='sr-only'>{alt}</span>
     </>
   )
 }

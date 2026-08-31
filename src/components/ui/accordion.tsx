@@ -17,10 +17,11 @@ const AccordionItem = React.forwardRef<
 ))
 AccordionItem.displayName = "AccordionItem"
 
+/** The chevron belongs inside the trigger; as a sibling it is a second, unnamed tab stop. */
 const AccordionTrigger = React.forwardRef<
   React.ElementRef<typeof AccordionPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
->(({ className, ...props }, ref) => (
+>(({ className, children, ...props }, ref) => (
   <AccordionPrimitive.Trigger
     ref={ref}
     className={cn(
@@ -28,7 +29,10 @@ const AccordionTrigger = React.forwardRef<
       className
     )}
     {...props}
-  />
+  >
+    {children}
+    <ChevronDownIcon className="h-4 w-4 shrink-0 transition-transform duration-200 mr-2" aria-hidden />
+  </AccordionPrimitive.Trigger>
 ))
 AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName
 
@@ -38,11 +42,6 @@ const AccordionHeader = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <AccordionPrimitive.Header ref={ref} className={cn("flex items-center justify-between", className)} {...props}>
     {children}
-    <AccordionPrimitive.Trigger
-      className="transition-all hover:underline [&[data-state=open]>svg]:rotate-180"
-    >
-      <ChevronDownIcon className="h-4 w-4 shrink-0 transition-transform duration-200 mr-2" />
-    </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ))
 AccordionHeader.displayName = "AccordionHeader"

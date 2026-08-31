@@ -3,8 +3,7 @@ import { MapFooterBar } from '@/components/maps/map-footer-bar'
 import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
-
-const COLLAPSED_SIDEBAR_PX = 56
+import { SIDEBAR_WIDTH_COLLAPSED } from '@/context/sidebar-provider'
 
 interface MapShellProps {
     /** Route-specific search control for the app bar. */
@@ -19,7 +18,7 @@ const MapShell = ({ search, actions, children }: MapShellProps) => {
     const { isCollapsed, sidebarWidthPx } = useSidebar()
     const isMobile = useIsMobile()
     // Mobile puts the sidebar over the map instead of beside it.
-    const sidebarWidth = isMobile ? 0 : isCollapsed ? COLLAPSED_SIDEBAR_PX : sidebarWidthPx
+    const sidebarWidth = isMobile ? 0 : isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : sidebarWidthPx
 
     return (
         <div className="grid h-full grid-rows-[auto_1fr_auto] overflow-hidden bg-background">

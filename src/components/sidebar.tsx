@@ -6,7 +6,9 @@ import { useSidebar } from '@/hooks/use-sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links';
 import { NavSkeleton } from './sidebar/sidebar-skeleton';
-import { SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_MD, SIDEBAR_WIDTH_XL } from '@/context/sidebar-provider';
+import { SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_MD, SIDEBAR_WIDTH_XL, SIDEBAR_WIDTH_COLLAPSED } from '@/context/sidebar-provider';
+
+const SIDEBAR_RESIZE_STEP = 24;
 
 interface SidebarProps extends React.HTMLAttributes<HTMLElement> { }
 
@@ -16,41 +18,58 @@ export default function Sidebar({ className }: SidebarProps) {
   const [isDragging, setIsDragging] = useState(false);
   const isMobile = useIsMobile();
 
-  // Use pixel width when expanded, icon width when collapsed (desktop only)
-  // On mobile, let CSS handle the width (w-full)
-  const sidebarStyle = isMobile ? undefined : (isCollapsed ? { width: '3.5rem' } : { width: `${sidebarWidthPx}px` });
+  // Hidden, not unmounted: the panel would otherwise take the flex-1 remainder of the rail — a ~5px
+  // column that paints a scrollbar beside the icons — but unmounting drops the layer groups' local
+  // expansion state on every collapse. Keyed off navOpened, not a breakpoint hook: the mobile
+  // drawer IS the panel, and useIsMobile lags a live resize, which would blank it.
+  const showPanel = navOpened || !isCollapsed;
+
+  // Collapsed shares one constant with MapShell so the sidebar and the map's margin can't drift.
+  const sidebarStyle = isMobile ? undefined : { width: `${isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : sidebarWidthPx}px` };
 
   // Get default width based on screen size
   const getDefaultWidth = useCallback(() => {
     return window.innerWidth >= 1280 ? SIDEBAR_WIDTH_XL : SIDEBAR_WIDTH_MD;
   }, []);
 
-  // Combined drag-to-resize and click-to-toggle handler
-  const handleResizeMouseDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+  const clampWidth = (px: number) => Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, px));
+
+  const toggleCollapsed = useCallback(() => {
+    if (isCollapsed) {
+      setSidebarWidthPx(getDefaultWidth());
+      setIsCollapsed(false);
+    } else {
+      setIsCollapsed(true);
+    }
+  }, [isCollapsed, setIsCollapsed, setSidebarWidthPx, getDefaultWidth]);
+
+  // Drag to resize, click to toggle. The element carries `touch-none` so a touch drag resizes
+  // rather than scrolling the page.
+  const handleResizePointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
-    const isTouch = 'touches' in e;
-    const startX = isTouch ? e.touches[0].clientX : e.clientX;
+    const startX = e.clientX;
     const collapseThreshold = SIDEBAR_WIDTH_MIN - 50;
-    const dragThreshold = 5; // pixels before considering it a drag
+    const dragThreshold = 5; // px of travel before a press counts as a drag rather than a click
     let hasDragged = false;
     let expandedFromCollapsed = false;
 
-    // If collapsed, we'll expand on first drag movement
     const startWidth = isCollapsed ? SIDEBAR_WIDTH_MIN : sidebarWidthPx;
 
-    const onMove = (moveEvent: MouseEvent | TouchEvent) => {
-      const clientX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
-      const deltaX = clientX - startX;
+    const stop = () => {
+      setIsDragging(false);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onEnd);
+      window.removeEventListener('pointercancel', stop);
+    };
 
-      // Only start dragging after threshold
+    const onMove = (moveEvent: PointerEvent) => {
+      const deltaX = moveEvent.clientX - startX;
       if (!hasDragged && Math.abs(deltaX) < dragThreshold) return;
-
       if (!hasDragged) {
         setIsDragging(true);
         hasDragged = true;
       }
 
-      // First movement while collapsed - expand to min width
       if (isCollapsed && !expandedFromCollapsed) {
         setIsCollapsed(false);
         setSidebarWidthPx(SIDEBAR_WIDTH_MIN);
@@ -59,44 +78,71 @@ export default function Sidebar({ className }: SidebarProps) {
 
       const rawWidth = startWidth + deltaX;
 
-      // If dragged below collapse threshold, collapse to icons
       if (rawWidth < collapseThreshold) {
         setIsCollapsed(true);
-        setIsDragging(false);
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup', onEnd);
-        document.removeEventListener('touchmove', onMove);
-        document.removeEventListener('touchend', onEnd);
+        stop();
         return;
       }
 
-      const newWidth = Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, rawWidth));
-      setSidebarWidthPx(newWidth);
+      setSidebarWidthPx(clampWidth(rawWidth));
     };
 
+    // Only a completed press toggles. A cancelled pointer (OS edge gesture, second touch, long
+    // press) unwinds through `stop` alone, or an aborted gesture would silently collapse the panel.
     const onEnd = () => {
-      setIsDragging(false);
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onEnd);
-      document.removeEventListener('touchmove', onMove);
-      document.removeEventListener('touchend', onEnd);
-
-      // If didn't drag, treat as click - toggle collapse
-      if (!hasDragged) {
-        if (isCollapsed) {
-          setSidebarWidthPx(getDefaultWidth());
-          setIsCollapsed(false);
-        } else {
-          setIsCollapsed(true);
-        }
-      }
+      stop();
+      if (!hasDragged) toggleCollapsed();
     };
 
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onEnd);
-    document.addEventListener('touchmove', onMove, { passive: false });
-    document.addEventListener('touchend', onEnd);
-  }, [isCollapsed, setIsCollapsed, sidebarWidthPx, setSidebarWidthPx, getDefaultWidth]);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onEnd);
+    window.addEventListener('pointercancel', stop);
+  }, [isCollapsed, setIsCollapsed, sidebarWidthPx, setSidebarWidthPx, toggleCollapsed]);
+
+  // The splitter is the only way to collapse or resize on desktop, so it has to work from the keyboard.
+  const handleResizeKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const { key } = e;
+
+    if (key === 'Enter' || key === ' ') {
+      e.preventDefault();
+      toggleCollapsed();
+      return;
+    }
+
+    if (key === 'Home') {
+      e.preventDefault();
+      setIsCollapsed(true);
+      return;
+    }
+
+    if (key === 'End') {
+      e.preventDefault();
+      setIsCollapsed(false);
+      setSidebarWidthPx(SIDEBAR_WIDTH_MAX);
+      return;
+    }
+
+    if (key !== 'ArrowLeft' && key !== 'ArrowRight') return;
+    e.preventDefault();
+
+    const step = key === 'ArrowLeft' ? -SIDEBAR_RESIZE_STEP : SIDEBAR_RESIZE_STEP;
+
+    // Both branches mirror the drag: out of collapsed lands on the minimum, under it snaps shut.
+    if (isCollapsed) {
+      if (step > 0) {
+        setIsCollapsed(false);
+        setSidebarWidthPx(SIDEBAR_WIDTH_MIN);
+      }
+      return;
+    }
+
+    if (sidebarWidthPx + step < SIDEBAR_WIDTH_MIN) {
+      setIsCollapsed(true);
+      return;
+    }
+
+    setSidebarWidthPx(clampWidth(sidebarWidthPx + step));
+  }, [isCollapsed, setIsCollapsed, sidebarWidthPx, setSidebarWidthPx, toggleCollapsed]);
 
   /* Make body not scrollable when navBar is opened */
   useEffect(() => {
@@ -127,7 +173,7 @@ export default function Sidebar({ className }: SidebarProps) {
       <div className={cn('flex h-full flex-col', navOpened && 'h-full')}>
         {/* Navigation links */}
         {areLinksLoading ?
-          <NavSkeleton className='hidden h-full flex-1 md:flex' />
+          <NavSkeleton id='sidebar-menu' className='hidden h-full flex-1 md:flex' />
           : <Nav
             id='sidebar-menu'
             className={cn(
@@ -136,20 +182,30 @@ export default function Sidebar({ className }: SidebarProps) {
             )}
             closeNav={() => setNavOpened(!navOpened)}
             isCollapsed={isCollapsed}
+            showPanel={showPanel}
             setIsCollapsed={setIsCollapsed}
             links={sidebarLinks || []}
           />}
 
         {/* Combined toggle button + drag handle */}
         <div
-          onMouseDown={handleResizeMouseDown}
-          onTouchStart={handleResizeMouseDown}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize map tools"
+          aria-controls="sidebar-menu"
+          aria-valuenow={isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : Math.round(sidebarWidthPx)}
+          aria-valuemin={SIDEBAR_WIDTH_COLLAPSED}
+          aria-valuemax={SIDEBAR_WIDTH_MAX}
+          tabIndex={0}
+          onPointerDown={handleResizePointerDown}
+          onKeyDown={handleResizeKeyDown}
           className={cn(
             "absolute -right-3 top-1/2 -translate-y-1/2 z-[60] hidden md:flex",
             "w-6 h-12 items-center justify-center",
             "bg-background border border-border rounded-sm",
             "cursor-col-resize hover:bg-accent active:bg-accent",
-            "transition-colors duration-150 select-none"
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "transition-colors duration-150 select-none touch-none"
           )}
           title={isCollapsed ? 'Click to expand, drag to resize' : 'Click to collapse, drag to resize'}
         >
