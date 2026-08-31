@@ -194,9 +194,15 @@ body > #root {
   }
 }
 
-/* The DS disclosure panel's collapsed state fails to clip on mobile. */
+/* The DS disclosure panel's collapsed state fails to clip on mobile. Clip it rather than
+   `display: none`, which would drop the panel from the accessibility tree while the trigger's
+   `aria-controls` still points at it. */
 .utds-official-website-popup__wrapper.visually-hidden {
-  display: none !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
 }
 
 @media print {
