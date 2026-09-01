@@ -9,6 +9,11 @@ import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/
 // doesn't offset them yet. Filtered client-side (see wetlandplants/-index.tsx
 // `vectorLayerFilters`) rather than rendering real coordinates — don't remove without a
 // warehouse fix.
+//
+// RELATED TABLE: the STAC item carries a `wetlands_plants_species` asset with
+// `ugs:foreign_keys` on `surveyeventid` — the per-site species list. `wetlands_wetdash_
+// siteattributes` shared no key with this dataset (sitecode vs siteid, 654 vs 1563 rows) and
+// isn't used anywhere in this file.
 const wetlandSurveySitesLayerName = 'wetlands_plants_site';
 export const wetlandSurveySitesTitle = 'Wetland Survey Sites';
 const wetlandSurveySitesConfig: PMTilesLayerProps = {
@@ -23,7 +28,7 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
     sublayers: [
         {
             name: wetlandSurveySitesLayerName,
-            popupEnabled: false,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
                 'Site Code': { field: 'sitecode', type: 'string' },
@@ -47,6 +52,37 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
                 'Cover-Weighted Mean C': { field: 'cwmeanc', type: 'number', decimalPlaces: 1 },
                 'Relative Native Cover': { field: 'relnativecover', type: 'number', decimalPlaces: 1, unit: '%' },
             },
+            relatedTables: [
+                {
+                    // STAC-backed: url + surveyeventid join filled from the
+                    // wetlands_plants_species related asset's ugs:foreign_keys.
+                    fieldLabel: 'Plant Species',
+                    stacAsset: 'wetlands_plants_species',
+                    displayAs: 'table',
+                    displayFields: [
+                        { field: 'scientificname', label: 'Scientific Name' },
+                        { field: 'commonname', label: 'Common Name' },
+                        { field: 'family', label: 'Family' },
+                        {
+                            field: 'cover',
+                            label: 'Cover',
+                            format: 'number',
+                            transform: (v) => v ? `${v}%` : '—',
+                        },
+                        { field: 'nativity', label: 'Nativity' },
+                        { field: 'growthform', label: 'Growth Form' },
+                        { field: 'duration', label: 'Duration' },
+                        { field: 'cvalue', label: 'C-Value' },
+                        {
+                            field: 'noxious',
+                            label: 'Noxious',
+                            transform: (v) => (v === 'true' ? 'Yes' : 'No'),
+                        },
+                    ],
+                    sortBy: 'cover',
+                    sortDirection: 'desc',
+                },
+            ],
         },
     ],
 };
