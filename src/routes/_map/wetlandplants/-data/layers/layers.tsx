@@ -1,17 +1,14 @@
 import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 
-// Wetland Survey Sites — STAC-driven: pmtilesUrl, sourceLayer, renders and parquet come from
-// the warehouse item `wetlands_plants_site`.
+// Wetland Survey Sites — from warehouse item `wetlands_plants_site`.
 //
-// Not visible until a style ships: the STAC item has no `ugs:renders` yet, so this PMTiles
-// layer never gets a style fragment and data-map.tsx silently drops it (no error). Wired up
-// correctly. Symbology: yellow for exact locations, red for confidential/approximate.
+// Not visible until a style ships: no `ugs:renders` yet, so data-map.tsx silently drops this
+// PMTiles layer. Symbology: yellow for exact locations, red for confidential/approximate.
 //
-// PRIVACY: sites with privacystatus === 'Confidential' are geocoded to their true, exact
-// location upstream. The old app's About text promises an approximate location instead, which
-// isn't implemented in the pipeline yet. Filtered client-side (see wetlandplants/-index.tsx
-// `vectorLayerFilters`) to exclude Confidential features rather than render their real
-// coordinates. Do not remove that filter without a warehouse fix.
+// PRIVACY: Confidential sites are geocoded to their true location upstream; the pipeline
+// doesn't offset them yet. Filtered client-side (see wetlandplants/-index.tsx
+// `vectorLayerFilters`) rather than rendering real coordinates — don't remove without a
+// warehouse fix.
 const wetlandSurveySitesLayerName = 'wetlands_plants_site';
 export const wetlandSurveySitesTitle = 'Wetland Survey Sites';
 const wetlandSurveySitesConfig: PMTilesLayerProps = {
@@ -54,11 +51,9 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
     ],
 };
 
-// Watershed (HUC8) Boundaries — STAC-driven from warehouse item `wetlands_plants_huc8`
-// (columns are `name`/`huc8`, not `huc_name` like the old wetdash table). Supplementary
-// boundary layer, off by default — same pattern as EcoRegional Groups. Like EcoRegional
-// Groups, this STAC item has no `ugs:renders` yet, so it's wired up correctly but stays
-// invisible until a style ships.
+// Watershed (HUC8) Boundaries — from warehouse item `wetlands_plants_huc8` (columns are
+// `name`/`huc8`, not `huc_name` like the old wetdash table). Off by default, same pattern as
+// EcoRegional Groups — including no `ugs:renders` yet, so invisible until a style ships.
 const huc8LayerName = 'wetlands_plants_huc8';
 export const huc8Title = 'Watershed (HUC8) Boundaries';
 const huc8Config: PMTilesLayerProps = {
