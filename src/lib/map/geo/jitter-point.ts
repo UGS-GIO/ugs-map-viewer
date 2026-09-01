@@ -1,12 +1,10 @@
 import type { Feature, FeatureCollection, Geometry, Point, MultiPoint } from 'geojson'
 
 /**
- * Deterministic client-side coordinate jitter for privacy-sensitive point data whose true
- * location shouldn't be rendered but that still needs to show up "in the vicinity".
- *
- * Deterministic = same seed always produces the same offset, so re-fetches/re-renders don't
- * wander a site around the map on every page load. This is a viewer-side stopgap; the correct
- * long-term fix is offsetting the geometry once in the dataELT pipeline.
+ * Deterministic client-side coordinate jitter for privacy-sensitive points that shouldn't
+ * render at their true location but still need to show "in the vicinity". Same seed always
+ * produces the same offset, so re-renders don't wander. Viewer-side stopgap — the real fix is
+ * offsetting geometry in the dataELT pipeline.
  */
 
 /** Deterministic 32-bit string hash (FNV-1a). */

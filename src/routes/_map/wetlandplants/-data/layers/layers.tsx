@@ -1,19 +1,15 @@
 import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps, WFSLayerProps } from "@/lib/types/mapping-types";
 
-// Wetland Survey Sites — STAC-driven: pmtilesUrl, sourceLayer, renders and parquet come from
-// the warehouse item `wetlands_plants_site`.
+// Wetland Survey Sites — from warehouse item `wetlands_plants_site`.
 //
-// Not visible until a style ships: the STAC item has no `ugs:renders` yet, so this PMTiles
-// layer never gets a style fragment and data-map.tsx silently drops it (no error). Wired up
-// correctly. Symbology: yellow for exact locations, red for confidential/approximate.
+// Not visible until a style ships: no `ugs:renders` yet, so data-map.tsx silently drops this
+// PMTiles layer. Symbology: yellow for exact locations, red for confidential/approximate.
 //
-// PRIVACY: Confidential sites are geocoded to their true, exact location upstream; the old
-// app's About text promises an approximate location instead, which the pipeline doesn't
-// implement yet — verify against the live API rather than trusting a ticket's status. Filtered
-// client-side (see wetlandplants/-index.tsx `vectorLayerFilters`) to exclude Confidential
-// features rather than render their real coordinates. Do not remove without confirming the
-// pipeline now offsets confidential geometries. Confidential sites are shown separately via
-// `confidentialSitesConfig` below, jittered to an approximate location.
+// PRIVACY: Confidential sites are geocoded to their true location upstream; the pipeline
+// doesn't offset them yet. Filtered client-side (see wetlandplants/-index.tsx
+// `vectorLayerFilters`) rather than rendering real coordinates — don't remove without
+// confirming the pipeline now offsets them. Shown separately, jittered, via
+// `confidentialSitesConfig` below.
 const wetlandSurveySitesLayerName = 'wetlands_plants_site';
 export const wetlandSurveySitesTitle = 'Wetland Survey Sites';
 const wetlandSurveySitesConfig: PMTilesLayerProps = {
@@ -56,12 +52,10 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
     ],
 };
 
-// Wetland Dashboard Site Attributes — STAC-driven from warehouse item
-// `wetlands_wetdash_siteattributes`. Despite the name, this does NOT share a join key with
-// Wetland Survey Sites — sitecode (e.g. "CB-038") vs siteid (e.g. "5971926_ip2_ref2015"), row
-// counts differ (654 vs 1563), no `ugs:foreign_keys` on either STAC item. Shipped as its own
-// independent layer rather than a related-table popup; revisit only if the warehouse
-// publishes a real join between the two.
+// Wetland Dashboard Site Attributes — from warehouse item `wetlands_wetdash_siteattributes`.
+// Despite the name, shares no join key with Wetland Survey Sites (sitecode vs siteid, 654 vs
+// 1563 rows, no `ugs:foreign_keys`) — shipped as its own layer; revisit if the warehouse ever
+// adds a join.
 const wetlandDashboardSitesLayerName = 'wetlands_wetdash_siteattributes';
 export const wetlandDashboardSitesTitle = 'Wetland Dashboard Sites';
 const wetlandDashboardSitesConfig: PMTilesLayerProps = {
@@ -93,15 +87,11 @@ const wetlandDashboardSitesConfig: PMTilesLayerProps = {
     ],
 };
 
-// Wetland Survey Sites — Confidential (Approximate). `wetlands_plants_site` is pre-baked
-// PMTiles, so per-feature geometry can't be moved with a style/paint expression — hence a
-// separate client-side layer. Fetches Confidential-only records from the warehouse's OGC API
-// Features service (`rawGeoJsonUrl`, not classic WFS) and applies a deterministic per-site
-// jitter (seeded on `sitecode`) so a site lands in the same spot on every load. Circle paint
-// matches the published wetlands_plants_site style's Confidential case. Popup fields mirror
-// the main layer's, plus a "Location" note. Known gap: "zoom to extent" won't resolve for this
-// layer (see WFSLayerProps.rawGeoJsonUrl doc comment). Remove once wetlands_plants_site's own
-// PMTiles geometry is pre-offset upstream.
+// Wetland Survey Sites — Confidential (Approximate). PMTiles geometry can't move via a style
+// expression, hence a separate client-side layer: fetches Confidential-only records from the
+// OGC API Features service and applies a deterministic jitter (seeded on `sitecode`). Circle
+// paint matches the main style's Confidential case. "Zoom to extent" won't resolve here (see
+// WFSLayerProps.rawGeoJsonUrl). Remove once the PMTiles geometry itself is offset upstream.
 const confidentialSitesUrl = 'https://ugs-warehouse-features-xedvkyurga-uc.a.run.app/collections/wetlands_plants_site/items.json?filter=privacystatus%3D%27Confidential%27&limit=1000';
 export const confidentialSitesTitle = 'Wetland Survey Sites — Confidential (Approximate)';
 const confidentialSitesConfig: WFSLayerProps = {
