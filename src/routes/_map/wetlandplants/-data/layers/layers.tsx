@@ -51,36 +51,28 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
     ],
 };
 
-// Wetland Dashboard Site Attributes — from warehouse item `wetlands_wetdash_siteattributes`.
-// Despite the name, shares no join key with Wetland Survey Sites (sitecode vs siteid, 654 vs
-// 1563 rows, no `ugs:foreign_keys`) — shipped as its own layer; revisit if the warehouse ever
-// adds a join.
-const wetlandDashboardSitesLayerName = 'wetlands_wetdash_siteattributes';
-export const wetlandDashboardSitesTitle = 'Wetland Dashboard Sites';
-const wetlandDashboardSitesConfig: PMTilesLayerProps = {
+// Watershed (HUC8) Boundaries — from warehouse item `wetlands_plants_huc8` (columns are
+// `name`/`huc8`, not `huc_name` like the old wetdash table). Off by default, same pattern as
+// EcoRegional Groups — including no `ugs:renders` yet, so invisible until a style ships.
+const huc8LayerName = 'wetlands_plants_huc8';
+export const huc8Title = 'Watershed (HUC8) Boundaries';
+const huc8Config: PMTilesLayerProps = {
     type: 'pmtiles',
-    stacItemId: wetlandDashboardSitesLayerName,
+    stacItemId: huc8LayerName,
     pmtilesUrl: '',
-    sourceLayer: wetlandDashboardSitesLayerName,
-    title: wetlandDashboardSitesTitle,
-    subtitle: 'Wetland dashboard site attributes',
+    sourceLayer: huc8LayerName,
+    title: huc8Title,
     visible: false,
     sourceAgency: 'Utah Geological Survey',
-    opacity: 1,
+    opacity: 0.5,
     sublayers: [
         {
-            name: wetlandDashboardSitesLayerName,
-            popupEnabled: false,
+            name: huc8LayerName,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
-                'Name': { field: 'name', type: 'string' },
-                'Site ID': { field: 'siteid', type: 'string' },
-                'Ecoregion': { field: 'ecoregion', type: 'string' },
-                'Watershed (HUC8)': { field: 'huc_name', type: 'string' },
-                'System Class': { field: 'sysclass', type: 'string' },
-                'Wetland Type': { field: 'wet_type', type: 'string' },
-                'Project': { field: 'project', type: 'string' },
-                'Date': { field: 'date', type: 'date' },
+                'Watershed Name': { field: 'name', type: 'string' },
+                'HUC8 Code': { field: 'huc8', type: 'string' },
             },
         },
     ],
@@ -131,7 +123,7 @@ const landOwnershipConfig: ArcGISMapServerLayerProps = {
 
 const layersConfig: LayerProps[] = [
     wetlandSurveySitesConfig,
-    wetlandDashboardSitesConfig,
+    huc8Config,
     ecoregionConfig,
     landOwnershipConfig,
 ];
