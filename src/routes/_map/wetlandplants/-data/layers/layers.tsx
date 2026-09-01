@@ -1,30 +1,22 @@
 import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 
 // Wetland Survey Sites — STAC-driven: pmtilesUrl, sourceLayer, renders and parquet come from
-// the warehouse item `wetlands_plants_site`. ALL-5623.
+// the warehouse item `wetlands_plants_site`.
 //
-// NOT VISIBLE YET (ALL-5625): wetlands_plants_site has no `ugs:renders` in STAC yet, and a
-// PMTiles layer with zero renders + no styleUrl never gets a style fragment — data-map.tsx
-// only renders layers with one loaded (see the pmtilesFragments.get(layer.title) gate), so
-// this layer is silently dropped from the map today. No error, it just doesn't draw. This is
-// wired up correctly and will appear once a render ships (ugs-styles → STAC ugs:renders),
-// not a bug here. Per ALL-3726: yellow for exact locations, red for confidential/approximate.
+// Not visible until a style ships: the STAC item has no `ugs:renders` yet, so this PMTiles
+// layer never gets a style fragment and data-map.tsx silently drops it (no error). Wired up
+// correctly. Symbology: yellow for exact locations, red for confidential/approximate.
 //
 // PRIVACY: sites with privacystatus === 'Confidential' are geocoded to their true, exact
-// location in the warehouse today (dataELT passes `geom` through untouched — see the
-// wetlands_plants_site lineage). The old app's About text promises these show at "a randomly
-// assigned" nearby location instead, which isn't implemented anywhere upstream. Until a
-// dataELT fix adds a real offset before PMTiles are built, this layer is filtered client-side
-// (see wetlandplants/-index.tsx `vectorLayerFilters`) to exclude Confidential features rather
-// than render their real coordinates. Do not remove that filter without a warehouse fix.
+// location upstream. The old app's About text promises an approximate location instead, which
+// isn't implemented in the pipeline yet. Filtered client-side (see wetlandplants/-index.tsx
+// `vectorLayerFilters`) to exclude Confidential features rather than render their real
+// coordinates. Do not remove that filter without a warehouse fix.
 //
-// RELATED TABLE (ALL-5624): the STAC item now carries a `wetlands_plants_species` asset
-// (role 'related') with real `ugs:foreign_keys` on `surveyeventid` — that's the actual
-// per-site species list the old app's About text describes ("Each site is linked to a list
-// of plant species observed at the site and their associated percent cover"). An earlier pass
-// assumed `wetlands_wetdash_siteattributes` was this related table (per the epic's original
-// note); confirmed against the live STAC that assumption was wrong — siteattributes still has
-// no shared key with plants_site (sitecode vs siteid, 654 vs 1563 rows, no `ugs:foreign_keys`)
+// RELATED TABLE: the STAC item carries a `wetlands_plants_species` asset (role 'related') with
+// real `ugs:foreign_keys` on `surveyeventid` — the per-site species list the old app's About
+// text describes. `wetlands_wetdash_siteattributes` looked like a candidate related table but
+// shares no key with plants_site (sitecode vs siteid, 654 vs 1563 rows, no `ugs:foreign_keys`)
 // and is shipped as its own independent layer below instead.
 const wetlandSurveySitesLayerName = 'wetlands_plants_site';
 export const wetlandSurveySitesTitle = 'Wetland Survey Sites';
@@ -100,14 +92,12 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
 };
 
 // Wetland Dashboard Site Attributes — STAC-driven from warehouse item
-// `wetlands_wetdash_siteattributes`. NOTE: despite the name suggesting it's a child/related
-// table of Wetland Survey Sites, the two datasets do NOT share a join key — sitecode
-// (e.g. "CB-038") on plants_site has no overlap with siteid (e.g. "5971926_ip2_ref2015") on
-// this table, row counts differ (654 vs 1563). Re-confirmed against the live STAC item during
-// ALL-5624: it still carries no `ugs:foreign_keys` and isn't listed as a related asset on
-// plants_site (which now points at `wetlands_plants_species` instead — see above). Shipping
-// this as its own independent layer rather than a related-table popup; revisit only if the
-// warehouse ever publishes a real join between the two.
+// `wetlands_wetdash_siteattributes`. Despite the name, this does NOT share a join key with
+// Wetland Survey Sites — sitecode (e.g. "CB-038") vs siteid (e.g. "5971926_ip2_ref2015"), row
+// counts differ (654 vs 1563), no `ugs:foreign_keys`, and it isn't listed as a related asset
+// on plants_site (which points at `wetlands_plants_species` instead — see above). Shipped as
+// its own independent layer rather than a related-table popup; revisit only if the warehouse
+// ever publishes a real join between the two.
 const wetlandDashboardSitesLayerName = 'wetlands_wetdash_siteattributes';
 export const wetlandDashboardSitesTitle = 'Wetland Dashboard Sites';
 const wetlandDashboardSitesConfig: PMTilesLayerProps = {
@@ -139,9 +129,8 @@ const wetlandDashboardSitesConfig: PMTilesLayerProps = {
     ],
 };
 
-// Land Ownership (SITLA) — ALL-5630. Not yet in the warehouse; copied source/naming from the
-// same layer already used in geophysics (src/routes/_map/geophysics/-data/layers/layers.tsx)
-// per the ticket's own instruction to reuse it rather than re-source it.
+// Land Ownership (SITLA) — not yet in the warehouse; reuses the same layer already configured
+// in geophysics (src/routes/_map/geophysics/-data/layers/layers.tsx).
 const landOwnershipConfig: ArcGISMapServerLayerProps = {
     type: 'map-image',
     url: 'https://gis.trustlands.utah.gov/mapping/rest/services/Land_Ownership_WM/MapServer',
