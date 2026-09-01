@@ -19,13 +19,12 @@ export default function Map() {
     const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
     const { contextValue } = useMapContextState();
 
-    // PRIVACY: the warehouse does not yet offset Confidential wetland survey site
-    // coordinates (see comment in -data/layers/layers.tsx — re-verified for ALL-5753 that
-    // ALL-5709's fix was never actually shipped despite being marked Done). Hide those
-    // features entirely from the true-coordinate PMTiles layer rather than render their real
-    // location; `confidentialSitesConfig` (ALL-5753) shows them separately at a client-side
-    // jittered approximate location instead. Do not remove this filter without confirming the
-    // warehouse pipeline now jitters confidential geometries.
+    // PRIVACY: the warehouse does not yet offset Confidential wetland survey site coordinates
+    // (see comment in -data/layers/layers.tsx). Hide those features entirely from the
+    // true-coordinate PMTiles layer rather than render their real location;
+    // `confidentialSitesConfig` shows them separately at a jittered approximate location. Do
+    // not remove this filter without confirming the warehouse pipeline now jitters confidential
+    // geometries.
     const vectorLayerFilters = useMemo<Record<string, FilterSpecification>>(() => ({
         [wetlandSurveySitesTitle]: ['!=', ['get', 'privacystatus'], 'Confidential'],
     }), []);

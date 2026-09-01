@@ -242,8 +242,8 @@ export interface WFSLayerProps extends BaseLayerProps {
     rawGeoJsonUrl?: string;
     /**
      * Deterministic client-side coordinate jitter applied to every feature after fetch, for
-     * privacy-sensitive point data whose true location shouldn't render (ALL-5753). Same seed
-     * always produces the same offset — stable across re-fetches, not full page reload spam.
+     * privacy-sensitive point data whose true location shouldn't render. Same seed always
+     * produces the same offset — stable across re-fetches.
      */
     jitter?: {
         /** Feature property used as the jitter seed. Must be a stable per-feature identifier. */

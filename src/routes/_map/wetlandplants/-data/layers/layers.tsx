@@ -1,27 +1,19 @@
 import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps, WFSLayerProps } from "@/lib/types/mapping-types";
 
 // Wetland Survey Sites — STAC-driven: pmtilesUrl, sourceLayer, renders and parquet come from
-// the warehouse item `wetlands_plants_site`. ALL-5623.
+// the warehouse item `wetlands_plants_site`.
 //
-// NOT VISIBLE YET (ALL-5625): wetlands_plants_site has no `ugs:renders` in STAC yet, and a
-// PMTiles layer with zero renders + no styleUrl never gets a style fragment — data-map.tsx
-// only renders layers with one loaded (see the pmtilesFragments.get(layer.title) gate), so
-// this layer is silently dropped from the map today. No error, it just doesn't draw. This is
-// wired up correctly and will appear once a render ships (ugs-styles → STAC ugs:renders),
-// not a bug here. Per ALL-3726: yellow for exact locations, red for confidential/approximate.
+// Not visible until a style ships: the STAC item has no `ugs:renders` yet, so this PMTiles
+// layer never gets a style fragment and data-map.tsx silently drops it (no error). Wired up
+// correctly. Symbology: yellow for exact locations, red for confidential/approximate.
 //
-// PRIVACY: sites with privacystatus === 'Confidential' are geocoded to their true, exact
-// location in the warehouse today (dataELT passes `geom` through untouched — see the
-// wetlands_plants_site lineage). The old app's About text promises these show at "a randomly
-// assigned" nearby location instead; ALL-5709 proposed a dataELT fix for that and is marked
-// Done in Jira, but re-verified while building ALL-5753 that the fix was never actually
-// written (nothing in the dataELT repo, live OGC Features API still returns the raw
-// coordinate) — don't trust that ticket's status. This layer is filtered client-side (see
-// wetlandplants/-index.tsx `vectorLayerFilters`) to exclude Confidential features entirely
-// rather than render their real coordinates. Do not remove that filter without confirming the
-// warehouse pipeline now offsets confidential geometries. Confidential sites are instead shown
-// via `confidentialSitesConfig` below, at a client-side jittered approximate location — see
-// that config's comment for why it's a separate layer instead of a PMTiles style tweak.
+// PRIVACY: Confidential sites are geocoded to their true, exact location upstream; the old
+// app's About text promises an approximate location instead, which the pipeline doesn't
+// implement yet — verify against the live API rather than trusting a ticket's status. Filtered
+// client-side (see wetlandplants/-index.tsx `vectorLayerFilters`) to exclude Confidential
+// features rather than render their real coordinates. Do not remove without confirming the
+// pipeline now offsets confidential geometries. Confidential sites are shown separately via
+// `confidentialSitesConfig` below, jittered to an approximate location.
 const wetlandSurveySitesLayerName = 'wetlands_plants_site';
 export const wetlandSurveySitesTitle = 'Wetland Survey Sites';
 const wetlandSurveySitesConfig: PMTilesLayerProps = {
@@ -65,13 +57,11 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
 };
 
 // Wetland Dashboard Site Attributes — STAC-driven from warehouse item
-// `wetlands_wetdash_siteattributes`. NOTE: despite the name suggesting it's a child/related
-// table of Wetland Survey Sites, the two datasets do NOT share a join key today — sitecode
-// (e.g. "CB-038") on plants_site has no overlap with siteid (e.g. "5971926_ip2_ref2015") on
-// this table, row counts differ (654 vs 1563), and neither STAC item carries
-// `ugs:foreign_keys`. Shipping it as its own independent layer instead of a related-table
-// popup until the relationship (if any) is confirmed with Nate and the warehouse publishes
-// the join metadata.
+// `wetlands_wetdash_siteattributes`. Despite the name, this does NOT share a join key with
+// Wetland Survey Sites — sitecode (e.g. "CB-038") vs siteid (e.g. "5971926_ip2_ref2015"), row
+// counts differ (654 vs 1563), no `ugs:foreign_keys` on either STAC item. Shipped as its own
+// independent layer rather than a related-table popup; revisit only if the warehouse
+// publishes a real join between the two.
 const wetlandDashboardSitesLayerName = 'wetlands_wetdash_siteattributes';
 export const wetlandDashboardSitesTitle = 'Wetland Dashboard Sites';
 const wetlandDashboardSitesConfig: PMTilesLayerProps = {
@@ -103,22 +93,15 @@ const wetlandDashboardSitesConfig: PMTilesLayerProps = {
     ],
 };
 
-// Wetland Survey Sites — Confidential (Approximate) — ALL-5753. `wetlands_plants_site` is
-// pre-baked PMTiles; per-feature geometry can't be moved with a MapLibre style/paint
-// expression, which is why this is a separate client-side layer rather than a tweak to the
-// PMTiles style above. Fetches Confidential-only records straight from the warehouse's OGC
-// API Features service (bypassing WFSLayerProps' classic-WFS GetFeature URL builder via
-// `rawGeoJsonUrl` — this endpoint is OGC API Features, not GeoServer WFS) and applies a
-// deterministic per-site jitter (`jitter`, seeded on `sitecode`) so the same site lands in the
-// same spot on every load instead of wandering. Circle paint copied verbatim from the
-// published wetlands_plants_site style's Confidential case
-// (https://maps-assets.geology.utah.gov/styles/styles/wetlands_plants_site/default.json) so it
-// reads as the same symbol, just at an approximate spot. Popup fields mirror the main layer's,
-// plus a "Location" note — matches the old app's behavior of still surfacing Confidential
-// sites in query results, just not their exact position. Known gap: the layer list's "zoom to
-// extent" won't resolve for this layer (see WFSLayerProps.rawGeoJsonUrl doc comment);
-// acceptable for a one-off privacy overlay. Remove this whole layer once ALL-5709 actually
-// ships and wetlands_plants_site's own PMTiles geometry is pre-offset.
+// Wetland Survey Sites — Confidential (Approximate). `wetlands_plants_site` is pre-baked
+// PMTiles, so per-feature geometry can't be moved with a style/paint expression — hence a
+// separate client-side layer. Fetches Confidential-only records from the warehouse's OGC API
+// Features service (`rawGeoJsonUrl`, not classic WFS) and applies a deterministic per-site
+// jitter (seeded on `sitecode`) so a site lands in the same spot on every load. Circle paint
+// matches the published wetlands_plants_site style's Confidential case. Popup fields mirror
+// the main layer's, plus a "Location" note. Known gap: "zoom to extent" won't resolve for this
+// layer (see WFSLayerProps.rawGeoJsonUrl doc comment). Remove once wetlands_plants_site's own
+// PMTiles geometry is pre-offset upstream.
 const confidentialSitesUrl = 'https://ugs-warehouse-features-xedvkyurga-uc.a.run.app/collections/wetlands_plants_site/items.json?filter=privacystatus%3D%27Confidential%27&limit=1000';
 export const confidentialSitesTitle = 'Wetland Survey Sites — Confidential (Approximate)';
 const confidentialSitesConfig: WFSLayerProps = {
@@ -174,9 +157,8 @@ const confidentialSitesConfig: WFSLayerProps = {
     ],
 };
 
-// Land Ownership (SITLA) — ALL-5630. Not yet in the warehouse; copied source/naming from the
-// same layer already used in geophysics (src/routes/_map/geophysics/-data/layers/layers.tsx)
-// per the ticket's own instruction to reuse it rather than re-source it.
+// Land Ownership (SITLA) — not yet in the warehouse; reuses the same layer already configured
+// in geophysics (src/routes/_map/geophysics/-data/layers/layers.tsx).
 const landOwnershipConfig: ArcGISMapServerLayerProps = {
     type: 'map-image',
     url: 'https://gis.trustlands.utah.gov/mapping/rest/services/Land_Ownership_WM/MapServer',
