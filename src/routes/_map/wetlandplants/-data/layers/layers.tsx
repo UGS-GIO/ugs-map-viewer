@@ -1,17 +1,14 @@
 import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 
-// Wetland Survey Sites — STAC-driven: pmtilesUrl, sourceLayer, renders and parquet come from
-// the warehouse item `wetlands_plants_site`.
+// Wetland Survey Sites — from warehouse item `wetlands_plants_site`.
 //
-// Not visible until a style ships: the STAC item has no `ugs:renders` yet, so this PMTiles
-// layer never gets a style fragment and data-map.tsx silently drops it (no error). Wired up
-// correctly. Symbology: yellow for exact locations, red for confidential/approximate.
+// Not visible until a style ships: no `ugs:renders` yet, so data-map.tsx silently drops this
+// PMTiles layer. Symbology: yellow for exact locations, red for confidential/approximate.
 //
-// PRIVACY: sites with privacystatus === 'Confidential' are geocoded to their true, exact
-// location upstream. The old app's About text promises an approximate location instead, which
-// isn't implemented in the pipeline yet. Filtered client-side (see wetlandplants/-index.tsx
-// `vectorLayerFilters`) to exclude Confidential features rather than render their real
-// coordinates. Do not remove that filter without a warehouse fix.
+// PRIVACY: Confidential sites are geocoded to their true location upstream; the pipeline
+// doesn't offset them yet. Filtered client-side (see wetlandplants/-index.tsx
+// `vectorLayerFilters`) rather than rendering real coordinates — don't remove without a
+// warehouse fix.
 const wetlandSurveySitesLayerName = 'wetlands_plants_site';
 export const wetlandSurveySitesTitle = 'Wetland Survey Sites';
 const wetlandSurveySitesConfig: PMTilesLayerProps = {
@@ -54,12 +51,10 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
     ],
 };
 
-// Wetland Dashboard Site Attributes — STAC-driven from warehouse item
-// `wetlands_wetdash_siteattributes`. Despite the name, this does NOT share a join key with
-// Wetland Survey Sites — sitecode (e.g. "CB-038") vs siteid (e.g. "5971926_ip2_ref2015"), row
-// counts differ (654 vs 1563), no `ugs:foreign_keys` on either STAC item. Shipped as its own
-// independent layer rather than a related-table popup; revisit only if the warehouse
-// publishes a real join between the two.
+// Wetland Dashboard Site Attributes — from warehouse item `wetlands_wetdash_siteattributes`.
+// Despite the name, shares no join key with Wetland Survey Sites (sitecode vs siteid, 654 vs
+// 1563 rows, no `ugs:foreign_keys`) — shipped as its own layer; revisit if the warehouse ever
+// adds a join.
 const wetlandDashboardSitesLayerName = 'wetlands_wetdash_siteattributes';
 export const wetlandDashboardSitesTitle = 'Wetland Dashboard Sites';
 const wetlandDashboardSitesConfig: PMTilesLayerProps = {
@@ -91,13 +86,10 @@ const wetlandDashboardSitesConfig: PMTilesLayerProps = {
     ],
 };
 
-// EcoRegional Groups — STAC-driven from warehouse item `wetlands_plants_ecoregion`. Level III
-// (+ EPA region / state) ecoregion polygons used to classify Wetland Survey Sites into the
-// "Central Basin and Range" / "Wasatch and Uinta Mountains" / etc. wetland classes the old
-// app's About text describes.
-//
-// Same gotcha as Wetland Survey Sites: this STAC item has no `ugs:renders` yet, so it's wired
-// up correctly but stays invisible until a style ships.
+// EcoRegional Groups — from warehouse item `wetlands_plants_ecoregion`. Level III (+ EPA
+// region / state) ecoregion polygons classifying Wetland Survey Sites into wetland classes
+// ("Central Basin and Range", "Wasatch and Uinta Mountains", etc.). Same gotcha as Wetland
+// Survey Sites: no `ugs:renders` yet, so invisible until a style ships.
 const ecoregionLayerName = 'wetlands_plants_ecoregion';
 export const ecoregionTitle = 'EcoRegional Groups';
 const ecoregionConfig: PMTilesLayerProps = {
