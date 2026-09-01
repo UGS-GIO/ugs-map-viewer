@@ -62,4 +62,11 @@ export interface SearchComboboxProps {
     onFeatureSelect?: (searchResult: Feature<Geometry, GeoJsonProperties> | FeatureCollection<Geometry, GeoJsonProperties> | null, _sourceUrl: string, sourceIndex: number, searchConfig: SearchSourceConfig[], map: maplibregl.Map) => void;
     onCollectionSelect?: (collection: FeatureCollection<Geometry, GeoJsonProperties> | null, _sourceUrl: string | null, _sourceIndex: number, searchConfig: SearchSourceConfig[], map: maplibregl.Map) => void;
     className?: string;
+    /**
+     * The authored `sourceName` of the source to pre-select on load (and restore on
+     * clear). Read once at mount for the initial selection, so it — and `config` —
+     * must be render-stable. Omitted → no source pre-selected, so the combobox
+     * searches all sources.
+     */
+    defaultSourceName?: string;
 }

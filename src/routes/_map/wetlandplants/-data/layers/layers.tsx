@@ -12,8 +12,8 @@ import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/
 //
 // RELATED TABLE: the STAC item carries a `wetlands_plants_species` asset with
 // `ugs:foreign_keys` on `surveyeventid` — the per-site species list. `wetlands_wetdash_
-// siteattributes` shares no key with this layer (sitecode vs siteid, 654 vs 1563 rows) and is
-// shipped as its own layer below instead.
+// siteattributes` shared no key with this dataset (sitecode vs siteid, 654 vs 1563 rows) and
+// isn't used anywhere in this file.
 const wetlandSurveySitesLayerName = 'wetlands_plants_site';
 export const wetlandSurveySitesTitle = 'Wetland Survey Sites';
 const wetlandSurveySitesConfig: PMTilesLayerProps = {
@@ -87,35 +87,61 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
     ],
 };
 
-// Wetland Dashboard Site Attributes — from warehouse item `wetlands_wetdash_siteattributes`.
-// Despite the name, shares no join key with Wetland Survey Sites (see above) — shipped as its
-// own layer; revisit if the warehouse ever adds a join.
-const wetlandDashboardSitesLayerName = 'wetlands_wetdash_siteattributes';
-export const wetlandDashboardSitesTitle = 'Wetland Dashboard Sites';
-const wetlandDashboardSitesConfig: PMTilesLayerProps = {
+// Watershed (HUC8) Boundaries — from warehouse item `wetlands_plants_huc8` (columns are
+// `name`/`huc8`, not `huc_name` like the old wetdash table). Off by default, same pattern as
+// EcoRegional Groups — including no `ugs:renders` yet, so invisible until a style ships.
+const huc8LayerName = 'wetlands_plants_huc8';
+export const huc8Title = 'Watershed (HUC8) Boundaries';
+const huc8Config: PMTilesLayerProps = {
     type: 'pmtiles',
-    stacItemId: wetlandDashboardSitesLayerName,
+    stacItemId: huc8LayerName,
     pmtilesUrl: '',
-    sourceLayer: wetlandDashboardSitesLayerName,
-    title: wetlandDashboardSitesTitle,
-    subtitle: 'Wetland dashboard site attributes',
+    sourceLayer: huc8LayerName,
+    title: huc8Title,
     visible: false,
     sourceAgency: 'Utah Geological Survey',
-    opacity: 1,
+    opacity: 0.5,
     sublayers: [
         {
-            name: wetlandDashboardSitesLayerName,
-            popupEnabled: false,
+            name: huc8LayerName,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
-                'Name': { field: 'name', type: 'string' },
-                'Site ID': { field: 'siteid', type: 'string' },
-                'Ecoregion': { field: 'ecoregion', type: 'string' },
-                'Watershed (HUC8)': { field: 'huc_name', type: 'string' },
-                'System Class': { field: 'sysclass', type: 'string' },
-                'Wetland Type': { field: 'wet_type', type: 'string' },
-                'Project': { field: 'project', type: 'string' },
-                'Date': { field: 'date', type: 'date' },
+                'Watershed Name': { field: 'name', type: 'string' },
+                'HUC8 Code': { field: 'huc8', type: 'string' },
+            },
+        },
+    ],
+};
+
+// EcoRegional Groups — from warehouse item `wetlands_plants_ecoregion`. Level III (+ EPA
+// region / state) ecoregion polygons classifying Wetland Survey Sites into wetland classes
+// ("Central Basin and Range", "Wasatch and Uinta Mountains", etc.). Same gotcha as Wetland
+// Survey Sites: no `ugs:renders` yet, so invisible until a style ships.
+const ecoregionLayerName = 'wetlands_plants_ecoregion';
+export const ecoregionTitle = 'EcoRegional Groups';
+const ecoregionConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: ecoregionLayerName,
+    pmtilesUrl: '',
+    sourceLayer: ecoregionLayerName,
+    title: ecoregionTitle,
+    visible: false,
+    sourceAgency: 'Utah Geological Survey',
+    opacity: 0.5,
+    sublayers: [
+        {
+            name: ecoregionLayerName,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Ecoregional Group': { field: 'ecoregionalgroup', type: 'string' },
+                'Level III Ecoregion': { field: 'us_l3name', type: 'string' },
+                'Level III Code': { field: 'us_l3code', type: 'string' },
+                'Level II Ecoregion': { field: 'na_l2name', type: 'string' },
+                'Level I Ecoregion': { field: 'na_l1name', type: 'string' },
+                'EPA Region': { field: 'epa_region', type: 'number' },
+                'State': { field: 'state_name', type: 'string' },
             },
         },
     ],
@@ -133,7 +159,8 @@ const landOwnershipConfig: ArcGISMapServerLayerProps = {
 
 const layersConfig: LayerProps[] = [
     wetlandSurveySitesConfig,
-    wetlandDashboardSitesConfig,
+    huc8Config,
+    ecoregionConfig,
     landOwnershipConfig,
 ];
 
