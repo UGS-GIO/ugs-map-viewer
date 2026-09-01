@@ -188,22 +188,27 @@ const oilGasFieldsWMSConfig: WMSLayerProps = {
     ],
 };
 
-// UCRC Basins
-const basinsLayerName = 'enmin_ucrc_basins_current';
-const basinsWMSTitle = 'Basins';
-const basinsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: basinsWMSTitle,
+// UCRC Basins — STAC-driven: pmtilesUrl, sourceLayer, renders and
+// downloadParquetUrl come from the warehouse item `enmin_ucrc_basins`.
+const basinsLayerName = 'enmin_ucrc_basins';
+const basinsTitle = 'Basins';
+const basinsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: basinsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: basinsLayerName,
+    title: basinsTitle,
     visible: false,
-    crs: 'EPSG:3857',
-    downloadParquetUrl: parquetUrl("enmin_ucrc_basins"),
+    opacity: 1,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${basinsLayerName}`,
+            name: basinsLayerName,
             popupEnabled: false,
-            queryable: true,
+            // Selection off: the basins span many tiles, and a click highlights only the clipped
+            // fragment from the tile that answered. Re-enable once the click path resolves full
+            // geometry rather than the tile's piece.
+            queryable: false,
             popupFields: {
                 'Feature': { field: 'feature', type: 'string' },
                 'Label': { field: 'label', type: 'string' },
@@ -557,12 +562,15 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                     sortDirection: 'asc',
                 },
                 {
-                    fieldLabel: 'Attachments',
+                    fieldLabel: 'Documents',
                     matchingField: 'uwi',
                     targetField: 'uwi',
                     url: `${PROD_POSTGREST_URL}/enmin_ucrc_attachments_current`,
                     headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
-                    displayAs: 'list',
+                    displayAs: 'accordion',
+                    itemBaseUrl: 'https://ucrc-assets.geology.utah.gov',
+                    // displayFields drives the "has data" check + the labelValuePairs fallback; the
+                    // accordion itself renders from the raw rows.
                     displayFields: [
                         { field: 'filename', label: 'File' },
                         { field: 'notes', label: 'Notes' },
@@ -599,7 +607,7 @@ const infrastructureAndLandUseConfig: LayerProps = {
     visible: false,
     layers: [
         oilGasFieldsWMSConfig,
-        basinsWMSConfig,
+        basinsConfig,
         metalMiningDistrictsConfig,
         SITLAConfig,
         utCountiesConfig,

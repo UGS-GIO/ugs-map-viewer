@@ -78,6 +78,39 @@ const huc8Config: PMTilesLayerProps = {
     ],
 };
 
+// EcoRegional Groups — from warehouse item `wetlands_plants_ecoregion`. Level III (+ EPA
+// region / state) ecoregion polygons classifying Wetland Survey Sites into wetland classes
+// ("Central Basin and Range", "Wasatch and Uinta Mountains", etc.). Same gotcha as Wetland
+// Survey Sites: no `ugs:renders` yet, so invisible until a style ships.
+const ecoregionLayerName = 'wetlands_plants_ecoregion';
+export const ecoregionTitle = 'EcoRegional Groups';
+const ecoregionConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: ecoregionLayerName,
+    pmtilesUrl: '',
+    sourceLayer: ecoregionLayerName,
+    title: ecoregionTitle,
+    visible: false,
+    sourceAgency: 'Utah Geological Survey',
+    opacity: 0.5,
+    sublayers: [
+        {
+            name: ecoregionLayerName,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Ecoregional Group': { field: 'ecoregionalgroup', type: 'string' },
+                'Level III Ecoregion': { field: 'us_l3name', type: 'string' },
+                'Level III Code': { field: 'us_l3code', type: 'string' },
+                'Level II Ecoregion': { field: 'na_l2name', type: 'string' },
+                'Level I Ecoregion': { field: 'na_l1name', type: 'string' },
+                'EPA Region': { field: 'epa_region', type: 'number' },
+                'State': { field: 'state_name', type: 'string' },
+            },
+        },
+    ],
+};
+
 // Land Ownership (SITLA) — not yet in the warehouse; reuses the same layer already configured
 // in geophysics (src/routes/_map/geophysics/-data/layers/layers.tsx).
 const landOwnershipConfig: ArcGISMapServerLayerProps = {
@@ -91,6 +124,7 @@ const landOwnershipConfig: ArcGISMapServerLayerProps = {
 const layersConfig: LayerProps[] = [
     wetlandSurveySitesConfig,
     huc8Config,
+    ecoregionConfig,
     landOwnershipConfig,
 ];
 
