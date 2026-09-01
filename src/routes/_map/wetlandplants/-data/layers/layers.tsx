@@ -1,22 +1,14 @@
 import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 
-// Wetland Survey Sites — STAC-driven: pmtilesUrl, sourceLayer, renders and parquet come from
-// the warehouse item `wetlands_plants_site`. ALL-5623.
+// Wetland Survey Sites — from warehouse item `wetlands_plants_site`.
 //
-// NOT VISIBLE YET (ALL-5625): wetlands_plants_site has no `ugs:renders` in STAC yet, and a
-// PMTiles layer with zero renders + no styleUrl never gets a style fragment — data-map.tsx
-// only renders layers with one loaded (see the pmtilesFragments.get(layer.title) gate), so
-// this layer is silently dropped from the map today. No error, it just doesn't draw. This is
-// wired up correctly and will appear once a render ships (ugs-styles → STAC ugs:renders),
-// not a bug here. Per ALL-3726: yellow for exact locations, red for confidential/approximate.
+// Not visible until a style ships: no `ugs:renders` yet, so data-map.tsx silently drops this
+// PMTiles layer. Symbology: yellow for exact locations, red for confidential/approximate.
 //
-// PRIVACY: sites with privacystatus === 'Confidential' are geocoded to their true, exact
-// location in the warehouse today (dataELT passes `geom` through untouched — see the
-// wetlands_plants_site lineage). The old app's About text promises these show at "a randomly
-// assigned" nearby location instead, which isn't implemented anywhere upstream. Until a
-// dataELT fix adds a real offset before PMTiles are built, this layer is filtered client-side
-// (see wetlandplants/-index.tsx `vectorLayerFilters`) to exclude Confidential features rather
-// than render their real coordinates. Do not remove that filter without a warehouse fix.
+// PRIVACY: Confidential sites are geocoded to their true location upstream; the pipeline
+// doesn't offset them yet. Filtered client-side (see wetlandplants/-index.tsx
+// `vectorLayerFilters`) rather than rendering real coordinates — don't remove without a
+// warehouse fix.
 const wetlandSurveySitesLayerName = 'wetlands_plants_site';
 export const wetlandSurveySitesTitle = 'Wetland Survey Sites';
 const wetlandSurveySitesConfig: PMTilesLayerProps = {
@@ -59,14 +51,10 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
     ],
 };
 
-// Wetland Dashboard Site Attributes — STAC-driven from warehouse item
-// `wetlands_wetdash_siteattributes`. NOTE: despite the name suggesting it's a child/related
-// table of Wetland Survey Sites, the two datasets do NOT share a join key today — sitecode
-// (e.g. "CB-038") on plants_site has no overlap with siteid (e.g. "5971926_ip2_ref2015") on
-// this table, row counts differ (654 vs 1563), and neither STAC item carries
-// `ugs:foreign_keys`. Shipping it as its own independent layer instead of a related-table
-// popup until the relationship (if any) is confirmed with Nate and the warehouse publishes
-// the join metadata.
+// Wetland Dashboard Site Attributes — from warehouse item `wetlands_wetdash_siteattributes`.
+// Despite the name, shares no join key with Wetland Survey Sites (sitecode vs siteid, 654 vs
+// 1563 rows, no `ugs:foreign_keys`) — shipped as its own layer; revisit if the warehouse ever
+// adds a join.
 const wetlandDashboardSitesLayerName = 'wetlands_wetdash_siteattributes';
 export const wetlandDashboardSitesTitle = 'Wetland Dashboard Sites';
 const wetlandDashboardSitesConfig: PMTilesLayerProps = {
@@ -98,9 +86,41 @@ const wetlandDashboardSitesConfig: PMTilesLayerProps = {
     ],
 };
 
-// Land Ownership (SITLA) — ALL-5630. Not yet in the warehouse; copied source/naming from the
-// same layer already used in geophysics (src/routes/_map/geophysics/-data/layers/layers.tsx)
-// per the ticket's own instruction to reuse it rather than re-source it.
+// EcoRegional Groups — from warehouse item `wetlands_plants_ecoregion`. Level III (+ EPA
+// region / state) ecoregion polygons classifying Wetland Survey Sites into wetland classes
+// ("Central Basin and Range", "Wasatch and Uinta Mountains", etc.). Same gotcha as Wetland
+// Survey Sites: no `ugs:renders` yet, so invisible until a style ships.
+const ecoregionLayerName = 'wetlands_plants_ecoregion';
+export const ecoregionTitle = 'EcoRegional Groups';
+const ecoregionConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: ecoregionLayerName,
+    pmtilesUrl: '',
+    sourceLayer: ecoregionLayerName,
+    title: ecoregionTitle,
+    visible: false,
+    sourceAgency: 'Utah Geological Survey',
+    opacity: 0.5,
+    sublayers: [
+        {
+            name: ecoregionLayerName,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Ecoregional Group': { field: 'ecoregionalgroup', type: 'string' },
+                'Level III Ecoregion': { field: 'us_l3name', type: 'string' },
+                'Level III Code': { field: 'us_l3code', type: 'string' },
+                'Level II Ecoregion': { field: 'na_l2name', type: 'string' },
+                'Level I Ecoregion': { field: 'na_l1name', type: 'string' },
+                'EPA Region': { field: 'epa_region', type: 'number' },
+                'State': { field: 'state_name', type: 'string' },
+            },
+        },
+    ],
+};
+
+// Land Ownership (SITLA) — not yet in the warehouse; reuses the same layer already configured
+// in geophysics (src/routes/_map/geophysics/-data/layers/layers.tsx).
 const landOwnershipConfig: ArcGISMapServerLayerProps = {
     type: 'map-image',
     url: 'https://gis.trustlands.utah.gov/mapping/rest/services/Land_Ownership_WM/MapServer',
@@ -112,6 +132,7 @@ const landOwnershipConfig: ArcGISMapServerLayerProps = {
 const layersConfig: LayerProps[] = [
     wetlandSurveySitesConfig,
     wetlandDashboardSitesConfig,
+    ecoregionConfig,
     landOwnershipConfig,
 ];
 
