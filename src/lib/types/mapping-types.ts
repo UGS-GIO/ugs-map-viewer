@@ -230,6 +230,27 @@ export interface WFSLayerProps extends BaseLayerProps {
     wfsUrl: string;
     /** Layer type name for WFS request (e.g., 'workspace:layer_name') */
     typeName: string;
+    /**
+     * When set, fetch this URL directly as a ready-made GeoJSON FeatureCollection instead of
+     * building a classic WFS GetFeature request from wfsUrl/typeName — for OGC API Features /
+     * duckdb_featureserv endpoints and other non-GeoServer GeoJSON sources. `wfsUrl`/`typeName`
+     * are still required by the type (used for cache-key/display purposes) but aren't queried.
+     * Note: the layer list's "zoom to extent" won't resolve for these (it derives a WMS
+     * GetCapabilities URL from `wfsUrl` assuming a `/wfs` suffix) — acceptable for one-off
+     * client-side overlays, not meant for general-purpose WFS replacement.
+     */
+    rawGeoJsonUrl?: string;
+    /**
+     * Deterministic client-side coordinate jitter applied to every feature after fetch, for
+     * privacy-sensitive point data whose true location shouldn't render. Same seed always
+     * produces the same offset — stable across re-fetches.
+     */
+    jitter?: {
+        /** Feature property used as the jitter seed. Must be a stable per-feature identifier. */
+        seedField: string;
+        /** Max jitter radius in meters. */
+        maxOffsetMeters: number;
+    };
     /** CRS for WFS request (default: 'EPSG:4326') */
     crs?: string;
     /** Geometry type hint for styling ('point' | 'line' | 'polygon') - auto-detected if not specified */
