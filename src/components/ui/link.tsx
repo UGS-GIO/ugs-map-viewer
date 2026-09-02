@@ -8,7 +8,9 @@ const linkVariants = cva(
     {
         variants: {
             variant: {
-                primary: 'text-link',
+                // Underlined, not just recoloured: inside a paragraph, colour alone is not enough
+                // to mark a link (WCAG 1.4.1).
+                primary: 'text-link underline underline-offset-4',
                 foreground: 'text-foreground', // Uses your CSS variable for foreground
             },
         },

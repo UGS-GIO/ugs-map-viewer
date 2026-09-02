@@ -36,14 +36,25 @@ const AccordionTrigger = React.forwardRef<
 ))
 AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName
 
+/**
+ * Radix renders this as an `<h3>` whatever the surrounding outline is, so the level is a prop:
+ * a heading inside the header would nest one heading in another, and the fixed h3 skips levels
+ * wherever the section it opens is not a third-level one.
+ */
 const AccordionHeader = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Header>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Header>
->(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Header ref={ref} className={cn("flex items-center justify-between", className)} {...props}>
-    {children}
-  </AccordionPrimitive.Header>
-))
+  HTMLHeadingElement,
+  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Header> & { level?: 2 | 3 | 4 | 5 }
+>(({ className, children, level = 3, ...props }, ref) => {
+  const Heading = `h${level}` as const
+
+  return (
+    <AccordionPrimitive.Header asChild {...props}>
+      <Heading ref={ref} className={cn("flex items-center justify-between", className)}>
+        {children}
+      </Heading>
+    </AccordionPrimitive.Header>
+  )
+})
 AccordionHeader.displayName = "AccordionHeader"
 
 const AccordionContent = React.forwardRef<

@@ -255,7 +255,7 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                             image={
                                 <Image
                                     src={heroImage}
-                                    alt="Hero"
+                                    alt=""
                                     className="w-full h-48 object-cover"
                                     loading="eager"
                                 />
