@@ -66,4 +66,9 @@ describe('magnitudeLabel', () => {
         expect(magnitudeLabel(b(9, Infinity))).toBe('> 9 in')
         expect(magnitudeLabel(b(-Infinity, -13))).toBe('> 13 in')
     })
+
+    it('uses a supplied unit (e.g. the Rate surface reads per-year)', () => {
+        expect(magnitudeLabel(b(-0.3, -0.15), 'in/year')).toBe('0.15 – 0.3 in/year')
+        expect(magnitudeLabel(b(1.5, Infinity), 'in/year')).toBe('> 1.5 in/year')
+    })
 })

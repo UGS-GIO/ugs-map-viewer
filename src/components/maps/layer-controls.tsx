@@ -38,6 +38,8 @@ interface LayerControlsProps {
     statsContent?: React.ReactNode;
     /** Optional SLD style name forwarded to the legend so it matches the styled map tiles. */
     styleName?: string;
+    /** Start the Filters panel expanded. Used by variantSelector surfaces, whose stats live in the Filters slot and would otherwise re-collapse on every surface switch (the active child remounts). */
+    defaultFiltersOpen?: boolean;
 }
 
 // Animates to content's real height via a CSS grid-rows trick (0fr <-> 1fr) instead of a
@@ -77,6 +79,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     filtersContent,
     statsContent,
     styleName,
+    defaultFiltersOpen = false,
 }) => {
     // Info + Legend remain a single-select pair (mutually exclusive — they both
     // describe the layer and stacking them is redundant). Filters + Stats each
@@ -84,7 +87,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     // alongside Info or Legend if they want.
     const [prevOpenLegend, setPrevOpenLegend] = useState(openLegend);
     const [activeTab, setActiveTab] = useState<'info' | 'legend' | null>(openLegend ? 'legend' : null);
-    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [filtersOpen, setFiltersOpen] = useState(defaultFiltersOpen);
     const [statsOpen, setStatsOpen] = useState(false);
 
     if (openLegend !== prevOpenLegend) {
