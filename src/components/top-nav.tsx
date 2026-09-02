@@ -33,6 +33,7 @@ const BasemapDropdown = ({ links, trigger, onBasemapChange, activeBasemap }: Bas
             <DropdownMenuItem key={id} asChild>
               <Button
                 variant="ghost"
+                aria-current={isActive || undefined}
                 className={cn('w-full justify-start', !isActive ? 'text-muted-foreground' : 'underline')}
                 onClick={() => onBasemapChange(id)}
               >
@@ -71,7 +72,7 @@ function TopNav({ className, ...props }: TopNavProps) {
 
   // Collapsed trigger (icon only)
   const collapsedIconTrigger = (
-    <Button size="icon" variant="outline">
+    <Button size="icon" variant="outline" aria-label={`Basemap: ${currentBasemapTitle}`}>
       <BasemapIcon />
     </Button>
   );
@@ -137,6 +138,7 @@ function TopNav({ className, ...props }: TopNavProps) {
               <Button
                 variant="ghost"
                 key={id}
+                aria-current={isActive || undefined}
                 onClick={() => handleBasemapChange(id)}
                 className={cn(
                   'px-2 text-sm font-medium transition-colors hover:text-secondary-foreground',
