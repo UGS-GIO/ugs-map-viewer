@@ -1,4 +1,4 @@
-import { memo, useMemo, useState } from 'react'
+import { memo, useId, useMemo, useState } from 'react'
 import area from '@turf/area'
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Label as RechartsLabel } from 'recharts'
 import { Button } from '@/components/ui/button'
@@ -54,6 +54,10 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
 }: DisplacementDetailChartsProps) {
     const [depthMode, setDepthMode] = useState<'cumulative' | 'change'>('cumulative')
     const [areaMode, setAreaMode] = useState<'total' | 'bydepth'>('total')
+    // Each chart is a figure named by its own heading — recharts' <svg role="application"> is
+    // otherwise unnamed.
+    const depthHeadingId = useId()
+    const areaHeadingId = useId()
     // "Yearly change" (year-over-year diffs of the cumulative depth) only reads
     // sensibly for the running-total type; the Yearly layer is already per-year.
     const showDepthToggle = typeValue === 'Cumulative'
@@ -133,7 +137,7 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
             {/* Depth panel */}
             <section className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium">Subsidence depth by {yearAxisLabel.toLowerCase()} (in)</h4>
+                    <h4 id={depthHeadingId} className="text-sm font-medium">Subsidence depth by {yearAxisLabel.toLowerCase()} (in)</h4>
                     {showDepthToggle && (
                         <SegToggle
                             value={depthMode}
@@ -143,9 +147,9 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
                         />
                     )}
                 </div>
-                <div className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus-visible]:outline-none" style={{ height: PANEL_HEIGHT_PX }}>
+                <div role="figure" aria-labelledby={depthHeadingId} className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus-visible]:outline-none" style={{ height: PANEL_HEIGHT_PX }}>
                     <ResponsiveContainer width="100%" height={PANEL_HEIGHT_PX}>
-                        <LineChart data={rows} syncId={syncId} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                        <LineChart accessibilityLayer data={rows} syncId={syncId} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                             <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
                             <XAxis dataKey="year" stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} height={20} />
                             <YAxis stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} width={52} tickFormatter={(v: number) => fmt1(v)}>
@@ -168,7 +172,7 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
             {/* Area panel */}
             <section className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-medium">Affected area by {yearAxisLabel.toLowerCase()} (mi²)</h4>
+                    <h4 id={areaHeadingId} className="text-sm font-medium">Affected area by {yearAxisLabel.toLowerCase()} (mi²)</h4>
                     <SegToggle
                         value={areaMode}
                         onChange={v => setAreaMode(v as 'total' | 'bydepth')}
@@ -176,10 +180,10 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
                         ariaLabel="Area series"
                     />
                 </div>
-                <div className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus-visible]:outline-none" style={{ height: PANEL_HEIGHT_PX }}>
+                <div role="figure" aria-labelledby={areaHeadingId} className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus-visible]:outline-none" style={{ height: PANEL_HEIGHT_PX }}>
                     <ResponsiveContainer width="100%" height={PANEL_HEIGHT_PX}>
                         {areaMode === 'total' ? (
-                            <AreaChart data={rows} syncId={syncId} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                            <AreaChart accessibilityLayer data={rows} syncId={syncId} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                                 <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
                                 <XAxis dataKey="year" stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} height={20} />
                                 <YAxis stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} width={52} tickFormatter={(v: number) => `${fmt1(v)}`}>
@@ -189,7 +193,7 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
                                 <Area type="monotone" dataKey="areaTotal" stroke={lineColor} fill={lineColor} fillOpacity={0.15} strokeWidth={2} isAnimationActive={false} />
                             </AreaChart>
                         ) : (
-                            <LineChart data={rows} syncId={syncId} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
+                            <LineChart accessibilityLayer data={rows} syncId={syncId} margin={{ top: 8, right: 12, bottom: 0, left: 0 }}>
                                 <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
                                 <XAxis dataKey="year" stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} height={20} />
                                 <YAxis stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} width={52} tickFormatter={(v: number) => `${fmt1(v)}`}>

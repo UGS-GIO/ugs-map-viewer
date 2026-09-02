@@ -149,7 +149,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                     onValueChange={(loc) => loc && addBasin(typeValue, loc)}
                     disabled={availableBasins.length === 0}
                 >
-                    <SelectTrigger className="h-8">
+                    <SelectTrigger className="h-8" aria-label="Add a basin to the filter">
                         <SelectValue placeholder={availableBasins.length === 0 ? 'All basins selected' : 'Add a basin…'} />
                     </SelectTrigger>
                     <SelectContent>
@@ -185,7 +185,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                         )}
                     </div>
                     <Select value={displayYear} onValueChange={(y) => setYearOverride(typeValue, y)}>
-                        <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-8" aria-label={yearLabelFor(typeValue)}><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {years.map(y => (
                                 <SelectItem

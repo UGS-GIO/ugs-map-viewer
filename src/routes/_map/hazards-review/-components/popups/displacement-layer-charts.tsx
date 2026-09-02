@@ -431,6 +431,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     // section so the simplified read (summary + depth + area + ranking) leads.
     const [advancedOpen, setAdvancedOpen] = useState(false)
     const advancedId = useId()
+    const stackedHeadingId = useId()
 
     // Independent of hover, so the range readout survives pointer movement.
     const rangeRows = useMemo(
@@ -618,7 +619,12 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                     Deepest reading each {yearAxisLabel.toLowerCase()} (hover for the basin). Click a point to jump to that year.
                     {typeValue === 'Yearly' && ' The first year carries the multi-year baseline, not a single-year change.'}
                 </p>
-                <div className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none" style={{ height: CHART_HEIGHT_PX }}>
+                <div
+                    role="figure"
+                    aria-label={`Deepest subsidence by ${yearAxisLabel.toLowerCase()}, inches`}
+                    className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none"
+                    style={{ height: CHART_HEIGHT_PX }}
+                >
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
                         <DepthByYearChart data={depthByYear} lineColor={lineColor} markSeedYear={typeValue === 'Yearly'} selectedYear={year} onSelectYear={selectYear} />
                     )}
@@ -662,7 +668,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                 <div id={advancedId}>
                 <div>
                 <div className="flex items-center justify-between mb-1">
-                    <h4 className="text-xs font-medium">Uplift &amp; Subsidence by {yearAxisLabel}</h4>
+                    <h4 id={stackedHeadingId} className="text-xs font-medium">Uplift &amp; Subsidence by {yearAxisLabel}</h4>
                     {yearOverride !== null && (
                         <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setYearOverride(typeValue, null)}>
                             Reset to latest
@@ -671,6 +677,8 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                 </div>
                 <p className="text-xs text-muted-foreground mb-1">Bars above zero = uplift, below zero = subsidence. Stacked by displacement range (in); colors match the map. Hover a column to read its per-range areas in the legend below; click to filter to that year — the shaded column is the active {yearAxisLabel.toLowerCase()}.</p>
                 <div
+                    role="figure"
+                    aria-labelledby={stackedHeadingId}
                     // Recharts focuses the SVG on click, which Chrome counts as
                     // focus-visible — any ring here fires on every mouse click.
                     className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none"
@@ -930,6 +938,7 @@ const StackedYearChart = memo(function StackedYearChart({ data, bins, year, type
         // mount (recharts v3 logs in prod too). Width stays responsive at 100%.
         <ResponsiveContainer width="100%" height={CHART_HEIGHT_PX}>
             <BarChart
+                accessibilityLayer
                 data={data}
                 margin={{ top: 16, right: 4, bottom: 0, left: 0 }}
                 stackOffset="sign"
@@ -1013,7 +1022,7 @@ const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markS
         : undefined
     return (
         <ResponsiveContainer width="100%" height={CHART_HEIGHT_PX}>
-            <LineChart data={data} margin={{ top: 16, right: 4, bottom: 0, left: 0 }} onClick={handleClick} style={onSelectYear ? { cursor: 'pointer' } : undefined}>
+            <LineChart accessibilityLayer data={data} margin={{ top: 16, right: 4, bottom: 0, left: 0 }} onClick={handleClick} style={onSelectYear ? { cursor: 'pointer' } : undefined}>
                 <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
                 <XAxis dataKey="year" stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} height={20} />
                 <YAxis
