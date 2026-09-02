@@ -1,44 +1,18 @@
 import '@fontsource-variable/source-sans-3'
-import '@utahdts/utah-design-system-header/css'
 import '@/index.css'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
-import { loadHeader, type SettingsInput, setUtahHeaderSettings } from '@utahdts/utah-design-system-header'
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from '@/context/theme-provider'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import proj4 from 'proj4'
-import ugsLockupNavy from '@/assets/ugs-logo-blue.png'
-import ugsLockupWhite from '@/assets/ugs-logo-white.png'
 import { setupPMTilesProtocol } from '@/lib/map/pmtiles/setup'
 import { setupCOGProtocol } from '@/lib/map/cog/setup'
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
-
-const headerSettings: SettingsInput = {
-  title: 'Utah Geological Survey',
-  showTitle: false,
-  size: 'SMALL',
-  titleUrl: 'https://geology.utah.gov',
-  // The DS renders this through `renderDOMSingle`: it must stay a single root element. It also
-  // stamps its own `alt` on that root, which is inert on a <span> — so name both images here. Only
-  // one is ever displayed, and `display: none` keeps the other out of the name computation.
-  logo: {
-    htmlString:
-      `<span class="ugs-header-lockup">` +
-      `<img src="${ugsLockupNavy}" alt="Utah Geological Survey" class="ugs-logo-navy" />` +
-      `<img src="${ugsLockupWhite}" alt="Utah Geological Survey" class="ugs-logo-white" />` +
-      `</span>`,
-  },
-  mainMenu: false,
-  utahId: false,
-  footer: null,
-}
-setUtahHeaderSettings(headerSettings)
-loadHeader()
 
 const storedTheme = localStorage.getItem('vite-ui-theme') ?? 'dark'
 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
