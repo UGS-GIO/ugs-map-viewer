@@ -79,8 +79,11 @@ const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend
 
         if (isLoading) return <div>Loading legend...</div>;
         if (error) return <div>Error loading legend: {error.message}</div>;
+        if (!preview || preview.length === 0) {
+            return <div className="text-xs text-muted-foreground italic">No legend available</div>;
+        }
 
-        return <>{preview?.map((item, i) => <LegendItem key={i} item={item} />)}</>;
+        return <>{preview.map((item, i) => <LegendItem key={i} item={item} />)}</>;
     };
 
     return (
