@@ -128,9 +128,9 @@ export function getZeroBound(bins: SldBin[]): number | null {
 // carried by the Uplift/Subsidence column and the color, so the sign is redundant
 // and "negative subsidence" is confusing. Derived from the bin's own bounds, so it
 // tracks the SLD. Not meaningful for the deadband bin, which keeps its own title.
-export function magnitudeLabel(bin: SldBin): string {
+export function magnitudeLabel(bin: SldBin, unit = 'in'): string {
     const lo = Math.min(Math.abs(bin.min), Math.abs(bin.max))
     const hi = Math.max(Math.abs(bin.min), Math.abs(bin.max))
-    if (!Number.isFinite(hi)) return `> ${lo} in`
-    return `${lo} – ${hi} in`
+    if (!Number.isFinite(hi)) return `> ${lo} ${unit}`
+    return `${lo} – ${hi} ${unit}`
 }

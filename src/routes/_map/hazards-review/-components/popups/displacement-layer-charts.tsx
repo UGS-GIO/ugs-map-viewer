@@ -1,10 +1,11 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { ChevronDown, ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
 import area from '@turf/area'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LegendSwatchGrid, type LegendSwatchItem } from '@/components/maps/legend-swatch-grid'
-import { BarChart, Bar, Rectangle, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label as RechartsLabel, useActiveTooltipLabel, useIsTooltipActive, type BarShapeProps, type XAxisTickContentProps } from 'recharts'
+import { BarChart, Bar, LineChart, Line, Rectangle, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label as RechartsLabel, useActiveTooltipLabel, useIsTooltipActive, type BarShapeProps, type XAxisTickContentProps } from 'recharts'
 import type { LayerContentProps } from '@/components/maps/popups/types'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import { useMap } from '@/hooks/use-map'
@@ -16,6 +17,10 @@ import {
     useDisplacementSldBins,
     type DisplacementFeature,
 } from './use-displacement-queries'
+import { deepestSubsidenceByYear } from './displacement-analytics'
+import { DisplacementDetailCharts } from './displacement-detail-charts'
+import { DisplacementAnalysisLayout } from './displacement-analysis-layout'
+import { renderDisplacementLayerFilters } from './displacement-layer-filters'
 
 const SQM_TO_SQMI = 1 / 2_589_988.110336
 
@@ -96,7 +101,7 @@ export function renderDisplacementLayerStats(layerTitle: string): React.ReactNod
     if (!isDisplacementLayerTitle(layerTitle)) return null
     const typeValue = DISPLACEMENT_LAYER_TYPES[layerTitle]
     if (!isChartedType(typeValue)) return null
-    return <DisplacementLayerCharts typeValue={typeValue} />
+    return <DisplacementLayerCharts typeValue={typeValue} layerTitle={layerTitle} />
 }
 
 // Uses each rule's own predicate, so a value lands where GeoServer would paint it.
@@ -108,7 +113,7 @@ export function findBin(bins: SldBin[], v: number): SldBin | undefined {
 // Compute [minLng, minLat, maxLng, maxLat] across a feature collection without
 // pulling in turf. Walks Polygon/MultiPolygon coordinate trees recursively and
 // skips non-finite numbers so a single bad coord pair can't poison fitBounds.
-function combinedBbox(features: DisplacementFeature[]): [number, number, number, number] | null {
+export function combinedBbox(features: DisplacementFeature[]): [number, number, number, number] | null {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
     const visit = (node: unknown): void => {
         if (Array.isArray(node) && typeof node[0] === 'number' && typeof node[1] === 'number') {
@@ -130,8 +135,43 @@ function combinedBbox(features: DisplacementFeature[]): [number, number, number,
     return [minX, minY, maxX, maxY]
 }
 
-function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
-    const { yearOverridesByType, basinsByType, excludedDataQualsByType, addBasin, removeBasin, setYearOverride } = useDisplacementFilters()
+// Fit the map to a set of precomputed basin bboxes. Deferred a frame so it never
+// lands mid-render, animate:false to dodge MapLibre's overlapping-tween errors on
+// rapid basin toggles. Shared by the charted stats and the rate stats.
+export function useZoomToBboxes() {
+    const { map } = useMap()
+    return useCallback((bboxes: ([number, number, number, number] | null)[]) => {
+        if (!map) return
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+        for (const bb of bboxes) {
+            if (!bb) continue
+            if (bb[0] < minX) minX = bb[0]
+            if (bb[1] < minY) minY = bb[1]
+            if (bb[2] > maxX) maxX = bb[2]
+            if (bb[3] > maxY) maxY = bb[3]
+        }
+        if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) return
+        if (minX > maxX || minY > maxY) return
+        try {
+            requestAnimationFrame(() => {
+                try {
+                    map.fitBounds([[minX, minY], [maxX, maxY]], { padding: 60, maxZoom: 12, animate: false })
+                } catch (err) {
+                    console.warn('zoomToBboxes: fitBounds failed', err, { minX, minY, maxX, maxY })
+                }
+            })
+        } catch (err) {
+            console.warn('zoomToBboxes: scheduling failed', err)
+        }
+    }, [map])
+}
+
+// `mode='panel'` (default) is the compact sidebar column; `mode='analysis'` is the
+// body of the wide pop-out (rendered by DisplacementAnalysisHost). Both share the
+// same compute — analysis mode just lays the slots out as a dashboard and drops the
+// scope bar (the pop-out header carries the surface switch instead).
+export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' }: { typeValue: ChartedType; layerTitle: string; mode?: 'panel' | 'analysis' }) {
+    const { yearOverridesByType, basinsByType, excludedDataQualsByType, addBasin, removeBasin, clearBasins, setYearOverride } = useDisplacementFilters()
     const yearOverride = yearOverridesByType[typeValue]
     // Year is mandatory now (no "all years" sentinel): falls back to the
     // latest available year for this type while the user hasn't picked one.
@@ -204,6 +244,21 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
         [qualFiltered, selectedBasins]
     )
 
+    // Deepest MEASURED subsidence (in) per closing year for the current scope —
+    // the depth-over-time series. Gated through `isMeasured` so it honors the
+    // threshold and excludes the SLD "Zero" deadband exactly like the KPIs,
+    // stacked bars, and basin ranking (one honest knob everywhere). Pre-filtered
+    // to subsidence (value_inches < 0) so an uplift-only year can't plot a
+    // misleading 0. Uses all years (not the year filter): a trend needs the
+    // whole record, not just the selected year.
+    const depthByYear = useMemo(
+        () => Array.from(
+            deepestSubsidenceByYear(scoped.filter(f => f.properties.value_inches < 0 && isMeasured(f.properties.value_inches))),
+            ([yr, d]) => ({ year: yr, depthIn: d.depthIn, location: d.location }),
+        ).sort((a, b) => a.year.localeCompare(b.year)),
+        [scoped, isMeasured],
+    )
+
     // Year filter resolution: Yearly matches `year`; Cumulative matches the
     // year of `end_date` (so picking 2024 narrows to the 2017-2024 window etc.).
     // Null year means the features-query is still loading — render empty.
@@ -217,27 +272,34 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
 
     const yearAxisLabel = typeValue === 'Cumulative' ? 'Period End Year' : 'Water Year'
 
-    // KPI + advanced metrics use the single SLD-pinned threshold.
-    const auditOverThreshold = useMemo(
-        () => filtered.filter(f => isMeasured(f.properties.value_inches)),
+    // The "Subsiding Area" / "Max subsidence" / "Basins" KPIs describe subsidence,
+    // so gate to subsidence (value_inches < 0) above the SLD-pinned threshold —
+    // matching the depth chart, the pop-out, and Rate (which is subsidence-only).
+    // Uplift stays visible in the stacked Uplift/Subsidence chart + the map; it's
+    // never netted into these subsidence metrics. (The stacked chart keeps its own
+    // both-signs gate — only these scalar/ranking paths are subsidence-only.)
+    const measuredSubsidence = useMemo(
+        () => filtered.filter(f => f.properties.value_inches < 0 && isMeasured(f.properties.value_inches)),
         [filtered, isMeasured]
     )
 
     const totalAreaSqMi = useMemo(
-        () => auditOverThreshold.reduce((acc, f) => acc + area(f) * SQM_TO_SQMI, 0),
-        [auditOverThreshold]
+        () => measuredSubsidence.reduce((acc, f) => acc + area(f) * SQM_TO_SQMI, 0),
+        [measuredSubsidence]
     )
 
+    // Deepest subsidence reading in the selected year (magnitude of the most
+    // negative measured value). Subsidence-only so "Max subsidence" is accurate.
     const maxDisplacement = useMemo(() => {
         let max = 0
-        for (const f of filtered) {
-            const v = Math.abs(f.properties.value_inches)
-            if (v > max) max = v
+        for (const f of measuredSubsidence) {
+            const a = Math.abs(f.properties.value_inches)
+            if (a > max) max = a
         }
         return max
-    }, [filtered])
+    }, [measuredSubsidence])
 
-    const distinctBasins = useMemo(() => new Set(filtered.map(f => f.properties.location)).size, [filtered])
+    const distinctBasins = useMemo(() => new Set(measuredSubsidence.map(f => f.properties.location)).size, [measuredSubsidence])
 
     // Period spans the full window: earliest window-start year → latest window-end
     // year. For Cumulative this reads start_date (fixed 2017) through the chosen
@@ -314,6 +376,9 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
             const loc = f.properties.location
             if (!loc) continue
             const v = f.properties.value_inches
+            // Subsidence only — the ranking is "Subsidence by Basin", so an
+            // uplift-dominated basin must not appear (matches Rate's basinsByRate).
+            if (v >= 0) continue
             const a = Math.abs(v)
             if (!isMeasured(v)) continue
             const cur = byLocation.get(loc)
@@ -346,46 +411,27 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
     const worstDepth = useMemo(() => {
         let max = 0
         for (const f of qualFiltered) {
-            const a = Math.abs(f.properties.value_inches)
+            const v = f.properties.value_inches
+            if (v >= 0) continue // subsidence only, so bars scale against deepest subsidence (not uplift)
+            const a = Math.abs(v)
             if (a > max) max = a
         }
         return max
     }, [qualFiltered])
 
-    const { map } = useMap()
-    // Combine precomputed basin bboxes (cheap min/max math) and pan once.
-    function zoomToBboxes(bboxes: ([number, number, number, number] | null)[]) {
-        if (!map) return
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-        for (const bb of bboxes) {
-            if (!bb) continue
-            if (bb[0] < minX) minX = bb[0]
-            if (bb[1] < minY) minY = bb[1]
-            if (bb[2] > maxX) maxX = bb[2]
-            if (bb[3] > maxY) maxY = bb[3]
-        }
-        if (!Number.isFinite(minX) || !Number.isFinite(minY) || !Number.isFinite(maxX) || !Number.isFinite(maxY)) return
-        if (minX > maxX || minY > maxY) return
-        try {
-            // Defer fitBounds to the next frame so it never lands inside an
-            // in-flight render. animate:false skips the camera tween entirely,
-            // sidestepping MapLibre's 'transition already running' errors when
-            // rapid basin toggles queue overlapping fitBounds calls.
-            requestAnimationFrame(() => {
-                try {
-                    map.fitBounds([[minX, minY], [maxX, maxY]], { padding: 60, maxZoom: 12, animate: false })
-                } catch (err) {
-                    console.warn('zoomToBboxes: fitBounds failed', err, { minX, minY, maxX, maxY })
-                }
-            })
-        } catch (err) {
-            console.warn('zoomToBboxes: scheduling failed', err)
-        }
-    }
+    const zoomToBboxes = useZoomToBboxes()
 
     // Hover feeds the legend instead of a floating card — the panel is too narrow
     // for a tooltip beside the bar without clipping.
     const [hoveredYear, setHoveredYear] = useState<string | null>(null)
+    // "Back to statewide" unmounts itself on click; move focus here so keyboard
+    // users don't get dropped to <body>. The scope label is always rendered.
+    const scopeLabelRef = useRef<HTMLDivElement>(null)
+    // The dense uplift/subsidence-by-area chart is tucked in a collapsed "Advanced"
+    // section so the simplified read (summary + depth + area + ranking) leads.
+    const [advancedOpen, setAdvancedOpen] = useState(false)
+    const advancedId = useId()
+    const stackedHeadingId = useId()
 
     // Independent of hover, so the range readout survives pointer movement.
     const rangeRows = useMemo(
@@ -397,15 +443,24 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
         [stackedAreaByYear, hoveredYear]
     )
 
-    const rangeTotals = useMemo(() => sumByBin(rangeRows), [rangeRows])
+    // The default legend column shows the SELECTED year's per-band area — for
+    // Cumulative that's the cumulative snapshot painted on the map at that year.
+    // NOT a cross-year sum: Cumulative rows are running-total snapshots, so summing
+    // a persistent band across years would count it once per year (a 100 mi² band
+    // present 9 years would read 900 mi²).
+    const rangeTotals = useMemo<Record<string, number>>(() => {
+        const selectedRow = year ? stackedAreaByYear.find(r => r.year === year) : null
+        return selectedRow ? sumByBin([selectedRow]) : {}
+    }, [stackedAreaByYear, year])
 
     // Two columns only past one year, else both would print the same number.
     const isRangeMode = rangeRows.length > 1
 
     const legendSpan = useMemo(() => {
-        if (isRangeMode) return `${rangeRows[0].year}–${rangeRows[rangeRows.length - 1].year}`
-        return hoveredYear ?? year
-    }, [isRangeMode, rangeRows, hoveredYear, year])
+        // Both modes label the readout with the selected year (the snapshot shown),
+        // not a multi-year span — the number is that year's area, not an aggregate.
+        return hoveredYear && !isRangeMode ? hoveredYear : year
+    }, [isRangeMode, hoveredYear, year])
 
     // Magnitudes only — the Uplift/Subsidence split already carries direction.
     const fmtArea = (v: number | undefined): string => v ? fmt1(Math.abs(v)) : '—'
@@ -434,18 +489,186 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
 
     if (isError) return <div className="text-xs text-destructive mb-2">Failed to load stats.</div>
 
+    // Brand accent, not the deepest SLD band: that colour is tuned for the map, not the panel.
+    const lineColor = 'hsl(var(--chart-1))'
+    // KPIs + ranking are built once and reused in both the sidebar column and the
+    // wide "Expand" analysis view, so the two never drift.
+    const kpiCards = (
+        <>
+            <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={thresholdLabel} />
+            <KPI label="Max subsidence" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
+            <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
+            <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
+        </>
+    )
+    const rankingNode = (
+        <BasinList
+            basinsByDepth={basinsByDepth}
+            basinFilterActive={basinFilterActive}
+            selectedBasins={selectedBasins}
+            typeValue={typeValue}
+            worstDepth={worstDepth}
+            isLoading={isLoading}
+            addBasin={addBasin}
+            removeBasin={removeBasin}
+            zoomToBboxes={zoomToBboxes}
+        />
+    )
+    const scope = basinFilterActive
+        ? (selectedBasins.size === 1 ? [...selectedBasins][0] : `${selectedBasins.size} basins`)
+        : 'Statewide'
+    const scopeSummary = `${scope} · ${typeValue}${period ? ` · ${period.from}–${period.to}` : ''}`
+
+    // Wide pop-out body: same KPIs + ranking + detail charts as the sidebar, laid
+    // out as a dashboard. The host owns the Dialog + surface switch + scope summary.
+    if (mode === 'analysis') {
+        return (
+            <DisplacementAnalysisLayout
+                scopeSummary={scopeSummary}
+                filtersSlot={renderDisplacementLayerFilters(layerTitle)}
+                kpisSlot={<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{kpiCards}</div>}
+                rankingSlot={rankingNode}
+                chartsSlot={
+                    <DisplacementDetailCharts
+                        typeValue={typeValue}
+                        scoped={scoped}
+                        threshold={threshold}
+                        plotBins={plotBins}
+                        lineColor={lineColor}
+                        yearAxisLabel={yearAxisLabel}
+                    />
+                }
+            />
+        )
+    }
+
+    // One-sentence, scope-aware read of the panel — the questions a person asks
+    // (how deep, how many basins, how much area) in plain prose. Subject is "land"
+    // so the verb agrees whether whereText is one basin or "N basins".
+    // The ranking ignores the basin filter (stays complete), so its top entry is
+    // the STATEWIDE deepest basin — which wouldn't match the scoped hero number
+    // when drilled into one basin. The summary already names that basin, so drop
+    // the "· basin" suffix then.
+    const deepestBasin = basinFilterActive && selectedBasins.size === 1 ? undefined : basinsByDepth[0]?.location
+    const whereText = basinFilterActive && selectedBasins.size === 1
+        ? [...selectedBasins][0]
+        : `${distinctBasins} ${distinctBasins === 1 ? 'basin' : 'basins'}`
+    let summaryLine: string
+    if (isLoading) summaryLine = 'Loading…'
+    else if (distinctBasins === 0) summaryLine = 'No measured subsidence in the current filters.'
+    else if (typeValue === 'Cumulative')
+        summaryLine = `Since ${period?.from ?? '—'}, land in ${whereText} has sunk up to ${fmt1(maxDisplacement)} in — about ${fmt1(totalAreaSqMi)} mi² is subsiding now.`
+    else
+        summaryLine = `In ${year ?? '—'}, land in ${whereText} sank up to ${fmt1(maxDisplacement)} in — about ${fmt1(totalAreaSqMi)} mi² subsided.`
+
     return (
         <div className="mb-3 flex flex-col gap-3 px-2 py-1">
-            <div className="grid grid-cols-2 gap-2">
-                <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={thresholdLabel} />
-                <KPI label="Max |value|" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
-                <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
-                <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
+            {/* Scope bar: statewide by default, or the drilled-in basin(s) with a
+                one-click way back. The Subsidence-by-Basin ranking below is the
+                drill-in entry point (click a row to scope everything to it). */}
+            <div className="flex items-center justify-between gap-2">
+                <div ref={scopeLabelRef} tabIndex={-1} className="flex min-w-0 items-center gap-1.5 text-xs focus:outline-none" aria-live="polite">
+                    <MapPin className={`h-3 w-3 shrink-0 ${basinFilterActive ? 'text-foreground' : 'text-muted-foreground'}`} aria-hidden="true" />
+                    {basinFilterActive ? (
+                        <span className="truncate font-medium text-foreground" title={[...selectedBasins].join(', ')}>
+                            {selectedBasins.size === 1 ? [...selectedBasins][0] : `${selectedBasins.size} basins`}
+                        </span>
+                    ) : (
+                        <span className="text-muted-foreground">Statewide</span>
+                    )}
+                </div>
+                {basinFilterActive && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 shrink-0 gap-1 px-2 text-xs"
+                        onClick={() => {
+                            // "Back to statewide" restores the statewide view,
+                            // camera included — fit to the extent of all basins
+                            // (basinsByDepth ignores the basin filter, so it always
+                            // holds every basin). Drill-in zooms in; this zooms back
+                            // out. Deselecting the last basin via a ranking row stays
+                            // filter-only — a per-basin toggle, not an explicit
+                            // "go statewide" action.
+                            clearBasins(typeValue)
+                            zoomToBboxes(basinsByDepth.map(b => b.bbox))
+                            scopeLabelRef.current?.focus()
+                        }}
+                    >
+                        <ChevronLeft className="h-3 w-3" aria-hidden="true" />
+                        Back to statewide
+                    </Button>
+                )}
             </div>
 
-            <div>
+            {/* Summary in a quiet box — the TL;DR that the labeled sections below
+                (How deep / How much / Where) each break down, so the words stay
+                tied to their numbers. */}
+            <p className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-sm leading-snug text-foreground">
+                {summaryLine}
+            </p>
+
+            {/* How deep — the hero number and its trend line, one labeled group. */}
+            <section className="border-t border-border/60 pt-3">
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">How deep · since {period?.from ?? '—'}</p>
+                <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-semibold tabular-nums text-foreground">{isLoading || distinctBasins === 0 ? '—' : fmt1(maxDisplacement)}</span>
+                    <span className="text-xs text-muted-foreground">in deepest{deepestBasin ? ` · ${deepestBasin}` : ''}</span>
+                </div>
+                <p className="mb-1 mt-0.5 text-xs text-muted-foreground">
+                    Deepest reading each {yearAxisLabel.toLowerCase()} (hover for the basin). Click a point to jump to that year.
+                    {typeValue === 'Yearly' && ' The first year carries the multi-year baseline, not a single-year change.'}
+                </p>
+                <div
+                    role="figure"
+                    aria-label={`Deepest subsidence by ${yearAxisLabel.toLowerCase()}, inches`}
+                    className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none"
+                    style={{ height: CHART_HEIGHT_PX }}
+                >
+                    {isLoading ? <Skeleton className="h-full w-full" /> : (
+                        <DepthByYearChart data={depthByYear} lineColor={lineColor} markSeedYear={typeValue === 'Yearly'} selectedYear={year} onSelectYear={selectYear} />
+                    )}
+                </div>
+            </section>
+
+            {/* How much — one number; the map beside the panel shows where. */}
+            <section className="border-t border-border/60 pt-3">
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">How much · area subsiding</p>
+                <div className="flex items-baseline gap-2">
+                    <span className="text-2xl font-semibold tabular-nums text-foreground">{isLoading || distinctBasins === 0 ? '—' : fmt1(totalAreaSqMi)}</span>
+                    <span className="text-xs text-muted-foreground">mi² · {thresholdLabel}</span>
+                </div>
+                <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                    <MapPin className="h-3 w-3 shrink-0" aria-hidden="true" /> Shaded on the map.
+                </p>
+            </section>
+
+            {/* Where — the basin ranking (its own header) + drill-in entry point. */}
+            <section className="border-t border-border/60 pt-3">
+                {rankingNode}
+            </section>
+
+            {/* Advanced (collapsed): the dense uplift & subsidence-by-area detail.
+                Tucked away so the simplified read above leads; the wide "Expand"
+                pop-out is the other route to the full detail. */}
+            <div className="flex flex-col gap-1">
+                <button
+                    type="button"
+                    onClick={() => setAdvancedOpen(o => !o)}
+                    aria-expanded={advancedOpen}
+                    aria-controls={advancedId}
+                    className="flex items-center gap-1 self-start rounded px-1 -ml-1 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                    {advancedOpen
+                        ? <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                        : <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />}
+                    <span>Advanced · uplift &amp; subsidence by area</span>
+                </button>
+                {advancedOpen && (
+                <div id={advancedId}>
+                <div>
                 <div className="flex items-center justify-between mb-1">
-                    <h4 className="text-xs font-medium">Uplift &amp; Subsidence by {yearAxisLabel}</h4>
+                    <h4 id={stackedHeadingId} className="text-xs font-medium">Uplift &amp; Subsidence by {yearAxisLabel}</h4>
                     {yearOverride !== null && (
                         <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setYearOverride(typeValue, null)}>
                             Reset to latest
@@ -454,6 +677,8 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                 </div>
                 <p className="text-xs text-muted-foreground mb-1">Bars above zero = uplift, below zero = subsidence. Stacked by displacement range (in); colors match the map. Hover a column to read its per-range areas in the legend below; click to filter to that year — the shaded column is the active {yearAxisLabel.toLowerCase()}.</p>
                 <div
+                    role="figure"
+                    aria-labelledby={stackedHeadingId}
                     // Recharts focuses the SVG on click, which Chrome counts as
                     // focus-visible — any ring here fires on every mouse click.
                     className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none"
@@ -475,7 +700,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                         <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vertical Displacement</div>
                         <div className="flex items-baseline justify-between text-xs text-muted-foreground">
                             <span>
-                                {legendSpan ? <>Area by range · <span className="font-medium text-foreground">{legendSpan}</span>{!isRangeMode && hoveredYear ? ' (hovered)' : ''}</> : 'Area by range'}
+                                {legendSpan ? <>Area · <span className="font-medium text-foreground">{legendSpan}</span>{!isRangeMode && hoveredYear ? ' (hovered)' : ''}</> : 'Area'}
                             </span>
                             {isRangeMode && <span>mi²</span>}
                         </div>
@@ -483,7 +708,7 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                             <>
                                 {/* Captions match LegendSwatchGrid's two numeric columns. */}
                                 <div className="flex items-baseline text-[10px] uppercase tracking-wide text-muted-foreground">
-                                    <span className="ml-auto shrink-0 pl-1 min-w-[4.25rem] text-right">range</span>
+                                    <span className="ml-auto shrink-0 pl-1 min-w-[4.25rem] text-right">{year}</span>
                                     <span className="shrink-0 pl-2 min-w-[4.25rem] text-right">{hoveredYear ?? 'hover'}</span>
                                 </div>
                                 <div className="flex flex-col gap-2">
@@ -502,19 +727,10 @@ function DisplacementLayerCharts({ typeValue }: { typeValue: ChartedType }) {
                 <p className="mt-2 px-2 text-xs italic text-muted-foreground">
                     Units: {getUnitsLabelForType(typeValue)}.
                 </p>
+                </div>
+                </div>
+                )}
             </div>
-
-            <BasinList
-                basinsByDepth={basinsByDepth}
-                basinFilterActive={basinFilterActive}
-                selectedBasins={selectedBasins}
-                typeValue={typeValue}
-                worstDepth={worstDepth}
-                isLoading={isLoading}
-                addBasin={addBasin}
-                removeBasin={removeBasin}
-                zoomToBboxes={zoomToBboxes}
-            />
         </div>
     )
 }
@@ -529,17 +745,27 @@ interface BasinListProps {
     }>
     basinFilterActive: boolean
     selectedBasins: ReadonlySet<string>
-    typeValue: ChartedType
+    typeValue: DisplacementType
     worstDepth: number
     isLoading: boolean
     addBasin: (type: DisplacementType, location: string) => void
     removeBasin: (type: DisplacementType, location: string) => void
     zoomToBboxes: (bboxes: ([number, number, number, number] | null)[]) => void
+    /** Row value unit — "in" for displacement surfaces, "in/year" for Rate. */
+    unit?: string
+    /** Row value formatter; defaults to 1-decimal. Rate passes 2-decimal (small values). */
+    formatValue?: (n: number) => string
+    /** Section heading; defaults to the depth-ranking title. */
+    heading?: string
+    /** Caption under the heading. */
+    caption?: string
+    /** Empty-state text when no basin clears the measurement floor. */
+    emptyText?: string
 }
 
 const BASIN_PAGE_SIZE = 10
 
-function BasinList({
+export function BasinList({
     basinsByDepth,
     basinFilterActive,
     selectedBasins,
@@ -549,6 +775,11 @@ function BasinList({
     addBasin,
     removeBasin,
     zoomToBboxes,
+    unit = 'in',
+    formatValue = fmt1,
+    heading = 'Subsidence by Basin',
+    caption = 'Basins ranked by their deepest contour value. Click a row to focus the panel on that basin; unselected rows grey out while one is active.',
+    emptyText = 'No basins above threshold.',
 }: BasinListProps) {
     const [page, setPage] = useState(0)
     const total = basinsByDepth.length
@@ -562,12 +793,12 @@ function BasinList({
 
     return (
         <div>
-            <h4 className="text-xs font-medium mb-1">Subsidence by Basin</h4>
-            <p className="text-xs text-muted-foreground mb-2">Basins ranked by their deepest contour value. Click a row to zoom + filter to that basin. Unselected basins grey out when a filter is active. Use the basin filter above to clear a selection.</p>
+            <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{heading}</h4>
+            <p className="text-xs text-muted-foreground mb-2">{caption}</p>
             {isLoading ? (
                 <Skeleton className="h-40 w-full" />
             ) : total === 0 ? (
-                <p className="text-xs text-muted-foreground">No basins above threshold.</p>
+                <p className="text-xs text-muted-foreground">{emptyText}</p>
             ) : (
                 <>
                     <div className="flex flex-col gap-1">
@@ -606,7 +837,7 @@ function BasinList({
                                             <div className="h-full" style={{ width: `${pct}%`, background: color }} />
                                         </div>
                                     </div>
-                                    <span className="tabular-nums text-xs text-muted-foreground whitespace-nowrap">{fmt1(b.abs)} in</span>
+                                    <span className="tabular-nums text-xs text-muted-foreground whitespace-nowrap">{formatValue(b.abs)} {unit}</span>
                                 </button>
                             )
                         })}
@@ -707,6 +938,7 @@ const StackedYearChart = memo(function StackedYearChart({ data, bins, year, type
         // mount (recharts v3 logs in prod too). Width stays responsive at 100%.
         <ResponsiveContainer width="100%" height={CHART_HEIGHT_PX}>
             <BarChart
+                accessibilityLayer
                 data={data}
                 margin={{ top: 16, right: 4, bottom: 0, left: 0 }}
                 stackOffset="sign"
@@ -750,6 +982,80 @@ const StackedYearChart = memo(function StackedYearChart({ data, bins, year, type
     )
 })
 
+interface DepthPoint { year: string; depthIn: number; location?: string | null }
+
+// Depth-over-time line: deepest subsidence (in) per year for the current scope.
+// The clean, monotonic read of "how deep, and getting deeper" that the stacked
+// area (which encodes affected extent, not depth) can't show. ALL-5673 step 1;
+// the stack moves into the pop-out as exceedance lines in a later step.
+// Memoized like its sibling StackedYearChart: the parent re-renders on every
+// hover of the stacked chart (to refresh the legend), and both props here are
+// stable, so memo makes those hover re-renders a no-op.
+const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markSeedYear = false, selectedYear = null, onSelectYear }: { data: DepthPoint[]; lineColor: string; markSeedYear?: boolean; selectedYear?: string | null; onSelectYear?: (year: string) => void }) {
+    // The Yearly seed epoch carries the multi-year baseline (Yearly==Cumulative by
+    // construction), so it's the single deepest point — not a real one-year spike.
+    // Flag that point (the max, not index 0 — the record may start before the seed)
+    // with a hollow ring + label so reviewers read it as the baseline it is.
+    const seedIndex = markSeedYear && data.length > 0
+        ? data.reduce((mi, d, i, arr) => (d.depthIn > arr[mi].depthIn ? i : mi), 0)
+        : -1
+    const renderDot = (props: { cx?: number; cy?: number; index?: number; key?: string | number | bigint | null }) => {
+        const { cx, cy, index, key } = props
+        if (cx == null || cy == null) return <g key={key} />
+        if (index === seedIndex) {
+            return (
+                <g key={key}>
+                    <circle cx={cx} cy={cy} r={4} fill="hsl(var(--background))" stroke={lineColor} strokeWidth={2} />
+                    <text x={cx + 7} y={cy + 3} fontSize={9} fill="currentColor" fillOpacity={0.7}>baseline</text>
+                </g>
+            )
+        }
+        return <circle key={key} cx={cx} cy={cy} r={2} fill={lineColor} />
+    }
+    // Click a year to set it as the active year (syncs with the year dropdown via
+    // the shared setYearOverride). recharts hands the clicked category as activeLabel.
+    const handleClick = onSelectYear
+        ? (state: { activeLabel?: string | number }) => {
+            const label = state?.activeLabel
+            if (typeof label === 'string' && label) onSelectYear(label)
+        }
+        : undefined
+    return (
+        <ResponsiveContainer width="100%" height={CHART_HEIGHT_PX}>
+            <LineChart accessibilityLayer data={data} margin={{ top: 16, right: 4, bottom: 0, left: 0 }} onClick={handleClick} style={onSelectYear ? { cursor: 'pointer' } : undefined}>
+                <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
+                <XAxis dataKey="year" stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} height={20} />
+                <YAxis
+                    stroke="currentColor"
+                    tick={{ fill: 'currentColor', fontSize: 11 }}
+                    width={52}
+                    tickMargin={2}
+                    tickFormatter={(v: number) => `${fmt1(v)} in`}
+                >
+                    <RechartsLabel value="Subsidence (in)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
+                </YAxis>
+                {/* Vertical marker at the selected year so the chart responds to the
+                    year dropdown (and to a click on the chart) — otherwise the line,
+                    which always spans the whole record, looks inert when you switch. */}
+                {selectedYear && data.some(d => d.year === selectedYear) && (
+                    <ReferenceLine x={selectedYear} stroke="currentColor" strokeOpacity={0.4} strokeDasharray="3 3" />
+                )}
+                <Tooltip
+                    cursor={{ stroke: 'currentColor', strokeOpacity: 0.2 }}
+                    contentStyle={{ fontSize: 11, background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 6, color: 'hsl(var(--popover-foreground))' }}
+                    labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                    itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+                    formatter={(value, _name, item) => {
+                        const loc = (item?.payload as DepthPoint | undefined)?.location
+                        return [`${fmt1(Number(value))} in`, loc ? `Deepest · ${loc}` : 'Deepest subsidence']
+                    }}
+                />
+                <Line type="monotone" dataKey="depthIn" stroke={lineColor} strokeWidth={2} dot={renderDot} activeDot={{ r: 3 }} isAnimationActive={false} />
+            </LineChart>
+        </ResponsiveContainer>
+    )
+})
+
 // Renders nothing — reports the hovered column to the parent. The recharts
 // hooks only resolve inside <BarChart>, so reading hover state means living in
 // the tree; the effect keeps the parent's setState out of render.
@@ -787,7 +1093,7 @@ function ChartLegendGroup({ label, bins, valueFor, secondaryValueFor }: { label:
     )
 }
 
-function KPI({ label, value, sub }: { label: string; value: string; sub?: string }) {
+export function KPI({ label, value, sub }: { label: string; value: string; sub?: string }) {
     return (
         <Card>
             <CardHeader className="p-2 pb-0">

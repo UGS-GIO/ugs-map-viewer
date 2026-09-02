@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { XIcon } from 'lucide-react'
+import { useMemo, useState, useId } from 'react'
+import { XIcon, ChevronDown, ChevronRight } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -16,6 +16,8 @@ import {
     type ChartedType,
     type DisplacementType,
 } from './displacement-layers'
+import { useDisplacementBasinsForType, useDisplacementBasinYearIndexForType, useDisplacementDataQualsForType, useDisplacementSldBins, useDisplacementValueMagnitudesForType, useDisplacementYearsForType } from './use-displacement-queries'
+import { getPopulatedBinBoundaries } from './displacement-thresholds'
 
 // Compare a live exclusion set against the high/medium default so "dirty" means
 // "the reviewer changed data-quality from the default", not "anything excluded".
@@ -23,8 +25,6 @@ function isDefaultDataQuals(excluded: ReadonlySet<string>): boolean {
     return excluded.size === DEFAULT_EXCLUDED_DATA_QUALS.length
         && DEFAULT_EXCLUDED_DATA_QUALS.every(q => excluded.has(q))
 }
-import { useDisplacementBasinsForType, useDisplacementBasinYearIndexForType, useDisplacementDataQualsForType, useDisplacementSldBins, useDisplacementValueMagnitudesForType, useDisplacementYearsForType } from './use-displacement-queries'
-import { getPopulatedBinBoundaries } from './displacement-thresholds'
 
 // Label the year dropdown by type semantics: 'Water Year' for Yearly,
 // 'Period End Year' for Cumulative + Vertical Displacement Rate.
@@ -87,6 +87,14 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
     const rawThreshold = isCharted ? thresholdsIn[typeValue] : null
     const isDirty = yearOverride !== null || rawThreshold !== null || selectedBasins.size > 0 || dataQualsDirty
 
+    // Data quality + threshold are power-user controls — tuck them under a
+    // collapsed "Refine" disclosure so basin + year lead. A "· modified" hint
+    // keeps active refinements visible while collapsed. Matches the button +
+    // chevron disclosure used elsewhere (CollapsibleSection, popup-content-display).
+    const [refineOpen, setRefineOpen] = useState(false)
+    const refineId = useId()
+    const refineDirty = dataQualsDirty || (isCharted && rawThreshold !== null)
+
     function resetLocal() {
         if (yearOverride !== null) setYearOverride(typeValue, null)
         if (isCharted) setThreshold(typeValue, null)
@@ -141,7 +149,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                     onValueChange={(loc) => loc && addBasin(typeValue, loc)}
                     disabled={availableBasins.length === 0}
                 >
-                    <SelectTrigger className="h-8">
+                    <SelectTrigger className="h-8" aria-label="Add a basin to the filter">
                         <SelectValue placeholder={availableBasins.length === 0 ? 'All basins selected' : 'Add a basin…'} />
                     </SelectTrigger>
                     <SelectContent>
@@ -177,7 +185,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                         )}
                     </div>
                     <Select value={displayYear} onValueChange={(y) => setYearOverride(typeValue, y)}>
-                        <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-8" aria-label={yearLabelFor(typeValue)}><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {years.map(y => (
                                 <SelectItem
@@ -199,57 +207,78 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                 </div>
             )}
 
-            {dataQuals.length > 0 && (
+            {(dataQuals.length > 0 || isCharted) && (
                 <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                        <Label className="text-xs">
-                            Data quality
-                            {dataQuals.some(q => excludedQuals.has(q)) && (
-                                <span className="ml-1 text-muted-foreground">· {dataQuals.filter(q => !excludedQuals.has(q)).length}/{dataQuals.length}</span>
-                            )}
-                        </Label>
-                        {dataQualsDirty && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-xs"
-                                onClick={() => clearDataQuals(typeValue)}
-                            >
-                                Reset
-                            </Button>
-                        )}
-                    </div>
-                    <div className="flex flex-col gap-1">
-                        {dataQuals.map(q => {
-                            const checked = !excludedQuals.has(q)
-                            return (
-                                <label key={q} className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
-                                    <Checkbox
-                                        checked={checked}
-                                        onCheckedChange={() => toggleDataQual(typeValue, q)}
-                                        aria-label={`Toggle ${q} data quality`}
-                                        className="mt-0.5"
-                                    />
-                                    <span className="flex flex-col leading-tight">
-                                        <span className="capitalize">{q}</span>
-                                        {DATA_QUAL_DESCRIPTIONS[q] && (
-                                            <span className="text-[10px] text-muted-foreground">{DATA_QUAL_DESCRIPTIONS[q]}</span>
+                    <button
+                        type="button"
+                        onClick={() => setRefineOpen(o => !o)}
+                        aria-expanded={refineOpen}
+                        aria-controls={refineId}
+                        className="flex items-center gap-1 self-start rounded px-1 -ml-1 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                        {refineOpen
+                            ? <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                            : <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />}
+                        <span>Refine · data quality{isCharted ? ', threshold' : ''}</span>
+                        {refineDirty && <span className="ml-1 font-medium text-foreground">· modified</span>}
+                    </button>
+                    {refineOpen && (
+                        <div id={refineId} className="flex flex-col gap-2">
+                            {dataQuals.length > 0 && (
+                                <div className="flex flex-col gap-1">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs">
+                                            Data quality
+                                            {dataQuals.some(q => excludedQuals.has(q)) && (
+                                                <span className="ml-1 text-muted-foreground">· {dataQuals.filter(q => !excludedQuals.has(q)).length}/{dataQuals.length}</span>
+                                            )}
+                                        </Label>
+                                        {dataQualsDirty && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 px-2 text-xs"
+                                                onClick={() => clearDataQuals(typeValue)}
+                                            >
+                                                Reset
+                                            </Button>
                                         )}
-                                    </span>
-                                </label>
-                            )
-                        })}
-                    </div>
-                </div>
-            )}
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        {dataQuals.map(q => {
+                                            const checked = !excludedQuals.has(q)
+                                            return (
+                                                <label key={q} className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
+                                                    <Checkbox
+                                                        checked={checked}
+                                                        onCheckedChange={() => toggleDataQual(typeValue, q)}
+                                                        aria-label={`Toggle ${q} data quality`}
+                                                        className="mt-0.5"
+                                                    />
+                                                    <span className="flex flex-col leading-tight">
+                                                        <span className="capitalize">{q}</span>
+                                                        {DATA_QUAL_DESCRIPTIONS[q] && (
+                                                            <span className="text-[10px] text-muted-foreground">{DATA_QUAL_DESCRIPTIONS[q]}</span>
+                                                        )}
+                                                    </span>
+                                                </label>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+                            )}
 
-            {isCharted && (
-                <ThresholdSelect
-                    typeValue={typeValue}
-                    currentThresholdIn={thresholdIn}
-                    onChange={(n) => setThreshold(typeValue, n)}
-                    onReset={() => setThreshold(typeValue, null)}
-                />
+                            {isCharted && (
+                                <ThresholdSelect
+                                    typeValue={typeValue}
+                                    currentThresholdIn={thresholdIn}
+                                    onChange={(n) => setThreshold(typeValue, n)}
+                                    onReset={() => setThreshold(typeValue, null)}
+                                />
+                            )}
+                        </div>
+                    )}
+                </div>
             )}
         </div>
     )

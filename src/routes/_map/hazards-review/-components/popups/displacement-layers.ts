@@ -83,6 +83,13 @@ export function getUnitsLabelForType(type: DisplacementType): string {
     return DISPLACEMENT_UNITS_LABEL[type]
 }
 
+// Compact unit for legend band labels (the "3 – 5 in" form). Vertical Displacement
+// Rate is a velocity, so its bands read per-year; the others are displacements in
+// inches. Separate from getUnitsLabelForType, which returns the longer footer text.
+export function getShortUnitForType(type: DisplacementType): string {
+    return type === 'Vertical Displacement Rate' ? 'in/year' : 'in'
+}
+
 // Canonical data-quality categories, best→worst, used to order the data-quality
 // filter checkboxes. The filter itself works off whatever values are present in
 // the data (NOT IN excluded), so a new backend category still shows by default —

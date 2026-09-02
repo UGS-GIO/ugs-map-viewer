@@ -24,6 +24,8 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { useMapContextState } from '@/hooks/use-map-context-state';
 import { MapContext } from '@/context/map-context';
 import { DisplacementFilterProvider, useDisplacementFilters, useDisplacementLayerFilters } from './-components/popups/displacement-filter-context';
+import { DisplacementAnalysisProvider } from './-components/popups/displacement-analysis-context';
+import { DisplacementAnalysisHost } from './-components/popups/displacement-analysis-host';
 import { useDisplacementLatestYearByType } from './-components/popups/use-displacement-queries';
 import { renderDisplacementLayerHeader } from './-components/popups/displacement-layer-charts';
 import { makeDisplacementPopupFeatureFilter } from './-components/popups/displacement-popup-filter';
@@ -54,6 +56,7 @@ export default function Map() {
   return (
     <MapContext.Provider value={contextValue}>
     <DisplacementFilterProvider>
+    <DisplacementAnalysisProvider>
       <TourAutoStart route="hazards" />
       <div className="relative h-svh overflow-hidden bg-background">
         <AlertDialog open={showWelcomeDialog} onOpenChange={setShowWelcomeDialog}>
@@ -146,7 +149,9 @@ export default function Map() {
           <Layout.Footer className={cn('hidden md:flex z-20')} dynamicContent={<MapFooter />} />
         </Layout>
       </main>
+      <DisplacementAnalysisHost />
     </div>
+    </DisplacementAnalysisProvider>
     </DisplacementFilterProvider>
     </MapContext.Provider>
   )

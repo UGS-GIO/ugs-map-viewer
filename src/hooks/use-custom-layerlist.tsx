@@ -34,6 +34,8 @@ interface LayerAccordionItemProps {
     layerStatsRender?: (layerTitle: string) => React.ReactNode;
     /** Optional render-prop overriding a layer's legend content (e.g. an interactive symbology legend). */
     layerLegendRender?: (layer: LayerProps) => React.ReactNode;
+    /** Render just this layer's controls, without its own accordion header/switch — used to embed the active child of a `variantSelector` group under the group's shared header. */
+    embedded?: boolean;
 }
 
 /**
@@ -63,7 +65,7 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
     );
 }
 
-const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: LayerAccordionItemProps) => {
+const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender, embedded }: LayerAccordionItemProps) => {
     const {
         isSelected,
         handleToggleSelection,
@@ -72,7 +74,10 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
     } = useLayerItemState(layerConfig);
 
     const { map } = useMap();
-    const { groupVisibility, setGroupVisibility, layerOpacity: layerOpacityMap, setLayerOpacity } = useLayerUrl();
+    const { groupVisibility, setGroupVisibility, layerOpacity: layerOpacityMap, setLayerOpacity, selectedLayerTitles, setExclusiveSelection, updateLayerSelection } = useLayerUrl();
+    // Which variant a `variantSelector` group is focused on when none is selected
+    // yet (once one is selected, that drives it). null → fall back to the first.
+    const [variantActivePick, setVariantActivePick] = useState<string | null>(null);
     const { setIsCollapsed, setNavOpened } = useSidebar();
     const { data: layerDescriptions } = useFetchLayerDescriptions();
     const isMobile = useIsMobile();
@@ -233,6 +238,144 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
     const accordionValue = isUserExpanded ? "item-1" : "";
 
 
+    // --- Variant-Selector Group Rendering ---
+    // One entry with a segmented "surface" switch that keeps exactly one child
+    // selected at a time; the active child's own controls render below via an
+    // embedded LayerAccordionItem, so every per-layer behavior (legend, opacity,
+    // filters, stats, zoom) is reused rather than reimplemented.
+    if (layerConfig.type === 'group' && 'layers' in layerConfig && layerConfig.variantSelector) {
+        const variants = (layerConfig.layers ?? []).filter((v): v is LayerProps & { title: string } => Boolean(v.title));
+        const variantTitles = variants.map(v => v.title);
+        const selectedVariant = variants.find(v => selectedLayerTitles.has(v.title)) ?? null;
+        const isOn = selectedVariant !== null;
+        // Active surface: the selected one wins; else the user's last pick; else the first.
+        const activeTitle = selectedVariant?.title ?? variantActivePick ?? variantTitles[0];
+        const activeChild = variants.find(v => v.title === activeTitle) ?? variants[0];
+
+        const toggleOn = (checked: boolean) => {
+            if (checked && activeChild) setExclusiveSelection(activeChild.title, variantTitles);
+            else updateLayerSelection(variantTitles, false);
+            setIsUserExpanded(checked);
+        };
+        const pickVariant = (title: string) => {
+            setVariantActivePick(title);
+            setExclusiveSelection(title, variantTitles);
+            setIsUserExpanded(true);
+        };
+        // Radiogroup keyboard model: arrows/Home/End move selection (and focus)
+        // among the surfaces, wrapping at the ends.
+        const onVariantKeyDown = (e: React.KeyboardEvent, idx: number) => {
+            const n = variants.length;
+            let next = idx;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (idx + 1) % n;
+            else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (idx - 1 + n) % n;
+            else if (e.key === 'Home') next = 0;
+            else if (e.key === 'End') next = n - 1;
+            else return;
+            e.preventDefault();
+            const target = variants[next];
+            if (!target) return;
+            pickVariant(target.title);
+            const group = (e.currentTarget as HTMLElement).closest('[role="radiogroup"]');
+            group?.querySelectorAll<HTMLElement>('[role="radio"]')[next]?.focus();
+        };
+
+        return (
+            <div className={`mr-2 my-1 ${isTopLevel ? 'border border-secondary rounded' : ''}`}>
+                <Accordion
+                    type="single"
+                    collapsible
+                    value={accordionValue}
+                    onValueChange={(val) => setIsUserExpanded(val === 'item-1')}
+                >
+                    <AccordionItem value="item-1">
+                        <AccordionHeader>
+                            {isTopLevel ? (
+                                <Switch checked={isOn} onCheckedChange={toggleOn} className="mx-2" />
+                            ) : (
+                                <Checkbox
+                                    checked={isOn}
+                                    onCheckedChange={(checked) => { if (typeof checked === 'boolean') toggleOn(checked); }}
+                                    className="mx-2"
+                                />
+                            )}
+                            <AccordionTrigger>
+                                <div className="text-left">
+                                    <h3 className="text-md font-medium">{layerConfig.title}</h3>
+                                    {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
+                                        <p className="text-xs font-normal text-muted-foreground">
+                                            {layerConfig.subtitle ?? layerConfig.sourceAgency}
+                                        </p>
+                                    )}
+                                </div>
+                            </AccordionTrigger>
+                        </AccordionHeader>
+                        <AccordionContent>
+                            {variants.length > 1 && (
+                                <div className="mx-8 mb-1 mt-2">
+                                    {/* "Show on map" — a variantSelector picks which mutually-exclusive
+                                        variant the map paints; the label makes that explicit. */}
+                                    <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Show on map</div>
+                                    <div
+                                        role="radiogroup"
+                                        aria-label={`${layerConfig.title ?? 'Layer'}: choose a surface`}
+                                        className="inline-flex flex-wrap gap-0.5 rounded-md border border-border bg-muted/40 p-0.5"
+                                    >
+                                        {variants.map((v, i) => {
+                                            const active = v.title === activeTitle;
+                                            // Only paint the raised "selected" chip while the entry is
+                                            // actually on — a highlight with nothing on the map misleads.
+                                            const highlighted = active && isOn;
+                                            return (
+                                                <button
+                                                    key={v.title}
+                                                    type="button"
+                                                    role="radio"
+                                                    aria-checked={active}
+                                                    tabIndex={active ? 0 : -1}
+                                                    title={v.title}
+                                                    onClick={() => pickVariant(v.title)}
+                                                    onKeyDown={(e) => onVariantKeyDown(e, i)}
+                                                    className={`rounded px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${highlighted ? 'bg-background text-foreground shadow-sm ring-1 ring-border' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'}`}
+                                                >
+                                                    {v.variantLabel ?? v.title}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {/* Plain-language explainer for the active surface — the switch
+                                        labels alone ("Cumulative"/"Yearly") are jargon. */}
+                                    {activeChild?.variantDescription && (
+                                        <p className="mt-1.5 text-xs leading-snug text-muted-foreground">{activeChild.variantDescription}</p>
+                                    )}
+                                </div>
+                            )}
+                            {activeChild && (
+                                // Key by the active surface so switching REMOUNTS the child:
+                                // its stats/SLD/threshold queries re-resolve for the new type
+                                // from a clean slate (reusing the instance left the KPIs stuck
+                                // on the previous surface's data). Trade-off: the open Filters
+                                // panel re-collapses on switch — acceptable vs. showing stale
+                                // numbers.
+                                <LayerAccordionItem
+                                    key={activeChild.title}
+                                    layerConfig={activeChild}
+                                    isTopLevel={false}
+                                    embedded
+                                    disableExport={disableExport}
+                                    groupExtrasRender={groupExtrasRender}
+                                    layerExtrasRender={layerExtrasRender}
+                                    layerStatsRender={layerStatsRender}
+                                    layerLegendRender={layerLegendRender}
+                                />
+                            )}
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            </div>
+        );
+    }
+
     // --- Group Layer Rendering ---
     if (layerConfig.type === 'group' && 'layers' in layerConfig) {
         const childLayers = [...(layerConfig.layers || [])];
@@ -310,6 +453,47 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
         ?? (isPMTilesLayer(layerConfig) ? <StacRenderLegend layer={layerConfig} /> : undefined);
 
     // --- Single Layer Rendering ---
+    const layerControls = (
+        <LayerControls
+            layerOpacity={isSelected ? (layerOpacityMap.get(layerConfig.title || '') ?? layerConfig.opacity ?? 0.8) : null}
+            handleOpacityChange={handleOpacityChange}
+            handleOpacityCommit={handleOpacityCommit}
+            title={layerConfig.title || ''}
+            description={layerDescriptions ? layerDescriptions[layerConfig.title || ''] : ''}
+            handleZoomToLayer={handleZoomToLayer}
+            url={extentOptions.type === 'wms' ? extentOptions.wmsUrl || '' : ''}
+            openLegend={embedded ? true : isUserExpanded}
+            layerName={extentOptions.type === 'wms' ? extentOptions.layerName : null}
+            customLegend={resolvedCustomLegend}
+            bivariateLegend={layerConfig.bivariateLegend}
+            arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
+            legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}
+            downloadParquetUrl={layerConfig.downloadParquetUrl}
+            relatedTables={relatedTables}
+            disableExport={disableExport}
+            filtersContent={layerConfig.title ? layerExtrasRender?.(layerConfig.title) : undefined}
+            statsContent={layerConfig.title ? layerStatsRender?.(layerConfig.title) : undefined}
+            styleName={isWMSLayer(layerConfig) ? layerConfig.styleName : undefined}
+            defaultFiltersOpen={embedded}
+        />
+    );
+
+    // Embedded (active child of a variantSelector group): the group already owns
+    // the header/switch/title, so render only the controls (plus the zoom hint,
+    // for any future variant child that declares a visibleZoomRange).
+    if (embedded) {
+        return (
+            <div className="mt-1">
+                {zoomHint && visibleZoomRange && (
+                    <div className="px-2 pb-2">
+                        <ZoomHintPill direction={zoomHint} range={visibleZoomRange} onClick={handleZoomToVisibleRange} />
+                    </div>
+                )}
+                {layerControls}
+            </div>
+        );
+    }
+
     return (
         <div className={`mr-2 my-1 ${isTopLevel ? 'border border-secondary rounded' : ''}`}>
             <Accordion
@@ -362,27 +546,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                         </div>
                     )}
                     <AccordionContent>
-                        <LayerControls
-                            layerOpacity={isSelected ? (layerOpacityMap.get(layerConfig.title || '') ?? layerConfig.opacity ?? 0.8) : null}
-                            handleOpacityChange={handleOpacityChange}
-                            handleOpacityCommit={handleOpacityCommit}
-                            title={layerConfig.title || ''}
-                            description={layerDescriptions ? layerDescriptions[layerConfig.title || ''] : ''}
-                            handleZoomToLayer={handleZoomToLayer}
-                            url={extentOptions.type === 'wms' ? extentOptions.wmsUrl || '' : ''}
-                            openLegend={isUserExpanded}
-                            layerName={extentOptions.type === 'wms' ? extentOptions.layerName : null}
-                            customLegend={resolvedCustomLegend}
-                            bivariateLegend={layerConfig.bivariateLegend}
-                            arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
-                            legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}
-                            downloadParquetUrl={layerConfig.downloadParquetUrl}
-                            relatedTables={relatedTables}
-                            disableExport={disableExport}
-                            filtersContent={layerConfig.title ? layerExtrasRender?.(layerConfig.title) : undefined}
-                            statsContent={layerConfig.title ? layerStatsRender?.(layerConfig.title) : undefined}
-                            styleName={isWMSLayer(layerConfig) ? layerConfig.styleName : undefined}
-                        />
+                        {layerControls}
                     </AccordionContent>
                 </AccordionItem>
             </Accordion>
