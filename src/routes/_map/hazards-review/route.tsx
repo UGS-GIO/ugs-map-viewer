@@ -9,7 +9,9 @@ export const Route = createFileRoute('/_map/hazards-review')({
   validateSearch: HazardsReviewSearchParamsSchema,
   errorComponent: RouteErrorBoundary,
   beforeLoad: async ({ location }) => {
-    // Wait for auth to initialize
+    // Bypass auth on dev + preview/develop builds; production (mode=production, master branch) still gates.
+    if (import.meta.env.MODE !== 'production') return
+
     await new Promise<void>((resolve) => {
       const unsubscribe = auth.onAuthStateChanged(() => {
         unsubscribe()
@@ -17,7 +19,6 @@ export const Route = createFileRoute('/_map/hazards-review')({
       })
     })
 
-    // Check if user is authenticated
     if (!auth.currentUser) {
       throw redirect({
         to: '/login',

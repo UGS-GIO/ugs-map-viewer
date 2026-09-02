@@ -112,7 +112,7 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
                     disabled={disabled}
                     className={compact
                         ? 'h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground'
-                        : 'flex flex-col items-center px-3 py-2 min-w-[80px] flex-1 gap-1'}
+                        : 'flex flex-col items-center px-3 py-2 min-w-[80px] basis-[calc((100%-1rem)/3)] grow-0 gap-1'}
                     aria-label={compact ? `Download ${layerTitle}` : 'Download layer data'}
                 >
                     {(isDownloading || schemaLoading)

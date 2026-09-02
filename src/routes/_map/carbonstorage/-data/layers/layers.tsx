@@ -1448,7 +1448,7 @@ const subsurfaceDataConfig: LayerProps = {
         geothermalWellsWMSConfig,
         geothermalSpringsJoinsConfig,
         geothermalWellsJoinsConfig,
-        nonpetrolWellsConfig
+        nonpetrolWellsConfig,
     ]
 }
 

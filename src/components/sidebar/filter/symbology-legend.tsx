@@ -4,6 +4,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { LegendSwatchGrid } from '@/components/maps/legend-swatch-grid'
 import { useLayerFilter } from '@/hooks/use-layer-filter'
 import { useDistinctFieldOptions } from '@/hooks/use-distinct-field-options'
 import type { FilterSchema, FilterFieldKind } from '@/lib/filter/types'
@@ -159,28 +160,18 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
 
     // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens.
     const renderRows = (items: string[], showSwatch = true) => (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-1.5">
-            {items.map(value => (
-                <label key={value} className="flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer">
-                    <Checkbox
-                        className="mt-0.5 shrink-0"
-                        checked={onSet.has(value)}
-                        onCheckedChange={() => toggle(value)}
-                        aria-label={`Toggle ${displayLabel(value)}`}
-                    />
-                    {showSwatch && (
-                        <span
-                            className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
-                            style={{ backgroundColor: colorFor(value), borderColor: stroke.get(value) ?? 'rgba(0,0,0,0.3)' }}
-                        />
-                    )}
-                    <span className="min-w-0 break-words leading-tight">
-                        {displayLabel(value)}
-                        {counts[value] != null && <span className="ml-1 text-muted-foreground">({counts[value].toLocaleString()})</span>}
-                    </span>
-                </label>
-            ))}
-        </div>
+        <LegendSwatchGrid
+            items={items.map(value => ({
+                key: value,
+                label: displayLabel(value),
+                color: colorFor(value),
+                stroke: stroke.get(value),
+                count: counts[value],
+            }))}
+            showSwatch={showSwatch}
+            isChecked={(value) => onSet.has(value)}
+            onToggle={toggle}
+        />
     )
 
     const controls = (

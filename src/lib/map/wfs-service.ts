@@ -2,8 +2,46 @@
  * Unified WFS query service
  * All spatial queries use CQL INTERSECTS for accurate geometry matching
  */
-import type { Geometry, Feature, Polygon } from 'geojson'
+import type { FeatureCollection, Geometry, Feature, Polygon } from 'geojson'
 import type { WMSLayerProps } from '@/lib/types/mapping-types'
+
+export interface FetchWfsFeaturesOptions {
+  /** Optional max feature cap (`count` in WFS 2.0). */
+  count?: number
+  /** Coordinate reference system (default: EPSG:4326). */
+  crs?: string
+  /** Optional CQL attribute filter applied via `CQL_FILTER`. */
+  cqlFilter?: string
+}
+
+/**
+ * Plain WFS 2.0 GetFeature — fetches the entire FeatureCollection for a
+ * typeName with no spatial filter. Use this when a layer needs its whole
+ * client-side dataset (legend stats, bulk renderers, etc.). For bounds /
+ * polygon-scoped queries, use {@link queryWfs} instead.
+ */
+export async function fetchWfsFeatures<G extends Geometry = Geometry, P = Record<string, unknown>>(
+  wfsUrl: string,
+  typeName: string,
+  options: FetchWfsFeaturesOptions = {},
+): Promise<FeatureCollection<G, P>> {
+  const { count, crs = 'EPSG:4326', cqlFilter } = options
+  const url = new URL(wfsUrl)
+  url.searchParams.set('service', 'WFS')
+  url.searchParams.set('version', '2.0.0')
+  url.searchParams.set('request', 'GetFeature')
+  url.searchParams.set('typeNames', typeName)
+  url.searchParams.set('outputFormat', 'application/json')
+  url.searchParams.set('srsName', crs)
+  if (count) url.searchParams.set('count', String(count))
+  if (cqlFilter) url.searchParams.set('CQL_FILTER', cqlFilter)
+
+  const response = await fetch(url.toString())
+  if (!response.ok) {
+    throw new Error(`WFS request failed: ${response.status} ${response.statusText}`)
+  }
+  return response.json() as Promise<FeatureCollection<G, P>>
+}
 
 export interface WfsFeature {
   id: string | number

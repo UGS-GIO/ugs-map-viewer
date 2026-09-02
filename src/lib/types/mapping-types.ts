@@ -62,7 +62,7 @@ export interface NumberPopupFieldConfig extends BaseFieldConfig {
 // Date-specific field configuration
 export interface DatePopupFieldConfig extends BaseFieldConfig {
     type: 'date';
-    format?: 'iso' | 'short' | 'long';
+    format?: 'iso' | 'short' | 'long' | 'monthYear';
 }
 
 // Custom-specific field configuration
@@ -125,6 +125,10 @@ interface BaseLayerProps {
     sourceUrl?: string;
     /** Zoom range [min, max] where this layer renders. Out-of-range → UI shows "Zoom in to see" hint. Auto-resolved from WMS GetCapabilities or PMTiles header if omitted. */
     visibleZoomRange?: [number, number];
+    /** Short label for this layer when it's a child of a `variantSelector` group (the segmented-switch caption, e.g. "Cumulative"). Falls back to `title` if unset. */
+    variantLabel?: string;
+    /** One-line plain-language description of this variant, shown under the surface switch to explain what it means and how it relates to the map. */
+    variantDescription?: string;
 }
 
 export interface WMSLayerProps extends BaseLayerProps {
@@ -134,6 +138,8 @@ export interface WMSLayerProps extends BaseLayerProps {
     crs?: string; // EPSG code (e.g., 'EPSG:26912', 'EPSG:3857') for WMS GetFeatureInfo requests
     /** Set to enable min/max labels on the raster colorbar legend. Omit to render the bar without labels. */
     legendUnit?: string;
+    /** GeoServer SLD style name. When set, both map tiles and the layer-list legend request this style instead of the layer's default. */
+    styleName?: string;
 }
 
 export interface ArcGISMapServerLayerProps extends BaseLayerProps {
@@ -303,8 +309,15 @@ export interface WFSLayerProps extends BaseLayerProps {
 export interface GroupLayerProps extends BaseLayerProps {
     type: 'group';
     layers?: LayerProps[];
-    /** Always show this group in the review layer list, bypassing the reviewable-names DB filter */
-    alwaysShowInReview?: boolean;
+    /**
+     * Render this group as a single entry with a segmented "surface" switch that
+     * keeps exactly ONE child selected at a time (mutually-exclusive variants of
+     * the same dataset), instead of the default multi-select child list. The
+     * children supply the switch options (via `variantLabel`); the active child's
+     * own controls/legend/filters render below the switch. Opt-in — groups
+     * without this flag render unchanged.
+     */
+    variantSelector?: boolean;
 }
 
 

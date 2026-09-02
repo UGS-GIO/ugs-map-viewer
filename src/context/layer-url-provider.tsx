@@ -17,6 +17,13 @@ interface LayerUrlContextType {
     activeFilters: ActiveFilters;
     /** Select/deselect layers. Selecting also switches the enclosing groups on. */
     updateLayerSelection: (titles: string | string[], shouldBeSelected: boolean) => void;
+    /**
+     * Select exactly one title among a set of mutually-exclusive variants:
+     * selects `selectTitle` and deselects every other title in `amongTitles`, in
+     * ONE navigation (two updateLayerSelection calls in a tick race — see its
+     * note). Powers `variantSelector` groups.
+     */
+    setExclusiveSelection: (selectTitle: string, amongTitles: string[]) => void;
     updateFilter: (layerTitle: string, filterValue: string | undefined) => void;
     /** Whether the layer URL has been initialized (defaults applied if needed) */
     isInitialized: boolean;
@@ -53,6 +60,61 @@ const getDefaultSelected = (layers: LayerProps[]): string[] => {
         }
     });
     return selected;
+};
+
+// Enforce the mutually-exclusive invariant of `variantSelector` groups at the data
+// layer: keep at most one selected child per such group. Guards against stale or
+// hand-edited URLs — e.g. a bookmark from before three surfaces were consolidated,
+// which would otherwise stack every surface on the map. Kept: the config-default
+// (`visible`) child, else the first selected in child order. Returns the same array
+// reference-identity path is not relied on (callers compare length).
+export const enforceVariantExclusivity = (layers: LayerProps[], selected: string[]): string[] => {
+    const selectedSet = new Set(selected);
+    const drop = new Set<string>();
+    const walk = (nodes: LayerProps[]): void => {
+        for (const node of nodes) {
+            if (node.type !== 'group' || !('layers' in node) || !node.layers) continue;
+            if (node.variantSelector) {
+                const selectedChildren = node.layers.filter(c => c.title && selectedSet.has(c.title));
+                if (selectedChildren.length > 1) {
+                    const keep = selectedChildren.find(c => c.visible) ?? selectedChildren[0];
+                    for (const c of selectedChildren) {
+                        if (c.title && c.title !== keep.title) drop.add(c.title);
+                    }
+                }
+            }
+            walk(node.layers);
+        }
+    };
+    walk(layers);
+    return drop.size === 0 ? selected : selected.filter(t => !drop.has(t));
+};
+
+// Pure core of setExclusiveSelection, testable without a router. Given the current
+// selection/filters/visibility, select `selectTitle`, deselect every other title in
+// `amongTitles` (dropping their per-title filters), and reveal `groupsToShow`.
+// Returns null when nothing changed (so the caller can return `prev` and not loop).
+export const computeExclusiveSelection = (
+    current: { selected: string[]; filters: Record<string, string>; visibility: Record<string, boolean> },
+    selectTitle: string,
+    amongTitles: string[],
+    groupsToShow: string[],
+): { selected: string[]; filters: Record<string, string>; visibility: Record<string, boolean> } | null => {
+    const selected = new Set(current.selected);
+    const filters = { ...current.filters };
+    const visibility = { ...current.visibility };
+    let changed = false;
+    for (const t of amongTitles) {
+        if (t === selectTitle) continue;
+        if (selected.delete(t)) changed = true;
+        if (t in filters) { delete filters[t]; changed = true; }
+    }
+    if (!selected.has(selectTitle)) { selected.add(selectTitle); changed = true; }
+    for (const g of groupsToShow) {
+        if (visibility[g] !== true) { visibility[g] = true; changed = true; }
+    }
+    if (!changed) return null;
+    return { selected: Array.from(selected), filters, visibility };
 };
 
 // Check if a group has any visible (config default) or URL-selected children
@@ -138,6 +200,17 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
             const validSelected = currentSelected.filter((title: string) => allValidLayerTitles.has(title));
             if (validSelected.length !== currentSelected.length) {
                 finalLayers = { selected: validSelected };
+                needsUpdate = true;
+            }
+        }
+
+        // Enforce single-surface selection for variantSelector groups (a stale or
+        // pre-consolidation URL may carry every surface). Runs before visibility
+        // seeding so the derived group visibility reflects the kept surface.
+        if (finalLayers?.selected && finalLayers.selected.length > 0) {
+            const enforced = enforceVariantExclusivity(layersConfig, finalLayers.selected);
+            if (enforced.length !== finalLayers.selected.length) {
+                finalLayers = { selected: enforced };
                 needsUpdate = true;
             }
         }
@@ -280,6 +353,32 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         });
     }, [navigate, layersConfig]);
 
+    // Exclusive selection for a variant group: select one variant, drop the rest
+    // (and their filters), reveal ancestor groups — all in a single navigation so
+    // it can't race itself the way two updateLayerSelection() calls would.
+    const setExclusiveSelection = useCallback((selectTitle: string, amongTitles: string[]) => {
+        const groupsToShow = layersConfig ? findAncestorGroupTitles(layersConfig, selectTitle) : [];
+        navigate({
+            to: '.',
+            search: (prev) => {
+                const next = computeExclusiveSelection(
+                    { selected: prev.layers?.selected || [], filters: prev.filters || {}, visibility: prev.visibility || {} },
+                    selectTitle,
+                    amongTitles,
+                    groupsToShow,
+                );
+                if (!next) return prev;
+                return {
+                    ...prev,
+                    layers: { selected: next.selected },
+                    filters: Object.keys(next.filters).length > 0 ? next.filters : undefined,
+                    visibility: Object.keys(next.visibility).length > 0 ? next.visibility : undefined,
+                };
+            },
+            replace: true,
+        });
+    }, [navigate, layersConfig]);
+
     const updateFilter = useCallback((layerTitle: string, filterValue: string | undefined) => {
         // Applying a filter selects the layer, so reveal its groups too — same invariant
         // as updateLayerSelection, or a filtered layer inside an off group stays hidden.
@@ -316,6 +415,7 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
         selectedLayerTitles,
         activeFilters,
         updateLayerSelection,
+        setExclusiveSelection,
         updateFilter,
         isInitialized,
         groupVisibility: mergedGroupVisibility,

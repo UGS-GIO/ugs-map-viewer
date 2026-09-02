@@ -36,6 +36,27 @@ interface LayerControlsProps {
     filtersContent?: React.ReactNode;
     /** Optional layer-scoped stats / charts UI. When provided, adds a Stats toggle to the button row and a collapsible panel below. */
     statsContent?: React.ReactNode;
+    /** Optional SLD style name forwarded to the legend so it matches the styled map tiles. */
+    styleName?: string;
+    /** Start the Filters panel expanded. Used by variantSelector surfaces, whose stats live in the Filters slot and would otherwise re-collapse on every surface switch (the active child remounts). */
+    defaultFiltersOpen?: boolean;
+}
+
+// Animates to content's real height via a CSS grid-rows trick (0fr <-> 1fr) instead of a
+// guessed max-height cap, so the collapse/expand transition never clips taller content.
+// Deliberately NOT ResizeObserver-measured: content here can include a Recharts
+// ResponsiveContainer, which runs its own internal ResizeObserver on the same node — a JS
+// height-measurement + animated-state loop on top of that fed back into itself every transition
+// frame and froze the map (see #500). Pure CSS has no measurement step, so there's nothing to loop.
+function AutoHeightCollapse({ open, children }: { open: boolean; children: React.ReactNode }) {
+    return (
+        <div
+            className="grid transition-[grid-template-rows] duration-200 ease-out"
+            style={{ gridTemplateRows: open ? '1fr' : '0fr' }}
+        >
+            <div className="overflow-hidden">{children}</div>
+        </div>
+    );
 }
 
 const LayerControls: React.FC<LayerControlsProps> = ({
@@ -57,6 +78,8 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     disableExport = false,
     filtersContent,
     statsContent,
+    styleName,
+    defaultFiltersOpen = false,
 }) => {
     // Info + Legend remain a single-select pair (mutually exclusive — they both
     // describe the layer and stacking them is redundant). Filters + Stats each
@@ -64,7 +87,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     // alongside Info or Legend if they want.
     const [prevOpenLegend, setPrevOpenLegend] = useState(openLegend);
     const [activeTab, setActiveTab] = useState<'info' | 'legend' | null>(openLegend ? 'legend' : null);
-    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [filtersOpen, setFiltersOpen] = useState(defaultFiltersOpen);
     const [statsOpen, setStatsOpen] = useState(false);
 
     if (openLegend !== prevOpenLegend) {
@@ -212,24 +235,21 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     bivariateLegend={bivariateLegend}
                     arcgisUrl={arcgisUrl}
                     legendUnit={legendUnit}
+                    styleName={styleName}
                 />
                 {filtersContent && (
-                    <div
-                        className={`overflow-hidden transition-[max-height] duration-200 ease-out ${filtersOpen ? 'max-h-[1000px]' : 'max-h-0'}`}
-                    >
-                        <div className="mt-1 mb-2 mx-1 px-1.5 pt-2 border-t border-border/60">
+                    <AutoHeightCollapse open={filtersOpen}>
+                        <div className="mt-2 mb-2 rounded border border-border bg-muted/40 p-1">
                             {filtersContent}
                         </div>
-                    </div>
+                    </AutoHeightCollapse>
                 )}
                 {statsContent && (
-                    <div
-                        className={`overflow-hidden transition-[max-height] duration-200 ease-out ${statsOpen ? 'max-h-[2000px]' : 'max-h-0'}`}
-                    >
-                        <div className="mt-1 mb-2 mx-1 px-1.5 pt-2 border-t border-border/60">
+                    <AutoHeightCollapse open={statsOpen}>
+                        <div className="mt-2 mb-2 rounded border border-border bg-muted/40 p-1">
                             {statsOpen && statsContent}
                         </div>
-                    </div>
+                    </AutoHeightCollapse>
                 )}
             </div>
         </div>

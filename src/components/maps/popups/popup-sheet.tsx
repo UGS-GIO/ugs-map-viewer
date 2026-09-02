@@ -3,7 +3,7 @@ import { useCallback, useMemo, useRef, useState, useImperativeHandle, forwardRef
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-import type { LayerContentProps } from "@/components/maps/popups/types";
+import type { LayerContentProps, ExtendedFeature } from "@/components/maps/popups/types";
 import { PopupContentWithPagination } from "@/components/maps/popups/popup-content-with-pagination";
 import { XIcon } from "lucide-react";
 import type { HighlightFeature } from "@/components/maps/types";
@@ -24,6 +24,12 @@ interface PopupSheetProps {
     isOpen?: boolean;
     /** Click point (WGS84) — used by raster popup cards to snap to COG pixel grid for zoom-to. */
     clickPoint?: { lng: number; lat: number } | null;
+    /** Optional content rendered below the sheet title, above the feature list */
+    headerExtras?: React.ReactNode;
+    /** Optional render-prop for content shown under each layer's heading inside the feature list */
+    layerHeaderExtras?: (layer: LayerContentProps) => React.ReactNode;
+    /** Optional render-prop for content shown inside each feature card */
+    featureExtras?: (feature: ExtendedFeature, layer: LayerContentProps) => React.ReactNode;
 }
 
 export interface PopupSheetRef {
@@ -46,6 +52,9 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
     onWidthChange,
     isOpen: controlledOpen,
     clickPoint,
+    headerExtras,
+    layerHeaderExtras,
+    featureExtras,
 }, ref) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const floatingCloseRef = useRef<HTMLDivElement>(null);
@@ -179,6 +188,12 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
                     Popup content for {popupTitle}
                 </SheetDescription>
 
+                {headerExtras && (
+                    <div className="border-b border-border bg-card px-3 py-2">
+                        {headerExtras}
+                    </div>
+                )}
+
                 <div className="flex-1 min-h-0 overflow-hidden">
                     <div className="flex h-full overflow-hidden">
                         <div
@@ -191,6 +206,8 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
                                 layerContent={popupContent}
                                 onHighlightChange={onHighlightChange}
                                 clickPoint={clickPoint}
+                                layerHeaderExtras={layerHeaderExtras}
+                                featureExtras={featureExtras}
                             />
                         </div>
                     </div>

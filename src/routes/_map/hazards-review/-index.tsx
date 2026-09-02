@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Layout } from '@/components/layout/layout';
 import { TopNav } from '@/components/top-nav';
 import { MapFooter } from '@/components/maps/map-footer';
@@ -23,6 +23,13 @@ import { LogOut, User } from 'lucide-react';
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogAction } from '@/components/ui/alert-dialog';
 import { useMapContextState } from '@/hooks/use-map-context-state';
 import { MapContext } from '@/context/map-context';
+import { DisplacementFilterProvider, useDisplacementFilters, useDisplacementLayerFilters } from './-components/popups/displacement-filter-context';
+import { DisplacementAnalysisProvider } from './-components/popups/displacement-analysis-context';
+import { DisplacementAnalysisHost } from './-components/popups/displacement-analysis-host';
+import { useDisplacementLatestYearByType } from './-components/popups/use-displacement-queries';
+import { renderDisplacementLayerHeader } from './-components/popups/displacement-layer-charts';
+import { makeDisplacementPopupFeatureFilter } from './-components/popups/displacement-popup-filter';
+import type { DisplacementType } from './-components/popups/displacement-layers';
 import { TourAutoStart } from '@/components/tour-auto-start';
 
 export default function Map() {
@@ -48,6 +55,8 @@ export default function Map() {
 
   return (
     <MapContext.Provider value={contextValue}>
+    <DisplacementFilterProvider>
+    <DisplacementAnalysisProvider>
       <TourAutoStart route="hazards" />
       <div className="relative h-svh overflow-hidden bg-background">
         <AlertDialog open={showWelcomeDialog} onOpenChange={setShowWelcomeDialog}>
@@ -65,7 +74,7 @@ export default function Map() {
                 <li className="flex gap-2">
                   <span className="font-bold shrink-0">•</span>
                   <span>
-                    <strong>Toggle "For Review" and "Published" hazard data</strong> using the dedicated tab buttons within the layer controls window. Each layer's visibility can be controlled independently.
+                    <strong>Toggle hazard layers</strong> using the layer controls window. Each layer's visibility can be controlled independently.
                   </span>
                 </li>
                 <li className="flex gap-2">
@@ -134,13 +143,39 @@ export default function Map() {
           </Layout.Header>
 
           <Layout.Body>
-            <GenericMapContainer />
+            <FilteredMapContainer />
           </Layout.Body>
 
           <Layout.Footer className={cn('hidden md:flex z-20')} dynamicContent={<MapFooter />} />
         </Layout>
       </main>
+      <DisplacementAnalysisHost />
     </div>
+    </DisplacementAnalysisProvider>
+    </DisplacementFilterProvider>
     </MapContext.Provider>
+  )
+}
+
+function FilteredMapContainer() {
+  const { yearOverridesByType, basinsByType } = useDisplacementFilters()
+  const latestByType = useDisplacementLatestYearByType()
+  const layerFilters = useDisplacementLayerFilters()
+  // Build a per-type concrete year map: that type's user pick wins, else latest
+  // from data. Per-type so one layer's year never leaks into another's popup.
+  const popupFeatureFilter = useMemo(() => {
+    const effectiveYearByType: Record<DisplacementType, string | null> = {
+      'Cumulative': yearOverridesByType['Cumulative'] ?? latestByType['Cumulative'] ?? null,
+      'Yearly': yearOverridesByType['Yearly'] ?? latestByType['Yearly'] ?? null,
+      'Vertical Displacement Rate': yearOverridesByType['Vertical Displacement Rate'] ?? latestByType['Vertical Displacement Rate'] ?? null,
+    }
+    return makeDisplacementPopupFeatureFilter({ effectiveYearByType, basinsByType })
+  }, [yearOverridesByType, latestByType, basinsByType])
+  return (
+    <GenericMapContainer
+      layerFilters={layerFilters}
+      popupLayerHeaderRender={renderDisplacementLayerHeader}
+      popupFeatureFilter={popupFeatureFilter}
+    />
   )
 }

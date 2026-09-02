@@ -803,7 +803,7 @@ export default function DataMap({
           const beforeId = i > 0 ? getLayerId(renderableEntries[i - 1].layer) : undefined
           if (isWMSLayer(layer)) {
             const cqlFilter = layerFilters[layer.title]
-            const styleName = layerStyles[layer.title]
+            const styleName = layerStyles[layer.title] ?? layer.styleName
             return (
               <WmsLayerSource
                 key={`${layer.title}-${cqlFilter ?? ''}-${styleName ?? ''}`}
