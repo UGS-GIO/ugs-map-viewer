@@ -117,13 +117,18 @@ export function DisplacementAnalysisHost() {
             {/* Description is rendered inside the layout body (the scope summary), so
                 tell Radix there's no header description rather than warning. */}
             <DialogContent aria-describedby={undefined} className="max-w-5xl max-h-[90vh] overflow-y-auto">
+                {/* The switch sits under the title, not beside it: `DialogTitle` carries the close
+                    button as an absolutely-positioned child at the content's top-right, so anything
+                    right-aligned in the title row lands underneath it. The title reserves that lane
+                    with `pr-10`; the switch gets a full row, which is also where flex-wrap was
+                    already putting it on narrow viewports. */}
                 <DialogHeader>
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <DialogTitle className="text-base font-semibold">Displacement (InSAR)</DialogTitle>
-                        {siblings.length > 1 && (
+                    <DialogTitle className="pr-10 text-base font-semibold">Displacement (InSAR)</DialogTitle>
+                    {siblings.length > 1 && (
+                        <div className="pt-1">
                             <SurfaceSwitch siblings={siblings} activeTitle={activeTitle} onSelect={setActiveTitle} />
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </DialogHeader>
 
                 {/* key={activeTitle}: a clean stats instance per surface (no stale
