@@ -8,7 +8,10 @@ import type { PMTilesLayerProps } from '@/lib/types/mapping-types'
 export function StacRenderLegend({ layer }: { layer: PMTilesLayerProps }) {
     const render = layer.renders?.find(r => r.id === layer.defaultRenderId) ?? layer.renders?.[0]
     const entries = render?.legend ?? []
-    if (entries.length === 0) return null
+
+    if (entries.length === 0) {
+        return <div className="px-1 py-1 text-xs text-muted-foreground italic">No legend available</div>
+    }
 
     return (
         <ul className="flex flex-col gap-1 px-1 py-1">
