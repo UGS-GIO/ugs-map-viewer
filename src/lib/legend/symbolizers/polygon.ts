@@ -35,9 +35,60 @@ function handleStrokeSymbolizer(strokeSymbolizer: StrokeSymbolizer) {
     const strokeWidth = parseFloat(strokeSymbolizer["stroke-width"] || "1");
     const strokeJoin = strokeSymbolizer["stroke-linejoin"] || "round";
     const strokeCap = strokeSymbolizer["stroke-linecap"] || "round";
-    const strokeColorWithOpacity = addOpacityToHex(stroke, strokeOpacity);
+    // `none` / zero opacity are kept as-is rather than hexed into an opaque black outline the
+    // style never asked for; the caller swaps in legend ink instead.
+    const strokeColorWithOpacity = isBlank(stroke) || !(strokeOpacity > 0)
+        ? 'none'
+        : addOpacityToHex(stroke, strokeOpacity);
 
     return { strokeColorWithOpacity, strokeWidth, strokeJoin, strokeCap };
+}
+
+const CHECKER_PATTERN_ID = "legend-checker";
+
+/**
+ * The "no fill" texture: a 4px checker in two paper tones, shared by every swatch through one
+ * document-wide id (SVG resolves `url(#id)` across inline SVGs, so redefining it is harmless).
+ */
+function createCheckerPattern(): SVGDefsElement {
+    const NS = "http://www.w3.org/2000/svg";
+    const defs = document.createElementNS(NS, "defs");
+    const pattern = document.createElementNS(NS, "pattern");
+    pattern.setAttribute("id", CHECKER_PATTERN_ID);
+    pattern.setAttribute("patternUnits", "userSpaceOnUse");
+    pattern.setAttribute("width", "8");
+    pattern.setAttribute("height", "8");
+
+    const base = document.createElementNS(NS, "rect");
+    base.setAttribute("width", "8");
+    base.setAttribute("height", "8");
+    base.setAttribute("class", "legend-canvas-base");
+    pattern.appendChild(base);
+
+    for (const [x, y] of [[0, 0], [4, 4]]) {
+        const square = document.createElementNS(NS, "rect");
+        square.setAttribute("x", String(x));
+        square.setAttribute("y", String(y));
+        square.setAttribute("width", "4");
+        square.setAttribute("height", "4");
+        square.setAttribute("class", "legend-canvas-alt");
+        pattern.appendChild(square);
+    }
+
+    defs.appendChild(pattern);
+    return defs;
+}
+
+/**
+ * True when a colour paints nothing: absent, the `transparent`/`none` keywords, a fully
+ * transparent 8-digit hex, or an `rgba()`/`hsla()` with a zero alpha.
+ */
+function isBlank(color: string): boolean {
+    if (!color) return true;
+    const c = color.trim().toLowerCase();
+    if (c === 'transparent' || c === 'none') return true;
+    if (/^#[0-9a-f]{6}00$/.test(c)) return true;
+    return /^(rgba|hsla)\([^)]*,\s*0?\.?0+\s*\)$/.test(c);
 }
 
 /**
@@ -119,6 +170,21 @@ export function createPolygonSymbol(symbolizers: Symbolizer[]): SVGSVGElement {
         fillColorWithOpacity = `url(#${patternId})`;
     }
 
+    // A hollow polygon has nothing but its outline, so an unpainted swatch is the panel showing
+    // through — indistinguishable from no swatch at all. Every polygon sits on a canvas instead.
+    // The canvas is checkered rather than a flat tone: a flat tile behind a hollow symbol reads as
+    // a pale fill, which is a different symbol. The checker says "nothing painted here", and a
+    // partly transparent fill composites over it so its own translucency still shows.
+    svg.appendChild(createCheckerPattern());
+    const canvas = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    canvas.setAttribute("x", SYMBOL_CONSTANTS.LINE_START_X.toString());
+    canvas.setAttribute("y", "3");
+    canvas.setAttribute("width", "28");
+    canvas.setAttribute("height", "14");
+    canvas.setAttribute("class", "legend-canvas");
+    canvas.setAttribute("fill", `url(#${CHECKER_PATTERN_ID})`);
+    svg.appendChild(canvas);
+
     const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     rect.setAttribute("x", SYMBOL_CONSTANTS.LINE_START_X.toString());
     rect.setAttribute("y", "3");
@@ -126,7 +192,9 @@ export function createPolygonSymbol(symbolizers: Symbolizer[]): SVGSVGElement {
     rect.setAttribute("height", "14");
     rect.setAttribute("fill", fillColorWithOpacity);
     rect.setAttribute("stroke", strokeColorWithOpacity);
-    rect.setAttribute("stroke-width", strokeWidth.toString());
+    // With no fill the outline carries the whole symbol, so it can't be left invisible.
+    if (isBlank(strokeColorWithOpacity)) rect.classList.add("legend-ink");
+    rect.setAttribute("stroke-width", String(Math.max(strokeWidth, 1)));
     rect.setAttribute("stroke-linecap", strokeCap);
     rect.setAttribute("stroke-linejoin", strokeJoin);
 
@@ -156,6 +224,7 @@ export function createPolygonSymbol(symbolizers: Symbolizer[]): SVGSVGElement {
 function appendBorderTicks(svg: SVGSVGElement, graphicStroke: GraphicStrokeData, fallbackStroke: string): void {
     const mark = graphicStroke.graphics?.[0];
     const stroke = mark?.stroke || fallbackStroke;
+    const inkless = isBlank(stroke);
     const strokeWidth = mark?.["stroke-width"] || "1";
 
     // Rect geometry matches the rect drawn in createPolygonSymbol.
@@ -181,6 +250,7 @@ function appendBorderTicks(svg: SVGSVGElement, graphicStroke: GraphicStrokeData,
         line.setAttribute("x2", bx.toString());
         line.setAttribute("y2", by.toString());
         line.setAttribute("stroke", stroke);
+        if (inkless) line.classList.add("legend-ink");
         line.setAttribute("stroke-width", strokeWidth);
         line.setAttribute("stroke-linecap", "round");
         svg.appendChild(line);
