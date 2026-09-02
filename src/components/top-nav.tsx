@@ -7,6 +7,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { BasemapIcon } from '@/assets/basemap-icons';
+import { ChevronDown } from 'lucide-react';
 import { BASEMAP_STYLES, DEFAULT_BASEMAP, BasemapStyle } from '@/lib/basemaps';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import type { MapSearchParams } from '@/routes/_map';
@@ -32,6 +33,7 @@ const BasemapDropdown = ({ links, trigger, onBasemapChange, activeBasemap }: Bas
             <DropdownMenuItem key={id} asChild>
               <Button
                 variant="ghost"
+                aria-current={isActive || undefined}
                 className={cn('w-full justify-start', !isActive ? 'text-muted-foreground' : 'underline')}
                 onClick={() => onBasemapChange(id)}
               >
@@ -70,7 +72,7 @@ function TopNav({ className, ...props }: TopNavProps) {
 
   // Collapsed trigger (icon only)
   const collapsedIconTrigger = (
-    <Button size="icon" variant="outline">
+    <Button size="icon" variant="outline" aria-label={`Basemap: ${currentBasemapTitle}`}>
       <BasemapIcon />
     </Button>
   );
@@ -86,13 +88,14 @@ function TopNav({ className, ...props }: TopNavProps) {
   const moreTrigger = (
     <Button
       className={cn(
-        'text-muted-foreground',
+        'px-2 text-muted-foreground',
         isLongActive && 'text-secondary-foreground underline',
         'focus-visible:outline-none'
       )}
       variant="ghost"
     >
       More
+      <ChevronDown className="h-4 w-4" aria-hidden="true" />
     </Button>
   );
 
@@ -121,7 +124,7 @@ function TopNav({ className, ...props }: TopNavProps) {
       {/* Expanded view - individual buttons (large screens) */}
       <nav
         className={cn(
-          'hidden items-center space-x-4 lg:flex xl:space-x-6',
+          'hidden items-center space-x-0.5 lg:flex xl:space-x-1',
           className
         )}
         {...props}
@@ -135,9 +138,10 @@ function TopNav({ className, ...props }: TopNavProps) {
               <Button
                 variant="ghost"
                 key={id}
+                aria-current={isActive || undefined}
                 onClick={() => handleBasemapChange(id)}
                 className={cn(
-                  'text-sm font-medium transition-colors hover:text-secondary-foreground',
+                  'px-2 text-sm font-medium transition-colors hover:text-secondary-foreground',
                   isActive ? 'underline' : 'text-muted-foreground'
                 )}
               >

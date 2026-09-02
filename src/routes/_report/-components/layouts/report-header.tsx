@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Share2, Printer, FlaskConical } from "lucide-react";
 import { toast } from "sonner";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { UgsLogo } from "@/components/ugs-logo";
 
 interface ReportHeaderProps {
     onPrint?: () => void;
@@ -31,14 +32,10 @@ export const ReportHeader = ({ onPrint, testAllHazards = false }: ReportHeaderPr
         <div className="flex items-center justify-between w-full py-2 px-2 md:px-4 bg-background">
             <div className="flex items-center gap-3">
                 <Link to="https://geology.utah.gov/" className="cursor-pointer flex-shrink-0">
-                    <img
-                        src='/logo_main.png'
-                        alt='Utah Geological Survey Logo'
-                        className="h-9 w-auto"
-                    />
+                    <UgsLogo variant='mark' className="h-9 w-auto" />
                 </Link>
                 <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-                    <Link to="/hazards" className='font-semibold text-base sm:text-lg text-foreground'>{appTitle}</Link>
+                    <Link to="/hazards" variant='foreground' className='font-semibold text-base sm:text-lg'>{appTitle}</Link>
                     <span className='hidden sm:inline text-muted-foreground'>|</span>
                     <span className='text-xs sm:text-sm text-muted-foreground'>Utah Geological Survey</span>
                 </div>
@@ -80,6 +77,7 @@ export const ReportHeader = ({ onPrint, testAllHazards = false }: ReportHeaderPr
                                     }}
                                     variant={testAllHazards ? "destructive" : "ghost"}
                                     size="icon"
+                                    aria-label={testAllHazards ? "Exit test mode" : "Test all hazards"}
                                     className="h-8 w-8"
                                 >
                                     <FlaskConical className="h-4 w-4" />

@@ -133,7 +133,7 @@ export function MapToolsControl({
 
           {/* Active mode indicator */}
           {activeModeLabel && (
-            <div className="absolute top-1/2 right-full mr-1.5 -translate-y-1/2 whitespace-nowrap rounded bg-amber-500 px-2 py-0.5 text-[11px] font-medium text-white shadow-sm">
+            <div className="absolute top-1/2 right-full mr-1.5 -translate-y-1/2 whitespace-nowrap rounded-md bg-primary px-2 py-0.5 text-[11px] font-medium text-primary-foreground shadow-sm">
               {activeModeLabel}
             </div>
           )}

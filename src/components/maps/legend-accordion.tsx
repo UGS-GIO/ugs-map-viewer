@@ -67,7 +67,7 @@ const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend
                                 src={`data:${item.contentType};base64,${item.imageData}`}
                                 width={item.width}
                                 height={item.height}
-                                alt={item.label}
+                                alt=""
                                 className="min-w-5"
                             />
                             <span className="text-sm">{item.label}</span>

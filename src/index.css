@@ -3,77 +3,79 @@
 @tailwind utilities;
 
 @layer base {
+  /* UDS palette, shared with the warehouse + soil-water viewers. `--accent` keeps
+     its shadcn meaning (hover surface); UDS gold is `--gold`. */
   :root {
-    --background: 0 0% 98%;
-    --foreground: 31 50% 10%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 20%;            /* UDS gray-dark #333 */
     --card: 0 0% 100%;
-    --card-foreground: 31 50% 10%;
+    --card-foreground: 0 0% 20%;
     --popover: 0 0% 100%;
-    --popover-foreground: 30 2% 18%;
-    --primary: 28 95% 36%;
-    --primary-foreground: 60 9.1% 97.8%;
-    --secondary: 20 5.9% 90%;
-    --secondary-foreground: 24 9.8% 10%;
-    --muted: 60 4.8% 95.9%;
-    --muted-foreground: 25 5.3% 44.7%;
-    --accent: 60 4.8% 95.9%;
-    --accent-foreground: 24 9.8% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 60 9.1% 97.8%;
-    --border: 20 5.9% 90%;
-    --input: 20 5.9% 90%;
-    --ring: 31 97.2% 41.8%;
-    --radius: 0.5rem;
+    --popover-foreground: 0 0% 20%;
+    --primary: 20 73% 59%;             /* UGS orange #e37d49 — too light for white text, so foreground is dark */
+    --primary-foreground: 0 0% 10%;
+    --utah-blue: 222 76% 52%;          /* UDS Utah blue — state chrome and links */
+    --utah-blue-foreground: 0 0% 100%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 20%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 38%;      /* UDS gray-medium #616161 */
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 20%;
+    --gold: 41 54% 47%;                /* UDS gold */
+    --gold-foreground: 0 0% 100%;
+    --destructive: 0 100% 36%;         /* UDS danger #ba0000 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 84%;                /* UDS gray-border #d7d7d7 */
+    --input: 0 0% 84%;
+    --ring: 20 73% 45%;                /* darkened brand orange: 4.4:1 on white */
+    --link: 20 73% 40%;                /* brand orange darkened for text: 5.4:1 on white */
+    --radius: 0.375rem;                /* rounded-md lands on 4px, matching the cards */
     --header-height: 3.5rem;
-    --chart-1: ;
-    --chart-2: ;
-    --chart-3: ;
-    --chart-4: ;
-    --chart-5: ;
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-foreground: 0 0% 20%;
+    --sidebar-primary: 20 73% 59%;
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 20%;
+    --sidebar-border: 0 0% 84%;
+    --sidebar-ring: 20 73% 45%;
   }
 
   .dark {
-    --background: 0 0% 21%;
-    --foreground: 60 9.1% 97.8%;
-    --card: 0 0% 21%;
-    --card-foreground: 60 9.1% 97.8%;
-    --popover: 0 0% 21%;
-    --popover-foreground: 60 9.1% 97.8%;
-    --primary: 27 84% 55%;
-    --primary-foreground: 60 9.1% 97.8%;
-    --secondary: 0 0% 25%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 12 6.5% 15.1%;
-    --muted-foreground: 24 5.4% 63.9%;
-    --accent: 0 0% 17%;
-    --accent-foreground: 60 9.1% 97.8%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 60 9.1% 97.8%;
-    --border: 12 6.5% 15.1%;
-    --input: 12 6.5% 15.1%;
-    --ring: 31 97.2% 41.8%;
-    --chart-1: ;
-    --chart-2: ;
-    --chart-3: ;
-    --chart-4: ;
-    --chart-5: ;
-    color-scheme: dark; /* changing the scrollbar color */ 
-    --sidebar-background: 240 5.9% 10%; 
-    --sidebar-foreground: 240 4.8% 95.9%; 
-    --sidebar-primary: 224.3 76.3% 48%; 
-    --sidebar-primary-foreground: 0 0% 100%; 
-    --sidebar-accent: 240 3.7% 15.9%; 
-    --sidebar-accent-foreground: 240 4.8% 95.9%; 
-    --sidebar-border: 240 3.7% 15.9%; 
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 0 0% 12%;
+    --foreground: 0 0% 96%;
+    --card: 0 0% 16%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 16%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 20 73% 59%;
+    --primary-foreground: 0 0% 10%;
+    --utah-blue: 222 70% 64%;
+    --utah-blue-foreground: 0 0% 10%;
+    --secondary: 0 0% 22%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 68%;
+    --accent: 0 0% 24%;
+    --accent-foreground: 0 0% 96%;
+    --gold: 41 50% 52%;
+    --gold-foreground: 0 0% 10%;
+    --destructive: 0 72% 60%;
+    --destructive-foreground: 0 0% 10%;
+    --border: 0 0% 28%;
+    --input: 0 0% 28%;
+    --ring: 20 73% 59%;
+    --link: 20 73% 62%;
+    color-scheme: dark; /* changing the scrollbar color */
+    --sidebar-background: 0 0% 14%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-primary: 20 73% 59%;
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-accent: 0 0% 24%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 0 0% 28%;
+    --sidebar-ring: 20 73% 59%;
   }
 
   /* styles.css */
@@ -108,23 +110,32 @@
   * {
     @apply border-border;
   }
-  html, body {
-    @apply overflow-x-hidden;
-  }
   body {
-    @apply min-h-svh w-full bg-background text-foreground;
-  }
-  body > #root {
-    @apply h-svh overflow-x-hidden;
+    @apply bg-background text-foreground;
   }
 }
 
-@layer base {
-  * {
-    @apply border-border;
+/* #root owns the whole viewport: the app bar is ours, not the design system's. */
+html,
+body {
+  margin: 0;
+  height: 100dvh; /* dvh = correct viewport on mobile (excludes URL bar) */
+  width: 100%;
+  overflow: hidden;
+}
+body > #root {
+  height: 100%;
+  position: relative;
+  overflow-x: hidden;
+}
+
+@media print {
+  /* Paper is always white but `.dark` stays on <html> — pin the logo to navy. */
+  .ugs-logo-navy {
+    display: inline !important;
   }
-  body {
-    @apply bg-background text-foreground;
+  .ugs-logo-white {
+    display: none !important;
   }
 }
 
