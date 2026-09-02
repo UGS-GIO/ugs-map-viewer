@@ -488,9 +488,8 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
 
     if (isError) return <div className="text-xs text-destructive mb-2">Failed to load stats.</div>
 
-    // Deepest-band color for the depth line — shared by the sidebar chart, the
-    // pop-out charts, and (when the deep band isn't present) a currentColor fallback.
-    const lineColor = subsidenceBins[subsidenceBins.length - 1]?.color ?? 'currentColor'
+    // Brand accent, not the deepest SLD band: that colour is tuned for the map, not the panel.
+    const lineColor = 'hsl(var(--chart-1))'
     // KPIs + ranking are built once and reused in both the sidebar column and the
     // wide "Expand" analysis view, so the two never drift.
     const kpiCards = (
