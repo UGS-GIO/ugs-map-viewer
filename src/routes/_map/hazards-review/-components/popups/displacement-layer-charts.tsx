@@ -248,12 +248,12 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     // the depth-over-time series. Gated through `isMeasured` so it honors the
     // threshold and excludes the SLD "Zero" deadband exactly like the KPIs,
     // stacked bars, and basin ranking (one honest knob everywhere). Pre-filtered
-    // to subsidence (value_inches < 0) so an uplift-only year can't plot a
+    // to subsidence (value_inches_min < 0) so an uplift-only year can't plot a
     // misleading 0. Uses all years (not the year filter): a trend needs the
     // whole record, not just the selected year.
     const depthByYear = useMemo(
         () => Array.from(
-            deepestSubsidenceByYear(scoped.filter(f => f.properties.value_inches < 0 && isMeasured(f.properties.value_inches))),
+            deepestSubsidenceByYear(scoped.filter(f => f.properties.value_inches_min < 0 && isMeasured(f.properties.value_inches_min))),
             ([yr, d]) => ({ year: yr, depthIn: d.depthIn, location: d.location }),
         ).sort((a, b) => a.year.localeCompare(b.year)),
         [scoped, isMeasured],
@@ -273,13 +273,13 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     const yearAxisLabel = typeValue === 'Cumulative' ? 'Period End Year' : 'Water Year'
 
     // The "Subsiding Area" / "Max subsidence" / "Basins" KPIs describe subsidence,
-    // so gate to subsidence (value_inches < 0) above the SLD-pinned threshold —
+    // so gate to subsidence (value_inches_min < 0) above the SLD-pinned threshold —
     // matching the depth chart, the pop-out, and Rate (which is subsidence-only).
     // Uplift stays visible in the stacked Uplift/Subsidence chart + the map; it's
     // never netted into these subsidence metrics. (The stacked chart keeps its own
     // both-signs gate — only these scalar/ranking paths are subsidence-only.)
     const measuredSubsidence = useMemo(
-        () => filtered.filter(f => f.properties.value_inches < 0 && isMeasured(f.properties.value_inches)),
+        () => filtered.filter(f => f.properties.value_inches_min < 0 && isMeasured(f.properties.value_inches_min)),
         [filtered, isMeasured]
     )
 
@@ -293,7 +293,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     const maxDisplacement = useMemo(() => {
         let max = 0
         for (const f of measuredSubsidence) {
-            const a = Math.abs(f.properties.value_inches)
+            const a = Math.abs(f.properties.value_inches_min)
             if (a > max) max = a
         }
         return max
@@ -319,7 +319,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     const stackedAreaByYear = useMemo(() => {
         const yearToBins = new Map<string, Record<string, number>>()
         for (const f of scoped) {
-            const v = f.properties.value_inches
+            const v = f.properties.value_inches_min
             if (!isMeasured(v)) continue
             const bin = findBin(plotBins, v)
             if (!bin) continue
@@ -375,7 +375,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
             if (!yearMatched(f)) continue
             const loc = f.properties.location
             if (!loc) continue
-            const v = f.properties.value_inches
+            const v = f.properties.value_inches_min
             // Subsidence only — the ranking is "Subsidence by Basin", so an
             // uplift-dominated basin must not appear (matches Rate's basinsByRate).
             if (v >= 0) continue
@@ -411,7 +411,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     const worstDepth = useMemo(() => {
         let max = 0
         for (const f of qualFiltered) {
-            const v = f.properties.value_inches
+            const v = f.properties.value_inches_min
             if (v >= 0) continue // subsidence only, so bars scale against deepest subsidence (not uplift)
             const a = Math.abs(v)
             if (a > max) max = a

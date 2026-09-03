@@ -313,7 +313,7 @@ export function useDisplacementLayerFilters(): Record<string, string> {
             if (isChartedType(typeValue)) {
                 const thresholdIn = effective[typeValue]
                 if (thresholdIn > 0) {
-                    clauses.push(`(value_inches >= ${thresholdIn} OR value_inches <= ${-thresholdIn})`)
+                    clauses.push(`(value_inches_min >= ${thresholdIn} OR value_inches_min <= ${-thresholdIn})`)
                 }
                 // Exclude the SLD "within uncertainty" deadband so the map matches
                 // the chart (which never plots deadband features) — including during
@@ -321,7 +321,7 @@ export function useDisplacementLayerFilters(): Record<string, string> {
                 // bound, otherwise the ±deadband contours flash in and back out.
                 const zeroBound = zeroBoundByType[typeValue]
                 if (zeroBound != null && zeroBound > 0) {
-                    clauses.push(`(value_inches > ${zeroBound} OR value_inches < ${-zeroBound})`)
+                    clauses.push(`(value_inches_min > ${zeroBound} OR value_inches_min < ${-zeroBound})`)
                 }
             }
             const basins = basinsByType[typeValue]

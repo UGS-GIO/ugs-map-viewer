@@ -6,7 +6,7 @@ const bin = (min: number, max: number, isZero = false): SldBin => ({
     name: '', title: '', min, max, color: '#000', isZero, include: [], exclude: [],
 })
 
-// Cumulative-shaped SLD mirroring hazards_insar_displacement_cumulative:
+// Cumulative-shaped SLD mirroring hazards_displacement_insar_cumulative:
 // deadband [-1, 1]; subsidence classes run deeper (to <-13) than uplift (to >9),
 // so the magnitude edges reduce to {1,3,5,7,9,11,13} (11/13 come from the deeper
 // negative side).

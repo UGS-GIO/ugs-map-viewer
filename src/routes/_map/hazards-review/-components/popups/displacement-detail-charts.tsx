@@ -81,7 +81,7 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
 
     const rows = useMemo<DetailRow[]>(() => {
         const measured = scoped.filter(f => {
-            const v = f.properties.value_inches
+            const v = f.properties.value_inches_min
             return v < 0 && Math.abs(v) >= threshold && findBinLocal(plotBins, v) !== undefined
         })
         const areaMi2Of = (f: DisplacementFeature) => area(f) * SQM_TO_SQMI
