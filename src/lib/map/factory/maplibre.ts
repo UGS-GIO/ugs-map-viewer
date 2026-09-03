@@ -388,10 +388,6 @@ export class MapLibreMapFactory implements MapFactory {
         id: layerId,
         type: 'raster',
         source: sourceId,
-        // Honor the config zoom gate on WMS too, so e.g. the Township & Range
-        // WMS layer gates at the same zoom its PMTiles Sections sibling does
-        // (both declare visibleZoomRange [11,22]). [ALL-5727]
-        ...zoomRangeToBounds(layerConfig.visibleZoomRange),
         layout: {
           visibility: layerConfig.visible ? 'visible' : 'none',
         },
