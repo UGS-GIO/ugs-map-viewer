@@ -1,6 +1,5 @@
 import { ExtendedFeature } from '@/components/maps/popups/types';
 import { convertBbox, convertCoordinate, convertGeometryToWGS84 } from '@/lib/map/conversion-utils';
-import { createMapFactory } from '@/lib/map/factory/factory';
 import type { Geometry } from 'geojson';
 import { buffer } from '@turf/buffer';
 import { point } from '@turf/helpers';
@@ -45,17 +44,23 @@ export function createPointBufferBbox(
     return null;
 }
 
-export function findLayerByTitle(mapInstance: MapLibreMap, title: string): MapLibreLayerProxy | null {
-    // Use factory for MapLibre - returns a proxy object with setter hooks
-    const factory = createMapFactory();
-    const layerSpec = factory.findLayerByTitle(mapInstance, title);
-
-    if (layerSpec) {
-        // Return a proxy object that allows setting opacity and visibility
-        // The proxy intercepts property assignments and applies them to the MapLibre layer
-        return new MapLibreLayerProxy(mapInstance, layerSpec.id);
+/** The rendered layer whose viewer `metadata.title` matches, or null. */
+function findRenderedLayerIdByTitle(mapInstance: MapLibreMap, title: string): string | null {
+    const style = mapInstance.getStyle();
+    for (const layer of style?.layers ?? []) {
+        const metadata = layer.metadata;
+        if (metadata && typeof metadata === 'object' && 'title' in metadata) {
+            if ((metadata as Record<string, unknown>).title === title) return layer.id;
+        }
     }
     return null;
+}
+
+export function findLayerByTitle(mapInstance: MapLibreMap, title: string): MapLibreLayerProxy | null {
+    // Return a proxy object that allows setting opacity and visibility
+    // The proxy intercepts property assignments and applies them to the MapLibre layer
+    const layerId = findRenderedLayerIdByTitle(mapInstance, title);
+    return layerId ? new MapLibreLayerProxy(mapInstance, layerId) : null;
 }
 
 /**
