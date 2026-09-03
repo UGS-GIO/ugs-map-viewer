@@ -4,7 +4,6 @@ import { LayerProps, WMSLayerProps, GroupLayerProps, PMTilesLayerProps, WFSLayer
 import { MapFactory, MapInitOptions, MapInitResult } from './types';
 import { DEFAULT_BASEMAP } from '@/lib/basemaps';
 import { setupPMTilesProtocol } from '@/lib/map/pmtiles/setup';
-import { buildFragmentLayerSpec, zoomRangeToBounds } from '@/lib/map/layer-utils';
 import { FeatureCollection, Geometry } from 'geojson';
 
 function hasStringSource(layer: unknown): layer is { source: string } {
@@ -454,7 +453,6 @@ export class MapLibreMapFactory implements MapFactory {
           type: 'fill',
           source: sourceId,
           'source-layer': layerConfig.sourceLayer,
-          ...zoomRangeToBounds(layerConfig.visibleZoomRange),
           layout: {
             visibility: layerConfig.visible ? 'visible' : 'none',
           },
@@ -477,7 +475,6 @@ export class MapLibreMapFactory implements MapFactory {
           type: 'line',
           source: sourceId,
           'source-layer': layerConfig.sourceLayer,
-          ...zoomRangeToBounds(layerConfig.visibleZoomRange),
           layout: {
             visibility: layerConfig.visible ? 'visible' : 'none',
           },
@@ -546,21 +543,26 @@ export class MapLibreMapFactory implements MapFactory {
           : `${sourceId}-${layer.id}`;
         if (map.getLayer(layerId)) continue;
         try {
-          // Preserve everything the ugs-styles fragment authored (paint, layout,
-          // filter, minzoom/maxzoom, and any future property) and override only
-          // the viewer-owned fields. Cherry-picking a fixed field list here is
-          // what dropped the fragment's minzoom and made PLSS sections draw at
-          // every zoom. [ALL-5727]
-          const layerSpec = buildFragmentLayerSpec(layer, {
-            layerId,
-            sourceId,
-            sourceLayer: layerConfig.sourceLayer,
-            title: layerConfig.title,
-            styleUrl,
-            visible: opts.visible,
-            renderId: opts.renderId,
-            visibleZoomRange: layerConfig.visibleZoomRange,
-          }) as unknown as maplibregl.LayerSpecification;
+          const layerSpec: maplibregl.LayerSpecification = {
+            id: layerId,
+            type: layer.type,
+            source: sourceId,
+            'source-layer': (layer['source-layer'] as string) ?? layerConfig.sourceLayer,
+            ...(layer.filter && { filter: layer.filter }),
+            layout: {
+              ...layer.layout,
+              visibility: opts.visible ? 'visible' : 'none',
+            },
+            paint: layer.paint || {},
+            metadata: {
+              title: layerConfig.title,
+              pmtilesLayer: true,
+              maplibreStyleUrl: styleUrl,
+              maplibreSourceId: sourceId,
+              maplibreSourceLayer: layerConfig.sourceLayer,
+              ...(opts.renderId && { renderId: opts.renderId }),
+            },
+          };
           map.addLayer(layerSpec);
         } catch (err) {
           console.error(`[addPMTilesStyleFragment] Failed to add layer ${layerId}:`, err);

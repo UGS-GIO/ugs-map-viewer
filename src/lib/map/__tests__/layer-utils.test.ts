@@ -253,11 +253,10 @@ describe('zoomRangeToBounds', () => {
 
 describe('buildFragmentLayerSpec', () => {
   const opts = {
-    layerId: 'pmtiles-sections-enmin_plss_sections-0',
+    layerId: 'pmtiles-layer-Sections',
     sourceId: 'pmtiles-sections',
     sourceLayer: 'enmin_plss_sections',
-    title: 'Sections',
-    styleUrl: 'https://cdn/styles/enmin_plss_sections/default.json',
+    metadata: { title: 'Sections', pmtilesLayer: true, pmtilesSourceId: 'pmtiles-sections' },
     visible: true,
   }
 
@@ -270,7 +269,6 @@ describe('buildFragmentLayerSpec', () => {
         type: 'line',
         minzoom: 11.13,
         paint: { 'line-color': '#000', 'line-width': 1 },
-        filter: ['==', 'a', 1],
         futureProp: 'keep-me',
       },
       opts,
@@ -278,7 +276,6 @@ describe('buildFragmentLayerSpec', () => {
     expect(spec.type).toBe('line')
     expect(spec.minzoom).toBe(11.13)
     expect(spec.paint).toEqual({ 'line-color': '#000', 'line-width': 1 })
-    expect(spec.filter).toEqual(['==', 'a', 1])
     expect(spec.futureProp).toBe('keep-me')
   })
 
@@ -316,16 +313,25 @@ describe('buildFragmentLayerSpec', () => {
   it('keeps viewer metadata authoritative — fragment metadata does not leak through', () => {
     const spec = buildFragmentLayerSpec(
       { id: 'a', type: 'line', paint: {}, metadata: { legendHint: 'nope' } },
-      { ...opts, renderId: 'default' },
+      opts,
     )
-    expect(spec.metadata).toEqual({
-      title: 'Sections',
-      pmtilesLayer: true,
-      maplibreStyleUrl: opts.styleUrl,
-      maplibreSourceId: opts.sourceId,
-      maplibreSourceLayer: opts.sourceLayer,
-      renderId: 'default',
-    })
+    expect(spec.metadata).toEqual(opts.metadata)
+  })
+
+  it("takes the viewer's recomputed paint and filter, and keeps the fragment's when omitted", () => {
+    const overridden = buildFragmentLayerSpec(
+      { id: 'a', type: 'line', paint: { 'line-opacity': 1 }, filter: ['==', 'a', 1] },
+      { ...opts, paint: { 'line-opacity': 0.4 }, filter: ['all', ['==', 'a', 1], ['==', 'b', 2]] },
+    )
+    expect(overridden.paint).toEqual({ 'line-opacity': 0.4 })
+    expect(overridden.filter).toEqual(['all', ['==', 'a', 1], ['==', 'b', 2]])
+
+    const kept = buildFragmentLayerSpec(
+      { id: 'a', type: 'line', paint: { 'line-opacity': 1 }, filter: ['==', 'a', 1] },
+      opts,
+    )
+    expect(kept.paint).toEqual({ 'line-opacity': 1 })
+    expect(kept.filter).toEqual(['==', 'a', 1])
   })
 
   it("lets the config visibleZoomRange override the fragment's own minzoom", () => {

@@ -239,10 +239,13 @@ export interface FragmentLayerInjection {
   layerId: string
   sourceId: string
   sourceLayer: string
-  title: string
-  styleUrl: string
+  /** Viewer-owned metadata; the fragment's own metadata never leaks through. */
+  metadata: Record<string, unknown>
   visible: boolean
-  renderId?: string
+  /** Paint after viewer overrides (e.g. the opacity slider). Omit to keep the fragment's. */
+  paint?: Record<string, unknown>
+  /** Filter after merging the fragment's with any user filter. Omit to keep the fragment's. */
+  filter?: unknown
   visibleZoomRange?: [number, number]
 }
 
@@ -253,8 +256,9 @@ export interface FragmentLayerInjection {
  * intent set in ugs-styles is never silently dropped (a dropped minzoom is why
  * PLSS sections drew at every zoom). Overrides only what the viewer must own:
  * the namespaced `id`, the injected `source` (+ `source-layer` when the fragment
- * omits it), `layout.visibility`, and viewer `metadata`. A config
- * `visibleZoomRange`, when set, wins over the fragment's own zoom.
+ * omits it), `layout.visibility`, viewer `metadata`, and the paint/filter the
+ * viewer recomputed. A config `visibleZoomRange`, when set, wins over the
+ * fragment's own zoom.
  */
 export function buildFragmentLayerSpec(
   fragmentLayer: Record<string, unknown>,
@@ -268,14 +272,9 @@ export function buildFragmentLayerSpec(
     source: opts.sourceId,
     'source-layer': fragmentSourceLayer ?? opts.sourceLayer,
     layout: { ...fragmentLayout, visibility: opts.visible ? 'visible' : 'none' },
-    metadata: {
-      title: opts.title,
-      pmtilesLayer: true,
-      maplibreStyleUrl: opts.styleUrl,
-      maplibreSourceId: opts.sourceId,
-      maplibreSourceLayer: opts.sourceLayer,
-      ...(opts.renderId ? { renderId: opts.renderId } : {}),
-    },
+    ...(opts.paint ? { paint: opts.paint } : {}),
+    ...(opts.filter ? { filter: opts.filter } : {}),
+    metadata: opts.metadata,
     ...zoomRangeToBounds(opts.visibleZoomRange),
   }
 }
