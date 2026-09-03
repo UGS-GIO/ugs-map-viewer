@@ -14,6 +14,8 @@ import {
   flattenDataLayersWithAncestors,
   resolveLeafVisibility,
   findAncestorGroupTitles,
+  buildFragmentLayerSpec,
+  zoomRangeToBounds,
 } from '../layer-utils'
 import type {
   LayerProps,
@@ -231,5 +233,107 @@ describe('findAncestorGroupTitles', () => {
 
   it('returns the ancestors of a group itself', () => {
     expect(findAncestorGroupTitles(tree, 'Inner')).toEqual(['Outer'])
+  })
+})
+
+// ── zoomRangeToBounds ────────────────────────────────────────────────
+
+describe('zoomRangeToBounds', () => {
+  it('returns empty when no range is set', () => {
+    expect(zoomRangeToBounds(undefined)).toEqual({})
+  })
+
+  it('maps [min, max] to minzoom/maxzoom, keeping a 0 bound', () => {
+    // Direct indexing (not `||`) so a legitimate zoom-0 min survives.
+    expect(zoomRangeToBounds([0, 12] as [number, number])).toEqual({ minzoom: 0, maxzoom: 12 })
+  })
+})
+
+// ── buildFragmentLayerSpec ───────────────────────────────────────────
+
+describe('buildFragmentLayerSpec', () => {
+  const opts = {
+    layerId: 'pmtiles-sections-enmin_plss_sections-0',
+    sourceId: 'pmtiles-sections',
+    sourceLayer: 'enmin_plss_sections',
+    title: 'Sections',
+    styleUrl: 'https://cdn/styles/enmin_plss_sections/default.json',
+    visible: true,
+  }
+
+  it('preserves every rendering property the fragment authored, including minzoom and unknown keys', () => {
+    // The regression guard: whatever a ugs-styles fragment sets must survive, so
+    // the next new property (or layer) can't silently vanish the way minzoom did.
+    const spec = buildFragmentLayerSpec(
+      {
+        id: 'frag-0',
+        type: 'line',
+        minzoom: 11.13,
+        paint: { 'line-color': '#000', 'line-width': 1 },
+        filter: ['==', 'a', 1],
+        futureProp: 'keep-me',
+      },
+      opts,
+    )
+    expect(spec.type).toBe('line')
+    expect(spec.minzoom).toBe(11.13)
+    expect(spec.paint).toEqual({ 'line-color': '#000', 'line-width': 1 })
+    expect(spec.filter).toEqual(['==', 'a', 1])
+    expect(spec.futureProp).toBe('keep-me')
+  })
+
+  it('overrides id and source with the injected viewer values', () => {
+    const spec = buildFragmentLayerSpec(
+      { id: 'frag-0', type: 'line', source: 'stale-source', paint: {} },
+      opts,
+    )
+    expect(spec.id).toBe(opts.layerId)
+    expect(spec.source).toBe(opts.sourceId)
+  })
+
+  it("injects the config source-layer when the fragment omits it, else keeps the fragment's", () => {
+    const injected = buildFragmentLayerSpec({ id: 'a', type: 'line', paint: {} }, opts)
+    expect(injected['source-layer']).toBe('enmin_plss_sections')
+    const authored = buildFragmentLayerSpec(
+      { id: 'a', type: 'line', 'source-layer': 'other', paint: {} },
+      opts,
+    )
+    expect(authored['source-layer']).toBe('other')
+  })
+
+  it('forces layout.visibility from `visible` while preserving other layout keys', () => {
+    const spec = buildFragmentLayerSpec(
+      { id: 'a', type: 'symbol', layout: { 'text-field': '{lab}', 'symbol-placement': 'point' }, paint: {} },
+      { ...opts, visible: false },
+    )
+    expect(spec.layout).toEqual({
+      'text-field': '{lab}',
+      'symbol-placement': 'point',
+      visibility: 'none',
+    })
+  })
+
+  it('keeps viewer metadata authoritative — fragment metadata does not leak through', () => {
+    const spec = buildFragmentLayerSpec(
+      { id: 'a', type: 'line', paint: {}, metadata: { legendHint: 'nope' } },
+      { ...opts, renderId: 'default' },
+    )
+    expect(spec.metadata).toEqual({
+      title: 'Sections',
+      pmtilesLayer: true,
+      maplibreStyleUrl: opts.styleUrl,
+      maplibreSourceId: opts.sourceId,
+      maplibreSourceLayer: opts.sourceLayer,
+      renderId: 'default',
+    })
+  })
+
+  it("lets the config visibleZoomRange override the fragment's own minzoom", () => {
+    const spec = buildFragmentLayerSpec(
+      { id: 'a', type: 'line', minzoom: 11.13, paint: {} },
+      { ...opts, visibleZoomRange: [13, 20] as [number, number] },
+    )
+    expect(spec.minzoom).toBe(13)
+    expect(spec.maxzoom).toBe(20)
   })
 })
