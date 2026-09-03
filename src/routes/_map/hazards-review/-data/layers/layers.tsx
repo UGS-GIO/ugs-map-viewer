@@ -6,6 +6,7 @@ import {
     DISPLACEMENT_TYPE_NAME,
     LAND_SUBSIDENCE_GROUP_TITLE,
     getUnitsLabelForType,
+    formatDisplacementRange,
     type DisplacementLayerTitle,
     type DisplacementType,
 } from "../../-components/popups/displacement-layers";
@@ -1006,21 +1007,25 @@ const aquifersCombinedConfig: WMSLayerProps = {
 // type + style metadata, so layer configs just look up what they need.
 const DISPLACEMENT_CONTOURS_LAYER = DISPLACEMENT_TYPE_NAME;
 
-// Popup fields for the displacement layers, built per type. The Displacement
-// unit reflects the reading — Vertical Displacement Rate is in/year, Cumulative
-// and Yearly are an amount in inches. Year is intentionally omitted: the period
-// (Period Start → Period End, rendered MM-YYYY) already carries the timeframe.
-// Data Quality is normalized to first-letter caps ("high" -> "High").
+// Popup fields for the displacement layers, built per type. Displacement shows
+// the band's range with direction and unit baked in (see formatDisplacementRange)
+// — Vertical Displacement Rate reads in/year, Cumulative and Yearly in inches.
+// Year is omitted: the period (Period Start → Period End, MM-YYYY) carries the
+// timeframe. Data Quality is normalized to first-letter caps ("high" -> "High").
 function makeDisplacementPopupFields(typeValue: DisplacementType): Record<string, FieldConfig> {
-    const displacementUnit = typeValue === 'Vertical Displacement Rate' ? 'in/year' : 'in';
     return {
         'Location': { field: 'location', type: 'string' },
         'Type': { field: 'type', type: 'string' },
         'Period Start': { field: 'start_date', type: 'date', format: 'monthYear' },
         'Period End': { field: 'end_date', type: 'date', format: 'monthYear' },
-        [`Displacement (${displacementUnit})`]: { field: 'value_inches', type: 'number' },
+        // The layer stores each band as value_inches_min / value_inches_max; show
+        // the range with its direction. Custom so the transform reads both bounds.
+        'Displacement': {
+            field: 'value_inches_min',
+            type: 'custom',
+            transform: (props) => formatDisplacementRange(props?.value_inches_min, props?.value_inches_max, typeValue),
+        },
         'Data Quality': { field: 'data_qual', type: 'string', transform: capitalizeFirst },
-        'Valid Pixels (%)': { field: 'pct_valid', type: 'number' },
     };
 }
 

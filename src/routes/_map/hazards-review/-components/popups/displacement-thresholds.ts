@@ -20,7 +20,7 @@ export function getBinBoundaries(bins: SldBin[]): number[] {
 // fills would otherwise offer a redundant option. Concretely for Cumulative,
 // contours are odd inches and ±1 is the deadband, so the 1–3 in band is empty and
 // "1 in" would filter identically to "3 in" — this drops the 1. `magnitudes` is
-// the ascending distinct |value_inches| present for the type. The first element
+// the ascending distinct |value_inches_min| present for the type. The first element
 // is the smallest meaningful threshold, and is used as the per-type default so the
 // map, chart, and dropdown all agree.
 export function getPopulatedBinBoundaries(bins: SldBin[], magnitudes: number[]): number[] {
