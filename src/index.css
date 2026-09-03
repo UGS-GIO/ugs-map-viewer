@@ -185,3 +185,46 @@
   background-color: hsl(var(--popover) / 0.75);
   color: hsl(var(--foreground));
 }
+
+
+/* Legend swatches sit on the map, not on the panel: polygon symbols are drawn over a fixed
+   paper-toned tile so a hollow or part-transparent fill reads as "the map showing through"
+   instead of vanishing into the panel background. Deliberately not themed — the basemap stays
+   light in dark mode, so this is the tone the polygon really sits on. */
+:root {
+  /* The paper tone of the basemap. Deliberately outside the light/dark token blocks: the map
+     stays light in dark mode, so this follows the basemap, not the UI theme. */
+  --legend-canvas: #ede9e3;
+  --legend-canvas-alt: #dcd6cc;
+}
+
+.legend-canvas {
+  stroke: hsl(var(--border));
+  stroke-width: 1;
+}
+
+.legend-canvas-base {
+  fill: var(--legend-canvas);
+}
+
+.legend-canvas-alt {
+  fill: var(--legend-canvas-alt);
+}
+
+/* Fallback ink for an outline the style leaves unpainted — with no fill it is the whole symbol. */
+.legend-ink {
+  stroke: #333333;
+}
+
+/* The CSS twin of `.legend-canvas`, for swatches drawn as elements rather than SVG.
+   Checkered, not flat: a flat tile behind a hollow symbol reads as a cream fill, which is a
+   different symbol. The checker is the standard "nothing here" texture, so a see-through
+   class (Private land, mapped-area outlines) can't be mistaken for a painted one. */
+.legend-swatch {
+  background-color: var(--legend-canvas);
+  background-image: repeating-conic-gradient(
+    var(--legend-canvas-alt) 0% 25%,
+    var(--legend-canvas) 0% 50%
+  );
+  background-size: 8px 8px;
+}

@@ -63,12 +63,15 @@ const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend
                     {arcgisError && <div>Error loading legend: {arcgisError.message}</div>}
                     {arcgisLegendItems?.map((item, index) => (
                         <div key={index} className="flex items-center space-x-2 py-1">
+                            {/* Server-rendered swatches are transparent wherever the symbol has no
+                                fill (a border-only class like "Private" is all transparency), so they
+                                get the same map-toned backing as the SVG symbols. */}
                             <img
                                 src={`data:${item.contentType};base64,${item.imageData}`}
                                 width={item.width}
                                 height={item.height}
-                                alt={item.label}
-                                className="min-w-5"
+                                alt=""
+                                className="legend-swatch min-w-5 rounded-[2px]"
                             />
                             <span className="text-sm">{item.label}</span>
                         </div>
