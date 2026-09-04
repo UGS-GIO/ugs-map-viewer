@@ -101,4 +101,19 @@ const dataSourcesShortened = (
     </p>
 )
 
-export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle };
+import type { AppEntry } from '@/routes/-data/portal-config'
+
+const portalMeta: AppEntry = {
+    title: appTitle,
+    description: 'Carbon capture, utilization, and storage (CCUS) site selection and storage resource assessment in Utah.',
+    href: '/carbonstorage/',
+    status: 'stable',
+    public: true,
+    image: 'https://geology.utah.gov/wp-content/uploads/snt44-1_gordon-creek-well-site.jpg',
+    imageCredit: {
+        article: 'Energy News: Gordon Creek Field Carbon Storage',
+        url: 'https://geology.utah.gov/map-pub/survey-notes/energy-news/energy-news-utahs-gordon-creek-field-to-test-commercial-scale-storage-of-carbon-dioxide/',
+    },
+}
+
+export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle, portalMeta };

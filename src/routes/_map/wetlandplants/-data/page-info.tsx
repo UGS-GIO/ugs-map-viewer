@@ -74,4 +74,20 @@ const dataSourcesShortened = (
     </p>
 )
 
-export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle };
+import type { AppEntry } from '@/routes/-data/portal-config'
+
+const portalMeta: AppEntry = {
+    title: appTitle,
+    description: 'Plant community composition data from Utah\'s wetlands for restoration, research, and conservation.',
+    href: '/wetlandplants/',
+    status: 'in-progress',
+    public: false,
+    image: 'https://geology.utah.gov/wp-content/uploads/gandy_warm_springs_leafy_overhang.jpg',
+    imageCredit: {
+        author: 'Jim Davis',
+        article: 'GeoSights: Gandy Warm Springs, Millard County',
+        url: 'https://geology.utah.gov/map-pub/survey-notes/geosights/gandy-warm-springs/',
+    },
+}
+
+export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle, portalMeta };

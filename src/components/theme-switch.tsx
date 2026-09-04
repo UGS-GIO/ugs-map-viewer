@@ -11,6 +11,7 @@ export default function ThemeSwitch() {
       variant='ghost'
       className='rounded-full'
       onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+      aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
       data-tour="theme-switch"
     >
       {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
