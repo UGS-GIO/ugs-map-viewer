@@ -228,7 +228,37 @@ export interface PMTilesLayerProps extends BaseLayerProps {
     sourceLayer: string;
     /** Optional sublayer config for popups/queries */
     sublayers?: ExtendedSublayerProperties[];
+    /**
+     * Declarative, layer-level filter controls. Origin-agnostic: auto-discovered layers get these from
+     * a registry (or STAC columns); a config-based layer can hand-declare them. Consumed by the generic
+     * <LayerFilters> UI + buildFilterExpression -> vectorLayerFilters (MapLibre setFilter). See
+     * src/lib/map/layer-filters.ts.
+     */
+    filterFields?: FilterFieldSpec[];
+    /** Feature property holding a DURABLE per-feature key (default 'pk'). Feature-level review comments
+     *  anchor to it; without one they stay disabled, since positional ids (feature_id/objectid) can
+     *  re-number on reingest and would silently re-anchor a comment to a different feature. */
+    stableKey?: string;
 }
+
+/** A single declarative filter control on a vector layer's feature property. */
+export type FilterFieldSpec =
+    | {
+          field: string;
+          label: string;
+          kind: 'enum';
+          values: string[];
+          /** Single-select (one value at a time, radio-like) instead of the default multi-select chips. */
+          single?: boolean;
+          /** Picking a value also switches the layer's render (symbology). Requires `optionRenders`.
+           *  Generic mechanism: any config layer can make an enum field drive symbology, not just displacement. */
+          drivesSymbology?: boolean;
+          /** value -> renderId, used when `drivesSymbology`. */
+          optionRenders?: Record<string, string>;
+          /** Default selected value for a `single` field (falls back to values[0]). */
+          defaultValue?: string;
+      }
+    | { field: string; label: string; kind: 'number-range'; min: number; max: number; step?: number };
 
 export interface WFSLayerProps extends BaseLayerProps {
     type: 'wfs';

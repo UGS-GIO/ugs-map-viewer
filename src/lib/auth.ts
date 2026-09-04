@@ -28,9 +28,10 @@ export const auth = getAuth(app);
 // Configure OIDC provider
 const oidcProvider = new OAuthProvider('oidc.entra-d');
 
-// Optional: Configure additional scopes if needed
-// oidcProvider.addScope('email');
-// oidcProvider.addScope('profile');
+// Request email + profile so the ID token carries the `email` claim — the review-api verifies the
+// token server-side and keys comments/notifications on that email (must match the internal viewer).
+oidcProvider.addScope('email');
+oidcProvider.addScope('profile');
 
 export const signInWithOIDC = () => {
   return signInWithPopup(auth, oidcProvider);

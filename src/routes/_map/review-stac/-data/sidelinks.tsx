@@ -1,8 +1,9 @@
 import { House, Info as InfoIcon, Layers as LayersIcon, MessageSquare, Settings } from 'lucide-react'
 import Info from '@/components/sidebar/info'
-import MapConfigurations from '../-components/sidebar/map-configurations/map-configurations'
-import { HazardsReviewLayers } from '../-components/sidebar/hazards-review-layers'
-import ReviewPanel from '../-components/sidebar/review/review-panel'
+import MapConfigurations from '@/routes/_map/hazards-review/-components/sidebar/map-configurations/map-configurations'
+import ReviewPanel from '@/routes/_map/hazards-review/-components/sidebar/review/review-panel'
+import { ReviewStacLayers } from '../-components/review-stac-layers'
+
 export interface NavLink {
   title: string
   label?: string
@@ -26,31 +27,24 @@ export const sidelinks: SideLink[] = [
     title: 'Info',
     label: '',
     icon: <InfoIcon className='stroke-foreground' />,
-    component: Info, // Direct component reference
-    componentPath: 'src/components/sidebar/info.tsx',
+    component: Info,
   },
   {
     title: 'Layers',
     label: '',
     icon: <LayersIcon className='stroke-foreground' />,
-    component: HazardsReviewLayers, // Direct component reference
+    component: ReviewStacLayers,
   },
   {
     title: 'Review Comments',
     label: '',
     icon: <MessageSquare className='stroke-foreground' />,
-    component: ReviewPanel, // Direct component reference
+    component: ReviewPanel,
   },
   {
     title: 'Map Configurations',
     label: '',
     icon: <Settings className='stroke-foreground' />,
-    component: MapConfigurations, // Direct component reference
+    component: MapConfigurations,
   },
-  // {
-  //   title: 'Geological Unit Search',
-  //   label: '',
-  //   icon: <Database />,
-  //   component: GeologicalUnitSearch, // Direct component reference
-  // },
-];
+]
