@@ -157,13 +157,48 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
 
     const { refetch: fetchExtent, data: cachedExtent } = useLayerExtent(extentOptions);
 
-    // Related tables live on sublayer popup config (WMS/PMTiles). Flattened
-    // across sublayers so the download menu can bundle them all in one zip.
-    const relatedTables = useMemo(() => {
-        if (isWMSLayer(layerConfig) || isPMTilesLayer(layerConfig)) {
-            return layerConfig.sublayers?.flatMap(sub => sub.relatedTables ?? []) ?? [];
+    // Legend uses ALL sublayer names (comma-separated) so a multi-sublayer layer shows every
+    // sublayer's swatches. Kept separate from extentOptions.layerName, which must stay a single
+    // name — fetchLayerExtent looks it up verbatim in GetCapabilities and a joined name won't match.
+    const legendLayerName = useMemo(() => {
+        if (isWMSLayer(layerConfig)) {
+            const names = (layerConfig.sublayers?.map(s => s.name).filter(Boolean) ?? []) as string[];
+            if (names.length > 0) return names.join(',');
         }
-        return [];
+        return extentOptions.type === 'wms' ? extentOptions.layerName : null;
+    }, [layerConfig, extentOptions]);
+
+    // Friendly heading per sublayer (its popupTitle), so a composite legend can label each group.
+    const legendLayerLabels = useMemo(() => {
+        if (!isWMSLayer(layerConfig)) return undefined;
+        const labels: Record<string, string> = {};
+        for (const sub of layerConfig.sublayers ?? []) {
+            if (sub.name && sub.popupTitle) labels[sub.name] = sub.popupTitle;
+        }
+        return Object.keys(labels).length > 0 ? labels : undefined;
+    }, [layerConfig]);
+
+    // Downloadable datasets: one per sublayer that defines a parquet URL (labelled by popupTitle),
+    // else the single layer-level URL (from STAC for PMTiles). Each entry carries its own related
+    // tables (flattened from the sublayer) so the download menu can bundle them in a zip. Lets a
+    // composite layer download each sublayer's data.
+    const downloadEntries = useMemo(() => {
+        if (isWMSLayer(layerConfig) || isPMTilesLayer(layerConfig)) {
+            const subs = (layerConfig.sublayers ?? [])
+                .filter(s => s.downloadParquetUrl)
+                .map(s => ({
+                    label: s.popupTitle || layerConfig.title || '',
+                    url: s.downloadParquetUrl as string,
+                    relatedTables: s.relatedTables ?? [],
+                }));
+            if (subs.length > 0) return subs;
+        }
+        const relatedTables = (isWMSLayer(layerConfig) || isPMTilesLayer(layerConfig))
+            ? (layerConfig.sublayers?.flatMap(sub => sub.relatedTables ?? []) ?? [])
+            : [];
+        return layerConfig.downloadParquetUrl
+            ? [{ label: layerConfig.title || '', url: layerConfig.downloadParquetUrl, relatedTables }]
+            : [];
     }, [layerConfig]);
 
     const currentZoom = useMapZoom();
@@ -371,13 +406,13 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                             handleZoomToLayer={handleZoomToLayer}
                             url={extentOptions.type === 'wms' ? extentOptions.wmsUrl || '' : ''}
                             openLegend={isUserExpanded}
-                            layerName={extentOptions.type === 'wms' ? extentOptions.layerName : null}
+                            layerName={extentOptions.type === 'wms' ? legendLayerName : null}
+                            layerLabels={legendLayerLabels}
                             customLegend={resolvedCustomLegend}
                             bivariateLegend={layerConfig.bivariateLegend}
                             arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
                             legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}
-                            downloadParquetUrl={layerConfig.downloadParquetUrl}
-                            relatedTables={relatedTables}
+                            downloadEntries={downloadEntries}
                             disableExport={disableExport}
                             filtersContent={layerConfig.title ? layerExtrasRender?.(layerConfig.title) : undefined}
                             statsContent={layerConfig.title ? layerStatsRender?.(layerConfig.title) : undefined}

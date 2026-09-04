@@ -10,6 +10,9 @@ export interface WfsFeature {
   properties: Record<string, unknown>
   geometry?: Geometry
   layerTitle?: string
+  /** GeoServer typeName the feature came from (e.g. 'energy_mineral:enmin_...'). Used to map a
+   * feature back to its sublayer config when a layer bundles multiple sublayers (mixed geometry). */
+  layerName?: string
 }
 
 type Bounds = {
@@ -339,6 +342,7 @@ async function queryVisibleLayers(
             properties: (f.properties || {}) as Record<string, unknown>,
             geometry: f.geometry,
             layerTitle,
+            layerName: typeName,
           })),
           truncated,
         }

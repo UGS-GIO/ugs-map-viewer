@@ -11,7 +11,7 @@ import { useMemo } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import type { FeatureCollection, GeoJsonProperties } from 'geojson'
 import type { WfsFeature } from '@/lib/map/wfs-service'
-import type { LayerProps, RasterSource, ProcessedRasterSource } from '@/lib/types/mapping-types'
+import type { LayerProps, RasterSource, ProcessedRasterSource, ExtendedSublayerProperties } from '@/lib/types/mapping-types'
 import type { LayerContentProps, ExtendedFeature } from '@/components/maps/popups/types'
 import type { GeoServerGeoJSON } from '@/lib/types/geoserver-types'
 import { convertCoordinate } from '@/lib/map/conversion-utils'
@@ -277,7 +277,7 @@ export function usePopupData({
       const features = featuresByLayer.get(title) || []
       const layer = findLayerByTitle(layersConfig, title)
       // Access sublayers for layer types that have them (WMS, WFS, PMTiles)
-      const sublayerConfig = layer && 'sublayers' in layer ? layer.sublayers?.[0] : undefined
+      const sublayers = layer && 'sublayers' in layer ? layer.sublayers : undefined
       const processedRasterSource = rasterDataByLayer.get(title)
 
       // Skip if no features AND no raster data
@@ -287,9 +287,23 @@ export function usePopupData({
         ? 'cog'
         : (processedRasterSource ? 'wms-raster' : 'vector')
 
-      result.push({
+      const toExtended = (f: WfsFeature): ExtendedFeature => ({
+        type: 'Feature',
+        id: f.id,
+        geometry: f.geometry || { type: 'Point', coordinates: [0, 0] },
+        properties: f.properties as GeoJsonProperties,
+        namespace: title,
+      })
+
+      const buildEntry = (
+        sublayerConfig: ExtendedSublayerProperties | undefined,
+        feats: WfsFeature[],
+        raster?: ProcessedRasterSource,
+      ): LayerContentProps => ({
         groupLayerTitle: title,
-        layerTitle: title,
+        // Per-sublayer popupTitle keeps mixed-geometry sublayers (points vs polygons) labelled
+        // distinctly in the popup; falls back to the parent layer title.
+        layerTitle: sublayerConfig?.popupTitle || title,
         sourceCRS: 'EPSG:4326',
         visible: true,
         popupFields: sublayerConfig?.popupFields,
@@ -300,17 +314,26 @@ export function usePopupData({
         imageFields: sublayerConfig?.imageFields,
         colorCodingMap: sublayerConfig?.colorCodingMap,
         colorCodingMode: sublayerConfig?.colorCodingMode,
-        rasterSource: processedRasterSource,
+        rasterSource: raster,
         sourceKind,
         maxZoomLevel: layer?.maxZoomLevel,
-        features: features.map((f): ExtendedFeature => ({
-          type: 'Feature',
-          id: f.id,
-          geometry: f.geometry || { type: 'Point', coordinates: [0, 0] },
-          properties: f.properties as GeoJsonProperties,
-          namespace: title,
-        })),
+        features: feats.map(toExtended),
       })
+
+      // A layer can bundle multiple sublayers with different geometry + popup configs.
+      // Split features by their source typeName so each renders with its own sublayer config;
+      // single-sublayer layers (the common case) keep the original single-entry behavior.
+      if (sublayers && sublayers.length > 1 && features.length > 0) {
+        for (const sub of sublayers) {
+          const subFeatures = features.filter(f => f.layerName === sub.name)
+          if (subFeatures.length > 0) result.push(buildEntry(sub, subFeatures))
+        }
+        // Fallback for features that matched no sublayer name (shouldn't normally happen).
+        const unmatched = features.filter(f => !sublayers.some(s => s.name === f.layerName))
+        if (unmatched.length > 0) result.push(buildEntry(sublayers[0], unmatched))
+      } else {
+        result.push(buildEntry(sublayers?.[0], features, processedRasterSource))
+      }
     }
 
     return result

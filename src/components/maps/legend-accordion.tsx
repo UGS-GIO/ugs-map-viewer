@@ -12,9 +12,21 @@ interface LegendAccordionProps {
     bivariateLegend?: { xLabel: string; yLabel: string };
     arcgisUrl?: string;
     legendUnit?: string;
+    /** Maps a GeoServer sublayer name to a friendly heading, for delineating sublayers in a
+     * merged multi-sublayer legend. */
+    layerLabels?: Record<string, string>;
 }
 
 function LegendItem({ item }: { item: PreviewItem }) {
+    // Group heading row for a sublayer in a merged composite legend (no swatch).
+    if (item.sectionTitle) {
+        return (
+            <div className="text-xs font-semibold uppercase tracking-wide text-foreground/60 pt-2 pb-0.5 first:pt-0">
+                {item.sectionTitle}
+            </div>
+        );
+    }
+
     const html = item.html;
     if (!html) return null;
 
@@ -35,9 +47,9 @@ function LegendItem({ item }: { item: PreviewItem }) {
     );
 }
 
-const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend, arcgisUrl, legendUnit }: LegendAccordionProps) => {
+const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend, arcgisUrl, legendUnit, layerLabels }: LegendAccordionProps) => {
     const skipFetch = !!customLegend || !!bivariateLegend || !!arcgisUrl;
-    const { preview, isLoading, error } = useLegendPreview(url, layerName ?? undefined, skipFetch, legendUnit);
+    const { preview, isLoading, error } = useLegendPreview(url, layerName ?? undefined, skipFetch, legendUnit, layerLabels);
     const { data: arcgisLegendItems, isLoading: arcgisLoading, error: arcgisError } = useArcGisLegend(arcgisUrl);
     // Use empty string instead of undefined to keep accordion controlled
     const accordionValue = isOpen ? "legend-accordion" : "";

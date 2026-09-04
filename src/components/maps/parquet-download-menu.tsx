@@ -22,6 +22,9 @@ interface ParquetDownloadMenuProps {
     parquetUrl: string;
     /** Used as the download filename stem */
     layerTitle: string;
+    /** Trigger label. Defaults to "Download"; set per-dataset (e.g. "Wells") when a layer exposes
+     * multiple downloads so each button is distinguishable. */
+    label?: string;
     /** Related tables configured on the layer (e.g. formation tops, geochemistry). When
      * non-empty, adds an "Include related data" option that bundles them as a zip. */
     relatedTables?: RelatedTable[];
@@ -29,7 +32,7 @@ interface ParquetDownloadMenuProps {
     compact?: boolean;
 }
 
-export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parquetUrl, layerTitle, relatedTables, compact = false }) => {
+export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parquetUrl, layerTitle, label, relatedTables, compact = false }) => {
     // Schema probe (a small range request) waits for the menu to actually open, so
     // rendering a list of these doesn't fire a network request per row up front.
     // `enabled` (not the query key) gates the fetch — selecting a DropdownMenuItem
@@ -120,7 +123,7 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
                         : <Download className={compact ? 'h-4 w-4' : 'h-5 w-5'} />}
                     {!compact && (
                         <span className="text-xs">
-                            {isDownloading ? 'Exporting…' : schemaLoading ? 'Loading…' : 'Download'}
+                            {isDownloading ? 'Exporting…' : schemaLoading ? 'Loading…' : (label ?? 'Download')}
                         </span>
                     )}
                 </Button>

@@ -107,7 +107,9 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
 
     const relatedTableTargetValues = useMemo(() => {
         if (!selectedLayer?.relatedTables?.length) return [];
-        return selectedLayer.relatedTables.flatMap(table =>
+        // Values scoped per table (index-aligned with relatedTables) so each table is queried
+        // only with its own key column's values.
+        return selectedLayer.relatedTables.map(table =>
             rowData.map(row => String(row.properties[table.targetField!] ?? ''))
         );
     }, [selectedLayer?.relatedTables, rowData]);

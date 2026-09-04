@@ -25,11 +25,12 @@ interface LayerControlsProps {
     bivariateLegend?: { xLabel: string; yLabel: string };
     arcgisUrl?: string;
     legendUnit?: string;
-    /** GeoParquet URL for client-side export. When set, download dropdown is enabled. */
-    downloadParquetUrl?: string;
-    /** Related tables configured on the layer's sublayers (e.g. formation tops, geochemistry).
-     * When non-empty, the download menu offers an "Include related data" option. */
-    relatedTables?: RelatedTable[];
+    /** Maps a GeoServer sublayer name to a friendly heading, for delineating sublayers in the legend. */
+    layerLabels?: Record<string, string>;
+    /** Downloadable datasets for this layer. One entry per dataset (a multi-sublayer layer exposes one
+     * per sublayer); each renders its own labelled download menu and bundles its related tables
+     * (e.g. formation tops, geochemistry) into the "Include related data" zip. */
+    downloadEntries?: Array<{ label: string; url: string; relatedTables?: RelatedTable[] }>;
     /** When true, hide format-conversion dropdown and offer only a direct parquet download. Used for apps that require unmodified source data. */
     disableExport?: boolean;
     /** Optional layer-scoped filter UI. When provided, adds a Filters toggle to the button row and a collapsible panel below. */
@@ -52,8 +53,8 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     bivariateLegend,
     arcgisUrl,
     legendUnit,
-    downloadParquetUrl,
-    relatedTables,
+    layerLabels,
+    downloadEntries = [],
     disableExport = false,
     filtersContent,
     statsContent,
@@ -166,9 +167,15 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                             <span className='text-xs'>Legend</span>
                         </Toggle>
 
-                        {!disableExport && downloadParquetUrl && (
-                            <ParquetDownloadMenu parquetUrl={downloadParquetUrl} layerTitle={title} relatedTables={relatedTables} />
-                        )}
+                        {!disableExport && downloadEntries.map(d => (
+                            <ParquetDownloadMenu
+                                key={d.url}
+                                parquetUrl={d.url}
+                                layerTitle={downloadEntries.length > 1 ? `${title}-${d.label}` : title}
+                                label={downloadEntries.length > 1 ? d.label : undefined}
+                                relatedTables={d.relatedTables}
+                            />
+                        ))}
 
                         {filtersContent && (
                             <Toggle
@@ -212,6 +219,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     bivariateLegend={bivariateLegend}
                     arcgisUrl={arcgisUrl}
                     legendUnit={legendUnit}
+                    layerLabels={layerLabels}
                 />
                 {filtersContent && (
                     <div

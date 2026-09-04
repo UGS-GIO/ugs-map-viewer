@@ -884,20 +884,27 @@ const powerplantsConfig: PMTilesLayerProps = {
     ],
 };
 
-// Geochemistry Well Sites WMS Layer
+// Rock Property Data WMS Layer — wells (points) + fields (polygons) bundled as one toggle.
+// Both sublayers render together; each keeps its own popup fields, related table, and parquet
+// download, labelled via popupTitle so Wells vs Fields stay distinct in the popup, legend, and
+// download menu.
 const geochemWellSitesLayerName = 'enmin_ccus_geochemistry_current';
-const geochemWellSitesWMSTitle = 'Wells with Rock Property Data';
-const geochemWellSitesWMSConfig: WMSLayerProps = {
+const geochemFieldsLayerName = 'enmin_ccus_geochemfieldpolys_current';
+const rockPropertyDataWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
-    title: geochemWellSitesWMSTitle,
+    title: 'Rock Property Data',
     visible: false,
     crs: 'EPSG:3857',
+    // Layer-level URL feeds the Data Sources panel, which reads parent `downloadParquetUrl` only.
+    // Layer controls prefer the per-sublayer entries below, so this doesn't duplicate a button.
     downloadParquetUrl: parquetUrl("enmin_ccus_geochemistry"),
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geochemWellSitesLayerName}`,
+            popupTitle: 'Wells',
+            downloadParquetUrl: parquetUrl("enmin_ccus_geochemistry"),
             popupEnabled: true,
             queryable: true,
             popupFields: {
@@ -928,10 +935,10 @@ const geochemWellSitesWMSConfig: WMSLayerProps = {
             },
             relatedTables: [
                 {
-                    fieldLabel: 'Geochemistry Data',
+                    fieldLabel: 'Rock Property Data',
                     matchingField: 'uwi',
                     targetField: 'uwi',
-                    url: PROD_POSTGREST_URL + '/ccus_geochem_data',
+                    url: PROD_POSTGREST_URL + '/enmin_ccus_geochemistry_measurements_current',
                     headers: {
                         "Accept-Profile": 'emp',
                         "Accept": "application/json",
@@ -943,6 +950,44 @@ const geochemWellSitesWMSConfig: WMSLayerProps = {
                         { field: 'porosity_percent', label: 'Porosity (%)' },
                         { field: 'perm_md_klink', label: 'Permeability (mD)' },
                         { field: 'salinity_ppm', label: 'Salinity (ppm)' },
+                    ],
+                    sortBy: 'depth_top_interval',
+                    sortDirection: 'asc',
+                    displayAs: 'table'
+                },
+            ],
+        },
+        {
+            name: `${ENERGY_MINERALS_WORKSPACE}:${geochemFieldsLayerName}`,
+            popupTitle: 'Fields',
+            downloadParquetUrl: parquetUrl("enmin_ccus_geochemfieldpolys"),
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Field Name': { field: 'field', type: 'string' },
+                'Type': { field: 'type', type: 'string' },
+                'Status': { field: 'status', type: 'string' },
+                'Discovery Year': { field: 'date', type: 'string' },
+                'Producing Formations': { field: 'prodformations', type: 'string' },
+                'Reservoir Rocks': { field: 'reservoir_rocks', type: 'string' },
+            },
+            relatedTables: [
+                {
+                    fieldLabel: 'Rock Property Data',
+                    matchingField: 'fieldnamejoin',
+                    targetField: 'field',
+                    url: PROD_POSTGREST_URL + '/enmin_geochemistry_fields_current',
+                    headers: {
+                        "Accept-Profile": 'emp',
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    displayFields: [
+                        { field: 'formation', label: 'Formation' },
+                        { field: 'depth_top_interval', label: 'Depth (ft)' },
+                        { field: 'porosity_percent', label: 'Porosity (%)' },
+                        { field: 'perm_md_klink', label: 'Permeability (mD)' },
+                        { field: 'lithology', label: 'Lithology' },
                     ],
                     sortBy: 'depth_top_interval',
                     sortDirection: 'asc',
@@ -1442,7 +1487,7 @@ const subsurfaceDataConfig: LayerProps = {
     visible: false,
     layers: [
         wellWithTopsWMSConfig,
-        geochemWellSitesWMSConfig,
+        rockPropertyDataWMSConfig,
         coresAndCuttingsWMSConfig,
         oilGasFieldsWMSConfig,
         geothermalWellsWMSConfig,
