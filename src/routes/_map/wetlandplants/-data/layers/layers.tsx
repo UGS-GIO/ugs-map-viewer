@@ -1,50 +1,167 @@
-import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from "@/lib/constants";
-import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
-//import GeoJSON from "geojson";
+import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 
-
-const studyAreasLayerName = 'studyareas_current';
-const studyAreasWMSTitle = 'Lorem Ipsum';
-const studyAreasWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: studyAreasWMSTitle,
+// Wetland Survey Sites — from warehouse item `wetlands_plants_site`.
+//
+// Not visible until a style ships: no `ugs:renders` yet, so data-map.tsx silently drops this
+// PMTiles layer. Symbology: yellow for exact locations, red for confidential/approximate.
+//
+// PRIVACY: Confidential sites are geocoded to their true location upstream; the pipeline
+// doesn't offset them yet. Filtered client-side (see wetlandplants/-index.tsx
+// `vectorLayerFilters`) rather than rendering real coordinates — don't remove without a
+// warehouse fix.
+//
+// RELATED TABLE: the STAC item carries a `wetlands_plants_species` asset with
+// `ugs:foreign_keys` on `surveyeventid` — the per-site species list. `wetlands_wetdash_
+// siteattributes` shared no key with this dataset (sitecode vs siteid, 654 vs 1563 rows) and
+// isn't used anywhere in this file.
+const wetlandSurveySitesLayerName = 'wetlands_plants_site';
+export const wetlandSurveySitesTitle = 'Wetland Survey Sites';
+const wetlandSurveySitesConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: wetlandSurveySitesLayerName,
+    pmtilesUrl: '',
+    sourceLayer: wetlandSurveySitesLayerName,
+    title: wetlandSurveySitesTitle,
     visible: true,
-    crs: 'EPSG:26912',
+    sourceAgency: 'Utah Geological Survey',
+    opacity: 1,
     sublayers: [
         {
-            name: `${HAZARDS_WORKSPACE}:${studyAreasLayerName}`,
-            popupEnabled: false,
+            name: wetlandSurveySitesLayerName,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
-                'Name': { field: 'name', type: 'string' },
-                'Report ID': { field: 'repor_id', type: 'string' },
-                'Mapped Hazards': { field: 'hazard_name', type: 'string' },
+                'Site Code': { field: 'sitecode', type: 'string' },
+                'Ecoregional Group': { field: 'ecoregionalgroup', type: 'string' },
+                'Wetland Type': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const primary = props?.['wetlandtype'];
+                        const secondary = props?.['wetlandtype2'];
+                        if (secondary && secondary !== 'N/A') return `${primary} / ${secondary}`;
+                        return `${primary ?? ''}`;
+                    },
+                },
+                'HGM Class': { field: 'hgm_class', type: 'string' },
+                'Watershed': { field: 'watershed', type: 'string' },
+                'Vegetation Condition': { field: 'vegetationcondition', type: 'string' },
+                'Owner': { field: 'owner', type: 'string' },
+                'Project': { field: 'project', type: 'string' },
+                'Survey Date': { field: 'surveydate', type: 'date' },
+                'Cover-Weighted Mean C': { field: 'cwmeanc', type: 'number', decimalPlaces: 1 },
+                'Relative Native Cover': { field: 'relnativecover', type: 'number', decimalPlaces: 1, unit: '%' },
             },
-            linkFields: {
-                'repor_id': {
-                    baseUrl: '',
-                    transform: (value: string) => {
-                        const values = value.split(','); // Split the input value by a comma
-                        const transformedValues = values.map(val => {
-                            const trimmedVal = val.trim();
-                            const href = /^\d+$/.test(trimmedVal)
-                                ? `https://geodata.geology.utah.gov/pages/view.php?ref=${trimmedVal}`
-                                : `https://doi.org/10.34191/${trimmedVal}`;
-                            const label = trimmedVal;
-                            return { label, href };
-                        });
-
-                        return transformedValues;
-                    }
-                }
-            }
+            relatedTables: [
+                {
+                    // STAC-backed: url + surveyeventid join filled from the
+                    // wetlands_plants_species related asset's ugs:foreign_keys.
+                    fieldLabel: 'Plant Species',
+                    stacAsset: 'wetlands_plants_species',
+                    displayAs: 'table',
+                    displayFields: [
+                        { field: 'scientificname', label: 'Scientific Name' },
+                        { field: 'commonname', label: 'Common Name' },
+                        { field: 'family', label: 'Family' },
+                        {
+                            field: 'cover',
+                            label: 'Cover',
+                            format: 'number',
+                            transform: (v) => v ? `${v}%` : '—',
+                        },
+                        { field: 'nativity', label: 'Nativity' },
+                        { field: 'growthform', label: 'Growth Form' },
+                        { field: 'duration', label: 'Duration' },
+                        { field: 'cvalue', label: 'C-Value' },
+                        {
+                            field: 'noxious',
+                            label: 'Noxious',
+                            transform: (v) => (v === 'true' ? 'Yes' : 'No'),
+                        },
+                    ],
+                    sortBy: 'cover',
+                    sortDirection: 'desc',
+                },
+            ],
         },
     ],
-}
+};
+
+// Watershed (HUC8) Boundaries — from warehouse item `wetlands_plants_huc8` (columns are
+// `name`/`huc8`, not `huc_name` like the old wetdash table). Off by default, same pattern as
+// EcoRegional Groups — including no `ugs:renders` yet, so invisible until a style ships.
+const huc8LayerName = 'wetlands_plants_huc8';
+export const huc8Title = 'Watershed (HUC8) Boundaries';
+const huc8Config: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: huc8LayerName,
+    pmtilesUrl: '',
+    sourceLayer: huc8LayerName,
+    title: huc8Title,
+    visible: false,
+    sourceAgency: 'Utah Geological Survey',
+    opacity: 0.5,
+    sublayers: [
+        {
+            name: huc8LayerName,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Watershed Name': { field: 'name', type: 'string' },
+                'HUC8 Code': { field: 'huc8', type: 'string' },
+            },
+        },
+    ],
+};
+
+// EcoRegional Groups — from warehouse item `wetlands_plants_ecoregion`. Level III (+ EPA
+// region / state) ecoregion polygons classifying Wetland Survey Sites into wetland classes
+// ("Central Basin and Range", "Wasatch and Uinta Mountains", etc.). Same gotcha as Wetland
+// Survey Sites: no `ugs:renders` yet, so invisible until a style ships.
+const ecoregionLayerName = 'wetlands_plants_ecoregion';
+export const ecoregionTitle = 'EcoRegional Groups';
+const ecoregionConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: ecoregionLayerName,
+    pmtilesUrl: '',
+    sourceLayer: ecoregionLayerName,
+    title: ecoregionTitle,
+    visible: false,
+    sourceAgency: 'Utah Geological Survey',
+    opacity: 0.5,
+    sublayers: [
+        {
+            name: ecoregionLayerName,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Ecoregional Group': { field: 'ecoregionalgroup', type: 'string' },
+                'Level III Ecoregion': { field: 'us_l3name', type: 'string' },
+                'Level III Code': { field: 'us_l3code', type: 'string' },
+                'Level II Ecoregion': { field: 'na_l2name', type: 'string' },
+                'Level I Ecoregion': { field: 'na_l1name', type: 'string' },
+                'EPA Region': { field: 'epa_region', type: 'number' },
+                'State': { field: 'state_name', type: 'string' },
+            },
+        },
+    ],
+};
+
+// Land Ownership (SITLA) — not yet in the warehouse; reuses the same layer already configured
+// in geophysics (src/routes/_map/geophysics/-data/layers/layers.tsx).
+const landOwnershipConfig: ArcGISMapServerLayerProps = {
+    type: 'map-image',
+    url: 'https://gis.trustlands.utah.gov/mapping/rest/services/Land_Ownership_WM/MapServer',
+    title: 'Land Ownership',
+    opacity: 0.5,
+    visible: false,
+};
 
 const layersConfig: LayerProps[] = [
-    studyAreasWMSConfig
+    wetlandSurveySitesConfig,
+    huc8Config,
+    ecoregionConfig,
+    landOwnershipConfig,
 ];
 
 export default layersConfig;

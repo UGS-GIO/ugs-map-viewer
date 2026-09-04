@@ -25,7 +25,7 @@ import type {
     SearchComboboxHandle,
     SearchComboboxProps,
 } from './search-types';
-import { formatAddressCase, getDisplayValue, getSourceDisplayName, resultHasData, appendFunctionParams } from './search-utils';
+import { formatAddressCase, getDisplayValue, getSourceDisplayName, resultHasData, appendFunctionParams, resolveDefaultSourceIndex } from './search-utils';
 import { fetchMasqueradeSuggestions, fetchPostgRESTResults } from './search-fetchers';
 
 // Re-export types and handlers for consumers
@@ -45,12 +45,18 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
     onFeatureSelect,
     onCollectionSelect,
     className,
+    defaultSourceName,
 }, ref) {
+    // Source to pre-select on load / restore on clear; null = search all sources.
+    const defaultSourceIndex = useMemo(
+        () => resolveDefaultSourceIndex(config, defaultSourceName),
+        [config, defaultSourceName],
+    );
     const [open, setOpen] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const [search, setSearch] = useState('');
     const [debouncedSearch] = useDebounce(search, 500);
-    const [activeSourceIndex, setActiveSourceIndex] = useState<number | null>(null);
+    const [activeSourceIndex, setActiveSourceIndex] = useState<number | null>(defaultSourceIndex);
     const [isShaking, setIsShaking] = useState(false);
     const { map } = useMap();
     const commandRef = useRef<HTMLDivElement>(null);
@@ -103,10 +109,10 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
     const clearSearch = useCallback(() => {
         setInputValue('');
         setSearch('');
-        setActiveSourceIndex(null);
+        setActiveSourceIndex(defaultSourceIndex);
         setOpen(false);
         if (map) clearGraphics(map);
-    }, [map]);
+    }, [map, defaultSourceIndex]);
 
     useImperativeHandle(ref, () => ({ clear: clearSearch }), [clearSearch]);
 

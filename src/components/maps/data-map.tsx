@@ -13,7 +13,7 @@ import {
 import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
-import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName } from '@/lib/map/layer-utils'
+import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
 import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
@@ -81,12 +81,15 @@ function WmsLayerSource({
   const layerName = getWmsLayerName(layer)
   const layerWmsUrl = layer.url || wmsUrl
   const tileUrl = buildWmsTileUrl(layerWmsUrl, layerName, cqlFilter, layer.customLayerParameters, styleName)
+  // A config `visibleZoomRange` gates the raster the same way it gates PMTiles,
+  // so Township & Range (WMS) comes in at the zoom its Sections sibling does.
   return (
     <Source id={`wms-${layer.title}`} type="raster" tiles={[tileUrl]} tileSize={512}>
       <Layer
         id={`wms-layer-${layer.title}`}
         beforeId={beforeId}
         type="raster"
+        {...zoomRangeToBounds(layer.visibleZoomRange)}
         layout={{ visibility: hidden ? 'none' : 'visible' }}
         paint={{ 'raster-opacity': opacity ?? layer.opacity ?? 0.8 }}
         metadata={{ title: layer.title, 'wms-url': layerWmsUrl, 'wms-layer': layerName }}
@@ -339,8 +342,15 @@ export default function DataMap({
     () => mountedLayerList.filter(isCOGLayer).filter(l => displayedTitles.has(l.title)),
     [mountedLayerList, displayedTitles],
   )
+  // `queryable: false` opts a layer out of click queries, the same flag WFS and raster already
+  // honour. Tiles clip geometry at their edges, so a clicked polygon highlights as the tile-shaped
+  // fragment the query returned; a layer can turn selection off until that's solved centrally.
   const visiblePmtilesLayers = useMemo(
-    () => mountedPmtilesLayers.filter(l => displayedTitles.has(l.title || '')),
+    () => mountedPmtilesLayers.filter(l => {
+      if (!displayedTitles.has(l.title || '')) return false
+      const subs = l.sublayers ?? []
+      return subs.length === 0 || subs.some(sub => sub.queryable !== false)
+    }),
     [mountedPmtilesLayers, displayedTitles],
   )
   // Vector buffer box is meaningful only when a vector layer is the click target; raster sampling alone uses the pixel highlight.

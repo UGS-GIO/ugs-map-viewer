@@ -27,6 +27,22 @@ const CCS_FILTER_MAPPING: Record<string, string> = {
 }
 
 const searchConfig: SearchSourceConfig[] = [
+  {
+    type: 'postgREST',
+    url: `${PROD_POSTGREST_URL}/enmin_ucrc_wells_current`,
+    sourceName: 'UCRC Collection',
+    layerName: ucrcWellsWMSTitle,
+    displayField: 'well_name',
+    secondaryDisplayField: 'uwi',
+    params: {
+      targetFields: ['uwi', 'well_name'],
+      select: 'uwi,well_name,geom',
+    },
+    headers: {
+      'Accept-Profile': 'emp',
+      'Accept': 'application/geo+json',
+    },
+  },
   defaultMasqueradeConfig,
     {
       type: 'postgREST',
@@ -54,22 +70,6 @@ const searchConfig: SearchSourceConfig[] = [
     params: {
       targetFields: ['api', 'wellname'],
       select: 'api,wellname,shape',
-    },
-    headers: {
-      'Accept-Profile': 'emp',
-      'Accept': 'application/geo+json',
-    },
-  },
-  {
-    type: 'postgREST',
-    url: `${PROD_POSTGREST_URL}/enmin_ucrc_wells_current`,
-    sourceName: 'UCRC Collection',
-    layerName: ucrcWellsWMSTitle,
-    displayField: 'well_name',
-    secondaryDisplayField: 'uwi',
-    params: {
-      targetFields: ['uwi', 'well_name'],
-      select: 'uwi,well_name,geom',
     },
     headers: {
       'Accept-Profile': 'emp',
@@ -191,6 +191,7 @@ export default function Map() {
                   <SearchCombobox
                     ref={searchRef}
                     config={searchConfig}
+                    defaultSourceName="UCRC Collection"
                     onFeatureSelect={onFeatureSelect}
                     onCollectionSelect={onCollectionSelect}
                     className="w-full"
