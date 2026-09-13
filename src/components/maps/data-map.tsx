@@ -263,6 +263,7 @@ export default function DataMap({
   vectorLayerSymbology = {},
   onMapReady,
   basemapId,
+  defaultBasemapId,
   clickBufferBounds,
   onClickBufferChange,
   featureBbox,
@@ -553,8 +554,8 @@ export default function DataMap({
 
   // Build basemap style from URL param or default
   const currentBasemap = useMemo(
-    () => BASEMAP_STYLES.find((b) => b.id === (basemapId ?? DEFAULT_BASEMAP.id)) || DEFAULT_BASEMAP,
-    [basemapId]
+    () => BASEMAP_STYLES.find((b) => b.id === (basemapId ?? defaultBasemapId ?? DEFAULT_BASEMAP.id)) || DEFAULT_BASEMAP,
+    [basemapId, defaultBasemapId]
   )
 
   // Build map style - handle raster tiles vs vector style URLs

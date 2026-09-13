@@ -136,7 +136,7 @@ export default function Map() {
       >
         <Layout>
           <Layout.Header className='hidden md:flex items-center justify-between px-4 md:px-6'>
-            <TopNav />
+            <TopNav defaultBasemapId="lite" />
             <div className='flex items-center flex-1 min-w-0 md:flex-initial md:w-1/3 md:ml-auto space-x-2'>
               {/* SearchCombobox removed - needs refactoring for new architecture */}
             </div>
@@ -174,6 +174,7 @@ function FilteredMapContainer() {
   return (
     <GenericMapContainer
       layerFilters={layerFilters}
+      defaultBasemapId="lite"
       popupLayerHeaderRender={renderDisplacementLayerHeader}
       popupFeatureFilter={popupFeatureFilter}
     />
