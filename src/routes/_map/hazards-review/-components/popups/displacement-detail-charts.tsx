@@ -137,13 +137,13 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
             {/* Depth panel */}
             <section className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
-                    <h4 id={depthHeadingId} className="text-sm font-medium">Subsidence depth by {yearAxisLabel.toLowerCase()} (in)</h4>
+                    <h4 id={depthHeadingId} className="text-sm font-medium">Subsidence by {yearAxisLabel.toLowerCase()} (in)</h4>
                     {showDepthToggle && (
                         <SegToggle
                             value={depthMode}
                             onChange={v => setDepthMode(v as 'cumulative' | 'change')}
                             options={[{ value: 'cumulative', label: 'Cumulative total' }, { value: 'change', label: 'Yearly change' }]}
-                            ariaLabel="Depth series"
+                            ariaLabel="Subsidence series"
                         />
                     )}
                 </div>
@@ -157,7 +157,7 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
                             </YAxis>
                             <Tooltip {...tooltipStyle} formatter={(value, _name, item) => {
                                 const loc = (item?.payload as DetailRow | undefined)?.location
-                                const label = depthKey === 'yearlyChange' ? 'Yearly change' : (loc ? `Deepest · ${loc}` : 'Deepest subsidence')
+                                const label = depthKey === 'yearlyChange' ? 'Yearly change' : (loc ? `Maximum Subsidence · ${loc}` : 'Maximum Subsidence')
                                 return [value == null ? '—' : `${fmt1(Number(value))} in`, label]
                             }} />
                             <Line type="monotone" dataKey={depthKey} stroke={lineColor} strokeWidth={2} dot={renderDepthDot} activeDot={{ r: 3 }} isAnimationActive={false} connectNulls={false} />
@@ -176,7 +176,7 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
                     <SegToggle
                         value={areaMode}
                         onChange={v => setAreaMode(v as 'total' | 'bydepth')}
-                        options={[{ value: 'total', label: 'Total' }, { value: 'bydepth', label: 'By depth' }]}
+                        options={[{ value: 'total', label: 'Total' }, { value: 'bydepth', label: 'By subsidence' }]}
                         ariaLabel="Area series"
                     />
                 </div>
@@ -209,7 +209,7 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
                 </div>
                 <p className="text-xs text-muted-foreground">
                     {areaMode === 'total'
-                        ? 'Total footprint sinking at/beyond the threshold.'
+                        ? 'Total footprint subsiding at/beyond the threshold.'
                         : 'Area exceeding each depth threshold.'}
                 </p>
                 {areaMode === 'bydepth' && exceedance.length > 0 && (

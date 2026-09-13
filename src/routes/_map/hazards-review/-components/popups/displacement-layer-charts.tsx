@@ -496,7 +496,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     const kpiCards = (
         <>
             <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={thresholdLabel} />
-            <KPI label="Max subsidence" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
+            <KPI label="Maximum Subsidence" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
             <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
             <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
         </>
@@ -514,6 +514,70 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
             zoomToBboxes={zoomToBboxes}
         />
     )
+    // Stacked "Vertical Displacement by {year}" chart + legend, built once so it can
+    // render both in the sidebar's Advanced disclosure and in the wide analysis pop-out.
+    const stackedChartNode = (
+        <div>
+            <div className="flex items-center justify-between mb-1">
+                <h4 id={stackedHeadingId} className="text-xs font-medium">Vertical Displacement by {yearAxisLabel}</h4>
+                {yearOverride !== null && (
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setYearOverride(typeValue, null)}>
+                        Reset to latest
+                    </Button>
+                )}
+            </div>
+            <p className="text-xs text-muted-foreground mb-1">Bars above zero = uplift, below zero = subsidence. Stacked by displacement range (in); colors match the map. Hover a column to read its per-range areas in the legend below; click to filter to that year — the shaded column is the active {yearAxisLabel.toLowerCase()}.</p>
+            <div
+                role="figure"
+                aria-labelledby={stackedHeadingId}
+                className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none"
+                style={{ height: CHART_HEIGHT_PX }}
+            >
+                {isLoading ? <Skeleton className="h-full w-full" /> : (
+                    <StackedYearChart
+                        data={stackedAreaByYear}
+                        bins={stackedBinOrder}
+                        year={year}
+                        typeValue={typeValue}
+                        onHover={setHoveredYear}
+                        onSelectYear={selectYear}
+                    />
+                )}
+            </div>
+            {(visibleUpliftBins.length > 0 || visibleSubsidenceBins.length > 0) && (
+                <div className="mt-2 flex flex-col gap-1 px-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vertical Displacement</div>
+                    <div className="flex items-baseline justify-between text-xs text-muted-foreground">
+                        <span>
+                            {legendSpan ? <>Area · <span className="font-medium text-foreground">{legendSpan}</span>{!isRangeMode && hoveredYear ? ' (hovered)' : ''}</> : 'Area'}
+                        </span>
+                        {isRangeMode && <span>mi²</span>}
+                    </div>
+                    {isRangeMode ? (
+                        <>
+                            <div className="flex items-baseline text-[10px] uppercase tracking-wide text-muted-foreground">
+                                <span className="ml-auto shrink-0 pl-1 min-w-[4.25rem] text-right">{year}</span>
+                                <span className="shrink-0 pl-2 min-w-[4.25rem] text-right">{hoveredYear ?? 'hover'}</span>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <ChartLegendGroup label="Uplift" bins={visibleUpliftBins} valueFor={legendValueFor} secondaryValueFor={legendHoverValueFor} />
+                                <ChartLegendGroup label="Subsidence" bins={visibleSubsidenceBins} valueFor={legendValueFor} secondaryValueFor={legendHoverValueFor} />
+                            </div>
+                        </>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-x-3">
+                            <ChartLegendGroup label="Uplift" bins={visibleUpliftBins} valueFor={legendValueFor} />
+                            <ChartLegendGroup label="Subsidence" bins={visibleSubsidenceBins} valueFor={legendValueFor} />
+                        </div>
+                    )}
+                </div>
+            )}
+            <p className="mt-2 px-2 text-xs italic text-muted-foreground">
+                Units: {getUnitsLabelForType(typeValue)}.
+            </p>
+        </div>
+    )
+
     const scope = basinFilterActive
         ? (selectedBasins.size === 1 ? [...selectedBasins][0] : `${selectedBasins.size} basins`)
         : 'Statewide'
@@ -529,14 +593,17 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                 kpisSlot={<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{kpiCards}</div>}
                 rankingSlot={rankingNode}
                 chartsSlot={
-                    <DisplacementDetailCharts
-                        typeValue={typeValue}
-                        scoped={scoped}
-                        threshold={threshold}
-                        plotBins={plotBins}
-                        lineColor={lineColor}
-                        yearAxisLabel={yearAxisLabel}
-                    />
+                    <>
+                        <DisplacementDetailCharts
+                            typeValue={typeValue}
+                            scoped={scoped}
+                            threshold={threshold}
+                            plotBins={plotBins}
+                            lineColor={lineColor}
+                            yearAxisLabel={yearAxisLabel}
+                        />
+                        {stackedChartNode}
+                    </>
                 }
             />
         )
@@ -610,18 +677,18 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
 
             {/* How deep — the hero number and its trend line, one labeled group. */}
             <section className="border-t border-border/60 pt-3">
-                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">How deep · since {period?.from ?? '—'}</p>
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Maximum Subsidence · since {period?.from ?? '—'}</p>
                 <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-semibold tabular-nums text-foreground">{isLoading || distinctBasins === 0 ? '—' : fmt1(maxDisplacement)}</span>
-                    <span className="text-xs text-muted-foreground">in deepest{deepestBasin ? ` · ${deepestBasin}` : ''}</span>
+                    <span className="text-xs text-muted-foreground">in{deepestBasin ? ` · ${deepestBasin}` : ''}</span>
                 </div>
                 <p className="mb-1 mt-0.5 text-xs text-muted-foreground">
-                    Deepest reading each {yearAxisLabel.toLowerCase()} (hover for the basin). Click a point to jump to that year.
+                    Maximum subsidence each {yearAxisLabel.toLowerCase()} (hover for the basin). Click a point to jump to that year.
                     {typeValue === 'Yearly' && ' The first year carries the multi-year baseline, not a single-year change.'}
                 </p>
                 <div
                     role="figure"
-                    aria-label={`Deepest subsidence by ${yearAxisLabel.toLowerCase()}, inches`}
+                    aria-label={`Maximum subsidence by ${yearAxisLabel.toLowerCase()}, inches`}
                     className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none"
                     style={{ height: CHART_HEIGHT_PX }}
                 >
@@ -662,72 +729,11 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                     {advancedOpen
                         ? <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
                         : <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />}
-                    <span>Advanced · uplift &amp; subsidence by area</span>
+                    <span>Advanced · vertical displacement by area</span>
                 </button>
                 {advancedOpen && (
                 <div id={advancedId}>
-                <div>
-                <div className="flex items-center justify-between mb-1">
-                    <h4 id={stackedHeadingId} className="text-xs font-medium">Uplift &amp; Subsidence by {yearAxisLabel}</h4>
-                    {yearOverride !== null && (
-                        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setYearOverride(typeValue, null)}>
-                            Reset to latest
-                        </Button>
-                    )}
-                </div>
-                <p className="text-xs text-muted-foreground mb-1">Bars above zero = uplift, below zero = subsidence. Stacked by displacement range (in); colors match the map. Hover a column to read its per-range areas in the legend below; click to filter to that year — the shaded column is the active {yearAxisLabel.toLowerCase()}.</p>
-                <div
-                    role="figure"
-                    aria-labelledby={stackedHeadingId}
-                    // Recharts focuses the SVG on click, which Chrome counts as
-                    // focus-visible — any ring here fires on every mouse click.
-                    className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none"
-                    style={{ height: CHART_HEIGHT_PX }}
-                >
-                    {isLoading ? <Skeleton className="h-full w-full" /> : (
-                        <StackedYearChart
-                            data={stackedAreaByYear}
-                            bins={stackedBinOrder}
-                            year={year}
-                            typeValue={typeValue}
-                            onHover={setHoveredYear}
-                            onSelectYear={selectYear}
-                        />
-                    )}
-                </div>
-                {(visibleUpliftBins.length > 0 || visibleSubsidenceBins.length > 0) && (
-                    <div className="mt-2 flex flex-col gap-1 px-2">
-                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vertical Displacement</div>
-                        <div className="flex items-baseline justify-between text-xs text-muted-foreground">
-                            <span>
-                                {legendSpan ? <>Area · <span className="font-medium text-foreground">{legendSpan}</span>{!isRangeMode && hoveredYear ? ' (hovered)' : ''}</> : 'Area'}
-                            </span>
-                            {isRangeMode && <span>mi²</span>}
-                        </div>
-                        {isRangeMode ? (
-                            <>
-                                {/* Captions match LegendSwatchGrid's two numeric columns. */}
-                                <div className="flex items-baseline text-[10px] uppercase tracking-wide text-muted-foreground">
-                                    <span className="ml-auto shrink-0 pl-1 min-w-[4.25rem] text-right">{year}</span>
-                                    <span className="shrink-0 pl-2 min-w-[4.25rem] text-right">{hoveredYear ?? 'hover'}</span>
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <ChartLegendGroup label="Uplift" bins={visibleUpliftBins} valueFor={legendValueFor} secondaryValueFor={legendHoverValueFor} />
-                                    <ChartLegendGroup label="Subsidence" bins={visibleSubsidenceBins} valueFor={legendValueFor} secondaryValueFor={legendHoverValueFor} />
-                                </div>
-                            </>
-                        ) : (
-                            <div className="grid grid-cols-2 gap-x-3">
-                                <ChartLegendGroup label="Uplift" bins={visibleUpliftBins} valueFor={legendValueFor} />
-                                <ChartLegendGroup label="Subsidence" bins={visibleSubsidenceBins} valueFor={legendValueFor} />
-                            </div>
-                        )}
-                    </div>
-                )}
-                <p className="mt-2 px-2 text-xs italic text-muted-foreground">
-                    Units: {getUnitsLabelForType(typeValue)}.
-                </p>
-                </div>
+                {stackedChartNode}
                 </div>
                 )}
             </div>
