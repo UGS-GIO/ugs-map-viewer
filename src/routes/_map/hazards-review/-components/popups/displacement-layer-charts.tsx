@@ -19,6 +19,7 @@ import {
 } from './use-displacement-queries'
 import { deepestSubsidenceByYear } from './displacement-analytics'
 import { DisplacementDetailCharts } from './displacement-detail-charts'
+import { ChartHoverReadout, type ChartReadoutItem } from './displacement-chart-hover'
 import { DisplacementAnalysisLayout } from './displacement-analysis-layout'
 import { renderDisplacementLayerFilters } from './displacement-layer-filters'
 
@@ -424,6 +425,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     // Hover feeds the legend instead of a floating card — the panel is too narrow
     // for a tooltip beside the bar without clipping.
     const [hoveredYear, setHoveredYear] = useState<string | null>(null)
+    const [depthHoverYear, setDepthHoverYear] = useState<string | null>(null)
     // "Back to statewide" unmounts itself on click; move focus here so keyboard
     // users don't get dropped to <body>. The scope label is always rendered.
     const scopeLabelRef = useRef<HTMLDivElement>(null)
@@ -617,6 +619,12 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     // when drilled into one basin. The summary already names that basin, so drop
     // the "· basin" suffix then.
     const deepestBasin = basinFilterActive && selectedBasins.size === 1 ? undefined : basinsByDepth[0]?.location
+    // Static readout under the depth line — the hovered year's reading, in place
+    // of the floating tooltip (which overlapped the plot).
+    const depthHoverPoint = depthHoverYear != null ? depthByYear.find(d => d.year === depthHoverYear) : undefined
+    const depthReadoutItems: ChartReadoutItem[] = depthHoverPoint
+        ? [{ label: depthHoverPoint.location ? `Maximum Subsidence · ${depthHoverPoint.location}` : 'Maximum Subsidence', value: `${fmt1(depthHoverPoint.depthIn)} in` }]
+        : []
     const whereText = basinFilterActive && selectedBasins.size === 1
         ? [...selectedBasins][0]
         : `${distinctBasins} ${distinctBasins === 1 ? 'basin' : 'basins'}`
@@ -693,9 +701,10 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                     style={{ height: CHART_HEIGHT_PX }}
                 >
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
-                        <DepthByYearChart data={depthByYear} lineColor={lineColor} markSeedYear={typeValue === 'Yearly'} selectedYear={year} onSelectYear={selectYear} />
+                        <DepthByYearChart data={depthByYear} lineColor={lineColor} markSeedYear={typeValue === 'Yearly'} selectedYear={year} onSelectYear={selectYear} onHover={setDepthHoverYear} />
                     )}
                 </div>
+                {!isLoading && <ChartHoverReadout activeLabel={depthHoverYear} items={depthReadoutItems} />}
             </section>
 
             {/* How much — one number; the map beside the panel shows where. */}
@@ -997,7 +1006,7 @@ interface DepthPoint { year: string; depthIn: number; location?: string | null }
 // Memoized like its sibling StackedYearChart: the parent re-renders on every
 // hover of the stacked chart (to refresh the legend), and both props here are
 // stable, so memo makes those hover re-renders a no-op.
-const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markSeedYear = false, selectedYear = null, onSelectYear }: { data: DepthPoint[]; lineColor: string; markSeedYear?: boolean; selectedYear?: string | null; onSelectYear?: (year: string) => void }) {
+const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markSeedYear = false, selectedYear = null, onSelectYear, onHover }: { data: DepthPoint[]; lineColor: string; markSeedYear?: boolean; selectedYear?: string | null; onSelectYear?: (year: string) => void; onHover?: (year: string | null) => void }) {
     // The Yearly seed epoch carries the multi-year baseline (Yearly==Cumulative by
     // construction), so it's the single deepest point — not a real one-year spike.
     // Flag that point (the max, not index 0 — the record may start before the seed)
@@ -1046,16 +1055,8 @@ const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markS
                 {selectedYear && data.some(d => d.year === selectedYear) && (
                     <ReferenceLine x={selectedYear} stroke="currentColor" strokeOpacity={0.4} strokeDasharray="3 3" />
                 )}
-                <Tooltip
-                    cursor={{ stroke: 'currentColor', strokeOpacity: 0.2 }}
-                    contentStyle={{ fontSize: 11, background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 6, color: 'hsl(var(--popover-foreground))' }}
-                    labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                    itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                    formatter={(value, _name, item) => {
-                        const loc = (item?.payload as DepthPoint | undefined)?.location
-                        return [`${fmt1(Number(value))} in`, loc ? `Deepest · ${loc}` : 'Deepest subsidence']
-                    }}
-                />
+                {onHover && <HoveredYearReporter onHover={onHover} />}
+                <Tooltip cursor={{ stroke: 'currentColor', strokeOpacity: 0.2 }} content={renderNoTooltip} />
                 <Line type="monotone" dataKey="depthIn" stroke={lineColor} strokeWidth={2} dot={renderDot} activeDot={{ r: 3 }} isAnimationActive={false} />
             </LineChart>
         </ResponsiveContainer>
