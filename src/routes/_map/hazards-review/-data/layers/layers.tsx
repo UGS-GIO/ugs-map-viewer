@@ -994,7 +994,8 @@ const aquifersCombinedConfig: WMSLayerProps = {
             queryable: true,
             popupFields: {
                 'Name': { field: 'name', type: 'string' },
-                'Office': { field: 'office_1', type: 'string' },
+                'Office': { field: 'office', type: 'string' },
+                'Office 2': { field: 'office_2', type: 'string' },
                 'HUC 1': { field: 'huc_1', type: 'string' },
                 'HUC 2': { field: 'huc_2', type: 'string' },
                 'HUC 3': { field: 'huc_3', type: 'string' },
