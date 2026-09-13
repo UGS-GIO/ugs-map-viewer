@@ -11,7 +11,7 @@ import { BASEMAP_STYLES, DEFAULT_BASEMAP, BasemapStyle } from '@/lib/basemaps';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import type { MapSearchParams } from '@/routes/_map';
 
-interface TopNavProps extends React.HTMLAttributes<HTMLElement> { }
+interface TopNavProps extends React.HTMLAttributes<HTMLElement> { defaultBasemapId?: string }
 
 interface BasemapProps {
   links: BasemapStyle[];
@@ -45,11 +45,11 @@ const BasemapDropdown = ({ links, trigger, onBasemapChange, activeBasemap }: Bas
   );
 };
 
-function TopNav({ className, ...props }: TopNavProps) {
+function TopNav({ className, defaultBasemapId, ...props }: TopNavProps) {
   const navigate = useNavigate();
   const searchParams = useSearch({ strict: false }) as MapSearchParams;
 
-  const activeBasemap = searchParams.basemap || DEFAULT_BASEMAP.id;
+  const activeBasemap = searchParams.basemap || defaultBasemapId || DEFAULT_BASEMAP.id;
 
   // Just update URL - DataMap handles the actual basemap change
   const handleBasemapChange = (basemapId: string) => {

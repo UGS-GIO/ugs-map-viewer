@@ -19,6 +19,7 @@ import {
 } from './use-displacement-queries'
 import { deepestSubsidenceByYear } from './displacement-analytics'
 import { DisplacementDetailCharts } from './displacement-detail-charts'
+import { ChartHoverReadout, type ChartReadoutItem } from './displacement-chart-hover'
 import { DisplacementAnalysisLayout } from './displacement-analysis-layout'
 import { renderDisplacementLayerFilters } from './displacement-layer-filters'
 
@@ -248,12 +249,12 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     // the depth-over-time series. Gated through `isMeasured` so it honors the
     // threshold and excludes the SLD "Zero" deadband exactly like the KPIs,
     // stacked bars, and basin ranking (one honest knob everywhere). Pre-filtered
-    // to subsidence (value_inches < 0) so an uplift-only year can't plot a
+    // to subsidence (value_inches_min < 0) so an uplift-only year can't plot a
     // misleading 0. Uses all years (not the year filter): a trend needs the
     // whole record, not just the selected year.
     const depthByYear = useMemo(
         () => Array.from(
-            deepestSubsidenceByYear(scoped.filter(f => f.properties.value_inches < 0 && isMeasured(f.properties.value_inches))),
+            deepestSubsidenceByYear(scoped.filter(f => f.properties.value_inches_min < 0 && isMeasured(f.properties.value_inches_min))),
             ([yr, d]) => ({ year: yr, depthIn: d.depthIn, location: d.location }),
         ).sort((a, b) => a.year.localeCompare(b.year)),
         [scoped, isMeasured],
@@ -273,13 +274,13 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     const yearAxisLabel = typeValue === 'Cumulative' ? 'Period End Year' : 'Water Year'
 
     // The "Subsiding Area" / "Max subsidence" / "Basins" KPIs describe subsidence,
-    // so gate to subsidence (value_inches < 0) above the SLD-pinned threshold —
+    // so gate to subsidence (value_inches_min < 0) above the SLD-pinned threshold —
     // matching the depth chart, the pop-out, and Rate (which is subsidence-only).
     // Uplift stays visible in the stacked Uplift/Subsidence chart + the map; it's
     // never netted into these subsidence metrics. (The stacked chart keeps its own
     // both-signs gate — only these scalar/ranking paths are subsidence-only.)
     const measuredSubsidence = useMemo(
-        () => filtered.filter(f => f.properties.value_inches < 0 && isMeasured(f.properties.value_inches)),
+        () => filtered.filter(f => f.properties.value_inches_min < 0 && isMeasured(f.properties.value_inches_min)),
         [filtered, isMeasured]
     )
 
@@ -293,7 +294,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     const maxDisplacement = useMemo(() => {
         let max = 0
         for (const f of measuredSubsidence) {
-            const a = Math.abs(f.properties.value_inches)
+            const a = Math.abs(f.properties.value_inches_min)
             if (a > max) max = a
         }
         return max
@@ -319,7 +320,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     const stackedAreaByYear = useMemo(() => {
         const yearToBins = new Map<string, Record<string, number>>()
         for (const f of scoped) {
-            const v = f.properties.value_inches
+            const v = f.properties.value_inches_min
             if (!isMeasured(v)) continue
             const bin = findBin(plotBins, v)
             if (!bin) continue
@@ -375,7 +376,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
             if (!yearMatched(f)) continue
             const loc = f.properties.location
             if (!loc) continue
-            const v = f.properties.value_inches
+            const v = f.properties.value_inches_min
             // Subsidence only — the ranking is "Subsidence by Basin", so an
             // uplift-dominated basin must not appear (matches Rate's basinsByRate).
             if (v >= 0) continue
@@ -411,7 +412,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     const worstDepth = useMemo(() => {
         let max = 0
         for (const f of qualFiltered) {
-            const v = f.properties.value_inches
+            const v = f.properties.value_inches_min
             if (v >= 0) continue // subsidence only, so bars scale against deepest subsidence (not uplift)
             const a = Math.abs(v)
             if (a > max) max = a
@@ -424,6 +425,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     // Hover feeds the legend instead of a floating card — the panel is too narrow
     // for a tooltip beside the bar without clipping.
     const [hoveredYear, setHoveredYear] = useState<string | null>(null)
+    const [depthHoverYear, setDepthHoverYear] = useState<string | null>(null)
     // "Back to statewide" unmounts itself on click; move focus here so keyboard
     // users don't get dropped to <body>. The scope label is always rendered.
     const scopeLabelRef = useRef<HTMLDivElement>(null)
@@ -496,7 +498,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     const kpiCards = (
         <>
             <KPI label="Subsiding Area" value={isLoading ? '—' : `${fmt1(totalAreaSqMi)} mi²`} sub={thresholdLabel} />
-            <KPI label="Max subsidence" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
+            <KPI label="Maximum Subsidence" value={isLoading ? '—' : `${fmt1(maxDisplacement)} in`} sub={typeValue} />
             <KPI label="Basins" value={isLoading ? '—' : String(distinctBasins)} sub="distinct in filter" />
             <KPI label="Period" value={isLoading ? '—' : (period ? `${period.from} – ${period.to}` : '—')} sub="years covered" />
         </>
@@ -514,6 +516,70 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
             zoomToBboxes={zoomToBboxes}
         />
     )
+    // Stacked "Vertical Displacement by {year}" chart + legend, built once so it can
+    // render both in the sidebar's Advanced disclosure and in the wide analysis pop-out.
+    const stackedChartNode = (
+        <div>
+            <div className="flex items-center justify-between mb-1">
+                <h4 id={stackedHeadingId} className="text-xs font-medium">Vertical Displacement by {yearAxisLabel}</h4>
+                {yearOverride !== null && (
+                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setYearOverride(typeValue, null)}>
+                        Reset to latest
+                    </Button>
+                )}
+            </div>
+            <p className="text-xs text-muted-foreground mb-1">Bars above zero = uplift, below zero = subsidence. Stacked by displacement range (in); colors match the map. Hover a column to read its per-range areas in the legend below; click to filter to that year — the shaded column is the active {yearAxisLabel.toLowerCase()}.</p>
+            <div
+                role="figure"
+                aria-labelledby={stackedHeadingId}
+                className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none"
+                style={{ height: CHART_HEIGHT_PX }}
+            >
+                {isLoading ? <Skeleton className="h-full w-full" /> : (
+                    <StackedYearChart
+                        data={stackedAreaByYear}
+                        bins={stackedBinOrder}
+                        year={year}
+                        typeValue={typeValue}
+                        onHover={setHoveredYear}
+                        onSelectYear={selectYear}
+                    />
+                )}
+            </div>
+            {(visibleUpliftBins.length > 0 || visibleSubsidenceBins.length > 0) && (
+                <div className="mt-2 flex flex-col gap-1 px-2">
+                    <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vertical Displacement</div>
+                    <div className="flex items-baseline justify-between text-xs text-muted-foreground">
+                        <span>
+                            {legendSpan ? <>Area · <span className="font-medium text-foreground">{legendSpan}</span>{!isRangeMode && hoveredYear ? ' (hovered)' : ''}</> : 'Area'}
+                        </span>
+                        {isRangeMode && <span>mi²</span>}
+                    </div>
+                    {isRangeMode ? (
+                        <>
+                            <div className="flex items-baseline text-[10px] uppercase tracking-wide text-muted-foreground">
+                                <span className="ml-auto shrink-0 pl-1 min-w-[4.25rem] text-right">{year}</span>
+                                <span className="shrink-0 pl-2 min-w-[4.25rem] text-right">{hoveredYear ?? 'hover'}</span>
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <ChartLegendGroup label="Uplift" bins={visibleUpliftBins} valueFor={legendValueFor} secondaryValueFor={legendHoverValueFor} />
+                                <ChartLegendGroup label="Subsidence" bins={visibleSubsidenceBins} valueFor={legendValueFor} secondaryValueFor={legendHoverValueFor} />
+                            </div>
+                        </>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-x-3">
+                            <ChartLegendGroup label="Uplift" bins={visibleUpliftBins} valueFor={legendValueFor} />
+                            <ChartLegendGroup label="Subsidence" bins={visibleSubsidenceBins} valueFor={legendValueFor} />
+                        </div>
+                    )}
+                </div>
+            )}
+            <p className="mt-2 px-2 text-xs italic text-muted-foreground">
+                Units: {getUnitsLabelForType(typeValue)}.
+            </p>
+        </div>
+    )
+
     const scope = basinFilterActive
         ? (selectedBasins.size === 1 ? [...selectedBasins][0] : `${selectedBasins.size} basins`)
         : 'Statewide'
@@ -529,14 +595,17 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                 kpisSlot={<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{kpiCards}</div>}
                 rankingSlot={rankingNode}
                 chartsSlot={
-                    <DisplacementDetailCharts
-                        typeValue={typeValue}
-                        scoped={scoped}
-                        threshold={threshold}
-                        plotBins={plotBins}
-                        lineColor={lineColor}
-                        yearAxisLabel={yearAxisLabel}
-                    />
+                    <>
+                        <DisplacementDetailCharts
+                            typeValue={typeValue}
+                            scoped={scoped}
+                            threshold={threshold}
+                            plotBins={plotBins}
+                            lineColor={lineColor}
+                            yearAxisLabel={yearAxisLabel}
+                        />
+                        {stackedChartNode}
+                    </>
                 }
             />
         )
@@ -550,6 +619,12 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     // when drilled into one basin. The summary already names that basin, so drop
     // the "· basin" suffix then.
     const deepestBasin = basinFilterActive && selectedBasins.size === 1 ? undefined : basinsByDepth[0]?.location
+    // Static readout under the depth line — the hovered year's reading, in place
+    // of the floating tooltip (which overlapped the plot).
+    const depthHoverPoint = depthHoverYear != null ? depthByYear.find(d => d.year === depthHoverYear) : undefined
+    const depthReadoutItems: ChartReadoutItem[] = depthHoverPoint
+        ? [{ label: depthHoverPoint.location ? `Maximum Subsidence · ${depthHoverPoint.location}` : 'Maximum Subsidence', value: `${fmt1(depthHoverPoint.depthIn)} in` }]
+        : []
     const whereText = basinFilterActive && selectedBasins.size === 1
         ? [...selectedBasins][0]
         : `${distinctBasins} ${distinctBasins === 1 ? 'basin' : 'basins'}`
@@ -610,25 +685,26 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
 
             {/* How deep — the hero number and its trend line, one labeled group. */}
             <section className="border-t border-border/60 pt-3">
-                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">How deep · since {period?.from ?? '—'}</p>
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Maximum Subsidence · since {period?.from ?? '—'}</p>
                 <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-semibold tabular-nums text-foreground">{isLoading || distinctBasins === 0 ? '—' : fmt1(maxDisplacement)}</span>
-                    <span className="text-xs text-muted-foreground">in deepest{deepestBasin ? ` · ${deepestBasin}` : ''}</span>
+                    <span className="text-xs text-muted-foreground">in{deepestBasin ? ` · ${deepestBasin}` : ''}</span>
                 </div>
                 <p className="mb-1 mt-0.5 text-xs text-muted-foreground">
-                    Deepest reading each {yearAxisLabel.toLowerCase()} (hover for the basin). Click a point to jump to that year.
+                    Maximum subsidence each {yearAxisLabel.toLowerCase()} (hover for the basin). Click a point to jump to that year.
                     {typeValue === 'Yearly' && ' The first year carries the multi-year baseline, not a single-year change.'}
                 </p>
                 <div
                     role="figure"
-                    aria-label={`Deepest subsidence by ${yearAxisLabel.toLowerCase()}, inches`}
+                    aria-label={`Maximum subsidence by ${yearAxisLabel.toLowerCase()}, inches`}
                     className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none"
                     style={{ height: CHART_HEIGHT_PX }}
                 >
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
-                        <DepthByYearChart data={depthByYear} lineColor={lineColor} markSeedYear={typeValue === 'Yearly'} selectedYear={year} onSelectYear={selectYear} />
+                        <DepthByYearChart data={depthByYear} lineColor={lineColor} markSeedYear={typeValue === 'Yearly'} selectedYear={year} onSelectYear={selectYear} onHover={setDepthHoverYear} />
                     )}
                 </div>
+                {!isLoading && <ChartHoverReadout activeLabel={depthHoverYear} items={depthReadoutItems} />}
             </section>
 
             {/* How much — one number; the map beside the panel shows where. */}
@@ -662,72 +738,11 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                     {advancedOpen
                         ? <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
                         : <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />}
-                    <span>Advanced · uplift &amp; subsidence by area</span>
+                    <span>Advanced · vertical displacement by area</span>
                 </button>
                 {advancedOpen && (
                 <div id={advancedId}>
-                <div>
-                <div className="flex items-center justify-between mb-1">
-                    <h4 id={stackedHeadingId} className="text-xs font-medium">Uplift &amp; Subsidence by {yearAxisLabel}</h4>
-                    {yearOverride !== null && (
-                        <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setYearOverride(typeValue, null)}>
-                            Reset to latest
-                        </Button>
-                    )}
-                </div>
-                <p className="text-xs text-muted-foreground mb-1">Bars above zero = uplift, below zero = subsidence. Stacked by displacement range (in); colors match the map. Hover a column to read its per-range areas in the legend below; click to filter to that year — the shaded column is the active {yearAxisLabel.toLowerCase()}.</p>
-                <div
-                    role="figure"
-                    aria-labelledby={stackedHeadingId}
-                    // Recharts focuses the SVG on click, which Chrome counts as
-                    // focus-visible — any ring here fires on every mouse click.
-                    className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none"
-                    style={{ height: CHART_HEIGHT_PX }}
-                >
-                    {isLoading ? <Skeleton className="h-full w-full" /> : (
-                        <StackedYearChart
-                            data={stackedAreaByYear}
-                            bins={stackedBinOrder}
-                            year={year}
-                            typeValue={typeValue}
-                            onHover={setHoveredYear}
-                            onSelectYear={selectYear}
-                        />
-                    )}
-                </div>
-                {(visibleUpliftBins.length > 0 || visibleSubsidenceBins.length > 0) && (
-                    <div className="mt-2 flex flex-col gap-1 px-2">
-                        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vertical Displacement</div>
-                        <div className="flex items-baseline justify-between text-xs text-muted-foreground">
-                            <span>
-                                {legendSpan ? <>Area · <span className="font-medium text-foreground">{legendSpan}</span>{!isRangeMode && hoveredYear ? ' (hovered)' : ''}</> : 'Area'}
-                            </span>
-                            {isRangeMode && <span>mi²</span>}
-                        </div>
-                        {isRangeMode ? (
-                            <>
-                                {/* Captions match LegendSwatchGrid's two numeric columns. */}
-                                <div className="flex items-baseline text-[10px] uppercase tracking-wide text-muted-foreground">
-                                    <span className="ml-auto shrink-0 pl-1 min-w-[4.25rem] text-right">{year}</span>
-                                    <span className="shrink-0 pl-2 min-w-[4.25rem] text-right">{hoveredYear ?? 'hover'}</span>
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <ChartLegendGroup label="Uplift" bins={visibleUpliftBins} valueFor={legendValueFor} secondaryValueFor={legendHoverValueFor} />
-                                    <ChartLegendGroup label="Subsidence" bins={visibleSubsidenceBins} valueFor={legendValueFor} secondaryValueFor={legendHoverValueFor} />
-                                </div>
-                            </>
-                        ) : (
-                            <div className="grid grid-cols-2 gap-x-3">
-                                <ChartLegendGroup label="Uplift" bins={visibleUpliftBins} valueFor={legendValueFor} />
-                                <ChartLegendGroup label="Subsidence" bins={visibleSubsidenceBins} valueFor={legendValueFor} />
-                            </div>
-                        )}
-                    </div>
-                )}
-                <p className="mt-2 px-2 text-xs italic text-muted-foreground">
-                    Units: {getUnitsLabelForType(typeValue)}.
-                </p>
-                </div>
+                {stackedChartNode}
                 </div>
                 )}
             </div>
@@ -991,7 +1006,7 @@ interface DepthPoint { year: string; depthIn: number; location?: string | null }
 // Memoized like its sibling StackedYearChart: the parent re-renders on every
 // hover of the stacked chart (to refresh the legend), and both props here are
 // stable, so memo makes those hover re-renders a no-op.
-const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markSeedYear = false, selectedYear = null, onSelectYear }: { data: DepthPoint[]; lineColor: string; markSeedYear?: boolean; selectedYear?: string | null; onSelectYear?: (year: string) => void }) {
+const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markSeedYear = false, selectedYear = null, onSelectYear, onHover }: { data: DepthPoint[]; lineColor: string; markSeedYear?: boolean; selectedYear?: string | null; onSelectYear?: (year: string) => void; onHover?: (year: string | null) => void }) {
     // The Yearly seed epoch carries the multi-year baseline (Yearly==Cumulative by
     // construction), so it's the single deepest point — not a real one-year spike.
     // Flag that point (the max, not index 0 — the record may start before the seed)
@@ -1040,16 +1055,8 @@ const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markS
                 {selectedYear && data.some(d => d.year === selectedYear) && (
                     <ReferenceLine x={selectedYear} stroke="currentColor" strokeOpacity={0.4} strokeDasharray="3 3" />
                 )}
-                <Tooltip
-                    cursor={{ stroke: 'currentColor', strokeOpacity: 0.2 }}
-                    contentStyle={{ fontSize: 11, background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 6, color: 'hsl(var(--popover-foreground))' }}
-                    labelStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                    itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
-                    formatter={(value, _name, item) => {
-                        const loc = (item?.payload as DepthPoint | undefined)?.location
-                        return [`${fmt1(Number(value))} in`, loc ? `Deepest · ${loc}` : 'Deepest subsidence']
-                    }}
-                />
+                {onHover && <HoveredYearReporter onHover={onHover} />}
+                <Tooltip cursor={{ stroke: 'currentColor', strokeOpacity: 0.2 }} content={renderNoTooltip} />
                 <Line type="monotone" dataKey="depthIn" stroke={lineColor} strokeWidth={2} dot={renderDot} activeDot={{ r: 3 }} isAnimationActive={false} />
             </LineChart>
         </ResponsiveContainer>

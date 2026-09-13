@@ -123,7 +123,7 @@ export function DisplacementAnalysisHost() {
                     with `pr-10`; the switch gets a full row, which is also where flex-wrap was
                     already putting it on narrow viewports. */}
                 <DialogHeader>
-                    <DialogTitle className="pr-10 text-base font-semibold">Displacement (InSAR)</DialogTitle>
+                    <DialogTitle className="pr-10 text-base font-semibold">Vertical Displacement (InSAR)</DialogTitle>
                     {siblings.length > 1 && (
                         <div className="pt-1">
                             <SurfaceSwitch siblings={siblings} activeTitle={activeTitle} onSelect={setActiveTitle} />

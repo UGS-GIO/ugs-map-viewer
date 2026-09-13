@@ -64,15 +64,13 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
     return (
         <div className="flex flex-col gap-2 px-1 py-1">
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vertical Displacement</div>
+            {zeroBin && Number.isFinite(Math.max(Math.abs(zeroBin.min), Math.abs(zeroBin.max))) && (
+                <p className="text-xs text-muted-foreground">0–{Math.max(Math.abs(zeroBin.min), Math.abs(zeroBin.max))} {unit} within error</p>
+            )}
             <div className="grid grid-cols-2 gap-x-3 text-xs text-foreground">
                 <LegendGroup label="Uplift" bins={upliftBins} unit={unit} />
                 <LegendGroup label="Subsidence" bins={subsidenceBins} unit={unit} />
             </div>
-            {zeroBin && (
-                <div className="border-t border-border/60 pt-1.5">
-                    <LegendSwatchGrid items={toSwatchItems([zeroBin])} columns="single" />
-                </div>
-            )}
             <p className="text-xs italic text-muted-foreground">Units: {getUnitsLabelForType(typeValue)}.</p>
         </div>
     )

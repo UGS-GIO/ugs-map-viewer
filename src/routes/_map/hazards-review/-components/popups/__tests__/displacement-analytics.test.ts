@@ -10,15 +10,17 @@ import type { DisplacementFeature } from '../use-displacement-queries'
 import type { DisplacementType } from '../displacement-layers'
 
 // Minimal feature fixture — geometry is a stub since area is injected in tests.
+// Analytics key on the band's deep edge (value_inches_min); value_inches_max is
+// popup-only, so it just mirrors _min here.
 const feat = (
     location: string,
-    value_inches: number,
+    value_inches_min: number,
     year: number | null,
     type: DisplacementType = 'Cumulative',
 ): DisplacementFeature => ({
     type: 'Feature',
     geometry: { type: 'Polygon', coordinates: [] },
-    properties: { location, type, year, value_inches },
+    properties: { location, type, year, value_inches_min, value_inches_max: value_inches_min },
 })
 
 const unitArea = () => 1

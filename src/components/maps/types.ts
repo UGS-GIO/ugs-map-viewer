@@ -73,6 +73,8 @@ export interface DataMapProps {
   onMapReady?: (map: maplibregl.Map) => void
   /** Basemap ID from URL */
   basemapId?: string
+  /** Per-route default basemap id used when no basemapId is in the URL (falls back to the global default). */
+  defaultBasemapId?: string
   /** Click buffer bounds for visualization (controlled by parent) */
   clickBufferBounds?: BoundsBox | null
   /** Callback when click buffer should update */

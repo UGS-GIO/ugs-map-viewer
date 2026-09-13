@@ -65,14 +65,14 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
         [qualFiltered, selectedBasins],
     )
     const measuredScoped = useMemo(
-        () => scoped.filter(f => isMeasured(f.properties.value_inches)),
+        () => scoped.filter(f => isMeasured(f.properties.value_inches_min)),
         [scoped, isMeasured],
     )
 
     const maxRate = useMemo(() => {
         let m = 0
         for (const f of measuredScoped) {
-            const a = Math.abs(f.properties.value_inches)
+            const a = Math.abs(f.properties.value_inches_min)
             if (a > m) m = a
         }
         return m
@@ -103,7 +103,7 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
     const basinsByRate = useMemo(() => {
         const byLoc = new Map<string, { abs: number; signed: number; features: DisplacementFeature[] }>()
         for (const f of qualFiltered) {
-            const v = f.properties.value_inches
+            const v = f.properties.value_inches_min
             if (!isMeasured(v)) continue
             const loc = f.properties.location
             if (!loc) continue
@@ -129,7 +129,7 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
     const worstRate = useMemo(() => {
         let m = 0
         for (const f of qualFiltered) {
-            const v = f.properties.value_inches
+            const v = f.properties.value_inches_min
             if (v >= 0) continue
             const a = Math.abs(v)
             if (a > m) m = a

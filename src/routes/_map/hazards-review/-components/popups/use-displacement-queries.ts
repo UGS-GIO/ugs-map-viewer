@@ -16,13 +16,14 @@ export interface DisplacementProps {
     /** Window open date (timestamp). For Cumulative this is the fixed period start. */
     start_date?: string | null
     end_date?: string | null
-    value_inches: number
     /**
-     * Percentage of source pixels classed as valid (0–100). Backend addition —
-     * optional today, populated once the data-quality enrichment lands. UI
-     * gates on {@link useDisplacementHasQualityFields} so absence is silent.
+     * Displacement band bounds. The layer stores each contour as a range;
+     * `value_inches_min` is the deep edge and equals the old single value_inches,
+     * so charts / filters / thresholds / SLD bins key on it. `value_inches_max` is
+     * the shallow edge, used only for the popup range. In/year for the Rate surface.
      */
-    pct_valid?: number | null
+    value_inches_min: number
+    value_inches_max: number
     /**
      * Data-quality confidence indicator. Pending backend confirmation on
      * whether this is numeric (0–1 / 0–100) or categorical (e.g. A/B/C);
@@ -185,7 +186,7 @@ export function useDisplacementDataQualsForType(type: DisplacementType): string[
     return useDistinctByType(type, extractDataQual, sortByDataQualOrder)
 }
 
-// Distinct |value_inches| magnitudes present for a type, ascending. Backs the
+// Distinct |value_inches_min| magnitudes present for a type, ascending. Backs the
 // threshold dropdown: an edge only earns a slot when real features sit in the
 // band above it, so an SLD class the data never fills (e.g. Cumulative's
 // 1–3 in band) doesn't yield a redundant option that filters identically to the
@@ -195,7 +196,7 @@ export function useDisplacementValueMagnitudesForType(type: DisplacementType): n
         const set = new Set<number>()
         for (const f of features) {
             if (f.properties.type !== type) continue
-            const v = f.properties.value_inches
+            const v = f.properties.value_inches_min
             if (typeof v === 'number' && Number.isFinite(v)) set.add(Math.abs(v))
         }
         return Array.from(set).sort((a, b) => a - b)
@@ -239,31 +240,34 @@ export function useDisplacementLatestYearForType(type: DisplacementType): string
 }
 
 export interface DisplacementQualityCaps {
-    /** True once any loaded feature reports a numeric pct_valid value. */
-    pctValid: boolean
     /** True once any loaded feature reports a non-null data_qual value. */
     dataQual: boolean
 }
 
 /**
- * Capability probe for the per-feature data-quality fields. UI surfaces (popup
- * confidence chip, basin coverage stat, advanced filter) gate on these flags
- * so they stay invisible until the backend enrichment populates the columns.
- * Once data ships, the flags flip on automatically with no caller change.
+ * Capability probe for the per-feature data-quality fields. UI surfaces (basin
+ * coverage stat, advanced filter) gate on this flag so they stay invisible until
+ * the data populates the column. Once data ships, the flag flips on automatically
+ * with no caller change.
+ *
+ * The old numeric `pct_valid` field went away when the layer moved to
+ * `hazards_displacement_insar_review`. If a replacement quality metric is
+ * surfaced later (e.g. `independent_confirmation` or `avg_temp_coh`), probe it
+ * here and add it to DisplacementQualityCaps.
  */
 export function useDisplacementHasQualityFields(): DisplacementQualityCaps {
     const select = useCallback((features: DisplacementFeature[]): DisplacementQualityCaps => {
-        let pctValid = false
         let dataQual = false
         for (const f of features) {
-            if (!pctValid && typeof f.properties.pct_valid === 'number') pctValid = true
-            if (!dataQual && f.properties.data_qual !== undefined && f.properties.data_qual !== null) dataQual = true
-            if (pctValid && dataQual) break
+            if (f.properties.data_qual !== undefined && f.properties.data_qual !== null) {
+                dataQual = true
+                break
+            }
         }
-        return { pctValid, dataQual }
+        return { dataQual }
     }, [])
     const { data } = useQuery({ ...displacementFeaturesQueryOptions(), select })
-    return data ?? { pctValid: false, dataQual: false }
+    return data ?? { dataQual: false }
 }
 
 // Per-type latest-year map for callers that need to resolve year filters

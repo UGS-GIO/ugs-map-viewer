@@ -6,7 +6,7 @@
  */
 
 // Fully-qualified WFS feature type name backing every displacement layer.
-export const DISPLACEMENT_TYPE_NAME = 'hazards:hazards_displacement_contours_review'
+export const DISPLACEMENT_TYPE_NAME = 'hazards:hazards_displacement_insar_review'
 
 // Title of the layer-tree group containing all displacement layers. Used by
 // HazardsReviewLayers to attach the group-level filter slot.
@@ -23,12 +23,12 @@ type DisplacementTypeValue = 'Cumulative' | 'Yearly' | 'Vertical Displacement Ra
 // the GeoServer SLD that styles the layer's tiles (mirrored to the layer-list
 // legend via WMSLayerProps.styleName).
 export const DISPLACEMENT_LAYERS = {
-    'Displacement Contours - Cumulative': { type: 'Cumulative', styleName: 'hazards_insar_displacement_cumulative' },
-    'Displacement Contours - Yearly': { type: 'Yearly', styleName: 'hazards_insar_displacement_yearly' },
-    'Displacement Contours - Vertical Displacement Rate': { type: 'Vertical Displacement Rate', styleName: 'hazards_insar_displacement_velocity' },
-    'Displacement Contours - Cumulative: Review': { type: 'Cumulative', styleName: 'hazards_insar_displacement_cumulative' },
-    'Displacement Contours - Yearly: Review': { type: 'Yearly', styleName: 'hazards_insar_displacement_yearly' },
-    'Displacement Contours - Vertical Displacement Rate: Review': { type: 'Vertical Displacement Rate', styleName: 'hazards_insar_displacement_velocity' },
+    'Displacement Contours - Cumulative': { type: 'Cumulative', styleName: 'hazards_displacement_insar_cumulative' },
+    'Displacement Contours - Yearly': { type: 'Yearly', styleName: 'hazards_displacement_insar_yearly' },
+    'Displacement Contours - Vertical Displacement Rate': { type: 'Vertical Displacement Rate', styleName: 'hazards_displacement_insar_velocity' },
+    'Displacement Contours - Cumulative: Review': { type: 'Cumulative', styleName: 'hazards_displacement_insar_cumulative' },
+    'Displacement Contours - Yearly: Review': { type: 'Yearly', styleName: 'hazards_displacement_insar_yearly' },
+    'Displacement Contours - Vertical Displacement Rate: Review': { type: 'Vertical Displacement Rate', styleName: 'hazards_displacement_insar_velocity' },
 } as const satisfies Record<string, DisplacementLayerEntry>
 
 export type DisplacementLayerTitle = keyof typeof DISPLACEMENT_LAYERS
@@ -57,7 +57,7 @@ export function getStyleNameForType(type: DisplacementType): string | undefined 
     return undefined
 }
 
-// Types whose features carry per-year value_inches and have year-driven analytics.
+// Types whose features carry per-year value_inches_min and have year-driven analytics.
 // Anything outside this set renders on the map but doesn't get a chart card or
 // threshold input — `Vertical Displacement Rate` for example is a multi-year
 // period summary, not a per-year quantity.
@@ -68,7 +68,7 @@ export function isChartedType(t: DisplacementType): t is ChartedType {
     return (CHARTED_TYPES as readonly string[]).includes(t)
 }
 
-// Human-readable units for each type's value_inches column. Cumulative + VDR
+// Human-readable units for each type's value_inches_min column. Cumulative + VDR
 // readings span a window (start_date → end_date) so the unit reads "per time
 // period"; Yearly is a per-year measurement, so the unit is unqualified.
 // Surfaced on the sidebar legend (via WMSLayerProps.legendUnit) and the chart
@@ -88,6 +88,36 @@ export function getUnitsLabelForType(type: DisplacementType): string {
 // inches. Separate from getUnitsLabelForType, which returns the longer footer text.
 export function getShortUnitForType(type: DisplacementType): string {
     return type === 'Vertical Displacement Rate' ? 'in/year' : 'in'
+}
+
+// Format a contour band's displacement range for the popup. The layer stores
+// each band as [value_inches_min, value_inches_max]; we show the unsigned
+// magnitude range with the direction spelled out ("3 – 5 in subsidence"),
+// matching the legend's magnitudeLabel convention (direction is otherwise only
+// carried by color). A band straddling zero (the ±deadband) has no single
+// direction, so it shows a signed range instead. Values may arrive stringified
+// from WMS GetFeatureInfo, so both bounds are coerced; a missing bound reads "—".
+export function formatDisplacementRange(minRaw: unknown, maxRaw: unknown, type: DisplacementType): string {
+    const parse = (raw: unknown): number | null => {
+        if (raw === null || raw === undefined || raw === '') return null
+        const n = Number(raw)
+        return Number.isFinite(n) ? n : null
+    }
+    const min = parse(minRaw)
+    const max = parse(maxRaw)
+    if (min === null || max === null) return '—'
+
+    const unit = getShortUnitForType(type)
+    const num = (n: number) => String(Number(n.toFixed(4)))
+
+    // Straddles zero (e.g. the ±deadband band): no single direction, show signed.
+    if (min < 0 && max > 0) return `${num(min)} to ${num(max)} ${unit}`
+
+    const lo = Math.min(Math.abs(min), Math.abs(max))
+    const hi = Math.max(Math.abs(min), Math.abs(max))
+    const direction = max <= 0 ? 'subsidence' : 'uplift'
+    const magnitude = lo === hi ? num(hi) : `${num(lo)} – ${num(hi)}`
+    return `${magnitude} ${unit} ${direction}`
 }
 
 // Canonical data-quality categories, best→worst, used to order the data-quality

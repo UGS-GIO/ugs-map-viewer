@@ -8,6 +8,7 @@ import { binMatches, type SldBin } from './displacement-sld-legend'
 import { getBinBoundaries } from './displacement-thresholds'
 import type { ChartedType } from './displacement-layers'
 import type { DisplacementFeature } from './use-displacement-queries'
+import { ChartHoverReadout, HoveredChartLabelReporter, renderNoChartTooltip, type ChartReadoutItem } from './displacement-chart-hover'
 
 // The depth + affected-area chart pair: depth over time on top, area below, the
 // two sharing one time axis (recharts `syncId`) so a hover on either lines the
@@ -54,6 +55,10 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
 }: DisplacementDetailChartsProps) {
     const [depthMode, setDepthMode] = useState<'cumulative' | 'change'>('cumulative')
     const [areaMode, setAreaMode] = useState<'total' | 'bydepth'>('total')
+    // The hovered year drives the static readout under each panel. Shared across
+    // both panels so their readings stay on the same year (matching the syncId
+    // cursor, which already lines a hover on one panel up with the other).
+    const [activeYear, setActiveYear] = useState<string | null>(null)
     // Each chart is a figure named by its own heading — recharts' <svg role="application"> is
     // otherwise unnamed.
     const depthHeadingId = useId()
@@ -81,7 +86,7 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
 
     const rows = useMemo<DetailRow[]>(() => {
         const measured = scoped.filter(f => {
-            const v = f.properties.value_inches
+            const v = f.properties.value_inches_min
             return v < 0 && Math.abs(v) >= threshold && findBinLocal(plotBins, v) !== undefined
         })
         const areaMi2Of = (f: DisplacementFeature) => area(f) * SQM_TO_SQMI
@@ -101,13 +106,22 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
         })
     }, [scoped, threshold, plotBins, exceedance])
 
-    const tooltipStyle = {
-        contentStyle: { fontSize: 11, background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', borderRadius: 6, color: 'hsl(var(--popover-foreground))' },
-        labelStyle: { color: 'hsl(var(--popover-foreground))' },
-        // Keep the value text in the readable popover ink — recharts otherwise
-        // colors it with the series stroke (deep-subsidence red), unreadable on dark.
-        itemStyle: { color: 'hsl(var(--popover-foreground))' },
-    }
+    // Readouts for the hovered year — one lookup feeds both panels so the depth
+    // and area readings never disagree on which year is shown.
+    const hoveredRow = activeYear != null ? rows.find(r => r.year === activeYear) ?? null : null
+    const depthItems: ChartReadoutItem[] = hoveredRow
+        ? [{
+            label: depthKey === 'yearlyChange'
+                ? 'Yearly change'
+                : (hoveredRow.location ? `Maximum Subsidence · ${hoveredRow.location}` : 'Maximum Subsidence'),
+            value: hoveredRow[depthKey] == null ? '—' : `${fmt1(Number(hoveredRow[depthKey]))} in`,
+        }]
+        : []
+    const areaItems: ChartReadoutItem[] = hoveredRow
+        ? (areaMode === 'total'
+            ? [{ label: `≥ ${fmt1(threshold)} in`, value: `${fmt1(hoveredRow.areaTotal)} mi²` }]
+            : exceedance.map(x => ({ label: x.label, value: `${fmt1(Number(hoveredRow[x.key] ?? 0))} mi²`, color: x.color })))
+        : []
 
     // Flag the Yearly seed epoch (the deepest point — it carries the multi-year
     // baseline, so it's the max, not necessarily the first) as a baseline.
@@ -137,13 +151,13 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
             {/* Depth panel */}
             <section className="flex flex-col gap-1">
                 <div className="flex items-center justify-between">
-                    <h4 id={depthHeadingId} className="text-sm font-medium">Subsidence depth by {yearAxisLabel.toLowerCase()} (in)</h4>
+                    <h4 id={depthHeadingId} className="text-sm font-medium">Subsidence by {yearAxisLabel.toLowerCase()} (in)</h4>
                     {showDepthToggle && (
                         <SegToggle
                             value={depthMode}
                             onChange={v => setDepthMode(v as 'cumulative' | 'change')}
                             options={[{ value: 'cumulative', label: 'Cumulative total' }, { value: 'change', label: 'Yearly change' }]}
-                            ariaLabel="Depth series"
+                            ariaLabel="Subsidence series"
                         />
                     )}
                 </div>
@@ -155,15 +169,13 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
                             <YAxis stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} width={52} tickFormatter={(v: number) => fmt1(v)}>
                                 <RechartsLabel value="Subsidence (in)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
                             </YAxis>
-                            <Tooltip {...tooltipStyle} formatter={(value, _name, item) => {
-                                const loc = (item?.payload as DetailRow | undefined)?.location
-                                const label = depthKey === 'yearlyChange' ? 'Yearly change' : (loc ? `Deepest · ${loc}` : 'Deepest subsidence')
-                                return [value == null ? '—' : `${fmt1(Number(value))} in`, label]
-                            }} />
+                            <HoveredChartLabelReporter onHover={setActiveYear} />
+                            <Tooltip cursor={{ stroke: 'currentColor', strokeOpacity: 0.2 }} content={renderNoChartTooltip} />
                             <Line type="monotone" dataKey={depthKey} stroke={lineColor} strokeWidth={2} dot={renderDepthDot} activeDot={{ r: 3 }} isAnimationActive={false} connectNulls={false} />
                         </LineChart>
                     </ResponsiveContainer>
                 </div>
+                <ChartHoverReadout activeLabel={activeYear} items={depthItems} />
                 {depthKey === 'yearlyChange' && (
                     <p className="text-xs text-muted-foreground">Year-over-year change in cumulative depth (this year minus last year). The first year is blank — it carries the multi-year baseline, not a single-year change. Negative values mean a shallower cumulative reading than the year before.</p>
                 )}
@@ -176,7 +188,7 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
                     <SegToggle
                         value={areaMode}
                         onChange={v => setAreaMode(v as 'total' | 'bydepth')}
-                        options={[{ value: 'total', label: 'Total' }, { value: 'bydepth', label: 'By depth' }]}
+                        options={[{ value: 'total', label: 'Total' }, { value: 'bydepth', label: 'By subsidence' }]}
                         ariaLabel="Area series"
                     />
                 </div>
@@ -189,7 +201,8 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
                                 <YAxis stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} width={52} tickFormatter={(v: number) => `${fmt1(v)}`}>
                                     <RechartsLabel value="Area (mi²)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
                                 </YAxis>
-                                <Tooltip {...tooltipStyle} formatter={(value) => [`${fmt1(Number(value))} mi²`, `≥ ${fmt1(threshold)} in`]} />
+                                <HoveredChartLabelReporter onHover={setActiveYear} />
+                                <Tooltip cursor={{ stroke: 'currentColor', strokeOpacity: 0.2 }} content={renderNoChartTooltip} />
                                 <Area type="monotone" dataKey="areaTotal" stroke={lineColor} fill={lineColor} fillOpacity={0.15} strokeWidth={2} isAnimationActive={false} />
                             </AreaChart>
                         ) : (
@@ -199,7 +212,8 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
                                 <YAxis stroke="currentColor" tick={{ fill: 'currentColor', fontSize: 11 }} width={52} tickFormatter={(v: number) => `${fmt1(v)}`}>
                                     <RechartsLabel value="Area (mi²)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
                                 </YAxis>
-                                <Tooltip {...tooltipStyle} formatter={(value, name) => [`${fmt1(Number(value))} mi²`, String(name)]} />
+                                <HoveredChartLabelReporter onHover={setActiveYear} />
+                                <Tooltip cursor={{ stroke: 'currentColor', strokeOpacity: 0.2 }} content={renderNoChartTooltip} />
                                 {exceedance.map(x => (
                                     <Line key={x.key} type="monotone" dataKey={x.key} name={x.label} stroke={x.color} strokeWidth={2} dot={false} activeDot={{ r: 3 }} isAnimationActive={false} />
                                 ))}
@@ -207,9 +221,10 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
                         )}
                     </ResponsiveContainer>
                 </div>
+                <ChartHoverReadout activeLabel={activeYear} items={areaItems} />
                 <p className="text-xs text-muted-foreground">
                     {areaMode === 'total'
-                        ? 'Total footprint sinking at/beyond the threshold.'
+                        ? 'Total footprint subsiding at/beyond the threshold.'
                         : 'Area exceeding each depth threshold.'}
                 </p>
                 {areaMode === 'bydepth' && exceedance.length > 0 && (
