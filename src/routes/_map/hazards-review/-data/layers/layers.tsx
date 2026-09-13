@@ -1021,8 +1021,7 @@ function makeDisplacementPopupFields(typeValue: DisplacementType): Record<string
         'Period End': { field: 'end_date', type: 'date', format: 'monthYear' },
         // The layer stores each band as value_inches_min / value_inches_max; show
         // the range with its direction. Custom so the transform reads both bounds.
-        // Labeled "Vertical Displacement" for Cumulative/Yearly; Rate keeps "Displacement".
-        [typeValue === 'Vertical Displacement Rate' ? 'Displacement' : 'Vertical Displacement']: {
+        'Vertical Displacement': {
             field: 'value_inches_min',
             type: 'custom',
             transform: (props) => formatDisplacementRange(props?.value_inches_min, props?.value_inches_max, typeValue),
