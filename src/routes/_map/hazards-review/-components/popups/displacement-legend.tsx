@@ -71,6 +71,16 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
                 <LegendGroup label="Uplift" bins={upliftBins} unit={unit} />
                 <LegendGroup label="Subsidence" bins={subsidenceBins} unit={unit} />
             </div>
+            {/* Confirmed-low contours are drawn hatched over their color (see the
+                SLD's hatch FeatureTypeStyle). The swatch mimics the diagonal fill. */}
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span
+                    aria-hidden
+                    className="inline-block h-3 w-3 shrink-0 rounded-[2px] border border-border"
+                    style={{ backgroundImage: 'repeating-linear-gradient(45deg, currentColor 0 1px, transparent 1px 3px)' }}
+                />
+                <span>Hatched: lower data quality, independently confirmed</span>
+            </div>
             <p className="text-xs italic text-muted-foreground">Units: {getUnitsLabelForType(typeValue)}.</p>
         </div>
     )
