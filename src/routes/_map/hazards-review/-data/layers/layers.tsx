@@ -1027,6 +1027,20 @@ function makeDisplacementPopupFields(typeValue: DisplacementType): Record<string
             transform: (props) => formatDisplacementRange(props?.value_inches_min, props?.value_inches_max, typeValue),
         },
         'Data Quality': { field: 'data_qual', type: 'string', transform: capitalizeFirst },
+        // Why a low/very-low contour is shown (hatched) rather than dropped: it's
+        // independently confirmed. Surfaced for every contour so a reviewer can
+        // read the hatch. GetFeatureInfo may deliver the boolean as a real bool or
+        // a stringified "true"/"false".
+        'Independently Confirmed': {
+            field: 'independent_confirmation',
+            type: 'custom',
+            transform: (props) => {
+                const v = props?.independent_confirmation;
+                if (v === true || v === 'true') return 'Yes';
+                if (v === false || v === 'false') return 'No';
+                return '—';
+            },
+        },
     };
 }
 

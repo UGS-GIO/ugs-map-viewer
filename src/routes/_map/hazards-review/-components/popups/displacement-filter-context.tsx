@@ -331,11 +331,15 @@ export function useDisplacementLayerFilters(): Record<string, string> {
             }
             // Data-quality: exclude unchecked categories. Empty exclusion set =
             // no clause (all qualities shown). NOT IN keeps unknown future
-            // categories visible by default.
+            // categories visible by default. Exception (Tara's rule): a low/very-low
+            // contour that is independently confirmed is ALWAYS shown — the SLD
+            // hatches it — even when its quality is excluded; only the UNCONFIRMED
+            // low/very-low are dropped. Scoped to low/very-low so excluding
+            // high/medium still hides their confirmed members.
             const excludedQuals = excludedDataQualsByType[typeValue]
             if (excludedQuals && excludedQuals.size > 0) {
                 const list = Array.from(excludedQuals).map(quoteCqlLiteral).join(', ')
-                clauses.push(`data_qual NOT IN (${list})`)
+                clauses.push(`(data_qual NOT IN (${list}) OR (independent_confirmation = true AND data_qual IN ('low', 'very low')))`)
             }
             if (clauses.length > 0) out[title] = clauses.join(' AND ')
         }
