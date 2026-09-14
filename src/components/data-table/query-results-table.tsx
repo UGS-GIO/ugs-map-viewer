@@ -311,7 +311,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                     <select
                         value={selectedLayerIndex}
                         onChange={(e) => handleLayerChange(Number(e.target.value))}
-                        className="h-7 px-2 rounded border border-input bg-background text-sm font-medium truncate flex-1 min-w-0"
+                        className="h-7 px-2 rounded-md border border-input bg-background text-sm font-medium truncate flex-1 min-w-0"
                     >
                         {layersWithData.map((layer, index) => {
                             const title = layer.layerTitle || layer.groupLayerTitle;
@@ -397,7 +397,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                         <select
                             value={filter.column}
                             onChange={(e) => setFilter({ column: e.target.value, value: '' })}
-                            className="h-7 px-2 rounded border border-input bg-background text-sm shrink-0"
+                            className="h-7 px-2 rounded-md border border-input bg-background text-sm shrink-0"
                         >
                             <option value="all">All</option>
                             {columnConfigs.map((config) => (

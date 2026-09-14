@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionHeader } from '@/components/ui/accordion';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight, SlidersHorizontal } from 'lucide-react';
@@ -50,7 +50,7 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
     return (
         <div className="mx-8 mt-2">
             <Collapsible open={open} onOpenChange={setOpen}>
-                <CollapsibleTrigger className="flex w-full items-center gap-1.5 rounded border border-border bg-muted/40 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted">
+                <CollapsibleTrigger className="flex w-full items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted">
                     <ChevronRight className={`h-3 w-3 transition-transform ${open ? 'rotate-90' : ''}`} />
                     <SlidersHorizontal className="h-3 w-3" />
                     <span>Filters</span>
@@ -232,13 +232,17 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
 
     const accordionValue = isUserExpanded ? "item-1" : "";
 
+    // The app title is the page's only h1, so a top-level entry is an h2 and its children h3s.
+    const headingLevel = isTopLevel ? 2 : 3;
+    const selectAllId = useId();
+
 
     // --- Group Layer Rendering ---
     if (layerConfig.type === 'group' && 'layers' in layerConfig) {
         const childLayers = [...(layerConfig.layers || [])];
 
         return (
-            <div className="mr-2 border border-secondary rounded my-1">
+            <div className="mr-2 border border-secondary rounded-md my-1">
                 <Accordion
                     type="single"
                     collapsible
@@ -246,17 +250,18 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                     onValueChange={(val) => setIsUserExpanded(val === "item-1")}
                 >
                     <AccordionItem value="item-1">
-                        <AccordionHeader>
+                        <AccordionHeader level={headingLevel}>
                             <Switch
                                 checked={isGroupLayerVisible}
                                 onCheckedChange={handleGroupVisibilityToggle}
+                                aria-label={`Show ${layerConfig.title} layers`}
                                 className="mx-2"
                             />
                             <AccordionTrigger>
                                 <div className="text-left">
-                                    <h3 className="font-medium text-md">
+                                    <span className="font-medium text-md">
                                         {layerConfig.title}
-                                    </h3>
+                                    </span>
                                     {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
                                         <p className="text-xs font-normal text-muted-foreground">
                                             {layerConfig.subtitle ?? layerConfig.sourceAgency}
@@ -271,12 +276,14 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                     content={groupExtrasRender?.(layerConfig.title)}
                                 />
                             )}
-                            <div className="flex items-center space-x-2">
+                            <div className="ml-4 flex items-center gap-2 px-2 py-1">
                                 <Checkbox
                                     checked={groupCheckboxState === 'all'}
                                     onCheckedChange={handleSelectAllToggle}
+                                    id={selectAllId}
+                                    aria-label={`Select all ${layerConfig.title} layers`}
                                 />
-                                <label className="text-sm font-medium italic">Select All</label>
+                                <label htmlFor={selectAllId} className="text-sm font-medium italic">Select All</label>
                             </div>
                             {childLayers.map((child) => (
                                 <div className="ml-4" key={child.title}>
@@ -311,7 +318,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
 
     // --- Single Layer Rendering ---
     return (
-        <div className={`mr-2 my-1 ${isTopLevel ? 'border border-secondary rounded' : ''}`}>
+        <div className={`mr-2 my-1 ${isTopLevel ? 'border border-secondary rounded-md' : ''}`}>
             <Accordion
                 type="single"
                 collapsible
@@ -319,11 +326,12 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                 onValueChange={(val) => setIsUserExpanded(val === 'item-1')}
             >
                 <AccordionItem value="item-1">
-                    <AccordionHeader>
+                    <AccordionHeader level={headingLevel}>
                         {isTopLevel ? (
                             <Switch
                                 checked={isSelected}
                                 onCheckedChange={handleLocalToggle}
+                                aria-label={`Show ${layerConfig.title}`}
                                 className="mx-2"
                             />
                         ) : (
@@ -334,16 +342,17 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                         handleLocalToggle(checked);
                                     }
                                 }}
+                                aria-label={`Show ${layerConfig.title}`}
                                 className="mx-2"
                             />
                         )}
                         <AccordionTrigger>
                             <div className="text-left">
-                                <h3
-                                    className={`text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}
+                                <span
+                                    className={`block text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}
                                 >
                                     {layerConfig.title}
-                                </h3>
+                                </span>
                                 {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
                                     <p className="text-xs font-normal text-muted-foreground">
                                         {layerConfig.subtitle ?? layerConfig.sourceAgency}

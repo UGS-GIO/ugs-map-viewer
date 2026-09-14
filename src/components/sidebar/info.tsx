@@ -67,10 +67,10 @@ function Info() {
         <div className="mr-2" key="map-details-accordion">
           <Accordion type="multiple" defaultValue={['map-details-accordion-item-1']}>
             <AccordionItem value="map-details-accordion-item-1">
-              <AccordionHeader onClick={toggleMapDetails}>
+              <AccordionHeader level={2} onClick={toggleMapDetails}>
                 <AccordionTrigger>
                   <div className="flex flex-col mx-2 items-start">
-                    <h3 className="font-large text-left text-lg">Map Details</h3>
+                    <span className="font-large text-left text-lg">Map Details</span>
                   </div>
                 </AccordionTrigger>
               </AccordionHeader>
@@ -90,10 +90,10 @@ function Info() {
         <div className="mr-2" key="data-sources-accordion">
           <Accordion type="multiple">
             <AccordionItem value="data-sources-accordion-item-1">
-              <AccordionHeader onClick={toggleDataSources}>
+              <AccordionHeader level={2} onClick={toggleDataSources}>
                 <AccordionTrigger>
                   <div className="flex flex-col mx-2 items-start">
-                    <h3 className="font-large text-left text-lg">Data Sources</h3>
+                    <span className="font-large text-left text-lg">Data Sources</span>
                   </div>
                 </AccordionTrigger>
               </AccordionHeader>
@@ -110,7 +110,7 @@ function Info() {
           {!isDataSourcesExpanded && (
             <div>
               {pageInfo?.dataSourcesShortened || (
-                <div className="animate-pulse h-4 bg-gray-200 rounded w-2/3"></div>
+                <div className="animate-pulse h-4 bg-gray-200 rounded-md w-2/3"></div>
               )}
             </div>
           )}

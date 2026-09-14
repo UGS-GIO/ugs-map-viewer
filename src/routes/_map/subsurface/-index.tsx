@@ -1,13 +1,7 @@
 import { useMemo, useEffect, useRef } from 'react'
 import { useSearch } from '@tanstack/react-router'
-import { Layout } from '@/components/layout/layout'
-import { TopNav } from '@/components/top-nav'
-import { MapFooter } from '@/components/maps/map-footer'
-import { cn } from '@/lib/utils'
 import GenericMapContainer from '@/components/maps/generic-map-container'
-import Sidebar from '@/components/sidebar'
-import { useSidebar } from '@/hooks/use-sidebar'
-import { useIsMobile } from '@/hooks/use-mobile'
+import { MapShell } from '@/components/maps/map-shell'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { utTownshipRangesTitle, wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, ucrcWellsWMSTitle, metalMiningDistrictsTitle } from './-data/layers/layers'
 import { useMapContextState } from '@/hooks/use-map-context-state'
@@ -115,9 +109,6 @@ const searchConfig: SearchSourceConfig[] = [
 ]
 
 export default function Map() {
-  const { isCollapsed, sidebarWidthPx } = useSidebar();
-  const isMobile = useIsMobile();
-  const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
   const { updateLayerSelection } = useLayerUrl()
   const { contextValue } = useMapContextState();
   const searchRef = useRef<SearchComboboxHandle>(null);
@@ -175,47 +166,26 @@ export default function Map() {
   return (
     <MapContext.Provider value={contextValue}>
       <TourAutoStart route="ccs" />
-      <div className="relative h-svh overflow-hidden bg-background">
-        <Sidebar />
-        <main
-          id="content"
-          className="overflow-x-hidden pt-[var(--header-height)] transition-[margin] duration-200 ease-linear md:overflow-y-hidden md:pt-0 h-full"
-          style={{ marginLeft: `${sidebarMargin}px` }}
-        >
-          <Layout>
-            {/* ===== Top Heading ===== */}
-            <Layout.Header className='hidden md:flex items-center justify-between px-4 md:px-6'>
-              <TopNav />
-              <div className='flex items-center flex-1 min-w-0 md:flex-initial md:w-1/3 md:ml-auto space-x-2'>
-                <div className="flex-1 min-w-0">
-                  <SearchCombobox
-                    ref={searchRef}
-                    config={searchConfig}
-                    defaultSourceName="UCRC Collection"
-                    onFeatureSelect={onFeatureSelect}
-                    onCollectionSelect={onCollectionSelect}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            </Layout.Header>
-
-            {/* ===== Main ===== */}
-            <Layout.Body>
-              <GenericMapContainer
-                layerFilters={layerFilters}
-                layerStyles={layerStyles}
-                vectorLayerFilters={vectorLayerFilters}
-                vectorLayerSymbology={vectorSymbologyFromUrl}
-                onClearSearch={() => searchRef.current?.clear()}
-              />
-            </Layout.Body>
-
-            {/* ===== Footer ===== */}
-            <Layout.Footer className={cn('hidden md:flex z-20')} dynamicContent={<MapFooter />} />
-          </Layout>
-        </main>
-      </div>
+      <MapShell
+        search={
+          <SearchCombobox
+            ref={searchRef}
+            config={searchConfig}
+            defaultSourceName="UCRC Collection"
+            onFeatureSelect={onFeatureSelect}
+            onCollectionSelect={onCollectionSelect}
+            className="w-full"
+          />
+        }
+      >
+        <GenericMapContainer
+          layerFilters={layerFilters}
+          layerStyles={layerStyles}
+          vectorLayerFilters={vectorLayerFilters}
+          vectorLayerSymbology={vectorSymbologyFromUrl}
+          onClearSearch={() => searchRef.current?.clear()}
+        />
+      </MapShell>
     </MapContext.Provider>
   )
 }

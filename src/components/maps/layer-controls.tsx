@@ -107,12 +107,13 @@ const LayerControls: React.FC<LayerControlsProps> = ({
             <div className="flex flex-col gap-y-4 mx-8">
                 <div className="flex flex-col justify-between items-center w-full gap-y-4">
                     <div className="flex flex-row items-center justify-around gap-x-2 w-full mx-auto" data-tour="layer-opacity">
-                        <Label htmlFor={`${title}-opacity`} className={layerOpacity === null ? 'text-muted-foreground' : ''}>
+                        <Label className={layerOpacity === null ? 'text-muted-foreground' : ''}>
                             Opacity
                         </Label>
                         {layerOpacity !== null ? (
                             <Slider
                                 className="flex-grow"
+                                aria-label={`${title} opacity`}
                                 value={[dragValue ?? layerOpacity * 100]}
                                 onValueChange={(e) => {
                                     setDragValue(e[0]);
@@ -126,6 +127,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         ) : (
                             <Slider
                                 className="flex-grow opacity-50"
+                                aria-label={`${title} opacity`}
                                 value={[lastOpacityRef.current * 100]}
                                 disabled
                             />

@@ -13,6 +13,10 @@ export const SIDEBAR_WIDTH_MAX = 600;
 // Original widths: md:w-96 (384px), xl:w-[32rem] (512px)
 export const SIDEBAR_WIDTH_MD = 384;
 export const SIDEBAR_WIDTH_XL = 512;
+// The rail: a 40px button + 8px padding + its own 1px border. Anything wider than rail + the
+// aside's 2px border leaves a dead strip between the two borders that reads as a stray edge.
+export const SIDEBAR_RAIL_PX = 49;
+export const SIDEBAR_WIDTH_COLLAPSED = SIDEBAR_RAIL_PX + 2;
 
 // Get initial width based on screen size (runs at module load)
 const getInitialSidebarWidth = () => {

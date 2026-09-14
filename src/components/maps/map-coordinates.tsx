@@ -37,7 +37,7 @@ const MapCoordinates = () => {
     )
 
     return (
-        <div className="flex items-center space-x-1.5">
+        <div className="flex shrink-0 items-center space-x-1.5 whitespace-nowrap">
             <div className="flex items-center space-x-1.5">
                 <span className="text-xs md:text-sm text-muted-foreground">Lat:{' '}{coordinates.y}</span>
                 <span className="text-xs md:text-sm text-muted-foreground">Lon:{' '}{coordinates.x}</span>
