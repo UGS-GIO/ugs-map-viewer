@@ -1,8 +1,8 @@
 import { LayerFilterPanel, useLayerFilter } from '@/components/sidebar/filter/layer-filter-panel'
 import { Label } from '@/components/ui/label'
 import { type FilterSchema } from '@/lib/filter/types'
-import { ucrcWellsWMSTitle } from '../../-data/layers/layers'
-import { ucrcFilterSchema } from '../../-data/layers/ucrc-schema'
+import { ucrcWellsWMSTitle } from '@/routes/_map/-shared/layers/ucrc-wells'
+import { ucrcFilterSchema } from '@/routes/_map/-shared/layers/ucrc-schema'
 
 /**
  * Per-layer filter config for the subsurface layer list (`layerExtrasRender`).

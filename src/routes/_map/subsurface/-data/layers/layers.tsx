@@ -2,7 +2,7 @@ import { Link } from "@/components/ui/link";
 import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 import { formatNumeric } from "@/lib/utils";
-import { ucrcWellsConfig } from "@/lib/map/ucrc-wells-layer";
+import { ucrcWellsConfig } from "@/routes/_map/-shared/layers/ucrc-wells";
 
 
 export const wellWithTopsLayerName = 'wellswithtops_hascore';
@@ -428,12 +428,6 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
         },
     ],
 };
-
-// UCRC Collection Layer config + its name/title constants live in a shared module
-// (`@/lib/map/ucrc-wells-layer`) so the carbonstorage route can reuse them (ALL-4356).
-// Re-exported here for the subsurface index/filter/legend modules that import them by title.
-export { ucrcWellsQualifiedName, ucrcWellsWMSTitle } from "@/lib/map/ucrc-wells-layer";
-
 
 const subsurfaceDataConfig: LayerProps = {
     type: 'group',

@@ -1,6 +1,6 @@
 import type { FilterSchema } from '@/lib/filter/types';
 import { PROD_POSTGREST_URL } from '@/lib/constants';
-import { ucrcWellsWMSTitle } from './layers';
+import { ucrcWellsWMSTitle } from './ucrc-wells';
 
 export const ucrcFilterSchema: FilterSchema = {
     recordKey: ucrcWellsWMSTitle,
