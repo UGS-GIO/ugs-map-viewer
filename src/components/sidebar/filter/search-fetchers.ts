@@ -1,6 +1,6 @@
 import type { FeatureCollection, Geometry, GeoJsonProperties, Feature } from 'geojson';
 import { featureCollection } from '@turf/helpers';
-import type { MasqueradeConfig, PostgRESTConfig, Suggestion } from './search-types';
+import type { MasqueradeConfig, ParquetSearchConfig, PostgRESTConfig, Suggestion } from './search-types';
 import { appendFunctionParams } from './search-utils';
 
 export async function fetchMasqueradeSuggestions(
@@ -99,4 +99,92 @@ export async function fetchPostgRESTResults(
 
     console.warn(`Unexpected API response from ${apiUrl}`, data);
     return featureCollection([]);
+}
+
+export async function fetchParquetResults(
+    source: ParquetSearchConfig,
+    searchTerm: string,
+): Promise<FeatureCollection<Geometry, GeoJsonProperties>> {
+    const { parquetUrl, displayField, geometryField = 'geom', params } = source;
+    const fieldsToSearch = params?.targetFields || (params?.targetField ? [params.targetField] : [displayField]);
+
+    const tokens = searchTerm.trim().split(/\s+/).filter(Boolean);
+    if (tokens.length === 0) return featureCollection([]);
+
+    const { withConnection, loadSpatial, escapeSql, quoteIdent, normalizeRow } = await import('@/lib/duckdb/client');
+
+    const tokenClauses = tokens.map(token => {
+        const escapedToken = escapeSql(token);
+        const sub = fieldsToSearch.map(field => `LOWER(CAST(${quoteIdent(field)} AS VARCHAR)) LIKE LOWER('%${escapedToken}%')`);
+        return `(${sub.join(' OR ')})`;
+    });
+
+    const whereClause = tokenClauses.join(' AND ');
+
+    const rows = await withConnection(async (conn) => {
+        await loadSpatial(conn);
+        await conn.query(`SET enable_geoparquet_conversion = false`);
+
+        const escapedUrl = escapeSql(parquetUrl);
+        const geomCol = quoteIdent(geometryField);
+
+        const described = await conn.query(`DESCRIBE SELECT * FROM read_parquet('${escapedUrl}')`);
+        let geomIsBlob = false;
+        for (const row of described.toArray()) {
+            const { column_name: name, column_type: type } = row.toJSON() as Record<string, unknown>;
+            if (String(name) === geometryField) {
+                geomIsBlob = String(type).toUpperCase().includes('BLOB');
+                break;
+            }
+        }
+
+        const rawGeom = geomIsBlob ? `ST_GeomFromWKB(${geomCol})` : geomCol;
+
+        const probe = await conn.query(`
+            SELECT max(abs(ST_X(ST_Centroid(${rawGeom})))) AS max_x
+            FROM (SELECT ${geomCol} FROM read_parquet('${escapedUrl}') WHERE ${geomCol} IS NOT NULL LIMIT 100)
+        `);
+        const maxX = Number((probe.toArray()[0]?.toJSON() as Record<string, unknown>)?.max_x ?? 0);
+        const needsTransform = maxX > 180;
+
+        const geom4326 = needsTransform
+            ? `ST_Force2D(ST_Transform(${rawGeom}, 'EPSG:3857', 'EPSG:4326', true))`
+            : `ST_Force2D(${rawGeom})`;
+
+        const query = `
+            SELECT
+                ST_AsGeoJSON(${geom4326}) AS _geom_json,
+                *
+            FROM read_parquet('${escapedUrl}')
+            WHERE ${whereClause}
+            LIMIT 100;
+        `;
+
+        const result = await conn.query(query);
+        return result.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>));
+    });
+
+    const features: Feature<Geometry, GeoJsonProperties>[] = rows.map((row, idx) => {
+        let geometry: Geometry | null = null;
+        const properties: GeoJsonProperties = { ...row };
+        const geomJson = properties['_geom_json'];
+        delete properties['_geom_json'];
+
+        if (geomJson && typeof geomJson === 'string') {
+            try {
+                geometry = JSON.parse(geomJson);
+            } catch (e) {
+                console.warn(`Failed to parse geometry for row ${idx}:`, e);
+            }
+        }
+
+        return {
+            type: 'Feature' as const,
+            id: idx,
+            geometry: geometry!,
+            properties,
+        };
+    });
+
+    return featureCollection(features);
 }

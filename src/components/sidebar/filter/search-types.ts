@@ -1,14 +1,16 @@
 import type { FeatureCollection, Geometry, GeoJsonProperties, Feature } from 'geojson';
 
 interface BaseConfig {
-    url: string;
+    url?: string;
     sourceName?: string;
+    layerName?: string;
     headers?: Record<string, string>;
     displayField: string;
 }
 
 export interface PostgRESTConfig extends BaseConfig {
     type: 'postgREST';
+    url: string;
     layerName?: string;
     params?: PostgRESTParams;
     functionName?: string;
@@ -29,12 +31,28 @@ type PostgRESTParams =
 
 export interface MasqueradeConfig extends BaseConfig {
     type: 'masquerade';
+    url: string;
     maxSuggestions?: number;
     outSR?: number;
     placeholder?: string;
 }
 
-export type SearchSourceConfig = PostgRESTConfig | MasqueradeConfig;
+export interface ParquetSearchConfig extends BaseConfig {
+    type: 'parquet';
+    parquetUrl: string;
+    layerName?: string;
+    placeholder?: string;
+    params?: {
+        targetFields?: string[];
+        targetField?: string;
+    };
+    groupByField?: string;
+    groupLabels?: Record<string, string>;
+    secondaryDisplayField?: string;
+    geometryField?: string;
+}
+
+export type SearchSourceConfig = PostgRESTConfig | MasqueradeConfig | ParquetSearchConfig;
 export type ExtendedGeometry = Geometry & { crs?: { properties: { name: string; }; type: string; }; };
 
 export interface Suggestion {

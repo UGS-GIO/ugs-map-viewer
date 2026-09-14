@@ -9,12 +9,12 @@ import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, utTownshipRangesTitle, powerplantsTitle } from './-data/layers/layers'
+import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, sectionsTitle, powerplantsTitle } from './-data/layers/layers'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, type SearchComboboxHandle } from '@/components/sidebar/filter/search-combobox'
-import { PROD_POSTGREST_URL } from '@/lib/constants'
+import { PROD_POSTGREST_URL, parquetUrl } from '@/lib/constants'
 import { powerplantsFilterSchema } from './-data/layers/powerplants-schema'
 import { toMaplibreFilter } from '@/lib/filter/generators'
 import { fromCql } from '@/lib/filter/parse'
@@ -44,19 +44,14 @@ const searchConfig: SearchSourceConfig[] = [
     },
   },
   {
-    type: 'postgREST',
-    url: `${PROD_POSTGREST_URL}/enmin_plss_townshiprange_current`,
-    sourceName: 'Utah Township & Ranges',
-    layerName: utTownshipRangesTitle,
-    displayField: 'twnshplab',
-    secondaryDisplayField: 'label',
+    type: 'parquet',
+    parquetUrl: parquetUrl('enmin_plss_sections'),
+    sourceName: 'Utah Township, Range & Section',
+    layerName: sectionsTitle,
+    displayField: 'label',
+    secondaryDisplayField: 'section',
     params: {
-      targetFields: ['twnshplab', 'label'],
-      select: 'twnshplab,label,geom',
-    },
-    headers: {
-      'Accept-Profile': 'emp',
-      'Accept': 'application/geo+json',
+      targetFields: ['label', 'section', 'township', 'range', 'plssid', 'frstdivid'],
     },
   },
   {
