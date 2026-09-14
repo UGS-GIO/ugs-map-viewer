@@ -3,6 +3,22 @@ import { featureCollection } from '@turf/helpers';
 import type { MasqueradeConfig, ParquetSearchConfig, PostgRESTConfig, Suggestion } from './search-types';
 import { appendFunctionParams } from './search-utils';
 
+/**
+ * Words people type as labels rather than values — "T43S R11W Sec 31". They match no
+ * column, and since tokens are ANDed, leaving them in makes the whole search return
+ * nothing. Dropped before the WHERE is built.
+ */
+const NOISE_TOKENS = new Set(['sec', 'sect', 'section', 'twp', 'township', 'rng', 'range']);
+
+export function searchTokens(searchTerm: string): string[] {
+    return searchTerm
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .filter(token => !NOISE_TOKENS.has(token.toLowerCase()));
+}
+
+
 export async function fetchMasqueradeSuggestions(
     source: MasqueradeConfig,
     searchTerm: string,
@@ -32,6 +48,37 @@ export async function fetchMasqueradeSuggestions(
     });
 }
 
+/**
+ * A PostgREST `ilike` value. Double-quoted because a raw comma, parenthesis or dot in the
+ * term would otherwise read as filter syntax and break the query.
+ */
+function ilikeValue(token: string): string {
+    return `"*${token.replace(/"/g, '\\"')}*"`;
+}
+
+/**
+ * The `ilike` filter params for a search term, ANDing tokens and ORing target fields.
+ * Exported for tests — the shape is fiddly enough to be worth pinning.
+ */
+export function buildPostgrestSearchParams(fields: string[], searchTerm: string): URLSearchParams {
+    const params = new URLSearchParams();
+    const tokens = searchTokens(searchTerm);
+    if (!fields.length || !tokens.length) return params;
+
+    if (tokens.length === 1) {
+        const [token] = tokens;
+        if (fields.length === 1) params.set(fields[0], `ilike.${ilikeValue(token)}`);
+        else params.set('or', `(${fields.map(f => `${f}.ilike.${ilikeValue(token)}`).join(',')})`);
+        return params;
+    }
+
+    const clause = (token: string) => fields.length === 1
+        ? `${fields[0]}.ilike.${ilikeValue(token)}`
+        : `or(${fields.map(f => `${f}.ilike.${ilikeValue(token)}`).join(',')})`;
+    params.set('and', `(${tokens.map(clause).join(',')})`);
+    return params;
+}
+
 export async function fetchPostgRESTResults(
     source: PostgRESTConfig,
     searchTerm: string,
@@ -43,7 +90,9 @@ export async function fetchPostgRESTResults(
     const headers: HeadersInit = source.headers || {};
 
     if (source.functionName) {
-        const searchTermValue = `%${searchTerm}%`;
+        // The function takes one search_term, so tokens can't be ANDed here — but the label
+        // words are noise wherever they appear, so they still come out.
+        const searchTermValue = `%${searchTokens(searchTerm).join(' ') || searchTerm}%`;
         if (!source.searchTerm) throw new Error(`Missing searchTerm config for function ${source.functionName}`);
         urlParams.set(source.searchTerm, searchTermValue);
 
@@ -54,13 +103,17 @@ export async function fetchPostgRESTResults(
         apiUrl = `${source.url}/rpc/${source.functionName}?${urlParams.toString()}`;
     } else {
         apiUrl = source.url;
-        const searchTermValue = `%${searchTerm}%`;
-
-        if (params && 'targetFields' in params && params.targetFields && searchTermValue) {
-            const orConditions = params.targetFields.map(f => `${f}.ilike.${searchTermValue}`).join(',');
-            urlParams.set('or', `(${orConditions})`);
-        } else if (params && 'targetField' in params && params.targetField && searchTermValue) {
-            urlParams.set(params.targetField, `ilike.${searchTermValue}`);
+        // Every token has to land somewhere, but any of the target fields will do — so
+        // "smith federal 1" matches a row whose name holds all three, in any order and
+        // spread across columns. A single ilike of the whole string only ever matched
+        // one contiguous run, which is why multi-word searches came back empty.
+        const fields = params && 'targetFields' in params && params.targetFields
+            ? params.targetFields
+            : params && 'targetField' in params && params.targetField
+                ? [params.targetField]
+                : [];
+        for (const [key, value] of buildPostgrestSearchParams(fields, searchTerm)) {
+            urlParams.set(key, value);
         }
 
         if (params && 'select' in params && params.select) {
@@ -102,21 +155,6 @@ export async function fetchPostgRESTResults(
 }
 
 // ── Parquet search (DuckDB-WASM) ─────────────────────────────────────────────
-
-/**
- * Words people type as labels rather than values — "T43S R11W Sec 31". They match no
- * column, and since tokens are ANDed, leaving them in makes the whole search return
- * nothing. Dropped before the WHERE is built.
- */
-const NOISE_TOKENS = new Set(['sec', 'sect', 'section', 'twp', 'township', 'rng', 'range']);
-
-export function searchTokens(searchTerm: string): string[] {
-    return searchTerm
-        .trim()
-        .split(/\s+/)
-        .filter(Boolean)
-        .filter(token => !NOISE_TOKENS.has(token.toLowerCase()));
-}
 
 /** Escape a LIKE pattern: SQL quotes plus the `%`/`_` wildcards, paired with ESCAPE '\'. */
 function likePattern(token: string): string {

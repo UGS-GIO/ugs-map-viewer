@@ -21,3 +21,26 @@ describe('searchTokens', () => {
         expect(searchTokens('Sec')).toEqual([])
     })
 })
+
+describe('postgREST multi-token search', () => {
+    // "smith federal 1" has to match a row holding all three, in any order and across
+    // columns — a single ilike of the whole string only matched one contiguous run.
+    it('ANDs tokens and ORs the target fields', async () => {
+        const { buildPostgrestSearchParams } = await import('../search-fetchers')
+        const params = buildPostgrestSearchParams(['api', 'wellname'], 'federal 1')
+        expect(params.get('and')).toBe('(or(api.ilike."*federal*",wellname.ilike."*federal*"),or(api.ilike."*1*",wellname.ilike."*1*"))')
+        expect(params.get('or')).toBeNull()
+    })
+
+    it('keeps the simple OR for a single token', async () => {
+        const { buildPostgrestSearchParams } = await import('../search-fetchers')
+        const params = buildPostgrestSearchParams(['api', 'wellname'], 'federal')
+        expect(params.get('or')).toBe('(api.ilike."*federal*",wellname.ilike."*federal*")')
+    })
+
+    it('drops label words here too', async () => {
+        const { buildPostgrestSearchParams } = await import('../search-fetchers')
+        const params = buildPostgrestSearchParams(['label'], 'Township 43S')
+        expect(params.get('label')).toBe('ilike."*43S*"')
+    })
+})
