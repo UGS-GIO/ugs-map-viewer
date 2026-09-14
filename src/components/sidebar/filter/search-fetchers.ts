@@ -138,45 +138,6 @@ function attributeColumns(source: ParquetSearchConfig): string[] {
     ])];
 }
 
-function tableNameFor(url: string): string {
-    const hash = [...url].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) | 0, 7);
-    return `search_${(hash >>> 0).toString(36)}`;
-}
-
-/**
- * The attribute columns, materialized into DuckDB once per parquet URL per session.
- *
- * Typeahead used to run the whole search against the remote parquet on every keystroke,
- * which meant re-reading row groups over HTTP each time — and with `SELECT *` that
- * included the geometry column, by far the largest one. The attributes are small
- * (hundreds of KB for statewide PLSS), so one up-front read makes every later search a
- * local scan. Geometry is fetched only for the row the user actually picks.
- */
-const searchTables = new Map<string, Promise<string>>();
-
-async function ensureSearchTable(source: ParquetSearchConfig): Promise<string> {
-    const cached = searchTables.get(source.parquetUrl);
-    if (cached) return cached;
-
-    const building = (async () => {
-        const { withConnection, escapeSql, quoteIdent } = await import('@/lib/duckdb/client');
-        const table = tableNameFor(source.parquetUrl);
-        const columns = attributeColumns(source).map(quoteIdent).join(', ');
-        await withConnection(async (conn) => {
-            await conn.query(
-                `CREATE TABLE IF NOT EXISTS ${quoteIdent(table)} AS ` +
-                `SELECT ${columns} FROM read_parquet('${escapeSql(source.parquetUrl)}')`,
-            );
-        });
-        return table;
-    })();
-
-    // Don't cache a failure — a dropped connection shouldn't disable search for the session.
-    building.catch(() => searchTables.delete(source.parquetUrl));
-    searchTables.set(source.parquetUrl, building);
-    return building;
-}
-
 /**
  * Typeahead suggestions. Returns geometry-less pseudo-features (same shape the PostgREST
  * fetcher produces for non-GeoJSON rows); the combobox fetches geometry on selection.
@@ -188,8 +149,9 @@ export async function fetchParquetResults(
     const tokens = searchTokens(searchTerm);
     if (tokens.length === 0) return featureCollection([]);
 
-    const { withConnection, quoteIdent, normalizeRow } = await import('@/lib/duckdb/client');
-    const table = await ensureSearchTable(source);
+    const { withConnection, quoteIdent, normalizeRow, materializedAttributes } = await import('@/lib/duckdb/client');
+    // Attributes only, materialized once per session — geometry is fetched on selection.
+    const from = await materializedAttributes({ url: source.parquetUrl, columns: attributeColumns(source) });
     const fields = searchFields(source);
 
     // Tokens are ANDed, fields ORed: "43S 11W 31" means every token has to land somewhere.
@@ -207,7 +169,7 @@ export async function fetchParquetResults(
 
     const rows = await withConnection(async (conn) => {
         const result = await conn.query(
-            `SELECT * FROM ${quoteIdent(table)} WHERE ${whereClause}` +
+            `SELECT * FROM ${from} WHERE ${whereClause}` +
             (orderFields ? ` ORDER BY ${orderFields}` : '') +
             ` LIMIT 100`,
         );
