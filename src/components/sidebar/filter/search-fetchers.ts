@@ -101,90 +101,238 @@ export async function fetchPostgRESTResults(
     return featureCollection([]);
 }
 
+// ── Parquet search (DuckDB-WASM) ─────────────────────────────────────────────
+
+/**
+ * Words people type as labels rather than values — "T43S R11W Sec 31". They match no
+ * column, and since tokens are ANDed, leaving them in makes the whole search return
+ * nothing. Dropped before the WHERE is built.
+ */
+const NOISE_TOKENS = new Set(['sec', 'sect', 'section', 'twp', 'township', 'rng', 'range']);
+
+export function searchTokens(searchTerm: string): string[] {
+    return searchTerm
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .filter(token => !NOISE_TOKENS.has(token.toLowerCase()));
+}
+
+/** Escape a LIKE pattern: SQL quotes plus the `%`/`_` wildcards, paired with ESCAPE '\'. */
+function likePattern(token: string): string {
+    return token.toLowerCase().replace(/'/g, "''").replace(/[\\%_]/g, m => `\\${m}`);
+}
+
+function searchFields(source: ParquetSearchConfig): string[] {
+    const { params, displayField } = source;
+    return params?.targetFields || (params?.targetField ? [params.targetField] : [displayField]);
+}
+
+/** Every column the suggestion list needs — no geometry. */
+function attributeColumns(source: ParquetSearchConfig): string[] {
+    return [...new Set([
+        ...searchFields(source),
+        source.displayField,
+        ...(source.secondaryDisplayField ? [source.secondaryDisplayField] : []),
+        ...(source.idField ? [source.idField] : []),
+    ])];
+}
+
+function tableNameFor(url: string): string {
+    const hash = [...url].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) | 0, 7);
+    return `search_${(hash >>> 0).toString(36)}`;
+}
+
+/**
+ * The attribute columns, materialized into DuckDB once per parquet URL per session.
+ *
+ * Typeahead used to run the whole search against the remote parquet on every keystroke,
+ * which meant re-reading row groups over HTTP each time — and with `SELECT *` that
+ * included the geometry column, by far the largest one. The attributes are small
+ * (hundreds of KB for statewide PLSS), so one up-front read makes every later search a
+ * local scan. Geometry is fetched only for the row the user actually picks.
+ */
+const searchTables = new Map<string, Promise<string>>();
+
+async function ensureSearchTable(source: ParquetSearchConfig): Promise<string> {
+    const cached = searchTables.get(source.parquetUrl);
+    if (cached) return cached;
+
+    const building = (async () => {
+        const { withConnection, escapeSql, quoteIdent } = await import('@/lib/duckdb/client');
+        const table = tableNameFor(source.parquetUrl);
+        const columns = attributeColumns(source).map(quoteIdent).join(', ');
+        await withConnection(async (conn) => {
+            await conn.query(
+                `CREATE TABLE IF NOT EXISTS ${quoteIdent(table)} AS ` +
+                `SELECT ${columns} FROM read_parquet('${escapeSql(source.parquetUrl)}')`,
+            );
+        });
+        return table;
+    })();
+
+    // Don't cache a failure — a dropped connection shouldn't disable search for the session.
+    building.catch(() => searchTables.delete(source.parquetUrl));
+    searchTables.set(source.parquetUrl, building);
+    return building;
+}
+
+/**
+ * Typeahead suggestions. Returns geometry-less pseudo-features (same shape the PostgREST
+ * fetcher produces for non-GeoJSON rows); the combobox fetches geometry on selection.
+ */
 export async function fetchParquetResults(
     source: ParquetSearchConfig,
     searchTerm: string,
 ): Promise<FeatureCollection<Geometry, GeoJsonProperties>> {
-    const { parquetUrl, displayField, geometryField = 'geom', params } = source;
-    const fieldsToSearch = params?.targetFields || (params?.targetField ? [params.targetField] : [displayField]);
-
-    const tokens = searchTerm.trim().split(/\s+/).filter(Boolean);
+    const tokens = searchTokens(searchTerm);
     if (tokens.length === 0) return featureCollection([]);
 
-    const { withConnection, loadSpatial, escapeSql, quoteIdent, normalizeRow } = await import('@/lib/duckdb/client');
+    const { withConnection, quoteIdent, normalizeRow } = await import('@/lib/duckdb/client');
+    const table = await ensureSearchTable(source);
+    const fields = searchFields(source);
 
-    const tokenClauses = tokens.map(token => {
-        const escapedToken = escapeSql(token);
-        const sub = fieldsToSearch.map(field => `LOWER(CAST(${quoteIdent(field)} AS VARCHAR)) LIKE LOWER('%${escapedToken}%')`);
-        return `(${sub.join(' OR ')})`;
+    // Tokens are ANDed, fields ORed: "43S 11W 31" means every token has to land somewhere.
+    const whereClause = tokens
+        .map(token => `(${fields
+            .map(field => `LOWER(CAST(${quoteIdent(field)} AS VARCHAR)) LIKE '%${likePattern(token)}%' ESCAPE '\\'`)
+            .join(' OR ')})`)
+        .join(' AND ');
+
+    // Deterministic order under the LIMIT — a broad term like "31" matches thousands.
+    const orderFields = [source.displayField, source.secondaryDisplayField]
+        .filter((f): f is string => Boolean(f))
+        .map(quoteIdent)
+        .join(', ');
+
+    const rows = await withConnection(async (conn) => {
+        const result = await conn.query(
+            `SELECT * FROM ${quoteIdent(table)} WHERE ${whereClause}` +
+            (orderFields ? ` ORDER BY ${orderFields}` : '') +
+            ` LIMIT 100`,
+        );
+        return result.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>));
     });
 
-    const whereClause = tokenClauses.join(' AND ');
+    const features: Feature<Geometry, GeoJsonProperties>[] = rows.map((row, idx) => ({
+        type: 'Feature' as const,
+        id: idx,
+        geometry: null as unknown as Geometry,
+        properties: row,
+    }));
+
+    return featureCollection(features);
+}
+
+/**
+ * Geometry column shape, resolved once per parquet URL: whether it is WKB (a BLOB, which
+ * it is whenever geoparquet conversion is off) and whether it needs reprojecting. Both
+ * are properties of the file, so asking per search was pure overhead.
+ */
+const geometryMeta = new Map<string, Promise<{ isBlob: boolean; needsTransform: boolean }>>();
+
+async function resolveGeometryMeta(source: ParquetSearchConfig): Promise<{ isBlob: boolean; needsTransform: boolean }> {
+    const cached = geometryMeta.get(source.parquetUrl);
+    if (cached) return cached;
+
+    const resolving = (async () => {
+        const { withConnection, loadSpatial, escapeSql, quoteIdent } = await import('@/lib/duckdb/client');
+        const geometryField = source.geometryField ?? 'geom';
+        const geomCol = quoteIdent(geometryField);
+        const url = escapeSql(source.parquetUrl);
+
+        return withConnection(async (conn) => {
+            await loadSpatial(conn);
+            await conn.query(`SET enable_geoparquet_conversion = false`);
+
+            const described = await conn.query(`DESCRIBE SELECT * FROM read_parquet('${url}')`);
+            let isBlob = false;
+            for (const row of described.toArray()) {
+                const { column_name: name, column_type: type } = row.toJSON() as Record<string, unknown>;
+                if (String(name) === geometryField) {
+                    isBlob = String(type).toUpperCase().includes('BLOB');
+                    break;
+                }
+            }
+
+            const rawGeom = isBlob ? `ST_GeomFromWKB(${geomCol})` : geomCol;
+            // Projected coordinates run to millions; degrees never exceed 180.
+            const probe = await conn.query(`
+                SELECT max(abs(ST_X(ST_Centroid(${rawGeom})))) AS max_x
+                FROM (SELECT ${geomCol} FROM read_parquet('${url}') WHERE ${geomCol} IS NOT NULL LIMIT 100)
+            `);
+            const maxX = Number((probe.toArray()[0]?.toJSON() as Record<string, unknown>)?.max_x ?? 0);
+            return { isBlob, needsTransform: maxX > 180 };
+        });
+    })();
+
+    resolving.catch(() => geometryMeta.delete(source.parquetUrl));
+    geometryMeta.set(source.parquetUrl, resolving);
+    return resolving;
+}
+
+/**
+ * Geometry for chosen suggestions, read straight from the parquet by id. Called on
+ * selection (one row) and on a collection search (the visible set), never per keystroke.
+ */
+export async function fetchParquetGeometries(
+    source: ParquetSearchConfig,
+    ids: string[],
+): Promise<Map<string, Geometry>> {
+    const geometries = new Map<string, Geometry>();
+    const unique = [...new Set(ids)].filter(Boolean);
+    if (!source.idField || unique.length === 0) return geometries;
+
+    const { withConnection, loadSpatial, escapeSql, quoteIdent } = await import('@/lib/duckdb/client');
+    const { isBlob, needsTransform } = await resolveGeometryMeta(source);
+
+    const idCol = quoteIdent(source.idField);
+    const geomCol = quoteIdent(source.geometryField ?? 'geom');
+    const rawGeom = isBlob ? `ST_GeomFromWKB(${geomCol})` : geomCol;
+    const geom4326 = needsTransform
+        ? `ST_Force2D(ST_Transform(${rawGeom}, 'EPSG:3857', 'EPSG:4326', true))`
+        : `ST_Force2D(${rawGeom})`;
+    const inList = unique.map(v => `'${escapeSql(v)}'`).join(',');
 
     const rows = await withConnection(async (conn) => {
         await loadSpatial(conn);
         await conn.query(`SET enable_geoparquet_conversion = false`);
-
-        const escapedUrl = escapeSql(parquetUrl);
-        const geomCol = quoteIdent(geometryField);
-
-        const described = await conn.query(`DESCRIBE SELECT * FROM read_parquet('${escapedUrl}')`);
-        let geomIsBlob = false;
-        for (const row of described.toArray()) {
-            const { column_name: name, column_type: type } = row.toJSON() as Record<string, unknown>;
-            if (String(name) === geometryField) {
-                geomIsBlob = String(type).toUpperCase().includes('BLOB');
-                break;
-            }
-        }
-
-        const rawGeom = geomIsBlob ? `ST_GeomFromWKB(${geomCol})` : geomCol;
-
-        const probe = await conn.query(`
-            SELECT max(abs(ST_X(ST_Centroid(${rawGeom})))) AS max_x
-            FROM (SELECT ${geomCol} FROM read_parquet('${escapedUrl}') WHERE ${geomCol} IS NOT NULL LIMIT 100)
-        `);
-        const maxX = Number((probe.toArray()[0]?.toJSON() as Record<string, unknown>)?.max_x ?? 0);
-        const needsTransform = maxX > 180;
-
-        const geom4326 = needsTransform
-            ? `ST_Force2D(ST_Transform(${rawGeom}, 'EPSG:3857', 'EPSG:4326', true))`
-            : `ST_Force2D(${rawGeom})`;
-
-        const query = `
-            SELECT
-                ST_AsGeoJSON(${geom4326}) AS _geom_json,
-                *
-            FROM read_parquet('${escapedUrl}')
-            WHERE ${whereClause}
-            LIMIT 100;
-        `;
-
-        const result = await conn.query(query);
-        return result.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>));
+        const result = await conn.query(
+            `SELECT CAST(${idCol} AS VARCHAR) AS _id, ST_AsGeoJSON(${geom4326}) AS _geom_json ` +
+            `FROM read_parquet('${escapeSql(source.parquetUrl)}') ` +
+            `WHERE CAST(${idCol} AS VARCHAR) IN (${inList})`,
+        );
+        return result.toArray().map(r => r.toJSON() as Record<string, unknown>);
     });
 
-    const features: Feature<Geometry, GeoJsonProperties>[] = rows.map((row, idx) => {
-        let geometry: Geometry | null = null;
-        const properties: GeoJsonProperties = { ...row };
-        const geomJson = properties['_geom_json'];
-        delete properties['_geom_json'];
-
-        if (geomJson && typeof geomJson === 'string') {
-            try {
-                geometry = JSON.parse(geomJson);
-            } catch (e) {
-                console.warn(`Failed to parse geometry for row ${idx}:`, e);
-            }
+    for (const row of rows) {
+        const id = String(row['_id'] ?? '');
+        const geomJson = row['_geom_json'];
+        if (!id || typeof geomJson !== 'string') continue;
+        try {
+            geometries.set(id, JSON.parse(geomJson) as Geometry);
+        } catch (e) {
+            console.warn(`Failed to parse geometry for ${id}:`, e);
         }
+    }
 
-        return {
-            type: 'Feature' as const,
-            id: idx,
-            geometry: geometry!,
-            properties,
-        };
-    });
+    return geometries;
+}
 
-    return featureCollection(features);
+/** Attach geometry to suggestion features, dropping any the parquet can't supply. */
+export async function withParquetGeometry(
+    source: ParquetSearchConfig,
+    features: Feature<Geometry, GeoJsonProperties>[],
+): Promise<Feature<Geometry, GeoJsonProperties>[]> {
+    if (!source.idField) return features;
+    const idField = source.idField;
+    const ids = features.map(f => String(f.properties?.[idField] ?? '')).filter(Boolean);
+    const geometries = await fetchParquetGeometries(source, ids);
+
+    return features
+        .map(feature => {
+            const geometry = geometries.get(String(feature.properties?.[idField] ?? ''));
+            return geometry ? { ...feature, geometry } : null;
+        })
+        .filter((f): f is Feature<Geometry, GeoJsonProperties> => f !== null);
 }

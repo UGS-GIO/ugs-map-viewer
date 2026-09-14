@@ -27,7 +27,7 @@ import type {
     SearchComboboxProps,
 } from './search-types';
 import { formatAddressCase, getDisplayValue, getSourceDisplayName, resultHasData, appendFunctionParams, resolveDefaultSourceIndex } from './search-utils';
-import { fetchMasqueradeSuggestions, fetchPostgRESTResults, fetchParquetResults } from './search-fetchers';
+import { fetchMasqueradeSuggestions, fetchPostgRESTResults, fetchParquetResults, withParquetGeometry } from './search-fetchers';
 
 // Re-export types and handlers for consumers
 export type { SearchSourceConfig, MasqueradeConfig, PostgRESTConfig, ParquetSearchConfig, SearchComboboxHandle, ExtendedGeometry } from './search-types';
@@ -215,9 +215,17 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
         if ((sourceConfig.type === 'postgREST' || sourceConfig.type === 'parquet') && 'type' in itemData && itemData.type === 'Feature') {
             const displayValue = getDisplayValue(itemData.properties, sourceConfig);
             setInputValue(displayValue || value);
-            ensureLayerVisibleByTitle(sourceConfig.layerName);
 
             let result: Feature<Geometry, GeoJsonProperties> | FeatureCollection<Geometry, GeoJsonProperties> | null = itemData;
+
+            if (!itemData.geometry && sourceConfig.type === 'parquet') {
+                try {
+                    const [withGeometry] = await withParquetGeometry(sourceConfig, [itemData]);
+                    if (withGeometry) result = withGeometry;
+                } catch (error) {
+                    console.error("Error fetching parquet geometry:", error);
+                }
+            }
 
             if (!itemData.geometry && sourceConfig.type === 'postgREST' && sourceConfig.functionName) {
                 const searchValue = itemData.properties?.[sourceConfig.displayField];
@@ -240,6 +248,10 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                     }
                 }
             }
+
+            // Turn the layer on only now: enabling it re-renders the map, and doing that while a
+            // geometry fetch is still in flight leaves the later fitBounds racing the style reload.
+            ensureLayerVisibleByTitle(sourceConfig.layerName);
 
             const sourceUrl = sourceConfig.type === 'parquet' ? sourceConfig.parquetUrl : sourceConfig.url;
             onFeatureSelect?.(result, sourceUrl, sourceIndex, searchConfig, map);
@@ -269,6 +281,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
         let firstValidSourceUrl: string | null = null;
         let firstValidSourceIndex: number = -1;
         let needsGeometryFetch = false;
+        const layerTitlesToShow: string[] = [];
         const indicesToCheck = activeSourceIndex !== null ? [activeSourceIndex] : config.map((_, index) => index);
 
         for (const index of indicesToCheck) {
@@ -287,7 +300,20 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                         firstValidSourceIndex = index;
                     }
                     if (!sourceResult.data.features[0]?.geometry && sourceConfig.type === 'postgREST') needsGeometryFetch = true;
-                    ensureLayerVisibleByTitle(sourceConfig.layerName);
+                    if (sourceConfig.layerName) layerTitlesToShow.push(sourceConfig.layerName);
+                }
+            }
+        }
+
+        // Parquet: suggestions are geometry-free, so resolve the visible set in one query
+        if (allVisibleFeatures.length > 0 && firstValidSourceIndex !== -1) {
+            const parquetSource = searchConfig[firstValidSourceIndex];
+            if (parquetSource?.type === 'parquet' && !allVisibleFeatures[0]?.geometry) {
+                try {
+                    allVisibleFeatures = await withParquetGeometry(parquetSource, allVisibleFeatures);
+                } catch (error) {
+                    console.error('Error fetching parquet geometries for collection:', error);
+                    allVisibleFeatures = [];
                 }
             }
         }
@@ -309,6 +335,10 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                 }
             }
         }
+
+        // Same ordering as single selection: layers on first, then one camera move that isn't
+        // competing with a style reload.
+        layerTitlesToShow.forEach(ensureLayerVisibleByTitle);
 
         const combinedCollection = allVisibleFeatures.length > 0 ? featureCollection(allVisibleFeatures) : null;
 

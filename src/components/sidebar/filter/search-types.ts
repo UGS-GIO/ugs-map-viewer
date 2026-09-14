@@ -50,6 +50,8 @@ export interface ParquetSearchConfig extends BaseConfig {
     groupLabels?: Record<string, string>;
     secondaryDisplayField?: string;
     geometryField?: string;
+    /** Unique column used to fetch geometry for a chosen suggestion (search itself is geometry-free). */
+    idField?: string;
 }
 
 export type SearchSourceConfig = PostgRESTConfig | MasqueradeConfig | ParquetSearchConfig;

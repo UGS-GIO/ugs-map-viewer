@@ -50,8 +50,9 @@ const searchConfig: SearchSourceConfig[] = [
     layerName: sectionsTitle,
     displayField: 'label',
     secondaryDisplayField: 'section',
+    idField: 'frstdivid',
     params: {
-      targetFields: ['label', 'section', 'township', 'range', 'plssid', 'frstdivid'],
+      targetFields: ['label', 'section'],
     },
   },
   {
