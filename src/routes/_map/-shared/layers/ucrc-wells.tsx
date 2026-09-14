@@ -1,5 +1,5 @@
 import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
-import { ENERGY_MINERALS_WORKSPACE, PROD_POSTGREST_URL } from "@/lib/constants";
+import { ENERGY_MINERALS_WORKSPACE } from "@/lib/constants";
 import { PMTilesLayerProps } from "@/lib/types/mapping-types";
 
 // UCRC Collection Layer — a warehouse STAC/PMTiles layer (STAC item `enmin_ucrc_wells`)
@@ -147,20 +147,19 @@ export const ucrcWellsConfig: PMTilesLayerProps = {
                 },
                 {
                     fieldLabel: 'Documents',
-                    matchingField: 'uwi',
-                    targetField: 'uwi',
-                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_attachments_current`,
-                    headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
+                    // STAC-backed: url (= the attachments geoparquet href), the uwi join, and
+                    // fetchMode 'parquet' are filled from the `enmin_ucrc_attachments` related asset
+                    // on the wells STAC item — same CDN read path as Sample Types / Core Boxes.
+                    stacAsset: 'enmin_ucrc_attachments',
                     displayAs: 'documents',
                     itemBaseUrl: 'https://ucrc-assets.geology.utah.gov',
                     sortBy: 'filename',
                     sortDirection: 'asc',
                     // The panel renders from the raw rows (filename + storage_path), grouped by type.
-                    // displayFields here drives only the "has data" gate and the related-table CSV
-                    // export. `notes` is deliberately left out: on this table it holds internal
-                    // backfill provenance ("Backfilled from Google Drive COREDOCS — ...") rather than
-                    // public document metadata, and there is no notes_public column, so it must not
-                    // land in the public CSV.
+                    // Pin displayFields to just `filename`: it drives the "has data" gate and the
+                    // related-table CSV export, and keeps the parquet's internal `notes` column
+                    // (backfill provenance, not public metadata) out of the CSV — otherwise the STAC
+                    // resolver defaults displayFields to every column.
                     displayFields: [
                         { field: 'filename', label: 'File' },
                     ],
