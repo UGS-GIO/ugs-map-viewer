@@ -605,8 +605,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
         });
     });
 
-    // Footer link (e.g. a deep link into another app at this feature's location) — a very
-    // high originalIndex pins it below everything else, including related tables (2000+).
+    // Footer link — high originalIndex pins it below everything (incl. related tables).
     if (popupFooterLink) {
         const footerHref = popupFooterLink.getHref(properties ?? null);
         if (footerHref) {

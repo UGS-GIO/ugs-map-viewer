@@ -2,23 +2,15 @@ import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
 import { ENERGY_MINERALS_WORKSPACE } from "@/lib/constants";
 import { PMTilesLayerProps } from "@/lib/types/mapping-types";
 
-// UCRC Collection Layer — a warehouse STAC/PMTiles layer (STAC item `enmin_ucrc_wells`)
-// shared by the subsurface and carbonstorage routes. Rendered client-side for instant
-// filtering and richer symbology. Routes reuse this config; carbonstorage overrides only
-// its display title (see ALL-4356).
+// UCRC inventory layer (STAC item `enmin_ucrc_wells`), shared by the subsurface and carbonstorage routes.
 export const ucrcWellsLayerName = 'enmin_ucrc_wells_current';
 // PMTiles tile source-layer = STAC item id (not the `_current` DB view name).
 export const ucrcWellsTileLayer = 'enmin_ucrc_wells';
 export const ucrcWellsQualifiedName = `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`;
 export const ucrcWellsWMSTitle = 'Utah Core Research Center Inventory';
 
-// UCRC symbology (purpose + box-type colours, box-type grouping/shades) is derived entirely from
-// the STAC render legends (by-purpose / by-boxtype) — see ugs-styles. Nothing hardcoded here.
-
-// STAC-driven: pmtilesUrl, sourceLayer, renders (by-purpose / by-boxtype incl.
-// the baked pie-wedge sprite + legends) and parquet are filled from the
-// warehouse STAC item `enmin_ucrc_wells` at load. Symbology is the hosted
-// renders, selected via vector_symbology; the app config carries only UX.
+// STAC-driven: pmtilesUrl/sourceLayer/renders/parquet and all symbology come from the STAC item
+// at load (nothing hardcoded); the app config carries only UX.
 export const ucrcWellsConfig: PMTilesLayerProps = {
     type: 'pmtiles',
     stacItemId: 'enmin_ucrc_wells',
@@ -147,19 +139,13 @@ export const ucrcWellsConfig: PMTilesLayerProps = {
                 },
                 {
                     fieldLabel: 'Documents',
-                    // STAC-backed: url (= the attachments geoparquet href), the uwi join, and
-                    // fetchMode 'parquet' are filled from the `enmin_ucrc_attachments` related asset
-                    // on the wells STAC item — same CDN read path as Sample Types / Core Boxes.
+                    // STAC-backed: href/uwi-join/fetchMode filled from the enmin_ucrc_attachments asset.
                     stacAsset: 'enmin_ucrc_attachments',
                     displayAs: 'documents',
                     itemBaseUrl: 'https://ucrc-assets.geology.utah.gov',
                     sortBy: 'filename',
                     sortDirection: 'asc',
-                    // The panel renders from the raw rows (filename + storage_path), grouped by type.
-                    // Pin displayFields to just `filename`: it drives the "has data" gate and the
-                    // related-table CSV export, and keeps the parquet's internal `notes` column
-                    // (backfill provenance, not public metadata) out of the CSV — otherwise the STAC
-                    // resolver defaults displayFields to every column.
+                    // Keep displayFields = filename so the internal `notes` column stays out of the CSV.
                     displayFields: [
                         { field: 'filename', label: 'File' },
                     ],
