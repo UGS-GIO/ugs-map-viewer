@@ -1328,9 +1328,10 @@ const subsurfaceDataConfig: LayerProps = {
         wellWithTopsWMSConfig,
         geochemWellSitesWMSConfig,
         // UCRC inventory (warehouse STAC/pmtiles) replaces the old GeoServer WMS cores layer
-        // (ALL-4356). Display title kept as "Cores and Cuttings" so the existing ccuslayerinfo
-        // description row stays valid; symbology + rich popups come from the shared STAC config.
-        { ...ucrcWellsConfig, title: 'Cores and Cuttings', visible: false },
+        // (ALL-4356). Same display name as the subsurface route (inherits the shared title); the
+        // carbonstorage `ccuslayerinfo` description row is re-keyed to that title to match (SQL in
+        // the PR). visible:false to match the layer it replaced.
+        { ...ucrcWellsConfig, visible: false },
         oilGasFieldsWMSConfig,
         geothermalWellsWMSConfig,
         geothermalSpringsJoinsConfig,
