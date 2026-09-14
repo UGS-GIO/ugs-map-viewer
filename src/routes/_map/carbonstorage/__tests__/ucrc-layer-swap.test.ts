@@ -50,7 +50,7 @@ describe('carbonstorage: UCRC inventory replaces Cores and Cuttings (ALL-4356)',
     ) as PMTilesLayerProps | undefined
     expect(ucrc?.popupFooterLink).toBeDefined()
     const href = ucrc!.popupFooterLink!.getHref({ latitude: 37.5, longitude: -109 })
-    expect(href).toMatch(/geology\.utah\.gov\/apps\/subsurface/)
+    expect(href).toMatch(/maps\.geology\.utah\.gov\/subsurface/)
     expect(href).toContain('lat=37.5')
     expect(href).toContain('lon=-109')
     // Scoped to carbonstorage: the shared config (used by the subsurface route) has no footer link.

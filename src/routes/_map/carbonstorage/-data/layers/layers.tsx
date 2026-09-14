@@ -1338,7 +1338,7 @@ const subsurfaceDataConfig: LayerProps = {
             popupFooterLink: {
                 label: 'Open this well in the UCRC Subsurface app',
                 getHref: (properties) => {
-                    const base = 'https://geology.utah.gov/apps/subsurface/';
+                    const base = 'https://maps.geology.utah.gov/subsurface';
                     const lat = properties?.['latitude'];
                     const lon = properties?.['longitude'];
                     if (lat == null || lon == null) return base;
