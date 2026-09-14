@@ -305,7 +305,7 @@ function PopupTable({ headers, rows }: { headers?: ReactNode[]; rows: ReactNode[
 
 // --- Main Component ---
 const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, relatedLoading }: PopupContentDisplayProps) => {
-    const { relatedTables, relatedTablesPosition, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
+    const { relatedTables, relatedTablesPosition, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource, popupFooterLink } = layer;
 
     // Convert bulk data to the format expected by getRelatedTableValues
     const data = useMemo((): ProcessedRelatedData[][] => {
@@ -604,6 +604,30 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
             originalIndex: 2000 + tableIndex,
         });
     });
+
+    // Footer link (e.g. a deep link into another app at this feature's location) — a very
+    // high originalIndex pins it below everything else, including related tables (2000+).
+    if (popupFooterLink) {
+        const footerHref = popupFooterLink.getHref(properties ?? null);
+        if (footerHref) {
+            contentItems.push({
+                content: (
+                    <a
+                        key="popup-footer-link"
+                        href={footerHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                    >
+                        {popupFooterLink.label}
+                        <ExternalLink size={13} />
+                    </a>
+                ),
+                isLongContent: true,
+                originalIndex: 100000,
+            });
+        }
+    }
 
     // --- Layout Rendering ---
     // Render every item in config order (feature fields, then related tables, then popup

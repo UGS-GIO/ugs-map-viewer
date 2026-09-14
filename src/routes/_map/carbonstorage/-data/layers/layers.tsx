@@ -1330,8 +1330,23 @@ const subsurfaceDataConfig: LayerProps = {
         // UCRC inventory (warehouse STAC/pmtiles) replaces the old GeoServer WMS cores layer
         // (ALL-4356). Same display name as the subsurface route (inherits the shared title); the
         // carbonstorage `ccuslayerinfo` description row is re-keyed to that title to match (SQL in
-        // the PR). visible:false to match the layer it replaced.
-        { ...ucrcWellsConfig, visible: false },
+        // the PR). visible:false to match the layer it replaced. popupFooterLink is set here (not on
+        // the shared config), so the per-well deep link into the subsurface app is carbonstorage-only.
+        {
+            ...ucrcWellsConfig,
+            visible: false,
+            popupFooterLink: {
+                label: 'Open this well in the UCRC Subsurface app',
+                getHref: (properties) => {
+                    const base = 'https://geology.utah.gov/apps/subsurface/';
+                    const lat = properties?.['latitude'];
+                    const lon = properties?.['longitude'];
+                    if (lat == null || lon == null) return base;
+                    const layers = encodeURIComponent(JSON.stringify({ selected: ['Utah Core Research Center Inventory'] }));
+                    return `${base}?lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lon))}&zoom=15&layers=${layers}`;
+                },
+            },
+        },
         oilGasFieldsWMSConfig,
         geothermalWellsWMSConfig,
         geothermalSpringsJoinsConfig,

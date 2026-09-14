@@ -104,6 +104,14 @@ export type ExtendedSublayerProperties = {
 
 
 
+/** A styled call-to-action link rendered at the bottom of a feature popup (see
+ *  `BaseLayerProps.popupFooterLink`). `getHref` builds the destination per-feature
+ *  from its properties; return null to render nothing. */
+export interface PopupFooterLink {
+    label: string;
+    getHref: (properties: Record<string, unknown> | null) => string | null;
+}
+
 interface BaseLayerProps {
     type: 'feature' | 'tile' | 'map-image' | 'geojson' | 'imagery' | 'wms' | 'group' | 'pmtiles' | 'cog' | 'wfs';
     title: string;
@@ -114,6 +122,11 @@ interface BaseLayerProps {
     options?: any;
     opacity?: number;
     maxZoomLevel?: number;
+    /** A styled call-to-action link rendered at the bottom of this layer's feature
+     *  popups; `getHref` builds the URL per-feature. Set on the LAYER (not the
+     *  sublayer), so a route that spreads a shared layer config can add it for that
+     *  route alone (e.g. carbonstorage → a deep link into the subsurface app). */
+    popupFooterLink?: PopupFooterLink;
     customLegend?: React.ReactNode;
     /** Structured bivariate legend config — works in both sidebar and print export */
     bivariateLegend?: { xLabel: string; yLabel: string };
