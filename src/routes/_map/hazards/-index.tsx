@@ -36,7 +36,7 @@ export default function Map() {
       // fault"). Unlike the RPC this drops empties and the literal '<Null>', so labels come
       // out clean rather than as " - Cross Hollow Hills faults -  - ".
       derivedFields: {
-        concatnames: `array_to_string(list_filter([faultzone, faultname, sectionname, strandname], x -> x IS NOT NULL AND x <> '' AND x <> '<Null>'), ' - ')`,
+        concatnames: `array_to_string(list_filter([faultzone, faultname, sectionname, strandname], x -> x IS NOT NULL AND trim(x) <> '' AND trim(x) <> '<Null>'), ' - ')`,
       },
       displayField: 'concatnames',
       // Keyed on the assembled name, not `faultnum`: one fault number covers every section
