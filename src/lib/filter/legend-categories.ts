@@ -1,8 +1,7 @@
 /**
- * Categories a symbology legend offers, ordered by current match count. Drawn from
- * `allValues` (unfiltered) so filtering one field can't remove another field's categories
- * when the symbology switches; counts stay filtered, so a category can sit at zero.
- * `filtered` covers the loading gap.
+ * Legend categories, ordered by current match count. Drawn from `allValues` (unfiltered) so
+ * filtering one field can't remove another's categories; counts stay filtered, so one can sit
+ * at zero.
  */
 export function orderedCategories(
     allValues: readonly string[] | undefined,

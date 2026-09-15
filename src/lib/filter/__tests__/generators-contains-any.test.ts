@@ -12,7 +12,6 @@ const state = (...values: string[]): FilterState => ({
     box_type_codes: { kind: 'containsAny', values },
 });
 
-// box_type_codes is comma-delimited; substring matching made CORE select 1,417 wells, not 1.
 describe('containsAny → maplibre', () => {
     it('wraps both the cell and the token in the delimiter', () => {
         expect(toMaplibreFilter(schema, state('CORE'))).toEqual([
