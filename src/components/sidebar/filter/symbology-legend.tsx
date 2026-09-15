@@ -27,6 +27,10 @@ import type { PMTilesLayerProps, PMTilesRender, LegendEntry } from '@/lib/types/
 // an empty multiSelect means "no filter = all", the opposite of an all-off legend.
 const NONE_SENTINEL = '__none__'
 
+// Module-scoped so the "every value" query below keeps a stable key and isn't refetched
+// once per render.
+const EMPTY_FILTER_STATE = {} as const
+
 // A colour group derived from a legend entry that carries `values` (grouped renders,
 // e.g. box types → Core/Cuttings/Other). `color` is the group's base hue (header); each
 // value carries its own shade of it.
@@ -100,12 +104,19 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
     const mgr = useLayerFilter(schema)
     const isContains = field.kind === 'containsAny'
     const { data, isLoading } = useDistinctFieldOptions({ schema, state: mgr.state, field, splitCommaDelimited: isContains })
+    // The category list is every value the field can take, queried with no filter applied.
+    // Deriving it from the filtered rows instead made categories vanish from the legend:
+    // filter on one field, switch the symbology to another, and that other field only
+    // offered the values surviving the first filter — with no way to switch back to one
+    // that had been filtered away. Counts stay filtered; the rows you can pick do not.
+    const allValues = useDistinctFieldOptions({ schema, state: EMPTY_FILTER_STATE, field, splitCommaDelimited: isContains })
     const counts = data?.counts ?? {}
-    // All distinct values, ordered by feature count (desc), alpha tiebreak.
+    // Every distinct value, ordered by how many features currently match (desc), alpha tiebreak.
     const options = useMemo(() => {
         const c = data?.counts ?? {}
-        return [...(data?.options ?? [])].sort((a, b) => (c[b] ?? 0) - (c[a] ?? 0) || a.localeCompare(b))
-    }, [data])
+        const values = allValues.data?.options ?? data?.options ?? []
+        return [...values].sort((a, b) => (c[b] ?? 0) - (c[a] ?? 0) || a.localeCompare(b))
+    }, [allValues.data, data])
 
     // Colour per value, derived from the render's legend. Flat renders: entry label == value.
     // Grouped renders: each group's `values` carry per-item shades. `stroke` is a flat-render

@@ -70,10 +70,18 @@ type Expr = unknown[];
 const inAnyOf = (field: string, values: string[]): Expr | null =>
     values.length === 0 ? null : ['in', ['get', field], ['literal', values]];
 
+/**
+ * Match whole tokens in a comma-delimited cell, not substrings. Both sides get wrapped in
+ * the delimiter so a token only matches a token: without it `CORE` also hits `CORE CHIPS`,
+ * `WHOLE CORE` and `CORESAMPLES` — 1,417 UCRC wells instead of the 1 that actually carries
+ * it. Only tokens that are substrings of other tokens are affected, which is why this went
+ * unnoticed.
+ */
 const containsAny = (field: string, values: string[]): Expr | null => {
     if (values.length === 0) return null;
+    const delimited: Expr = ['concat', ',', ['coalesce', ['get', field], ''], ','];
     const clauses: Expr[] = values.map(v =>
-        ['>=', ['index-of', v, ['coalesce', ['get', field], '']], 0],
+        ['>=', ['index-of', `,${v},`, delimited], 0],
     );
     return clauses.length === 1 ? clauses[0] : ['any', ...clauses];
 };
@@ -200,9 +208,11 @@ const fieldToSqlParts = (field: FilterFieldKind, state: FilterState): string[] =
             if (v.kind !== 'multiSelect' || v.values.length === 0) return [];
             return [`CAST(${col} AS VARCHAR) IN (${v.values.map(sqlLiteral).join(',')})`];
         case 'containsAny': {
-            // Comma-delimited cells: match the same way the option list splits them.
+            // Whole tokens only, matching how the option list splits the cell — see the
+            // maplibre `containsAny` above for why a bare substring is wrong.
             if (v.kind !== 'containsAny' || v.values.length === 0) return [];
-            const clauses = v.values.map(val => `${col} ILIKE ${sqlLiteral(`%${val}%`)}`);
+            const delimited = `(',' || CAST(${col} AS VARCHAR) || ',')`;
+            const clauses = v.values.map(val => `${delimited} ILIKE ${sqlLiteral(`%,${val},%`)}`);
             return [`(${clauses.join(' OR ')})`];
         }
         case 'range': {
