@@ -12,7 +12,7 @@ import { useLayerUrl } from '@/context/layer-url-provider'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
-import { parquetUrl } from '@/lib/constants';
+import { PROD_POSTGREST_URL, parquetUrl } from '@/lib/constants';
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox';
 import { geothermalTEMLayerTitle, gravityStationsLayeTitle, powerplantsTitle } from './-data/layers/layers';
 import { powerplantsFilterSchema } from './-data/layers/powerplants-schema'
@@ -51,14 +51,17 @@ export default function Map() {
     const searchConfig: SearchSourceConfig[] = [
         defaultMasqueradeConfig,
         {
-            type: 'parquet',
-            parquetUrl: parquetUrl('enmin_geophysics_tem'),
+            // Stays on PostgREST: `enmin_geophysics_tem` holds different data than this
+            // RPC serves (station "Parowan_01" vs "2025_1002_220736.stb").
+            type: 'postgREST',
+            url: PROD_POSTGREST_URL,
+            functionName: 'search_geophysics_tem',
+            searchTerm: 'search_term',
             sourceName: 'TEM Data',
             layerName: geothermalTEMLayerTitle,
             displayField: 'station',
-            secondaryDisplayField: 'project',
-            idField: 'unique_id',
-            params: { targetFields: ['station', 'project', 'unique_id'] },
+            params: { select: 'station,project,unique_id,geom' },
+            headers: { 'Accept-Profile': 'emp', 'Accept': 'application/geo+json' },
         },
         {
             type: 'parquet',

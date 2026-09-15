@@ -174,8 +174,8 @@ function attributeColumns(source: ParquetSearchConfig): string[] {
         source.displayField,
         ...(source.secondaryDisplayField ? [source.secondaryDisplayField] : []),
         ...(source.idField ? [source.idField] : []),
-        ...(source.groupByField ? [source.groupByField] : []),
-        // Grouping by which field matched needs those fields readable on the row.
+        // With `groupByMatch` the groupByField is the computed group's name, not a column.
+        ...(source.groupByField && !source.groupByMatch ? [source.groupByField] : []),
         ...(source.groupByMatch?.map(m => m.field) ?? []),
     ])].filter(c => !derived.has(c));
 }

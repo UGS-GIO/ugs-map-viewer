@@ -216,7 +216,11 @@ export const materializedAttributes = async (
 
     try {
         return await building;
-    } catch {
+    } catch (err) {
+        // The raw file can't bind derived aliases, so falling back there turns a broken
+        // projection into a silent empty result. Surface it instead.
+        if (derived.length) throw err;
+        console.warn(`[materializedAttributes] falling back to ${remote}:`, err);
         return remote;
     }
 };
