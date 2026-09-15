@@ -201,6 +201,28 @@ export function matchGroup(
  * Typeahead suggestions. Returns geometry-less pseudo-features (same shape the PostgREST
  * fetcher produces for non-GeoJSON rows); the combobox fetches geometry on selection.
  */
+/**
+ * Start DuckDB and build the attribute tables for a config's parquet sources, without
+ * waiting for them. Called when the search box opens: by the time someone finishes typing,
+ * the one-time cost (worker boot plus one scan per file) is usually already paid, and a
+ * session that never opens search pays nothing. Safe to call repeatedly —
+ * {@link materializedAttributes} caches per url+projection, so extra calls are no-ops.
+ */
+export function prewarmParquetSources(sources: readonly ParquetSearchConfig[]): void {
+    void (async () => {
+        try {
+            const { materializedAttributes } = await import('@/lib/duckdb/client');
+            await Promise.all(sources.map(source => materializedAttributes({
+                url: source.parquetUrl,
+                columns: attributeColumns(source),
+                expressions: source.derivedFields,
+            })));
+        } catch {
+            // A failed warm-up must stay invisible: the real search will surface it.
+        }
+    })();
+}
+
 export async function fetchParquetResults(
     source: ParquetSearchConfig,
     searchTerm: string,

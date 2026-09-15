@@ -27,7 +27,7 @@ import type {
     SearchComboboxProps,
 } from './search-types';
 import { formatAddressCase, getDisplayValue, getSourceDisplayName, resultHasData, appendFunctionParams, resolveDefaultSourceIndex } from './search-utils';
-import { fetchMasqueradeSuggestions, fetchPostgRESTResults, fetchParquetResults, withParquetGeometry } from './search-fetchers';
+import { fetchMasqueradeSuggestions, fetchPostgRESTResults, fetchParquetResults, withParquetGeometry, prewarmParquetSources } from './search-fetchers';
 
 // Re-export types and handlers for consumers
 export type { SearchSourceConfig, MasqueradeConfig, PostgRESTConfig, ParquetSearchConfig, SearchComboboxHandle, ExtendedGeometry } from './search-types';
@@ -54,6 +54,14 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
         [config, defaultSourceName],
     );
     const [open, setOpen] = useState(false);
+    // Opening the box is the first sign anyone means to search, so DuckDB starts loading
+    // then rather than on route mount — no cost for sessions that never search.
+    const handleOpenChange = useCallback((next: boolean) => {
+        setOpen(next);
+        if (next) {
+            prewarmParquetSources(config.filter((s): s is ParquetSearchConfig => s.type === 'parquet'));
+        }
+    }, [config]);
     const [inputValue, setInputValue] = useState('');
     const [search, setSearch] = useState('');
     const [debouncedSearch] = useDebounce(search, 500);
@@ -362,7 +370,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
     };
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover open={open} onOpenChange={handleOpenChange}>
                 <div className="relative flex items-center">
                     <PopoverTrigger asChild>
                         <Button
