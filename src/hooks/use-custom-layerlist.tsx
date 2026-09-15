@@ -43,7 +43,7 @@ interface LayerAccordionItemProps {
  * to expose.
  */
 function FiltersCollapsible({ content }: { content: React.ReactNode }) {
-    const [open, setOpen] = useState(false);
+    const [open, setOpen] = useState(true);
     if (content === null || content === undefined || content === false) return null;
     // Match LayerControls' mx-8 horizontal padding so the filter row aligns with
     // the opacity slider + button cluster beneath it.
@@ -82,7 +82,12 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
             return groupCheckboxState === 'all' || groupCheckboxState === 'some';
         }
 
-        // If it's not a group, it's a single layer. ALWAYS start collapsed.
+        // Expand layers with custom filters by default so controls are immediately visible.
+        if (layerConfig.title && layerExtrasRender?.(layerConfig.title)) {
+            return true;
+        }
+
+        // If it's not a group and has no filters, start collapsed.
         return false;
     });
 

@@ -64,7 +64,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     // alongside Info or Legend if they want.
     const [prevOpenLegend, setPrevOpenLegend] = useState(openLegend);
     const [activeTab, setActiveTab] = useState<'info' | 'legend' | null>(openLegend ? 'legend' : null);
-    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [filtersOpen, setFiltersOpen] = useState(Boolean(filtersContent));
     const [statsOpen, setStatsOpen] = useState(false);
 
     if (openLegend !== prevOpenLegend) {
