@@ -2,9 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { orderedCategories } from '../symbology-legend';
 
 /**
- * The legend's category list has to survive an active filter on another field: it is built
- * from an unfiltered query, while the counts beside it stay filtered. Building it from the
- * filtered rows is what made categories disappear when the symbology was switched.
+ * The category list must survive a filter on another field — building it from filtered rows
+ * is what made categories disappear when the symbology was switched.
  */
 describe('orderedCategories', () => {
     const allValues = ['CUTTINGS', 'WHOLE CORE', 'SLABS', 'CORE'];

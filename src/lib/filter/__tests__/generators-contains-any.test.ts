@@ -4,10 +4,8 @@ import { fromCql } from '../parse';
 import type { FilterSchema, FilterState } from '../types';
 
 /**
- * `containsAny` reads a comma-delimited cell (UCRC `box_type_codes` holds
- * "CORE CHIPS,CUTTINGS"). Matching has to be token-for-token: a bare substring made
- * "CORE" select every well carrying CORE CHIPS, WHOLE CORE, SKELETONIZED CORE or
- * CORESAMPLES — 1,417 of them against the 1 that actually holds a plain CORE.
+ * `box_type_codes` holds a comma-delimited cell ("CORE CHIPS,CUTTINGS"), so matching has to
+ * be token-for-token — substring matching made `CORE` select 1,417 wells instead of 1.
  */
 const schema: FilterSchema = {
     recordKey: 'Utah Core Research Center Inventory',
@@ -72,10 +70,8 @@ describe('containsAny → SQL', () => {
 });
 
 /**
- * The CQL text is the URL encoding of the filter, not the query that runs — it still reads
- * `LIKE '%CORE%'` while the MapLibre and SQL filters match whole tokens. That is fine as long
- * as the values survive a round trip, which is what `fromCql` reads back. Pinned here because
- * tightening the CQL later would need `likeValuesForField` to change with it.
+ * CQL is the URL encoding, not the query that runs, so it still reads `LIKE '%CORE%'`. Only
+ * the round trip has to hold — tightening the CQL later means changing `likeValuesForField`.
  */
 describe('containsAny → CQL round trip', () => {
     it('recovers a single value', () => {

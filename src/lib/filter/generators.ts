@@ -71,11 +71,8 @@ const inAnyOf = (field: string, values: string[]): Expr | null =>
     values.length === 0 ? null : ['in', ['get', field], ['literal', values]];
 
 /**
- * Match whole tokens in a comma-delimited cell, not substrings. Both sides get wrapped in
- * the delimiter so a token only matches a token: without it `CORE` also hits `CORE CHIPS`,
- * `WHOLE CORE` and `CORESAMPLES` — 1,417 UCRC wells instead of the 1 that actually carries
- * it. Only tokens that are substrings of other tokens are affected, which is why this went
- * unnoticed.
+ * Whole-token match on a comma-delimited cell. Both sides are wrapped in the delimiter —
+ * unwrapped, `CORE` also matched `CORE CHIPS` and `WHOLE CORE` (1,417 wells, not 1).
  */
 const containsAny = (field: string, values: string[]): Expr | null => {
     if (values.length === 0) return null;
@@ -208,8 +205,7 @@ const fieldToSqlParts = (field: FilterFieldKind, state: FilterState): string[] =
             if (v.kind !== 'multiSelect' || v.values.length === 0) return [];
             return [`CAST(${col} AS VARCHAR) IN (${v.values.map(sqlLiteral).join(',')})`];
         case 'containsAny': {
-            // Whole tokens only, matching how the option list splits the cell — see the
-            // maplibre `containsAny` above for why a bare substring is wrong.
+            // Delimiter-wrapped like the maplibre `containsAny` above.
             if (v.kind !== 'containsAny' || v.values.length === 0) return [];
             const delimited = `(',' || CAST(${col} AS VARCHAR) || ',')`;
             const clauses = v.values.map(val => `${delimited} ILIKE ${sqlLiteral(`%,${val},%`)}`);

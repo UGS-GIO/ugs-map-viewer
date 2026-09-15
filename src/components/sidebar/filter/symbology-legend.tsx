@@ -27,20 +27,13 @@ import type { PMTilesLayerProps, PMTilesRender, LegendEntry } from '@/lib/types/
 // an empty multiSelect means "no filter = all", the opposite of an all-off legend.
 const NONE_SENTINEL = '__none__'
 
-// Module-scoped so the "every value" query below keeps a stable key and isn't refetched
-// once per render.
+// Module-scoped to keep the unfiltered query's key stable across renders.
 const EMPTY_FILTER_STATE = {} as const
 
 /**
- * The categories the legend offers, ordered by how many features currently match.
- *
- * `allValues` is every value the field can take, queried with no filter applied; `filtered`
- * is what survives the current filter. The list has to come from the first: deriving it from
- * the filtered rows made categories vanish — filter on one field, switch the symbology to
- * another, and that other field only offered values surviving the first filter, with no way
- * to re-check one that had been filtered away. Counts stay filtered, so a category can sit at
- * zero; what you can pick does not shrink. Falls back to `filtered` until the unfiltered
- * query resolves, so the list is never empty while loading.
+ * Categories to offer, ordered by current match count. Drawn from `allValues` (unfiltered)
+ * so filtering one field can't remove another field's categories when the symbology switches;
+ * counts stay filtered, so a category can sit at zero. `filtered` covers the loading gap.
  */
 export function orderedCategories(
     allValues: readonly string[] | undefined,
@@ -125,11 +118,7 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
     const mgr = useLayerFilter(schema)
     const isContains = field.kind === 'containsAny'
     const { data, isLoading } = useDistinctFieldOptions({ schema, state: mgr.state, field, splitCommaDelimited: isContains })
-    // The category list is every value the field can take, queried with no filter applied.
-    // Deriving it from the filtered rows instead made categories vanish from the legend:
-    // filter on one field, switch the symbology to another, and that other field only
-    // offered the values surviving the first filter — with no way to switch back to one
-    // that had been filtered away. Counts stay filtered; the rows you can pick do not.
+    // Unfiltered, for the category list — see orderedCategories.
     const allValues = useDistinctFieldOptions({ schema, state: EMPTY_FILTER_STATE, field, splitCommaDelimited: isContains })
     const counts = data?.counts ?? {}
     const options = useMemo(() => {
