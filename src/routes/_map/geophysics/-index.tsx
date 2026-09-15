@@ -12,7 +12,7 @@ import { useLayerUrl } from '@/context/layer-url-provider'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
-import { PROD_POSTGREST_URL } from '@/lib/constants';
+import { parquetUrl } from '@/lib/constants';
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox';
 import { geothermalTEMLayerTitle, gravityStationsLayeTitle, powerplantsTitle } from './-data/layers/layers';
 import { powerplantsFilterSchema } from './-data/layers/powerplants-schema'
@@ -51,26 +51,24 @@ export default function Map() {
     const searchConfig: SearchSourceConfig[] = [
         defaultMasqueradeConfig,
         {
-            type: 'postgREST',
-            url: PROD_POSTGREST_URL,
-            functionName: 'search_geophysics_tem',
-            searchTerm: 'search_term',
+            type: 'parquet',
+            parquetUrl: parquetUrl('enmin_geophysics_tem'),
             sourceName: 'TEM Data',
             layerName: geothermalTEMLayerTitle,
             displayField: 'station',
-            params: { select: 'station,project,unique_id,geom' },
-            headers: { 'Accept-Profile': 'emp', 'Accept': 'application/geo+json' },
+            secondaryDisplayField: 'project',
+            idField: 'unique_id',
+            params: { targetFields: ['station', 'project', 'unique_id'] },
         },
         {
-            type: 'postgREST',
-            url: PROD_POSTGREST_URL,
-            functionName: 'search_geophysics_ugsgravity',
-            searchTerm: 'search_term',
+            type: 'parquet',
+            parquetUrl: parquetUrl('enmin_geophysics_ugsgravity'),
             sourceName: 'Gravity Stations',
             layerName: gravityStationsLayeTitle,
             displayField: 'unique_id',
-            params: { select: 'unique_id,station,project,geom' },
-            headers: { 'Accept-Profile': 'emp', 'Accept': 'application/geo+json' },
+            secondaryDisplayField: 'station',
+            idField: 'unique_id',
+            params: { targetFields: ['unique_id', 'station', 'project'] },
         },
     ];
 

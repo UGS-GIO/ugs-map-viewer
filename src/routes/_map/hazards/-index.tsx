@@ -8,7 +8,7 @@ import { useSidebar } from '@/hooks/use-sidebar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useRef } from 'react';
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, type SearchComboboxHandle } from '@/components/sidebar/filter/search-combobox';
-import { PROD_POSTGREST_URL } from '@/lib/constants';
+import { parquetUrl } from '@/lib/constants';
 import { qFaultsWMSTitle } from './-data/layers/layers';
 import { useMapContextState } from '@/hooks/use-map-context-state';
 import { MapContext } from '@/context/map-context';
@@ -26,17 +26,21 @@ export default function Map() {
   const searchConfig: SearchSourceConfig[] = [
     defaultMasqueradeConfig,
     {
-      type: 'postgREST',
-      url: PROD_POSTGREST_URL,
-      functionName: "search_fault_data",
+      type: 'parquet',
+      parquetUrl: parquetUrl('hazards_qfaults'),
       layerName: qFaultsWMSTitle,
-      searchTerm: "search_term",
       sourceName: 'Faults',
-      displayField: "concatnames",
-      params: { select: 'concatnames' }, // Exclude geometry from search for fast response
-      headers: {
-        'Accept-Profile': 'hazards',
-      }
+      // `concatnames` was assembled by the search_fault_data RPC; the warehouse stores the
+      // three parts separately. Same join, same skip-the-empties, same output.
+      derivedFields: {
+        concatnames: `array_to_string(list_filter([faultzone, sectionname, strandname], x -> x IS NOT NULL AND x <> ''), ' - ')`,
+      },
+      displayField: 'concatnames',
+      // Keyed on the assembled name, not `faultnum`: one fault number covers every section
+      // and strand of a zone (229 numbers over 19,743 rows), so picking "Wasatch fault zone -
+      // Brigham City section" would otherwise highlight the entire zone.
+      idField: 'concatnames',
+      params: { targetFields: ['concatnames'] },
     },
   ];
 

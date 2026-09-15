@@ -170,16 +170,28 @@ const attributeTableName = (key: string): string => {
 };
 
 export const materializedAttributes = async (
-    { url, columns, geometryField = 'geom' }: { url: string; columns?: string[]; geometryField?: string },
+    { url, columns, expressions, geometryField = 'geom' }: {
+        url: string;
+        columns?: string[];
+        /**
+         * Extra projected columns as `alias -> SQL expression`, materialized alongside the
+         * plain ones so a search can filter and order on them like any other column. The
+         * expressions are caller-authored SQL (never user input) and are interpolated as
+         * written; the alias is quoted.
+         */
+        expressions?: Record<string, string>;
+        geometryField?: string;
+    },
 ): Promise<string> => {
     const remote = `read_parquet('${escapeSql(url)}')`;
-    const key = `${url}::${columns?.join(',') ?? `*-${geometryField}`}`;
+    const derived = Object.entries(expressions ?? {});
+    const key = `${url}::${columns?.join(',') ?? `*-${geometryField}`}::${derived.map(([a, e]) => `${a}=${e}`).join(',')}`;
     const cached = attributeTables.get(key);
     if (cached) return cached;
 
     const building = (async () => {
         const table = attributeTableName(key);
-        const projection = columns?.length
+        const base = columns?.length
             ? columns.map(quoteIdent).join(', ')
             // EXCLUDE errors if the column isn't there, so only exclude what the file has.
             : await withConnection(async (conn) => {
@@ -187,6 +199,9 @@ export const materializedAttributes = async (
                 const names = described.toArray().map(r => String((r.toJSON() as Record<string, unknown>).column_name));
                 return names.includes(geometryField) ? `* EXCLUDE (${quoteIdent(geometryField)})` : '*';
             });
+        const projection = derived.length
+            ? `${base}, ${derived.map(([alias, expr]) => `${expr} AS ${quoteIdent(alias)}`).join(', ')}`
+            : base;
 
         await withConnection(async (conn) => {
             await conn.query(`CREATE TABLE IF NOT EXISTS ${quoteIdent(table)} AS SELECT ${projection} FROM ${remote}`);

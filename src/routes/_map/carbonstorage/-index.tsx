@@ -56,24 +56,31 @@ const searchConfig: SearchSourceConfig[] = [
     },
   },
   {
-    type: 'postgREST',
-    url: PROD_POSTGREST_URL,
-    functionName: "search_geologic_units",
-    searchTerm: "search_term",
-    functionParams: { search_scale: 'small' },
+    type: 'parquet',
+    // `search_scale: 'small'` selected the 500k units; that scale is its own warehouse item.
+    parquetUrl: parquetUrl('geolmap_geolunits_500k'),
     sourceName: 'Geologic Units',
     layerName: seamlessGeolunitsWMSTitle,
-    displayField: "unit_label",
-    params: { select: 'unit_label,match_type' },
+    // The RPC returned a pre-joined label; the warehouse keeps name and symbol apart.
+    derivedFields: {
+      unit_label: `unitname || ' (' || unitsymbol || ')'`,
+    },
+    displayField: 'unit_label',
+    idField: 'geology_id',
+    params: { targetFields: ['unitname', 'unitsymbol', 'notes'] },
+    // Stands in for the RPC's `match_type`: which column the term hit, in the same
+    // precedence the groups are listed. `notes` is the description column here.
     groupByField: 'match_type',
+    groupByMatch: [
+      { key: 'name', field: 'unitname' },
+      { key: 'symbol', field: 'unitsymbol' },
+      { key: 'description', field: 'notes' },
+    ],
     groupLabels: {
       name: 'Name Matches',
       symbol: 'Symbol Matches',
       description: 'Description Matches',
     },
-    headers: {
-      'Accept-Profile': 'mapping',
-    }
   },
 ]
 

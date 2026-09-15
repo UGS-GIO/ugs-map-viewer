@@ -166,14 +166,35 @@ function searchFields(source: ParquetSearchConfig): string[] {
     return params?.targetFields || (params?.targetField ? [params.targetField] : [displayField]);
 }
 
-/** Every column the suggestion list needs — no geometry. */
+/** Every column the suggestion list needs — no geometry. Derived aliases are projected separately. */
 function attributeColumns(source: ParquetSearchConfig): string[] {
+    const derived = new Set(Object.keys(source.derivedFields ?? {}));
     return [...new Set([
         ...searchFields(source),
         source.displayField,
         ...(source.secondaryDisplayField ? [source.secondaryDisplayField] : []),
         ...(source.idField ? [source.idField] : []),
-    ])];
+        ...(source.groupByField ? [source.groupByField] : []),
+        // Grouping by which field matched needs those fields readable on the row.
+        ...(source.groupByMatch?.map(m => m.field) ?? []),
+    ])].filter(c => !derived.has(c));
+}
+
+/**
+ * Group a row by which field matched, reproducing the `match_type` a search RPC used to
+ * return. First field carrying a token wins; the trailing entry acts as the fallback so a
+ * row that matched on a column nobody displays still lands somewhere.
+ */
+export function matchGroup(
+    row: Record<string, unknown>,
+    rules: NonNullable<ParquetSearchConfig['groupByMatch']>,
+    tokens: string[],
+): string {
+    for (const { key, field } of rules) {
+        const value = String(row[field] ?? '').toLowerCase();
+        if (value && tokens.some(t => value.includes(t.toLowerCase()))) return key;
+    }
+    return rules[rules.length - 1]?.key ?? '';
 }
 
 /**
@@ -189,7 +210,11 @@ export async function fetchParquetResults(
 
     const { withConnection, quoteIdent, normalizeRow, materializedAttributes } = await import('@/lib/duckdb/client');
     // Attributes only, materialized once per session — geometry is fetched on selection.
-    const from = await materializedAttributes({ url: source.parquetUrl, columns: attributeColumns(source) });
+    const from = await materializedAttributes({
+        url: source.parquetUrl,
+        columns: attributeColumns(source),
+        expressions: source.derivedFields,
+    });
     const fields = searchFields(source);
 
     // Tokens are ANDed, fields ORed: "43S 11W 31" means every token has to land somewhere.
@@ -214,12 +239,24 @@ export async function fetchParquetResults(
         return result.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>));
     });
 
-    const features: Feature<Geometry, GeoJsonProperties>[] = rows.map((row, idx) => ({
-        type: 'Feature' as const,
-        id: idx,
-        geometry: null as unknown as Geometry,
-        properties: row,
-    }));
+    // A layer split into segments (faults, say) repeats one display name across many rows.
+    // The RPCs these sources replaced returned DISTINCT, so collapse to the first row per
+    // display value — anything past the first is the same suggestion twice.
+    const seen = new Set<string>();
+    const features: Feature<Geometry, GeoJsonProperties>[] = [];
+    for (const row of rows) {
+        const label = String(row[source.displayField] ?? '');
+        if (!label || seen.has(label)) continue;
+        seen.add(label);
+        features.push({
+            type: 'Feature' as const,
+            id: features.length,
+            geometry: null as unknown as Geometry,
+            properties: source.groupByMatch
+                ? { ...row, [source.groupByField ?? 'match_type']: matchGroup(row, source.groupByMatch, tokens) }
+                : row,
+        });
+    }
 
     return featureCollection(features);
 }
@@ -286,7 +323,10 @@ export async function fetchParquetGeometries(
     const { withConnection, loadSpatial, escapeSql, quoteIdent } = await import('@/lib/duckdb/client');
     const { isBlob, needsTransform } = await resolveGeometryMeta(source);
 
-    const idCol = quoteIdent(source.idField);
+    // The id can be a derived alias (a fault's assembled name), which exists only in the
+    // materialized attribute table — so re-project the expression here rather than the column.
+    const derivedId = source.derivedFields?.[source.idField];
+    const idCol = derivedId ?? quoteIdent(source.idField);
     const geomCol = quoteIdent(source.geometryField ?? 'geom');
     const rawGeom = isBlob ? `ST_GeomFromWKB(${geomCol})` : geomCol;
     const geom4326 = needsTransform
@@ -297,10 +337,14 @@ export async function fetchParquetGeometries(
     const rows = await withConnection(async (conn) => {
         await loadSpatial(conn);
         await conn.query(`SET enable_geoparquet_conversion = false`);
+        // One id can span many rows — a fault is stored as its segments, a unit as separate
+        // outcrops. Union them so selecting a suggestion highlights the whole feature
+        // instead of whichever segment the scan happened to read last.
         const result = await conn.query(
-            `SELECT CAST(${idCol} AS VARCHAR) AS _id, ST_AsGeoJSON(${geom4326}) AS _geom_json ` +
+            `SELECT CAST(${idCol} AS VARCHAR) AS _id, ST_AsGeoJSON(ST_Union_Agg(${geom4326})) AS _geom_json ` +
             `FROM read_parquet('${escapeSql(source.parquetUrl)}') ` +
-            `WHERE CAST(${idCol} AS VARCHAR) IN (${inList})`,
+            `WHERE CAST(${idCol} AS VARCHAR) IN (${inList}) ` +
+            `GROUP BY 1`,
         );
         return result.toArray().map(r => r.toJSON() as Record<string, unknown>);
     });
