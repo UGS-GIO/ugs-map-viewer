@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { LayerFilterPanel, useLayerFilter } from '@/components/sidebar/filter/layer-filter-panel';
 import { Label } from '@/components/ui/label';
@@ -32,16 +32,14 @@ function SchemaFilters({ schema, hideFields }: WetlandPlantsFilterConfig) {
     const filter = useLayerFilter(schema);
     const { selectFeatures, clearAllSelections } = useMap();
     const navigate = useNavigate();
-    const [isLoadingTable, setIsLoadingTable] = useState(false);
 
-    const handleOpenTable = async () => {
-        setIsLoadingTable(true);
-        try {
+    const openTableMutation = useMutation({
+        mutationFn: async () => {
             const { fetchStacAssetHref } = await import('@/lib/map/stac/stac-layer');
             const url = await fetchStacAssetHref(schema.stacItemId!, 'data');
             if (!url) throw new Error('Parquet data URL missing');
 
-            const { withConnection, escapeSql } = await import('@/lib/duckdb/client');
+            const { withConnection, escapeSql, loadSpatial } = await import('@/lib/duckdb/client');
             const { toSqlPredicates } = await import('@/lib/filter/generators');
 
             const predicates = toSqlPredicates(schema, filter.state);
@@ -69,16 +67,23 @@ function SchemaFilters({ schema, hideFields }: WetlandPlantsFilterConfig) {
 
             const whereClause = allPredicates.length > 0 ? `WHERE ${allPredicates.join(' AND ')}` : '';
 
-            const features = await withConnection(async (conn) => {
+            return withConnection(async (conn) => {
+                await loadSpatial(conn);
+                await conn.query('SET enable_geoparquet_conversion = false');
                 const res = await conn.query(`
-                    SELECT *
+                    SELECT 
+                        ST_X(ST_Centroid(ST_GeomFromWKB(geom))) as lon,
+                        ST_Y(ST_Centroid(ST_GeomFromWKB(geom))) as lat,
+                        * EXCLUDE (geom)
                     FROM read_parquet('${escapeSql(url)}')
                     ${whereClause}
                 `);
                 return res.toArray().map((row) => {
                     const props = row.toJSON() as Record<string, unknown>;
-                    const x = Number(props.point_x) || 0;
-                    const y = Number(props.point_y) || 0;
+                    const x = Number(props.lon) || 0;
+                    const y = Number(props.lat) || 0;
+                    delete props.lon;
+                    delete props.lat;
                     return {
                         id: (props.objectid as number) ?? (props.surveyeventid as number),
                         properties: props,
@@ -90,19 +95,16 @@ function SchemaFilters({ schema, hideFields }: WetlandPlantsFilterConfig) {
                     };
                 });
             });
-
+        },
+        onSuccess: (features) => {
             selectFeatures(features);
             navigate({
                 to: '.',
                 search: (prev: Record<string, unknown>) => ({ ...prev, view: 'split' as const }),
                 replace: true,
             });
-        } catch (err) {
-            console.error('Failed to open table for filtered sites:', err);
-        } finally {
-            setIsLoadingTable(false);
-        }
-    };
+        },
+    });
 
     const handleCloseTable = () => {
         clearAllSelections();
@@ -132,10 +134,10 @@ function SchemaFilters({ schema, hideFields }: WetlandPlantsFilterConfig) {
                     variant="outline"
                     size="sm"
                     className="flex-1 text-xs"
-                    onClick={handleOpenTable}
-                    disabled={isLoadingTable}
+                    onClick={() => openTableMutation.mutate()}
+                    disabled={openTableMutation.isPending}
                 >
-                    {isLoadingTable ? 'Opening...' : 'Open table'}
+                    {openTableMutation.isPending ? 'Opening...' : 'Open table'}
                 </Button>
                 <Button
                     variant="outline"
@@ -146,6 +148,9 @@ function SchemaFilters({ schema, hideFields }: WetlandPlantsFilterConfig) {
                     Close table
                 </Button>
             </div>
+            {openTableMutation.isError && (
+                <p className="text-xs text-destructive">Failed to load table data</p>
+            )}
         </div>
     );
 }
