@@ -86,13 +86,8 @@ export default function Map() {
         staleTime: 1000 * 60 * 10,
     });
 
-    // PRIVACY: the warehouse does not yet offset Confidential wetland survey site
-    // coordinates (see comment in -data/layers/layers.tsx). Hide those features entirely
-    // rather than render their true location until a dataELT fix lands. Do not remove this
-    // without confirming the warehouse pipeline now jitters confidential geometries.
-    const vectorLayerFilters = useMemo<Record<string, FilterSpecification>>(() => {
-        const privacyExpr: unknown[] = ['!=', ['get', 'privacystatus'], 'Confidential'];
-        const clauses: unknown[] = [privacyExpr];
+    const vectorLayerFilters = useMemo(() => {
+        const clauses: unknown[] = [];
 
         if (wetlandCql) {
             const attrExpr = toMaplibreFilter(wetlandPlantsFilterSchema, filterState);
@@ -110,10 +105,12 @@ export default function Map() {
             }
         }
 
-        const filter = clauses.length === 1 ? clauses[0] : ['all', ...clauses];
-        return {
-            [wetlandSurveySitesTitle]: filter as FilterSpecification,
-        };
+        const result: Record<string, FilterSpecification> = {};
+        if (clauses.length > 0) {
+            const filter = clauses.length === 1 ? clauses[0] : ['all', ...clauses];
+            result[wetlandSurveySitesTitle] = filter as FilterSpecification;
+        }
+        return result;
     }, [wetlandCql, filterState, speciesNames.length, speciesEventIds, speciesJoinKey]);
 
     return (

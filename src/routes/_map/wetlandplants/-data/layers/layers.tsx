@@ -2,13 +2,8 @@ import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/
 
 // Wetland Survey Sites — from warehouse item `wetlands_plants_site`.
 //
-// Not visible until a style ships: no `ugs:renders` yet, so data-map.tsx silently drops this
-// PMTiles layer. Symbology: yellow for exact locations, red for confidential/approximate.
-//
-// PRIVACY: Confidential sites are geocoded to their true location upstream; the pipeline
-// doesn't offset them yet. Filtered client-side (see wetlandplants/-index.tsx
-// `vectorLayerFilters`) rather than rendering real coordinates — don't remove without a
-// warehouse fix.
+// Symbology: yellow for exact locations, red for confidential/approximate.
+// Confidential coordinates are jittered on the backend upstream before ingest.
 //
 // RELATED TABLE: the STAC item carries a `wetlands_plants_species` asset with
 // `ugs:foreign_keys` on `surveyeventid` — the per-site species list. `wetlands_wetdash_
