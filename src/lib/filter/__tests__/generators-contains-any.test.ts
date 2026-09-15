@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { toMaplibreFilter, toSqlPredicates } from '../generators';
+import { toMaplibreFilter, toSqlPredicates, toCql } from '../generators';
+import { fromCql } from '../parse';
 import type { FilterSchema, FilterState } from '../types';
 
 /**
@@ -67,5 +68,38 @@ describe('containsAny → SQL', () => {
 
     it('is empty when nothing is selected', () => {
         expect(toSqlPredicates(schema, state())).toEqual([]);
+    });
+});
+
+/**
+ * The CQL text is the URL encoding of the filter, not the query that runs — it still reads
+ * `LIKE '%CORE%'` while the MapLibre and SQL filters match whole tokens. That is fine as long
+ * as the values survive a round trip, which is what `fromCql` reads back. Pinned here because
+ * tightening the CQL later would need `likeValuesForField` to change with it.
+ */
+describe('containsAny → CQL round trip', () => {
+    it('recovers a single value', () => {
+        const parsed = fromCql(schema, toCql(schema, state('CORE')));
+        expect(parsed.box_type_codes).toEqual({ kind: 'containsAny', values: ['CORE'] });
+    });
+
+    it('recovers multiple values in order', () => {
+        const parsed = fromCql(schema, toCql(schema, state('CORE', 'CORE CHIPS', 'CUTTINGS')));
+        expect(parsed.box_type_codes).toEqual({
+            kind: 'containsAny',
+            values: ['CORE', 'CORE CHIPS', 'CUTTINGS'],
+        });
+    });
+
+    it('keeps a value whose name contains another value', () => {
+        const parsed = fromCql(schema, toCql(schema, state('CORE', 'WHOLE CORE')));
+        expect(parsed.box_type_codes).toEqual({
+            kind: 'containsAny',
+            values: ['CORE', 'WHOLE CORE'],
+        });
+    });
+
+    it('produces no clause for an empty selection', () => {
+        expect(toCql(schema, state())).toBe('');
     });
 });

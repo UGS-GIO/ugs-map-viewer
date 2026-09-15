@@ -31,6 +31,27 @@ const NONE_SENTINEL = '__none__'
 // once per render.
 const EMPTY_FILTER_STATE = {} as const
 
+/**
+ * The categories the legend offers, ordered by how many features currently match.
+ *
+ * `allValues` is every value the field can take, queried with no filter applied; `filtered`
+ * is what survives the current filter. The list has to come from the first: deriving it from
+ * the filtered rows made categories vanish — filter on one field, switch the symbology to
+ * another, and that other field only offered values surviving the first filter, with no way
+ * to re-check one that had been filtered away. Counts stay filtered, so a category can sit at
+ * zero; what you can pick does not shrink. Falls back to `filtered` until the unfiltered
+ * query resolves, so the list is never empty while loading.
+ */
+export function orderedCategories(
+    allValues: readonly string[] | undefined,
+    filtered: readonly string[] | undefined,
+    counts: Record<string, number> | undefined,
+): string[] {
+    const c = counts ?? {}
+    return [...(allValues ?? filtered ?? [])]
+        .sort((a, b) => (c[b] ?? 0) - (c[a] ?? 0) || a.localeCompare(b))
+}
+
 // A colour group derived from a legend entry that carries `values` (grouped renders,
 // e.g. box types → Core/Cuttings/Other). `color` is the group's base hue (header); each
 // value carries its own shade of it.
@@ -111,11 +132,8 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
     // that had been filtered away. Counts stay filtered; the rows you can pick do not.
     const allValues = useDistinctFieldOptions({ schema, state: EMPTY_FILTER_STATE, field, splitCommaDelimited: isContains })
     const counts = data?.counts ?? {}
-    // Every distinct value, ordered by how many features currently match (desc), alpha tiebreak.
     const options = useMemo(() => {
-        const c = data?.counts ?? {}
-        const values = allValues.data?.options ?? data?.options ?? []
-        return [...values].sort((a, b) => (c[b] ?? 0) - (c[a] ?? 0) || a.localeCompare(b))
+        return orderedCategories(allValues.data?.options, data?.options, data?.counts)
     }, [allValues.data, data])
 
     // Colour per value, derived from the render's legend. Flat renders: entry label == value.
