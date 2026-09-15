@@ -57,7 +57,7 @@ export default function Map() {
     const stacItemId = wetlandPlantsFilterSchema.stacItemId!;
 
     // Resolve matching surveyeventid numbers for selected species via DuckDB-WASM
-    const { data: speciesEventIds } = useQuery({
+    const { data: speciesEventIds, isError: isSpeciesError } = useQuery({
         queryKey: ['wetlands-species-event-ids', speciesNames],
         queryFn: async () => {
             if (speciesNames.length === 0) return [];
@@ -97,10 +97,13 @@ export default function Map() {
         }
 
         if (speciesNames.length > 0) {
-            if (speciesEventIds && speciesEventIds.length > 0) {
-                clauses.push(['in', ['get', speciesJoinKey], ['literal', speciesEventIds]]);
-            } else {
-                // Fail-closed while loading, on error, or when 0 sites match
+            if (speciesEventIds !== undefined) {
+                if (speciesEventIds.length > 0) {
+                    clauses.push(['in', ['get', speciesJoinKey], ['literal', speciesEventIds]]);
+                } else {
+                    clauses.push(['==', ['literal', 1], ['literal', 0]]);
+                }
+            } else if (isSpeciesError) {
                 clauses.push(['==', ['literal', 1], ['literal', 0]]);
             }
         }
@@ -111,7 +114,7 @@ export default function Map() {
             result[wetlandSurveySitesTitle] = filter as FilterSpecification;
         }
         return result;
-    }, [wetlandCql, filterState, speciesNames.length, speciesEventIds, speciesJoinKey]);
+    }, [wetlandCql, filterState, speciesNames.length, speciesEventIds, speciesJoinKey, isSpeciesError]);
 
     return (
         <MapContext.Provider value={contextValue}>

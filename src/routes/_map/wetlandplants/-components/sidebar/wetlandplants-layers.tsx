@@ -1,13 +1,14 @@
 import { BackToMenuButton } from '@/components/ui/back-to-menu-button';
 import { useCustomLayerList } from '@/hooks/use-custom-layerlist';
 import { useGetLayerConfigs } from '@/hooks/use-get-layer-configs';
-import { renderWetlandPlantsLayerFilters } from './wetlandplants-layer-filters';
+import { renderWetlandPlantsLayerFilters, WETLANDPLANTS_FILTER_SCHEMAS } from './wetlandplants-layer-filters';
 
 function WetlandPlantsLayers({ disableExport = false }: { disableExport?: boolean } = {}) {
     const { layerConfigs, isLoading } = useGetLayerConfigs('layers');
     const layerList = useCustomLayerList({
         config: layerConfigs,
         disableExport,
+        hasLayerFilters: (title) => title in WETLANDPLANTS_FILTER_SCHEMAS,
         layerExtrasRender: renderWetlandPlantsLayerFilters,
     });
 
