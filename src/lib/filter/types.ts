@@ -16,6 +16,12 @@ export type FilterFieldKind =
         field: string;
         label: string;
         placeholder?: string;
+        /** Optional STAC asset key if this field lives in a related table (e.g. 'wetlands_plants_species'). */
+        relatedAsset?: string;
+        /** Foreign key linking the primary layer to the related table (e.g. 'surveyeventid'). */
+        foreignKey?: string;
+        /** Alternate column to match in parallel (e.g. `wetlandtype2`). */
+        alternateField?: string;
         /** When set, UI renders as a checkbox grid with color swatches. */
         optionSwatches?: Record<string, string>;
         /** Visual stroke color per option, mirrors `circleStrokeColorMatch`. */

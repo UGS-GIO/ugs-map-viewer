@@ -3,11 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import { fetchStacAssetHref } from '@/lib/map/stac/stac-layer';
 import type { FilterSchema } from '@/lib/filter/types';
 
-export const useSchemaParquetUrl = (schema: FilterSchema) => {
+export const useSchemaParquetUrl = (schema: FilterSchema, assetKey: string = 'data') => {
     const stacItemId = schema.stacItemId;
     const { data } = useQuery({
-        queryKey: ['schema-parquet-url', stacItemId],
-        queryFn: () => fetchStacAssetHref(stacItemId!, 'data').then(href => href ?? null),
+        queryKey: ['schema-parquet-url', stacItemId, assetKey],
+        queryFn: () => fetchStacAssetHref(stacItemId!, assetKey).then(href => href ?? null),
         enabled: !!stacItemId,
         staleTime: 1000 * 60 * 30,
     });
