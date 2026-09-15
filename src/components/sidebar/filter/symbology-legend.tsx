@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useLayerFilter } from '@/hooks/use-layer-filter'
 import { useDistinctFieldOptions } from '@/hooks/use-distinct-field-options'
+import { orderedCategories } from '@/lib/filter/legend-categories'
 import type { FilterSchema, FilterFieldKind } from '@/lib/filter/types'
 import type { PMTilesLayerProps, PMTilesRender, LegendEntry } from '@/lib/types/mapping-types'
 
@@ -26,6 +27,9 @@ import type { PMTilesLayerProps, PMTilesRender, LegendEntry } from '@/lib/types/
 // Sentinel emitted when every category is unchecked ("None") so the map shows nothing —
 // an empty multiSelect means "no filter = all", the opposite of an all-off legend.
 const NONE_SENTINEL = '__none__'
+
+// Module-scoped to keep the unfiltered query's key stable across renders.
+const EMPTY_FILTER_STATE = {} as const
 
 // A colour group derived from a legend entry that carries `values` (grouped renders,
 // e.g. box types → Core/Cuttings/Other). `color` is the group's base hue (header); each
@@ -99,13 +103,13 @@ export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
 function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; field: FilterFieldKind; entries: readonly LegendEntry[] }) {
     const mgr = useLayerFilter(schema)
     const isContains = field.kind === 'containsAny'
-    const { data, isLoading } = useDistinctFieldOptions({ schema, state: mgr.state, field, splitCommaDelimited: isContains })
+    const { data, isLoading, isPlaceholderData } = useDistinctFieldOptions({ schema, state: mgr.state, field, splitCommaDelimited: isContains })
+    // Unfiltered, for the category list — see orderedCategories.
+    const allValues = useDistinctFieldOptions({ schema, state: EMPTY_FILTER_STATE, field, splitCommaDelimited: isContains })
     const counts = data?.counts ?? {}
-    // All distinct values, ordered by feature count (desc), alpha tiebreak.
     const options = useMemo(() => {
-        const c = data?.counts ?? {}
-        return [...(data?.options ?? [])].sort((a, b) => (c[b] ?? 0) - (c[a] ?? 0) || a.localeCompare(b))
-    }, [data])
+        return orderedCategories(allValues.data?.options, data?.options, data?.counts)
+    }, [allValues.data, data])
 
     // Colour per value, derived from the render's legend. Flat renders: entry label == value.
     // Grouped renders: each group's `values` carry per-item shades. `stroke` is a flat-render
@@ -154,7 +158,10 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
         emit(next)
     }
 
-    if (isLoading) return <p className="text-xs text-muted-foreground px-1">Loading…</p>
+    // Both queries must be on the current field; keepPreviousData can leave either behind.
+    if (isLoading || isPlaceholderData || allValues.isLoading || allValues.isPlaceholderData) {
+        return <p className="text-xs text-muted-foreground px-1">Loading…</p>
+    }
     if (options.length === 0) return null
 
     // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens.
@@ -176,7 +183,7 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                     )}
                     <span className="min-w-0 break-words leading-tight">
                         {displayLabel(value)}
-                        {counts[value] != null && <span className="ml-1 text-muted-foreground">({counts[value].toLocaleString()})</span>}
+                        <span className="ml-1 text-muted-foreground">({(counts[value] ?? 0).toLocaleString()})</span>
                     </span>
                 </label>
             ))}
@@ -237,11 +244,9 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                                 <span className="inline-block w-3 h-3 rounded-full shrink-0 border" style={{ backgroundColor: g.color, borderColor: 'rgba(0,0,0,0.3)' }} />
                                 <Label className="text-xs font-semibold cursor-pointer">
                                     {g.label}
-                                    {total > 0 && (
-                                        <span className="ml-1 font-normal text-muted-foreground">
-                                            ({shown === total ? total.toLocaleString() : `${shown.toLocaleString()}/${total.toLocaleString()}`})
-                                        </span>
-                                    )}
+                                    <span className="ml-1 font-normal text-muted-foreground">
+                                        ({shown === total ? total.toLocaleString() : `${shown.toLocaleString()}/${total.toLocaleString()}`})
+                                    </span>
                                 </Label>
                             </label>
                             <div className="pl-4">{renderRows(items, !shadesMatchGroup)}</div>
