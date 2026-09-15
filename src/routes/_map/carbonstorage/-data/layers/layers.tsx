@@ -1392,12 +1392,14 @@ const nonPetroleumCatLayerConfig: WMSLayerProps = {
 */
 
 
-// NetCarb Locations Layer — STAC-driven: pmtilesUrl, sourceLayer, and related
+// NatCarb Locations Layer — STAC-driven: pmtilesUrl, sourceLayer, and related
 // table (enmin_ccs_natcarb_measurement) come from the warehouse item `enmin_ccs_natcarb_location`.
-const netCarbLocationsLayerName = 'enmin_ccs_natcarb_location';
-export const netCarbLocationsTitle = 'NetCarb Locations';
+const natCarbLocationsLayerName = 'enmin_ccs_natcarb_location';
+export const natCarbLocationsTitle = 'NatCarb Locations';
 
-const defaultNetCarbStyle = `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify({
+// Temporary inline style until published to @ugs-gio/ugs-styles. Once published in the STAC
+// catalog renders extension, delete this defaultNatCarbStyle and the renders array below.
+const defaultNatCarbStyle = `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify({
     layers: [
         {
             id: 'enmin_ccs_natcarb_location-fill',
@@ -1420,23 +1422,23 @@ const defaultNetCarbStyle = `data:application/json;charset=utf-8,${encodeURIComp
     ],
 }))}`;
 
-export const netCarbLocationsConfig: PMTilesLayerProps = {
+export const natCarbLocationsConfig: PMTilesLayerProps = {
     type: 'pmtiles',
-    stacItemId: netCarbLocationsLayerName,
+    stacItemId: natCarbLocationsLayerName,
     pmtilesUrl: '',
-    sourceLayer: netCarbLocationsLayerName,
-    title: netCarbLocationsTitle,
+    sourceLayer: natCarbLocationsLayerName,
+    title: natCarbLocationsTitle,
     visible: false,
     opacity: 1,
     sourceAgency: 'Utah Geological Survey',
     renders: [
         {
             id: 'default',
-            title: 'NetCarb Locations',
-            styleUrl: defaultNetCarbStyle,
+            title: 'NatCarb Locations',
+            styleUrl: defaultNatCarbStyle,
             legend: [
                 {
-                    label: 'NetCarb Grid Cell',
+                    label: 'NatCarb Grid Cell',
                     color: 'rgba(2, 132, 199, 0.25)',
                     stroke: '#0369a1',
                 },
@@ -1445,7 +1447,7 @@ export const netCarbLocationsConfig: PMTilesLayerProps = {
     ],
     sublayers: [
         {
-            name: netCarbLocationsLayerName,
+            name: natCarbLocationsLayerName,
             popupEnabled: true,
             queryable: true,
             popupFields: {
@@ -1489,7 +1491,7 @@ const ccsResourcesConfig: LayerProps = {
         sitlaReportsWMSConfig,
         ccsExclusionAreasWMSConfig,
         ccusProjectsWMSConfig,
-        netCarbLocationsConfig,
+        natCarbLocationsConfig,
     ]
 }
 
