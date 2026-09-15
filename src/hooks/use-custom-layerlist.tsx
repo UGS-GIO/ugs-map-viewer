@@ -26,6 +26,8 @@ interface LayerAccordionItemProps {
     layerConfig: LayerProps;
     isTopLevel: boolean;
     disableExport?: boolean;
+    /** Optional predicate to check if a layer has filters without rendering JSX */
+    hasLayerFilters?: (layerTitle: string) => boolean;
     /** Optional render-prop for content shown inside a group's accordion */
     groupExtrasRender?: (groupTitle: string) => React.ReactNode;
     /** Optional render-prop for content shown inside a single layer's accordion */
@@ -63,7 +65,7 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
     );
 }
 
-const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: LayerAccordionItemProps) => {
+const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFilters, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: LayerAccordionItemProps) => {
     const {
         isSelected,
         handleToggleSelection,
@@ -82,7 +84,12 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
             return groupCheckboxState === 'all' || groupCheckboxState === 'some';
         }
 
-        // If it's not a group, it's a single layer. ALWAYS start collapsed.
+        // Expand layers with custom filters by default so controls are immediately visible.
+        if (layerConfig.title && hasLayerFilters?.(layerConfig.title)) {
+            return true;
+        }
+
+        // If it's not a group and has no filters, start collapsed.
         return false;
     });
 
@@ -390,7 +397,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
 };
 
 
-export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: { config: LayerProps[] | null; disableExport?: boolean; groupExtrasRender?: (groupTitle: string) => React.ReactNode; layerExtrasRender?: (layerTitle: string) => React.ReactNode; layerStatsRender?: (layerTitle: string) => React.ReactNode; layerLegendRender?: (layer: LayerProps) => React.ReactNode }) => {
+export const useCustomLayerList = ({ config, disableExport, hasLayerFilters, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: { config: LayerProps[] | null; disableExport?: boolean; hasLayerFilters?: (layerTitle: string) => boolean; groupExtrasRender?: (groupTitle: string) => React.ReactNode; layerExtrasRender?: (layerTitle: string) => React.ReactNode; layerStatsRender?: (layerTitle: string) => React.ReactNode; layerLegendRender?: (layer: LayerProps) => React.ReactNode }) => {
 
     const layerList = useMemo(() => {
         if (!config) return [];
@@ -401,6 +408,7 @@ export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, l
                     layerConfig={layer}
                     isTopLevel={true}
                     disableExport={disableExport}
+                    hasLayerFilters={hasLayerFilters}
                     groupExtrasRender={groupExtrasRender}
                     layerExtrasRender={layerExtrasRender}
                     layerStatsRender={layerStatsRender}
@@ -408,7 +416,7 @@ export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, l
                 />
             )
         });
-    }, [config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender]);
+    }, [config, disableExport, hasLayerFilters, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender]);
 
     return layerList;
 };
