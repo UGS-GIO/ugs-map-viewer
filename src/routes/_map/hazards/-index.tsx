@@ -30,10 +30,13 @@ export default function Map() {
       parquetUrl: parquetUrl('hazards_qfaults'),
       layerName: qFaultsWMSTitle,
       sourceName: 'Faults',
-      // `concatnames` was assembled by the search_fault_data RPC; the warehouse stores the
-      // three parts separately. Same join, same skip-the-empties, same output.
+      // `concatnames` was assembled by the search_fault_data RPC from these four columns.
+      // All four are needed: 195 faults carry only `faultname`, and 15 more name something
+      // the zone/section/strand parts don't (Utah Lake faults → "Saratoga Springs main
+      // fault"). Unlike the RPC this drops empties and the literal '<Null>', so labels come
+      // out clean rather than as " - Cross Hollow Hills faults -  - ".
       derivedFields: {
-        concatnames: `array_to_string(list_filter([faultzone, sectionname, strandname], x -> x IS NOT NULL AND x <> ''), ' - ')`,
+        concatnames: `array_to_string(list_filter([faultzone, faultname, sectionname, strandname], x -> x IS NOT NULL AND x <> '' AND x <> '<Null>'), ' - ')`,
       },
       displayField: 'concatnames',
       // Keyed on the assembled name, not `faultnum`: one fault number covers every section
