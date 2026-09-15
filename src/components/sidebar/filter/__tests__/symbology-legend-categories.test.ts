@@ -1,10 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { orderedCategories } from '../symbology-legend';
 
-/**
- * The category list must survive a filter on another field — building it from filtered rows
- * is what made categories disappear when the symbology was switched.
- */
+// Category list must survive a filter on another field.
 describe('orderedCategories', () => {
     const allValues = ['CUTTINGS', 'WHOLE CORE', 'SLABS', 'CORE'];
 

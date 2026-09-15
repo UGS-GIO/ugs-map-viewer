@@ -3,10 +3,6 @@ import { toMaplibreFilter, toSqlPredicates, toCql } from '../generators';
 import { fromCql } from '../parse';
 import type { FilterSchema, FilterState } from '../types';
 
-/**
- * `box_type_codes` holds a comma-delimited cell ("CORE CHIPS,CUTTINGS"), so matching has to
- * be token-for-token — substring matching made `CORE` select 1,417 wells instead of 1.
- */
 const schema: FilterSchema = {
     recordKey: 'Utah Core Research Center Inventory',
     fields: [{ kind: 'containsAny', field: 'box_type_codes', label: 'Sample Type' }],
@@ -16,6 +12,7 @@ const state = (...values: string[]): FilterState => ({
     box_type_codes: { kind: 'containsAny', values },
 });
 
+// box_type_codes is comma-delimited; substring matching made CORE select 1,417 wells, not 1.
 describe('containsAny → maplibre', () => {
     it('wraps both the cell and the token in the delimiter', () => {
         expect(toMaplibreFilter(schema, state('CORE'))).toEqual([
@@ -43,25 +40,23 @@ describe('containsAny → maplibre', () => {
 });
 
 describe('containsAny → SQL', () => {
-    it('delimits both sides so a token only matches a whole token', () => {
+    it('splits the cell and compares tokens rather than pattern-matching', () => {
         expect(toSqlPredicates(schema, state('CORE'))).toEqual([
-            `((',' || CAST("box_type_codes" AS VARCHAR) || ',') ILIKE '%,CORE,%')`,
+            `(list_contains(list_transform(string_split(CAST("box_type_codes" AS VARCHAR), ','), x -> trim(x)), 'CORE'))`,
         ]);
+    });
+
+    it('leaves LIKE metacharacters inert', () => {
+        const [sql] = toSqlPredicates(schema, state('__none__'));
+        expect(sql).not.toContain('ILIKE');
+        expect(sql).toContain(`'__none__'`);
     });
 
     it('ORs multiple tokens inside one clause', () => {
         const [sql] = toSqlPredicates(schema, state('CORE', 'SLABS'));
-        expect(sql).toContain(`'%,CORE,%'`);
-        expect(sql).toContain(`'%,SLABS,%'`);
+        expect(sql).toContain(`'CORE'`);
+        expect(sql).toContain(`'SLABS'`);
         expect(sql).toContain(' OR ');
-    });
-
-    it('matches a token at either end of the cell, not just the middle', () => {
-        // ',' || 'CORE CHIPS,CUTTINGS' || ',' = ',CORE CHIPS,CUTTINGS,'
-        const cell = ',CORE CHIPS,CUTTINGS,';
-        expect(cell.includes(',CUTTINGS,')).toBe(true);
-        expect(cell.includes(',CORE CHIPS,')).toBe(true);
-        expect(cell.includes(',CORE,')).toBe(false);
     });
 
     it('is empty when nothing is selected', () => {
@@ -69,10 +64,7 @@ describe('containsAny → SQL', () => {
     });
 });
 
-/**
- * CQL is the URL encoding, not the query that runs, so it still reads `LIKE '%CORE%'`. Only
- * the round trip has to hold — tightening the CQL later means changing `likeValuesForField`.
- */
+// CQL is URL encoding, not the query that runs — only the round trip has to hold.
 describe('containsAny → CQL round trip', () => {
     it('recovers a single value', () => {
         const parsed = fromCql(schema, toCql(schema, state('CORE')));

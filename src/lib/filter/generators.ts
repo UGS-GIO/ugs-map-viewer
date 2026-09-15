@@ -154,6 +154,8 @@ const fieldToPostgrestParts = (field: FilterFieldKind, state: FilterState): stri
             if (v.kind !== 'multiSelect' || v.values.length === 0) return [];
             return [`${field.field}=in.(${v.values.map(encodeInValue).join(',')})`];
         case 'containsAny': {
+            // Still substring: PostgREST can't concat delimiters onto the column. Dormant —
+            // the only containsAny field takes the parquet branch. Fix before adding another.
             if (v.kind !== 'containsAny' || v.values.length === 0) return [];
             const clauses = v.values.map(val => `${field.field}.ilike.*${encodeLikeValue(val)}*`);
             return clauses.length === 1
@@ -205,10 +207,10 @@ const fieldToSqlParts = (field: FilterFieldKind, state: FilterState): string[] =
             if (v.kind !== 'multiSelect' || v.values.length === 0) return [];
             return [`CAST(${col} AS VARCHAR) IN (${v.values.map(sqlLiteral).join(',')})`];
         case 'containsAny': {
-            // Delimiter-wrapped like the maplibre `containsAny` above.
+            // Split-and-compare, not LIKE: `%`/`_` in a value would act as wildcards.
             if (v.kind !== 'containsAny' || v.values.length === 0) return [];
-            const delimited = `(',' || CAST(${col} AS VARCHAR) || ',')`;
-            const clauses = v.values.map(val => `${delimited} ILIKE ${sqlLiteral(`%,${val},%`)}`);
+            const tokens = `list_transform(string_split(CAST(${col} AS VARCHAR), ','), x -> trim(x))`;
+            const clauses = v.values.map(val => `list_contains(${tokens}, ${sqlLiteral(val)})`);
             return [`(${clauses.join(' OR ')})`];
         }
         case 'range': {

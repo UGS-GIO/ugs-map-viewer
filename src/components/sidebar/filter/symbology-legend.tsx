@@ -172,7 +172,10 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
         emit(next)
     }
 
-    if (isLoading) return <p className="text-xs text-muted-foreground px-1">Loading…</p>
+    // Both queries must be on the current field; keepPreviousData can leave one behind.
+    if (isLoading || allValues.isLoading || allValues.isPlaceholderData) {
+        return <p className="text-xs text-muted-foreground px-1">Loading…</p>
+    }
     if (options.length === 0) return null
 
     // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens.
@@ -194,7 +197,7 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                     )}
                     <span className="min-w-0 break-words leading-tight">
                         {displayLabel(value)}
-                        {counts[value] != null && <span className="ml-1 text-muted-foreground">({counts[value].toLocaleString()})</span>}
+                        <span className="ml-1 text-muted-foreground">({(counts[value] ?? 0).toLocaleString()})</span>
                     </span>
                 </label>
             ))}
