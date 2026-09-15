@@ -1395,7 +1395,7 @@ const nonPetroleumCatLayerConfig: WMSLayerProps = {
 // NatCarb Locations Layer — STAC-driven: pmtilesUrl, sourceLayer, and related
 // table (enmin_ccs_natcarb_measurement) come from the warehouse item `enmin_ccs_natcarb_location`.
 const natCarbLocationsLayerName = 'enmin_ccs_natcarb_location';
-export const natCarbLocationsTitle = 'NatCarb Locations';
+export const natCarbLocationsTitle = 'NATCARB Atlas (2015)';
 
 // Temporary inline style until published to @ugs-gio/ugs-styles. Once published in the STAC
 // catalog renders extension, delete this defaultNatCarbStyle and the renders array below.
@@ -1406,8 +1406,8 @@ const defaultNatCarbStyle = `data:application/json;charset=utf-8,${encodeURIComp
             type: 'fill',
             'source-layer': 'enmin_ccs_natcarb_location',
             paint: {
-                'fill-color': '#0284c7',
-                'fill-opacity': 0.25,
+                'fill-color': '#d2b48c',
+                'fill-opacity': 0.3,
             },
         },
         {
@@ -1415,7 +1415,7 @@ const defaultNatCarbStyle = `data:application/json;charset=utf-8,${encodeURIComp
             type: 'line',
             'source-layer': 'enmin_ccs_natcarb_location',
             paint: {
-                'line-color': '#0369a1',
+                'line-color': '#8b6d47',
                 'line-width': 1.5,
             },
         },
@@ -1434,13 +1434,13 @@ export const natCarbLocationsConfig: PMTilesLayerProps = {
     renders: [
         {
             id: 'default',
-            title: 'NatCarb Locations',
+            title: 'NATCARB Atlas (2015)',
             styleUrl: defaultNatCarbStyle,
             legend: [
                 {
-                    label: 'NatCarb Grid Cell',
-                    color: 'rgba(2, 132, 199, 0.25)',
-                    stroke: '#0369a1',
+                    label: 'NATCARB Grid Cell',
+                    color: 'rgba(210, 180, 140, 0.3)',
+                    stroke: '#8b6d47',
                 },
             ],
         },
@@ -1450,13 +1450,10 @@ export const natCarbLocationsConfig: PMTilesLayerProps = {
             name: natCarbLocationsLayerName,
             popupEnabled: true,
             queryable: true,
-            popupFields: {
-                'Grid Cell': { field: 'col_row', type: 'string' },
-                'Cell ID': { field: 'col_row_label', type: 'string' },
-            },
+            popupFields: {},
             relatedTables: [
                 {
-                    fieldLabel: 'Measurements',
+                    fieldLabel: 'Project Data',
                     stacAsset: 'enmin_ccs_natcarb_measurement',
                     displayAs: 'table',
                     displayFields: [
@@ -1471,7 +1468,7 @@ export const natCarbLocationsConfig: PMTilesLayerProps = {
                         { field: 'porosity_p', label: 'Porosity (%)', format: 'number' },
                         { field: 'permeabili', label: 'Permeability (mD)', format: 'number' },
                     ],
-                    sortBy: 'resource_n',
+                    sortBy: 'depth_ft',
                     sortDirection: 'asc',
                 },
             ],
