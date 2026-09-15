@@ -230,33 +230,30 @@ export async function fetchParquetResults(
         .map(quoteIdent)
         .join(', ');
 
+    // One suggestion per distinct row *as shown*, deduped before the LIMIT rather than
+    // after. A layer stored as segments repeats one name over thousands of rows, so a
+    // plain LIMIT 100 fills with a single fault ("wasatch" gave 1 suggestion, not 24).
+    // The key is display + secondary together: PLSS shares one label across its 36
+    // sections, and only the pair tells those apart.
     const rows = await withConnection(async (conn) => {
         const result = await conn.query(
             `SELECT * FROM ${from} WHERE ${whereClause}` +
+            ` QUALIFY row_number() OVER (PARTITION BY ${orderFields || quoteIdent(source.displayField)}` +
+            (orderFields ? ` ORDER BY ${orderFields}` : '') + `) = 1` +
             (orderFields ? ` ORDER BY ${orderFields}` : '') +
             ` LIMIT 100`,
         );
         return result.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>));
     });
 
-    // A layer split into segments (faults, say) repeats one display name across many rows.
-    // The RPCs these sources replaced returned DISTINCT, so collapse to the first row per
-    // display value — anything past the first is the same suggestion twice.
-    const seen = new Set<string>();
-    const features: Feature<Geometry, GeoJsonProperties>[] = [];
-    for (const row of rows) {
-        const label = String(row[source.displayField] ?? '');
-        if (!label || seen.has(label)) continue;
-        seen.add(label);
-        features.push({
-            type: 'Feature' as const,
-            id: features.length,
-            geometry: null as unknown as Geometry,
-            properties: source.groupByMatch
-                ? { ...row, [source.groupByField ?? 'match_type']: matchGroup(row, source.groupByMatch, tokens) }
-                : row,
-        });
-    }
+    const features: Feature<Geometry, GeoJsonProperties>[] = rows.map((row, idx) => ({
+        type: 'Feature' as const,
+        id: idx,
+        geometry: null as unknown as Geometry,
+        properties: source.groupByMatch
+            ? { ...row, [source.groupByField ?? 'match_type']: matchGroup(row, source.groupByMatch, tokens) }
+            : row,
+    }));
 
     return featureCollection(features);
 }
