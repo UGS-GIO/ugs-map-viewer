@@ -689,91 +689,6 @@ const faultsConfig: PMTilesLayerProps = {
     ],
 };
 
-// NetCarb Locations Layer — STAC-driven: pmtilesUrl, sourceLayer, and related
-// table (enmin_ccs_natcarb_measurement) come from the warehouse item `enmin_ccs_natcarb_location`.
-const netCarbLocationsLayerName = 'enmin_ccs_natcarb_location';
-export const netCarbLocationsTitle = 'NetCarb Locations';
-
-const defaultNetCarbStyle = `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify({
-    layers: [
-        {
-            id: 'enmin_ccs_natcarb_location-fill',
-            type: 'fill',
-            'source-layer': 'enmin_ccs_natcarb_location',
-            paint: {
-                'fill-color': '#0284c7',
-                'fill-opacity': 0.25,
-            },
-        },
-        {
-            id: 'enmin_ccs_natcarb_location-line',
-            type: 'line',
-            'source-layer': 'enmin_ccs_natcarb_location',
-            paint: {
-                'line-color': '#0369a1',
-                'line-width': 1.5,
-            },
-        },
-    ],
-}))}`;
-
-export const netCarbLocationsConfig: PMTilesLayerProps = {
-    type: 'pmtiles',
-    stacItemId: netCarbLocationsLayerName,
-    pmtilesUrl: '',
-    sourceLayer: netCarbLocationsLayerName,
-    title: netCarbLocationsTitle,
-    visible: false,
-    opacity: 1,
-    sourceAgency: 'Utah Geological Survey',
-    renders: [
-        {
-            id: 'default',
-            title: 'NetCarb Locations',
-            styleUrl: defaultNetCarbStyle,
-            legend: [
-                {
-                    label: 'NetCarb Grid Cell',
-                    color: 'rgba(2, 132, 199, 0.25)',
-                    stroke: '#0369a1',
-                },
-            ],
-        },
-    ],
-    sublayers: [
-        {
-            name: netCarbLocationsLayerName,
-            popupEnabled: true,
-            queryable: true,
-            popupFields: {
-                'Grid Cell': { field: 'col_row', type: 'string' },
-                'Cell ID': { field: 'col_row_label', type: 'string' },
-            },
-            relatedTables: [
-                {
-                    fieldLabel: 'Measurements',
-                    stacAsset: 'enmin_ccs_natcarb_measurement',
-                    displayAs: 'table',
-                    displayFields: [
-                        { field: 'resource_n', label: 'Resource Name' },
-                        { field: 'vol_low', label: 'Vol Low (Mt)', format: 'number' },
-                        { field: 'vol_med', label: 'Vol Med (Mt)', format: 'number' },
-                        { field: 'vol_high', label: 'Vol High (Mt)', format: 'number' },
-                        { field: 'depth_ft', label: 'Depth (ft)', format: 'number' },
-                        { field: 'thickness_', label: 'Thickness (ft)', format: 'number' },
-                        { field: 'temperatur', label: 'Temp (°F)', format: 'number' },
-                        { field: 'pressure_p', label: 'Pressure (psi)', format: 'number' },
-                        { field: 'porosity_p', label: 'Porosity (%)', format: 'number' },
-                        { field: 'permeabili', label: 'Permeability (mD)', format: 'number' },
-                    ],
-                    sortBy: 'resource_n',
-                    sortDirection: 'asc',
-                },
-            ],
-        },
-    ],
-};
-
 // Group configurations
 const ccsResourcesConfig: LayerProps = {
     type: 'group',
@@ -784,8 +699,7 @@ const ccsResourcesConfig: LayerProps = {
         basinNamesConfig,
         co2SourcesConfig,
         sitlaReportsConfig,
-        ccsExclusionAreasConfig,
-        netCarbLocationsConfig,
+        ccsExclusionAreasConfig
     ]
 };
 
