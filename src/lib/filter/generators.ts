@@ -21,6 +21,8 @@ const cqlOrClause = (field: string, values: string[]): string | null => {
     return parts.length === 1 ? parts[0] : `(${parts.join(' OR ')})`;
 };
 
+// Still substring, like the PostgREST branch. Only URL persistence today; fix before any
+// containsAny field reaches a GeoServer cql_filter.
 const cqlLikeAnyClause = (field: string, values: string[]): string | null => {
     if (values.length === 0) return null;
     const parts = values.map(v => `${field} LIKE '%${escapeCqlLiteral(v)}%'`);
@@ -73,6 +75,8 @@ const inAnyOf = (field: string, values: string[]): Expr | null =>
 /**
  * Whole-token match on a comma-delimited cell. Both sides are wrapped in the delimiter —
  * unwrapped, `CORE` also matched `CORE CHIPS` and `WHOLE CORE` (1,417 wells, not 1).
+ * No trim: maplibre has no split/trim, so a cell written `A, B` would miss here while the
+ * SQL counts include it. Data has no spaced delimiters today.
  */
 const containsAny = (field: string, values: string[]): Expr | null => {
     if (values.length === 0) return null;

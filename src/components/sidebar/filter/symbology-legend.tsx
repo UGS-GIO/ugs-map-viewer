@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useLayerFilter } from '@/hooks/use-layer-filter'
 import { useDistinctFieldOptions } from '@/hooks/use-distinct-field-options'
+import { orderedCategories } from '@/lib/filter/legend-categories'
 import type { FilterSchema, FilterFieldKind } from '@/lib/filter/types'
 import type { PMTilesLayerProps, PMTilesRender, LegendEntry } from '@/lib/types/mapping-types'
 
@@ -29,21 +30,6 @@ const NONE_SENTINEL = '__none__'
 
 // Module-scoped to keep the unfiltered query's key stable across renders.
 const EMPTY_FILTER_STATE = {} as const
-
-/**
- * Categories to offer, ordered by current match count. Drawn from `allValues` (unfiltered)
- * so filtering one field can't remove another field's categories when the symbology switches;
- * counts stay filtered, so a category can sit at zero. `filtered` covers the loading gap.
- */
-export function orderedCategories(
-    allValues: readonly string[] | undefined,
-    filtered: readonly string[] | undefined,
-    counts: Record<string, number> | undefined,
-): string[] {
-    const c = counts ?? {}
-    return [...(allValues ?? filtered ?? [])]
-        .sort((a, b) => (c[b] ?? 0) - (c[a] ?? 0) || a.localeCompare(b))
-}
 
 // A colour group derived from a legend entry that carries `values` (grouped renders,
 // e.g. box types → Core/Cuttings/Other). `color` is the group's base hue (header); each
@@ -117,7 +103,7 @@ export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
 function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; field: FilterFieldKind; entries: readonly LegendEntry[] }) {
     const mgr = useLayerFilter(schema)
     const isContains = field.kind === 'containsAny'
-    const { data, isLoading } = useDistinctFieldOptions({ schema, state: mgr.state, field, splitCommaDelimited: isContains })
+    const { data, isLoading, isPlaceholderData } = useDistinctFieldOptions({ schema, state: mgr.state, field, splitCommaDelimited: isContains })
     // Unfiltered, for the category list — see orderedCategories.
     const allValues = useDistinctFieldOptions({ schema, state: EMPTY_FILTER_STATE, field, splitCommaDelimited: isContains })
     const counts = data?.counts ?? {}
@@ -172,8 +158,8 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
         emit(next)
     }
 
-    // Both queries must be on the current field; keepPreviousData can leave one behind.
-    if (isLoading || allValues.isLoading || allValues.isPlaceholderData) {
+    // Both queries must be on the current field; keepPreviousData can leave either behind.
+    if (isLoading || isPlaceholderData || allValues.isLoading || allValues.isPlaceholderData) {
         return <p className="text-xs text-muted-foreground px-1">Loading…</p>
     }
     if (options.length === 0) return null
@@ -258,11 +244,9 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                                 <span className="inline-block w-3 h-3 rounded-full shrink-0 border" style={{ backgroundColor: g.color, borderColor: 'rgba(0,0,0,0.3)' }} />
                                 <Label className="text-xs font-semibold cursor-pointer">
                                     {g.label}
-                                    {total > 0 && (
-                                        <span className="ml-1 font-normal text-muted-foreground">
-                                            ({shown === total ? total.toLocaleString() : `${shown.toLocaleString()}/${total.toLocaleString()}`})
-                                        </span>
-                                    )}
+                                    <span className="ml-1 font-normal text-muted-foreground">
+                                        ({shown === total ? total.toLocaleString() : `${shown.toLocaleString()}/${total.toLocaleString()}`})
+                                    </span>
                                 </Label>
                             </label>
                             <div className="pl-4">{renderRows(items, !shadesMatchGroup)}</div>

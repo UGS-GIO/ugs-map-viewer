@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { orderedCategories } from '../symbology-legend';
+import { orderedCategories } from '@/lib/filter/legend-categories';
 
 // Category list must survive a filter on another field.
 describe('orderedCategories', () => {
