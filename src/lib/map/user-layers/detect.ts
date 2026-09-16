@@ -171,9 +171,14 @@ async function buildFromStacItem(item: StacItem, title: string, itemHref?: strin
     if (hasPmtiles) {
         return { ...resolveStacPMTilesLayer(item, { stacItemId: item.id, title, visible: true }), userAdded: true }
     }
-    const cog = Object.values(item.assets ?? {}).find(
-        a => a.type?.includes('image/tiff') || a.roles?.includes('data'),
-    )
+    // Prefer visual Web Mercator (EPSG:3857) GeoTIFF, otherwise any GeoTIFF asset
+    const cog = item.assets?.visual
+        ?? Object.values(item.assets ?? {}).find(
+            a => a.roles?.includes('visual') && (a.type?.includes('image/tiff') || a.href?.match(/\.(tif|tiff)$/i)),
+        )
+        ?? Object.values(item.assets ?? {}).find(
+            a => (a.type?.includes('image/tiff') || a.type?.includes('geotiff') || a.href?.match(/\.(tif|tiff)$/i)),
+        )
     // Pass the item href so the COG can fall back to the item's raster:bands stats.
     if (cog?.href) return buildCOG(cog.href, title, itemHref)
     throw new Error(`STAC item '${item.id}' has no PMTiles or COG asset to render.`)
@@ -191,10 +196,14 @@ async function fetchStacItemFromUrl(url: string): Promise<StacItem> {
 /** Resolve a STAC item id (serving-topics collection) or a direct item URL. */
 async function buildFromStac(input: string, title: string): Promise<LayerProps> {
     // Direct item URL?
-    if (/^https?:\/\//i.test(input) && input.toLowerCase().endsWith('.json')) {
+    if (/^https?:\/\//i.test(input) && (input.toLowerCase().endsWith('.json') || input.toLowerCase().includes('/stac/'))) {
         const item = await fetchStacItemFromUrl(input)
+        const docType = (item as unknown as { type?: string }).type
+        if (docType === 'Catalog' || docType === 'Collection') {
+            throw new Error(`"${input}" is a STAC ${docType}, not an individual Item. Use the STAC explorer to select a layer from it.`)
+        }
         // GeoJSON masquerading as .json (no stac_version) → treat as GeoJSON.
-        if (!('stac_version' in item) && (item as unknown as { type?: string }).type === 'FeatureCollection') {
+        if (!('stac_version' in item) && docType === 'FeatureCollection') {
             return buildGeoJSONFromUrl(input, title)
         }
         return buildFromStacItem(item, title || item.id, input)
