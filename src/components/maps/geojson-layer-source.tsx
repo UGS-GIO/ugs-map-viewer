@@ -24,6 +24,14 @@ export function getGeojsonLayerId(layer: GeoJSONLayerProps): string {
     return `geojson-layer-${layer.title}`
 }
 
+/** Type + first coordinate — enough to tell co-located-attribute features apart when a source carries no ids. */
+function geometrySignature(geometry: GeoJSON.Geometry): string {
+    if (geometry.type === 'GeometryCollection') return `GeometryCollection:${geometry.geometries.length}`
+    let c: unknown = geometry.coordinates
+    while (Array.isArray(c) && Array.isArray(c[0])) c = c[0]
+    return `${geometry.type}:${Array.isArray(c) ? c.join(',') : ''}`
+}
+
 /**
  * Query rendered user-GeoJSON features at a point (with screen tolerance), mapped
  * to the `WfsLayerFeature` shape the popup pipeline consumes. Mirrors
@@ -59,12 +67,12 @@ export function queryGeojsonLayersAtPoint(
     for (const f of map.queryRenderedFeatures(bbox, { layers: ids })) {
         const meta = map.getLayer(f.layer.id)?.metadata as { title?: string } | undefined
         const layerTitle = meta?.title || 'Unknown Layer'
-        const id = f.id ?? 0
-        const key = `${layerTitle}:${id}`
+        const id = f.id ?? (f.properties?.id as string | number | undefined) ?? 0
+        const key = `${layerTitle}|${id || `${JSON.stringify(f.properties)}|${geometrySignature(f.geometry)}`}`
         if (seen.has(key)) continue
         seen.add(key)
         out.push({
-            id,
+            id: id || key,
             properties: f.properties as Record<string, unknown>,
             geometry: f.geometry,
             layerTitle,

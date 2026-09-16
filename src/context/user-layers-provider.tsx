@@ -14,7 +14,7 @@
  * layers itself — the add-layer dialog (inside both providers) calls
  * `useLayerUrl().updateLayerSelection` after adding.
  */
-import { createContext, useContext, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useSearch, useNavigate } from '@tanstack/react-router'
 import { toast } from 'sonner'
 import type { LayerProps } from '@/lib/types/mapping-types'
@@ -87,6 +87,20 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
     const [uploads, setUploads] = useState<UploadedLayer[]>([])
     const [isBuilding, setIsBuilding] = useState(false)
     const [isHydrated, setIsHydrated] = useState(false)
+
+    const uploadsRef = useRef<UploadedLayer[]>(uploads)
+    uploadsRef.current = uploads
+
+    // Cleanup active COG blob URLs on unmount so file bytes don't leak in memory.
+    useEffect(() => {
+        return () => {
+            for (const u of uploadsRef.current) {
+                if (u.type === 'cog' && u.cogUrl?.startsWith('blob:')) {
+                    URL.revokeObjectURL(u.cogUrl)
+                }
+            }
+        }
+    }, [])
 
     // Rebuild remote layers whenever the URL recipes change.
     useEffect(() => {
