@@ -16,6 +16,7 @@
  */
 import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useSearch, useNavigate } from '@tanstack/react-router'
+import { useQueries } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { LayerProps } from '@/lib/types/mapping-types'
 import { buildLayerFromUrl, objectUrlForCog, type DetectedFormat, type UploadedLayer } from '@/lib/map/user-layers/detect'
@@ -81,11 +82,37 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
     const { userLayers: urlRecipes } = useSearch({ from: '/_map' }) as { userLayers?: UserLayerRecipe[] }
 
     const recipes = useMemo(() => urlRecipes ?? [], [urlRecipes])
-    const recipesKey = useMemo(() => JSON.stringify(recipes), [recipes])
 
-    const [remoteBuilt, setRemoteBuilt] = useState<LayerProps[]>([])
+    // Declaratively resolve remote layers from URL search params via React Query.
+    // Zero useEffects, no stale state tearing or double-navigation race conditions.
+    const remoteQueries = useQueries({
+        queries: recipes.map(r => ({
+            queryKey: ['user-remote-layer', r.url, r.title, r.format, r.wmsLayerName],
+            queryFn: async (): Promise<LayerProps | null> => {
+                try {
+                    return await buildLayerFromUrl(r.url, {
+                        title: r.title,
+                        format: r.format,
+                        wmsLayerName: r.wmsLayerName,
+                    })
+                } catch (e) {
+                    console.error(`[user-layers] failed to build "${r.title}" from ${r.url}:`, e)
+                    toast.error(`Couldn't load layer "${r.title}"`, {
+                        description: e instanceof Error ? e.message : String(e),
+                    })
+                    return null
+                }
+            },
+            staleTime: Infinity,
+        })),
+    })
+
+    const remoteBuilt = useMemo(() => {
+        return remoteQueries.map(q => q.data).filter((l): l is LayerProps => l != null)
+    }, [remoteQueries])
+
+    const isBuilding = remoteQueries.some(q => q.isLoading)
     const [uploads, setUploads] = useState<UploadedLayer[]>([])
-    const [isBuilding, setIsBuilding] = useState(false)
     const [isHydrated, setIsHydrated] = useState(false)
 
     const uploadsRef = useRef<UploadedLayer[]>(uploads)
@@ -101,28 +128,6 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
             }
         }
     }, [])
-
-    // Rebuild remote layers whenever the URL recipes change.
-    useEffect(() => {
-        let cancelled = false
-        if (recipes.length === 0) { setRemoteBuilt([]); return }
-        setIsBuilding(true)
-        Promise.all(
-            recipes.map(r =>
-                buildLayerFromUrl(r.url, { title: r.title, format: r.format, wmsLayerName: r.wmsLayerName })
-                    .catch(e => {
-                        console.error(`[user-layers] failed to build "${r.title}" from ${r.url}:`, e)
-                        toast.error(`Couldn't load layer "${r.title}"`, { description: e instanceof Error ? e.message : String(e) })
-                        return null
-                    }),
-            ),
-        ).then(built => {
-            if (cancelled) return
-            setRemoteBuilt(built.filter((l): l is LayerProps => l != null))
-            setIsBuilding(false)
-        })
-        return () => { cancelled = true }
-    }, [recipesKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // Hydrate uploaded layers from IndexedDB once on mount. Always flips
     // `isHydrated`, even on failure, so a broken IndexedDB can't wedge the

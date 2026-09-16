@@ -3,7 +3,7 @@ import {
     fetchStacNode,
     detectStacItemFormat,
     isStacCatalogOrCollection,
-} from '../stac-explorer'
+} from '@/lib/map/user-layers/stac-explorer'
 
 describe('detectStacItemFormat', () => {
     it('detects PMTiles asset', () => {

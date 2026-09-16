@@ -1,10 +1,3 @@
-/**
- * Generic STAC catalog and collection discovery.
- *
- * Supports browsing hierarchical STAC catalogs (like the UGS data warehouse
- * root `catalog.json` or sub-catalogs) to discover and select mappable items
- * without needing to know nested item URLs ahead of time.
- */
 import type { StacItem } from '@/lib/map/stac/stac-layer'
 import { fetchStacItemIndex, stacItemHref } from '@/lib/map/stac/stac-layer'
 import { titleFromUrl } from '@/lib/map/user-layers/detect'

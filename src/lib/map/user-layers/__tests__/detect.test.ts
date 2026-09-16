@@ -1,17 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { detectFormatFromUrl, titleFromUrl, colorFromTitle, buildLayerFromFile, buildLayerFromUrl } from '../detect'
+import { detectFormatFromUrl, titleFromUrl, colorFromTitle, buildLayerFromFile, buildLayerFromUrl } from '@/lib/map/user-layers/detect'
 import { loadCogMetadata } from '@/hooks/use-cog-metadata'
 import { registerLocalPMTiles } from '@/lib/map/pmtiles/setup'
-import type { GeoJSONLayerProps, PMTilesLayerProps, COGLayerProps } from '@/lib/types/mapping-types'
+import type { GeoJSONLayerProps, PMTilesLayerProps, COGLayerProps, ParquetLayerProps } from '@/lib/types/mapping-types'
 
 vi.mock('@/hooks/use-cog-metadata', () => ({ loadCogMetadata: vi.fn() }))
 vi.mock('@/lib/map/pmtiles/setup', () => ({ registerLocalPMTiles: vi.fn() }))
-vi.mock('../parquet-loader', () => ({
-    readGeoParquetToGeoJSON: vi.fn().mockResolvedValue({
-        type: 'FeatureCollection',
-        features: [
-            { type: 'Feature', geometry: { type: 'Point', coordinates: [-111.5, 40.2] }, properties: { name: 'Well 1' } },
-        ],
+vi.mock('@/lib/map/user-layers/parquet-deck-loader', () => ({
+    loadParquetForDeck: vi.fn().mockResolvedValue({
+        kind: 'points',
+        points: { positions: new Float32Array([-111.5, 40.2]), count: 1 },
+        properties: [{ name: 'Well 1' }],
     }),
 }))
 
@@ -274,18 +273,18 @@ describe('buildLayerFromFile — PMTiles uploads', () => {
         expect(layer.renders![0].styleUrl.startsWith('data:application/json,')).toBe(true)
     })
 
-    it('builds a GeoJSON layer from a .parquet URL', async () => {
-        const layer = await buildLayerFromUrl('https://x.org/wells.parquet') as GeoJSONLayerProps
-        expect(layer.type).toBe('geojson')
+    it('builds a Parquet layer from a .parquet URL', async () => {
+        const layer = await buildLayerFromUrl('https://x.org/wells.parquet') as ParquetLayerProps
+        expect(layer.type).toBe('parquet')
         expect(layer.title).toBe('wells')
-        expect(layer.data).toBeDefined()
-        expect(layer.data?.features).toHaveLength(1)
+        expect(layer.deckData).toBeDefined()
+        expect(layer.deckData?.kind).toBe('points')
     })
 
-    it('builds a GeoJSON layer from an uploaded .parquet file', async () => {
+    it('builds a Parquet layer from an uploaded .parquet file', async () => {
         const file = new File(['mock parquet binary'], 'test-geoparquet.parquet', { type: 'application/vnd.apache.parquet' })
         const { def, file: storedFile } = await buildLayerFromFile(file, 'upload-pq-1')
-        expect(def.type).toBe('geojson')
+        expect(def.type).toBe('parquet')
         expect(def.title).toBe('test-geoparquet')
         expect(storedFile).toBe(file)
     })

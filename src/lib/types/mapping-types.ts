@@ -111,7 +111,7 @@ export interface PopupFooterLink {
 }
 
 interface BaseLayerProps {
-    type: 'feature' | 'tile' | 'map-image' | 'geojson' | 'imagery' | 'wms' | 'group' | 'pmtiles' | 'cog' | 'wfs';
+    type: 'feature' | 'tile' | 'map-image' | 'geojson' | 'imagery' | 'wms' | 'group' | 'pmtiles' | 'cog' | 'wfs' | 'parquet';
     title: string;
     /** Secondary line rendered under the title in the layer list and the Data Sources list — use it for sourcing ("Source: Utah Division of Oil, Gas & Mining") instead of packing it into `title`, which is also the layer's URL-state key. */
     subtitle?: string;
@@ -338,8 +338,19 @@ export interface GeoJSONLayerProps extends BaseLayerProps {
     color?: string;
 }
 
+/**
+ * A GPU-rendered Parquet layer powered by Deck.gl.
+ * Supports massive point sets (binary Float32Array coordinates straight to GPU)
+ * and GeoJSON vectors for polygons/lines.
+ */
+export interface ParquetLayerProps extends BaseLayerProps {
+    type: 'parquet';
+    parquetUrl?: string;
+    deckData?: import('@/lib/map/user-layers/parquet-deck-loader').ParquetDeckData;
+    color?: string;
+}
 
-export type LayerProps = WMSLayerProps | PMTilesLayerProps | COGLayerProps | WFSLayerProps | GroupLayerProps | ArcGISMapServerLayerProps | GeoJSONLayerProps | BaseLayerProps;
+export type LayerProps = WMSLayerProps | PMTilesLayerProps | COGLayerProps | WFSLayerProps | GroupLayerProps | ArcGISMapServerLayerProps | GeoJSONLayerProps | ParquetLayerProps | BaseLayerProps;
 
 export type MapImageLayerRenderer = {
     type: 'map-image-renderer';

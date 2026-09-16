@@ -14,6 +14,9 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@deck.gl/core": "^9.4.0",
+    "@deck.gl/layers": "^9.4.0",
+    "@deck.gl/mapbox": "^9.4.0",
     "@duckdb/duckdb-wasm": "^1.33.1-dev45.0",
     "@geomatico/maplibre-cog-protocol": "^0.8.0",
     "@maplibre/maplibre-gl-style-spec": "^24.3.1",
@@ -51,6 +54,7 @@
     "@turf/clone": "^7.2.0",
     "@turf/helpers": "^7.2.0",
     "@turf/meta": "7.2.0",
+    "apache-arrow": "^21.2.0",
     "class-variance-authority": "^0.7.1",
     "client-zip": "^2.5.0",
     "clsx": "^2.1.0",

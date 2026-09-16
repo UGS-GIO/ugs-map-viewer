@@ -15,6 +15,7 @@ import type {
     LayerProps,
     PMTilesLayerProps,
     WMSLayerProps,
+    ParquetLayerProps,
 } from '@/lib/types/mapping-types'
 import {
     STAC_SERVING_TOPICS_ITEMS_URL,
@@ -26,10 +27,10 @@ import {
 } from '@/lib/map/stac/stac-layer'
 import { loadCogMetadata } from '@/hooks/use-cog-metadata'
 import { registerLocalPMTiles } from '@/lib/map/pmtiles/setup'
-import { readGeoParquetToGeoJSON } from '@/lib/map/user-layers/parquet-loader'
+import { loadParquetForDeck } from '@/lib/map/user-layers/parquet-deck-loader'
 
 /** A layer produced by uploading a local file (data lives in the browser, not a URL). */
-export type UploadedLayer = GeoJSONLayerProps | PMTilesLayerProps | COGLayerProps
+export type UploadedLayer = GeoJSONLayerProps | PMTilesLayerProps | COGLayerProps | ParquetLayerProps
 
 export type DetectedFormat = 'pmtiles' | 'geojson' | 'cog' | 'wms' | 'stac' | 'parquet' | 'unknown'
 
@@ -258,8 +259,17 @@ export async function buildLayerFromUrl(input: string, opts: BuildFromUrlOptions
         case 'pmtiles': return buildPMTiles(raw, title)
         case 'geojson': return buildGeoJSONFromUrl(raw, title)
         case 'parquet': {
-            const data = await readGeoParquetToGeoJSON(raw)
-            return buildGeoJSONFromData(data, title)
+            const deckData = await loadParquetForDeck(raw)
+            return {
+                type: 'parquet',
+                title,
+                parquetUrl: raw,
+                deckData,
+                color: colorFromTitle(title),
+                visible: true,
+                opacity: 0.85,
+                userAdded: true,
+            }
         }
         case 'cog': return buildCOG(raw, title)
         case 'wms': return buildWMS(raw, title, opts.wmsLayerName)
@@ -367,8 +377,19 @@ export async function buildLayerFromFile(file: File, idbKey: string): Promise<{ 
     }
     if (name.endsWith('.parquet')) {
         const title = file.name.replace(/\.parquet$/i, '')
-        const data = await readGeoParquetToGeoJSON(file)
-        return { def: buildGeoJSONFromData(data, title, idbKey), file }
+        const deckData = await loadParquetForDeck(file)
+        const def: ParquetLayerProps = {
+            type: 'parquet',
+            title,
+            idbKey,
+            deckData,
+            color: colorFromTitle(title),
+            visible: true,
+            opacity: 0.85,
+            userAdded: true,
+            local: true,
+        }
+        return { def, file }
     }
     if (!name.endsWith('.geojson') && !name.endsWith('.json')) {
         throw new Error('Only GeoJSON (.geojson / .json), PMTiles (.pmtiles), COG (.tif / .tiff) and GeoParquet (.parquet) files can be uploaded.')
