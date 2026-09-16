@@ -6,6 +6,7 @@ import {
   formatWithDecimalPlaces,
   getNumberFieldTransform,
   formatFieldValue,
+  isMissingNumber,
 } from '../field-formatting';
 import type {
   NumberPopupFieldConfig,
@@ -74,6 +75,7 @@ describe('formatFieldValue', () => {
     expect(formatFieldValue(config, undefined)).toBe('');
     expect(formatFieldValue(config, '')).toBe('');
     expect(formatFieldValue(config, 'not a number')).toBe('');
+    expect(formatFieldValue(config, '   ')).toBe('');
   });
 
   it('still renders a real zero', () => {
@@ -93,6 +95,16 @@ describe('formatFieldValue', () => {
     expect(formatFieldValue(config, undefined)).toBe('n/a');
     expect(formatFieldValue(config, 42)).toBe('42');
     expect(seen).toEqual([null, null, 42]);
+  });
+
+  it('hands a transform null for unparseable input rather than NaN', () => {
+    const config: NumberPopupFieldConfig = {
+      type: 'number',
+      field: 'td_ft',
+      transform: (v) => (v == null ? 'n/a' : String(v)),
+    };
+    expect(formatFieldValue(config, 'N/A')).toBe('n/a');
+    expect(formatFieldValue(config, '  ')).toBe('n/a');
   });
 
   it('handles scientific notation strings and numbers in string fields', () => {
@@ -141,5 +153,19 @@ describe('formatFieldValue', () => {
 
     const noTransform: CustomPopupFieldConfig = { type: 'custom', field: 'computed' };
     expect(formatFieldValue(noTransform, 'ignored')).toBe('');
+  });
+});
+
+describe('isMissingNumber', () => {
+  it('treats nullish, blank and unparseable values as missing', () => {
+    for (const v of [null, undefined, '', '   ', 'N/A', NaN]) {
+      expect(isMissingNumber(v)).toBe(true);
+    }
+  });
+
+  it('treats a real zero as present', () => {
+    for (const v of [0, '0', '0.0', -1, '1,234'.replace(',', '')]) {
+      expect(isMissingNumber(v)).toBe(false);
+    }
   });
 });
