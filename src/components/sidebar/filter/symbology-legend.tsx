@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useLayerFilter } from '@/hooks/use-layer-filter'
 import { useDistinctFieldOptions } from '@/hooks/use-distinct-field-options'
 import { orderedCategories } from '@/lib/filter/legend-categories'
+import { cn } from '@/lib/utils'
 import type { FilterSchema, FilterFieldKind } from '@/lib/filter/types'
 import type { PMTilesLayerProps, PMTilesRender, LegendEntry } from '@/lib/types/mapping-types'
 
@@ -184,26 +185,38 @@ function CategoryLegendGrid(
     // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens.
     const renderRows = (items: string[], showSwatch = true) => (
         <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-1.5">
-            {items.map(value => (
-                <label key={value} className="flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer">
-                    <Checkbox
-                        className="mt-0.5 shrink-0"
-                        checked={onSet.has(value)}
-                        onCheckedChange={() => toggle(value)}
-                        aria-label={`Toggle ${displayLabel(value)}`}
-                    />
-                    {showSwatch && (
-                        <span
-                            className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
-                            style={{ backgroundColor: colorFor(value), borderColor: stroke.get(value) ?? 'rgba(0,0,0,0.3)' }}
+            {items.map(value => {
+                const count = counts[value] ?? 0
+                const isZero = count === 0
+                const isChecked = onSet.has(value) && !isZero
+                return (
+                    <label
+                        key={value}
+                        className={cn(
+                            "flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer",
+                            isZero && "opacity-40 cursor-not-allowed",
+                        )}
+                    >
+                        <Checkbox
+                            className="mt-0.5 shrink-0"
+                            checked={isChecked}
+                            disabled={isZero}
+                            onCheckedChange={() => !isZero && toggle(value)}
+                            aria-label={`Toggle ${displayLabel(value)}`}
                         />
-                    )}
-                    <span className="min-w-0 break-words leading-tight">
-                        {displayLabel(value)}
-                        <span className="ml-1 text-muted-foreground">({countLabel(counts[value] ?? 0, totals[value] ?? 0)})</span>
-                    </span>
-                </label>
-            ))}
+                        {showSwatch && (
+                            <span
+                                className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
+                                style={{ backgroundColor: colorFor(value), borderColor: stroke.get(value) ?? 'rgba(0,0,0,0.3)' }}
+                            />
+                        )}
+                        <span className="min-w-0 break-words leading-tight">
+                            {displayLabel(value)}
+                            <span className="ml-1 text-muted-foreground">({countLabel(count, totals[value] ?? 0)})</span>
+                        </span>
+                    </label>
+                )
+            })}
         </div>
     )
 
@@ -245,21 +258,34 @@ function CategoryLegendGrid(
                     if (items.length === 0) return null
                     const total = items.reduce((sum, v) => sum + (totals[v] ?? 0), 0)
                     const shown = items.reduce((sum, v) => sum + (onSet.has(v) ? counts[v] ?? 0 : 0), 0)
-                    const onCount = items.filter(i => onSet.has(i)).length
-                    const groupChecked: boolean | 'indeterminate' = onCount === items.length ? true : onCount === 0 ? false : 'indeterminate'
+                    const activeItems = items.filter(v => (counts[v] ?? 0) > 0)
+                    const onCount = activeItems.filter(i => onSet.has(i)).length
+                    const groupChecked: boolean | 'indeterminate' =
+                        activeItems.length === 0 || onCount === 0
+                            ? false
+                            : onCount === activeItems.length
+                                ? true
+                                : 'indeterminate'
+                    const groupDisabled = activeItems.length === 0
                     const shadesMatchGroup = items.every(v => colorFor(v) === g.color)
                     const toggleGroup = () => {
                         const next = new Set(onSet)
-                        if (onCount === items.length) items.forEach(i => next.delete(i))
-                        else items.forEach(i => next.add(i))
+                        if (onCount === activeItems.length) activeItems.forEach(i => next.delete(i))
+                        else activeItems.forEach(i => next.add(i))
                         emit(next)
                     }
                     return (
-                        <div key={g.key} className="flex flex-col gap-1">
-                            <label className="flex items-center gap-1.5 border-t border-border pt-1.5 mt-0.5 cursor-pointer">
-                                <Checkbox className="shrink-0" checked={groupChecked} onCheckedChange={toggleGroup} aria-label={`Toggle ${g.label} group`} />
+                        <div key={g.key} className={cn("flex flex-col gap-1", groupDisabled && "opacity-40")}>
+                            <label className={cn("flex items-center gap-1.5 border-t border-border pt-1.5 mt-0.5 cursor-pointer", groupDisabled && "cursor-not-allowed")}>
+                                <Checkbox
+                                    className="shrink-0"
+                                    checked={groupChecked}
+                                    disabled={groupDisabled}
+                                    onCheckedChange={() => !groupDisabled && toggleGroup()}
+                                    aria-label={`Toggle ${g.label} group`}
+                                />
                                 <span className="inline-block w-3 h-3 rounded-full shrink-0 border" style={{ backgroundColor: g.color, borderColor: 'rgba(0,0,0,0.3)' }} />
-                                <Label className="text-xs font-semibold cursor-pointer">
+                                <Label className={cn("text-xs font-semibold cursor-pointer", groupDisabled && "cursor-not-allowed")}>
                                     {g.label}
                                     <span className="ml-1 font-normal text-muted-foreground">
                                         ({countLabel(shown, total)})
