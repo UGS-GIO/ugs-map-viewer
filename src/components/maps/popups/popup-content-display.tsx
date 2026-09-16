@@ -4,6 +4,8 @@ import { RelatedDataMap, EMPTY_RELATED_DATA_MAP } from "@/hooks/use-bulk-related
 import { Feature, Geometry, GeoJsonProperties } from "geojson";
 import { ChevronDown, ChevronRight, ExternalLink, Info } from "lucide-react";
 import { RelatedDataTable } from "@/components/maps/popups/related-data-table";
+import { DocumentsPanel } from "@/components/maps/popups/documents-panel";
+import { listedDocumentRows } from "@/lib/documents/classify";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { LayerContentProps } from "@/components/maps/popups/types";
 import { Link } from "@/components/ui/link";
@@ -25,6 +27,7 @@ import {
 import { PopupImageGallery, type GalleryImage } from "@/components/maps/popups/popup-image-gallery";
 import { relatedRowToGalleryImage } from "@/lib/gallery-utils";
 import { sanitizeFilename } from "@/lib/download-utils";
+import { Accordion, AccordionItem, AccordionContent, AccordionTrigger } from "@/components/ui/accordion";
 import {
     isNumberField,
     isStringField,
@@ -206,6 +209,34 @@ export function buildGalleryImages(
     return [...fromImageFields, ...fromRelatedTables]
 }
 
+export interface AccordionEntry {
+    key: string;
+    label: string;
+    href?: string;
+    notes?: string;
+}
+
+// One collapsible entry per row, for the 'accordion' displayAs. encodeURI, NOT
+// encodeURIComponent: the path's slashes have to survive while spaces in filenames are escaped —
+// encodeURIComponent turns the separators into %2F and 404s the link.
+export function buildAccordionEntries(
+    table: RelatedTable,
+    rows: Record<string, unknown>[]
+): AccordionEntry[] {
+    if (table.displayAs !== 'accordion') return []
+    const base = table.itemBaseUrl
+    return rows.map((row, i) => {
+        const path = row.storage_path ? String(row.storage_path) : ''
+        const notes = row.notes ? String(row.notes).trim() : ''
+        return {
+            key: String(row.pk ?? i),
+            label: String(row.filename ?? 'Document'),
+            href: base && path ? encodeURI(`${base}/${path}`) : undefined,
+            notes: notes || undefined,
+        }
+    })
+}
+
 function CollapsibleSection({ label, count, children }: { label: string; count?: number; children: ReactNode }) {
     const [isOpen, setIsOpen] = useState(false);
     const contentId = useId();
@@ -274,7 +305,7 @@ function PopupTable({ headers, rows }: { headers?: ReactNode[]; rows: ReactNode[
 
 // --- Main Component ---
 const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, relatedLoading }: PopupContentDisplayProps) => {
-    const { relatedTables, relatedTablesPosition, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
+    const { relatedTables, relatedTablesPosition, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource, popupFooterLink } = layer;
 
     // Convert bulk data to the format expected by getRelatedTableValues
     const data = useMemo((): ProcessedRelatedData[][] => {
@@ -460,19 +491,48 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
         // Use explicit displayAs config (defaults to 'list')
         const useTableFormat = table.displayAs === 'table' && !!table.displayFields && table.displayFields.length > 0;
 
+        // The documents panel hides sidecar/junk files. Filter once here so the section count, the
+        // empty-state skip below, and the panel all agree; skip the section when nothing survives.
+        const documentRows = table.displayAs === 'documents'
+            ? listedDocumentRows((data[tableIndex] ?? []) as Record<string, unknown>[])
+            : null;
+        if (documentRows && documentRows.length === 0) return;
+
         const sectionLabel = String(properties[table.fieldLabel] || table.fieldLabel);
         const collapsible = table.collapsible ?? sectionLabel.trim() !== '';
 
         let innerContent: JSX.Element;
 
-        if (useTableFormat) {
+        if (table.displayAs === 'accordion') {
+            const docs = buildAccordionEntries(table, (data[tableIndex] ?? []) as Record<string, unknown>[]);
+            innerContent = (
+                <Accordion type="multiple" className="space-y-1">
+                    {docs.map(doc => (
+                        <AccordionItem key={doc.key} value={doc.key} className="border rounded px-2">
+                            <AccordionTrigger className="py-1.5 text-xs">{doc.label}</AccordionTrigger>
+                            <AccordionContent className="text-xs space-y-1">
+                                {doc.notes && <p className="text-muted-foreground">{doc.notes}</p>}
+                                {doc.href
+                                    ? <a href={doc.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary underline decoration-1">Open / download <ExternalLink size={12} /></a>
+                                    : <p className="text-muted-foreground italic">No file link</p>}
+                            </AccordionContent>
+                        </AccordionItem>
+                    ))}
+                </Accordion>
+            );
+        } else if (table.displayAs === 'documents') {
+            innerContent = (
+                <DocumentsPanel table={table} rows={documentRows!} />
+            );
+        } else if (useTableFormat) {
             // Sortable: raw rows + column defs (TanStack) so sorting is numeric/
             // alphabetical on the underlying values, not the rendered cells.
             innerContent = (
                 <RelatedDataTable
                     rows={data[tableIndex] as Record<string, unknown>[]}
                     displayFields={table.displayFields!}
-                    initialSort={table.sortBy ? { id: table.sortBy, desc: table.sortDirection === 'desc' } : undefined}
+                    initialSort={(Array.isArray(table.sortBy) ? table.sortBy : table.sortBy ? [table.sortBy] : [])
+                        .map(id => ({ id, desc: table.sortDirection === 'desc' }))}
                 />
             );
         } else {
@@ -493,7 +553,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
         }
 
         const relatedContent = collapsible ? (
-            <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel} count={groupedValues.length}>
+            <CollapsibleSection key={`related-${table.fieldLabel}-${tableIndex}`} label={sectionLabel} count={documentRows ? documentRows.length : groupedValues.length}>
                 {innerContent}
             </CollapsibleSection>
         ) : (
@@ -503,7 +563,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
         );
 
         const totalWords = flatValues.map(v => String(v.value)).join(" ").split(/\s+/).length;
-        const isLongContent = useTableFormat || totalWords > 20 || flatValues.length > 3;
+        const isLongContent = useTableFormat || table.displayAs === 'accordion' || table.displayAs === 'documents' || totalWords > 20 || flatValues.length > 3;
         // 'above' sorts related tables before the feature fields (which start at 0); 'below' (default) after them.
         const relatedIndex = (relatedTablesPosition === 'above' ? -1000 : 1000) + tableIndex;
         contentItems.push({ content: relatedContent, isLongContent, originalIndex: relatedIndex });
@@ -545,6 +605,29 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
             originalIndex: 2000 + tableIndex,
         });
     });
+
+    // Footer link — high originalIndex pins it below everything (incl. related tables).
+    if (popupFooterLink) {
+        const footerHref = popupFooterLink.getHref(properties ?? null);
+        if (footerHref) {
+            contentItems.push({
+                content: (
+                    <a
+                        key="popup-footer-link"
+                        href={footerHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                    >
+                        {popupFooterLink.label}
+                        <ExternalLink size={13} />
+                    </a>
+                ),
+                isLongContent: true,
+                originalIndex: 100000,
+            });
+        }
+    }
 
     // --- Layout Rendering ---
     // Render every item in config order (feature fields, then related tables, then popup

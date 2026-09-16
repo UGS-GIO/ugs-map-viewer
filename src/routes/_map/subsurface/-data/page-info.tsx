@@ -21,10 +21,10 @@ const acknowledgments = (
             This web application is a digital library representing the geological materials housed at the Utah Core Research Center (UCRC) in Salt Lake City, Utah. Starting in 2025, UCRC curators began a comprehensive inventory and data cleaning project and database restructuring. In addition, the web application was upgraded to support more functionality for users and offer more modern data export options. The inventory of the UCRC is continuously updated as materials are donated, analyses and reports are conducted, and boxes of core are photographed.
         </p>
         <p className="pl-4">
-            <b>Inventory Management and Data Curation: </b>Ammon McDonald <Link to="ammonmcdonald@utah.gov">(ammonmcdonald@utah.gov)</Link>,  Madeline Griem, <Link to="mgriem@utah.gov">(mgriem@utah.gov)</Link>
+            <b>Inventory Management and Data Curation: </b>Ammon McDonald <Link to="mailto:ammonmcdonald@utah.gov">(ammonmcdonald@utah.gov)</Link>,  Madeline Griem, <Link to="mailto:mgriem@utah.gov">(mgriem@utah.gov)</Link>
         </p>
         <p className="pl-4">
-           <b>Energy & Minerals Program Manager: </b>Michael Vanden Berg <Link to="michaelvandenberg@utah.gov">(michaelvandenberg@utah.gov)</Link>
+           <b>Energy & Minerals Program Manager: </b>Michael Vanden Berg <Link to="mailto:michaelvandenberg@utah.gov">(michaelvandenberg@utah.gov)</Link>
         </p>
         <p className="pl-4">
             <b>Database Infrastructure and Application Development: </b>Marshall Robinson, Lance Weaver, Clinton Lunn, Nathan Payne 
@@ -56,13 +56,10 @@ const mapDetails = (
             The UCRC’s collection also includes cataloged outcrop samples (mostly from graduate student projects and state geologic mapping efforts), cuttings from water and geothermal wells, sidewall plugs from drill holes, thin sections, and numerous other hand samples. In addition, the UCRC has a vast archive of analytical data related to the collection, with ongoing efforts to make this information available through this web portal.
         </p>
         <p>
-             The UCRC inventory can be searched using this online map or the entire database can be downloaded as a spreadsheet. If you have any questions regarding the UCRC’s collection or would like to look at any of the samples, please contact the UCRC at 801-537-3359.  
+             The UCRC inventory can be searched using this online map. If you have any questions regarding the UCRC’s collection or would like to look at any of the samples, please contact the UCRC at 801-537-3359.  
         </p>
         <p>
             <strong>Related Information:</strong>
-        </p>
-        <p>
-            <Link to="https://geology.utah.gov/docs/xls/ucrc_cores.xlsx">UCRC Inventory Database</Link> (xlsx)
         </p>
         <p>
             <Link to="https://geology.utah.gov/about-us/utah-core-research-center/">Utah Core Research Center</Link>

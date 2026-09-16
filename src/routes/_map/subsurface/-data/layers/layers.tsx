@@ -1,19 +1,20 @@
 import { Link } from "@/components/ui/link";
-import { BoxPhotosCell } from "@/components/maps/popups/box-photos-button";
 import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 import { formatNumeric } from "@/lib/utils";
+import { ucrcWellsConfig } from "@/routes/_map/-shared/layers/ucrc-wells";
 
 
 export const wellWithTopsLayerName = 'wellswithtops_hascore';
-export const wellWithTopsWMSTitle = 'Oil and Gas Wells (Source: Utah Division of Oil, Gas & Mining)';
+export const wellWithTopsWMSTitle = 'Oil and Gas Wells';
 const wellWithTopsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: wellWithTopsWMSTitle,
+    subtitle: 'Utah Division of Oil, Gas & Mining',
     visible: false,
     crs: 'EPSG:26912',
-    sourceAgency: 'Utah Geological Survey',
+    sourceAgency: 'Utah Division of Oil, Gas & Mining',
     sourceUrl: 'https://gis.utah.gov/products/sgid/energy/oil-gas-wells/',
     sublayers: [
         {
@@ -136,6 +137,29 @@ const utTownshipRangesConfig: WMSLayerProps = {
     }],
 };
 
+// Sections — STAC-driven: pmtilesUrl, sourceLayer, and renders come from the
+// warehouse item `enmin_plss_sections`. Sits just below Township & Range
+// (same PLSS/UGRC source) in both the layer list and the map stack.
+const sectionsLayerName = 'enmin_plss_sections';
+export const sectionsTitle = 'Sections';
+const sectionsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: sectionsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: sectionsLayerName,
+    title: sectionsTitle,
+    visible: false,
+    opacity: 1,
+    visibleZoomRange: [11, 22],
+    sourceAgency: 'UGRC',
+    sourceUrl: 'https://gis.utah.gov/products/sgid/cadastre/plss-sections/',
+    sublayers: [{
+        name: sectionsLayerName,
+        popupEnabled: false,
+        queryable: false,
+    }],
+};
+
 
 
 // Oil and Gas Fields WMS Layer
@@ -164,22 +188,27 @@ const oilGasFieldsWMSConfig: WMSLayerProps = {
     ],
 };
 
-// UCRC Basins
-const basinsLayerName = 'enmin_ucrc_basins_current';
-const basinsWMSTitle = 'Basins';
-const basinsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: basinsWMSTitle,
+// UCRC Basins — STAC-driven: pmtilesUrl, sourceLayer, renders and
+// downloadParquetUrl come from the warehouse item `enmin_ucrc_basins`.
+const basinsLayerName = 'enmin_ucrc_basins';
+const basinsTitle = 'Basins';
+const basinsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: basinsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: basinsLayerName,
+    title: basinsTitle,
     visible: false,
-    crs: 'EPSG:3857',
-    downloadParquetUrl: parquetUrl("enmin_ucrc_basins"),
+    opacity: 1,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${basinsLayerName}`,
+            name: basinsLayerName,
             popupEnabled: false,
-            queryable: true,
+            // Selection off: the basins span many tiles, and a click highlights only the clipped
+            // fragment from the tile that answered. Re-enable once the click path resolves full
+            // geometry rather than the tile's piece.
+            queryable: false,
             popupFields: {
                 'Feature': { field: 'feature', type: 'string' },
                 'Label': { field: 'label', type: 'string' },
@@ -188,19 +217,22 @@ const basinsWMSConfig: WMSLayerProps = {
     ],
 };
 
-// Non Petroleum Wells Layer
-const nonpetrolWellsLayerName = 'nwpd_nonpetroleumwellcatalogwells';
+// Non Petroleum Wells Layer — STAC-driven: pmtilesUrl, sourceLayer, and
+// renders come from the warehouse item `enmin_non_petroleum_wells`.
+const nonpetrolWellsLayerName = 'enmin_non_petroleum_wells';
 const nonpetrolWellsTitle = 'Exploration Boreholes - Downhole Data';
-const nonpetrolWellsConfig: WMSLayerProps = {
-  type: 'wms',
-  url: `${PROD_GEOSERVER_URL}/wms`,
+const nonpetrolWellsConfig: PMTilesLayerProps = {
+  type: 'pmtiles',
+  stacItemId: nonpetrolWellsLayerName,
+  pmtilesUrl: '',
+  sourceLayer: nonpetrolWellsLayerName,
   title: nonpetrolWellsTitle,
   visible: false,
-  crs: 'EPSG:3857',
+  opacity: 1,
   sourceAgency: 'Utah Geological Survey',
   sublayers: [
     {
-      name: `${ENERGY_MINERALS_WORKSPACE}:${nonpetrolWellsLayerName}`,
+      name: nonpetrolWellsLayerName,
       popupEnabled: true,
       queryable: true,
       popupFields: {
@@ -378,7 +410,7 @@ const seamlessGeolunitsLayerName = 'mapping_geolunits_500k';
 export const seamlessGeolunitsWMSTitle = 'Geologic Units (500k)';
 const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/mapping/wms`,
+    url: `${PROD_GEOSERVER_URL}/wms`,
     title: seamlessGeolunitsWMSTitle,
     opacity: 0.5,
     visible: false,
@@ -396,181 +428,6 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
         },
     ],
 };
-
-// Pipelines WMS Layer
-const pipelinesLayerName = 'pipelines';
-const pipelinesWMSTitle = 'Pipelines';
-const pipelinesWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: pipelinesWMSTitle,
-    visible: false,
-    crs: 'EPSG:3857',
-    sourceAgency: 'UGRC and Utah Geological Survey',
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${pipelinesLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'Operator': { field: 'operator', type: 'string' },
-                'Commodity': { field: 'commodity', type: 'string' },
-                'Acronym': { field: 'acronym', type: 'string' },
-                'Code Remarks': { field: 'coderemarks', type: 'string' }
-            },
-        },
-    ],
-};
-
-// UCRC Collection Layer — rendered client-side via WFS for instant filtering and richer symbology
-const ucrcWellsLayerName = 'enmin_ucrc_wells_current';
-// PMTiles tile source-layer = STAC item id (not the `_current` DB view name).
-const ucrcWellsTileLayer = 'enmin_ucrc_wells';
-export const ucrcWellsQualifiedName = `${ENERGY_MINERALS_WORKSPACE}:${ucrcWellsLayerName}`;
-export const ucrcWellsWMSTitle = 'Utah Core Research Center Inventory';
-
-// UCRC symbology (purpose + box-type colours, box-type grouping/shades) is derived entirely from
-// the STAC render legends (by-purpose / by-boxtype) — see ugs-styles. Nothing hardcoded here.
-
-// STAC-driven: pmtilesUrl, sourceLayer, renders (by-purpose / by-boxtype incl.
-// the baked pie-wedge sprite + legends) and parquet are filled from the
-// warehouse STAC item `enmin_ucrc_wells` at load. Symbology is the hosted
-// renders, selected via vector_symbology; the app config carries only UX.
-const ucrcWellsWFSConfig: PMTilesLayerProps = {
-    type: 'pmtiles',
-    stacItemId: 'enmin_ucrc_wells',
-    pmtilesUrl: '',
-    sourceLayer: ucrcWellsTileLayer,
-    title: ucrcWellsWMSTitle,
-    visible: true,
-    opacity: 0.85,
-    defaultRenderId: 'by-boxtype',
-    sourceAgency: 'Utah Geological Survey',
-    sublayers: [
-        {
-            name: ucrcWellsTileLayer,
-            popupEnabled: true,
-            queryable: true,
-            popupFields: {
-                'API Number': { field: 'api_number', type: 'string' },
-                'UWI': { field: 'uwi', type: 'string' },
-                'Well Name': { field: 'well_name', type: 'string' },
-                'County': { field: 'county', type: 'string' },
-                'Operator': { field: 'current_operator', type: 'string' },
-                'Field': { field: 'field_name', type: 'string' },
-                'Purpose': { field: 'purpose', type: 'string' },
-                'Producing Formation': { field: 'producing_formation', type: 'string' },
-                'TD (ft)': { field: 'td_ft', type: 'number' },
-                'Elevation (GL ft)': {
-                    field: 'elevation_gl',
-                    type: 'custom',
-                    transform: (properties) => {
-                        const val = properties?.['elevation_gl'];
-                        if (val === null || val === undefined || val === 0 || val === '0') return null;
-                        return val;
-                    }
-                },
-                'Kelly bushing Elevation (GL ft)': {
-                    field: 'elevation_kb',
-                    type: 'custom',
-                    transform: (properties) => {
-                        const val = properties?.['elevation_kb'];
-                        if (val === null || val === undefined || val === 0 || val === '0') return null;
-                        return val;
-                    }
-                },
-                'Latitude': { field: 'latitude', type: 'number' },
-                'Longitude': { field: 'longitude', type: 'number' },
-                'Easting (NAD83)': {
-                    field: 'easting',
-                    type: 'custom',
-                    transform: (properties) => {
-                        const val = properties?.['easting'];
-                        if (val === null || val === undefined || val === 0 || val === '0') return null;
-                        return val;
-                    }
-                },
-                'Northing (NAD83)': {
-                    field: 'northing',
-                    type: 'custom',
-                    transform: (properties) => {
-                        const val = properties?.['northing'];
-                        if (val === null || val === undefined || val === 0 || val === '0') return null;
-                        return val;
-                    }
-                },
-                'Township': { field: 'township', type: 'string' },
-                'Range': { field: 'range', type: 'string' },
-                'Section': { field: 'section', type: 'string' },
-                'Notes': { field: 'notes_public', type: 'string' },
-            },
-            relatedTables: [
-                {
-                    // Contiguous Core/Cuttings depth intervals, merged in the warehouse
-                    // (mart_enmin_ucrc_sampleintervals) — 10 ft gap threshold is domain policy
-                    // and lives with the data, not here.
-                    fieldLabel: 'Sample Types',
-                    stacAsset: 'enmin_ucrc_sampleintervals',
-                    displayAs: 'table',
-                    displayFields: [
-                        { field: 'sample_type', label: 'Type' },
-                        { field: 'top_ft', label: 'Top (ft)', format: 'number' },
-                        { field: 'bottom_ft', label: 'Bottom (ft)', format: 'number' },
-                        { field: 'box_count', label: 'Boxes', format: 'number' },
-                        { field: 'notes_public', label: 'Notes', transform: (v) => v || '—' },
-                    ],
-                    sortBy: 'top_ft',
-                    sortDirection: 'asc',
-                },
-                {
-                    // STAC-backed: url + uwi join filled from the enmin_ucrc_boxes related asset.
-                    fieldLabel: 'Core Boxes',
-                    stacAsset: 'enmin_ucrc_boxes',
-                    displayAs: 'table',
-                    displayFields: [
-                        { field: 'box_number', label: 'Box #' },
-                        { field: 'box_type', label: 'Type' },
-                        { field: 'box_top_ft', label: 'Top (ft)', format: 'number' },
-                        { field: 'box_bottom_ft', label: 'Bottom (ft)', format: 'number' },
-                        { field: 'cored_formation', label: 'Formation' },
-                        { field: 'notes_public', label: 'Notes', transform: (v) => v || '—' },
-                        {
-                            field: 'pk',
-                            label: 'Photos',
-                            transform: (pk, row, allRows) => (
-                                <BoxPhotosCell
-                                    boxId={pk}
-                                    photoCount={row?.photo_count != null ? Number(row.photo_count) : undefined}
-                                    // Only bulk-fetch boxes that actually have photos (when photo_count is
-                                    // published); fall back to all boxes when the column isn't there yet.
-                                    allBoxIds={(allRows ?? [])
-                                        .filter(r => r.photo_count == null || Number(r.photo_count) > 0)
-                                        .map(r => String(r.pk))}
-                                    boxLabel={`${row?.uwi ?? 'core'}_box${row?.box_number ?? pk}_${row?.box_top_ft ?? '?'}-${row?.box_bottom_ft ?? '?'}ft`}
-                                />
-                            ),
-                        },
-                    ],
-                    sortBy: 'box_number',
-                    sortDirection: 'asc',
-                },
-                {
-                    fieldLabel: 'Attachments',
-                    matchingField: 'uwi',
-                    targetField: 'uwi',
-                    url: `${PROD_POSTGREST_URL}/enmin_ucrc_attachments_current`,
-                    headers: { 'Accept-Profile': 'emp', 'Accept': 'application/json' },
-                    displayAs: 'list',
-                    displayFields: [
-                        { field: 'filename', label: 'File' },
-                        { field: 'notes', label: 'Notes' },
-                    ],
-                },
-            ],
-        },
-    ],
-};
-
 
 const subsurfaceDataConfig: LayerProps = {
     type: 'group',
@@ -597,18 +454,18 @@ const infrastructureAndLandUseConfig: LayerProps = {
     visible: false,
     layers: [
         oilGasFieldsWMSConfig,
-        basinsWMSConfig,
+        basinsConfig,
         metalMiningDistrictsConfig,
         SITLAConfig,
-        pipelinesWMSConfig,
         utCountiesConfig,
         utTownshipRangesConfig,
+        sectionsConfig,
     ]
 }
 
 
 const layersConfig: LayerProps[] = [
-    ucrcWellsWFSConfig,
+    ucrcWellsConfig,
     subsurfaceDataConfig,
     geologicalInformationConfig,
     infrastructureAndLandUseConfig

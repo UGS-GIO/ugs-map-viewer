@@ -214,8 +214,7 @@ const fieldToSqlParts = (field: FilterFieldKind, state: FilterState): string[] =
         }
         case 'boolean': {
             if (v.kind !== 'boolean' || v.value === 'all') return [];
-            const lit = v.value === 'yes' ? field.trueValue ?? 'True' : field.falseValue ?? 'False';
-            return [`CAST(${col} AS VARCHAR) = ${sqlLiteral(lit)}`];
+            return [`CAST(${col} AS BOOLEAN) = ${v.value === 'yes' ? 'TRUE' : 'FALSE'}`];
         }
     }
 };

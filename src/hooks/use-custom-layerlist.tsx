@@ -266,9 +266,16 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                 className="mx-2"
                             />
                             <AccordionTrigger>
-                                <h3 className="font-medium text-left text-md">
-                                    {layerConfig.title}
-                                </h3>
+                                <div className="text-left">
+                                    <h3 className="font-medium text-md">
+                                        {layerConfig.title}
+                                    </h3>
+                                    {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
+                                        <p className="text-xs font-normal text-muted-foreground">
+                                            {layerConfig.subtitle ?? layerConfig.sourceAgency}
+                                        </p>
+                                    )}
+                                </div>
                             </AccordionTrigger>
                         </AccordionHeader>
                         <AccordionContent>
@@ -344,11 +351,18 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                             />
                         )}
                         <AccordionTrigger>
-                            <h3
-                                className={`text-md font-medium text-left ${zoomHint ? 'text-muted-foreground italic' : ''}`}
-                            >
-                                {layerConfig.title}
-                            </h3>
+                            <div className="text-left">
+                                <h3
+                                    className={`text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}
+                                >
+                                    {layerConfig.title}
+                                </h3>
+                                {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
+                                    <p className="text-xs font-normal text-muted-foreground">
+                                        {layerConfig.subtitle ?? layerConfig.sourceAgency}
+                                    </p>
+                                )}
+                            </div>
                         </AccordionTrigger>
                         {isUserLayer && (
                             <button
