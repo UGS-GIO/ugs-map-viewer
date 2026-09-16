@@ -3,6 +3,7 @@ import { MAPS_ASSETS_CDN_URL, parquetUrl, ENERGY_MINERALS_WORKSPACE, GEN_GIS_WOR
 import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps, WFSLayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
+import { ucrcWellsConfig } from "@/routes/_map/-shared/layers/ucrc-wells";
 
 // GeoRegions WMS Layer
 const CCUS_IMAGE_BASE_URL = `${MAPS_ASSETS_CDN_URL}/ccus/png`;
@@ -516,123 +517,6 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 },
             },
         },
-    ],
-};
-
-const coresAndCuttingsLayerName = 'cores';
-const coresAndCuttingsWMSTitle = 'Cores and Cuttings';
-const coresAndCuttingsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: coresAndCuttingsWMSTitle,
-    visible: false,
-    crs: 'EPSG:26912',
-    sourceAgency: 'Utah Geological Survey',
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${coresAndCuttingsLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'API': { field: 'apishort', type: 'string' },
-                'UWI': { field: 'uwi', type: 'string' },
-                'Well Name': { field: 'well_name', type: 'string' },
-                'Sample Types': {
-                    field: 'all_types', type: 'string', transform: (value: string | null) => {
-                        if (!value) return 'No Data';
-                        const lower = value.toLowerCase();
-
-                        // Map raw sample types to simplified categories
-                        const coreTypes = /\b(core|butts?|slabs?|skeletonized core|sidewall)\b/;
-                        const cuttingsTypes = /\b(chips?|core chips?|cuttings?)\b/;
-                        const samplesTypes = /\b(samples?|outcrop samples?)\b/;
-                        const displayTypes = /\bdisplay\b/;
-
-                        const categories: string[] = [];
-                        if (coreTypes.test(lower)) categories.push('Core');
-                        if (cuttingsTypes.test(lower)) categories.push('Cuttings');
-                        if (samplesTypes.test(lower)) categories.push('Samples');
-                        if (displayTypes.test(lower)) categories.push('Display');
-
-                        return categories.length ? categories.join(', ') : toTitleCase(value.replace(/,/g, ', '));
-                    }
-                },
-                'Purpose': { field: 'purpose_description', type: 'string' },
-                'Operator': { field: 'operator', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
-                'Depth': {
-                    field: 'depth_display',
-                    type: 'custom',
-                    transform: (props: GeoJsonProperties | null | undefined) => {
-                        const top = props?.['top_ft'];
-                        const bottom = props?.['bottom_ft'];
-
-                        if (top == null || bottom == null) {
-                            return 'Depth N/A';
-                        }
-                        const topFt = addThousandsSeparator(top);
-                        const bottomFt = addThousandsSeparator(bottom);
-                        return `${topFt} - ${bottomFt} ft`;
-                    }
-                },
-                'Formation at TD': { field: 'form_td', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
-                'Cored Formations': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: (props: GeoJsonProperties | null | undefined) => {
-                        const formation = props?.['formation'] || '';
-                        const coredFormation = props?.['cored_formation'] || '';
-
-                        if (formation && coredFormation) {
-                            return `${formation}, ${coredFormation}`;
-                        } else if (formation) {
-                            return `${formation}`;
-                        } else if (coredFormation) {
-                            return `${coredFormation}`;
-                        } else {
-                            return '';
-                        }
-                    }
-                },
-                '': {
-                    field: 'inventory_link',
-                    type: 'custom',
-                    transform: (() => 'Utah Core Research Center Inventory')
-                },
-            },
-            linkFields: {
-                'inventory_link': {
-                    transform: (value: string | null) => {
-                        return [
-                            {
-                                label: `${value}`,
-                                href: 'https://geology.utah.gov/apps/subsurface/'
-                            }
-                        ];
-                    }
-                }
-            },
-            relatedTables: [
-                {
-                    fieldLabel: 'Core Photos',
-                    matchingField: 'uwi',
-                    targetField: 'uwi',
-                    url: PROD_POSTGREST_URL + '/ucrc_photographs',
-                    headers: {
-                        'Accept-Profile': 'emp',
-                        'Accept': 'application/json',
-                    },
-                    displayAs: 'gallery',
-                    galleryUrlField: 'photo_url',
-                    galleryThumbnailField: 'thumb_url',
-                    galleryLabelField: 'filename',
-                    galleryMetadataFields: [
-                        { field: 'photo_type', label: 'Type' },
-                        { field: 'top_depth', label: 'Top (ft)' },
-                        { field: 'bottom_depth', label: 'Bottom (ft)' },
-                    ],
-                },
-            ],
-        }
     ],
 };
 
@@ -1443,7 +1327,23 @@ const subsurfaceDataConfig: LayerProps = {
     layers: [
         wellWithTopsWMSConfig,
         geochemWellSitesWMSConfig,
-        coresAndCuttingsWMSConfig,
+        // UCRC inventory replaces the old WMS cores layer (ALL-4356). popupFooterLink is set here
+        // (not the shared config) so the per-well subsurface deep link is carbonstorage-only.
+        {
+            ...ucrcWellsConfig,
+            visible: false,
+            popupFooterLink: {
+                label: 'Open this well in the UCRC Subsurface app',
+                getHref: (properties) => {
+                    const base = 'https://maps.geology.utah.gov/subsurface';
+                    const lat = properties?.['latitude'];
+                    const lon = properties?.['longitude'];
+                    if (lat == null || lon == null) return base;
+                    const layers = encodeURIComponent(JSON.stringify({ selected: ['Utah Core Research Center Inventory'] }));
+                    return `${base}?lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lon))}&zoom=15&layers=${layers}`;
+                },
+            },
+        },
         oilGasFieldsWMSConfig,
         geothermalWellsWMSConfig,
         geothermalSpringsJoinsConfig,
