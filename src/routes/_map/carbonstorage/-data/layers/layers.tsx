@@ -1276,6 +1276,90 @@ const nonPetroleumCatLayerConfig: WMSLayerProps = {
 */
 
 
+// NatCarb Locations Layer — STAC-driven: pmtilesUrl, sourceLayer, and related
+// table (enmin_ccs_natcarb_measurement) come from the warehouse item `enmin_ccs_natcarb_location`.
+const natCarbLocationsLayerName = 'enmin_ccs_natcarb_location';
+export const natCarbLocationsTitle = 'NATCARB Atlas (2015)';
+
+// Temporary inline style until published to @ugs-gio/ugs-styles. Once published in the STAC
+// catalog renders extension, delete this defaultNatCarbStyle and the renders array below.
+const defaultNatCarbStyle = `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify({
+    layers: [
+        {
+            id: 'enmin_ccs_natcarb_location-fill',
+            type: 'fill',
+            'source-layer': 'enmin_ccs_natcarb_location',
+            paint: {
+                'fill-color': '#d2b48c',
+                'fill-opacity': 0.3,
+            },
+        },
+        {
+            id: 'enmin_ccs_natcarb_location-line',
+            type: 'line',
+            'source-layer': 'enmin_ccs_natcarb_location',
+            paint: {
+                'line-color': '#8b6d47',
+                'line-width': 1.5,
+            },
+        },
+    ],
+}))}`;
+
+export const natCarbLocationsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: natCarbLocationsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: natCarbLocationsLayerName,
+    title: natCarbLocationsTitle,
+    visible: false,
+    opacity: 1,
+    sourceAgency: 'Utah Geological Survey',
+    renders: [
+        {
+            id: 'default',
+            title: 'NATCARB Atlas (2015)',
+            styleUrl: defaultNatCarbStyle,
+            legend: [
+                {
+                    label: 'NATCARB Grid Cell',
+                    color: 'rgba(210, 180, 140, 0.3)',
+                    stroke: '#8b6d47',
+                },
+            ],
+        },
+    ],
+    sublayers: [
+        {
+            name: natCarbLocationsLayerName,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {},
+            relatedTables: [
+                {
+                    fieldLabel: 'Project Data',
+                    stacAsset: 'enmin_ccs_natcarb_measurement',
+                    displayAs: 'table',
+                    displayFields: [
+                        { field: 'resource_n', label: 'Resource Name' },
+                        { field: 'vol_low', label: 'Vol Low (Mt)', format: 'number' },
+                        { field: 'vol_med', label: 'Vol Med (Mt)', format: 'number' },
+                        { field: 'vol_high', label: 'Vol High (Mt)', format: 'number' },
+                        { field: 'depth_ft', label: 'Depth (ft)', format: 'number' },
+                        { field: 'thickness_', label: 'Thickness (ft)', format: 'number' },
+                        { field: 'temperatur', label: 'Temp (°F)', format: 'number' },
+                        { field: 'pressure_p', label: 'Pressure (psi)', format: 'number' },
+                        { field: 'porosity_p', label: 'Porosity (%)', format: 'number' },
+                        { field: 'permeabili', label: 'Permeability (mD)', format: 'number' },
+                    ],
+                    sortBy: 'depth_ft',
+                    sortDirection: 'asc',
+                },
+            ],
+        },
+    ],
+};
+
 // Energy and Minerals Group Layer
 const ccsResourcesConfig: LayerProps = {
     type: 'group',
@@ -1287,7 +1371,8 @@ const ccsResourcesConfig: LayerProps = {
         co2SourcesWFSConfig,
         sitlaReportsWMSConfig,
         ccsExclusionAreasWMSConfig,
-        ccusProjectsWMSConfig
+        ccusProjectsWMSConfig,
+        natCarbLocationsConfig,
     ]
 }
 
