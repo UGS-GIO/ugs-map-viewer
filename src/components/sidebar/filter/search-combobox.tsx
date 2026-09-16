@@ -54,8 +54,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
         [config, defaultSourceName],
     );
     const [open, setOpen] = useState(false);
-    // Opening the box is the first sign anyone means to search, so DuckDB starts loading
-    // then rather than on route mount — no cost for sessions that never search.
+    // Opening the box is the first sign of intent — nothing loads for sessions that never search.
     const handleOpenChange = useCallback((next: boolean) => {
         setOpen(next);
         if (next) {
@@ -257,8 +256,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                 }
             }
 
-            // Turn the layer on only now: enabling it re-renders the map, and doing that while a
-            // geometry fetch is still in flight leaves the later fitBounds racing the style reload.
+            // After the fetch: enabling re-renders the map, racing fitBounds against the style reload.
             ensureLayerVisibleByTitle(sourceConfig.layerName);
 
             const sourceUrl = sourceConfig.type === 'parquet' ? sourceConfig.parquetUrl : sourceConfig.url;
@@ -313,7 +311,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
             }
         }
 
-        // Parquet: suggestions are geometry-free, so resolve the visible set in one query
+        // Suggestions are geometry-free; resolve the visible set in one query.
         if (allVisibleFeatures.length > 0 && firstValidSourceIndex !== -1) {
             const parquetSource = searchConfig[firstValidSourceIndex];
             if (parquetSource?.type === 'parquet' && !allVisibleFeatures[0]?.geometry) {
@@ -344,8 +342,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
             }
         }
 
-        // Same ordering as single selection: layers on first, then one camera move that isn't
-        // competing with a style reload.
+        // Same ordering as single selection — layers on, then one camera move.
         layerTitlesToShow.forEach(ensureLayerVisibleByTitle);
 
         const combinedCollection = allVisibleFeatures.length > 0 ? featureCollection(allVisibleFeatures) : null;

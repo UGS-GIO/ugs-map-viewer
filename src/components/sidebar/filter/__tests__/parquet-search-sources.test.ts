@@ -1,11 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { matchGroup } from '../search-fetchers';
 
-/**
- * The parquet search sources replaced PostgREST search RPCs that assembled columns
- * server-side. These pin the two pieces of that assembly the viewer now owns: which
- * group a row lands in, and the SQL that rebuilds the columns the warehouse doesn't store.
- */
 describe('matchGroup', () => {
     const rules = [
         { key: 'name', field: 'unitname' },
@@ -44,12 +39,8 @@ describe('matchGroup', () => {
     });
 });
 
-/**
- * Guards the derived SQL against silent drift: these expressions have to keep producing
- * exactly what the RPCs returned, because the strings are user-facing search results.
- * Verified against live parquet when written — `Wasatch fault zone - Brigham City section`
- * and `Kaibab, Toroweap, Park City and other Fms (P2)` came back identical from both.
- */
+// These expressions must keep producing exactly what the RPCs returned — the strings are
+// user-facing search results.
 describe('derived search columns', () => {
     it('assembles a fault name from zone, section and strand, skipping empties', () => {
         const parts = ['Wasatch fault zone', 'Brigham City section', null].filter(p => p != null && p !== '');

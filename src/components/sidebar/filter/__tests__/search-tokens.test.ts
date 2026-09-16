@@ -2,8 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { searchTokens } from '../search-fetchers'
 
 describe('searchTokens', () => {
-    // Tokens are ANDed in the WHERE clause, so a word that matches no column — "Sec" —
-    // wipes out the whole result set. These are the forms people actually type.
+    // Tokens are ANDed, so a word matching no column wipes the result set.
     it('drops label words that no column holds', () => {
         expect(searchTokens('T43S R11W Sec 31')).toEqual(['T43S', 'R11W', '31'])
         expect(searchTokens('T43S R11W Section 31')).toEqual(['T43S', 'R11W', '31'])
@@ -23,8 +22,7 @@ describe('searchTokens', () => {
 })
 
 describe('postgREST multi-token search', () => {
-    // "smith federal 1" has to match a row holding all three, in any order and across
-    // columns — a single ilike of the whole string only matched one contiguous run.
+    // Must match all tokens in any order across columns, not one contiguous run.
     it('ANDs tokens and ORs the target fields', async () => {
         const { buildPostgrestSearchParams } = await import('../search-fetchers')
         const params = buildPostgrestSearchParams(['api', 'wellname'], 'federal 1')

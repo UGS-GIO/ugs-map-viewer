@@ -3,11 +3,8 @@ import { featureCollection } from '@turf/helpers';
 import type { MasqueradeConfig, ParquetSearchConfig, PostgRESTConfig, Suggestion } from './search-types';
 import { appendFunctionParams } from './search-utils';
 
-/**
- * Words people type as labels rather than values — "T43S R11W Sec 31". They match no
- * column, and since tokens are ANDed, leaving them in makes the whole search return
- * nothing. Dropped before the WHERE is built.
- */
+// Label words people type ("T43S R11W Sec 31"). Tokens are ANDed, so these match nothing
+// and would empty the result set.
 const NOISE_TOKENS = new Set(['sec', 'sect', 'section', 'twp', 'township', 'rng', 'range']);
 
 export function searchTokens(searchTerm: string): string[] {
@@ -48,18 +45,12 @@ export async function fetchMasqueradeSuggestions(
     });
 }
 
-/**
- * A PostgREST `ilike` value. Double-quoted because a raw comma, parenthesis or dot in the
- * term would otherwise read as filter syntax and break the query.
- */
+/** Double-quoted so a comma, paren or dot in the term isn't read as filter syntax. */
 function ilikeValue(token: string): string {
     return `"*${token.replace(/"/g, '\\"')}*"`;
 }
 
-/**
- * The `ilike` filter params for a search term, ANDing tokens and ORing target fields.
- * Exported for tests — the shape is fiddly enough to be worth pinning.
- */
+/** `ilike` params for a term: tokens ANDed, target fields ORed. Exported for tests. */
 export function buildPostgrestSearchParams(fields: string[], searchTerm: string): URLSearchParams {
     const params = new URLSearchParams();
     const tokens = searchTokens(searchTerm);
@@ -90,8 +81,7 @@ export async function fetchPostgRESTResults(
     const headers: HeadersInit = source.headers || {};
 
     if (source.functionName) {
-        // The function takes one search_term, so tokens can't be ANDed here — but the label
-        // words are noise wherever they appear, so they still come out.
+        // One search_term, so tokens can't be ANDed — but label words still come out.
         const searchTermValue = `%${searchTokens(searchTerm).join(' ') || searchTerm}%`;
         if (!source.searchTerm) throw new Error(`Missing searchTerm config for function ${source.functionName}`);
         urlParams.set(source.searchTerm, searchTermValue);
@@ -103,10 +93,8 @@ export async function fetchPostgRESTResults(
         apiUrl = `${source.url}/rpc/${source.functionName}?${urlParams.toString()}`;
     } else {
         apiUrl = source.url;
-        // Every token has to land somewhere, but any of the target fields will do — so
-        // "smith federal 1" matches a row whose name holds all three, in any order and
-        // spread across columns. A single ilike of the whole string only ever matched
-        // one contiguous run, which is why multi-word searches came back empty.
+        // Every token must land somewhere, any target field will do — a single ilike of the
+        // whole string only matched one contiguous run.
         const fields = params && 'targetFields' in params && params.targetFields
             ? params.targetFields
             : params && 'targetField' in params && params.targetField
@@ -180,11 +168,7 @@ function attributeColumns(source: ParquetSearchConfig): string[] {
     ])].filter(c => !derived.has(c));
 }
 
-/**
- * Group a row by which field matched, reproducing the `match_type` a search RPC used to
- * return. First field carrying a token wins; the trailing entry acts as the fallback so a
- * row that matched on a column nobody displays still lands somewhere.
- */
+/** The `match_type` a search RPC returned: first field carrying a token wins, last is the fallback. */
 export function matchGroup(
     row: Record<string, unknown>,
     rules: NonNullable<ParquetSearchConfig['groupByMatch']>,
@@ -197,16 +181,10 @@ export function matchGroup(
     return rules[rules.length - 1]?.key ?? '';
 }
 
+/** Typeahead suggestions — geometry-free pseudo-features; the combobox fetches geometry on select. */
 /**
- * Typeahead suggestions. Returns geometry-less pseudo-features (same shape the PostgREST
- * fetcher produces for non-GeoJSON rows); the combobox fetches geometry on selection.
- */
-/**
- * Start DuckDB and build the attribute tables for a config's parquet sources, without
- * waiting for them. Called when the search box opens: by the time someone finishes typing,
- * the one-time cost (worker boot plus one scan per file) is usually already paid, and a
- * session that never opens search pays nothing. Safe to call repeatedly —
- * {@link materializedAttributes} caches per url+projection, so extra calls are no-ops.
+ * Start DuckDB and build the attribute tables, without waiting. Called when the search box
+ * opens so the one-time cost is paid before anyone finishes typing. Idempotent.
  */
 export function prewarmParquetSources(sources: readonly ParquetSearchConfig[]): void {
     void (async () => {
