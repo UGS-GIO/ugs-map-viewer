@@ -9,7 +9,8 @@
  * Remote layers are added as shareable `?userLayers=` recipes; uploads persist
  * to IndexedDB. Either way the new layer is auto-selected so it shows at once.
  */
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
     Plus, Upload, Link as LinkIcon, Database, Loader2, Folder, ArrowLeft,
     RotateCcw, Search, Check, Globe
@@ -31,7 +32,7 @@ import {
 } from '@/lib/map/user-layers/detect'
 import {
     DEFAULT_STAC_CATALOG_URL, fetchStacNode, isStacCatalogOrCollection,
-    type StacCatalogNode, type StacItemSummary, type StacNode
+    type StacItemSummary,
 } from '@/lib/map/user-layers/stac-explorer'
 
 const FORMAT_LABEL: Record<DetectedFormat, string> = {
@@ -60,11 +61,18 @@ export function AddLayerDialog() {
 
     // STAC tab state
     const [stacInput, setStacInput] = useState(DEFAULT_STAC_CATALOG_URL)
-    const [stacNode, setStacNode] = useState<StacNode | null>(null)
-    const [stacHistory, setStacHistory] = useState<StacCatalogNode[]>([])
-    const [stacLoading, setStacLoading] = useState(false)
+    const [activeEndpoint, setActiveEndpoint] = useState(DEFAULT_STAC_CATALOG_URL)
+    const [stacHistory, setStacHistory] = useState<string[]>([])
     const [selectedItem, setSelectedItem] = useState<StacItemSummary | null>(null)
     const [itemFilter, setItemFilter] = useState('')
+
+    // Declaratively fetch STAC catalog/collection/item via React Query. Zero useEffects.
+    const { data: stacNode, isLoading: stacLoading } = useQuery({
+        queryKey: ['stac-node', activeEndpoint],
+        queryFn: () => fetchStacNode(activeEndpoint),
+        enabled: open && activeTab === 'stac',
+        staleTime: 5 * 60 * 1000,
+    })
 
     const finishAndSelect = (title: string) => {
         updateLayerSelection(title, true)
@@ -75,58 +83,31 @@ export function AddLayerDialog() {
         setSelectedItem(null)
     }
 
-    const loadStacEndpoint = useCallback(async (targetUrl: string, pushHistory = true) => {
-        setStacLoading(true)
-        try {
-            const node = await fetchStacNode(targetUrl)
-            if (node.kind === 'item') {
-                setSelectedItem({
-                    id: node.id,
-                    title: node.title,
-                    href: node.url,
-                    format: node.format,
-                })
-                setStacNode(node)
-            } else {
-                if (pushHistory && stacNode && isStacCatalogOrCollection(stacNode)) {
-                    setStacHistory(prev => [...prev, stacNode])
-                }
-                setStacNode(node)
-                setSelectedItem(null)
-                setItemFilter('')
-                setStacInput(node.url)
-            }
-        } catch (e) {
-            toast.error('Could not load STAC endpoint', {
-                description: e instanceof Error ? e.message : String(e),
-            })
-        } finally {
-            setStacLoading(false)
-        }
-    }, [stacNode])
-
-    // Auto-load root catalog when opening STAC tab if not loaded yet
-    useEffect(() => {
-        if (open && activeTab === 'stac' && !stacNode && !stacLoading) {
-            loadStacEndpoint(DEFAULT_STAC_CATALOG_URL, false)
-        }
-    }, [open, activeTab, stacNode, stacLoading, loadStacEndpoint])
+    const navigateToEndpoint = useCallback((href: string) => {
+        setStacHistory(prev => [...prev, activeEndpoint])
+        setActiveEndpoint(href)
+        setStacInput(href)
+        setSelectedItem(null)
+        setItemFilter('')
+    }, [activeEndpoint])
 
     const handleBack = useCallback(() => {
         if (stacHistory.length === 0) return
         const prev = stacHistory[stacHistory.length - 1]
         setStacHistory(h => h.slice(0, -1))
-        setStacNode(prev)
+        setActiveEndpoint(prev)
+        setStacInput(prev)
         setSelectedItem(null)
         setItemFilter('')
-        setStacInput(prev.url)
     }, [stacHistory])
 
     const handleResetToWarehouse = useCallback(() => {
         setStacHistory([])
+        setActiveEndpoint(DEFAULT_STAC_CATALOG_URL)
         setStacInput(DEFAULT_STAC_CATALOG_URL)
-        loadStacEndpoint(DEFAULT_STAC_CATALOG_URL, false)
-    }, [loadStacEndpoint])
+        setSelectedItem(null)
+        setItemFilter('')
+    }, [])
 
     const handleAddUrl = async () => {
         const raw = url.trim()
@@ -141,7 +122,7 @@ export function AddLayerDialog() {
                     const node = await fetchStacNode(raw)
                     if (isStacCatalogOrCollection(node)) {
                         toast.info(`Opened STAC catalog "${node.title}" in STAC tab`)
-                        setStacNode(node)
+                        setActiveEndpoint(node.url)
                         setStacHistory([])
                         setStacInput(node.url)
                         setActiveTab('stac')
@@ -207,7 +188,8 @@ export function AddLayerDialog() {
                 finishAndSelect(title)
             } else {
                 // It's a catalog / collection — explore it!
-                setStacNode(node)
+                setActiveEndpoint(node.url)
+                setStacInput(node.url)
                 setStacHistory([])
                 setSelectedItem(null)
                 setItemFilter('')
@@ -350,7 +332,7 @@ export function AddLayerDialog() {
                                     onChange={e => setStacInput(e.target.value)}
                                     onKeyDown={e => {
                                         if (e.key === 'Enter' && !stacLoading && !busy) {
-                                            loadStacEndpoint(stacInput, true)
+                                            navigateToEndpoint(stacInput)
                                         }
                                     }}
                                     className="h-8 text-xs font-mono"
@@ -359,7 +341,7 @@ export function AddLayerDialog() {
                                     type="button"
                                     variant="secondary"
                                     size="sm"
-                                    onClick={() => loadStacEndpoint(stacInput, true)}
+                                    onClick={() => navigateToEndpoint(stacInput)}
                                     disabled={stacLoading || busy || !stacInput.trim()}
                                     className="h-8 shrink-0 px-3 text-xs"
                                 >
@@ -410,7 +392,7 @@ export function AddLayerDialog() {
                                                     <button
                                                         key={child.href}
                                                         type="button"
-                                                        onClick={() => loadStacEndpoint(child.href)}
+                                                        onClick={() => navigateToEndpoint(child.href)}
                                                         className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-background hover:bg-muted text-xs font-medium border text-foreground transition-colors shadow-sm"
                                                     >
                                                         <Folder className="h-3 w-3 text-muted-foreground shrink-0" />

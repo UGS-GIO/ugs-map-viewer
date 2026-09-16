@@ -4,6 +4,71 @@ import { ScatterplotLayer, GeoJsonLayer } from '@deck.gl/layers'
 import type { PickingInfo } from '@deck.gl/core'
 import type maplibregl from 'maplibre-gl'
 import type { ParquetLayerProps } from '@/lib/types/mapping-types'
+import type { WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
+import { getArrowRowProperties } from '@/lib/map/user-layers/parquet-deck-loader'
+
+export function queryParquetLayersAtPoint(
+    map: maplibregl.Map,
+    point: { x: number; y: number },
+    tolerance: number,
+    layers: ParquetLayerProps[],
+): WfsLayerFeature[] {
+    if (layers.length === 0) return []
+    const out: WfsLayerFeature[] = []
+
+    for (const layer of layers) {
+        if (!layer.deckData) continue
+        const title = layer.title
+
+        if (layer.deckData.kind === 'points' && layer.deckData.points) {
+            const { positions, count } = layer.deckData.points
+            let bestDist = tolerance
+            let bestIdx = -1
+
+            for (let i = 0; i < count; i++) {
+                const lng = positions[i * 2]
+                const lat = positions[i * 2 + 1]
+                const screenPt = map.project([lng, lat])
+                const dx = screenPt.x - point.x
+                const dy = screenPt.y - point.y
+                const dist = Math.sqrt(dx * dx + dy * dy)
+                if (dist <= tolerance && dist < bestDist) {
+                    bestDist = dist
+                    bestIdx = i
+                }
+            }
+
+            if (bestIdx >= 0) {
+                const lng = positions[bestIdx * 2]
+                const lat = positions[bestIdx * 2 + 1]
+                const props = layer.deckData.table
+                    ? getArrowRowProperties(layer.deckData.table, bestIdx)
+                    : (layer.deckData.properties?.[bestIdx] ?? { index: bestIdx, longitude: lng, latitude: lat })
+                out.push({
+                    id: `parquet-${title}-${bestIdx}`,
+                    layerTitle: title,
+                    properties: props,
+                    geometry: { type: 'Point', coordinates: [lng, lat] },
+                })
+            }
+        }
+
+        if (layer.deckData.kind === 'geojson' && layer.deckData.geojson) {
+            for (let i = 0; i < layer.deckData.geojson.features.length; i++) {
+                const f = layer.deckData.geojson.features[i]
+                if (!f.geometry) continue
+                out.push({
+                    id: (f.id as string | number | undefined) ?? `parquet-${title}-${i}`,
+                    layerTitle: title,
+                    properties: (f.properties as Record<string, unknown>) ?? {},
+                    geometry: f.geometry,
+                })
+                break
+            }
+        }
+    }
+    return out
+}
 
 interface DeckGlOverlayProps {
     map: maplibregl.Map | null
@@ -41,23 +106,26 @@ export function DeckGlOverlay({ map, layers, onFeatureClick }: DeckGlOverlayProp
                 const opacity = layer.opacity ?? 0.85
 
                 if (data.kind === 'points' && data.points) {
+                    const count = data.points.count
                     return new ScatterplotLayer({
                         id: `deck-parquet-points-${layer.title}`,
                         data: {
-                            length: data.points.count,
+                            length: count,
                             attributes: {
                                 getPosition: { value: data.points.positions, size: 2 },
                             },
                         },
-                        radiusMinPixels: 2,
-                        radiusMaxPixels: 20,
-                        radiusScale: 1,
-                        getRadius: 15,
+                        radiusUnits: 'pixels',
+                        getRadius: 3,
                         getFillColor: hexToRgb(color, opacity * 255),
                         pickable: true,
+                        autoHighlight: false,
+                        _validate: false,
                         onClick: (info: PickingInfo) => {
                             if (info.index >= 0) {
-                                const props = data.properties?.[info.index] ?? {}
+                                const props = data.table
+                                    ? getArrowRowProperties(data.table, info.index)
+                                    : (data.properties?.[info.index] ?? { index: info.index })
                                 const coord = info.coordinate ? [info.coordinate[0], info.coordinate[1]] as [number, number] : undefined
                                 onFeatureClick?.({
                                     layerTitle: layer.title,

@@ -17,7 +17,7 @@ import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWF
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
 import { GeoJSONLayerSource, getGeojsonLayerId, queryGeojsonLayersAtPoint } from '@/components/maps/geojson-layer-source'
-import { DeckGlOverlay } from '@/components/maps/deckgl-overlay'
+import { DeckGlOverlay, queryParquetLayersAtPoint } from '@/components/maps/deckgl-overlay'
 import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps, GeoJSONLayerProps, ParquetLayerProps } from '@/lib/types/mapping-types'
 import type maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
@@ -432,6 +432,8 @@ export default function DataMap({
   visiblePmtilesLayersRef.current = visiblePmtilesLayers
   const visibleGeojsonLayersRef = useRef(visibleGeojsonLayers)
   visibleGeojsonLayersRef.current = visibleGeojsonLayers
+  const visibleParquetLayersRef = useRef(visibleParquetLayers)
+  visibleParquetLayersRef.current = visibleParquetLayers
 
   // Ref to store WFS features from polygon query (populated before WMS query completes)
   const polygonWfsLayerFeaturesRef = useRef<WfsLayerFeature[]>([])
@@ -490,7 +492,8 @@ export default function DataMap({
     const wfsFeatures = queryWfsLayersAtPoint(map, point, tolerance, visibleWfsLayersRef.current)
     const pmtilesFeatures = queryPmtilesLayersAtPoint(map, point, tolerance, visiblePmtilesLayersRef.current)
     const geojsonFeatures = queryGeojsonLayersAtPoint(map, point, tolerance, visibleGeojsonLayersRef.current)
-    const vectorFeatures = [...pmtilesFeatures, ...wfsFeatures, ...geojsonFeatures]
+    const parquetFeatures = queryParquetLayersAtPoint(map, point, tolerance, visibleParquetLayersRef.current)
+    const vectorFeatures = [...pmtilesFeatures, ...wfsFeatures, ...geojsonFeatures, ...parquetFeatures]
 
     if (visibleWmsLayersRef.current.length === 0) {
       dispatchFeatures(vectorFeatures, additive, options)

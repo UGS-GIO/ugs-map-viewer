@@ -1,4 +1,5 @@
 import type { FeatureCollection, Feature } from 'geojson'
+import type { Table as ArrowTable } from 'apache-arrow'
 import { withConnection, loadSpatial, escapeSql, quoteIdent, normalizeRow } from '@/lib/duckdb/client'
 
 const GEOM_CANDIDATES = ['geom', 'geometry', 'wkb_geometry', 'the_geom', 'shape']
@@ -10,8 +11,22 @@ export interface ParquetDeckData {
         count: number
     }
     geojson?: FeatureCollection
+    table?: ArrowTable
     properties?: Array<Record<string, unknown>>
     bounds?: [number, number, number, number]
+}
+
+export function getArrowRowProperties(table: ArrowTable, index: number): Record<string, unknown> {
+    const row: Record<string, unknown> = {}
+    for (const field of table.schema.fields) {
+        if (field.name === 'x' || field.name === 'y') continue
+        const col = table.getChild(field.name)
+        if (col) {
+            const raw = col.get(index)
+            row[field.name] = typeof raw === 'bigint' ? Number(raw) : raw
+        }
+    }
+    return row
 }
 
 export async function loadParquetForDeck(source: string | File): Promise<ParquetDeckData> {
@@ -51,11 +66,12 @@ export async function loadParquetForDeck(source: string | File): Promise<Parquet
                 const pointsQuery = `
                     SELECT
                         ${quoteIdent(lonCol)}::FLOAT AS x,
-                        ${quoteIdent(latCol)}::FLOAT AS y
+                        ${quoteIdent(latCol)}::FLOAT AS y,
+                        * EXCLUDE (${quoteIdent(lonCol)}, ${quoteIdent(latCol)})
                     FROM ${tableSource}
                     WHERE ${quoteIdent(lonCol)} IS NOT NULL AND ${quoteIdent(latCol)} IS NOT NULL
                 `
-                const ptsTable = await conn.query(pointsQuery)
+                const ptsTable = (await conn.query(pointsQuery)) as unknown as ArrowTable
                 const count = ptsTable.numRows
                 const xArray = ptsTable.getChild('x')?.toArray() as Float32Array | undefined
                 const yArray = ptsTable.getChild('y')?.toArray() as Float32Array | undefined
@@ -76,13 +92,10 @@ export async function loadParquetForDeck(source: string | File): Promise<Parquet
                     }
                 }
 
-                const propsTable = await conn.query(`SELECT * FROM ${tableSource} LIMIT 50000`)
-                const properties = propsTable.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>))
-
                 return {
                     kind: 'points',
                     points: { positions, count },
-                    properties,
+                    table: ptsTable,
                     bounds: minX !== Infinity ? [minX, minY, maxX, maxY] : undefined,
                 }
             }
@@ -112,11 +125,12 @@ export async function loadParquetForDeck(source: string | File): Promise<Parquet
                 const pointsQuery = `
                     SELECT
                         ST_X(ST_GeomFromWKB(${quoteIdent(geomCol)}))::FLOAT AS x,
-                        ST_Y(ST_GeomFromWKB(${quoteIdent(geomCol)}))::FLOAT AS y
+                        ST_Y(ST_GeomFromWKB(${quoteIdent(geomCol)}))::FLOAT AS y,
+                        * EXCLUDE (${quoteIdent(geomCol)})
                     FROM ${tableSource}
                     WHERE ${quoteIdent(geomCol)} IS NOT NULL
                 `
-                const ptsTable = await conn.query(pointsQuery)
+                const ptsTable = (await conn.query(pointsQuery)) as unknown as ArrowTable
                 const count = ptsTable.numRows
                 const xArray = ptsTable.getChild('x')?.toArray() as Float32Array | undefined
                 const yArray = ptsTable.getChild('y')?.toArray() as Float32Array | undefined
@@ -137,13 +151,10 @@ export async function loadParquetForDeck(source: string | File): Promise<Parquet
                     }
                 }
 
-                const propsTable = await conn.query(`SELECT * EXCLUDE (${quoteIdent(geomCol)}) FROM ${tableSource} LIMIT 50000`)
-                const properties = propsTable.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>))
-
                 return {
                     kind: 'points',
                     points: { positions, count },
-                    properties,
+                    table: ptsTable,
                     bounds: minX !== Infinity ? [minX, minY, maxX, maxY] : undefined,
                 }
             }
