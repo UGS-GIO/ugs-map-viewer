@@ -42,13 +42,6 @@ const GEOM_CANDIDATES = ['geom', 'geometry', 'wkb_geometry', 'the_geom', 'shape'
  */
 export const LARGE_PARQUET_FEATURE_COUNT = 100000
 
-/**
- * Ceiling for the buffered-read fallback. DuckDB's WASM heap is 32-bit and in
- * practice cannot hand out large contiguous blocks, so copying a big file into
- * it fails as an opaque "malloc of size N failed" partway through the load.
- */
-export const MAX_BUFFERED_UPLOAD_BYTES = 256 * 1024 * 1024
-
 /** Details handed to {@link LoadParquetOptions.onLargeDataset}. */
 export interface LargeParquetDataset {
     /** File or layer name to show the user. */
@@ -270,27 +263,14 @@ export async function loadParquetForDeck(source: string | File, opts: LoadParque
             crsFileName = source
         } else {
             virtualName = `user-upload-${crypto.randomUUID()}.parquet`
-            const duckdb = await import('@duckdb/duckdb-wasm')
-            try {
-                // Streams byte ranges straight off the File — DuckDB reads only
-                // the row groups it needs and nothing is copied into the heap.
-                await db.registerFileHandle(virtualName, source, duckdb.DuckDBDataProtocol.BROWSER_FILEREADER, true)
-            } catch (e) {
-                // The fallback copies the ENTIRE file into DuckDB's WASM heap,
-                // which is 32-bit and cannot serve large contiguous blocks — a
-                // big file dies here as "malloc of size N failed". Better to say
-                // what actually went wrong than to attempt it and blow up.
-                console.warn('[user-layers] PMTiles-style streaming read unavailable, buffering instead:', e)
-                if (source.size > MAX_BUFFERED_UPLOAD_BYTES) {
-                    throw new Error(
-                        `"${source.name}" (${Math.round(source.size / 1024 ** 2)} MB) cannot be streamed in this ` +
-                        `browser, and is too large to load into memory whole. Add it by URL instead — remote ` +
-                        `Parquet is read a row group at a time.`,
-                    )
-                }
-                const buffer = new Uint8Array(await source.arrayBuffer())
-                await db.registerFileBuffer(virtualName, buffer)
-            }
+            // `registerFileBuffer` rather than a BROWSER_FILEREADER handle: the
+            // handle path reports a file size of 0 back to DuckDB, so the first
+            // footer read fails with "Prefetch registered for bytes outside
+            // file ... file size: 0". The buffer is TRANSFERRED to the worker,
+            // not copied, so this costs one copy in the WASM heap rather than
+            // two — which is why the upload ceiling is what it is.
+            const buffer = new Uint8Array(await source.arrayBuffer())
+            await db.registerFileBuffer(virtualName, buffer)
             tableSource = `read_parquet('${virtualName}')`
             crsFileName = virtualName
         }

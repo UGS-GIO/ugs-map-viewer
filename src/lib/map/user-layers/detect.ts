@@ -35,12 +35,13 @@ export type UploadedLayer = GeoJSONLayerProps | PMTilesLayerProps | COGLayerProp
 export type DetectedFormat = 'pmtiles' | 'geojson' | 'cog' | 'wms' | 'stac' | 'parquet' | 'unknown'
 
 /**
- * Ceiling for uploaded files. GeoJSON is parsed into memory whole, and the
- * DuckDB Parquet path falls back to buffering the file when the FileReader
- * protocol is unavailable — both OOM the tab well before the browser complains,
- * so the limit is enforced up front with a message instead.
+ * Ceiling for uploaded files. GeoJSON is parsed into memory whole, and a Parquet
+ * upload is buffered into DuckDB's WASM heap, which is 32-bit and cannot hand
+ * out large contiguous blocks. Both die well before the browser complains — as
+ * an opaque "malloc of size N failed" — so the limit is enforced up front with
+ * a message that says what to do instead.
  */
-export const MAX_UPLOAD_BYTES = 512 * 1024 * 1024
+export const MAX_UPLOAD_BYTES = 256 * 1024 * 1024
 
 function formatBytes(bytes: number): string {
     if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`

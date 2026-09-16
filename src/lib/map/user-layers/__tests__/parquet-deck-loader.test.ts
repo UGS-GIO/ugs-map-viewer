@@ -211,6 +211,42 @@ describe('polygon routing', () => {
     })
 })
 
+describe('uploaded files', () => {
+    it('registers the bytes as a buffer, not a BROWSER_FILEREADER handle', async () => {
+        // The handle path reports a file size of 0 to DuckDB, so the first footer
+        // read dies with "Prefetch registered for bytes outside file ... size: 0".
+        lonLatSource(2)
+        const registerFileBuffer = vi.fn()
+        const registerFileHandle = vi.fn()
+        const { withConnection } = await import('@/lib/duckdb/client')
+        const run = vi.mocked(withConnection) as unknown as {
+            mockImplementationOnce: (impl: (fn: (c: unknown, d: unknown) => unknown) => unknown) => void
+        }
+        run.mockImplementationOnce(async fn =>
+            fn(conn, { registerFileBuffer, registerFileHandle, dropFile: vi.fn() }))
+
+        const file = new File([new Uint8Array(16)], 'wells.parquet')
+        await loadParquetForDeck(file)
+
+        expect(registerFileBuffer).toHaveBeenCalledOnce()
+        expect(registerFileHandle).not.toHaveBeenCalled()
+    })
+
+    it('drops the registered file once the read is done', async () => {
+        lonLatSource(2)
+        const dropFile = vi.fn()
+        const { withConnection } = await import('@/lib/duckdb/client')
+        const run = vi.mocked(withConnection) as unknown as {
+            mockImplementationOnce: (impl: (fn: (c: unknown, d: unknown) => unknown) => unknown) => void
+        }
+        run.mockImplementationOnce(async fn =>
+            fn(conn, { registerFileBuffer: vi.fn(), dropFile }))
+
+        await loadParquetForDeck(new File([new Uint8Array(16)], 'wells.parquet'))
+        expect(dropFile).toHaveBeenCalledOnce()
+    })
+})
+
 describe('row-unbounded reads are streamed', () => {
     // `conn.query` materializes the whole Arrow result as one contiguous buffer
     // in DuckDB's 32-bit WASM heap. Any read whose row count is bounded only by
