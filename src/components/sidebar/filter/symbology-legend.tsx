@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useLayerFilter } from '@/hooks/use-layer-filter'
 import { useDistinctFieldOptions } from '@/hooks/use-distinct-field-options'
 import { orderedCategories } from '@/lib/filter/legend-categories'
-import type { FilterSchema, FilterFieldKind } from '@/lib/filter/types'
+import { isFilterEmpty, type FilterSchema, type FilterFieldKind } from '@/lib/filter/types'
 import type { PMTilesLayerProps, PMTilesRender, LegendEntry } from '@/lib/types/mapping-types'
 
 /**
@@ -73,12 +73,26 @@ interface SymbologyLegendProps {
 /** Interactive symbology legend (render dropdown + category filter grid), derived from STAC. */
 export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
     const { value: active, setValue: setActive } = useVectorSymbology(layer.title ?? '')
+    const mgr = useLayerFilter(schema)
     const modes = useMemo(() => modesFromRenders(layer.renders ?? []), [layer.renders])
     // Empty param → the layer's default render. Selecting a render writes its real id.
     const mode = modes.find(m => m.id === active)
         ?? modes.find(m => m.id === layer.defaultRenderId)
         ?? modes[0]
     const field = mode ? schema.fields.find(f => f.field === mode.field) : undefined
+
+    // A render the user isn't looking at can still be filtering the map — its checkboxes are the
+    // only place that filter is editable (these fields are hidden from the Filters panel), so its
+    // grid rides along below the active one instead of vanishing with the dropdown.
+    const seen = new Set([mode?.field])
+    const filteredElsewhere = modes.flatMap(m => {
+        if (seen.has(m.field)) return []
+        seen.add(m.field)
+        const f = schema.fields.find(sf => sf.field === m.field)
+        const v = f ? mgr.state[f.field] : undefined
+        return f && v && !isFilterEmpty({ [f.field]: v }) ? [{ mode: m, field: f }] : []
+    })
+
     if (!mode || !field) return null
 
     return (
@@ -97,11 +111,20 @@ export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
                 </div>
             )}
             <CategoryLegendGrid schema={schema} field={field} entries={mode.entries} />
+            {filteredElsewhere.map(({ mode: m, field: f }) => (
+                <div key={m.id} className="flex flex-col gap-2 border-t border-border pt-2">
+                    <p className="text-[0.7rem] text-muted-foreground">Still filtering the map:</p>
+                    <CategoryLegendGrid schema={schema} field={f} entries={m.entries} showReset={false} />
+                </div>
+            ))}
         </div>
     )
 }
 
-function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; field: FilterFieldKind; entries: readonly LegendEntry[] }) {
+function CategoryLegendGrid(
+    { schema, field, entries, showReset = true }:
+        { schema: FilterSchema; field: FilterFieldKind; entries: readonly LegendEntry[]; showReset?: boolean },
+) {
     const mgr = useLayerFilter(schema)
     const isContains = field.kind === 'containsAny'
     const { data, isLoading, isPlaceholderData } = useDistinctFieldOptions({ schema, state: mgr.state, field, splitCommaDelimited: isContains })
@@ -204,7 +227,7 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
             </div>
         </div>
     )
-    const resetBtn = mgr.hasAnyFilter && (
+    const resetBtn = showReset && mgr.hasAnyFilter && (
         <Button variant="ghost" size="sm" className="h-6 self-start px-2 text-xs" onClick={mgr.clearAll}>
             Reset all filters
         </Button>
