@@ -1,6 +1,6 @@
 import type { FilterSchema } from '@/lib/filter/types';
 import { PROD_POSTGREST_URL } from '@/lib/constants';
-import { ucrcWellsWMSTitle } from './layers';
+import { ucrcWellsWMSTitle } from './ucrc-wells';
 
 export const ucrcFilterSchema: FilterSchema = {
     recordKey: ucrcWellsWMSTitle,
@@ -20,7 +20,7 @@ export const ucrcFilterSchema: FilterSchema = {
         { kind: 'multiSelect', field: 'current_operator', label: 'Operator', placeholder: 'Select operators...' },
         { kind: 'multiSelect', field: 'field_name', label: 'Oil/Gas Field', placeholder: 'Select oil/gas fields...' },
         { kind: 'multiSelect', field: 'cored_formations', label: 'Cored Formation', placeholder: 'Select formations...' },
-        { kind: 'range', field: 'td_ft', label: 'Total Depth', units: 'ft', step: 100, snapStep: 100 },
+        { kind: 'range', field: 'td_ft', label: 'Total Depth', units: 'ft', step: 100, snapStep: 100, nullExcludedNote: 'Wells with no recorded total depth are not shown while this filter is active.' },
         {
             kind: 'boolean',
             field: 'has_photos',
