@@ -531,7 +531,8 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
                 <RelatedDataTable
                     rows={data[tableIndex] as Record<string, unknown>[]}
                     displayFields={table.displayFields!}
-                    initialSort={table.sortBy ? { id: table.sortBy, desc: table.sortDirection === 'desc' } : undefined}
+                    initialSort={(Array.isArray(table.sortBy) ? table.sortBy : table.sortBy ? [table.sortBy] : [])
+                        .map(id => ({ id, desc: table.sortDirection === 'desc' }))}
                 />
             );
         } else {
