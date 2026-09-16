@@ -269,7 +269,7 @@ function CategoryLegendGrid(
                                     </span>
                                 </Label>
                             </label>
-                            <div className="pl-4">{renderRows(items, !shadesMatchGroup)}</div>
+                            {items.length > 1 && <div className="pl-4">{renderRows(items, !shadesMatchGroup)}</div>}
                         </div>
                     )
                 })}
