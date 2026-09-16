@@ -99,7 +99,9 @@ export interface ParquetByValuesOptions {
 const orderByClause = (sortBy: string | string[] | undefined, dir: 'asc' | 'desc' | undefined): string => {
     const keys = sortBy == null ? [] : Array.isArray(sortBy) ? sortBy : [sortBy];
     if (keys.length === 0) return '';
-    return ` ORDER BY ${keys.map(quoteIdent).join(', ')} ${dir === 'desc' ? 'DESC' : 'ASC'}`;
+    // Per key: ASC/DESC binds to one expression, not the whole list.
+    const sql = dir === 'desc' ? 'DESC' : 'ASC';
+    return ` ORDER BY ${keys.map(k => `${quoteIdent(k)} ${sql}`).join(', ')}`;
 };
 
 /**

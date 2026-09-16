@@ -94,7 +94,14 @@ export function RelatedDataTable({
         data: rows,
         columns,
         state: { sorting },
-        onSortingChange: setSorting,
+        // A click replaces the seeded multi-key sort instead of toggling inside it, so every
+        // header behaves the same however the table was initially sorted — and the column
+        // clicked out of a multi-key sort starts ascending, like any other first click.
+        onSortingChange: updater => setSorting(prev => {
+            const next = typeof updater === 'function' ? updater(prev) : updater;
+            if (next.length <= 1) return next;
+            return [{ ...next[next.length - 1], desc: false }];
+        }),
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
     });
