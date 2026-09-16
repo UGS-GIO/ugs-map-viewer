@@ -18,13 +18,26 @@ function result(rows: Record<string, unknown>[]) {
 }
 
 const queries: string[] = []
+/** Queries issued through the streaming API rather than materialized whole. */
+const streamed: string[] = []
 let routes: Array<[RegExp, ReturnType<typeof result>]> = []
+
+function lookup(sql: string) {
+    for (const [re, res] of routes) if (re.test(sql)) return res
+    return result([])
+}
 
 const conn = {
     query: vi.fn(async (sql: string) => {
         queries.push(sql)
-        for (const [re, res] of routes) if (re.test(sql)) return res
-        return result([])
+        return lookup(sql)
+    }),
+    // Mirrors duckdb-wasm's `send`: an async iterable of record batches.
+    send: vi.fn(async (sql: string) => {
+        queries.push(sql)
+        streamed.push(sql)
+        const res = lookup(sql)
+        return (async function* () { yield res })()
     }),
 }
 
@@ -59,14 +72,18 @@ function lonLatSource(rowCount: number) {
 
 beforeEach(() => {
     queries.length = 0
+    streamed.length = 0
     conn.query.mockClear()
+    conn.send.mockClear()
 })
 
 describe('large-source guard', () => {
     it('does not count rows when no guard is attached, keeping the load single-pass', async () => {
         lonLatSource(5_000_000)
         await loadParquetForDeck('https://x.org/wells.parquet')
-        expect(queries.some(q => /count\(\*\)/.test(q))).toBe(false)
+        // The guard's count is over the source file; materializing points counts
+        // its own table, which is cheap and unrelated.
+        expect(queries.some(q => /count\(\*\).*read_parquet/s.test(q))).toBe(false)
     })
 
     it('loads without asking when the source is under the threshold', async () => {
@@ -120,7 +137,7 @@ describe('point materialization', () => {
     it('reads coordinates back ordered by row id, so index and id are the same number', async () => {
         lonLatSource(2)
         await loadParquetForDeck('https://x.org/wells.parquet')
-        const read = queries.find(q => /FROM "pq_pts_/.test(q) && /SELECT/.test(q))
+        const read = queries.find(q => /AS x/.test(q) && /AS y/.test(q) && /FROM "pq_pts_/.test(q))
         expect(read).toMatch(/ORDER BY "__rid__"/)
     })
 
@@ -191,6 +208,42 @@ describe('polygon routing', () => {
         await expect(loadParquetForDeck('https://x.org/plain.parquet')).rejects.toThrow(
             /no recognized geometry or coordinates/,
         )
+    })
+})
+
+describe('row-unbounded reads are streamed', () => {
+    // `conn.query` materializes the whole Arrow result as one contiguous buffer
+    // in DuckDB's 32-bit WASM heap. Any read whose row count is bounded only by
+    // the file must go through `send`, or a large layer dies as
+    // "malloc of size N failed" before the browser is anywhere near out of memory.
+    it('streams every polygon row rather than building one giant result', async () => {
+        routes = [
+            [/^DESCRIBE/, result([{ column_name: 'geom', column_type: 'GEOMETRY' }])],
+            [/ST_GeometryType/, result([{ gtype: 'POLYGON' }])],
+            [/ST_AsGeoJSON/, result([
+                { __geom__: '{"type":"Point","coordinates":[1,2]}', name: 'a' },
+            ])],
+        ]
+        await loadParquetForDeck('https://x.org/units.parquet')
+        expect(streamed.some(q => /ST_AsGeoJSON/.test(q))).toBe(true)
+    })
+
+    it('streams the point coordinates too', async () => {
+        lonLatSource(2)
+        await loadParquetForDeck('https://x.org/wells.parquet')
+        expect(streamed.some(q => /AS x/.test(q) && /AS y/.test(q))).toBe(true)
+    })
+
+    it('still works where the connection has no streaming API', async () => {
+        lonLatSource(2)
+        const noSend = { query: conn.query }
+        const { withConnection } = await import('@/lib/duckdb/client')
+        const run = vi.mocked(withConnection) as unknown as {
+            mockImplementationOnce: (impl: (fn: (c: unknown, d: unknown) => unknown) => unknown) => void
+        }
+        run.mockImplementationOnce(async fn => fn(noSend, { dropFile: vi.fn() }))
+        const data = await loadParquetForDeck('https://x.org/wells.parquet')
+        expect(data.points?.count).toBe(2)
     })
 })
 

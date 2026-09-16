@@ -1,11 +1,35 @@
 import type { FeatureCollection, Feature } from 'geojson'
-import type { Table as ArrowTable } from 'apache-arrow'
 import { withConnection, loadSpatial, escapeSql, quoteIdent, normalizeRow } from '@/lib/duckdb/client'
 import { readGeoParquetCrs, reprojectToWgs84, assertGeographicBounds } from '@/lib/map/user-layers/geoparquet-crs'
 
 /** The slice of an `AsyncDuckDBConnection` this module uses. */
+type DuckDbRow = { toJSON: () => unknown }
+type DuckDbResult = { toArray: () => DuckDbRow[]; numRows?: number }
 type DuckDbConnection = {
-    query: (sql: string) => Promise<{ toArray: () => Array<{ toJSON: () => unknown }>; numRows?: number }>
+    /** Materializes the whole result in the WASM heap — small results only. */
+    query: (sql: string) => Promise<DuckDbResult>
+    /** Streams the result a record batch at a time. Required for anything row-unbounded. */
+    send?: (sql: string) => Promise<AsyncIterable<DuckDbResult>>
+}
+
+/**
+ * Iterate a query's rows without materializing the whole result.
+ *
+ * `conn.query` builds the entire Arrow result as one contiguous buffer in
+ * DuckDB's 32-bit WASM heap before handing it over. For a row-unbounded read —
+ * every polygon's GeoJSON text, say — that single allocation is the thing that
+ * dies as "malloc of size N failed", long before the browser is out of memory.
+ * `conn.send` hands back record batches instead, so only one batch is live at a
+ * time. Falls back to `query` where `send` is unavailable (notably in tests).
+ */
+async function* streamRows(conn: DuckDbConnection, sql: string): AsyncGenerator<Record<string, unknown>> {
+    if (!conn.send) {
+        for (const row of (await conn.query(sql)).toArray()) yield row.toJSON() as Record<string, unknown>
+        return
+    }
+    for await (const batch of await conn.send(sql)) {
+        for (const row of batch.toArray()) yield row.toJSON() as Record<string, unknown>
+    }
 }
 
 const GEOM_CANDIDATES = ['geom', 'geometry', 'wkb_geometry', 'the_geom', 'shape']
@@ -122,27 +146,31 @@ async function materializePoints(
         WHERE ${opts.where}
     `)
 
-    const pts = (await conn.query(
-        `SELECT ${quoteIdent(POINT_X)} AS x, ${quoteIdent(POINT_Y)} AS y
-         FROM ${quoteIdent(table)} ORDER BY ${quoteIdent(ROW_ID)}`,
-    )) as unknown as ArrowTable
-    const count = pts.numRows
-    const xArray = pts.getChild('x')?.toArray() as Float32Array | undefined
-    const yArray = pts.getChild('y')?.toArray() as Float32Array | undefined
+    // Size the buffer from the table's own count, then fill it batch by batch.
+    // Reading the coordinates as one Arrow result would hold a full copy in the
+    // WASM heap and another in JS at the same time; the destination array is the
+    // only full-size allocation this way, and it is the one Deck keeps anyway.
+    const countRow = (await conn.query(`SELECT count(*) AS n FROM ${quoteIdent(table)}`))
+        .toArray()[0]?.toJSON() as { n?: unknown } | undefined
+    const count = typeof countRow?.n === 'bigint' ? Number(countRow.n) : Number(countRow?.n ?? 0)
 
     const positions = new Float32Array(count * 2)
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-    if (xArray && yArray) {
-        for (let i = 0; i < count; i++) {
-            const px = xArray[i]
-            const py = yArray[i]
-            positions[i * 2] = px
-            positions[i * 2 + 1] = py
-            if (px < minX) minX = px
-            if (py < minY) minY = py
-            if (px > maxX) maxX = px
-            if (py > maxY) maxY = py
-        }
+    let i = 0
+    const coordSql =
+        `SELECT ${quoteIdent(POINT_X)} AS x, ${quoteIdent(POINT_Y)} AS y
+         FROM ${quoteIdent(table)} ORDER BY ${quoteIdent(ROW_ID)}`
+    for await (const row of streamRows(conn, coordSql)) {
+        if (i >= count) break
+        const px = Number(row.x)
+        const py = Number(row.y)
+        positions[i * 2] = px
+        positions[i * 2 + 1] = py
+        if (px < minX) minX = px
+        if (py < minY) minY = py
+        if (px > maxX) maxX = px
+        if (py > maxY) maxY = py
+        i++
     }
 
     const bounds: [number, number, number, number] | undefined =
@@ -362,11 +390,8 @@ export async function loadParquetForDeck(source: string | File, opts: LoadParque
                     * EXCLUDE (${quoteIdent(geomCol)})
                 FROM ${tableSource}
             `
-            const result = await conn.query(query)
-
             const features: Feature[] = []
-            for (const row of result.toArray()) {
-                const obj = row.toJSON() as Record<string, unknown>
+            for await (const obj of streamRows(conn, query)) {
                 const geomStr = obj.__geom__ ? String(obj.__geom__) : null
                 delete obj.__geom__
 
