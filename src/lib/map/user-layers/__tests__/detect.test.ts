@@ -6,6 +6,14 @@ import type { GeoJSONLayerProps, PMTilesLayerProps, COGLayerProps } from '@/lib/
 
 vi.mock('@/hooks/use-cog-metadata', () => ({ loadCogMetadata: vi.fn() }))
 vi.mock('@/lib/map/pmtiles/setup', () => ({ registerLocalPMTiles: vi.fn() }))
+vi.mock('../parquet-loader', () => ({
+    readGeoParquetToGeoJSON: vi.fn().mockResolvedValue({
+        type: 'FeatureCollection',
+        features: [
+            { type: 'Feature', geometry: { type: 'Point', coordinates: [-111.5, 40.2] }, properties: { name: 'Well 1' } },
+        ],
+    }),
+}))
 
 describe('detectFormatFromUrl', () => {
     it('detects PMTiles', () => {
@@ -14,6 +22,7 @@ describe('detectFormatFromUrl', () => {
 
     it('detects GeoJSON', () => {
         expect(detectFormatFromUrl('https://x.org/a/faults.geojson')).toBe('geojson')
+        expect(detectFormatFromUrl('https://x.org/a/wells.parquet')).toBe('parquet')
     })
 
     it('detects COG for .tif and .tiff', () => {
@@ -263,5 +272,21 @@ describe('buildLayerFromFile — PMTiles uploads', () => {
         expect(layer.type).toBe('pmtiles')
         expect(layer.renders).toHaveLength(1)
         expect(layer.renders![0].styleUrl.startsWith('data:application/json,')).toBe(true)
+    })
+
+    it('builds a GeoJSON layer from a .parquet URL', async () => {
+        const layer = await buildLayerFromUrl('https://x.org/wells.parquet') as GeoJSONLayerProps
+        expect(layer.type).toBe('geojson')
+        expect(layer.title).toBe('wells')
+        expect(layer.data).toBeDefined()
+        expect(layer.data?.features).toHaveLength(1)
+    })
+
+    it('builds a GeoJSON layer from an uploaded .parquet file', async () => {
+        const file = new File(['mock parquet binary'], 'test-geoparquet.parquet', { type: 'application/vnd.apache.parquet' })
+        const { def, file: storedFile } = await buildLayerFromFile(file, 'upload-pq-1')
+        expect(def.type).toBe('geojson')
+        expect(def.title).toBe('test-geoparquet')
+        expect(storedFile).toBe(file)
     })
 })

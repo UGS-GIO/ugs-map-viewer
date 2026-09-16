@@ -26,11 +26,12 @@ import {
 } from '@/lib/map/stac/stac-layer'
 import { loadCogMetadata } from '@/hooks/use-cog-metadata'
 import { registerLocalPMTiles } from '@/lib/map/pmtiles/setup'
+import { readGeoParquetToGeoJSON } from '@/lib/map/user-layers/parquet-loader'
 
 /** A layer produced by uploading a local file (data lives in the browser, not a URL). */
 export type UploadedLayer = GeoJSONLayerProps | PMTilesLayerProps | COGLayerProps
 
-export type DetectedFormat = 'pmtiles' | 'geojson' | 'cog' | 'wms' | 'stac' | 'unknown'
+export type DetectedFormat = 'pmtiles' | 'geojson' | 'cog' | 'wms' | 'stac' | 'parquet' | 'unknown'
 
 /** Deterministic colour from a title so a layer keeps its colour across reloads. */
 const PALETTE = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#65a30d']
@@ -63,6 +64,7 @@ export function detectFormatFromUrl(raw: string): DetectedFormat {
     const qs = raw.toLowerCase()
     if (p.endsWith('.pmtiles')) return 'pmtiles'
     if (p.endsWith('.geojson')) return 'geojson'
+    if (p.endsWith('.parquet')) return 'parquet'
     if (p.endsWith('.tif') || p.endsWith('.tiff')) return 'cog'
     if (qs.includes('service=wms') || p.endsWith('/wms') || p.endsWith('/wms/')) return 'wms'
     if (p.endsWith('.json')) return 'stac' // could also be GeoJSON — resolved on fetch
@@ -73,7 +75,7 @@ export function detectFormatFromUrl(raw: string): DetectedFormat {
 export function titleFromUrl(raw: string): string {
     const [path] = raw.split('?')
     const base = path.split('/').filter(Boolean).pop() || 'layer'
-    return base.replace(/\.(pmtiles|geojson|json|tif|tiff)$/i, '') || 'layer'
+    return base.replace(/\.(pmtiles|geojson|json|tif|tiff|parquet)$/i, '') || 'layer'
 }
 
 async function pmtilesSourceLayer(url: string): Promise<string> {
@@ -104,8 +106,8 @@ function buildGeoJSONFromUrl(url: string, title: string): GeoJSONLayerProps {
     return { type: 'geojson', title, geojsonUrl: url, color: colorFromTitle(title), visible: true, opacity: 0.8, userAdded: true }
 }
 
-function buildGeoJSONFromData(data: FeatureCollection, title: string, idbKey: string): GeoJSONLayerProps {
-    return { type: 'geojson', title, data, idbKey, color: colorFromTitle(title), visible: true, opacity: 0.8, userAdded: true, local: true }
+function buildGeoJSONFromData(data: FeatureCollection, title: string, idbKey?: string): GeoJSONLayerProps {
+    return { type: 'geojson', title, data, idbKey, color: colorFromTitle(title), visible: true, opacity: 0.8, userAdded: true, local: !!idbKey }
 }
 
 /**
@@ -255,11 +257,15 @@ export async function buildLayerFromUrl(input: string, opts: BuildFromUrlOptions
     switch (format) {
         case 'pmtiles': return buildPMTiles(raw, title)
         case 'geojson': return buildGeoJSONFromUrl(raw, title)
+        case 'parquet': {
+            const data = await readGeoParquetToGeoJSON(raw)
+            return buildGeoJSONFromData(data, title)
+        }
         case 'cog': return buildCOG(raw, title)
         case 'wms': return buildWMS(raw, title, opts.wmsLayerName)
         case 'stac': return buildFromStac(raw, title)
         default:
-            throw new Error(`Could not detect format for "${raw}". Supported: .pmtiles, .geojson, .tif/.tiff, WMS, or a STAC item id/URL.`)
+            throw new Error(`Could not detect format for "${raw}". Supported: .pmtiles, .geojson, .parquet, .tif/.tiff, WMS, or a STAC item id/URL.`)
     }
 }
 
@@ -359,8 +365,13 @@ export async function buildLayerFromFile(file: File, idbKey: string): Promise<{ 
     if (name.endsWith('.tif') || name.endsWith('.tiff')) {
         return { def: await buildCOGFromFile(file, idbKey), file }
     }
+    if (name.endsWith('.parquet')) {
+        const title = file.name.replace(/\.parquet$/i, '')
+        const data = await readGeoParquetToGeoJSON(file)
+        return { def: buildGeoJSONFromData(data, title, idbKey), file }
+    }
     if (!name.endsWith('.geojson') && !name.endsWith('.json')) {
-        throw new Error('Only GeoJSON (.geojson / .json), PMTiles (.pmtiles) and COG (.tif / .tiff) files can be uploaded.')
+        throw new Error('Only GeoJSON (.geojson / .json), PMTiles (.pmtiles), COG (.tif / .tiff) and GeoParquet (.parquet) files can be uploaded.')
     }
     let parsed: unknown
     try {

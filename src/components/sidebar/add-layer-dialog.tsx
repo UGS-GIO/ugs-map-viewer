@@ -40,6 +40,7 @@ const FORMAT_LABEL: Record<DetectedFormat, string> = {
     cog: 'COG (GeoTIFF)',
     wms: 'WMS',
     stac: 'STAC / JSON',
+    parquet: 'GeoParquet',
     unknown: 'Unknown',
 }
 
@@ -274,7 +275,7 @@ export function AddLayerDialog() {
                             <Label htmlFor="add-layer-url">Data URL</Label>
                             <Input
                                 id="add-layer-url"
-                                placeholder="https://…/layer.pmtiles | .geojson | .tif | WMS endpoint | catalog.json"
+                                placeholder="https://…/layer.pmtiles | .parquet | .geojson | .tif | WMS endpoint | catalog.json"
                                 value={url}
                                 onChange={e => setUrl(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter' && !busy) handleAddUrl() }}
@@ -313,12 +314,12 @@ export function AddLayerDialog() {
                                 ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                                 : <Upload className="h-6 w-6 text-muted-foreground" />}
                             <span className="text-sm text-muted-foreground">
-                                Drop a GeoJSON, PMTiles or COG file here, or <span className="text-foreground font-medium">browse</span>
+                                Drop a GeoJSON, PMTiles, COG, or GeoParquet file here, or <span className="text-foreground font-medium">browse</span>
                             </span>
-                            <span className="text-xs text-muted-foreground">.geojson / .json / .pmtiles / .tif — stored in this browser only</span>
+                            <span className="text-xs text-muted-foreground">.geojson / .json / .pmtiles / .tif / .parquet — stored in this browser only</span>
                             <input
                                 type="file"
-                                accept=".geojson,.json,.pmtiles,.tif,.tiff,application/geo+json,application/json,image/tiff"
+                                accept=".geojson,.json,.pmtiles,.tif,.tiff,.parquet,application/geo+json,application/json,image/tiff,application/vnd.apache.parquet"
                                 className="hidden"
                                 onChange={e => handleFile(e.target.files?.[0])}
                             />
