@@ -28,20 +28,14 @@ const CCS_FILTER_MAPPING: Record<string, string> = {
 
 const searchConfig: SearchSourceConfig[] = [
   {
-    type: 'postgREST',
-    url: `${PROD_POSTGREST_URL}/enmin_ucrc_wells_current`,
+    type: 'parquet',
+    parquetUrl: parquetUrl('enmin_ucrc_wells'),
     sourceName: 'UCRC Collection',
     layerName: ucrcWellsWMSTitle,
     displayField: 'well_name',
     secondaryDisplayField: 'uwi',
-    params: {
-      targetFields: ['uwi', 'well_name'],
-      select: 'uwi,well_name,geom',
-    },
-    headers: {
-      'Accept-Profile': 'emp',
-      'Accept': 'application/geo+json',
-    },
+    idField: 'uwi',
+    params: { targetFields: ['uwi', 'well_name'] },
   },
   defaultMasqueradeConfig,
   {
@@ -51,8 +45,9 @@ const searchConfig: SearchSourceConfig[] = [
     layerName: sectionsTitle,
     displayField: 'label',
     secondaryDisplayField: 'section',
+    idField: 'frstdivid',
     params: {
-      targetFields: ['label', 'section', 'township', 'range', 'plssid', 'frstdivid'],
+      targetFields: ['label', 'section'],
     },
   },
   {
