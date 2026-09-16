@@ -19,9 +19,14 @@ import { useSearch, useNavigate } from '@tanstack/react-router'
 import { useQueries } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { LayerProps } from '@/lib/types/mapping-types'
-import { buildLayerFromUrl, objectUrlForCog, type DetectedFormat, type UploadedLayer } from '@/lib/map/user-layers/detect'
+import { buildLayerFromUrl, type UploadedLayer, type DetectedFormat } from '@/lib/map/user-layers/detect'
+import { loadParquetForDeck } from '@/lib/map/user-layers/parquet-deck-loader'
 import { getAllUserLayers, putUserLayer, deleteUserLayer } from '@/lib/map/user-layers/idb'
 import { registerLocalPMTiles } from '@/lib/map/pmtiles/setup'
+
+function objectUrlForCog(file: File): string {
+    return URL.createObjectURL(file)
+}
 
 /** Compact, shareable description of a remote user layer (rebuilt on load). */
 export interface UserLayerRecipe {
@@ -134,14 +139,14 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
     // consumers gated on it.
     useEffect(() => {
         getAllUserLayers()
-            .then(records => {
+            .then(async (records) => {
                 // Re-register File-backed PMTiles archives BEFORE the layers mount:
                 // on a protocol cache miss the key would be fetched as a URL and 404.
                 const restored: UploadedLayer[] = []
                 for (const r of records) {
                     const def = r.def as UploadedLayer
                     // File-backed uploads need their browser-side handle rebuilt.
-                    if (def.type === 'pmtiles' || def.type === 'cog') {
+                    if (def.type === 'pmtiles' || def.type === 'cog' || def.type === 'parquet') {
                         if (!r.file) {
                             console.warn(`[user-layers] dropping "${def.title}" — persisted file is missing`)
                             continue
@@ -151,10 +156,13 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
                                 // Must precede mount: a protocol cache miss would fetch the key as a URL.
                                 registerLocalPMTiles(r.file)
                                 restored.push(def)
-                            } else {
+                            } else if (def.type === 'cog') {
                                 // Object URLs die with the previous document, so the persisted
                                 // `cogUrl` is stale — always mint a fresh one.
                                 restored.push({ ...def, cogUrl: objectUrlForCog(r.file) })
+                            } else if (def.type === 'parquet') {
+                                const deckData = await loadParquetForDeck(r.file)
+                                restored.push({ ...def, deckData })
                             }
                         } catch (e) {
                             console.warn(`[user-layers] could not restore "${def.title}":`, e)
@@ -211,13 +219,26 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
         const title = uniqueTitle(def.title, takenTitles())
         const id = def.idbKey ?? title
         const finalDef = { ...def, title, idbKey: id }
-        // PMTiles and COG are File-backed, so the file must be persisted to rebuild
-        // their FileSource / object URL on reload. GeoJSON carries its data inline.
-        const storedFile = finalDef.type === 'pmtiles' || finalDef.type === 'cog' ? file : undefined
-        await putUserLayer({ id, def: finalDef, file: storedFile, createdAt: performance.now() })
+        // PMTiles, COG, and Parquet are File-backed. GeoJSON carries its data inline.
+        const storedFile = finalDef.type === 'pmtiles' || finalDef.type === 'cog' || finalDef.type === 'parquet' ? file : undefined
+        // Do not serialize heavy binary deckData into IndexedDB so writes are instantaneous
+        const idbDef = finalDef.type === 'parquet' ? { ...finalDef, deckData: undefined } : finalDef
+        await putUserLayer({ id, def: idbDef, file: storedFile, createdAt: performance.now() })
         setUploads(prev => [...prev, finalDef])
+        navigate({
+            to: '.',
+            search: (prev) => {
+                const currentSelected = new Set((prev as { layers?: { selected?: string[] } }).layers?.selected || [])
+                currentSelected.add(title)
+                return {
+                    ...prev,
+                    layers: { selected: Array.from(currentSelected) },
+                }
+            },
+            replace: true,
+        })
         return title
-    }, [takenTitles])
+    }, [takenTitles, navigate])
 
     const removeUserLayer = useCallback((title: string) => {
         // Remote? Drop its recipe from the URL.

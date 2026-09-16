@@ -22,19 +22,29 @@ export function queryParquetLayersAtPoint(
 
         if (layer.deckData.kind === 'points' && layer.deckData.points) {
             const { positions, count } = layer.deckData.points
-            let bestDist = tolerance
+            const sw = map.unproject([point.x - tolerance, point.y + tolerance])
+            const ne = map.unproject([point.x + tolerance, point.y - tolerance])
+            const minLng = Math.min(sw.lng, ne.lng)
+            const maxLng = Math.max(sw.lng, ne.lng)
+            const minLat = Math.min(sw.lat, ne.lat)
+            const maxLat = Math.max(sw.lat, ne.lat)
+
+            const clickLng = (sw.lng + ne.lng) / 2
+            const clickLat = (sw.lat + ne.lat) / 2
+            let bestDistSq = Infinity
             let bestIdx = -1
 
             for (let i = 0; i < count; i++) {
                 const lng = positions[i * 2]
                 const lat = positions[i * 2 + 1]
-                const screenPt = map.project([lng, lat])
-                const dx = screenPt.x - point.x
-                const dy = screenPt.y - point.y
-                const dist = Math.sqrt(dx * dx + dy * dy)
-                if (dist <= tolerance && dist < bestDist) {
-                    bestDist = dist
-                    bestIdx = i
+                if (lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat) {
+                    const dlng = lng - clickLng
+                    const dlat = lat - clickLat
+                    const dsq = dlng * dlng + dlat * dlat
+                    if (dsq < bestDistSq) {
+                        bestDistSq = dsq
+                        bestIdx = i
+                    }
                 }
             }
 

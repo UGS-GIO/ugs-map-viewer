@@ -41,8 +41,13 @@ export async function loadParquetForDeck(source: string | File): Promise<Parquet
             tableSource = `read_parquet('${escapeSql(source)}')`
         } else {
             virtualName = `user-upload-${crypto.randomUUID()}.parquet`
-            const buffer = new Uint8Array(await source.arrayBuffer())
-            await db.registerFileBuffer(virtualName, buffer)
+            const duckdb = await import('@duckdb/duckdb-wasm')
+            try {
+                await db.registerFileHandle(virtualName, source, duckdb.DuckDBDataProtocol.BROWSER_FILEREADER, true)
+            } catch {
+                const buffer = new Uint8Array(await source.arrayBuffer())
+                await db.registerFileBuffer(virtualName, buffer)
+            }
             tableSource = `read_parquet('${virtualName}')`
         }
 
@@ -66,8 +71,7 @@ export async function loadParquetForDeck(source: string | File): Promise<Parquet
                 const pointsQuery = `
                     SELECT
                         ${quoteIdent(lonCol)}::FLOAT AS x,
-                        ${quoteIdent(latCol)}::FLOAT AS y,
-                        * EXCLUDE (${quoteIdent(lonCol)}, ${quoteIdent(latCol)})
+                        ${quoteIdent(latCol)}::FLOAT AS y
                     FROM ${tableSource}
                     WHERE ${quoteIdent(lonCol)} IS NOT NULL AND ${quoteIdent(latCol)} IS NOT NULL
                 `
@@ -125,8 +129,7 @@ export async function loadParquetForDeck(source: string | File): Promise<Parquet
                 const pointsQuery = `
                     SELECT
                         ST_X(ST_GeomFromWKB(${quoteIdent(geomCol)}))::FLOAT AS x,
-                        ST_Y(ST_GeomFromWKB(${quoteIdent(geomCol)}))::FLOAT AS y,
-                        * EXCLUDE (${quoteIdent(geomCol)})
+                        ST_Y(ST_GeomFromWKB(${quoteIdent(geomCol)}))::FLOAT AS y
                     FROM ${tableSource}
                     WHERE ${quoteIdent(geomCol)} IS NOT NULL
                 `
