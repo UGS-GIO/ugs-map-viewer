@@ -104,6 +104,12 @@ export type ExtendedSublayerProperties = {
 
 
 
+/** Link rendered at the bottom of a feature popup; `getHref` builds it per-feature (null = none). */
+export interface PopupFooterLink {
+    label: string;
+    getHref: (properties: Record<string, unknown> | null) => string | null;
+}
+
 interface BaseLayerProps {
     type: 'feature' | 'tile' | 'map-image' | 'geojson' | 'imagery' | 'wms' | 'group' | 'pmtiles' | 'cog' | 'wfs';
     title: string;
@@ -114,6 +120,8 @@ interface BaseLayerProps {
     options?: any;
     opacity?: number;
     maxZoomLevel?: number;
+    /** Optional per-feature link at the bottom of this layer's popups (set per-route). */
+    popupFooterLink?: PopupFooterLink;
     customLegend?: React.ReactNode;
     /** Structured bivariate legend config — works in both sidebar and print export */
     bivariateLegend?: { xLabel: string; yLabel: string };

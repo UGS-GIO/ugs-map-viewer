@@ -152,6 +152,84 @@ export const queryParquetAll = async (
     });
 };
 
+// ── Materialized attribute tables ────────────────────────────────────────────
+
+/**
+ * Remote parquet columns, pulled into DuckDB once per (url, columns) per session.
+ *
+ * Interactive paths — typeahead search, filter option lists, range sliders — re-run the
+ * same shape of query as the user types or clicks. Against a remote file each of those is
+ * an HTTP read of the relevant column chunks, so the cost is paid again on every
+ * keystroke or checkbox. The attribute columns are small next to the geometry, so one
+ * up-front read makes every later query local. Geometry stays remote and is fetched by id
+ * only when something actually needs it.
+ *
+ * Returns a SQL table expression for the FROM clause — the materialized table when it
+ * could be built, otherwise `read_parquet(...)` so callers keep working either way.
+ */
+const attributeTables = new Map<string, Promise<string>>();
+
+const attributeTableName = (key: string): string => {
+    const hash = [...key].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) | 0, 7);
+    return `attrs_${(hash >>> 0).toString(36)}`;
+};
+
+export const materializedAttributes = async (
+    { url, columns, expressions, geometryField = 'geom' }: {
+        url: string;
+        columns?: string[];
+        /**
+         * Extra projected columns as `alias -> SQL expression`, materialized alongside the
+         * plain ones so a search can filter and order on them like any other column. The
+         * expressions are caller-authored SQL (never user input) and are interpolated as
+         * written; the alias is quoted.
+         */
+        expressions?: Record<string, string>;
+        geometryField?: string;
+    },
+): Promise<string> => {
+    const remote = `read_parquet('${escapeSql(url)}')`;
+    const derived = Object.entries(expressions ?? {});
+    const key = `${url}::${columns?.join(',') ?? `*-${geometryField}`}::${derived.map(([a, e]) => `${a}=${e}`).join(',')}`;
+    const cached = attributeTables.get(key);
+    if (cached) return cached;
+
+    const building = (async () => {
+        const table = attributeTableName(key);
+        const base = columns?.length
+            ? columns.map(quoteIdent).join(', ')
+            // EXCLUDE errors if the column isn't there, so only exclude what the file has.
+            : await withConnection(async (conn) => {
+                const described = await conn.query(`DESCRIBE SELECT * FROM ${remote}`);
+                const names = described.toArray().map(r => String((r.toJSON() as Record<string, unknown>).column_name));
+                return names.includes(geometryField) ? `* EXCLUDE (${quoteIdent(geometryField)})` : '*';
+            });
+        const projection = derived.length
+            ? `${base}, ${derived.map(([alias, expr]) => `${expr} AS ${quoteIdent(alias)}`).join(', ')}`
+            : base;
+
+        await withConnection(async (conn) => {
+            await conn.query(`CREATE TABLE IF NOT EXISTS ${quoteIdent(table)} AS SELECT ${projection} FROM ${remote}`);
+        });
+        return quoteIdent(table);
+    })();
+
+    // A failed build shouldn't poison the session — drop it so the next call retries,
+    // and fall back to reading the file directly meanwhile.
+    building.catch(() => attributeTables.delete(key));
+    attributeTables.set(key, building);
+
+    try {
+        return await building;
+    } catch (err) {
+        // The raw file can't bind derived aliases, so falling back there turns a broken
+        // projection into a silent empty result. Surface it instead.
+        if (derived.length) throw err;
+        console.warn(`[materializedAttributes] falling back to ${remote}:`, err);
+        return remote;
+    }
+};
+
 /**
  * Read the distinct non-null values of one column from a remote geoparquet.
  * Used to seed a bulk related-table fetch (matchingField IN (...)) for a
@@ -183,10 +261,12 @@ export const queryParquetFieldOptions = async (
         ? `TRIM(UNNEST(string_split(CAST(${col} AS VARCHAR), ',')))`
         : `TRIM(CAST(${col} AS VARCHAR))`;
 
+    const from = await materializedAttributes({ url });
+
     return withConnection(async (conn) => {
         const result = await conn.query(`
             SELECT v, COUNT(*) AS n FROM (
-                SELECT ${value} AS v FROM read_parquet('${escapeSql(url)}') WHERE ${where}
+                SELECT ${value} AS v FROM ${from} WHERE ${where}
             ) WHERE v <> '' GROUP BY v ORDER BY n DESC, v ASC
         `);
         const options: string[] = [];
@@ -206,9 +286,10 @@ export const queryParquetFieldExtent = async (
     { url, field }: { url: string; field: string },
 ): Promise<{ min: number; max: number }> => {
     const col = quoteIdent(field);
+    const from = await materializedAttributes({ url });
     return withConnection(async (conn) => {
         const result = await conn.query(
-            `SELECT MIN(${col}) AS lo, MAX(${col}) AS hi FROM read_parquet('${escapeSql(url)}') WHERE ${col} IS NOT NULL`,
+            `SELECT MIN(${col}) AS lo, MAX(${col}) AS hi FROM ${from} WHERE ${col} IS NOT NULL`,
         );
         const { lo, hi } = (result.toArray()[0]?.toJSON() ?? {}) as { lo: unknown; hi: unknown };
         return { min: Number(lo ?? 0), max: Number(hi ?? 0) };
