@@ -9,13 +9,14 @@ import Sidebar from '@/components/sidebar'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { utTownshipRangesTitle, wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, ucrcWellsWMSTitle, metalMiningDistrictsTitle } from './-data/layers/layers'
+import { sectionsTitle, wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, metalMiningDistrictsTitle } from './-data/layers/layers'
+import { ucrcWellsWMSTitle } from '@/routes/_map/-shared/layers/ucrc-wells'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, type SearchComboboxHandle } from '@/components/sidebar/filter/search-combobox'
-import { PROD_POSTGREST_URL } from '@/lib/constants'
-import { ucrcFilterSchema } from './-data/layers/ucrc-schema'
+import { PROD_POSTGREST_URL, parquetUrl } from '@/lib/constants'
+import { ucrcFilterSchema } from '@/routes/_map/-shared/layers/ucrc-schema'
 import { toMaplibreFilter } from '@/lib/filter/generators'
 import { fromCql } from '@/lib/filter/parse'
 import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
@@ -28,37 +29,27 @@ const CCS_FILTER_MAPPING: Record<string, string> = {
 
 const searchConfig: SearchSourceConfig[] = [
   {
-    type: 'postgREST',
-    url: `${PROD_POSTGREST_URL}/enmin_ucrc_wells_current`,
+    type: 'parquet',
+    parquetUrl: parquetUrl('enmin_ucrc_wells'),
     sourceName: 'UCRC Collection',
     layerName: ucrcWellsWMSTitle,
     displayField: 'well_name',
     secondaryDisplayField: 'uwi',
-    params: {
-      targetFields: ['uwi', 'well_name'],
-      select: 'uwi,well_name,geom',
-    },
-    headers: {
-      'Accept-Profile': 'emp',
-      'Accept': 'application/geo+json',
-    },
+    idField: 'uwi',
+    params: { targetFields: ['uwi', 'well_name'] },
   },
   defaultMasqueradeConfig,
-    {
-      type: 'postgREST',
-      url: `${PROD_POSTGREST_URL}/enmin_plss_townshiprange_current`,
-      sourceName: 'Utah Township & Ranges',
-      layerName: utTownshipRangesTitle,
-      displayField: 'twnshplab',
-      secondaryDisplayField: 'label',
-      params: {
-        targetFields: ['twnshplab', 'label'],
-        select: 'twnshplab,label,geom',
-      },
-      headers: {
-        'Accept-Profile': 'emp',
-        'Accept': 'application/geo+json',
-      },
+  {
+    type: 'parquet',
+    parquetUrl: parquetUrl('enmin_plss_sections'),
+    sourceName: 'Utah Township, Range & Section',
+    layerName: sectionsTitle,
+    displayField: 'label',
+    secondaryDisplayField: 'section',
+    idField: 'frstdivid',
+    params: {
+      targetFields: ['label', 'section'],
+    },
   },
   {
     type: 'postgREST',
