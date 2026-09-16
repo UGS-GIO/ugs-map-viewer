@@ -167,32 +167,42 @@ export const queryParquetDistinctValues = async (
     });
 };
 
-/** Value → row count for one column. `splitCommaDelimited` counts each comma-separated token. */
+/**
+ * Value → row counts for one column: `counts` under the current filter, `totals` without it.
+ * One pass — the predicates become a COUNT(*) FILTER, so a category the filter excludes keeps
+ * its row (count 0) instead of vanishing. `splitCommaDelimited` counts each comma-separated token.
+ */
 export const queryParquetFieldOptions = async (
     { url, field, predicates = [], splitCommaDelimited = false }:
         { url: string; field: string; predicates?: string[]; splitCommaDelimited?: boolean },
-): Promise<{ options: string[]; counts: Record<string, number> }> => {
+): Promise<{ options: string[]; counts: Record<string, number>; totals: Record<string, number> }> => {
     const col = quoteIdent(field);
-    const where = [`${col} IS NOT NULL`, `CAST(${col} AS VARCHAR) <> ''`, ...predicates].join(' AND ');
+    const where = `${col} IS NOT NULL AND CAST(${col} AS VARCHAR) <> ''`;
     const value = splitCommaDelimited
         ? `TRIM(UNNEST(string_split(CAST(${col} AS VARCHAR), ',')))`
         : `TRIM(CAST(${col} AS VARCHAR))`;
+    // A predicate over a NULL column yields NULL; that's "no match" here, not "unknown".
+    const keep = predicates.length
+        ? `COALESCE(${predicates.map(p => `(${p})`).join(' AND ')}, FALSE)`
+        : 'TRUE';
 
     return withConnection(async (conn) => {
         const result = await conn.query(`
-            SELECT v, COUNT(*) AS n FROM (
-                SELECT ${value} AS v FROM read_parquet('${escapeSql(url)}') WHERE ${where}
+            SELECT v, COUNT(*) FILTER (WHERE "keep") AS n, COUNT(*) AS t FROM (
+                SELECT ${value} AS v, ${keep} AS "keep" FROM read_parquet('${escapeSql(url)}') WHERE ${where}
             ) WHERE v <> '' GROUP BY v ORDER BY n DESC, v ASC
         `);
         const options: string[] = [];
         const counts: Record<string, number> = {};
+        const totals: Record<string, number> = {};
         for (const row of result.toArray()) {
-            const { v, n } = row.toJSON() as { v: unknown; n: unknown };
+            const { v, n, t } = row.toJSON() as { v: unknown; n: unknown; t: unknown };
             if (v == null) continue;
             options.push(String(v));
             counts[String(v)] = Number(n);
+            totals[String(v)] = Number(t);
         }
-        return { options, counts };
+        return { options, counts, totals };
     });
 };
 

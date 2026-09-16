@@ -28,8 +28,9 @@ import type { PMTilesLayerProps, PMTilesRender, LegendEntry } from '@/lib/types/
 // an empty multiSelect means "no filter = all", the opposite of an all-off legend.
 const NONE_SENTINEL = '__none__'
 
-// Module-scoped to keep the unfiltered query's key stable across renders.
-const EMPTY_FILTER_STATE = {} as const
+// "1,124/4,716" while another field's filter (or an unchecked box) holds rows back, else "4,716".
+const countLabel = (shown: number, total: number) =>
+    shown === total ? total.toLocaleString() : `${shown.toLocaleString()}/${total.toLocaleString()}`
 
 // A colour group derived from a legend entry that carries `values` (grouped renders,
 // e.g. box types → Core/Cuttings/Other). `color` is the group's base hue (header); each
@@ -104,12 +105,10 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
     const mgr = useLayerFilter(schema)
     const isContains = field.kind === 'containsAny'
     const { data, isLoading, isPlaceholderData } = useDistinctFieldOptions({ schema, state: mgr.state, field, splitCommaDelimited: isContains })
-    // Unfiltered, for the category list — see orderedCategories.
-    const allValues = useDistinctFieldOptions({ schema, state: EMPTY_FILTER_STATE, field, splitCommaDelimited: isContains })
+    // `counts` match the current filter, `totals` ignore it — one query returns both.
     const counts = data?.counts ?? {}
-    const options = useMemo(() => {
-        return orderedCategories(allValues.data?.options, data?.options, data?.counts)
-    }, [allValues.data, data])
+    const totals = data?.totals ?? {}
+    const options = useMemo(() => orderedCategories(data?.totals, data?.counts), [data])
 
     // Colour per value, derived from the render's legend. Flat renders: entry label == value.
     // Grouped renders: each group's `values` carry per-item shades. `stroke` is a flat-render
@@ -158,10 +157,8 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
         emit(next)
     }
 
-    // Both queries must be on the current field; keepPreviousData can leave either behind.
-    if (isLoading || isPlaceholderData || allValues.isLoading || allValues.isPlaceholderData) {
-        return <p className="text-xs text-muted-foreground px-1">Loading…</p>
-    }
+    // keepPreviousData can leave the previous field's rows on screen after a symbology switch.
+    if (isLoading || isPlaceholderData) return <p className="text-xs text-muted-foreground px-1">Loading…</p>
     if (options.length === 0) return null
 
     // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens.
@@ -183,7 +180,7 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                     )}
                     <span className="min-w-0 break-words leading-tight">
                         {displayLabel(value)}
-                        <span className="ml-1 text-muted-foreground">({(counts[value] ?? 0).toLocaleString()})</span>
+                        <span className="ml-1 text-muted-foreground">({countLabel(counts[value] ?? 0, totals[value] ?? 0)})</span>
                     </span>
                 </label>
             ))}
@@ -226,7 +223,7 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                 {groups.map(g => {
                     const items = membersOf(g)
                     if (items.length === 0) return null
-                    const total = items.reduce((sum, v) => sum + (counts[v] ?? 0), 0)
+                    const total = items.reduce((sum, v) => sum + (totals[v] ?? 0), 0)
                     const shown = items.reduce((sum, v) => sum + (onSet.has(v) ? counts[v] ?? 0 : 0), 0)
                     const onCount = items.filter(i => onSet.has(i)).length
                     const groupChecked: boolean | 'indeterminate' = onCount === items.length ? true : onCount === 0 ? false : 'indeterminate'
@@ -245,7 +242,7 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                                 <Label className="text-xs font-semibold cursor-pointer">
                                     {g.label}
                                     <span className="ml-1 font-normal text-muted-foreground">
-                                        ({shown === total ? total.toLocaleString() : `${shown.toLocaleString()}/${total.toLocaleString()}`})
+                                        ({countLabel(shown, total)})
                                     </span>
                                 </Label>
                             </label>
