@@ -566,7 +566,7 @@ const ucrcWellsWFSConfig: PMTilesLayerProps = {
                         },
                         { field: 'notes_public', label: 'Notes', transform: (v) => v || '—' },
                     ],
-                    sortBy: 'box_number',
+                    sortBy: ['box_type', 'box_number'],
                     sortDirection: 'asc',
                 },
                 {

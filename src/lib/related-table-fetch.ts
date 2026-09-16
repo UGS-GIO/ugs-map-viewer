@@ -43,7 +43,8 @@ export async function fetchRelatedRows(config: RelatedTable, values: string[]): 
         wfsUrl.searchParams.set('CQL_FILTER', cqlFilter);
         if (config.sortBy) {
             const dir = config.sortDirection === 'desc' ? ' D' : ' A';
-            wfsUrl.searchParams.set('sortBy', `${config.sortBy}${dir}`);
+            const keys = Array.isArray(config.sortBy) ? config.sortBy : [config.sortBy];
+            wfsUrl.searchParams.set('sortBy', keys.map(k => `${k}${dir}`).join(','));
         }
 
         const response = await fetch(wfsUrl.toString());
@@ -60,7 +61,8 @@ export async function fetchRelatedRows(config: RelatedTable, values: string[]): 
         let queryUrl = `${config.url}?${matchingField}=in.(${inValues})`;
         if (config.sortBy) {
             const dir = config.sortDirection === 'desc' ? 'desc' : 'asc';
-            queryUrl += `&order=${config.sortBy}.${dir}`;
+            const keys = Array.isArray(config.sortBy) ? config.sortBy : [config.sortBy];
+            queryUrl += `&order=${keys.map(k => `${k}.${dir}`).join(',')}`;
         }
 
         const response = await fetch(queryUrl, { headers: config.headers });

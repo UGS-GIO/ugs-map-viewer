@@ -53,10 +53,10 @@ export function RelatedDataTable({
 }: {
     rows: Row[];
     displayFields: DisplayField[];
-    /** Default sort (from the related-table config's sortBy/sortDirection). */
-    initialSort?: { id: string; desc: boolean };
+    /** Default sort (from the related-table config's sortBy/sortDirection), in precedence order. */
+    initialSort?: { id: string; desc: boolean }[];
 }) {
-    const [sorting, setSorting] = useState<SortingState>(initialSort ? [initialSort] : []);
+    const [sorting, setSorting] = useState<SortingState>(initialSort ?? []);
 
     // Pre-render cells once: drives both display and which columns are sortable
     // (a column with any React-node cell can't be meaningfully sorted).

@@ -91,9 +91,16 @@ export interface ParquetByValuesOptions {
     matchingField: string;
     /** Values to match (the visible features' join keys). Deduped before querying. */
     values: string[];
-    sortBy?: string;
+    sortBy?: string | string[];
     sortDirection?: 'asc' | 'desc';
 }
+
+/** `ORDER BY` clause for one or more keys, or '' when unsorted. */
+const orderByClause = (sortBy: string | string[] | undefined, dir: 'asc' | 'desc' | undefined): string => {
+    const keys = sortBy == null ? [] : Array.isArray(sortBy) ? sortBy : [sortBy];
+    if (keys.length === 0) return '';
+    return ` ORDER BY ${keys.map(quoteIdent).join(', ')} ${dir === 'desc' ? 'DESC' : 'ASC'}`;
+};
 
 /**
  * Read a remote geoparquet, returning rows whose `matchingField` is in `values`.
@@ -108,9 +115,7 @@ export const queryParquetByValues = async (
 
     return withConnection(async (conn) => {
         const inList = unique.map(v => `'${escapeSql(String(v))}'`).join(',');
-        const order = sortBy
-            ? ` ORDER BY ${quoteIdent(sortBy)} ${sortDirection === 'desc' ? 'DESC' : 'ASC'}`
-            : '';
+        const order = orderByClause(sortBy, sortDirection);
         // Cast the join column to VARCHAR so string-quoted values match regardless of the
         // column's parquet type (e.g. uwi VARCHAR or box_pk INTEGER) — duckdb won't compare
         // INTEGER IN (VARCHAR…) without an explicit cast.
@@ -124,7 +129,7 @@ export const queryParquetByValues = async (
 export interface ParquetAllOptions {
     /** Remote .parquet URL (read over httpfs). */
     url: string;
-    sortBy?: string;
+    sortBy?: string | string[];
     sortDirection?: 'asc' | 'desc';
 }
 
@@ -137,9 +142,7 @@ export const queryParquetAll = async (
     { url, sortBy, sortDirection }: ParquetAllOptions,
 ): Promise<PostgRESTRow[]> => {
     return withConnection(async (conn) => {
-        const order = sortBy
-            ? ` ORDER BY ${quoteIdent(sortBy)} ${sortDirection === 'desc' ? 'DESC' : 'ASC'}`
-            : '';
+        const order = orderByClause(sortBy, sortDirection);
         const result = await conn.query(
             `SELECT * FROM read_parquet('${escapeSql(url)}')${order}`,
         );
