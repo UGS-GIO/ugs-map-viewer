@@ -53,10 +53,10 @@ export function RelatedDataTable({
 }: {
     rows: Row[];
     displayFields: DisplayField[];
-    /** Default sort (from the related-table config's sortBy/sortDirection). */
-    initialSort?: { id: string; desc: boolean };
+    /** Default sort (from the related-table config's sortBy/sortDirection), in precedence order. */
+    initialSort?: { id: string; desc: boolean }[];
 }) {
-    const [sorting, setSorting] = useState<SortingState>(initialSort ? [initialSort] : []);
+    const [sorting, setSorting] = useState<SortingState>(initialSort ?? []);
 
     // Pre-render cells once: drives both display and which columns are sortable
     // (a column with any React-node cell can't be meaningfully sorted).
@@ -94,7 +94,14 @@ export function RelatedDataTable({
         data: rows,
         columns,
         state: { sorting },
-        onSortingChange: setSorting,
+        // A click replaces the seeded multi-key sort instead of toggling inside it, so every
+        // header behaves the same however the table was initially sorted — and the column
+        // clicked out of a multi-key sort starts ascending, like any other first click.
+        onSortingChange: updater => setSorting(prev => {
+            const next = typeof updater === 'function' ? updater(prev) : updater;
+            if (next.length <= 1) return next;
+            return [{ ...next[next.length - 1], desc: false }];
+        }),
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
     });

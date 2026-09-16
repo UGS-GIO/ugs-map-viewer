@@ -390,7 +390,8 @@ export interface RelatedTable {
     headers?: Record<string, string>;
     displayFields?: DisplayField[];
     logicalOperator?: string;
-    sortBy?: string;
+    /** Sort key, or keys in precedence order. */
+    sortBy?: string | string[];
     sortDirection?: 'asc' | 'desc';
     /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers, 'gallery' renders a photo gallery, 'accordion' renders one collapsible item per row, 'documents' groups files by type with per-row open/download, search, and pagination */
     displayAs?: 'list' | 'table' | 'gallery' | 'accordion' | 'documents';
