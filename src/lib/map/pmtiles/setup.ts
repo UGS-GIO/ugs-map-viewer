@@ -39,7 +39,14 @@ export function registerLocalPMTiles(file: File): PMTiles {
     return archive;
 }
 
-/** The registered archive for a local key (file name), if any. */
-export function getLocalPMTiles(key: string): PMTiles | undefined {
-    return protocol?.get(key);
+/**
+ * Drop a locally registered archive (see {@link registerLocalPMTiles}).
+ *
+ * `Protocol.tiles` is the protocol's own key -> archive map; deleting the entry
+ * is the only way to unregister, as the library exposes no removal method. Used
+ * to unwind a registration whose layer failed to persist, so a dead key can't
+ * shadow a later upload of the same name.
+ */
+export function unregisterLocalPMTiles(key: string): void {
+    protocol?.tiles.delete(key);
 }

@@ -92,10 +92,14 @@ export async function fetchStacNode(urlOrId: string, currentUrl?: string): Promi
     if (!res.ok) throw new Error(`STAC request failed: HTTP ${res.status} for ${resolvedUrl}`)
     const doc = (await res.json()) as Record<string, unknown>
 
-    // Check if it is a single STAC Item
+    // Check if it is a single STAC Item. `type` is authoritative when present —
+    // STAC 1.0 lets a Catalog/Collection carry its own top-level `assets`, so the
+    // asset sniff below is only a fallback for documents with no `type` at all.
     const isItem =
         doc.type === 'Feature' ||
-        (doc.assets &&
+        (doc.type !== 'Catalog' &&
+            doc.type !== 'Collection' &&
+            !!doc.assets &&
             typeof doc.assets === 'object' &&
             Object.values(doc.assets as Record<string, { type?: string; href?: string }>).some(
                 a => a.type?.includes('pmtiles') || a.type?.includes('tiff') || a.href?.match(/\.(pmtiles|tif|tiff)$/i),

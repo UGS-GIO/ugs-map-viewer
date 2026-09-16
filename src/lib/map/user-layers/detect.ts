@@ -26,13 +26,26 @@ import {
     type StacItem,
 } from '@/lib/map/stac/stac-layer'
 import { loadCogMetadata } from '@/hooks/use-cog-metadata'
-import { registerLocalPMTiles } from '@/lib/map/pmtiles/setup'
-import { loadParquetForDeck } from '@/lib/map/user-layers/parquet-deck-loader'
+import { registerLocalPMTiles, unregisterLocalPMTiles } from '@/lib/map/pmtiles/setup'
+import { loadParquetForDeck, type LoadParquetOptions } from '@/lib/map/user-layers/parquet-deck-loader'
 
 /** A layer produced by uploading a local file (data lives in the browser, not a URL). */
 export type UploadedLayer = GeoJSONLayerProps | PMTilesLayerProps | COGLayerProps | ParquetLayerProps
 
 export type DetectedFormat = 'pmtiles' | 'geojson' | 'cog' | 'wms' | 'stac' | 'parquet' | 'unknown'
+
+/**
+ * Ceiling for uploaded files. GeoJSON is parsed into memory whole, and the
+ * DuckDB Parquet path falls back to buffering the file when the FileReader
+ * protocol is unavailable — both OOM the tab well before the browser complains,
+ * so the limit is enforced up front with a message instead.
+ */
+export const MAX_UPLOAD_BYTES = 512 * 1024 * 1024
+
+function formatBytes(bytes: number): string {
+    if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`
+    return `${Math.round(bytes / 1024 ** 2)} MB`
+}
 
 /** Deterministic colour from a title so a layer keeps its colour across reloads. */
 const PALETTE = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#65a30d']
@@ -238,6 +251,8 @@ export interface BuildFromUrlOptions {
     format?: DetectedFormat
     /** WMS layer name (workspace:layer) when it isn't in the URL. */
     wmsLayerName?: string
+    /** Confirmation callback for large Parquet sources. Omit to load without prompting. */
+    onLargeDataset?: LoadParquetOptions['onLargeDataset']
 }
 
 /** Build a runtime layer from a URL (or a bare STAC item id). Async because some
@@ -259,7 +274,7 @@ export async function buildLayerFromUrl(input: string, opts: BuildFromUrlOptions
         case 'pmtiles': return buildPMTiles(raw, title)
         case 'geojson': return buildGeoJSONFromUrl(raw, title)
         case 'parquet': {
-            const deckData = await loadParquetForDeck(raw)
+            const deckData = await loadParquetForDeck(raw, { onLargeDataset: opts.onLargeDataset, name: title })
             return {
                 type: 'parquet',
                 title,
@@ -361,13 +376,39 @@ export function objectUrlForCog(file: File): string {
 }
 
 /**
+ * Undo the browser-side handles a built upload holds, for when the layer is
+ * discarded before it is ever mounted (a failed IndexedDB write, say). Without
+ * this a rejected upload keeps its file's bytes pinned via the object URL, and
+ * leaves a protocol key registered that would shadow a later upload of the same
+ * name.
+ */
+export function releaseUploadedLayer(def: UploadedLayer): void {
+    if (def.type === 'cog' && def.cogUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(def.cogUrl)
+    }
+    if (def.type === 'pmtiles' && def.local) {
+        unregisterLocalPMTiles(def.pmtilesUrl)
+    }
+}
+
+/**
  * Parse an uploaded file into a layer def. Supports GeoJSON (inline data),
  * PMTiles (File-backed via the protocol) and COG (File-backed via object URL).
  * Returns the def plus the file that must be persisted — for PMTiles that is a
  * re-keyed copy, and hydration depends on persisting exactly this one so its
  * name matches `pmtilesUrl`.
  */
-export async function buildLayerFromFile(file: File, idbKey: string): Promise<{ def: UploadedLayer; file: File }> {
+export async function buildLayerFromFile(
+    file: File,
+    idbKey: string,
+    opts: { onLargeDataset?: LoadParquetOptions['onLargeDataset'] } = {},
+): Promise<{ def: UploadedLayer; file: File }> {
+    if (file.size > MAX_UPLOAD_BYTES) {
+        throw new Error(
+            `"${file.name}" is ${formatBytes(file.size)}, over the ${formatBytes(MAX_UPLOAD_BYTES)} upload limit. ` +
+            `Host it and add it by URL instead — remote layers stream rather than loading whole.`,
+        )
+    }
     const name = file.name.toLowerCase()
     if (name.endsWith('.pmtiles')) {
         return buildPMTilesFromFile(file, idbKey)
@@ -377,7 +418,7 @@ export async function buildLayerFromFile(file: File, idbKey: string): Promise<{ 
     }
     if (name.endsWith('.parquet')) {
         const title = file.name.replace(/\.parquet$/i, '')
-        const deckData = await loadParquetForDeck(file)
+        const deckData = await loadParquetForDeck(file, { onLargeDataset: opts.onLargeDataset, name: file.name })
         const def: ParquetLayerProps = {
             type: 'parquet',
             title,

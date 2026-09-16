@@ -14,9 +14,13 @@ import type { GeoJSONLayerProps } from '@/lib/types/mapping-types'
 import type { WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
 import { colorFromTitle } from '@/lib/map/user-layers/detect'
 
-/** Stable source id per GeoJSON layer. */
+/** Stable source id per GeoJSON layer. Hashed rather than slugified: lowercasing
+ *  and collapsing whitespace would map "My Data" and "my-data" onto one id, and
+ *  user layer titles are free text. */
 export function getGeojsonSourceId(layer: GeoJSONLayerProps): string {
-    return `geojson-${layer.title}`.replace(/\s+/g, '-').toLowerCase()
+    let h = 0
+    for (let i = 0; i < layer.title.length; i++) h = (h * 31 + layer.title.charCodeAt(i)) >>> 0
+    return `geojson-${h.toString(36)}`
 }
 
 /** Canonical first-sublayer id for z-order (`beforeId`) lookups. */
@@ -33,26 +37,29 @@ function geometrySignature(geometry: GeoJSON.Geometry): string {
 }
 
 /**
- * Query rendered user-GeoJSON features at a point (with screen tolerance), mapped
- * to the `WfsLayerFeature` shape the popup pipeline consumes. Mirrors
- * {@link queryPmtilesLayersAtPoint}: walks every rendered layer tagged
- * `metadata.userGeojson` whose title is among the visible GeoJSON layers.
+ * Query rendered features at a point (with screen tolerance) across every style
+ * layer tagged with `metadata[metaFlag]` whose `metadata.title` is in `titles`,
+ * mapped to the `WfsLayerFeature` shape the popup pipeline consumes.
  *
- * Deduped per (layer, feature id) because one polygon renders in BOTH the fill
- * and line sublayers and would otherwise show up twice in the popup.
+ * Deduped per (layer, feature) because one polygon renders in BOTH the fill and
+ * line sublayers and would otherwise show up twice in the popup.
+ *
+ * Shared by user GeoJSON layers and tiled Parquet layers — both render as a
+ * generic fill/line/circle triple and differ only in their source type.
  */
-export function queryGeojsonLayersAtPoint(
+export function queryTaggedVectorLayersAtPoint(
     map: maplibregl.Map,
     point: { x: number; y: number },
     tolerance: number,
-    layers: GeoJSONLayerProps[],
+    titles: Set<string>,
+    metaFlag: string,
 ): WfsLayerFeature[] {
-    if (layers.length === 0) return []
-    const titles = new Set(layers.map(l => l.title))
+    if (titles.size === 0) return []
     const ids = (map.getStyle().layers ?? [])
         .filter(l => {
-            const meta = l.metadata as { userGeojson?: boolean; title?: string } | undefined
-            return meta?.userGeojson && !!meta.title && titles.has(meta.title) && !!map.getLayer(l.id)
+            const meta = l.metadata as Record<string, unknown> | undefined
+            const title = meta?.title
+            return !!meta?.[metaFlag] && typeof title === 'string' && titles.has(title) && !!map.getLayer(l.id)
         })
         .map(l => l.id)
     if (ids.length === 0) return []
@@ -79,6 +86,16 @@ export function queryGeojsonLayersAtPoint(
         })
     }
     return out
+}
+
+/** Query rendered user-GeoJSON features at a point. See {@link queryTaggedVectorLayersAtPoint}. */
+export function queryGeojsonLayersAtPoint(
+    map: maplibregl.Map,
+    point: { x: number; y: number },
+    tolerance: number,
+    layers: GeoJSONLayerProps[],
+): WfsLayerFeature[] {
+    return queryTaggedVectorLayersAtPoint(map, point, tolerance, new Set(layers.map(l => l.title)), 'userGeojson')
 }
 
 export function GeoJSONLayerSource({

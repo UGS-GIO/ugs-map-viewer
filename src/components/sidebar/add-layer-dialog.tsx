@@ -9,8 +9,8 @@
  * Remote layers are added as shareable `?userLayers=` recipes; uploads persist
  * to IndexedDB. Either way the new layer is auto-selected so it shows at once.
  */
-import { useState, useMemo, useCallback } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useState, useMemo, useCallback, useRef } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
     Plus, Upload, Link as LinkIcon, Database, Loader2, Folder, ArrowLeft,
     RotateCcw, Search, Check, Globe
@@ -19,17 +19,22 @@ import { toast } from 'sonner'
 import {
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+    AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogFooter,
+    AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel,
+} from '@/components/ui/alert-dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { useUserLayers } from '@/context/user-layers-provider'
-import { useLayerUrl } from '@/context/layer-url-provider'
+import { useUserLayers, userRemoteLayerKey, type UserLayerRecipe } from '@/context/user-layers-provider'
+import type { LayerProps } from '@/lib/types/mapping-types'
 import {
     buildLayerFromUrl, buildLayerFromFile, detectFormatFromUrl, titleFromUrl,
-    type DetectedFormat,
+    releaseUploadedLayer, type DetectedFormat,
 } from '@/lib/map/user-layers/detect'
+import { LARGE_PARQUET_FEATURE_COUNT, ParquetLoadCancelledError, type LargeParquetDataset } from '@/lib/map/user-layers/parquet-deck-loader'
 import {
     DEFAULT_STAC_CATALOG_URL, fetchStacNode, isStacCatalogOrCollection,
     type StacItemSummary,
@@ -49,10 +54,26 @@ export function AddLayerDialog() {
     const [open, setOpen] = useState(false)
     const [activeTab, setActiveTab] = useState<'url' | 'upload' | 'stac'>('url')
     const { addRemoteLayer, addUploadedLayer } = useUserLayers()
-    const { updateLayerSelection } = useLayerUrl()
+    const queryClient = useQueryClient()
 
     // Shared submit state
     const [busy, setBusy] = useState(false)
+
+    // Large-source confirmation. `loadParquetForDeck` runs a cheap COUNT(*) off
+    // Parquet metadata and calls this before materializing anything, so a file
+    // too big to be worth loading is declined before it is read. The promise is
+    // resolved by the alert dialog's buttons.
+    const [pendingLarge, setPendingLarge] = useState<LargeParquetDataset | null>(null)
+    const largeResolverRef = useRef<((proceed: boolean) => void) | null>(null)
+    const confirmLargeDataset = useCallback((dataset: LargeParquetDataset) => {
+        setPendingLarge(dataset)
+        return new Promise<boolean>(resolve => { largeResolverRef.current = resolve })
+    }, [])
+    const answerLarge = useCallback((proceed: boolean) => {
+        largeResolverRef.current?.(proceed)
+        largeResolverRef.current = null
+        setPendingLarge(null)
+    }, [])
 
     // By-URL tab
     const [url, setUrl] = useState('')
@@ -74,8 +95,10 @@ export function AddLayerDialog() {
         staleTime: 5 * 60 * 1000,
     })
 
+    // `addRemoteLayer` / `addUploadedLayer` select the new title in the same
+    // navigate that adds it, so there is deliberately no second navigate here —
+    // two in one tick each spread a stale `prev` and undo each other.
     const finishAndSelect = (title: string) => {
-        updateLayerSelection(title, true)
         toast.success(`Added "${title}"`)
         setOpen(false)
         setUrl('')
@@ -109,6 +132,18 @@ export function AddLayerDialog() {
         setItemFilter('')
     }, [])
 
+    /**
+     * Register an already-built remote layer. The provider rebuilds remotes from
+     * the URL recipe through React Query; seeding that exact cache entry with the
+     * layer we just built to validate the input stops the source being fetched
+     * and parsed a second time (for Parquet, a full duplicate DuckDB read).
+     */
+    const addBuiltRemoteLayer = (recipe: UserLayerRecipe, built: LayerProps): string => {
+        const title = addRemoteLayer(recipe)
+        queryClient.setQueryData(userRemoteLayerKey({ ...recipe, title }), { ...built, title })
+        return title
+    }
+
     const handleAddUrl = async () => {
         const raw = url.trim()
         if (!raw) return
@@ -135,15 +170,16 @@ export function AddLayerDialog() {
             }
 
             // Pre-validate by building once so a bad URL never lands in the shareable link.
-            await buildLayerFromUrl(raw, { format, wmsLayerName: wmsLayerName.trim() || undefined })
-            const title = addRemoteLayer({
+            const built = await buildLayerFromUrl(raw, { format, wmsLayerName: wmsLayerName.trim() || undefined, onLargeDataset: confirmLargeDataset })
+            const title = addBuiltRemoteLayer({
                 url: raw,
                 title: titleFromUrl(raw),
                 format,
                 wmsLayerName: wmsLayerName.trim() || undefined,
-            })
+            }, built)
             finishAndSelect(title)
         } catch (e) {
+            if (e instanceof ParquetLoadCancelledError) return
             toast.error('Could not add layer', { description: e instanceof Error ? e.message : String(e) })
         } finally {
             setBusy(false)
@@ -155,14 +191,15 @@ export function AddLayerDialog() {
         if (selectedItem) {
             setBusy(true)
             try {
-                await buildLayerFromUrl(selectedItem.href)
-                const title = addRemoteLayer({
+                const built = await buildLayerFromUrl(selectedItem.href, { onLargeDataset: confirmLargeDataset })
+                const title = addBuiltRemoteLayer({
                     url: selectedItem.href,
                     title: selectedItem.title,
                     format: 'stac',
-                })
+                }, built)
                 finishAndSelect(title)
             } catch (e) {
+                if (e instanceof ParquetLoadCancelledError) return
                 toast.error('Could not add STAC layer', {
                     description: e instanceof Error ? e.message : String(e),
                 })
@@ -179,12 +216,12 @@ export function AddLayerDialog() {
         try {
             const node = await fetchStacNode(raw)
             if (node.kind === 'item') {
-                await buildLayerFromUrl(node.url)
-                const title = addRemoteLayer({
+                const built = await buildLayerFromUrl(node.url, { onLargeDataset: confirmLargeDataset })
+                const title = addBuiltRemoteLayer({
                     url: node.url,
                     title: node.title,
                     format: 'stac',
-                })
+                }, built)
                 finishAndSelect(title)
             } else {
                 // It's a catalog / collection — explore it!
@@ -209,10 +246,20 @@ export function AddLayerDialog() {
         setBusy(true)
         try {
             const idbKey = `upload-${crypto.randomUUID()}`
-            const { def, file: fileToStore } = await buildLayerFromFile(file, idbKey)
-            const title = await addUploadedLayer(def, fileToStore)
+            const { def, file: fileToStore } = await buildLayerFromFile(file, idbKey, { onLargeDataset: confirmLargeDataset })
+            let title: string
+            try {
+                title = await addUploadedLayer(def, fileToStore)
+            } catch (e) {
+                // Persisting failed (IndexedDB quota, most likely). The built def
+                // already holds a blob URL / a registered protocol key — drop them
+                // rather than leaking the file's bytes for the rest of the session.
+                releaseUploadedLayer(def)
+                throw e
+            }
             finishAndSelect(title)
         } catch (e) {
+            if (e instanceof ParquetLoadCancelledError) return
             toast.error('Could not add file', { description: e instanceof Error ? e.message : String(e) })
         } finally {
             setBusy(false)
@@ -229,6 +276,24 @@ export function AddLayerDialog() {
     }, [stacNode, itemFilter])
 
     return (
+        <>
+        <AlertDialog open={pendingLarge !== null} onOpenChange={o => { if (!o) answerLarge(false) }}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>This is a large layer</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        &ldquo;{pendingLarge?.name}&rdquo; has {pendingLarge?.featureCount.toLocaleString()} features
+                        &mdash; over the {LARGE_PARQUET_FEATURE_COUNT.toLocaleString()} at which loading starts to get
+                        heavy. It has to be read into memory in full before it can be drawn, which may make the map
+                        slow to respond. Filtering it down first will load faster.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => answerLarge(false)}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => answerLarge(true)}>Load anyway</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="w-full my-2 gap-1.5">
@@ -514,5 +579,6 @@ export function AddLayerDialog() {
                 </Tabs>
             </DialogContent>
         </Dialog>
+        </>
     )
 }

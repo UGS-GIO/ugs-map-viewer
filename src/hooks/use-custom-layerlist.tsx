@@ -8,7 +8,7 @@ import { useLayerItemState } from '@/hooks/use-layer-item-state';
 import { LayerProps } from '@/lib/types/mapping-types';
 import { useMap } from '@/hooks/use-map';
 import { findLayerByTitle } from '@/lib/map/utils';
-import { isWMSLayer, isWFSLayer, isPMTilesLayer, isArcGISMapServerLayer, isCOGLayer } from '@/lib/map/layer-utils';
+import { isWMSLayer, isWFSLayer, isPMTilesLayer, isArcGISMapServerLayer, isCOGLayer, isGroupLayer } from '@/lib/map/layer-utils';
 import { CogLegend } from '@/components/maps/cog-legend';
 import { useLayerExtent, UseLayerExtentOptions } from '@/hooks/use-layer-extent';
 import { useMapZoom, getZoomHint } from '@/hooks/use-map-zoom';
@@ -73,7 +73,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
     } = useLayerItemState(layerConfig);
 
     const { map } = useMap();
-    const { groupVisibility, setGroupVisibility, layerOpacity: layerOpacityMap, setLayerOpacity, updateLayerSelection } = useLayerUrl();
+    const { groupVisibility, setGroupVisibility, layerOpacity: layerOpacityMap, setLayerOpacity } = useLayerUrl();
     const { removeUserLayer } = useUserLayers();
     const { setIsCollapsed, setNavOpened } = useSidebar();
     const { data: layerDescriptions } = useFetchLayerDescriptions();
@@ -232,16 +232,18 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
         }
     };
 
-    // Remove a user-added layer: deselect it, drop highlights, then delete it
-    // from the URL recipe / IndexedDB (via the user-layers provider).
-    const isUserLayer = layerConfig.userAdded === true;
+    // Remove a user-added layer: drop highlights, then delete it from the URL
+    // recipe / IndexedDB. `removeUserLayer` clears the selection in the same
+    // navigate, so this must NOT also call `updateLayerSelection`.
+    // The synthetic "My Layers" group is flagged `userAdded` too, but it isn't
+    // removable — only its children are.
+    const isUserLayer = layerConfig.userAdded === true && !isGroupLayer(layerConfig);
     const handleRemoveUserLayer = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
         if (!layerConfig.title) return;
         onLayerTurnedOff(layerConfig.title);
-        updateLayerSelection(layerConfig.title, false);
         removeUserLayer(layerConfig.title);
-    }, [layerConfig.title, onLayerTurnedOff, updateLayerSelection, removeUserLayer]);
+    }, [layerConfig.title, onLayerTurnedOff, removeUserLayer]);
 
     const accordionValue = isUserExpanded ? "item-1" : "";
 

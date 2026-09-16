@@ -45,11 +45,19 @@ function openDb(): Promise<IDBDatabase> {
 
 function tx<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
     return openDb().then(db => new Promise<T>((resolve, reject) => {
+        // Close on every terminal outcome, not just success: a connection left
+        // open leaks and, worse, blocks any future `onupgradeneeded`.
+        const close = () => db.close()
         const t = db.transaction(STORE, mode)
         const req = run(t.objectStore(STORE))
         req.onsuccess = () => resolve(req.result)
         req.onerror = () => reject(req.error)
-        t.oncomplete = () => db.close()
+        t.oncomplete = close
+        t.onerror = close
+        t.onabort = () => {
+            close()
+            reject(t.error ?? new Error('IndexedDB transaction aborted'))
+        }
     }))
 }
 

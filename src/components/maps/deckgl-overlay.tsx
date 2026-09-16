@@ -1,94 +1,138 @@
+/**
+ * Deck.gl overlay for point-only Parquet layers.
+ *
+ * Points render here rather than through MapLibre so their coordinates can go to
+ * the GPU as one binary attribute, with no per-feature object ever built. That
+ * beats vector tiles for very large point sets, which is why this path stays
+ * even though Parquet polygons and lines are tiled through MapLibre instead
+ * (see `parquet-vector-source.tsx`).
+ *
+ * Picking goes through Deck's own GPU picker (`pickMultipleObjects`) rather than
+ * a JS scan over the rows, so a click costs the same at ten points as at ten
+ * million.
+ */
 import { useEffect, useRef, useMemo } from 'react'
 import { MapboxOverlay } from '@deck.gl/mapbox'
-import { ScatterplotLayer, GeoJsonLayer } from '@deck.gl/layers'
-import type { PickingInfo } from '@deck.gl/core'
+import { ScatterplotLayer } from '@deck.gl/layers'
+import type { Layer as DeckLayer, PickingInfo } from '@deck.gl/core'
 import type maplibregl from 'maplibre-gl'
 import type { ParquetLayerProps } from '@/lib/types/mapping-types'
 import type { WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
-import { getArrowRowProperties } from '@/lib/map/user-layers/parquet-deck-loader'
+import { queryParquetRowProperties } from '@/lib/map/user-layers/parquet-deck-loader'
 
-export function queryParquetLayersAtPoint(
-    map: maplibregl.Map,
+/** Deck layer id for a Parquet layer. Shared with `data-map` so `beforeId`
+ *  lookups and picking agree on one id per layer. */
+export function getDeckLayerId(layer: ParquetLayerProps): string {
+    return `deck-parquet-${layer.title}`
+}
+
+/** One picked point row: which layer, which row, and where it is. */
+export interface ParquetPointHit {
+    layer: ParquetLayerProps
+    rowId: number
+    lng: number
+    lat: number
+}
+
+/**
+ * Pick Parquet points under a click through Deck's GPU picker.
+ *
+ * `radius` is the same screen-pixel tolerance the MapLibre queries use, and
+ * `depth` lets one click return a hit from each overlapping Parquet layer (Deck
+ * drills through, so the cap is the layer count).
+ *
+ * Only identifies the rows — attributes live in DuckDB and are fetched by
+ * {@link hydrateParquetPointHits}, so a click costs the same at ten points as at
+ * ten million.
+ */
+export function pickParquetPoints(
+    overlay: MapboxOverlay | null,
     point: { x: number; y: number },
     tolerance: number,
     layers: ParquetLayerProps[],
-): WfsLayerFeature[] {
-    if (layers.length === 0) return []
-    const out: WfsLayerFeature[] = []
+): ParquetPointHit[] {
+    if (!overlay || layers.length === 0) return []
 
-    for (const layer of layers) {
-        if (!layer.deckData) continue
-        const title = layer.title
-
-        if (layer.deckData.kind === 'points' && layer.deckData.points) {
-            const { positions, count } = layer.deckData.points
-            const sw = map.unproject([point.x - tolerance, point.y + tolerance])
-            const ne = map.unproject([point.x + tolerance, point.y - tolerance])
-            const minLng = Math.min(sw.lng, ne.lng)
-            const maxLng = Math.max(sw.lng, ne.lng)
-            const minLat = Math.min(sw.lat, ne.lat)
-            const maxLat = Math.max(sw.lat, ne.lat)
-
-            const clickLng = (sw.lng + ne.lng) / 2
-            const clickLat = (sw.lat + ne.lat) / 2
-            let bestDistSq = Infinity
-            let bestIdx = -1
-
-            for (let i = 0; i < count; i++) {
-                const lng = positions[i * 2]
-                const lat = positions[i * 2 + 1]
-                if (lng >= minLng && lng <= maxLng && lat >= minLat && lat <= maxLat) {
-                    const dlng = lng - clickLng
-                    const dlat = lat - clickLat
-                    const dsq = dlng * dlng + dlat * dlat
-                    if (dsq < bestDistSq) {
-                        bestDistSq = dsq
-                        bestIdx = i
-                    }
-                }
-            }
-
-            if (bestIdx >= 0) {
-                const lng = positions[bestIdx * 2]
-                const lat = positions[bestIdx * 2 + 1]
-                const props = layer.deckData.table
-                    ? getArrowRowProperties(layer.deckData.table, bestIdx)
-                    : (layer.deckData.properties?.[bestIdx] ?? { index: bestIdx, longitude: lng, latitude: lat })
-                out.push({
-                    id: `parquet-${title}-${bestIdx}`,
-                    layerTitle: title,
-                    properties: props,
-                    geometry: { type: 'Point', coordinates: [lng, lat] },
-                })
-            }
-        }
-
-        if (layer.deckData.kind === 'geojson' && layer.deckData.geojson) {
-            for (let i = 0; i < layer.deckData.geojson.features.length; i++) {
-                const f = layer.deckData.geojson.features[i]
-                if (!f.geometry) continue
-                out.push({
-                    id: (f.id as string | number | undefined) ?? `parquet-${title}-${i}`,
-                    layerTitle: title,
-                    properties: (f.properties as Record<string, unknown>) ?? {},
-                    geometry: f.geometry,
-                })
-                break
-            }
-        }
+    const byId = new Map(layers.map(l => [getDeckLayerId(l), l]))
+    let picks: PickingInfo[]
+    try {
+        picks = overlay.pickMultipleObjects({
+            x: point.x,
+            y: point.y,
+            radius: tolerance,
+            layerIds: [...byId.keys()],
+            depth: byId.size,
+        })
+    } catch {
+        // Picking reads the GPU; a lost context shouldn't break the click pipeline.
+        return []
     }
+
+    const out: ParquetPointHit[] = []
+    const seenLayers = new Set<string>()
+    for (const info of picks) {
+        const layerId = info.layer?.id
+        const layer = layerId ? byId.get(layerId) : undefined
+        // One hit per layer — Deck returns them nearest-first.
+        if (!layer || seenLayers.has(layer.title)) continue
+
+        const points = layer.deckData?.points
+        const i = info.index
+        if (!points || i < 0) continue
+        seenLayers.add(layer.title)
+
+        out.push({
+            layer,
+            rowId: i,
+            lng: points.positions[i * 2],
+            lat: points.positions[i * 2 + 1],
+        })
+    }
+    return out
+}
+
+/**
+ * Read the picked rows' attributes out of DuckDB and shape them for the popup
+ * pipeline. Grouped per layer so each contributes one query. A layer whose
+ * lookup fails still yields its feature, with empty properties, rather than
+ * dropping the click.
+ */
+export async function hydrateParquetPointHits(hits: ParquetPointHit[]): Promise<WfsLayerFeature[]> {
+    const byLayer = new Map<string, ParquetPointHit[]>()
+    for (const hit of hits) {
+        const list = byLayer.get(hit.layer.title)
+        if (list) list.push(hit)
+        else byLayer.set(hit.layer.title, [hit])
+    }
+
+    const out: WfsLayerFeature[] = []
+    await Promise.all([...byLayer.values()].map(async (group) => {
+        const attrTable = group[0].layer.deckData?.attrTable
+        let props = new Map<number, Record<string, unknown>>()
+        if (attrTable) {
+            try {
+                props = await queryParquetRowProperties(attrTable, group.map(h => h.rowId))
+            } catch (e) {
+                console.warn(`[user-layers] attribute lookup failed for "${group[0].layer.title}":`, e)
+            }
+        }
+        for (const hit of group) {
+            out.push({
+                id: `parquet-${hit.layer.title}-${hit.rowId}`,
+                layerTitle: hit.layer.title,
+                properties: props.get(hit.rowId) ?? {},
+                geometry: { type: 'Point', coordinates: [hit.lng, hit.lat] },
+            })
+        }
+    }))
     return out
 }
 
 interface DeckGlOverlayProps {
     map: maplibregl.Map | null
     layers: ParquetLayerProps[]
-    onFeatureClick?: (feature: {
-        layerTitle: string
-        properties: Record<string, unknown>
-        geometry?: GeoJSON.Geometry
-        coordinate?: [number, number]
-    }) => void
+    /** Populated with the live overlay so the map-click pipeline can pick against it. */
+    overlayRef?: React.MutableRefObject<MapboxOverlay | null>
 }
 
 function hexToRgb(hex: string, alpha = 255): [number, number, number, number] {
@@ -104,23 +148,22 @@ function hexToRgb(hex: string, alpha = 255): [number, number, number, number] {
     return [37, 99, 235, Math.round(alpha)]
 }
 
-export function DeckGlOverlay({ map, layers, onFeatureClick }: DeckGlOverlayProps) {
-    const overlayRef = useRef<MapboxOverlay | null>(null)
+export function DeckGlOverlay({ map, layers, overlayRef }: DeckGlOverlayProps) {
+    const localRef = useRef<MapboxOverlay | null>(null)
 
     const deckLayers = useMemo(() => {
         return layers
             .filter(l => l.visible !== false && l.deckData)
-            .map(layer => {
+            .map((layer): DeckLayer | null => {
                 const data = layer.deckData!
                 const color = layer.color || '#2563eb'
                 const opacity = layer.opacity ?? 0.85
 
                 if (data.kind === 'points' && data.points) {
-                    const count = data.points.count
                     return new ScatterplotLayer({
-                        id: `deck-parquet-points-${layer.title}`,
+                        id: getDeckLayerId(layer),
                         data: {
-                            length: count,
+                            length: data.points.count,
                             attributes: {
                                 getPosition: { value: data.points.positions, size: 2 },
                             },
@@ -131,63 +174,20 @@ export function DeckGlOverlay({ map, layers, onFeatureClick }: DeckGlOverlayProp
                         pickable: true,
                         autoHighlight: false,
                         _validate: false,
-                        onClick: (info: PickingInfo) => {
-                            if (info.index >= 0) {
-                                const props = data.table
-                                    ? getArrowRowProperties(data.table, info.index)
-                                    : (data.properties?.[info.index] ?? { index: info.index })
-                                const coord = info.coordinate ? [info.coordinate[0], info.coordinate[1]] as [number, number] : undefined
-                                onFeatureClick?.({
-                                    layerTitle: layer.title,
-                                    properties: props,
-                                    coordinate: coord,
-                                })
-                            }
-                        },
-                    })
-                }
-
-                if (data.kind === 'geojson' && data.geojson) {
-                    return new GeoJsonLayer({
-                        id: `deck-parquet-geojson-${layer.title}`,
-                        data: data.geojson,
-                        filled: true,
-                        stroked: true,
-                        getFillColor: hexToRgb(color, opacity * 255 * 0.4),
-                        getLineColor: hexToRgb(color, opacity * 255),
-                        getLineWidth: 2,
-                        lineWidthUnits: 'pixels',
-                        getPointRadius: 5,
-                        pointRadiusUnits: 'pixels',
-                        pickable: true,
-                        onClick: (info: PickingInfo) => {
-                            const obj = info.object as { properties?: Record<string, unknown>; geometry?: GeoJSON.Geometry } | undefined
-                            if (obj) {
-                                const coord = info.coordinate ? [info.coordinate[0], info.coordinate[1]] as [number, number] : undefined
-                                onFeatureClick?.({
-                                    layerTitle: layer.title,
-                                    properties: obj.properties ?? {},
-                                    geometry: obj.geometry,
-                                    coordinate: coord,
-                                })
-                            }
-                        },
                     })
                 }
 
                 return null
             })
-            .filter((l): l is NonNullable<typeof l> => l != null)
-    }, [layers, onFeatureClick])
+            .filter((l): l is DeckLayer => l != null)
+    }, [layers])
 
     useEffect(() => {
         if (!map) return
-        const overlay = new MapboxOverlay({
-            interleaved: false,
-            layers: deckLayers,
-        })
+        const overlay = new MapboxOverlay({ interleaved: false, layers: [] })
         map.addControl(overlay)
-        overlayRef.current = overlay
+        localRef.current = overlay
+        if (overlayRef) overlayRef.current = overlay
 
         return () => {
             try {
@@ -195,14 +195,13 @@ export function DeckGlOverlay({ map, layers, onFeatureClick }: DeckGlOverlayProp
             } catch {
                 // Ignore if map instance is already destroyed
             }
-            overlayRef.current = null
+            localRef.current = null
+            if (overlayRef) overlayRef.current = null
         }
-    }, [map])
+    }, [map, overlayRef])
 
     useEffect(() => {
-        if (overlayRef.current) {
-            overlayRef.current.setProps({ layers: deckLayers })
-        }
+        localRef.current?.setProps({ layers: deckLayers })
     }, [deckLayers])
 
     return null

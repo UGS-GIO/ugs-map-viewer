@@ -18,15 +18,11 @@ import { createContext, useContext, useCallback, useEffect, useMemo, useRef, use
 import { useSearch, useNavigate } from '@tanstack/react-router'
 import { useQueries } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import type { LayerProps } from '@/lib/types/mapping-types'
-import { buildLayerFromUrl, type UploadedLayer, type DetectedFormat } from '@/lib/map/user-layers/detect'
-import { loadParquetForDeck } from '@/lib/map/user-layers/parquet-deck-loader'
+import type { LayerProps, ParquetLayerProps } from '@/lib/types/mapping-types'
+import { buildLayerFromUrl, objectUrlForCog, releaseUploadedLayer, type UploadedLayer, type DetectedFormat } from '@/lib/map/user-layers/detect'
+import { loadParquetForDeck, dropParquetAttributeTable } from '@/lib/map/user-layers/parquet-deck-loader'
 import { getAllUserLayers, putUserLayer, deleteUserLayer } from '@/lib/map/user-layers/idb'
 import { registerLocalPMTiles } from '@/lib/map/pmtiles/setup'
-
-function objectUrlForCog(file: File): string {
-    return URL.createObjectURL(file)
-}
 
 /** Compact, shareable description of a remote user layer (rebuilt on load). */
 export interface UserLayerRecipe {
@@ -35,6 +31,12 @@ export interface UserLayerRecipe {
     format?: DetectedFormat
     wmsLayerName?: string
 }
+
+/** React Query key for a remote recipe. Exported so the add-layer dialog can
+ *  seed the cache with the layer it already built to validate the input,
+ *  instead of making this provider fetch and parse the source a second time. */
+export const userRemoteLayerKey = (r: UserLayerRecipe) =>
+    ['user-remote-layer', r.url, r.title, r.format, r.wmsLayerName] as const
 
 interface UserLayersContextType {
     /** Merged, render-ready user layers (rebuilt remotes + hydrated uploads). */
@@ -47,8 +49,6 @@ interface UserLayersContextType {
     addUploadedLayer: (def: UploadedLayer, file?: File) => Promise<string>
     /** Remove a user layer by title (from URL or IndexedDB). */
     removeUserLayer: (title: string) => void
-    /** True while remote recipes are being (re)built. */
-    isBuilding: boolean
     /**
      * True once uploaded layers have been read back from IndexedDB. Consumers
      * that validate layer titles (see `LayerUrlProvider`) MUST wait for this —
@@ -65,7 +65,6 @@ const defaultValue: UserLayersContextType = {
     addRemoteLayer: noop,
     addUploadedLayer: async () => '',
     removeUserLayer: () => {},
-    isBuilding: false,
     // No provider → nothing to hydrate, so consumers must not stall.
     isHydrated: true,
 }
@@ -92,7 +91,7 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
     // Zero useEffects, no stale state tearing or double-navigation race conditions.
     const remoteQueries = useQueries({
         queries: recipes.map(r => ({
-            queryKey: ['user-remote-layer', r.url, r.title, r.format, r.wmsLayerName],
+            queryKey: userRemoteLayerKey(r),
             queryFn: async (): Promise<LayerProps | null> => {
                 try {
                     return await buildLayerFromUrl(r.url, {
@@ -112,11 +111,21 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
         })),
     })
 
-    const remoteBuilt = useMemo(() => {
-        return remoteQueries.map(q => q.data).filter((l): l is LayerProps => l != null)
-    }, [remoteQueries])
+    // `useQueries` hands back a fresh outer array every render (the `data`
+    // entries themselves are structurally shared and stable), so a `useMemo` on
+    // it would recompute every time. Hold the last array and swap it only when
+    // an entry actually changes — `userLayers` feeds the whole layer tree, and a
+    // new identity each render rebuilds every layer config downstream.
+    const remoteBuiltRef = useRef<LayerProps[]>([])
+    const nextRemoteBuilt = remoteQueries.map(q => q.data).filter((l): l is LayerProps => l != null)
+    if (
+        nextRemoteBuilt.length !== remoteBuiltRef.current.length ||
+        nextRemoteBuilt.some((l, i) => l !== remoteBuiltRef.current[i])
+    ) {
+        remoteBuiltRef.current = nextRemoteBuilt
+    }
+    const remoteBuilt = remoteBuiltRef.current
 
-    const isBuilding = remoteQueries.some(q => q.isLoading)
     const [uploads, setUploads] = useState<UploadedLayer[]>([])
     const [isHydrated, setIsHydrated] = useState(false)
 
@@ -127,9 +136,7 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
     useEffect(() => {
         return () => {
             for (const u of uploadsRef.current) {
-                if (u.type === 'cog' && u.cogUrl?.startsWith('blob:')) {
-                    URL.revokeObjectURL(u.cogUrl)
-                }
+                if (u.type === 'cog') releaseUploadedLayer(u)
             }
         }
     }, [])
@@ -241,30 +248,41 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
     }, [takenTitles, navigate])
 
     const removeUserLayer = useCallback((title: string) => {
-        // Remote? Drop its recipe from the URL.
-        const isRemote = recipes.some(r => r.title === title)
-        if (isRemote) {
-            navigate({
-                to: '.',
-                search: (prev) => {
-                    const next = ((prev as { userLayers?: UserLayerRecipe[] }).userLayers ?? []).filter(r => r.title !== title)
-                    return { ...prev, userLayers: next.length ? next : undefined }
-                },
-                replace: true,
-            })
-            return
+        // Drop the recipe (if remote) and the selection in ONE navigate. Two
+        // navigates in the same tick each spread a `prev` captured before the
+        // other applied, so the second silently undoes the first.
+        navigate({
+            to: '.',
+            search: (prev) => {
+                const p = prev as { userLayers?: UserLayerRecipe[]; layers?: { selected?: string[] } }
+                const nextRecipes = (p.userLayers ?? []).filter(r => r.title !== title)
+                const nextSelected = (p.layers?.selected ?? []).filter(t => t !== title)
+                return {
+                    ...prev,
+                    userLayers: nextRecipes.length ? nextRecipes : undefined,
+                    layers: { ...p.layers, selected: nextSelected },
+                }
+            },
+            replace: true,
+        })
+
+        // A Parquet layer's attributes sit in a DuckDB table that outlives the
+        // React tree, so it has to be dropped explicitly (remote or uploaded).
+        const removed = userLayers.find(l => l.title === title)
+        if (removed?.type === 'parquet') {
+            const attrTable = (removed as ParquetLayerProps).deckData?.attrTable
+            if (attrTable) void dropParquetAttributeTable(attrTable)
         }
-        // Upload? Remove from IndexedDB + state.
+
+        // Upload? Also remove from IndexedDB + state.
         const upload = uploads.find(u => u.title === title)
         if (upload) {
             // Release the COG's object URL — it pins the file's bytes in memory.
-            if (upload.type === 'cog' && upload.cogUrl?.startsWith('blob:')) {
-                URL.revokeObjectURL(upload.cogUrl)
-            }
+            releaseUploadedLayer(upload)
             deleteUserLayer(upload.idbKey ?? title).catch(e => console.warn('[user-layers] IDB delete failed:', e))
             setUploads(prev => prev.filter(u => u.title !== title))
         }
-    }, [navigate, recipes, uploads])
+    }, [navigate, uploads, userLayers])
 
     const value = useMemo<UserLayersContextType>(() => ({
         userLayers,
@@ -272,9 +290,8 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
         addRemoteLayer,
         addUploadedLayer,
         removeUserLayer,
-        isBuilding,
         isHydrated,
-    }), [userLayers, userLayerTitles, addRemoteLayer, addUploadedLayer, removeUserLayer, isBuilding, isHydrated])
+    }), [userLayers, userLayerTitles, addRemoteLayer, addUploadedLayer, removeUserLayer, isHydrated])
 
     return <UserLayersContext.Provider value={value}>{children}</UserLayersContext.Provider>
 }

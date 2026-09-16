@@ -5,7 +5,7 @@ import { registerLocalPMTiles } from '@/lib/map/pmtiles/setup'
 import type { GeoJSONLayerProps, PMTilesLayerProps, COGLayerProps, ParquetLayerProps } from '@/lib/types/mapping-types'
 
 vi.mock('@/hooks/use-cog-metadata', () => ({ loadCogMetadata: vi.fn() }))
-vi.mock('@/lib/map/pmtiles/setup', () => ({ registerLocalPMTiles: vi.fn() }))
+vi.mock('@/lib/map/pmtiles/setup', () => ({ registerLocalPMTiles: vi.fn(), unregisterLocalPMTiles: vi.fn() }))
 vi.mock('@/lib/map/user-layers/parquet-deck-loader', () => ({
     loadParquetForDeck: vi.fn().mockResolvedValue({
         kind: 'points',

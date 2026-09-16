@@ -24,6 +24,11 @@ export const initDuckDB = async (): Promise<duckdb.AsyncDuckDB> => {
         const worker = new Worker(workerUrl);
         const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(), worker);
         await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+        // Open the database so its runtime/filesystem config is initialised.
+        // Without this, locally registered buffers still read fine, but remote
+        // HTTP reads fail — `read_parquet` over https throws the unhelpful
+        // "Invalid Error: stoi: no conversion". Instantiate alone does not do it.
+        await db.open({});
         URL.revokeObjectURL(workerUrl);
         dbInstance = db;
         return db;
@@ -42,10 +47,52 @@ export const withConnection = async <T>(
     finally { await conn.close(); }
 };
 
-/** Load spatial extension on a connection. Idempotent. */
-export const loadSpatial = async (conn: duckdb.AsyncDuckDBConnection): Promise<void> => {
-    await conn.query('INSTALL spatial');
-    await conn.query('LOAD spatial');
+// Spatial load state, keyed per instance so repeat calls skip a redundant
+// INSTALL/LOAD round trip and concurrent callers share one load.
+const spatialByDb = new WeakMap<duckdb.AsyncDuckDB, Promise<void>>();
+
+/**
+ * Install and load the spatial extension, once per database instance.
+ *
+ * `beforeLoad` runs first, on the same connection, and exists for one reason:
+ * duckdb-wasm breaks `read_parquet` on any connection that runs `LOAD spatial`
+ * before that connection has read a Parquet file — the later read then throws
+ * "Invalid Error: stoi: no conversion". Reading the file once up front primes
+ * the connection. Only the connection that actually triggers the load needs
+ * this; later callers reuse the memo and never run `LOAD` themselves.
+ *
+ * The warm-up is best-effort: a failure here must not block spatial loading, so
+ * it is warned and swallowed. A genuinely unreadable file surfaces its real
+ * error on the read that follows.
+ */
+export const loadSpatial = async (
+    conn: duckdb.AsyncDuckDBConnection,
+    beforeLoad?: () => Promise<unknown>,
+): Promise<void> => {
+    const db = await initDuckDB();
+    let promise = spatialByDb.get(db);
+    if (!promise) {
+        promise = (async () => {
+            if (beforeLoad) {
+                try {
+                    await beforeLoad();
+                } catch (e) {
+                    console.warn('[duckdb] spatial warm-up failed (ignored):', e);
+                }
+            }
+            await conn.query('INSTALL spatial');
+            await conn.query('LOAD spatial');
+        })();
+        spatialByDb.set(db, promise);
+    }
+    try {
+        await promise;
+    } catch (e) {
+        // Only clear the memo if it still points at this failed load, so a retry
+        // another caller already succeeded with is not wiped out.
+        if (spatialByDb.get(db) === promise) spatialByDb.delete(db);
+        throw e;
+    }
 };
 
 // ── SQL helpers ──────────────────────────────────────────────────────────────
