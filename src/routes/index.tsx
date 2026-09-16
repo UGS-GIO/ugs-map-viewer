@@ -1,10 +1,6 @@
-import ComingSoon from '@/components/coming-soon'
+import { LandingPage } from '@/routes/-components/landing-page'
 import { createFileRoute } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/')({
-    component: RouteComponent,
+    component: LandingPage,
 })
-
-function RouteComponent() {
-    return <ComingSoon />
-}

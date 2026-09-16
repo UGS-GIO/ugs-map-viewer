@@ -68,4 +68,20 @@ const dataSourcesShortened = (
     </p>
 )
 
-export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle };
+import type { AppEntry } from '@/routes/-data/portal-config'
+
+const portalMeta: AppEntry = {
+    title: 'Geophysical & Geothermal Data Portal',
+    description: 'Geophysical data coverage and geothermal resource evaluation across Utah.',
+    href: '/geophysics/',
+    status: 'beta',
+    public: false,
+    image: 'https://geology.utah.gov/wp-content/uploads/roosevelt_hot_springs_area_3a.jpg',
+    imageCredit: {
+        author: 'Mark Milligan',
+        article: 'GeoSights: Roosevelt Hot Springs, Beaver County',
+        url: 'https://geology.utah.gov/map-pub/survey-notes/geosights/roosevelt_hot_springs/',
+    },
+}
+
+export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle, portalMeta };

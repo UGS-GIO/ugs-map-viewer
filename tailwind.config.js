@@ -16,6 +16,9 @@ module.exports = {
     			'2xl': '1400px'
     		}
     	},
+    	fontFamily: {
+    		sans: ['"Source Sans 3"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+    	},
     	extend: {
     		screens: {
     			tall: { raw: '(min-height: 1080px)' }
@@ -24,6 +27,11 @@ module.exports = {
     			tooltip: 'var(--calcite-tooltip-z-index, 9999)'
     		},
     		colors: {
+    			'utah-blue': {
+    				DEFAULT: '#126dc4',
+    				dark: '#08355e',
+    				light: '#c3daf0',
+    			},
     			border: 'hsl(var(--border))',
     			input: 'hsl(var(--input))',
     			ring: 'hsl(var(--ring))',

@@ -181,4 +181,20 @@ const dataSourcesShortened = (
     </p>
 )
 
-export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle };
+import type { AppEntry } from '@/routes/-data/portal-config'
+
+const portalMeta: AppEntry = {
+    title: appTitle,
+    description: 'Mineral occurrences, critical minerals, mining districts, and industrial mineral potential.',
+    href: '/minerals/',
+    status: 'in-progress',
+    public: false,
+    image: 'https://geology.utah.gov/wp-content/uploads/snt49-3_wolverine-petrified-forest.jpg',
+    imageCredit: {
+        author: 'Marshall Robinson',
+        article: 'GeoSights: Wolverine Petrified Forest, Garfield County',
+        url: 'https://geology.utah.gov/map-pub/survey-notes/geosights/wolverine-petrified-forest/',
+    },
+}
+
+export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle, portalMeta };

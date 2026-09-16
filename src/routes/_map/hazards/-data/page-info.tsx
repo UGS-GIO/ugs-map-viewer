@@ -193,4 +193,19 @@ const dataSourcesShortened = (
     </p>
 )
 
-export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle, projection };
+import type { AppEntry } from '@/routes/-data/portal-config'
+
+const portalMeta: AppEntry = {
+    title: appTitle,
+    description: 'Mapped geologic hazards in Utah including earthquakes, landslides, flooding, debris flows, radon, rockfall, and problem soils.',
+    href: '/hazards/',
+    status: 'stable',
+    public: true,
+    image: 'https://geology.utah.gov/wp-content/uploads/improving3.jpg',
+    imageCredit: {
+        article: 'Improving Our Understanding of Earthquake Hazards in Utah',
+        url: 'https://geology.utah.gov/map-pub/survey-notes/improving-our-understanding-of-earthquake-hazards-in-utah/',
+    },
+}
+
+export { references, acknowledgments, dataDisclaimer, mapDetails, mapDetailsShortened, dataSources, dataSourcesShortened, appTitle, projection, portalMeta };
