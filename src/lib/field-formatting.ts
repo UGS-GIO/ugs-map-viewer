@@ -109,13 +109,16 @@ export const formatFieldValue = (
 
   // Handle number fields
   if (isNumberField(fieldConfig)) {
-    const numberForTransform = rawValue === null ? null : Number(rawValue)
-    const numberForDefault = Number(rawValue ?? 0)
+    // `Number('')` is 0, so blanks have to be caught before coercing.
+    const isMissing = rawValue == null || rawValue === ''
+    const numberForTransform = isMissing ? null : Number(rawValue)
 
     if (fieldConfig.transform) {
       return fieldConfig.transform(numberForTransform) ?? ''
     }
-    return getNumberFieldTransform(fieldConfig)(numberForDefault)
+    // A missing number is blank, not 0 — `shouldDisplayValue` then drops the row.
+    if (numberForTransform === null || Number.isNaN(numberForTransform)) return ''
+    return getNumberFieldTransform(fieldConfig)(numberForTransform)
   }
 
   // Handle date fields

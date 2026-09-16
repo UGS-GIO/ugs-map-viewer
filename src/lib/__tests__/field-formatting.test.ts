@@ -68,6 +68,33 @@ describe('formatFieldValue', () => {
     expect(formatFieldValue(undefined, 42)).toBe('42');
   });
 
+  it('leaves a missing number blank instead of rendering 0', () => {
+    const config: NumberPopupFieldConfig = { type: 'number', field: 'td_ft' };
+    expect(formatFieldValue(config, null)).toBe('');
+    expect(formatFieldValue(config, undefined)).toBe('');
+    expect(formatFieldValue(config, '')).toBe('');
+    expect(formatFieldValue(config, 'not a number')).toBe('');
+  });
+
+  it('still renders a real zero', () => {
+    const config: NumberPopupFieldConfig = { type: 'number', field: 'td_ft' };
+    expect(formatFieldValue(config, 0)).toBe('0');
+    expect(formatFieldValue(config, '0')).toBe('0');
+  });
+
+  it('hands a transform null rather than coercing it to 0', () => {
+    const seen: (number | null)[] = [];
+    const config: NumberPopupFieldConfig = {
+      type: 'number',
+      field: 'td_ft',
+      transform: (v) => { seen.push(v); return v == null ? 'n/a' : String(v); },
+    };
+    expect(formatFieldValue(config, null)).toBe('n/a');
+    expect(formatFieldValue(config, undefined)).toBe('n/a');
+    expect(formatFieldValue(config, 42)).toBe('42');
+    expect(seen).toEqual([null, null, 42]);
+  });
+
   it('handles scientific notation strings and numbers in string fields', () => {
     const config: StringPopupFieldConfig = { type: 'string', field: 'api_number' };
     expect(formatFieldValue(config, '4.304735231e+13')).toBe('43047352310000');
