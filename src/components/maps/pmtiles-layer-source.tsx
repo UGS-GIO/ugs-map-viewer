@@ -78,6 +78,10 @@ export function usePMTilesStyleFragments(
             return {
                 queryKey: ['pmtiles-style-fragment', render?.styleUrl ?? ''],
                 queryFn: async (): Promise<StyleFragment> => {
+                    if (render!.styleUrl.startsWith('data:application/json,')) {
+                        const rawJson = decodeURIComponent(render!.styleUrl.replace('data:application/json,', ''))
+                        return JSON.parse(rawJson)
+                    }
                     const res = await fetch(render!.styleUrl)
                     if (!res.ok) throw new Error(`PMTiles style fetch failed: ${res.status}`)
                     return res.json()

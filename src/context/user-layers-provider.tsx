@@ -187,10 +187,16 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
         const finalRecipe = { ...recipe, title }
         navigate({
             to: '.',
-            search: (prev) => ({
-                ...prev,
-                userLayers: [...((prev as { userLayers?: UserLayerRecipe[] }).userLayers ?? []), finalRecipe],
-            }),
+            search: (prev) => {
+                const prevUserLayers = (prev as { userLayers?: UserLayerRecipe[] }).userLayers ?? []
+                const currentSelected = new Set((prev as { layers?: { selected?: string[] } }).layers?.selected || [])
+                currentSelected.add(title)
+                return {
+                    ...prev,
+                    userLayers: [...prevUserLayers, finalRecipe],
+                    layers: { selected: Array.from(currentSelected) },
+                }
+            },
             replace: true,
         })
         return title

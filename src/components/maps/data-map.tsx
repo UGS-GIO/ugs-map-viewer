@@ -812,7 +812,8 @@ export default function DataMap({
           const { layer, displayed } = entry
           const hidden = !displayed
           const opacity = layerOpacity.get(layer.title || '')
-          const beforeId = i > 0 ? getLayerId(renderableEntries[i - 1].layer) : undefined
+          const rawBeforeId = i > 0 ? getLayerId(renderableEntries[i - 1].layer) : undefined
+          const beforeId = (rawBeforeId && mapInstance?.getLayer(rawBeforeId)) ? rawBeforeId : undefined
           if (isWMSLayer(layer)) {
             const cqlFilter = layerFilters[layer.title]
             const styleName = layerStyles[layer.title]

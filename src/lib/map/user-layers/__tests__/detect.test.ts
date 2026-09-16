@@ -244,4 +244,24 @@ describe('buildLayerFromFile — PMTiles uploads', () => {
         } as unknown as ReturnType<typeof registerLocalPMTiles>)
         await expect(buildLayerFromFile(pmtilesFile(), 'k')).rejects.toThrow(/could not be read as a PMTiles archive/)
     })
+
+    it('synthesizes a default style when a STAC vector item has no authored renders (e.g. NatCarb)', async () => {
+        const mockItem = {
+            type: 'Feature',
+            id: 'enmin_ccs_natcarb_location',
+            properties: { title: 'NatCarb Locations' },
+            assets: {
+                pmtiles: { type: 'application/vnd.pmtiles', href: 'https://x.org/natcarb.pmtiles' },
+            },
+        }
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve(mockItem),
+        }))
+        const layer = await buildLayerFromUrl('https://x.org/natcarb.json') as PMTilesLayerProps
+        expect(layer.type).toBe('pmtiles')
+        expect(layer.renders).toHaveLength(1)
+        expect(layer.renders![0].styleUrl.startsWith('data:application/json,')).toBe(true)
+    })
 })

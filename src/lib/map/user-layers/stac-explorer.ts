@@ -165,9 +165,11 @@ export async function fetchStacNode(urlOrId: string, currentUrl?: string): Promi
                         const itemHref = selfLink
                             ? new URL(selfLink.href, indexUrl).href
                             : stacItemHref(it) || `${resolvedUrl}#${it.id}`
+                        const renderTitle = (it.properties?.['ugs:renders'] as Record<string, { title?: string }> | undefined)?.default?.title
+                        const displayTitle = renderTitle || (it.properties?.title as string | undefined) || it.id
                         return {
                             id: it.id,
-                            title: (it.properties?.title as string | undefined) || it.id,
+                            title: displayTitle,
                             href: itemHref,
                             format: detectStacItemFormat(it),
                             description: it.properties?.['ugs:layer'] as string | undefined,
