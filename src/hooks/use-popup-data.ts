@@ -303,6 +303,7 @@ export function usePopupData({
         rasterSource: processedRasterSource,
         sourceKind,
         maxZoomLevel: layer?.maxZoomLevel,
+        popupFooterLink: layer?.popupFooterLink,
         features: features.map((f): ExtendedFeature => ({
           type: 'Feature',
           id: f.id,
