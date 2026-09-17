@@ -6,6 +6,7 @@
 
 import * as duckdb from '@duckdb/duckdb-wasm';
 import type { PostgRESTRow } from '@/lib/types/postgrest-types';
+import { hashString, isRecord } from '@/lib/utils';
 
 // ── DuckDB singleton (lazy, module-scoped) ───────────────────────────────────
 
@@ -24,6 +25,11 @@ export const initDuckDB = async (): Promise<duckdb.AsyncDuckDB> => {
         const worker = new Worker(workerUrl);
         const db = new duckdb.AsyncDuckDB(new duckdb.ConsoleLogger(), worker);
         await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+        // Open the database so its runtime/filesystem config is initialised.
+        // Without this, locally registered buffers still read fine, but remote
+        // HTTP reads fail — `read_parquet` over https throws the unhelpful
+        // "Invalid Error: stoi: no conversion". Instantiate alone does not do it.
+        await db.open({});
         URL.revokeObjectURL(workerUrl);
         dbInstance = db;
         return db;
@@ -42,11 +48,94 @@ export const withConnection = async <T>(
     finally { await conn.close(); }
 };
 
-/** Load spatial extension on a connection. Idempotent. */
-export const loadSpatial = async (conn: duckdb.AsyncDuckDBConnection): Promise<void> => {
-    await conn.query('INSTALL spatial');
-    await conn.query('LOAD spatial');
+// Spatial load state, keyed per instance so repeat calls skip a redundant
+// INSTALL/LOAD round trip and concurrent callers share one load.
+const spatialByDb = new WeakMap<duckdb.AsyncDuckDB, Promise<void>>();
+
+/**
+ * Install and load the spatial extension, once per database instance.
+ *
+ * `beforeLoad` runs first, on the same connection, and exists for one reason:
+ * duckdb-wasm breaks `read_parquet` on any connection that runs `LOAD spatial`
+ * before that connection has read a Parquet file — the later read then throws
+ * "Invalid Error: stoi: no conversion". Reading the file once up front primes
+ * the connection. Only the connection that actually triggers the load needs
+ * this; later callers reuse the memo and never run `LOAD` themselves.
+ *
+ * The warm-up is best-effort: a failure here must not block spatial loading, so
+ * it is warned and swallowed. A genuinely unreadable file surfaces its real
+ * error on the read that follows.
+ */
+export const loadSpatial = async (
+    conn: duckdb.AsyncDuckDBConnection,
+    beforeLoad?: () => Promise<unknown>,
+): Promise<void> => {
+    const db = await initDuckDB();
+    let promise = spatialByDb.get(db);
+    if (!promise) {
+        promise = (async () => {
+            if (beforeLoad) {
+                try {
+                    await beforeLoad();
+                } catch (e) {
+                    console.warn('[duckdb] spatial warm-up failed (ignored):', e);
+                }
+            }
+            await conn.query('INSTALL spatial');
+            await conn.query('LOAD spatial');
+        })();
+        spatialByDb.set(db, promise);
+    }
+    try {
+        await promise;
+    } catch (e) {
+        // Only clear the memo if it still points at this failed load, so a retry
+        // another caller already succeeded with is not wiped out.
+        if (spatialByDb.get(db) === promise) spatialByDb.delete(db);
+        throw e;
+    }
 };
+
+/**
+ * Iterate a query's rows without materializing the whole result.
+ *
+ * `conn.query` builds the entire Arrow result as one contiguous buffer in
+ * DuckDB's 32-bit WASM heap before handing it over. For a row-unbounded read —
+ * a whole related table, say — that single allocation is what dies as "malloc
+ * of size N failed", long before the browser is out of memory. `send` hands back
+ * record batches instead, so only one batch is live at a time. Falls back to
+ * `query` where `send` is unavailable (notably in tests).
+ */
+export async function* streamRows(
+    conn: StreamableConnection,
+    sql: string,
+): AsyncGenerator<Record<string, unknown>> {
+    if (!conn.send) {
+        yield* resultRows(await conn.query(sql));
+        return;
+    }
+    for await (const batch of await conn.send(sql)) {
+        yield* resultRows(batch);
+    }
+}
+
+/** The slice of an Arrow result these helpers read. */
+interface ArrowLikeResult { toArray: () => { toJSON: () => unknown }[] }
+
+/** The slice of a connection {@link streamRows} needs. Structural so a scripted
+ *  connection in a test satisfies it as well as duckdb-wasm's own. */
+export interface StreamableConnection {
+    query: (sql: string) => Promise<ArrowLikeResult>
+    send?: (sql: string) => Promise<AsyncIterable<ArrowLikeResult>>
+}
+
+/** A result's rows as field bags, skipping anything that isn't one. */
+export function* resultRows(result: ArrowLikeResult): Generator<Record<string, unknown>> {
+    for (const row of result.toArray()) {
+        const json = row.toJSON();
+        if (isRecord(json)) yield { ...json };
+    }
+}
 
 // ── SQL helpers ──────────────────────────────────────────────────────────────
 
@@ -121,10 +210,11 @@ export const queryParquetByValues = async (
         // Cast the join column to VARCHAR so string-quoted values match regardless of the
         // column's parquet type (e.g. uwi VARCHAR or box_pk INTEGER) — duckdb won't compare
         // INTEGER IN (VARCHAR…) without an explicit cast.
-        const result = await conn.query(
-            `SELECT * FROM read_parquet('${escapeSql(url)}') WHERE CAST(${quoteIdent(matchingField)} AS VARCHAR) IN (${inList})${order}`,
-        );
-        return result.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>));
+        const sql =
+            `SELECT * FROM read_parquet('${escapeSql(url)}') WHERE CAST(${quoteIdent(matchingField)} AS VARCHAR) IN (${inList})${order}`;
+        const rows: PostgRESTRow[] = [];
+        for await (const row of streamRows(conn, sql)) rows.push(normalizeRow(row));
+        return rows;
     });
 };
 
@@ -145,10 +235,10 @@ export const queryParquetAll = async (
 ): Promise<PostgRESTRow[]> => {
     return withConnection(async (conn) => {
         const order = orderByClause(sortBy, sortDirection);
-        const result = await conn.query(
-            `SELECT * FROM read_parquet('${escapeSql(url)}')${order}`,
-        );
-        return result.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>));
+        const sql = `SELECT * FROM read_parquet('${escapeSql(url)}')${order}`;
+        const rows: PostgRESTRow[] = [];
+        for await (const row of streamRows(conn, sql)) rows.push(normalizeRow(row));
+        return rows;
     });
 };
 
@@ -169,10 +259,7 @@ export const queryParquetAll = async (
  */
 const attributeTables = new Map<string, Promise<string>>();
 
-const attributeTableName = (key: string): string => {
-    const hash = [...key].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) | 0, 7);
-    return `attrs_${(hash >>> 0).toString(36)}`;
-};
+const attributeTableName = (key: string): string => `attrs_${hashString(key).toString(36)}`;
 
 export const materializedAttributes = async (
     { url, columns, expressions, geometryField = 'geom' }: {
@@ -240,13 +327,13 @@ export const queryParquetDistinctValues = async (
     { url, field }: { url: string; field: string },
 ): Promise<string[]> => {
     return withConnection(async (conn) => {
-        const result = await conn.query(
-            `SELECT DISTINCT CAST(${quoteIdent(field)} AS VARCHAR) AS v FROM read_parquet('${escapeSql(url)}') WHERE ${quoteIdent(field)} IS NOT NULL`,
-        );
-        return result.toArray()
-            .map(r => (r.toJSON() as { v: unknown }).v)
-            .filter((v): v is string => v != null)
-            .map(String);
+        const sql =
+            `SELECT DISTINCT CAST(${quoteIdent(field)} AS VARCHAR) AS v FROM read_parquet('${escapeSql(url)}') WHERE ${quoteIdent(field)} IS NOT NULL`;
+        const values: string[] = [];
+        for await (const row of streamRows(conn, sql)) {
+            if (typeof row.v === 'string') values.push(row.v);
+        }
+        return values;
     });
 };
 
@@ -261,7 +348,9 @@ export const queryParquetFieldOptions = async (
         ? `TRIM(UNNEST(string_split(CAST(${col} AS VARCHAR), ',')))`
         : `TRIM(CAST(${col} AS VARCHAR))`;
 
-    const from = await materializedAttributes({ url });
+    // Only this column: the default projection is every non-geometry column,
+    // which on a large layer is the whole file in the WASM heap.
+    const from = await materializedAttributes({ url, columns: [field] });
 
     return withConnection(async (conn) => {
         const result = await conn.query(`
@@ -286,7 +375,7 @@ export const queryParquetFieldExtent = async (
     { url, field }: { url: string; field: string },
 ): Promise<{ min: number; max: number }> => {
     const col = quoteIdent(field);
-    const from = await materializedAttributes({ url });
+    const from = await materializedAttributes({ url, columns: [field] });
     return withConnection(async (conn) => {
         const result = await conn.query(
             `SELECT MIN(${col}) AS lo, MAX(${col}) AS hi FROM ${from} WHERE ${col} IS NOT NULL`,

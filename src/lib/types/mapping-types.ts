@@ -111,7 +111,7 @@ export interface PopupFooterLink {
 }
 
 interface BaseLayerProps {
-    type: 'feature' | 'tile' | 'map-image' | 'geojson' | 'imagery' | 'wms' | 'group' | 'pmtiles' | 'cog' | 'wfs';
+    type: 'feature' | 'tile' | 'map-image' | 'geojson' | 'imagery' | 'wms' | 'group' | 'pmtiles' | 'cog' | 'wfs' | 'parquet';
     title: string;
     /** Secondary line rendered under the title in the layer list and the Data Sources list — use it for sourcing ("Source: Utah Division of Oil, Gas & Mining") instead of packing it into `title`, which is also the layer's URL-state key. */
     subtitle?: string;
@@ -123,6 +123,12 @@ interface BaseLayerProps {
     /** Optional per-feature link at the bottom of this layer's popups (set per-route). */
     popupFooterLink?: PopupFooterLink;
     customLegend?: React.ReactNode;
+    /** True for layers the user added at runtime (add-layer feature), not build-time config. Drives the remove button + "My Layers" grouping. */
+    userAdded?: boolean;
+    /** A user layer whose data lives only in the browser (uploaded file). Not shareable via URL. */
+    local?: boolean;
+    /** IndexedDB record id backing a `local` upload; used to re-hydrate it on reload. */
+    idbKey?: string;
     /** Structured bivariate legend config — works in both sidebar and print export */
     bivariateLegend?: { xLabel: string; yLabel: string };
     /** GeoParquet URL for client-side export. When set, download button in layer controls is enabled. */
@@ -131,6 +137,8 @@ interface BaseLayerProps {
     sourceAgency?: string;
     /** Hard-coded external link to the data's home (e.g. a UGRC open-data page or a UGS publication), shown in place of a download button when there's no `downloadParquetUrl`. */
     sourceUrl?: string;
+    /** WGS84 [minLon, minLat, maxLon, maxLat] of the layer's data, when the source reports one. The add-layer flow zooms to it. */
+    extent?: [number, number, number, number];
     /** Zoom range [min, max] where this layer renders. Out-of-range → UI shows "Zoom in to see" hint. Auto-resolved from WMS GetCapabilities or PMTiles header if omitted. */
     visibleZoomRange?: [number, number];
 }
@@ -315,8 +323,36 @@ export interface GroupLayerProps extends BaseLayerProps {
     alwaysShowInReview?: boolean;
 }
 
+/**
+ * A GeoJSON vector layer. Data is supplied one of two ways:
+ *  - `geojsonUrl` — a remote GeoJSON URL (fetched by MapLibre; shareable via `?userLayers=`).
+ *  - `data` — an inline FeatureCollection (uploaded files, hydrated from IndexedDB; NOT in the URL).
+ * Rendered generically as fill + line + circle sublayers filtered by geometry type.
+ * Primarily produced by the user "add layer" flow; no build-time configs use it yet.
+ */
+export interface GeoJSONLayerProps extends BaseLayerProps {
+    type: 'geojson';
+    /** Remote GeoJSON URL. MapLibre fetches it directly. */
+    geojsonUrl?: string;
+    /** Inline FeatureCollection (uploads / IndexedDB-hydrated). */
+    data?: FeatureCollection;
+    /** Fill/stroke/circle colour. Defaults to a hash of `title` when omitted. */
+    color?: string;
+}
 
-export type LayerProps = WMSLayerProps | PMTilesLayerProps | COGLayerProps | WFSLayerProps | GroupLayerProps | ArcGISMapServerLayerProps | BaseLayerProps;
+/**
+ * A GPU-rendered Parquet layer powered by Deck.gl.
+ * Supports massive point sets (binary Float32Array coordinates straight to GPU)
+ * and GeoJSON vectors for polygons/lines.
+ */
+export interface ParquetLayerProps extends BaseLayerProps {
+    type: 'parquet';
+    parquetUrl?: string;
+    deckData?: import('@/lib/map/user-layers/parquet-deck-loader').ParquetDeckData;
+    color?: string;
+}
+
+export type LayerProps = WMSLayerProps | PMTilesLayerProps | COGLayerProps | WFSLayerProps | GroupLayerProps | ArcGISMapServerLayerProps | GeoJSONLayerProps | ParquetLayerProps | BaseLayerProps;
 
 export type MapImageLayerRenderer = {
     type: 'map-image-renderer';

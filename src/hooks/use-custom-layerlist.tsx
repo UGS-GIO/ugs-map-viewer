@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionHeader } from '@/components/ui/accordion';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronRight, SlidersHorizontal } from 'lucide-react';
+import { ChevronRight, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Switch } from '@/components/ui/switch';
 import { useLayerItemState } from '@/hooks/use-layer-item-state';
 import { LayerProps } from '@/lib/types/mapping-types';
 import { useMap } from '@/hooks/use-map';
 import { findLayerByTitle } from '@/lib/map/utils';
-import { isWMSLayer, isWFSLayer, isPMTilesLayer, isArcGISMapServerLayer, isCOGLayer } from '@/lib/map/layer-utils';
+import { isWMSLayer, isWFSLayer, isPMTilesLayer, isArcGISMapServerLayer, isCOGLayer, isGroupLayer } from '@/lib/map/layer-utils';
 import { CogLegend } from '@/components/maps/cog-legend';
 import { useLayerExtent, UseLayerExtentOptions } from '@/hooks/use-layer-extent';
 import { useMapZoom, getZoomHint } from '@/hooks/use-map-zoom';
 import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions';
 import { useSidebar } from '@/hooks/use-sidebar';
+import { useUserLayers } from '@/context/user-layers-provider';
 import LayerControls from '@/components/maps/layer-controls';
 import { WfsVectorLegend } from '@/components/maps/wfs-vector-legend';
 import { StacRenderLegend } from '@/components/maps/stac-render-legend';
@@ -73,6 +74,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
 
     const { map } = useMap();
     const { groupVisibility, setGroupVisibility, layerOpacity: layerOpacityMap, setLayerOpacity } = useLayerUrl();
+    const { removeUserLayer } = useUserLayers();
     const { setIsCollapsed, setNavOpened } = useSidebar();
     const { data: layerDescriptions } = useFetchLayerDescriptions();
     const isMobile = useIsMobile();
@@ -230,6 +232,19 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
         }
     };
 
+    // Remove a user-added layer: drop highlights, then delete it from the URL
+    // recipe / IndexedDB. `removeUserLayer` clears the selection in the same
+    // navigate, so this must NOT also call `updateLayerSelection`.
+    // The synthetic "My Layers" group is flagged `userAdded` too, but it isn't
+    // removable — only its children are.
+    const isUserLayer = layerConfig.userAdded === true && !isGroupLayer(layerConfig);
+    const handleRemoveUserLayer = useCallback((e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!layerConfig.title) return;
+        onLayerTurnedOff(layerConfig.title);
+        removeUserLayer(layerConfig.title);
+    }, [layerConfig.title, onLayerTurnedOff, removeUserLayer]);
+
     const accordionValue = isUserExpanded ? "item-1" : "";
 
 
@@ -351,6 +366,17 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                 )}
                             </div>
                         </AccordionTrigger>
+                        {isUserLayer && (
+                            <button
+                                type="button"
+                                onClick={handleRemoveUserLayer}
+                                title="Remove layer"
+                                aria-label={`Remove ${layerConfig.title}`}
+                                className="mr-2 shrink-0 rounded p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </button>
+                        )}
                     </AccordionHeader>
                     {zoomHint && visibleZoomRange && (
                         <div className="px-2 pb-2 -mt-1">

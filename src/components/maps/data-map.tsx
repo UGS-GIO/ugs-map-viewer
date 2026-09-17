@@ -13,14 +13,18 @@ import {
 import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
-import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds } from '@/lib/map/layer-utils'
+import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, isGeoJSONLayer, isParquetLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
-import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
+import { GeoJSONLayerSource, getGeojsonLayerId, queryGeojsonLayersAtPoint } from '@/components/maps/geojson-layer-source'
+import { DeckGlOverlay, pickParquetPoints, hydrateParquetPointHits, getDeckLayerId } from '@/components/maps/deckgl-overlay'
+import { ParquetVectorSource, queryParquetVectorLayersAtPoint, getParquetVectorLayerId, isTiledParquetLayer } from '@/components/maps/parquet-vector-source'
+import type { MapboxOverlay } from '@deck.gl/mapbox'
+import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps, GeoJSONLayerProps, ParquetLayerProps } from '@/lib/types/mapping-types'
 import type maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 
-import { useCogRange } from '@/hooks/use-cog-metadata'
+import { useCogRender } from '@/hooks/use-cog-metadata'
 import { CogPixelHighlight } from '@/components/maps/cog-pixel-highlight'
 import { buildCogProtocolUrl } from '@/lib/map/cog/setup'
 import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
@@ -37,7 +41,7 @@ import { toast } from 'sonner'
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps } from './types'
 
-type DataLayer = WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps | PMTilesLayerProps
+type DataLayer = WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps | PMTilesLayerProps | GeoJSONLayerProps | ParquetLayerProps
 
 // MapLibre layer id used for z-order lookups. Keep prefixes stable — popup/query code greps for them.
 function getLayerId(layer: DataLayer): string {
@@ -45,14 +49,16 @@ function getLayerId(layer: DataLayer): string {
   if (isWFSLayer(layer)) return `${getWfsSourceId(layer)}-circle`
   if (isCOGLayer(layer)) return `cog-layer-${layer.title}`
   if (isPMTilesLayer(layer)) return getPmtilesLayerId(layer)
+  if (isGeoJSONLayer(layer)) return getGeojsonLayerId(layer)
+  if (isParquetLayer(layer)) return isTiledParquetLayer(layer) ? getParquetVectorLayerId(layer) : getDeckLayerId(layer)
   return `arcgis-layer-${layer.title}`
 }
 
 function CogLayerSource({ layer, beforeId, hidden, opacity }: { layer: COGLayerProps; beforeId: string | undefined; hidden?: boolean; opacity?: number }) {
   // Dynamic stretch from COG-embedded stats (gdal_edit -stats); STAC URL is fallback.
-  const range = useCogRange(layer)
-  if (!range) return null
-  const tileUrl = buildCogProtocolUrl(layer, range)
+  const render = useCogRender(layer)
+  if (!render) return null
+  const tileUrl = buildCogProtocolUrl(layer, render.range)
   return (
     <Source id={`cog-${layer.title}`} type="raster" url={tileUrl} tileSize={256}>
       <Layer
@@ -353,25 +359,49 @@ export default function DataMap({
     }),
     [mountedPmtilesLayers, displayedTitles],
   )
+  const visibleGeojsonLayers = useMemo(
+    () => mountedLayerList.filter(isGeoJSONLayer).filter(l => displayedTitles.has(l.title || '')),
+    [mountedLayerList, displayedTitles],
+  )
+  const visibleParquetLayers = useMemo(
+    () => mountedLayerList.filter(isParquetLayer).filter(l => displayedTitles.has(l.title || '')),
+    [mountedLayerList, displayedTitles],
+  )
+  // Polygons/lines render as client-side vector tiles through MapLibre; points
+  // go to the Deck.gl overlay as a binary attribute. Picking differs per path.
+  const visibleParquetPointLayers = useMemo(
+    () => visibleParquetLayers.filter(l => !isTiledParquetLayer(l)),
+    [visibleParquetLayers],
+  )
+  const visibleParquetVectorLayers = useMemo(
+    () => visibleParquetLayers.filter(isTiledParquetLayer),
+    [visibleParquetLayers],
+  )
   // Vector buffer box is meaningful only when a vector layer is the click target; raster sampling alone uses the pixel highlight.
-  const hasVectorClickTarget = useMemo(() => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visiblePmtilesLayers.length > 0, [visibleWmsLayers, visibleWfsLayers, visiblePmtilesLayers])
-  // Any clickable layer (WMS / WFS / COG / PMTiles) gates the click handler + URL-state restore.
+  const hasVectorClickTarget = useMemo(() => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visiblePmtilesLayers.length > 0 || visibleGeojsonLayers.length > 0 || visibleParquetLayers.length > 0, [visibleWmsLayers, visibleWfsLayers, visiblePmtilesLayers, visibleGeojsonLayers, visibleParquetLayers])
+  // Any clickable layer (WMS / WFS / COG / PMTiles / GeoJSON / Parquet) gates the click handler + URL-state restore.
   const hasClickableLayers = useMemo(
-    () => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visibleCogLayers.length > 0 || visiblePmtilesLayers.length > 0,
-    [visibleWmsLayers, visibleWfsLayers, visibleCogLayers, visiblePmtilesLayers],
+    () => visibleWmsLayers.length > 0 || visibleWfsLayers.length > 0 || visibleCogLayers.length > 0 || visiblePmtilesLayers.length > 0 || visibleGeojsonLayers.length > 0 || visibleParquetLayers.length > 0,
+    [visibleWmsLayers, visibleWfsLayers, visibleCogLayers, visiblePmtilesLayers, visibleGeojsonLayers, visibleParquetLayers],
   )
   const cogClickPoint = useMemo(
     () => clickBufferBounds ? getBboxCenter(clickBufferBounds) : null,
     [clickBufferBounds],
   )
 
+  // Live Deck.gl overlay, so `queryAtPoint` can GPU-pick Parquet features
+  // through the same click pipeline as every other layer type.
+  const deckOverlayRef = useRef<MapboxOverlay | null>(null)
+
   // Fetch WFS data for any mounted WFS layer (group toggle off shouldn't drop tiles).
   const { data: wfsLayerData } = useWfsLayerData(mountedWfsLayers)
 
   // Renderable entries: WFS layers wait for geojson, PMTiles for their style
   // fragment, before mounting `<Source>` (keeps `beforeId` z-order valid).
+  // Parquet layers render via Deck.gl overlay, not MapLibre <Layer>.
   const renderableEntries = useMemo(() => {
     return mountedLayers.filter(e =>
+      !(isParquetLayer(e.layer) && !isTiledParquetLayer(e.layer)) &&
       (!isWFSLayer(e.layer) || wfsLayerData.get(getWfsSourceId(e.layer)) !== undefined) &&
       (!isPMTilesLayer(e.layer) || pmtilesFragments.get(e.layer.title || '') !== undefined)
     )
@@ -399,6 +429,12 @@ export default function DataMap({
   visibleWfsLayersRef.current = visibleWfsLayers
   const visiblePmtilesLayersRef = useRef(visiblePmtilesLayers)
   visiblePmtilesLayersRef.current = visiblePmtilesLayers
+  const visibleGeojsonLayersRef = useRef(visibleGeojsonLayers)
+  visibleGeojsonLayersRef.current = visibleGeojsonLayers
+  const visibleParquetPointLayersRef = useRef(visibleParquetPointLayers)
+  visibleParquetPointLayersRef.current = visibleParquetPointLayers
+  const visibleParquetVectorLayersRef = useRef(visibleParquetVectorLayers)
+  visibleParquetVectorLayersRef.current = visibleParquetVectorLayers
 
   // Ref to store WFS features from polygon query (populated before WMS query completes)
   const polygonWfsLayerFeaturesRef = useRef<WfsLayerFeature[]>([])
@@ -456,28 +492,50 @@ export default function DataMap({
   ) {
     const wfsFeatures = queryWfsLayersAtPoint(map, point, tolerance, visibleWfsLayersRef.current)
     const pmtilesFeatures = queryPmtilesLayersAtPoint(map, point, tolerance, visiblePmtilesLayersRef.current)
-    const vectorFeatures = [...pmtilesFeatures, ...wfsFeatures]
+    const geojsonFeatures = queryGeojsonLayersAtPoint(map, point, tolerance, visibleGeojsonLayersRef.current)
+    const parquetVectorFeatures = queryParquetVectorLayersAtPoint(map, point, tolerance, visibleParquetVectorLayersRef.current)
+    // Parquet point attributes live in DuckDB, not in browser memory, so picking
+    // only identifies rows; the values are read back for the rows actually hit.
+    const parquetPointHits = pickParquetPoints(deckOverlayRef.current, point, tolerance, visibleParquetPointLayersRef.current)
 
-    if (visibleWmsLayersRef.current.length === 0) {
-      dispatchFeatures(vectorFeatures, additive, options)
-      return
+    const dispatchWith = (parquetPointFeatures: WfsLayerFeature[]) => {
+      const vectorFeatures = [
+        ...pmtilesFeatures, ...wfsFeatures, ...geojsonFeatures,
+        ...parquetVectorFeatures, ...parquetPointFeatures,
+      ]
+
+      if (visibleWmsLayersRef.current.length === 0) {
+        dispatchFeatures(vectorFeatures, additive, options)
+        return
+      }
+
+      clickQuery.mutate(
+        {
+          point,
+          visibleLayers: visibleWmsLayersRef.current,
+          tolerance,
+          mapInstance: map,
+          wmsUrl,
+          layerFilters,
+        },
+        {
+          onSuccess: (wmsFeatures) => {
+            dispatchFeatures([...wmsFeatures, ...vectorFeatures], additive, options)
+          },
+        }
+      )
     }
 
-    clickQuery.mutate(
-      {
-        point,
-        visibleLayers: visibleWmsLayersRef.current,
-        tolerance,
-        mapInstance: map,
-        wmsUrl,
-        layerFilters,
-      },
-      {
-        onSuccess: (wmsFeatures) => {
-          dispatchFeatures([...wmsFeatures, ...vectorFeatures], additive, options)
-        },
-      }
-    )
+    // Stay fully synchronous when no Parquet point was hit — which is every
+    // click on every other layer type.
+    if (parquetPointHits.length === 0) {
+      dispatchWith([])
+      return
+    }
+    hydrateParquetPointHits(parquetPointHits).then(dispatchWith).catch((e) => {
+      console.warn('[data-map] Parquet attribute lookup failed:', e)
+      dispatchWith([])
+    })
   }
 
   // Wrap onSpatialFilterChange to also trigger polygon query
@@ -803,7 +861,8 @@ export default function DataMap({
           const { layer, displayed } = entry
           const hidden = !displayed
           const opacity = layerOpacity.get(layer.title || '')
-          const beforeId = i > 0 ? getLayerId(renderableEntries[i - 1].layer) : undefined
+          const rawBeforeId = i > 0 ? getLayerId(renderableEntries[i - 1].layer) : undefined
+          const beforeId = (rawBeforeId && mapInstance?.getLayer(rawBeforeId)) ? rawBeforeId : undefined
           if (isWMSLayer(layer)) {
             const cqlFilter = layerFilters[layer.title]
             const styleName = layerStyles[layer.title]
@@ -858,6 +917,28 @@ export default function DataMap({
               />
             )
           }
+          if (isParquetLayer(layer)) {
+            return (
+              <ParquetVectorSource
+                key={layer.title}
+                layer={layer}
+                beforeId={beforeId}
+                hidden={hidden}
+                opacity={opacity}
+              />
+            )
+          }
+          if (isGeoJSONLayer(layer)) {
+            return (
+              <GeoJSONLayerSource
+                key={layer.title}
+                layer={layer}
+                beforeId={beforeId}
+                hidden={hidden}
+                opacity={opacity}
+              />
+            )
+          }
           return null
         })}
 
@@ -890,6 +971,9 @@ export default function DataMap({
             </svg>
           </Marker>
         )}
+
+        {/* Deck.gl GPU Overlay for Parquet and massive vector layers */}
+        <DeckGlOverlay map={mapInstance} layers={visibleParquetPointLayers} overlayRef={deckOverlayRef} />
 
         {children}
       </Map>

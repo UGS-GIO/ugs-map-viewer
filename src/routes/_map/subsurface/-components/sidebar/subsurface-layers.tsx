@@ -1,4 +1,5 @@
 import { BackToMenuButton } from '@/components/ui/back-to-menu-button'
+import { AddLayerDialog } from '@/components/sidebar/add-layer-dialog'
 import { useCustomLayerList } from '@/hooks/use-custom-layerlist'
 import { useGetLayerConfigs } from '@/hooks/use-get-layer-configs'
 import { renderSubsurfaceLayerFilters } from './subsurface-layer-filters'
@@ -26,6 +27,7 @@ function SubsurfaceLayers({ disableExport = false }: { disableExport?: boolean }
     return (
         <>
             <BackToMenuButton />
+            <AddLayerDialog />
             <div key='layer-list' className='overflow-y-visible max-h-[calc(100vh)]' data-tour="layer-panel">
                 {layerList}
             </div>

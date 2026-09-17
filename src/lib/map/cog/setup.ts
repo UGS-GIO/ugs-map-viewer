@@ -15,8 +15,10 @@ export function setupCOGProtocol(): void {
  * Build a `cog://` source URL with the lib's color hash spec.
  * Hash format: `#color:[hex,...],min,max,modifiers`
  * Modifiers: `c` = continuous interpolation, `-` = reverse colormap.
+ * No range (an RGB scan) means no hash: the protocol then draws the image's own bands.
  */
-export function buildCogProtocolUrl(layer: COGLayerProps, range: [number, number]): string {
+export function buildCogProtocolUrl(layer: COGLayerProps, range: [number, number] | undefined): string {
+    if (!range) return `cog://${layer.cogUrl}`;
     const colorsJson = JSON.stringify(layer.colorStops);
     const continuous = layer.continuous === false ? '' : 'c';
     const reverse = layer.reverse ? '-' : '';

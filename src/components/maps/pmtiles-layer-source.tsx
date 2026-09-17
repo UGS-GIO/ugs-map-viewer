@@ -78,6 +78,10 @@ export function usePMTilesStyleFragments(
             return {
                 queryKey: ['pmtiles-style-fragment', render?.styleUrl ?? ''],
                 queryFn: async (): Promise<StyleFragment> => {
+                    if (render!.styleUrl.startsWith('data:application/json,')) {
+                        const rawJson = decodeURIComponent(render!.styleUrl.replace('data:application/json,', ''))
+                        return JSON.parse(rawJson)
+                    }
                     const res = await fetch(render!.styleUrl)
                     if (!res.ok) throw new Error(`PMTiles style fetch failed: ${res.status}`)
                     return res.json()
@@ -269,7 +273,10 @@ export function PMTilesLayerSource({
     const { current: mapRef } = useMap()
     const sourceId = getPmtilesSourceId(layer)
     const render = activeRenderOf(layer, activeSymbology)
-    const url = layer.pmtilesUrl.startsWith('http')
+    // `local` archives are File-backed: `pmtilesUrl` is the protocol key (the file
+    // name) registered via registerLocalPMTiles, so it must be used verbatim —
+    // prefixing an origin would turn it into a URL the protocol tries to fetch.
+    const url = layer.local || layer.pmtilesUrl.startsWith('http')
         ? `pmtiles://${layer.pmtilesUrl}`
         : `pmtiles://${window.location.origin}${layer.pmtilesUrl}`
 

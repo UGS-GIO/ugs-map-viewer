@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
-import { LayerProps } from "@/lib/types/mapping-types";
+import { LayerProps, GroupLayerProps } from "@/lib/types/mapping-types";
 import { resolveStacLayerTree } from "@/lib/map/stac/stac-layer";
 import { useGetCurrentPage } from "./use-get-current-page";
+import { useUserLayers } from "@/context/user-layers-provider";
 
 export interface LayerOrderConfig {
     layerName: string;
@@ -158,8 +159,24 @@ const useGetLayerConfigs = (pageName?: string, layerOrderConfigs?: LayerOrderCon
         retry: 2,
     }) as UseQueryResult<LayerProps[] | null, Error>;
 
+    // Merge runtime user-added layers into a top-level "My Layers" group so they
+    // render + toggle through the same pipeline as config layers. Empty when no
+    // provider / no user layers, so config-only pages are unaffected.
+    const { userLayers } = useUserLayers();
+    const mergedConfigs = useMemo(() => {
+        const base = query.data ?? null;
+        if (!userLayers.length) return base;
+        const group: GroupLayerProps = {
+            type: 'group',
+            title: 'My Layers',
+            layers: userLayers,
+            userAdded: true,
+        };
+        return [group, ...(base ?? [])];
+    }, [query.data, userLayers]);
+
     return {
-        layerConfigs: query.data || null,
+        layerConfigs: mergedConfigs || null,
         isLoading: query.isLoading,
         error: query.error,
         isError: query.isError,

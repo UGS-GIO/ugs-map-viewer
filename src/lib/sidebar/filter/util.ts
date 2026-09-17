@@ -6,6 +6,7 @@ import type {
     RasterSourceSpecification,
     FilterSpecification
 } from '@maplibre/maplibre-gl-style-spec';
+import { isRecord } from '@/lib/utils';
 
 export interface SearchResult {
     name: string,
@@ -32,10 +33,6 @@ function isRasterSource(source: unknown): source is RasterSourceSpecification {
         'type' in source &&
         source.type === 'raster'
     );
-}
-
-function isRecordObject(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null;
 }
 
 /**
@@ -110,7 +107,7 @@ export const findAndApplyMapLibreWMSFilter = (
             };
 
             let sourceMetadata: Record<string, unknown> | undefined = undefined;
-            if ('metadata' in source && isRecordObject(source.metadata)) {
+            if ('metadata' in source && isRecord(source.metadata)) {
                 sourceMetadata = source.metadata;
             }
             const sourceConfig: RasterSourceWithMetadata = {

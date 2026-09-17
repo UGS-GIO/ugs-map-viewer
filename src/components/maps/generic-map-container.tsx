@@ -223,6 +223,7 @@ async function fetchLegendDataForVisibleLayers(
       const meta = await loadCogMetadata(cogLayer.cogUrl, cogLayer.stacUrl)
       if (!meta) continue
       const range = deriveRange(meta, cogLayer.stretchMode ?? 'minmax')
+      if (!range) continue
       const n = cogLayer.colorStops.length
       const [rmin, rmax] = range
       const symbolizers: Symbolizer[] = [{
