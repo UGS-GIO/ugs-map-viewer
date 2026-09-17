@@ -79,7 +79,14 @@ export function ParquetVectorSource({
     // so this only does work when the data actually changed.
     const rev = useMemo(() => (fc ? registerGeoJsonVtSource(key, fc) : 0), [key, fc])
 
-    useEffect(() => () => unregisterGeoJsonVtSource(key), [key])
+    // Re-register on mount, not just unregister on unmount: StrictMode runs
+    // mount -> cleanup -> mount, and the `useMemo` above does not re-run, so a
+    // cleanup-only effect leaves the registry empty and every tile comes back
+    // blank. Registration is idempotent on the collection's identity.
+    useEffect(() => {
+        if (fc) registerGeoJsonVtSource(key, fc)
+        return () => unregisterGeoJsonVtSource(key)
+    }, [key, fc])
 
     if (!fc) return null
     ensureGeoJsonVtProtocol()

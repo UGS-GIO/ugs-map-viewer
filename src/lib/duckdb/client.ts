@@ -350,7 +350,9 @@ export const queryParquetFieldOptions = async (
         ? `TRIM(UNNEST(string_split(CAST(${col} AS VARCHAR), ',')))`
         : `TRIM(CAST(${col} AS VARCHAR))`;
 
-    const from = await materializedAttributes({ url });
+    // Only this column: the default projection is every non-geometry column,
+    // which on a large layer is the whole file in the WASM heap.
+    const from = await materializedAttributes({ url, columns: [field] });
 
     return withConnection(async (conn) => {
         const result = await conn.query(`
@@ -375,7 +377,7 @@ export const queryParquetFieldExtent = async (
     { url, field }: { url: string; field: string },
 ): Promise<{ min: number; max: number }> => {
     const col = quoteIdent(field);
-    const from = await materializedAttributes({ url });
+    const from = await materializedAttributes({ url, columns: [field] });
     return withConnection(async (conn) => {
         const result = await conn.query(
             `SELECT MIN(${col}) AS lo, MAX(${col}) AS hi FROM ${from} WHERE ${col} IS NOT NULL`,

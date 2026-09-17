@@ -16,7 +16,7 @@
  */
 import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useSearch, useNavigate } from '@tanstack/react-router'
-import { useQueries } from '@tanstack/react-query'
+import { useQueries, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { LayerProps, ParquetLayerProps } from '@/lib/types/mapping-types'
 import { buildLayerFromUrl, objectUrlForCog, releaseUploadedLayer, type UploadedLayer, type DetectedFormat } from '@/lib/map/user-layers/detect'
@@ -86,6 +86,7 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
     const { userLayers: urlRecipes } = useSearch({ from: '/_map' }) as { userLayers?: UserLayerRecipe[] }
 
     const recipes = useMemo(() => urlRecipes ?? [], [urlRecipes])
+    const queryClient = useQueryClient()
 
     // Declaratively resolve remote layers from URL search params via React Query.
     // Zero useEffects, no stale state tearing or double-navigation race conditions.
@@ -274,6 +275,12 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
             if (deckData) void dropParquetTables(deckData)
         }
 
+        // The built layer is cached with `staleTime: Infinity`, so re-adding the
+        // same URL under the same title would hand back a layer whose DuckDB
+        // tables have just been dropped.
+        const removedRecipe = recipes.find(r => r.title === title)
+        if (removedRecipe) queryClient.removeQueries({ queryKey: userRemoteLayerKey(removedRecipe) })
+
         // Upload? Also remove from IndexedDB + state.
         const upload = uploads.find(u => u.title === title)
         if (upload) {
@@ -282,7 +289,7 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
             deleteUserLayer(upload.idbKey ?? title).catch(e => console.warn('[user-layers] IDB delete failed:', e))
             setUploads(prev => prev.filter(u => u.title !== title))
         }
-    }, [navigate, uploads, userLayers])
+    }, [navigate, uploads, userLayers, recipes, queryClient])
 
     const value = useMemo<UserLayersContextType>(() => ({
         userLayers,
