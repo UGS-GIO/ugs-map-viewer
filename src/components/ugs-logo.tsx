@@ -13,11 +13,11 @@ interface UgsLogoProps {
 export function UgsLogo({ variant = 'lockup', className, alt = 'Utah Geological Survey' }: UgsLogoProps) {
   const [navy, white] = variant === 'mark' ? [mark, markWhite] : [lockupBlue, lockupWhite]
 
-  // Both inks are decorative — the hidden one would otherwise take the alt text with it.
-  // `lazy` keeps the hidden ink and, on a phone, the wide lockup off the wire.
+  // Both inks are decorative — the hidden one would take the alt text with it.
+  // Navy stays eager: print pins to it, and a never-shown lazy image can print blank.
   return (
     <>
-      <img src={navy} alt='' aria-hidden='true' loading='lazy' decoding='async' className={cn('ugs-logo-navy dark:hidden', className)} />
+      <img src={navy} alt='' aria-hidden='true' decoding='async' className={cn('ugs-logo-navy dark:hidden', className)} />
       <img src={white} alt='' aria-hidden='true' loading='lazy' decoding='async' className={cn('ugs-logo-white hidden dark:block', className)} />
       <span className='sr-only'>{alt}</span>
     </>
