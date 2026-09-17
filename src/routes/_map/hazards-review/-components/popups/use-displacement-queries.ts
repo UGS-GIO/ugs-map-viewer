@@ -63,6 +63,46 @@ export const displacementFeaturesQueryOptions = () => queryOptions({
     refetchOnWindowFocus: false,
 })
 
+// The displacement types the map keys on (each is its own WMS layer).
+const YEAR_LOOKUP_TYPES: DisplacementType[] = ['Cumulative', 'Yearly', 'Vertical Displacement Rate']
+
+// Cheap "latest year per type" lookup for the MAP's cql, which needs only the
+// year (not geometry). One tiny WFS GetFeature per type — sorted by year
+// descending, count=1, year-only — returns in ~0.3s / a few hundred bytes, versus
+// the multi-second 20k-feature bulk pull. Decoupling the map's year from that
+// pull is what stops every year-window painting stacked while features load.
+async function fetchLatestYearsByType(): Promise<Record<DisplacementType, string | null>> {
+    const entries = await Promise.all(YEAR_LOOKUP_TYPES.map(async (type): Promise<[DisplacementType, string | null]> => {
+        const url = `${PROD_GEOSERVER_URL}/wfs?` + new URLSearchParams({
+            service: 'WFS', version: '2.0.0', request: 'GetFeature',
+            typeNames: DISPLACEMENT_TYPE_NAME,
+            count: '1',
+            sortBy: 'year D',
+            propertyName: 'year',
+            outputFormat: 'application/json',
+            CQL_FILTER: `type='${type}'`,
+        }).toString()
+        try {
+            const res = await fetch(url)
+            if (!res.ok) return [type, null]
+            const fc = await res.json()
+            const y = fc?.features?.[0]?.properties?.year
+            return [type, y == null ? null : String(y)]
+        } catch {
+            return [type, null]
+        }
+    }))
+    return Object.fromEntries(entries) as Record<DisplacementType, string | null>
+}
+
+export const displacementLatestYearsQueryOptions = () => queryOptions({
+    queryKey: queryKeys.hazards.displacementLatestYears(),
+    queryFn: fetchLatestYearsByType,
+    staleTime: 10 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+})
+
 export const displacementSldBinsQueryOptions = (styleName: string) => queryOptions({
     queryKey: queryKeys.hazards.displacementSldBins(styleName),
     queryFn: () => fetchDisplacementSldBins(styleName),
@@ -272,18 +312,9 @@ export function useDisplacementHasQualityFields(): DisplacementQualityCaps {
 
 // Per-type latest-year map for callers that need to resolve year filters
 // across every type in one pass (e.g. cql_filter assembly).
+// Latest year per type, from the cheap dedicated lookup (not the 20k-feature bulk
+// pull) so the map's year clause resolves fast and doesn't wait on chart data.
 export function useDisplacementLatestYearByType(): Record<DisplacementType, string | null> {
-    const select = useCallback((features: DisplacementFeature[]) => {
-        const latest: Record<string, string | null> = {}
-        for (const f of features) {
-            const t = f.properties.type
-            const y = getBucketYear(f.properties)
-            if (!y) continue
-            const cur = latest[t] ?? null
-            if (cur === null || y > cur) latest[t] = y
-        }
-        return latest as Record<DisplacementType, string | null>
-    }, [])
-    const { data } = useQuery({ ...displacementFeaturesQueryOptions(), select })
+    const { data } = useQuery(displacementLatestYearsQueryOptions())
     return data ?? ({} as Record<DisplacementType, string | null>)
 }

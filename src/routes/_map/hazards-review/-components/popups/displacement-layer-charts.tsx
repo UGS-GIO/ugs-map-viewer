@@ -632,7 +632,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     if (isLoading) summaryLine = 'Loading…'
     else if (distinctBasins === 0) summaryLine = 'No measured subsidence in the current filters.'
     else if (typeValue === 'Cumulative')
-        summaryLine = `Since ${period?.from ?? '—'}, land in ${whereText} has sunk up to ${fmt1(maxDisplacement)} in — about ${fmt1(totalAreaSqMi)} mi² is subsiding now.`
+        summaryLine = `Since ${period?.from ?? '—'}, land in ${whereText} has subsided up to ${fmt1(maxDisplacement)} in — about ${fmt1(totalAreaSqMi)} mi² is subsiding now.`
     else
         summaryLine = `In ${year ?? '—'}, land in ${whereText} sank up to ${fmt1(maxDisplacement)} in — about ${fmt1(totalAreaSqMi)} mi² subsided.`
 
@@ -970,7 +970,7 @@ const StackedYearChart = memo(function StackedYearChart({ data, bins, year, type
                     tick={{ fill: 'currentColor', fontSize: 11 }}
                     width={60}
                     tickMargin={2}
-                    tickFormatter={(v: number) => `${fmt1(Math.abs(v))} mi²`}
+                    tickFormatter={(v: number) => fmt1(Math.abs(v))}
                 >
                     <RechartsLabel value="↑ Uplift · Subsidence ↓ (mi²)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
                 </YAxis>
@@ -1045,7 +1045,7 @@ const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markS
                     tick={{ fill: 'currentColor', fontSize: 11 }}
                     width={52}
                     tickMargin={2}
-                    tickFormatter={(v: number) => `${fmt1(v)} in`}
+                    tickFormatter={(v: number) => fmt1(v)}
                 >
                     <RechartsLabel value="Subsidence (in)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
                 </YAxis>

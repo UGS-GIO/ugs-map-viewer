@@ -326,11 +326,17 @@ export function useDisplacementLayerFilters(): Record<string, string> {
         for (const [title, typeValue] of Object.entries(DISPLACEMENT_LAYER_TYPES) as [DisplacementLayerTitle, DisplacementType][]) {
             const clauses: string[] = []
             const effectiveYear = yearOverridesByType[typeValue] ?? latestByType[typeValue] ?? null
-            if (effectiveYear) {
-                // `year` is an int column holding the window's closing year, so an
-                // unquoted equality works for every type.
-                clauses.push(`year=${Number(effectiveYear)}`)
+            if (!effectiveYear) {
+                // Latest year not resolved yet: gate the layer to a no-match clause
+                // instead of letting GeoServer paint every year-window stacked (the
+                // first-load "overlap flash"). The cheap latest-year lookup resolves
+                // in ~0.3s, then the real year replaces this.
+                out[title] = 'year = -1'
+                continue
             }
+            // `year` is an int column holding the window's closing year, so an
+            // unquoted equality works for every type.
+            clauses.push(`year=${Number(effectiveYear)}`)
             if (isChartedType(typeValue)) {
                 const thresholdIn = effective[typeValue]
                 if (thresholdIn > 0) {

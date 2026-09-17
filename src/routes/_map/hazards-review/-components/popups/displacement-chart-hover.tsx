@@ -54,16 +54,19 @@ export function ChartHoverReadout({
     return (
         <div
             aria-live="polite"
-            className="mt-1 flex min-h-[1.75rem] flex-wrap items-center gap-x-3 gap-y-0.5 rounded-md bg-muted/40 px-2 py-1 text-xs"
+            className="mt-1 flex min-h-[1.75rem] items-center gap-x-3 overflow-hidden rounded-md bg-muted/40 px-2 py-1 text-xs"
         >
             {show ? (
                 <>
-                    <span className="font-semibold text-foreground">{activeLabel}</span>
+                    <span className="shrink-0 font-semibold text-foreground">{activeLabel}</span>
                     {items.map(it => (
-                        <span key={it.label} className="inline-flex items-center gap-1.5 text-muted-foreground">
-                            {it.color && <span className="inline-block h-0.5 w-3.5 rounded" style={{ background: it.color }} />}
-                            <span>{it.label}</span>
-                            <span className="font-medium text-foreground">{it.value}</span>
+                        // One line: the label (e.g. a long basin name) truncates with a
+                        // tooltip; the year + value stay fully visible (shrink-0) so the
+                        // readout never wraps or jumps height on hover.
+                        <span key={it.label} className="inline-flex min-w-0 items-center gap-1.5 text-muted-foreground">
+                            {it.color && <span className="inline-block h-0.5 w-3.5 shrink-0 rounded" style={{ background: it.color }} />}
+                            <span className="truncate" title={it.label}>{it.label}</span>
+                            <span className="shrink-0 font-medium text-foreground">{it.value}</span>
                         </span>
                     ))}
                 </>
