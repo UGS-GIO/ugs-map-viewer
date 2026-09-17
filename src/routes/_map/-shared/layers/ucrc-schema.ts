@@ -12,10 +12,10 @@ export const ucrcFilterSchema: FilterSchema = {
             kind: 'multiSelect',
             field: 'purpose',
             label: 'Purpose',
-            // Symbology colours (purpose + box type) live in the legend, derived from the STAC
-            // render legend — not here. This field is surfaced in the legend, hidden in Filters.
+            placeholder: 'Select purposes...',
             optionLabelFilter: (label) => label !== 'Other / Unknown' && label !== 'Other',
         },
+        { kind: 'containsAny', field: 'box_type_codes', label: 'Sample Type', placeholder: 'Select sample types...' },
         { kind: 'multiSelect', field: 'county', label: 'County', placeholder: 'Select counties...' },
         { kind: 'multiSelect', field: 'current_operator', label: 'Operator', placeholder: 'Select operators...' },
         { kind: 'multiSelect', field: 'field_name', label: 'Oil/Gas Field', placeholder: 'Select oil/gas fields...' },
@@ -35,6 +35,5 @@ export const ucrcFilterSchema: FilterSchema = {
             trueValue: 'True',
             falseValue: 'False',
         },
-        { kind: 'containsAny', field: 'box_type_codes', label: 'Sample Type', placeholder: 'Select sample types...' },
     ],
 };
