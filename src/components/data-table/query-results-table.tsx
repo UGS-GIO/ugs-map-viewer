@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
     DropdownMenuTrigger,
@@ -481,16 +480,16 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             .getAllColumns()
                             .filter((column) => column.getCanHide())
                             .map((column) => (
-                                <label
+                                // A role="menu" only takes menu items; a raw label + checkbox is invalid inside one.
+                                <DropdownMenuCheckboxItem
                                     key={column.id}
-                                    className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent rounded-sm cursor-pointer"
+                                    className="text-sm"
+                                    checked={column.getIsVisible()}
+                                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                                    onSelect={(event) => event.preventDefault()}
                                 >
-                                    <Checkbox
-                                        checked={column.getIsVisible()}
-                                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                                    />
-                                    <span>{column.columnDef.meta?.columnConfig?.label || (typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id)}</span>
-                                </label>
+                                    {column.columnDef.meta?.columnConfig?.label || (typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id)}
+                                </DropdownMenuCheckboxItem>
                             ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
