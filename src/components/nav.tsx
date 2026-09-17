@@ -200,7 +200,7 @@ function NavLink({
           variant: 'ghost',
           size: 'sm',
         }),
-        'h-12 justify-start text-wrap rounded-none px-6',
+        'h-12 justify-start text-wrap rounded-none px-6 text-sm',
         subLink && 'h-10 w-full border-l border-l-slate-500 px-2',
         title === 'Home' ? 'hidden md:flex' : '' // hide Home on mobile,
       )}
@@ -216,7 +216,7 @@ function NavLink({
           variant: 'ghost',
           size: 'sm',
         }),
-        'h-12 justify-start text-wrap rounded-none px-6',
+        'h-12 justify-start text-wrap rounded-none px-6 text-sm',
         subLink && 'h-10 w-full border-l border-l-slate-500 px-2',
         title === 'Home' ? 'hidden md:flex' : '', // hide Home on mobile
         title === 'Home' && !currentContent && !isCollapsed ? 'underline' : ''
@@ -246,7 +246,7 @@ function NavLinkDropdown({
       <CollapsibleTrigger
         className={cn(
           buttonVariants({ variant: 'ghost', size: 'sm' }),
-          'group h-12 w-full justify-start rounded-none px-6'
+          'group h-12 w-full justify-start rounded-none px-6 text-sm'
         )}
       >
         <div className='mr-2'>{icon}</div>
