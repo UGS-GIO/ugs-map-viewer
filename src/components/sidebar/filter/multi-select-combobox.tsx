@@ -41,6 +41,13 @@ interface MultiSelectComboboxProps {
 const toOption = (option: string | ComboboxOption): ComboboxOption =>
     typeof option === 'string' ? { value: option, label: option } : option;
 
+// cmdk keys items by this string: two options sharing a label would collide, and an empty
+// one drops the whole list out of keyboard navigation.
+const searchValue = (label: string, value: string) => {
+    const trimmed = label.trim();
+    return (trimmed && trimmed !== value ? `${trimmed} ${value}` : value).toLowerCase();
+};
+
 const MultiSelectCombobox = ({
     label,
     placeholder,
@@ -137,22 +144,22 @@ const MultiSelectCombobox = ({
                                 {isLoading ? 'Loading...' : error ? 'Error loading data' : 'No results.'}
                             </CommandEmpty>
                             <CommandGroup>
-                                {/* cmdk keys items by value; an empty one drops the whole list out
-                                    of keyboard navigation, so every item carries a real one. */}
                                 {clearAllLabel && (
                                     <CommandItem
+                                        key="clear-all"
                                         value={clearAllLabel.toLowerCase()}
                                         onSelect={() => onChange([])}
                                         className="text-xs"
                                     >
-                                        <Check className={cn('mr-2 h-3 w-3', selected.length === 0 ? 'opacity-100' : 'opacity-0')} />
+                                        {/* An action, not an option — the check only reserves its column. */}
+                                        <Check className="mr-2 h-3 w-3 opacity-0" aria-hidden />
                                         {clearAllLabel}
                                     </CommandItem>
                                 )}
                                 {items.map(({ value, label: optionLabel }) => (
                                     <CommandItem
                                         key={value}
-                                        value={(optionLabel.trim() || value).toLowerCase()}
+                                        value={searchValue(optionLabel, value)}
                                         onSelect={() => handleSelect(value)}
                                         className="text-xs"
                                     >
