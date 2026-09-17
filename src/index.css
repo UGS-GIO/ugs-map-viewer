@@ -197,6 +197,12 @@ body > #root {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+
+  /* Spinners keep turning, slower: frozen mid-export they read as a hung app. */
+  .animate-spin {
+    animation-duration: 1.6s !important;
+    animation-iteration-count: infinite !important;
+  }
 }
 
 /* MapLibre control overrides — unlayered to beat maplibre-gl.css specificity.

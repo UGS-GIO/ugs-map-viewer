@@ -12,6 +12,13 @@ interface UseTourOptions {
   onComplete?: () => void;
 }
 
+// driver.js parks these on a role-less placeholder div, where they are invalid.
+const stripDummyAria = () => {
+  const dummy = document.getElementById('driver-dummy-element');
+  dummy?.removeAttribute('aria-haspopup');
+  dummy?.removeAttribute('aria-expanded');
+};
+
 export function useTour(options: UseTourOptions = {}) {
   const { route, autoStart = false, onComplete } = options;
   const driverRef = useRef<Driver | null>(null);
@@ -62,14 +69,6 @@ export function useTour(options: UseTourOptions = {}) {
       localStorage.removeItem(TOUR_STORAGE_KEY);
     }
   }, []);
-
-  // Start the tour
-  // driver.js parks these on a role-less placeholder div, where they are invalid.
-  const stripDummyAria = () => {
-    const dummy = document.getElementById('driver-dummy-element');
-    dummy?.removeAttribute('aria-haspopup');
-    dummy?.removeAttribute('aria-expanded');
-  };
 
   const startTour = useCallback(() => {
     const steps = getTourSteps(route);
