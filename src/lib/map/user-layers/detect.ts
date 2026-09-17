@@ -27,12 +27,25 @@ import {
 } from '@/lib/map/stac/stac-layer'
 import { loadCogMetadata } from '@/hooks/use-cog-metadata'
 import { registerLocalPMTiles, unregisterLocalPMTiles } from '@/lib/map/pmtiles/setup'
-import { loadParquetForDeck, type LoadParquetOptions } from '@/lib/map/user-layers/parquet-deck-loader'
+import {
+    loadParquetForDeck,
+    ParquetLoadCancelledError,
+    LARGE_PARQUET_FEATURE_COUNT,
+    type LoadParquetOptions,
+} from '@/lib/map/user-layers/parquet-deck-loader'
+import {
+    parseArcGisUrl,
+    fetchArcGisInfo,
+    fetchArcGisCount,
+    fetchArcGisGeoJSON,
+    ArcGisTooManyFeaturesError,
+    ARCGIS_FEATURE_CAP,
+} from '@/lib/map/arcgis/service'
 
 /** A layer produced by uploading a local file (data lives in the browser, not a URL). */
 export type UploadedLayer = GeoJSONLayerProps | PMTilesLayerProps | COGLayerProps | ParquetLayerProps
 
-export type DetectedFormat = 'pmtiles' | 'geojson' | 'cog' | 'wms' | 'stac' | 'parquet' | 'unknown'
+export type DetectedFormat = 'pmtiles' | 'geojson' | 'cog' | 'wms' | 'stac' | 'parquet' | 'arcgis' | 'unknown'
 
 /**
  * Ceiling for uploaded files. GeoJSON is parsed into memory whole, and a Parquet
@@ -82,6 +95,7 @@ export function detectFormatFromUrl(raw: string): DetectedFormat {
     if (p.endsWith('.parquet')) return 'parquet'
     if (p.endsWith('.tif') || p.endsWith('.tiff')) return 'cog'
     if (qs.includes('service=wms') || p.endsWith('/wms') || p.endsWith('/wms/')) return 'wms'
+    if (parseArcGisUrl(raw)) return 'arcgis'
     if (p.endsWith('.json')) return 'stac' // could also be GeoJSON — resolved on fetch
     return 'unknown'
 }
@@ -180,6 +194,55 @@ function buildWMS(url: string, title: string, layerName?: string): WMSLayerProps
         opacity: 0.85,
         userAdded: true,
     }
+}
+
+/**
+ * Build a layer from an ArcGIS REST URL.
+ *
+ * A single layer (`.../FeatureServer/0`) is read as GeoJSON so it draws as real
+ * vectors and clicks give a popup. A bare `MapServer` has no one set of
+ * features to fetch, so it falls back to the server's own rendered image — the
+ * same path the app's configured Esri layers use. A bare `FeatureServer` takes
+ * its first layer, since that is what the user almost always means.
+ */
+async function buildArcGis(raw: string, opts: BuildFromUrlOptions): Promise<LayerProps> {
+    const parts = parseArcGisUrl(raw)
+    if (!parts) throw new Error(`Not an ArcGIS REST URL: "${raw}"`)
+
+    const info = await fetchArcGisInfo(parts)
+    let layerId = parts.layerId
+    let title = opts.title ?? info.name
+
+    if (layerId === undefined && parts.kind === 'FeatureServer') {
+        const first = info.layers[0]
+        if (!first) throw new Error('This FeatureServer advertises no layers.')
+        layerId = first.id
+        if (!opts.title) title = first.name
+    }
+
+    // MapServer as a whole: the server draws it, so there is nothing to query.
+    if (layerId === undefined) {
+        return {
+            type: 'map-image',
+            title,
+            url: parts.serviceUrl,
+            visible: true,
+            opacity: 0.85,
+            userAdded: true,
+        }
+    }
+
+    const layerUrl = `${parts.serviceUrl}/${layerId}`
+    const count = await fetchArcGisCount(layerUrl)
+    if (count > ARCGIS_FEATURE_CAP) throw new ArcGisTooManyFeaturesError(count)
+    if (opts.onLargeDataset && count >= LARGE_PARQUET_FEATURE_COUNT) {
+        const proceed = await opts.onLargeDataset({ name: title, featureCount: count })
+        if (!proceed) throw new ParquetLoadCancelledError()
+    }
+
+    const data = await fetchArcGisGeoJSON(layerUrl)
+    if (data.features.length === 0) throw new Error(`"${title}" returned no features.`)
+    return buildGeoJSONFromData(data, title)
 }
 
 async function buildFromStacItem(item: StacItem, title: string, itemHref?: string): Promise<LayerProps> {
@@ -289,9 +352,10 @@ export async function buildLayerFromUrl(input: string, opts: BuildFromUrlOptions
         }
         case 'cog': return buildCOG(raw, title)
         case 'wms': return buildWMS(raw, title, opts.wmsLayerName)
+        case 'arcgis': return buildArcGis(raw, opts)
         case 'stac': return buildFromStac(raw, title)
         default:
-            throw new Error(`Could not detect format for "${raw}". Supported: .pmtiles, .geojson, .parquet, .tif/.tiff, WMS, or a STAC item id/URL.`)
+            throw new Error(`Could not detect format for "${raw}". Supported: .pmtiles, .geojson, .parquet, .tif/.tiff, WMS, ArcGIS MapServer/FeatureServer, or a STAC item id/URL.`)
     }
 }
 

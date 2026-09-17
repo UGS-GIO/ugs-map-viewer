@@ -61,7 +61,7 @@ const mapSearchSchema = z.object({
     }, z.array(z.object({
         url: z.string(),
         title: z.string(),
-        format: z.enum(['pmtiles', 'geojson', 'cog', 'wms', 'stac', 'parquet', 'unknown']).optional(),
+        format: z.enum(['pmtiles', 'geojson', 'cog', 'wms', 'stac', 'parquet', 'arcgis', 'unknown']).optional(),
         wmsLayerName: z.string().optional(),
     })).optional()),
 }).strip()

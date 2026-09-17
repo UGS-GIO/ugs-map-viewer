@@ -79,8 +79,20 @@ export interface ParquetPointHit {
  * {@link hydrateParquetPointHits}, so a click costs the same at ten points as at
  * ten million.
  */
+/** The slice of the Deck overlay picking needs. Structural, so a caller — or a
+ *  test — can supply just the picker. */
+export interface ParquetPicker {
+    pickMultipleObjects: (opts: {
+        x: number
+        y: number
+        radius?: number
+        layerIds?: string[]
+        depth?: number
+    }) => PickingInfo[]
+}
+
 export function pickParquetPoints(
-    overlay: MapboxOverlay | null,
+    overlay: ParquetPicker | null,
     point: { x: number; y: number },
     tolerance: number,
     layers: ParquetLayerProps[],

@@ -47,6 +47,7 @@ const FORMAT_LABEL: Record<DetectedFormat, string> = {
     wms: 'WMS',
     stac: 'STAC / JSON',
     parquet: 'GeoParquet',
+    arcgis: 'ArcGIS REST',
     unknown: 'Unknown',
 }
 
@@ -173,7 +174,9 @@ export function AddLayerDialog() {
             const built = await buildLayerFromUrl(raw, { format, wmsLayerName: wmsLayerName.trim() || undefined, onLargeDataset: confirmLargeDataset })
             const title = addBuiltRemoteLayer({
                 url: raw,
-                title: titleFromUrl(raw),
+                // The builder knows the source's own name (an ArcGIS layer name,
+                // a STAC item title); the URL's last segment is the fallback.
+                title: built.title || titleFromUrl(raw),
                 format,
                 wmsLayerName: wmsLayerName.trim() || undefined,
             }, built)
@@ -322,7 +325,7 @@ export function AddLayerDialog() {
                             <Label htmlFor="add-layer-url">Data URL</Label>
                             <Input
                                 id="add-layer-url"
-                                placeholder="https://…/layer.pmtiles | .parquet | .geojson | .tif | WMS endpoint | catalog.json"
+                                placeholder="https://…/layer.pmtiles | .parquet | .geojson | .tif | WMS | ArcGIS REST | catalog.json"
                                 value={url}
                                 onChange={e => setUrl(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter' && !busy) handleAddUrl() }}
