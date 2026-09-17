@@ -8,11 +8,12 @@ import type { RelatedTable } from '@/lib/types/mapping-types';
 
 export type ExportFormat = 'parquet' | 'geojson' | 'csv' | 'gpkg' | 'shp' | 'gdb' | 'fgb';
 
-const columnPrefix = (label: string): string =>
-    label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'related';
+// Optional despite `fieldLabel` being required: a config object built at runtime can still omit it.
+const columnPrefix = (label?: string): string =>
+    (label ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'related';
 
 /** A projection name no other column has taken: the field, then label-prefixed, then numbered. */
-export const uniqueColumnName = (field: string, label: string, taken: Set<string>): string => {
+export const uniqueColumnName = (field: string, label: string | undefined, taken: Set<string>): string => {
     let name = field;
     if (taken.has(name)) name = `${columnPrefix(label)}_${field}`;
     for (let n = 2; taken.has(name); n++) name = `${columnPrefix(label)}_${field}_${n}`;

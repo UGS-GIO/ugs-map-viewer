@@ -261,19 +261,15 @@ const handlers: Record<ExportFormat, Handler> = {
     csv: (opts) => withConnection(async (conn, db) => {
         opts.onProgress?.({ stage: 'downloading', message: 'Fetching parquet…' });
         const source = await exportSource(conn, opts);
-        const described = await conn.query(`DESCRIBE SELECT * FROM ${source}`);
-        const dropped = described.toArray()
-            .map(row => String((row.toJSON() as Record<string, unknown>).column_name))
+        const dropped = (await columnNames(conn, source))
             .filter(col => col === opts.geometryColumn || isInternalColumn(col));
-
-        await conn.query(`
-            CREATE OR REPLACE VIEW export_view AS
-            SELECT *${excludeClause(dropped)} FROM ${source}
-        `);
 
         opts.onProgress?.({ stage: 'converting', message: 'Writing CSV…' });
         const virtualPath = virtualExportPath('csv');
-        await conn.query(`COPY export_view TO '${virtualPath}' (HEADER, DELIMITER ',')`);
+        // Straight from a subquery: a named view is global, so two exports at once would collide.
+        await conn.query(
+            `COPY (SELECT *${excludeClause(dropped)} FROM ${source}) TO '${virtualPath}' (HEADER, DELIMITER ',')`,
+        );
         return bufferToBlob(db, virtualPath, EXPORT_FORMATS.csv.mimeType);
     }),
 
