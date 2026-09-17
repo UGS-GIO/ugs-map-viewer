@@ -486,6 +486,7 @@ const WellFormationFilter = React.memo(({
         [mappings]
     );
     const formationLabelId = useId();
+    const formationTriggerId = useId();
 
     return (
         <div>
@@ -557,7 +558,8 @@ const WellFormationFilter = React.memo(({
                         disabled={disabled || isLoading || !!error}
                         variant="outline"
                         role="combobox"
-                        aria-labelledby={formationLabelId} // `combobox` takes no name from its contents
+                        id={formationTriggerId}
+                        aria-labelledby={`${formationLabelId} ${formationTriggerId}`}
                         aria-expanded={open}
                         className="w-full justify-between text-xs h-9"
                     >

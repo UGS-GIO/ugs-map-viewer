@@ -93,6 +93,7 @@ interface SymbologyLegendProps {
 export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
     const { value: active } = useVectorSymbology(layer.title ?? '')
     const symbologyLabelId = useId()
+    const symbologyTriggerId = useId()
     const navigate = useNavigate()
     const { onLayerTurnedOff } = useMap()
     const mgr = useLayerFilter(schema)
@@ -138,7 +139,7 @@ export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
                     <Label id={symbologyLabelId} className="text-xs font-medium">Symbolize by</Label>
                     <Select value={mode.id} onValueChange={switchMode}>
                         {/* A `combobox` takes no name from its contents. */}
-                        <SelectTrigger aria-labelledby={symbologyLabelId} className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectTrigger id={symbologyTriggerId} aria-labelledby={`${symbologyLabelId} ${symbologyTriggerId}`} className="h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {modes.map(m => (
                                 <SelectItem key={m.id} value={m.id} className="text-xs">{m.label}</SelectItem>
