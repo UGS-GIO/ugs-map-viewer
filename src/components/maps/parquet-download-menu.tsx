@@ -39,7 +39,11 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
     const [open, setOpen] = useState(false);
     const { data: schema, isLoading: schemaLoading, isError: schemaError } = useParquetSchema(parquetUrl, open);
     const [includeRelated, setIncludeRelated] = useState(true);
-    const hasRelatedTables = (relatedTables?.length ?? 0) > 0;
+    // Combined tables are columns of the file itself, so the checkbox governs only the
+    // ones that would ship as their own CSVs.
+    const combined = useMemo(() => (relatedTables ?? []).filter(t => t.combineIntoExport), [relatedTables]);
+    const separate = useMemo(() => (relatedTables ?? []).filter(t => !t.combineIntoExport), [relatedTables]);
+    const hasRelatedTables = separate.length > 0;
 
     // Shapefile silently truncates field names past 10 chars and drops columns whose
     // truncations collide. Warned up front from the schema we already have — the user
@@ -72,7 +76,7 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
                 filename: safeFilename(layerTitle),
                 format,
                 geometryColumn: schema?.geometryColumn ?? null,
-                relatedTables: hasRelatedTables && includeRelated ? relatedTables : undefined,
+                relatedTables: includeRelated ? [...combined, ...separate] : combined,
                 onProgress: (stage) => {
                     if (stage.stage === 'error') {
                         // Let mutation onError handle display; no-op here
