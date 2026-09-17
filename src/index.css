@@ -187,6 +187,25 @@ body > #root {
   }
 }
 
+/* WCAG 2.3.3 — honour the OS setting. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Progress keeps moving, slower: frozen mid-load it reads as a hung app. */
+  .animate-spin,
+  .animate-pulse {
+    animation-duration: 1.6s !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
 /* MapLibre control overrides — unlayered to beat maplibre-gl.css specificity.
    `.map-control-panel` is the same chip for the app's own portal controls, so the
    two sets can't drift apart on colour, radius or ring. */

@@ -32,6 +32,8 @@ const MultiSelectCombobox = ({
 }: MultiSelectComboboxProps) => {
     const [open, setOpen] = useState(false);
     const labelId = useId();
+    // Referencing the trigger too keeps its own text in the name.
+    const triggerId = useId();
 
     const handleSelect = useCallback((value: string) => {
         if (selected.includes(value)) {
@@ -69,8 +71,9 @@ const MultiSelectCombobox = ({
                 <PopoverTrigger asChild>
                     <Button
                         variant="outline"
+                        id={triggerId}
                         role="combobox"
-                        aria-labelledby={labelId} // `combobox` takes no name from its contents
+                        aria-labelledby={`${labelId} ${triggerId}`}
                         aria-expanded={open}
                         className="w-full justify-between text-xs h-9"
                         disabled={isLoading}

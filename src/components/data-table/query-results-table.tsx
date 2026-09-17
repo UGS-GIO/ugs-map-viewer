@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
     DropdownMenuTrigger,
@@ -309,6 +308,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             <div className="flex items-center justify-between gap-2 py-1.5 px-2 md:px-4 border-b shrink-0 bg-background">
                 {layersWithData.length > 1 ? (
                     <select
+                        aria-label="Choose which layer's results to show"
                         value={selectedLayerIndex}
                         onChange={(e) => handleLayerChange(Number(e.target.value))}
                         className="h-7 px-2 rounded-md border border-input bg-background text-sm font-medium truncate flex-1 min-w-0"
@@ -335,6 +335,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             size="sm"
                             onClick={() => onViewModeChange('map')}
                             className="h-7 w-7 p-0"
+                            aria-label="Map view"
                             title="Map view"
                         >
                             <Map className="h-4 w-4" />
@@ -344,6 +345,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             size="sm"
                             onClick={() => onViewModeChange('split')}
                             className="h-7 w-7 p-0"
+                            aria-label="Split view"
                             title="Split view"
                         >
                             <SplitSquareVertical className="h-4 w-4" />
@@ -353,6 +355,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             size="sm"
                             onClick={() => onViewModeChange('table')}
                             className="h-7 w-7 p-0"
+                            aria-label="Table view"
                             title="Table view"
                         >
                             <Table2 className="h-4 w-4" />
@@ -360,7 +363,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                     </div>
                 )}
                 {onClose && (
-                    <Button variant="ghost" size="sm" onClick={onClose} className="h-7 w-7 p-0 shrink-0" title="Clear results">
+                    <Button variant="ghost" size="sm" onClick={onClose} className="h-7 w-7 p-0 shrink-0" aria-label="Clear results" title="Clear results">
                         <X className="h-4 w-4" />
                     </Button>
                 )}
@@ -395,6 +398,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 ) : (
                     <>
                         <select
+                            aria-label="Column to search"
                             value={filter.column}
                             onChange={(e) => setFilter({ column: e.target.value, value: '' })}
                             className="h-7 px-2 rounded-md border border-input bg-background text-sm shrink-0"
@@ -407,6 +411,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             ))}
                         </select>
                         <Input
+                            aria-label="Search within the selected column"
                             placeholder="Search..."
                             value={filter.value}
                             onChange={(e) => setFilter(prev => ({ ...prev, value: e.target.value }))}
@@ -416,7 +421,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 )}
 
                 {!disableExport && (
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                             <Button
                                 variant="ghost"
@@ -459,11 +464,12 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                     </DropdownMenu>
                 )}
 
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                         <Button
                             variant="ghost"
                             size="sm"
+                            aria-label="Show or hide columns"
                             className="h-6 px-2 text-xs text-muted-foreground"
                         >
                             <Columns3 className="h-3 w-3" />
@@ -474,16 +480,16 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             .getAllColumns()
                             .filter((column) => column.getCanHide())
                             .map((column) => (
-                                <label
+                                // A role="menu" only takes menu items; a raw label + checkbox is invalid inside one.
+                                <DropdownMenuCheckboxItem
                                     key={column.id}
-                                    className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent rounded-sm cursor-pointer"
+                                    className="text-sm"
+                                    checked={column.getIsVisible()}
+                                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                                    onSelect={(event) => event.preventDefault()}
                                 >
-                                    <Checkbox
-                                        checked={column.getIsVisible()}
-                                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                                    />
-                                    <span>{column.columnDef.meta?.columnConfig?.label || (typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id)}</span>
-                                </label>
+                                    {column.columnDef.meta?.columnConfig?.label || (typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id)}
+                                </DropdownMenuCheckboxItem>
                             ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
