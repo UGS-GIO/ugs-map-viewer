@@ -5,6 +5,9 @@ import { titleFromUrl } from '@/lib/map/user-layers/detect'
 export const DEFAULT_STAC_CATALOG_URL =
     'https://maps-assets.geology.utah.gov/warehouse/stac/catalog.json'
 
+/** Asset kind an item can be added as; `other` means nothing spatial. */
+export type StacItemFormat = 'pmtiles' | 'cog' | 'geojson' | 'parquet' | 'other'
+
 export interface StacChildLink {
     title: string
     href: string
@@ -16,7 +19,7 @@ export interface StacItemSummary {
     id: string
     title: string
     href: string
-    format: 'pmtiles' | 'cog' | 'geojson' | 'other'
+    format: StacItemFormat
     description?: string
 }
 
@@ -38,7 +41,7 @@ export interface StacItemNode {
     title: string
     url: string
     item: StacItem
-    format: 'pmtiles' | 'cog' | 'geojson' | 'other'
+    format: StacItemFormat
 }
 
 export type StacNode = StacCatalogNode | StacItemNode
@@ -47,7 +50,7 @@ export function isStacCatalogOrCollection(node: StacNode): node is StacCatalogNo
     return node.kind === 'catalog' || node.kind === 'collection'
 }
 
-export function detectStacItemFormat(item: { assets?: Record<string, { type?: string; roles?: string[]; href?: string }> }): 'pmtiles' | 'cog' | 'geojson' | 'other' {
+export function detectStacItemFormat(item: { assets?: Record<string, { type?: string; roles?: string[]; href?: string }> }): StacItemFormat {
     const assets = Object.values(item.assets ?? {})
     if (assets.some(a => a.type === 'application/vnd.pmtiles' || a.href?.endsWith('.pmtiles'))) {
         return 'pmtiles'
@@ -58,7 +61,39 @@ export function detectStacItemFormat(item: { assets?: Record<string, { type?: st
     if (assets.some(a => a.type?.includes('geo+json') || a.href?.endsWith('.geojson'))) {
         return 'geojson'
     }
+    if (assets.some(a => a.type?.includes('parquet') || a.href?.endsWith('.parquet'))) {
+        return 'parquet'
+    }
     return 'other'
+}
+
+/**
+ * Whether an item has an asset the map can draw.
+ *
+ * `other` means the item carries no spatial asset at all — a report, a dataset
+ * of scanned documents — so offering it as a layer only produces an error. Note
+ * that plenty of Publications items ARE mappable: a georeferenced plate is a
+ * COG and belongs in the list.
+ */
+export function isMappableStacItem(item: { format: StacItemFormat }): boolean {
+    return item.format !== 'other'
+}
+
+/** Items the map can actually draw. */
+export function mappableItems<T extends { format: StacItemFormat }>(items: readonly T[]): T[] {
+    return items.filter(isMappableStacItem)
+}
+
+/**
+ * Child catalogs worth opening.
+ *
+ * The warehouse index publishes `ugs:mappable_count` per child, so a catalog
+ * holding nothing spatial (Mining District Files: 4,212 items, 0 mappable) can
+ * be dropped without hardcoding its name. An absent count means the catalog
+ * never declared one — unknown, not zero, so it stays.
+ */
+export function mappableChildren<T extends { mappableCount?: number }>(children: readonly T[]): T[] {
+    return children.filter(c => c.mappableCount === undefined || c.mappableCount > 0)
 }
 
 /**

@@ -3,6 +3,9 @@ import {
     fetchStacNode,
     detectStacItemFormat,
     isStacCatalogOrCollection,
+    mappableItems,
+    mappableChildren,
+    type StacItemSummary,
 } from '@/lib/map/user-layers/stac-explorer'
 
 describe('detectStacItemFormat', () => {
@@ -131,5 +134,40 @@ describe('fetchStacNode', () => {
         expect(node.kind).toBe('item')
         expect(node.id).toBe('fort_douglas_ofr')
         expect(node.title).toBe('Fort Douglas Quadrangle')
+    })
+})
+
+describe('what the catalog browser offers', () => {
+    const item = (format: string) => ({ id: format, title: format, href: 'x', format }) as StacItemSummary
+
+    it('keeps items with a drawable asset and drops the rest', () => {
+        const kept = mappableItems([item('pmtiles'), item('cog'), item('geojson'), item('parquet'), item('other')])
+        expect(kept.map(i => i.format)).toEqual(['pmtiles', 'cog', 'geojson', 'parquet'])
+    })
+
+    it('recognizes a geoparquet-only item, which would otherwise read as non-spatial', () => {
+        expect(detectStacItemFormat({ assets: { data: { href: 'https://x.org/a.parquet' } } })).toBe('parquet')
+        expect(detectStacItemFormat({ assets: { data: { type: 'application/vnd.apache.parquet' } } })).toBe('parquet')
+    })
+
+    it('treats a document-only item as non-spatial', () => {
+        expect(detectStacItemFormat({ assets: { report: { type: 'application/pdf', href: 'r.pdf' } } })).toBe('other')
+    })
+
+    it('hides a catalog with nothing mappable in it', () => {
+        // Mining District Files: 4,212 items, none of them spatial.
+        const children = [
+            { title: 'Serving Topics', href: 'a', itemCount: 56, mappableCount: 56 },
+            { title: 'Publications', href: 'b', itemCount: 3101, mappableCount: 850 },
+            { title: 'Mining District Files', href: 'c', itemCount: 4212, mappableCount: 0 },
+        ]
+        expect(mappableChildren(children).map(c => c.title)).toEqual(['Serving Topics', 'Publications'])
+    })
+
+    it('keeps a catalog that never declared a count — unknown is not zero', () => {
+        const children: Array<{ title: string; href: string; mappableCount?: number }> = [
+            { title: 'USWB', href: 'd' },
+        ]
+        expect(mappableChildren(children)).toHaveLength(1)
     })
 })

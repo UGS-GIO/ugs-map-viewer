@@ -37,6 +37,7 @@ import {
 import { LARGE_PARQUET_FEATURE_COUNT, ParquetLoadCancelledError, type LargeParquetDataset } from '@/lib/map/user-layers/parquet-deck-loader'
 import {
     DEFAULT_STAC_CATALOG_URL, fetchStacNode, isStacCatalogOrCollection,
+    mappableItems, mappableChildren,
     type StacItemSummary,
 } from '@/lib/map/user-layers/stac-explorer'
 
@@ -256,14 +257,24 @@ export function AddLayerDialog() {
         })
     }
 
+    // Only what the map can draw: a catalog like Publications holds thousands of
+    // documents alongside its georeferenced plates, and offering the documents
+    // as layers just produces an error.
     const filteredItems = useMemo(() => {
         if (!stacNode || !isStacCatalogOrCollection(stacNode)) return []
+        const drawable = mappableItems(stacNode.items)
         const q = itemFilter.trim().toLowerCase()
-        if (!q) return stacNode.items
-        return stacNode.items.filter(
+        if (!q) return drawable
+        return drawable.filter(
             it => it.title.toLowerCase().includes(q) || it.id.toLowerCase().includes(q),
         )
     }, [stacNode, itemFilter])
+
+    /** Child catalogs that hold something drawable. */
+    const browsableChildren = useMemo(
+        () => (stacNode && isStacCatalogOrCollection(stacNode) ? mappableChildren(stacNode.children) : []),
+        [stacNode],
+    )
 
     return (
         <>
@@ -437,13 +448,13 @@ export function AddLayerDialog() {
                                     </div>
 
                                     {/* Sub-collections / Sub-catalogs */}
-                                    {stacNode.children.length > 0 && (
+                                    {browsableChildren.length > 0 && (
                                         <div className="space-y-1 shrink-0">
                                             <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                                                Collections ({stacNode.children.length})
+                                                Collections ({browsableChildren.length})
                                             </div>
                                             <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-1.5 bg-muted/30 rounded border">
-                                                {stacNode.children.map(child => (
+                                                {browsableChildren.map(child => (
                                                     <button
                                                         key={child.href}
                                                         type="button"
@@ -464,11 +475,11 @@ export function AddLayerDialog() {
                                     )}
 
                                     {/* Items / Layers */}
-                                    {stacNode.items.length > 0 ? (
+                                    {filteredItems.length > 0 || itemFilter.trim() ? (
                                         <div className="flex-1 flex flex-col min-h-0 space-y-1.5 overflow-hidden">
                                             <div className="flex items-center justify-between shrink-0">
                                                 <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                                                    Layers ({stacNode.items.length})
+                                                    Layers ({filteredItems.length})
                                                 </span>
                                                 {selectedItem && (
                                                     <span className="text-[11px] text-primary truncate max-w-[220px]">
@@ -480,7 +491,7 @@ export function AddLayerDialog() {
                                             <div className="relative shrink-0">
                                                 <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                                                 <Input
-                                                    placeholder={`Search ${stacNode.items.length} layers...`}
+                                                    placeholder={`Search ${filteredItems.length} layers...`}
                                                     value={itemFilter}
                                                     onChange={e => setItemFilter(e.target.value)}
                                                     className="pl-8 h-8 text-xs"
@@ -528,7 +539,7 @@ export function AddLayerDialog() {
                                                 )}
                                             </div>
                                         </div>
-                                    ) : stacNode.children.length === 0 ? (
+                                    ) : browsableChildren.length === 0 ? (
                                         <div className="flex-1 flex items-center justify-center p-6 text-center text-xs text-muted-foreground">
                                             No child collections or mappable items found in this catalog.
                                         </div>
