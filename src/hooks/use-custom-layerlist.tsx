@@ -250,13 +250,16 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                     onValueChange={(val) => setIsUserExpanded(val === "item-1")}
                 >
                     <AccordionItem value="item-1">
-                        <AccordionHeader level={headingLevel}>
+                        {/* Only the trigger sits in the heading: a screen reader jumping by
+                            heading would otherwise also announce the visibility control. */}
+                        <div className="flex items-center justify-between">
                             <Switch
                                 checked={isGroupLayerVisible}
                                 onCheckedChange={handleGroupVisibilityToggle}
                                 aria-label={`Show ${layerConfig.title} layers`}
                                 className="mx-2"
                             />
+                            <AccordionHeader level={headingLevel} className="flex-1">
                             <AccordionTrigger>
                                 <div className="text-left">
                                     <span className="font-medium text-md">
@@ -269,7 +272,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                     )}
                                 </div>
                             </AccordionTrigger>
-                        </AccordionHeader>
+                            </AccordionHeader>
+                        </div>
                         <AccordionContent>
                             {layerConfig.title && (
                                 <FiltersCollapsible
@@ -326,7 +330,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                 onValueChange={(val) => setIsUserExpanded(val === 'item-1')}
             >
                 <AccordionItem value="item-1">
-                    <AccordionHeader level={headingLevel}>
+                    <div className="flex items-center justify-between">
                         {isTopLevel ? (
                             <Switch
                                 checked={isSelected}
@@ -346,6 +350,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                 className="mx-2"
                             />
                         )}
+                        <AccordionHeader level={headingLevel} className="flex-1">
                         <AccordionTrigger>
                             <div className="text-left">
                                 <span
@@ -360,7 +365,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                 )}
                             </div>
                         </AccordionTrigger>
-                    </AccordionHeader>
+                        </AccordionHeader>
+                    </div>
                     {zoomHint && visibleZoomRange && (
                         <div className="px-2 pb-2 -mt-1">
                             <ZoomHintPill
