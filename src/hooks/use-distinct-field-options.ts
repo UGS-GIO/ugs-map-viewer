@@ -11,6 +11,13 @@ import type { FilterSchema, FilterState, FilterFieldKind } from '@/lib/filter/ty
 import { toPostgrestPredicates, toSqlPredicates } from '@/lib/filter/generators';
 import { useSchemaParquetUrl } from '@/hooks/use-schema-parquet-url';
 
+/** `counts` honour the current filter (minus this field's own selection); `totals` ignore it. */
+interface FieldOptions {
+    options: string[];
+    counts: Record<string, number>;
+    totals: Record<string, number>;
+}
+
 interface Options {
     schema: FilterSchema;
     state: FilterState;
@@ -45,7 +52,7 @@ export const useDistinctFieldOptions = ({
 
     const parquetQuery = useQuery({
         queryKey: ['distinct-field-options', 'parquet', parquetUrl, field.field, predicates, splitCommaDelimited],
-        queryFn: async (): Promise<{ options: string[]; counts: Record<string, number> }> => {
+        queryFn: async (): Promise<FieldOptions> => {
             const { queryParquetFieldOptions } = await import('@/lib/duckdb/client');
             return queryParquetFieldOptions({ url: parquetUrl!, field: field.field, predicates, splitCommaDelimited });
         },
@@ -56,7 +63,7 @@ export const useDistinctFieldOptions = ({
 
     const postgrestQuery = useQuery({
         queryKey: ['distinct-field-options', schema.recordKey, field.field, url],
-        queryFn: async (): Promise<{ options: string[]; counts: Record<string, number> }> => {
+        queryFn: async (): Promise<FieldOptions> => {
             const res = await fetch(url, {
                 headers: { Accept: 'application/json', ...(schema.tableHeaders ?? {}) },
             });
@@ -83,7 +90,8 @@ export const useDistinctFieldOptions = ({
                 }
             }
             if (splitCommaDelimited) out.sort();
-            return { options: out, counts };
+            // PostgREST fetches the filtered rows only, so there is no cross-field total to show.
+            return { options: out, counts, totals: counts };
         },
         enabled: enabled && !schema.stacItemId,
         placeholderData: keepPreviousData,

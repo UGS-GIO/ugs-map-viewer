@@ -1,6 +1,6 @@
 import type { FilterSchema } from '@/lib/filter/types';
 import { PROD_POSTGREST_URL } from '@/lib/constants';
-import { ucrcWellsWMSTitle } from './layers';
+import { ucrcWellsWMSTitle } from './ucrc-wells';
 
 export const ucrcFilterSchema: FilterSchema = {
     recordKey: ucrcWellsWMSTitle,
@@ -12,15 +12,15 @@ export const ucrcFilterSchema: FilterSchema = {
             kind: 'multiSelect',
             field: 'purpose',
             label: 'Purpose',
-            // Symbology colours (purpose + box type) live in the legend, derived from the STAC
-            // render legend — not here. This field is surfaced in the legend, hidden in Filters.
+            placeholder: 'Select purposes...',
             optionLabelFilter: (label) => label !== 'Other / Unknown' && label !== 'Other',
         },
+        { kind: 'containsAny', field: 'box_type_codes', label: 'Sample Type', placeholder: 'Select sample types...' },
         { kind: 'multiSelect', field: 'county', label: 'County', placeholder: 'Select counties...' },
         { kind: 'multiSelect', field: 'current_operator', label: 'Operator', placeholder: 'Select operators...' },
         { kind: 'multiSelect', field: 'field_name', label: 'Oil/Gas Field', placeholder: 'Select oil/gas fields...' },
         { kind: 'multiSelect', field: 'cored_formations', label: 'Cored Formation', placeholder: 'Select formations...' },
-        { kind: 'range', field: 'td_ft', label: 'Total Depth', units: 'ft', step: 100, snapStep: 100 },
+        { kind: 'range', field: 'td_ft', label: 'Total Depth', units: 'ft', step: 100, snapStep: 100, nullExcludedNote: 'Wells with no recorded total depth are not shown while this filter is active.' },
         {
             kind: 'boolean',
             field: 'has_photos',
@@ -35,6 +35,5 @@ export const ucrcFilterSchema: FilterSchema = {
             trueValue: 'True',
             falseValue: 'False',
         },
-        { kind: 'containsAny', field: 'box_type_codes', label: 'Sample Type', placeholder: 'Select sample types...' },
     ],
 };

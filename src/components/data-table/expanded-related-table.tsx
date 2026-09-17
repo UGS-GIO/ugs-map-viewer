@@ -14,6 +14,8 @@ import {
 import { PopupImageGallery, type GalleryImage } from '@/components/maps/popups/popup-image-gallery';
 import { relatedRowToGalleryImage } from '@/lib/gallery-utils';
 import { sanitizeFilename } from '@/lib/download-utils';
+import { DocumentsPanel } from '@/components/maps/popups/documents-panel';
+import { listedDocumentRows } from '@/lib/documents/classify';
 
 interface ExpandedRelatedTableProps {
     relatedTable: RelatedTable;
@@ -86,6 +88,21 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
                 </TableCell>
             </TableRow>
         )
+    }
+
+    if (relatedTable.displayAs === 'documents') {
+        // Filter sidecar/junk before the header renders, so an all-junk well doesn't show a
+        // DOCUMENTS band over an empty panel (the generic rows.length gate above counts junk).
+        const documentRows = listedDocumentRows(rows as Record<string, unknown>[]);
+        if (documentRows.length === 0) return null;
+        return (
+            <TableRow className="bg-muted/30">
+                <TableCell colSpan={colSpan} className="px-3 py-2">
+                    {sectionHeader}
+                    {isOpen && <DocumentsPanel table={relatedTable} rows={documentRows} />}
+                </TableCell>
+            </TableRow>
+        );
     }
 
     // Table display

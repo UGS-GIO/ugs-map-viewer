@@ -84,7 +84,8 @@ function MultiSelectComboboxField({ schema, state, field, onChange }: FieldProps
         field,
         splitCommaDelimited: field.kind === 'containsAny',
     });
-    const options = data?.options ?? [];
+    const rawOptions = data?.options ?? [];
+    const options = field.optionLabelFilter ? rawOptions.filter(field.optionLabelFilter) : rawOptions;
     const counts = data?.counts ?? {};
     const value = state[field.field];
     const selected = value && (value.kind === 'multiSelect' || value.kind === 'containsAny') ? value.values : [];
@@ -139,6 +140,9 @@ function RangeField({ schema, state, field, onChange }: FieldProps<Extract<Filte
                 <span>{display[0].toLocaleString()}{field.units ? ` ${field.units}` : ''}</span>
                 <span>{display[1].toLocaleString()}{field.units ? ` ${field.units}` : ''}</span>
             </div>
+            {field.nullExcludedNote && (currentMin != null || currentMax != null) && (
+                <p className="mt-2 text-xs text-muted-foreground">{field.nullExcludedNote}</p>
+            )}
         </div>
     );
 }

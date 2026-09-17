@@ -8,7 +8,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { BasemapIcon } from '@/assets/basemap-icons';
 import { ChevronDown } from 'lucide-react';
-import { BASEMAP_STYLES, DEFAULT_BASEMAP, BasemapStyle } from '@/lib/basemaps';
+import { BasemapStyle } from '@/lib/basemaps';
+import { useAppBasemaps } from '@/hooks/use-app-basemaps';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import type { MapSearchParams } from '@/routes/_map';
 
@@ -51,7 +52,8 @@ function TopNav({ className, ...props }: TopNavProps) {
   const navigate = useNavigate();
   const searchParams = useSearch({ strict: false }) as MapSearchParams;
 
-  const activeBasemap = searchParams.basemap || DEFAULT_BASEMAP.id;
+  const { styles, defaultStyle } = useAppBasemaps();
+  const activeBasemap = searchParams.basemap || defaultStyle.id;
 
   // Just update URL - DataMap handles the actual basemap change
   const handleBasemapChange = (basemapId: string) => {
@@ -63,12 +65,12 @@ function TopNav({ className, ...props }: TopNavProps) {
   };
 
   // Check if any long-type basemap is active
-  const isLongActive = BASEMAP_STYLES
+  const isLongActive = styles
     .filter(({ type }) => type === 'long')
     .some(({ id }) => activeBasemap === id);
 
   // Get current basemap title for collapsed view
-  const currentBasemapTitle = BASEMAP_STYLES.find(b => b.id === activeBasemap)?.title || 'Basemap';
+  const currentBasemapTitle = styles.find(b => b.id === activeBasemap)?.title || 'Basemap';
 
   // Collapsed trigger (icon only)
   const collapsedIconTrigger = (
@@ -104,7 +106,7 @@ function TopNav({ className, ...props }: TopNavProps) {
       {/* Collapsed view - icon only (small screens) */}
       <div className="sm:hidden">
         <BasemapDropdown
-          links={BASEMAP_STYLES}
+          links={styles}
           trigger={collapsedIconTrigger}
           onBasemapChange={handleBasemapChange}
           activeBasemap={activeBasemap}
@@ -114,7 +116,7 @@ function TopNav({ className, ...props }: TopNavProps) {
       {/* Collapsed view - with label (medium screens) */}
       <div className="hidden sm:block lg:hidden">
         <BasemapDropdown
-          links={BASEMAP_STYLES}
+          links={styles}
           trigger={collapsedLabelTrigger}
           onBasemapChange={handleBasemapChange}
           activeBasemap={activeBasemap}
@@ -129,7 +131,7 @@ function TopNav({ className, ...props }: TopNavProps) {
         )}
         {...props}
       >
-        {BASEMAP_STYLES
+        {styles
           .filter(({ type }) => type === 'short')
           .map(({ id, title }) => {
             const isActive = activeBasemap === id;
@@ -150,7 +152,7 @@ function TopNav({ className, ...props }: TopNavProps) {
             );
           })}
         <BasemapDropdown
-          links={BASEMAP_STYLES.filter(({ type}) => type === 'long')}
+          links={styles.filter(({ type }) => type === 'long')}
           trigger={moreTrigger}
           onBasemapChange={handleBasemapChange}
           activeBasemap={activeBasemap}

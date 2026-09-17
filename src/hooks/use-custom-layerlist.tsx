@@ -29,7 +29,7 @@ interface LayerAccordionItemProps {
     /** Optional render-prop for content shown inside a group's accordion */
     groupExtrasRender?: (groupTitle: string) => React.ReactNode;
     /** Optional render-prop for content shown inside a single layer's accordion */
-    layerExtrasRender?: (layerTitle: string) => React.ReactNode;
+    layerExtrasRender?: (layerTitle: string, layer: LayerProps) => React.ReactNode;
     /** Optional render-prop for whole-layer stats / charts rendered via the Stats toggle */
     layerStatsRender?: (layerTitle: string) => React.ReactNode;
     /** Optional render-prop overriding a layer's legend content (e.g. an interactive symbology legend). */
@@ -388,7 +388,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                             downloadParquetUrl={layerConfig.downloadParquetUrl}
                             relatedTables={relatedTables}
                             disableExport={disableExport}
-                            filtersContent={layerConfig.title ? layerExtrasRender?.(layerConfig.title) : undefined}
+                            filtersContent={layerConfig.title ? layerExtrasRender?.(layerConfig.title, layerConfig) : undefined}
                             statsContent={layerConfig.title ? layerStatsRender?.(layerConfig.title) : undefined}
                         />
                     </AccordionContent>
@@ -399,7 +399,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
 };
 
 
-export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: { config: LayerProps[] | null; disableExport?: boolean; groupExtrasRender?: (groupTitle: string) => React.ReactNode; layerExtrasRender?: (layerTitle: string) => React.ReactNode; layerStatsRender?: (layerTitle: string) => React.ReactNode; layerLegendRender?: (layer: LayerProps) => React.ReactNode }) => {
+export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: { config: LayerProps[] | null; disableExport?: boolean; groupExtrasRender?: (groupTitle: string) => React.ReactNode; layerExtrasRender?: (layerTitle: string, layer: LayerProps) => React.ReactNode; layerStatsRender?: (layerTitle: string) => React.ReactNode; layerLegendRender?: (layer: LayerProps) => React.ReactNode }) => {
 
     const layerList = useMemo(() => {
         if (!config) return [];

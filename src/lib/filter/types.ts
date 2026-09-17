@@ -45,6 +45,7 @@ export type FilterFieldKind =
         step?: number;
         /** Round extent bounds to nearest `step` for snap-feel. */
         snapStep?: number;
+        nullExcludedNote?: string;
     }
     /** Three-state yes/no/all boolean. */
     | {
