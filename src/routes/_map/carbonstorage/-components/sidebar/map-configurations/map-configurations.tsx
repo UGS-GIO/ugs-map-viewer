@@ -487,6 +487,7 @@ const WellFormationFilter = React.memo(({
     );
     const formationLabelId = useId();
     const formationTriggerId = useId();
+    const operatorToggleId = useId();
 
     return (
         <div>
@@ -504,7 +505,7 @@ const WellFormationFilter = React.memo(({
                             OR
                         </span>
                         <Switch
-                            id="formation-operator-toggle"
+                            id={operatorToggleId}
                             checked={useAndOperator}
                             onCheckedChange={onOperatorChange}
                         />
@@ -516,7 +517,7 @@ const WellFormationFilter = React.memo(({
                         </span>
                     </div>
                     <Label
-                        htmlFor="formation-operator-toggle"
+                        htmlFor={operatorToggleId}
                         className="text-xs text-muted-foreground cursor-pointer"
                     >
                         {useAndOperator

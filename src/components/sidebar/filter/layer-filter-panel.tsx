@@ -14,6 +14,9 @@ import type {
     FilterFieldValue,
 } from '@/lib/filter/types';
 
+/** An option label is not a legal id (spaces, punctuation) — key on a sanitized form so it survives a reorder. */
+export const optionId = (label: string) => label.replace(/[^a-z0-9]+/gi, '_');
+
 /* ─── Field renderers ──────────────────────────────────────────────────── */
 
 interface FieldProps<K extends FilterFieldKind = FilterFieldKind> {
@@ -36,7 +39,6 @@ function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<
     const selected = v && (v.kind === 'multiSelect' || v.kind === 'containsAny') ? v.values : [];
     const filtered = field.optionLabelFilter ? options.filter(field.optionLabelFilter) : options;
 
-    // Labels carry spaces; an id may not.
     const optionIdPrefix = useId();
 
     const toggle = (label: string, checked: boolean) => {
@@ -51,10 +53,10 @@ function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<
         <div>
             <Label className="text-sm font-medium text-muted-foreground mb-2 block">{field.label}</Label>
             <div className="grid grid-cols-2 gap-2">
-                {filtered.map((label, index) => (
+                {filtered.map(label => (
                     <div key={label} className="flex items-center space-x-2">
                         <Checkbox
-                            id={`${optionIdPrefix}-${index}`}
+                            id={`${optionIdPrefix}-${optionId(label)}`}
                             checked={selected.includes(label)}
                             onCheckedChange={checked => toggle(label, checked === true)}
                         />
@@ -67,7 +69,7 @@ function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<
                                 }}
                             />
                         )}
-                        <Label htmlFor={`${optionIdPrefix}-${index}`} className="text-sm cursor-pointer">
+                        <Label htmlFor={`${optionIdPrefix}-${optionId(label)}`} className="text-sm cursor-pointer">
                             {label}
                             {counts[label] != null && (
                                 <span className="ml-1 text-muted-foreground">({counts[label].toLocaleString()})</span>
