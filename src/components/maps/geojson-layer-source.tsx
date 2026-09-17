@@ -7,12 +7,13 @@
  * off geometry type, so one layer handles mixed geometries. Colour is the
  * layer's `color` (or a hash of its title).
  */
-import { Source, Layer } from 'react-map-gl/maplibre'
+import { Source } from 'react-map-gl/maplibre'
 import type maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 import type { GeoJSONLayerProps } from '@/lib/types/mapping-types'
 import type { WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
 import { colorFromTitle } from '@/lib/map/user-layers/detect'
+import { UserVectorLayers } from '@/components/maps/user-vector-layers'
 
 /** Stable source id per GeoJSON layer. Hashed rather than slugified: lowercasing
  *  and collapsing whitespace would map "My Data" and "my-data" onto one id, and
@@ -109,7 +110,6 @@ export function GeoJSONLayerSource({
     const sourceId = getGeojsonSourceId(layer)
     const primaryId = getGeojsonLayerId(layer)
     const color = layer.color ?? colorFromTitle(layer.title)
-    const visibility = (hidden ? 'none' : 'visible') as 'none' | 'visible'
     const o = opacity ?? layer.opacity
     // `data` accepts a URL string or an inline FeatureCollection.
     const data = (layer.geojsonUrl ?? layer.data) as string | FeatureCollection | undefined
@@ -121,39 +121,13 @@ export function GeoJSONLayerSource({
         // `generateId` gives features stable numeric ids — needed for popup dedupe
         // (a polygon renders in both the fill and line sublayers) and for selection.
         <Source id={sourceId} type="geojson" data={data} generateId>
-            <Layer
-                id={`${primaryId}-fill`}
+            <UserVectorLayers
+                primaryId={primaryId}
+                sourceId={sourceId}
+                color={color}
+                opacity={o}
+                hidden={hidden}
                 beforeId={beforeId}
-                type="fill"
-                source={sourceId}
-                filter={['==', ['geometry-type'], 'Polygon'] as unknown as maplibregl.FilterSpecification}
-                layout={{ visibility }}
-                paint={{ 'fill-color': color, 'fill-opacity': o ?? 0.35 }}
-                metadata={md}
-            />
-            <Layer
-                id={primaryId}
-                beforeId={beforeId}
-                type="line"
-                source={sourceId}
-                layout={{ visibility }}
-                paint={{ 'line-color': color, 'line-width': 1.4, 'line-opacity': o ?? 1 }}
-                metadata={md}
-            />
-            <Layer
-                id={`${primaryId}-circle`}
-                beforeId={beforeId}
-                type="circle"
-                source={sourceId}
-                filter={['==', ['geometry-type'], 'Point'] as unknown as maplibregl.FilterSpecification}
-                layout={{ visibility }}
-                paint={{
-                    'circle-radius': 4,
-                    'circle-color': color,
-                    'circle-opacity': o ?? 1,
-                    'circle-stroke-color': '#fff',
-                    'circle-stroke-width': 1,
-                }}
                 metadata={md}
             />
         </Source>

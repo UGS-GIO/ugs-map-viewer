@@ -12,12 +12,13 @@
  * without ever building features.
  */
 import { useEffect, useMemo } from 'react'
-import { Source, Layer } from 'react-map-gl/maplibre'
+import { Source } from 'react-map-gl/maplibre'
 import type maplibregl from 'maplibre-gl'
 import type { ParquetLayerProps } from '@/lib/types/mapping-types'
 import type { WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
 import { colorFromTitle } from '@/lib/map/user-layers/detect'
 import { queryTaggedVectorLayersAtPoint } from '@/components/maps/geojson-layer-source'
+import { UserVectorLayers } from '@/components/maps/user-vector-layers'
 import {
     ensureGeoJsonVtProtocol,
     geojsonVtTileUrl,
@@ -96,7 +97,6 @@ export function ParquetVectorSource({
     const sourceId = `parquet-vt-${rev}-${key}`
     const primaryId = getParquetVectorLayerId(layer)
     const color = layer.color ?? colorFromTitle(layer.title)
-    const visibility = (hidden ? 'none' : 'visible') as 'none' | 'visible'
     const o = opacity ?? layer.opacity
     const md = { title: layer.title, [META_FLAG]: true }
 
@@ -108,42 +108,14 @@ export function ParquetVectorSource({
             minzoom={0}
             maxzoom={TILE_MAX_ZOOM}
         >
-            <Layer
-                id={`${primaryId}-fill`}
+            <UserVectorLayers
+                primaryId={primaryId}
+                sourceId={sourceId}
+                sourceLayer={TILE_SOURCE_LAYER}
+                color={color}
+                opacity={o}
+                hidden={hidden}
                 beforeId={beforeId}
-                type="fill"
-                source={sourceId}
-                source-layer={TILE_SOURCE_LAYER}
-                filter={['==', ['geometry-type'], 'Polygon'] as unknown as maplibregl.FilterSpecification}
-                layout={{ visibility }}
-                paint={{ 'fill-color': color, 'fill-opacity': o ?? 0.35 }}
-                metadata={md}
-            />
-            <Layer
-                id={primaryId}
-                beforeId={beforeId}
-                type="line"
-                source={sourceId}
-                source-layer={TILE_SOURCE_LAYER}
-                layout={{ visibility }}
-                paint={{ 'line-color': color, 'line-width': 1.4, 'line-opacity': o ?? 1 }}
-                metadata={md}
-            />
-            <Layer
-                id={`${primaryId}-circle`}
-                beforeId={beforeId}
-                type="circle"
-                source={sourceId}
-                source-layer={TILE_SOURCE_LAYER}
-                filter={['==', ['geometry-type'], 'Point'] as unknown as maplibregl.FilterSpecification}
-                layout={{ visibility }}
-                paint={{
-                    'circle-radius': 4,
-                    'circle-color': color,
-                    'circle-opacity': o ?? 1,
-                    'circle-stroke-color': '#fff',
-                    'circle-stroke-width': 1,
-                }}
                 metadata={md}
             />
         </Source>

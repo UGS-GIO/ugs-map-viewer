@@ -27,6 +27,7 @@ import {
 } from '@/lib/map/stac/stac-layer'
 import { loadCogMetadata } from '@/hooks/use-cog-metadata'
 import { registerLocalPMTiles, unregisterLocalPMTiles } from '@/lib/map/pmtiles/setup'
+import { userVectorPaint } from '@/components/maps/user-vector-layers'
 import {
     loadParquetForDeck,
     ParquetLoadCancelledError,
@@ -73,13 +74,15 @@ export function colorFromTitle(title: string): string {
 const DEFAULT_COG_STOPS = ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725']
 
 /** A generic MapLibre style fragment (fill+line+circle) as a `data:` URL the
- *  PMTiles engine can fetch. Lets a user PMTiles render with no STAC style. */
+ *  PMTiles engine can fetch. Lets a user PMTiles render with no STAC style.
+ *  Paint comes from the same spec the GeoJSON and tiled-Parquet sources use. */
 export function defaultVectorStyleUrl(sourceLayer: string, color: string): string {
+    const paint = userVectorPaint(color)
     const fragment = {
         layers: [
-            { id: 'user-fill', type: 'fill', 'source-layer': sourceLayer, filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': color, 'fill-opacity': 0.4 } },
-            { id: 'user-line', type: 'line', 'source-layer': sourceLayer, paint: { 'line-color': color, 'line-width': 1.5 } },
-            { id: 'user-circle', type: 'circle', 'source-layer': sourceLayer, filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 5, 'circle-color': color, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1.5 } },
+            { id: 'user-fill', type: 'fill', 'source-layer': sourceLayer, filter: ['==', ['geometry-type'], 'Polygon'], paint: paint.fill },
+            { id: 'user-line', type: 'line', 'source-layer': sourceLayer, paint: paint.line },
+            { id: 'user-circle', type: 'circle', 'source-layer': sourceLayer, filter: ['==', ['geometry-type'], 'Point'], paint: paint.circle },
         ],
     }
     return 'data:application/json,' + encodeURIComponent(JSON.stringify(fragment))

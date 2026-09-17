@@ -145,11 +145,29 @@ export function AddLayerDialog() {
         return title
     }
 
-    const handleAddUrl = async () => {
-        const raw = url.trim()
-        if (!raw) return
+    /**
+     * Run one "add a layer" attempt: busy state, the cancel case, and a toast
+     * naming what failed. Every tab's handler is this same shell, and when each
+     * kept its own copy they drifted (the STAC path worded its error
+     * differently and forgot the cancel case on one branch).
+     */
+    const runAdd = async (what: string, add: () => Promise<void>) => {
         setBusy(true)
         try {
+            await add()
+        } catch (e) {
+            // A declined large dataset is a choice, not a failure.
+            if (e instanceof ParquetLoadCancelledError) return
+            toast.error(`Could not add ${what}`, { description: e instanceof Error ? e.message : String(e) })
+        } finally {
+            setBusy(false)
+        }
+    }
+
+    const handleAddUrl = () => {
+        const raw = url.trim()
+        if (!raw) return
+        return runAdd('layer', async () => {
             const format = detectFormatFromUrl(raw)
 
             // If a generic STAC catalog or collection was pasted in the URL tab, route to STAC tab
@@ -162,7 +180,6 @@ export function AddLayerDialog() {
                         setStacHistory([])
                         setStacInput(node.url)
                         setActiveTab('stac')
-                        setBusy(false)
                         return
                     }
                 } catch {
@@ -181,42 +198,24 @@ export function AddLayerDialog() {
                 wmsLayerName: wmsLayerName.trim() || undefined,
             }, built)
             finishAndSelect(title)
-        } catch (e) {
-            if (e instanceof ParquetLoadCancelledError) return
-            toast.error('Could not add layer', { description: e instanceof Error ? e.message : String(e) })
-        } finally {
-            setBusy(false)
-        }
+        })
     }
 
-    const handleAddStac = async () => {
+    const handleAddStac = () => {
         // If an item is selected from the catalog browser:
-        if (selectedItem) {
-            setBusy(true)
-            try {
-                const built = await buildLayerFromUrl(selectedItem.href, { onLargeDataset: confirmLargeDataset })
-                const title = addBuiltRemoteLayer({
-                    url: selectedItem.href,
-                    title: selectedItem.title,
-                    format: 'stac',
-                }, built)
+        const item = selectedItem
+        if (item) {
+            return runAdd('STAC layer', async () => {
+                const built = await buildLayerFromUrl(item.href, { onLargeDataset: confirmLargeDataset })
+                const title = addBuiltRemoteLayer({ url: item.href, title: item.title, format: 'stac' }, built)
                 finishAndSelect(title)
-            } catch (e) {
-                if (e instanceof ParquetLoadCancelledError) return
-                toast.error('Could not add STAC layer', {
-                    description: e instanceof Error ? e.message : String(e),
-                })
-            } finally {
-                setBusy(false)
-            }
-            return
+            })
         }
 
         // If the user typed an endpoint/id and pressed Add:
         const raw = stacInput.trim()
         if (!raw) return
-        setBusy(true)
-        try {
+        return runAdd('STAC layer', async () => {
             const node = await fetchStacNode(raw)
             if (node.kind === 'item') {
                 const built = await buildLayerFromUrl(node.url, { onLargeDataset: confirmLargeDataset })
@@ -235,19 +234,12 @@ export function AddLayerDialog() {
                 setItemFilter('')
                 toast.info(`Loaded ${node.kind}: ${node.title}`)
             }
-        } catch (e) {
-            toast.error('Could not load STAC', {
-                description: e instanceof Error ? e.message : String(e),
-            })
-        } finally {
-            setBusy(false)
-        }
+        })
     }
 
-    const handleFile = async (file: File | undefined) => {
+    const handleFile = (file: File | undefined) => {
         if (!file) return
-        setBusy(true)
-        try {
+        return runAdd('file', async () => {
             const idbKey = `upload-${crypto.randomUUID()}`
             const { def, file: fileToStore } = await buildLayerFromFile(file, idbKey, { onLargeDataset: confirmLargeDataset })
             let title: string
@@ -261,12 +253,7 @@ export function AddLayerDialog() {
                 throw e
             }
             finishAndSelect(title)
-        } catch (e) {
-            if (e instanceof ParquetLoadCancelledError) return
-            toast.error('Could not add file', { description: e instanceof Error ? e.message : String(e) })
-        } finally {
-            setBusy(false)
-        }
+        })
     }
 
     const filteredItems = useMemo(() => {
