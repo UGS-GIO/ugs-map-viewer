@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { fromUrl, GeoTIFF, GeoTIFFImage } from 'geotiff'
 import type { Polygon } from 'geojson'
 import type { COGLayerProps } from '@/lib/types/mapping-types'
-import { convertCoordinate } from '@/lib/map/conversion-utils'
+import { convertBbox, convertCoordinate } from '@/lib/map/conversion-utils'
+import { isUsableExtent, type Extent } from '@/lib/map/extent'
 import { queryKeys } from '@/lib/query-keys'
 import { isRecord } from '@/lib/utils'
 
@@ -20,6 +21,8 @@ export interface CogMetadata {
     origin?: [number, number]
     /** EPSG code of COG's native CRS (e.g. 3857). undefined if not readable. */
     epsg?: number
+    /** Image footprint in WGS84. undefined if the geokeys or bbox are unreadable. */
+    extent?: Extent
 }
 
 const STATIC_QUERY_OPTS = {
@@ -83,21 +86,30 @@ function readNumber(md: Record<string, unknown>, key: string): number | undefine
     return Number.isFinite(n) ? n : undefined
 }
 
-/** Grid info — used to snap a click to the pixel cell for highlighting. */
-function readGrid(image: GeoTIFFImage): Pick<CogMetadata, 'pixelSize' | 'origin' | 'epsg'> {
+/** Grid info — used to snap a click to the pixel cell for highlighting, and to zoom to the image. */
+function readGrid(image: GeoTIFFImage): Pick<CogMetadata, 'pixelSize' | 'origin' | 'epsg' | 'extent'> {
     try {
         const [px, py] = image.getResolution()
         const [ox, oy] = image.getOrigin()
         const keys: unknown = image.getGeoKeys()
         const code = isRecord(keys) ? keys.ProjectedCSTypeGeoKey ?? keys.GeographicTypeGeoKey : undefined
+        const epsg = typeof code === 'number' ? code : undefined
         return {
             pixelSize: [Math.abs(px), Math.abs(py)],
             origin: [ox, oy],
-            epsg: typeof code === 'number' ? code : undefined,
+            epsg,
+            extent: readExtent(image, epsg),
         }
     } catch {
         return {}
     }
+}
+
+function readExtent(image: GeoTIFFImage, epsg: number | undefined): Extent | undefined {
+    if (epsg === undefined) return undefined
+    const [minX, minY, maxX, maxY] = convertBbox(image.getBoundingBox(), `EPSG:${epsg}`)
+    const extent: Extent = [minX, minY, maxX, maxY]
+    return isUsableExtent(extent) ? extent : undefined
 }
 
 /** PhotometricInterpretation 2 = RGB, 3 = palette. Both render without a colour ramp. */

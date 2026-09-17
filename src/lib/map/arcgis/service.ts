@@ -4,6 +4,8 @@
  * narrowed at runtime — the JSON shape varies by server version.
  */
 import type { FeatureCollection, Feature, Geometry } from 'geojson'
+import { convertBbox } from '@/lib/map/conversion-utils'
+import { isUsableExtent, type Extent } from '@/lib/map/extent'
 import { isRecord } from '@/lib/utils'
 
 /** `.../MapServer`, `.../FeatureServer`, optionally followed by a layer index. */
@@ -59,6 +61,21 @@ export interface ArcGisServiceInfo {
     layers: ArcGisLayerSummary[]
     isLayer: boolean
     queryable: boolean
+    /** `fullExtent`, reprojected to WGS84. Absent when the service omits it or uses a CRS proj4 has no definition for. */
+    extent?: Extent
+}
+
+/** ArcGIS reports `fullExtent` in the service's own CRS, named by `wkid`/`latestWkid`. */
+function fullExtent(value: unknown): Extent | undefined {
+    if (!isRecord(value)) return undefined
+    const { xmin, ymin, xmax, ymax } = value
+    if (![xmin, ymin, xmax, ymax].every(n => typeof n === 'number' && Number.isFinite(n))) return undefined
+    const sr = isRecord(value.spatialReference) ? value.spatialReference : {}
+    const wkid = typeof sr.latestWkid === 'number' ? sr.latestWkid : typeof sr.wkid === 'number' ? sr.wkid : undefined
+    if (wkid === undefined) return undefined
+    const [minX, minY, maxX, maxY] = convertBbox([xmin, ymin, xmax, ymax].map(Number), `EPSG:${wkid}`)
+    const extent: Extent = [minX, minY, maxX, maxY]
+    return isUsableExtent(extent) ? extent : undefined
 }
 
 function layerSummaries(value: unknown): ArcGisLayerSummary[] {
@@ -95,6 +112,7 @@ export async function fetchArcGisInfo(parts: ArcGisUrlParts): Promise<ArcGisServ
         layers: isLayer ? [] : layerSummaries(body.layers),
         isLayer,
         queryable: capabilities.includes('query'),
+        extent: fullExtent(body.fullExtent),
     }
 }
 

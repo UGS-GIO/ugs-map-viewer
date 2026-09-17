@@ -29,6 +29,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { useUserLayers, userRemoteLayerKey, type UserLayerRecipe } from '@/context/user-layers-provider'
+import { useMapInstance } from '@/context/map-instance-context'
+import { isUsableExtent } from '@/lib/map/extent'
 import type { LayerProps } from '@/lib/types/mapping-types'
 import {
     buildLayerFromUrl, buildLayerFromFile, detectFormatFromUrl, titleFromUrl,
@@ -56,6 +58,7 @@ export function AddLayerDialog() {
     const [open, setOpen] = useState(false)
     const [activeTab, setActiveTab] = useState<'url' | 'upload' | 'stac'>('url')
     const { addRemoteLayer, addUploadedLayer } = useUserLayers()
+    const { map } = useMapInstance()
     const queryClient = useQueryClient()
 
     // Shared submit state
@@ -100,7 +103,21 @@ export function AddLayerDialog() {
     // `addRemoteLayer` / `addUploadedLayer` select the new title in the same
     // navigate that adds it, so there is deliberately no second navigate here —
     // two in one tick each spread a stale `prev` and undo each other.
-    const finishAndSelect = (title: string) => {
+    // A layer added somewhere else in the state is invisible until the map moves,
+    // so go to whatever footprint its source reported.
+    const zoomToLayer = (layer?: LayerProps) => {
+        if (!map || !isUsableExtent(layer?.extent)) return
+        const [minLon, minLat, maxLon, maxLat] = layer.extent
+        const camera = map.cameraForBounds([[minLon, minLat], [maxLon, maxLat]], { padding: 60, maxZoom: 16 })
+        if (!camera?.center || camera.zoom === undefined) return
+        // Fitting a whole footprint can land below the zoom where the layer has tiles
+        // (a COG's coarsest overview), which would draw nothing.
+        const minRenderZoom = layer.visibleZoomRange?.[0] ?? 0
+        map.easeTo({ center: camera.center, zoom: Math.max(camera.zoom, minRenderZoom), duration: 800 })
+    }
+
+    const finishAndSelect = (title: string, layer?: LayerProps) => {
+        zoomToLayer(layer)
         toast.success(`Added "${title}"`)
         setOpen(false)
         setUrl('')
@@ -198,7 +215,7 @@ export function AddLayerDialog() {
                 format,
                 wmsLayerName: wmsLayerName.trim() || undefined,
             }, built)
-            finishAndSelect(title)
+            finishAndSelect(title, built)
         })
     }
 
@@ -209,7 +226,7 @@ export function AddLayerDialog() {
             return runAdd('STAC layer', async () => {
                 const built = await buildLayerFromUrl(item.href, { onLargeDataset: confirmLargeDataset })
                 const title = addBuiltRemoteLayer({ url: item.href, title: item.title, format: 'stac' }, built)
-                finishAndSelect(title)
+                finishAndSelect(title, built)
             })
         }
 
@@ -225,7 +242,7 @@ export function AddLayerDialog() {
                     title: node.title,
                     format: 'stac',
                 }, built)
-                finishAndSelect(title)
+                finishAndSelect(title, built)
             } else {
                 // It's a catalog / collection — explore it!
                 setActiveEndpoint(node.url)
@@ -253,7 +270,7 @@ export function AddLayerDialog() {
                 releaseUploadedLayer(def)
                 throw e
             }
-            finishAndSelect(title)
+            finishAndSelect(title, def)
         })
     }
 

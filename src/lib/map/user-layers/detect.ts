@@ -29,11 +29,13 @@ import { loadCogMetadata } from '@/hooks/use-cog-metadata'
 import { registerLocalPMTiles, unregisterLocalPMTiles } from '@/lib/map/pmtiles/setup'
 import { userVectorPaint } from '@/components/maps/user-vector-layers'
 import { hashString } from '@/lib/utils'
+import { extentFromBbox, geojsonExtent, isUsableExtent, type Extent } from '@/lib/map/extent'
 import {
     loadParquetForDeck,
     ParquetLoadCancelledError,
     LARGE_PARQUET_FEATURE_COUNT,
     type LoadParquetOptions,
+    type ParquetDeckData,
 } from '@/lib/map/user-layers/parquet-deck-loader'
 import { isOgrFileName, loadOgrForDeck, ogrTitle } from '@/lib/map/user-layers/ogr-loader'
 import {
@@ -110,28 +112,40 @@ export function titleFromUrl(raw: string): string {
     return base.replace(/\.(pmtiles|geojson|json|tif|tiff|parquet)$/i, '') || 'layer'
 }
 
-async function pmtilesSourceLayer(url: string): Promise<string> {
+async function pmtilesInfo(url: string): Promise<{ sourceLayer: string; extent?: Extent }> {
     try {
-        const meta = (await new PMTiles(url).getMetadata()) as { vector_layers?: Array<{ id: string }> }
-        return meta.vector_layers?.[0]?.id ?? 'default'
+        const archive = new PMTiles(url)
+        const meta = (await archive.getMetadata()) as { vector_layers?: Array<{ id: string }> }
+        const header = await archive.getHeader()
+        return {
+            sourceLayer: meta.vector_layers?.[0]?.id ?? 'default',
+            extent: extentFromBbox([header.minLon, header.minLat, header.maxLon, header.maxLat]),
+        }
     } catch (e) {
         console.warn('[user-layers] PMTiles metadata read failed; defaulting source-layer:', e)
-        return 'default'
+        return { sourceLayer: 'default' }
     }
 }
 
 function buildPMTiles(url: string, title: string): Promise<PMTilesLayerProps> {
     const color = colorFromTitle(title)
-    return pmtilesSourceLayer(url).then(sourceLayer => ({
+    return pmtilesInfo(url).then(({ sourceLayer, extent }) => ({
         type: 'pmtiles',
         title,
         pmtilesUrl: url,
         sourceLayer,
         styleUrl: defaultVectorStyleUrl(sourceLayer, color),
+        extent,
         visible: true,
         opacity: 0.85,
         userAdded: true,
     }))
+}
+
+/** Point loads report their own bounds; polygon/line loads come back as GeoJSON. */
+function deckExtent(data: ParquetDeckData): Extent | undefined {
+    if (data.geojson) return geojsonExtent(data.geojson)
+    return isUsableExtent(data.bounds) ? data.bounds : undefined
 }
 
 function buildGeoJSONFromUrl(url: string, title: string): GeoJSONLayerProps {
@@ -139,7 +153,7 @@ function buildGeoJSONFromUrl(url: string, title: string): GeoJSONLayerProps {
 }
 
 function buildGeoJSONFromData(data: FeatureCollection, title: string, idbKey?: string): GeoJSONLayerProps {
-    return { type: 'geojson', title, data, idbKey, color: colorFromTitle(title), visible: true, opacity: 0.8, userAdded: true, local: !!idbKey }
+    return { type: 'geojson', title, data, idbKey, extent: geojsonExtent(data), color: colorFromTitle(title), visible: true, opacity: 0.8, userAdded: true, local: !!idbKey }
 }
 
 /**
@@ -176,9 +190,22 @@ async function assertRenderableCog(url: string, label: string, stacUrl?: string)
     return stats
 }
 
+/** A COG only draws where it has an overview level; below that the protocol serves no tiles. */
+async function cogZoomRange(url: string): Promise<[number, number] | undefined> {
+    try {
+        const { getCogMetadata } = await import('@geomatico/maplibre-cog-protocol')
+        const zooms = (await getCogMetadata(url)).images.map(i => i.zoom)
+        if (zooms.length === 0) return undefined
+        return [Math.round(Math.min(...zooms)), Math.round(Math.max(...zooms))]
+    } catch {
+        return undefined
+    }
+}
+
 async function buildCOG(url: string, title: string, stacUrl?: string): Promise<COGLayerProps> {
-    await assertRenderableCog(url, title, stacUrl)
-    return { type: 'cog', title, cogUrl: url, stacUrl, colorStops: DEFAULT_COG_STOPS, stretchMode: 'minmax', continuous: true, visible: true, opacity: 0.9, userAdded: true }
+    const stats = await assertRenderableCog(url, title, stacUrl)
+    const visibleZoomRange = await cogZoomRange(url)
+    return { type: 'cog', title, cogUrl: url, stacUrl, extent: stats.extent, visibleZoomRange, colorStops: DEFAULT_COG_STOPS, stretchMode: 'minmax', continuous: true, visible: true, opacity: 0.9, userAdded: true }
 }
 
 /** WMS needs a layer name; parse it from a `layers=` param or take an explicit one. */
@@ -229,6 +256,7 @@ async function buildArcGis(raw: string, opts: BuildFromUrlOptions): Promise<Laye
             type: 'map-image',
             title,
             url: parts.serviceUrl,
+            extent: info.extent,
             visible: true,
             opacity: 0.85,
             userAdded: true,
@@ -249,6 +277,11 @@ async function buildArcGis(raw: string, opts: BuildFromUrlOptions): Promise<Laye
 }
 
 async function buildFromStacItem(item: StacItem, title: string, itemHref?: string): Promise<LayerProps> {
+    const layer = await buildFromStacAsset(item, title, itemHref)
+    return layer.extent ? layer : { ...layer, extent: extentFromBbox(item.bbox) }
+}
+
+async function buildFromStacAsset(item: StacItem, title: string, itemHref?: string): Promise<LayerProps> {
     const hasPmtiles = !!item.assets?.pmtiles
         || Object.values(item.assets ?? {}).some(a => a.type === 'application/vnd.pmtiles')
     if (hasPmtiles) {
@@ -347,6 +380,7 @@ export async function buildLayerFromUrl(input: string, opts: BuildFromUrlOptions
                 title,
                 parquetUrl: raw,
                 deckData,
+                extent: deckExtent(deckData),
                 color: colorFromTitle(title),
                 visible: true,
                 opacity: 0.85,
@@ -492,6 +526,7 @@ export async function buildLayerFromFile(
             title,
             idbKey,
             deckData,
+            extent: deckExtent(deckData),
             color: colorFromTitle(title),
             visible: true,
             opacity: 0.85,
@@ -508,6 +543,7 @@ export async function buildLayerFromFile(
             title,
             idbKey,
             deckData,
+            extent: deckExtent(deckData),
             color: colorFromTitle(title),
             visible: true,
             opacity: 0.85,

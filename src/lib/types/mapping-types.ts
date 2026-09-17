@@ -137,6 +137,8 @@ interface BaseLayerProps {
     sourceAgency?: string;
     /** Hard-coded external link to the data's home (e.g. a UGRC open-data page or a UGS publication), shown in place of a download button when there's no `downloadParquetUrl`. */
     sourceUrl?: string;
+    /** WGS84 [minLon, minLat, maxLon, maxLat] of the layer's data, when the source reports one. The add-layer flow zooms to it. */
+    extent?: [number, number, number, number];
     /** Zoom range [min, max] where this layer renders. Out-of-range → UI shows "Zoom in to see" hint. Auto-resolved from WMS GetCapabilities or PMTiles header if omitted. */
     visibleZoomRange?: [number, number];
 }
