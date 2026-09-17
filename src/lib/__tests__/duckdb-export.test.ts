@@ -46,6 +46,16 @@ describe('joinedRelationSql', () => {
         expect(joinedRelationSql(MAIN, ['uwi'], [intervals])).toContain('ORDER BY m."uwi", r0."top_ft"')
     })
 
+    it('numbers a prefixed name that is also taken', () => {
+        const sql = joinedRelationSql(MAIN, ['uwi', 'notes_public', 'sample_types_notes_public'], [intervals])
+        expect(sql).toContain('r0."notes_public" AS "sample_types_notes_public_2"')
+    })
+
+    it('skips a table missing its join keys rather than emitting broken SQL', () => {
+        const unresolved: RelatedTable = { ...intervals, matchingField: undefined }
+        expect(joinedRelationSql(MAIN, ['uwi'], [unresolved])).toBe(MAIN)
+    })
+
     it('escapes quotes in a related url', () => {
         const sneaky: RelatedTable = { ...intervals, url: "https://example.org/a'b.parquet" }
         expect(joinedRelationSql(MAIN, ['uwi'], [sneaky])).toContain("a''b.parquet")

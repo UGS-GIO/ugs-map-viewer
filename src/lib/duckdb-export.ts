@@ -82,6 +82,15 @@ const columnNames = async (conn: duckdb.AsyncDuckDBConnection, relation: string)
 const columnPrefix = (label: string): string =>
     label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'related';
 
+/** A projection name no other column has taken: the field, then label-prefixed, then numbered. */
+const uniqueName = (field: string, label: string, taken: Set<string>): string => {
+    let name = field;
+    if (taken.has(name)) name = `${columnPrefix(label)}_${field}`;
+    for (let n = 2; taken.has(name); n++) name = `${columnPrefix(label)}_${field}_${n}`;
+    taken.add(name);
+    return name;
+};
+
 /**
  * The relation every format reads from: the layer's parquet, LEFT JOINed to each
  * `combineIntoExport` table so its fields ride along on the row. A well with three
@@ -93,28 +102,29 @@ export const joinedRelationSql = (
     mainColumns: string[],
     tables: RelatedTable[],
 ): string => {
-    if (tables.length === 0) return main;
-
     const taken = new Set(mainColumns);
     const selects = ['m.*'];
     const joins: string[] = [];
-    const order = [`m.${quoteIdent(tables[0].targetField!)}`];
+    const order: string[] = [];
 
     tables.forEach((table, idx) => {
+        const { url, matchingField, targetField, displayFields, fieldLabel, sortBy } = table;
+        if (!url || !matchingField || !targetField) return;
         const alias = `r${idx}`;
-        for (const { field } of table.displayFields ?? []) {
+        if (order.length === 0) order.push(`m.${quoteIdent(targetField)}`);
+
+        for (const { field } of displayFields ?? []) {
             if (isInternalColumn(field)) continue;
-            const name = taken.has(field) ? `${columnPrefix(table.fieldLabel)}_${field}` : field;
-            taken.add(name);
-            selects.push(`${alias}.${quoteIdent(field)} AS ${quoteIdent(name)}`);
+            selects.push(`${alias}.${quoteIdent(field)} AS ${quoteIdent(uniqueName(field, fieldLabel, taken))}`);
         }
         joins.push(
-            `LEFT JOIN read_parquet('${escapeSql(table.url!)}') AS ${alias}` +
-            ` ON m.${quoteIdent(table.targetField!)} = ${alias}.${quoteIdent(table.matchingField!)}`,
+            `LEFT JOIN read_parquet('${escapeSql(url)}') AS ${alias}` +
+            ` ON m.${quoteIdent(targetField)} = ${alias}.${quoteIdent(matchingField)}`,
         );
-        for (const key of [table.sortBy ?? []].flat()) order.push(`${alias}.${quoteIdent(key)}`);
+        for (const key of [sortBy ?? []].flat()) order.push(`${alias}.${quoteIdent(key)}`);
     });
 
+    if (joins.length === 0) return main;
     return `(SELECT ${selects.join(', ')} FROM ${main} AS m ${joins.join(' ')} ORDER BY ${order.join(', ')})`;
 };
 
@@ -350,7 +360,10 @@ export const exportParquet = async (opts: ExportOptions): Promise<void> => {
     const meta = EXPORT_FORMATS[opts.format];
     try {
         const blob = await handlers[opts.format](opts);
-        const relatedTables = (opts.relatedTables ?? []).filter(t => !t.combineIntoExport);
+        // Only tables that really were merged drop out of the zip: one flagged
+        // `combineIntoExport` but not parquet-backed still ships as its own CSV.
+        const merged = new Set(combinedTables(opts));
+        const relatedTables = (opts.relatedTables ?? []).filter(t => !merged.has(t));
 
         if (relatedTables.length === 0) {
             opts.onProgress?.({ stage: 'writing', message: 'Saving file…' });
