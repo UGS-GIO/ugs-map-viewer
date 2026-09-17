@@ -41,18 +41,18 @@ export default function Map() {
       <TourAutoStart route="hazards" />
       <MapShell
         search={
-            <SearchCombobox
+          <SearchCombobox
             ref={searchRef}
             config={searchConfig}
             onFeatureSelect={handleSearchSelect}
             onCollectionSelect={handleCollectionSelect}
             className="w-full"
-            />
+          />
         }
       >
         <GenericMapContainer
-        onClearSearch={() => searchRef.current?.clear()}
-        disableExport
+          onClearSearch={() => searchRef.current?.clear()}
+          disableExport
         />
       </MapShell>
     </MapContext.Provider>

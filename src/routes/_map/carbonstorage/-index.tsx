@@ -127,19 +127,19 @@ export default function Map() {
       <TourAutoStart route="ccs" />
       <MapShell
         search={
-            <SearchCombobox
+          <SearchCombobox
             ref={searchRef}
             config={searchConfig}
             onFeatureSelect={onFeatureSelect}
             onCollectionSelect={onCollectionSelect}
             className="w-full"
-            />
+          />
         }
       >
         <GenericMapContainer
-        layerFilters={layerFilters}
-        vectorLayerFilters={vectorLayerFilters}
-        onClearSearch={() => searchRef.current?.clear()}
+          layerFilters={layerFilters}
+          vectorLayerFilters={vectorLayerFilters}
+          onClearSearch={() => searchRef.current?.clear()}
         />
       </MapShell>
     </MapContext.Provider>

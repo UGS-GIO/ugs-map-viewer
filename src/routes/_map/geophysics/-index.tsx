@@ -70,17 +70,17 @@ export default function Map() {
         <MapContext.Provider value={contextValue}>
             <TourAutoStart />
             <MapShell
-        search={
-            <SearchCombobox
-            config={searchConfig}
-            onFeatureSelect={handleSearchSelect}
-            onCollectionSelect={handleCollectionSelect}
-            className="w-full"
-            />
-        }
-      >
-        <GenericMapContainer vectorLayerFilters={vectorLayerFilters} />
-      </MapShell>
-    </MapContext.Provider>
+                search={
+                    <SearchCombobox
+                        config={searchConfig}
+                        onFeatureSelect={handleSearchSelect}
+                        onCollectionSelect={handleCollectionSelect}
+                        className="w-full"
+                    />
+                }
+            >
+                <GenericMapContainer vectorLayerFilters={vectorLayerFilters} />
+            </MapShell>
+        </MapContext.Provider>
     )
 }

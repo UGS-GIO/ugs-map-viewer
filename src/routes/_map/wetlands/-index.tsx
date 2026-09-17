@@ -11,8 +11,8 @@ export default function Map() {
         <MapContext.Provider value={contextValue}>
             <TourAutoStart route="wetlands" />
             <MapShell>
-        <GenericMapContainer />
-      </MapShell>
-    </MapContext.Provider>
+                <GenericMapContainer />
+            </MapShell>
+        </MapContext.Provider>
     )
 }
