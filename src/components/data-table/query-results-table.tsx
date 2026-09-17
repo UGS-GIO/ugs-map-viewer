@@ -422,7 +422,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 )}
 
                 {!disableExport && (
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                             <Button
                                 variant="ghost"
@@ -465,7 +465,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                     </DropdownMenu>
                 )}
 
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                         <Button
                             variant="ghost"

@@ -24,7 +24,7 @@ interface BasemapProps {
 
 const BasemapDropdown = ({ links, trigger, onBasemapChange, activeBasemap }: BasemapProps) => {
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
       <DropdownMenuContent side="bottom" align="start">
         {links.map(({ id, title }) => {

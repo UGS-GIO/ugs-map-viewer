@@ -83,7 +83,7 @@ export default function Map() {
         </AlertDialog>
         <MapShell
           actions={
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full bg-background/95 backdrop-blur-sm border">
                   <Avatar className="h-8 w-8">

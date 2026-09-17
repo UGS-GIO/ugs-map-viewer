@@ -404,7 +404,7 @@ export function NavLinkIcon({
 //   const isChildActive = !!sub?.find((s) => checkActiveNav(s.href))
 
 //   return (
-//     <DropdownMenu>
+//     <DropdownMenu modal={false}>
 //       <Tooltip delayDuration={0}>
 //         <TooltipTrigger asChild>
 //           <DropdownMenuTrigger asChild>
