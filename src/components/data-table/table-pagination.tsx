@@ -52,8 +52,12 @@ export function TablePagination<T>({ table, totalRows }: TablePaginationProps<T>
 
             <div className="flex items-center gap-1">
                 <span className="text-sm text-muted-foreground" aria-live="polite">
-                    <span className="sr-only">Page </span>
-                    {table.getState().pagination.pageIndex + 1}/{table.getPageCount() || 1}
+                    <span className="sr-only">
+                        Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount() || 1}
+                    </span>
+                    <span aria-hidden="true">
+                        {table.getState().pagination.pageIndex + 1}/{table.getPageCount() || 1}
+                    </span>
                 </span>
                 <Button
                     variant="outline"
