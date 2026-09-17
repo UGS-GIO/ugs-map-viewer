@@ -3,77 +3,81 @@
 @tailwind utilities;
 
 @layer base {
+  /* UDS palette, shared with the warehouse + soil-water viewers. `--accent` keeps
+     its shadcn meaning (hover surface); UDS gold is `--gold`. */
   :root {
-    --background: 0 0% 98%;
-    --foreground: 31 50% 10%;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 20%; /* UDS gray-dark #333 */
     --card: 0 0% 100%;
-    --card-foreground: 31 50% 10%;
+    --card-foreground: 0 0% 20%;
     --popover: 0 0% 100%;
-    --popover-foreground: 30 2% 18%;
-    --primary: 28 95% 36%;
-    --primary-foreground: 60 9.1% 97.8%;
-    --secondary: 20 5.9% 90%;
-    --secondary-foreground: 24 9.8% 10%;
-    --muted: 60 4.8% 95.9%;
-    --muted-foreground: 25 5.3% 44.7%;
-    --accent: 60 4.8% 95.9%;
-    --accent-foreground: 24 9.8% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 60 9.1% 97.8%;
-    --border: 20 5.9% 90%;
-    --input: 20 5.9% 90%;
-    --ring: 31 97.2% 41.8%;
-    --radius: 0.5rem;
+    --popover-foreground: 0 0% 20%;
+    --primary: 215 49% 50%; /* UDS blue #4277be — 4.6:1 on white (WCAG AA accessible) */
+    --primary-foreground: 0 0% 100%;
+    --header-title: 220 83% 16%; /* State of Utah blue #071D49 */
+    --utah-blue: 222 76% 52%; /* UDS Utah blue — state chrome and links */
+    --utah-blue-foreground: 0 0% 100%;
+    --secondary: 0 0% 95%;
+    --secondary-foreground: 0 0% 20%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 38%; /* UDS gray-medium #616161 */
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 20%;
+    --gold: 41 54% 30%; /* darkened from the UDS tone, which reads 2.97:1 on white */
+    --gold-foreground: 0 0% 100%;
+    --destructive: 0 100% 36%; /* UDS danger #ba0000 */
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 84%; /* UDS gray-border #d7d7d7 */
+    --input: 0 0% 84%;
+    --ring: 215 49% 50%;
+    --link: 215 49% 50%; /* UDS blue #4277be: 4.6:1 on white (WCAG AA accessible) */
+    --radius: 0.375rem; /* rounded-md lands on 4px, matching the cards */
     --header-height: 3.5rem;
-    --chart-1: ;
-    --chart-2: ;
-    --chart-3: ;
-    --chart-4: ;
-    --chart-5: ;
     --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-foreground: 0 0% 20%;
+    --sidebar-primary: 215 49% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 20%;
+    --sidebar-border: 0 0% 84%;
+    --sidebar-ring: 215 49% 50%;
   }
 
   .dark {
-    --background: 0 0% 21%;
-    --foreground: 60 9.1% 97.8%;
-    --card: 0 0% 21%;
-    --card-foreground: 60 9.1% 97.8%;
-    --popover: 0 0% 21%;
-    --popover-foreground: 60 9.1% 97.8%;
-    --primary: 27 84% 55%;
-    --primary-foreground: 60 9.1% 97.8%;
-    --secondary: 0 0% 25%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 12 6.5% 15.1%;
-    --muted-foreground: 24 5.4% 63.9%;
-    --accent: 0 0% 17%;
-    --accent-foreground: 60 9.1% 97.8%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 60 9.1% 97.8%;
-    --border: 12 6.5% 15.1%;
-    --input: 12 6.5% 15.1%;
-    --ring: 31 97.2% 41.8%;
-    --chart-1: ;
-    --chart-2: ;
-    --chart-3: ;
-    --chart-4: ;
-    --chart-5: ;
-    color-scheme: dark; /* changing the scrollbar color */ 
-    --sidebar-background: 240 5.9% 10%; 
-    --sidebar-foreground: 240 4.8% 95.9%; 
-    --sidebar-primary: 224.3 76.3% 48%; 
-    --sidebar-primary-foreground: 0 0% 100%; 
-    --sidebar-accent: 240 3.7% 15.9%; 
-    --sidebar-accent-foreground: 240 4.8% 95.9%; 
-    --sidebar-border: 240 3.7% 15.9%; 
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --background: 0 0% 12%;
+    --foreground: 0 0% 96%;
+    --card: 0 0% 16%;
+    --card-foreground: 0 0% 96%;
+    --popover: 0 0% 16%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 20 73% 59%; /* Creamsicle orange #e37d49: 5.75:1 on dark (WCAG AA accessible) */
+    --primary-foreground: 0 0% 10%;
+    --header-title: 0 0% 96%; /* UDS near-white */
+    --utah-blue: 222 70% 64%;
+    --utah-blue-foreground: 0 0% 10%;
+    --secondary: 0 0% 22%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 0 0% 20%;
+    --muted-foreground: 0 0% 68%;
+    --accent: 0 0% 24%;
+    --accent-foreground: 0 0% 96%;
+    --gold: 41 50% 52%;
+    --gold-foreground: 0 0% 10%;
+    --destructive: 0 72% 66%; /* 4.6:1 on popovers; the UDS tone read 3.8:1 */
+    --destructive-foreground: 0 0% 10%;
+    --border: 0 0% 28%;
+    --input: 0 0% 28%;
+    --ring: 20 73% 59%;
+    --link: 20 73% 59%; /* Creamsicle orange #e37d49: 5.75:1 on dark */
+    color-scheme: dark; /* changing the scrollbar color */
+    --sidebar-background: 0 0% 14%;
+    --sidebar-foreground: 0 0% 96%;
+    --sidebar-primary: 20 73% 59%;
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-accent: 0 0% 24%;
+    --sidebar-accent-foreground: 0 0% 96%;
+    --sidebar-border: 0 0% 28%;
+    --sidebar-ring: 20 73% 59%;
   }
 
   /* styles.css */
@@ -108,24 +112,58 @@
   * {
     @apply border-border;
   }
-  html, body {
-    @apply overflow-x-hidden;
-  }
-  body {
-    @apply min-h-svh w-full bg-background text-foreground;
-  }
-  body > #root {
-    @apply h-svh overflow-x-hidden;
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* #root owns the whole viewport: the app bar is ours, not the design system's. */
+html,
+body {
+  margin: 0;
+  height: 100dvh; /* dvh = correct viewport on mobile (excludes URL bar) */
+  width: 100%;
+  overflow: hidden;
+}
+body > #root {
+  height: 100%;
+  position: relative;
+  overflow-x: hidden;
+}
+
+@media print {
+  /* Paper is always white but `.dark` stays on <html> — pin the logo to navy. */
+  .ugs-logo-navy {
+    display: inline !important;
+  }
+  .ugs-logo-white {
+    display: none !important;
+  }
+}
+
+/* UDS display font "UT Industry" — REFERENCED from the official Utah CDN (the font
+   is licensed; the DS itself loads it this way). Not self-hosted/redistributed.
+   Used for headings via `font-display`; UI stays in Source Sans 3. */
+@font-face {
+  font-family: 'UT Industry';
+  font-weight: 400;
+  font-display: swap;
+  src: url('https://cdn.utah.gov/design-system/fonts/ut-industry/woff2/UTIndustry-Regular.woff2')
+    format('woff2');
+}
+@font-face {
+  font-family: 'UT Industry';
+  font-weight: 500;
+  font-display: swap;
+  src: url('https://cdn.utah.gov/design-system/fonts/ut-industry/woff2/UTIndustry-Medium.woff2')
+    format('woff2');
+}
+@font-face {
+  font-family: 'UT Industry';
+  font-weight: 700;
+  font-display: swap;
+  src: url('https://cdn.utah.gov/design-system/fonts/ut-industry/woff2/UTIndustry-Bold.woff2')
+    format('woff2');
 }
 
 @layer utilities {
@@ -149,27 +187,37 @@
   }
 }
 
-/* MapLibre control overrides — unlayered to beat maplibre-gl.css specificity */
+/* MapLibre control overrides — unlayered to beat maplibre-gl.css specificity.
+   `.map-control-panel` is the same chip for the app's own portal controls, so the
+   two sets can't drift apart on colour, radius or ring. */
 .maplibregl-ctrl.maplibregl-ctrl-group button {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.dark .maplibregl-ctrl-group {
+.maplibregl-ctrl.maplibregl-ctrl-group,
+.map-control-panel {
   background: hsl(var(--popover));
   color: hsl(var(--foreground));
+  border-radius: var(--radius);
+  /* Children clip to the chip, so an active button can't square off its corner. */
+  overflow: hidden;
 }
 
-.dark .maplibregl-ctrl-group:not(:empty) {
+.maplibregl-ctrl.maplibregl-ctrl-group:not(:empty),
+.map-control-panel {
   box-shadow: 0 0 0 2px hsl(var(--border));
 }
 
-.dark .maplibregl-ctrl-group button + button {
+.maplibregl-ctrl.maplibregl-ctrl-group button + button {
   border-color: hsl(var(--border));
 }
 
-.dark .maplibregl-ctrl-group button:not(.maplibregl-ctrl-compass) .maplibregl-ctrl-icon {
+.dark
+  .maplibregl-ctrl-group
+  button:not(.maplibregl-ctrl-compass)
+  .maplibregl-ctrl-icon {
   filter: brightness(0) invert(1);
 }
 
@@ -177,15 +225,22 @@
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23e5e5e5' viewBox='0 0 29 29'%3E%3Cpath d='m10.5 14 4-8 4 8z'/%3E%3Cpath fill='%23666' d='m10.5 16 4 8 4-8z'/%3E%3C/svg%3E");
 }
 
-.dark .maplibregl-ctrl-group button:not(:disabled):hover {
-  background-color: rgba(255, 255, 255, 0.1);
+/* Maplibre's own washes (black 5%) vanish on a dark chip; use the accent token the
+   app's control buttons already hover with. */
+.maplibregl-ctrl.maplibregl-ctrl-group button:not(:disabled):hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.maplibregl-ctrl.maplibregl-ctrl-group button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px hsl(var(--ring));
 }
 
 .dark .maplibregl-ctrl-attrib {
   background-color: hsl(var(--popover) / 0.75);
   color: hsl(var(--foreground));
 }
-
 
 /* Legend swatches sit on the map, not on the panel: polygon symbols are drawn over a fixed
    paper-toned tile so a hollow or part-transparent fill reads as "the map showing through"

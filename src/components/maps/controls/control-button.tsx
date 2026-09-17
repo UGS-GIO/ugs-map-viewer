@@ -24,11 +24,13 @@ export function ControlButton({
     <button
       type="button"
       className={cn(
-        'flex size-[29px] cursor-pointer items-center justify-center border-none text-foreground',
-        'hover:!bg-black/5 dark:hover:!bg-white/10',
-        active && '!bg-amber-500 text-white hover:!bg-amber-600',
-        disabled && 'cursor-not-allowed opacity-40',
-        variant === 'danger' && !active && 'text-red-600',
+        'flex size-[29px] cursor-pointer items-center justify-center border-none text-foreground transition-colors',
+        // Theme tokens, not hardcoded washes: white/10 over the dark chip barely registered.
+        'hover:!bg-accent hover:text-accent-foreground',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+        active && '!bg-primary text-primary-foreground hover:!bg-primary/90 hover:text-primary-foreground',
+        disabled && 'cursor-not-allowed text-muted-foreground hover:!bg-transparent hover:text-muted-foreground',
+        variant === 'danger' && !active && 'text-destructive',
         className,
       )}
       disabled={disabled}

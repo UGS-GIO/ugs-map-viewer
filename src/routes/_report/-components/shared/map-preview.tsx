@@ -394,7 +394,7 @@ export function MapPreview({
                 <div className="relative bg-secondary">
                     <img src={imageDataUrl} alt={altText} className="print-map-image w-full h-auto block" />
                     {scaleInfo && (
-                        <div className="absolute bottom-2 left-2 px-2 py-1 bg-background/80 backdrop-blur-sm rounded text-xs flex items-center gap-2 print:bg-background print:border">
+                        <div className="absolute bottom-2 left-2 px-2 py-1 bg-background/80 backdrop-blur-sm rounded-md text-xs flex items-center gap-2 print:bg-background print:border">
                             <span className="text-foreground whitespace-nowrap">Scale:</span>
                             <div style={{ width: `${scaleInfo.pixelWidth}px` }} className="h-1 bg-muted-foreground" />
                             <span className="text-foreground whitespace-nowrap">{scaleInfo.text}</span>

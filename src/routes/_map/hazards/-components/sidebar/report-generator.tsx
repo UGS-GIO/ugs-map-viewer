@@ -297,7 +297,7 @@ function ReportGenerator() {
             <BackToMenuButton />
             <div className="p-4 space-y-4" data-tour="report-generator">
                 <div>
-                    <h3 className="text-lg font-medium mb-2">Report Generator</h3>
+                    <h2 className="text-lg font-medium mb-2">Report Generator</h2>
                     <p className="text-sm">
                         The Report Generator is designed to provide a summary of geologic hazard information for small areas. Use the current map extent or create a custom area and double-click to finish the drawing. If your area of interest is too large, you will be prompted to select a smaller area.
                     </p>

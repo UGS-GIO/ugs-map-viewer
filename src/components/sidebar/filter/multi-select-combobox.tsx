@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useId } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,7 @@ const MultiSelectCombobox = ({
     onChange,
 }: MultiSelectComboboxProps) => {
     const [open, setOpen] = useState(false);
+    const labelId = useId();
 
     const handleSelect = useCallback((value: string) => {
         if (selected.includes(value)) {
@@ -45,7 +47,7 @@ const MultiSelectCombobox = ({
 
     return (
         <div>
-            <Label className="text-sm font-medium text-muted-foreground mb-2 block">{label}</Label>
+            <Label id={labelId} className="text-sm font-medium text-muted-foreground mb-2 block">{label}</Label>
 
             {selected.length > 0 && (
                 <div className="mb-2 flex flex-wrap gap-1">
@@ -68,6 +70,7 @@ const MultiSelectCombobox = ({
                     <Button
                         variant="outline"
                         role="combobox"
+                        aria-labelledby={labelId} // `combobox` takes no name from its contents
                         aria-expanded={open}
                         className="w-full justify-between text-xs h-9"
                         disabled={isLoading}
