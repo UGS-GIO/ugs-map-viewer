@@ -6,7 +6,7 @@
 
 import * as duckdb from '@duckdb/duckdb-wasm';
 import type { PostgRESTRow } from '@/lib/types/postgrest-types';
-import { hashString } from '@/lib/utils';
+import { hashString, isRecord } from '@/lib/utils';
 
 // ── DuckDB singleton (lazy, module-scoped) ───────────────────────────────────
 
@@ -133,7 +133,7 @@ export interface StreamableConnection {
 export function* resultRows(result: ArrowLikeResult): Generator<Record<string, unknown>> {
     for (const row of result.toArray()) {
         const json = row.toJSON();
-        if (typeof json === 'object' && json !== null && !Array.isArray(json)) yield { ...json };
+        if (isRecord(json)) yield { ...json };
     }
 }
 

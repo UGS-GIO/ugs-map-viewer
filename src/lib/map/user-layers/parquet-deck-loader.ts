@@ -1,6 +1,7 @@
 import type { FeatureCollection, Feature } from 'geojson'
 import { withConnection, loadSpatial, escapeSql, quoteIdent, normalizeRow, streamRows, resultRows } from '@/lib/duckdb/client'
 import { readGeoParquetCrs, reprojectToWgs84, assertGeographicBounds } from '@/lib/map/user-layers/geoparquet-crs'
+import { isRecord } from '@/lib/utils'
 
 /** The slice of an `AsyncDuckDBConnection` this module uses. */
 type DuckDbRow = { toJSON: () => unknown }
@@ -13,12 +14,6 @@ type DuckDbConnection = {
 }
 
 const GEOM_CANDIDATES = ['geom', 'geometry', 'wkb_geometry', 'the_geom', 'shape']
-
-/** Narrow a row's `toJSON()` to a field bag. Checked, not asserted: DuckDB
- *  types it as `unknown` and the shape depends on the query. */
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
 
 /** First row of a result as a field bag, or undefined when empty. */
 function firstRow(result: DuckDbResult): Record<string, unknown> | undefined {

@@ -21,6 +21,7 @@ import type maplibregl from 'maplibre-gl'
 import type { ParquetLayerProps } from '@/lib/types/mapping-types'
 import type { WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
 import { queryParquetRowProperties, queryPointsInViewport } from '@/lib/map/user-layers/parquet-deck-loader'
+import { isRecord } from '@/lib/utils'
 import type { ParquetPointView } from '@/lib/map/user-layers/parquet-deck-loader'
 
 /** How far past the viewport to fetch, as a fraction of its size. Covers a
@@ -40,11 +41,10 @@ const POINT_VIEW_PROP = 'ugsPointView'
 /** Recognize a slice coming back off a Deck layer's props. Deck types props as
  *  its own shape, so this is checked rather than asserted. */
 function readPointView(props: unknown): ParquetPointView | undefined {
-    if (typeof props !== 'object' || props === null) return undefined
-    const bag: Record<string, unknown> = { ...props }
-    const view = bag[POINT_VIEW_PROP]
-    if (typeof view !== 'object' || view === null) return undefined
-    const candidate: Record<string, unknown> = { ...view }
+    if (!isRecord(props)) return undefined
+    const view = props[POINT_VIEW_PROP]
+    if (!isRecord(view)) return undefined
+    const candidate = view
     return candidate.positions instanceof Float32Array
         && candidate.rowIds instanceof Int32Array
         && typeof candidate.count === 'number'

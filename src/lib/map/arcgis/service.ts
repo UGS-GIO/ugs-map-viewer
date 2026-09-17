@@ -14,6 +14,7 @@
  * asserted.
  */
 import type { FeatureCollection, Feature, Geometry } from 'geojson'
+import { isRecord } from '@/lib/utils'
 
 /** `.../MapServer`, `.../FeatureServer`, optionally followed by a layer index. */
 const SERVICE_RE = /\/(FeatureServer|MapServer)(?:\/(\d+))?\/?$/i
@@ -41,10 +42,6 @@ export function parseArcGisUrl(raw: string): ArcGisUrlParts | null {
         kind,
         layerId: match[2] === undefined ? undefined : Number(match[2]),
     }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 /** Fetch JSON from an ArcGIS endpoint, surfacing the server's own error text. */

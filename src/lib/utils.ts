@@ -66,3 +66,15 @@ export function hashString(value: string): number {
     for (let i = 0; i < value.length; i++) h = (Math.imul(h, 31) + value.charCodeAt(i)) >>> 0
     return h
 }
+
+/**
+ * Narrow an unknown value to a field bag.
+ *
+ * Third-party JSON — a DuckDB row, an ArcGIS response, a Deck layer's props —
+ * arrives as `unknown`, and this is the check that makes reading a field from it
+ * type-safe without asserting a shape that may not be there. Arrays are excluded
+ * so `value.length` can't masquerade as a field.
+ */
+export function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
