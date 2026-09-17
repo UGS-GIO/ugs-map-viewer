@@ -64,6 +64,13 @@ export function useTour(options: UseTourOptions = {}) {
   }, []);
 
   // Start the tour
+  // driver.js parks these on a role-less placeholder div, where they are invalid.
+  const stripDummyAria = () => {
+    const dummy = document.getElementById('driver-dummy-element');
+    dummy?.removeAttribute('aria-haspopup');
+    dummy?.removeAttribute('aria-expanded');
+  };
+
   const startTour = useCallback(() => {
     const steps = getTourSteps(route);
     
@@ -80,6 +87,15 @@ export function useTour(options: UseTourOptions = {}) {
       stageRadius: 8,
       popoverClass: 'ugs-tour-popover',
       steps,
+      // driver.js ships the popover title as a <header> — a second banner landmark beside the
+      // app bar — and points aria-haspopup at a role-less dummy div, which it rewrites per step.
+      onPopoverRender: (popover) => {
+        popover.title.setAttribute('role', 'presentation');
+        popover.wrapper.setAttribute('role', 'dialog');
+        popover.wrapper.setAttribute('aria-labelledby', popover.title.id || 'driver-popover-title');
+        stripDummyAria();
+      },
+      onHighlighted: () => stripDummyAria(),
       onDestroyStarted: () => {
         // Called when user tries to close (X, Escape, or overlay click)
         // This allows the tour to be exited at any time
@@ -92,6 +108,7 @@ export function useTour(options: UseTourOptions = {}) {
     });
 
     driverRef.current.drive();
+    stripDummyAria();
   }, [route, markTourCompleted, onComplete]);
 
   // Stop the tour
