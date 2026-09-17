@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useId, type ReactNode } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { badgeVariants } from '@/components/ui/badge';
 import {
     Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from '@/components/ui/command';
@@ -57,7 +57,8 @@ const MultiSelectCombobox = ({
     selectedSummary,
 }: MultiSelectComboboxProps) => {
     const [open, setOpen] = useState(false);
-    // `combobox` takes no name from its contents, so the trigger points at this label.
+    // `combobox` takes no name from its contents; referencing the label AND the trigger keeps
+    // the field name and the current selection in the announced name.
     const labelId = useId();
     // Referencing the trigger too keeps its own text in the name.
     const triggerId = useId();
@@ -89,14 +90,16 @@ const MultiSelectCombobox = ({
                             {index > 0 && chipSeparator && (
                                 <span className="mr-1 text-xs text-muted-foreground">{chipSeparator}</span>
                             )}
-                            <Badge
-                                variant="default"
-                                className="cursor-pointer flex items-center text-xs"
+                            {/* A real button: a chip is the only way to drop one selection. */}
+                            <button
+                                type="button"
                                 onClick={() => handleRemove(value)}
+                                aria-label={`Remove ${labels.get(value) ?? value}`}
+                                className={cn(badgeVariants({ variant: 'default' }), 'cursor-pointer text-xs')}
                             >
                                 {labels.get(value) ?? value}
-                                <X className="ml-1 h-3 w-3 flex-shrink-0" />
-                            </Badge>
+                                <X className="ml-1 h-3 w-3 flex-shrink-0" aria-hidden="true" />
+                            </button>
                         </div>
                     ))}
                 </div>
