@@ -254,7 +254,7 @@ const handlers: Record<ExportFormat, Handler> = {
         return withConnection(async (conn, db) => {
             opts.onProgress?.({ stage: 'converting', message: 'Combining tables…' });
             const source = await exportSource(conn, opts);
-            const virtualPath = `export_${Date.now()}.parquet`;
+            const virtualPath = `export_${crypto.randomUUID()}.parquet`;
             await conn.query(`COPY (SELECT * FROM ${source}) TO '${virtualPath}' (FORMAT PARQUET)`);
             return bufferToBlob(db, virtualPath, EXPORT_FORMATS.parquet.mimeType);
         });
@@ -280,7 +280,7 @@ const handlers: Record<ExportFormat, Handler> = {
         `);
 
         opts.onProgress?.({ stage: 'converting', message: 'Writing CSV…' });
-        const virtualPath = `export_${Date.now()}.csv`;
+        const virtualPath = `export_${crypto.randomUUID()}.csv`;
         await conn.query(`COPY export_view TO '${virtualPath}' (HEADER, DELIMITER ',')`);
         return bufferToBlob(db, virtualPath, EXPORT_FORMATS.csv.mimeType);
     }),

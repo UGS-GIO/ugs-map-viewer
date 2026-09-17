@@ -50,11 +50,13 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
     // can still proceed, but not unknowingly.
     const shapefileIssues = useMemo(() => {
         if (!schema) return null;
-        const attrs = schema.columns.filter(c => c !== schema.geometryColumn);
+        // Merged columns land in the file too, so they face the same 10-character limit.
+        const mergedFields = combined.flatMap(t => (t.displayFields ?? []).map(f => f.field));
+        const attrs = [...schema.columns, ...mergedFields].filter(c => c !== schema.geometryColumn);
         const { longNames, collisions, tooManyFields, fieldCount } = shapefileFieldChecks(attrs);
         if (!longNames.length && !collisions.length && !tooManyFields) return null;
         return { longNames, collisions, tooManyFields, fieldCount };
-    }, [schema]);
+    }, [schema, combined]);
 
     const download = useMutation({
         mutationFn: async (format: ExportFormat) => {
