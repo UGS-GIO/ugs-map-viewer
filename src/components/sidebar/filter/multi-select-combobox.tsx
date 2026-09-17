@@ -128,7 +128,8 @@ const MultiSelectCombobox = ({
                         <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                {/* Radix gives the content role="dialog", which needs its own name. */}
+                <PopoverContent aria-label={`${label} options`} className="w-[--radix-popover-trigger-width] p-0">
                     <Command>
                         <CommandInput placeholder={`Search ${label.toLowerCase()}...`} className="h-8 text-xs" />
                         <CommandList>
