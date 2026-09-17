@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight, ExternalLink, Info } from "lucide-react";
 import { RelatedDataTable } from "@/components/maps/popups/related-data-table";
 import { DocumentsPanel } from "@/components/maps/popups/documents-panel";
 import { listedDocumentRows } from "@/lib/documents/classify";
+import { isSafeHref } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { LayerContentProps } from "@/components/maps/popups/types";
 import { Link } from "@/components/ui/link";
@@ -144,7 +145,7 @@ const renderFieldContent = (
         return (
             <>
                 {hrefs.map((item, i) => {
-                    if (item.href === null || item.href === '') {
+                    if (!item.href || !isSafeHref(item.href)) {
                         return <div key={`${item.label}-${i}`}><span className="break-words inline-block">{item.label}</span></div>;
                     }
                     return (
@@ -164,12 +165,12 @@ const renderFieldContent = (
     }
 
     // 2. Check for generic URL pattern
-    if (urlPattern.test(value)) {
+    if (urlPattern.test(value) && isSafeHref(value)) {
         return (
             <Button
                 className="p-0 h-auto whitespace-normal text-left font-normal inline-flex items-start max-w-full"
                 variant="link"
-                onClick={() => window.open(value, '_blank')}
+                onClick={() => window.open(value, '_blank', 'noopener,noreferrer')}
             >
                 <span className="break-all inline-block">{value}</span>
                 <ExternalLink className="flex-shrink-0 ml-1 mt-1" size={16} />
@@ -609,7 +610,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
     // Footer link — high originalIndex pins it below everything (incl. related tables).
     if (popupFooterLink) {
         const footerHref = popupFooterLink.getHref(properties ?? null);
-        if (footerHref) {
+        if (footerHref && isSafeHref(footerHref)) {
             contentItems.push({
                 content: (
                     <a
