@@ -56,13 +56,13 @@ export function formatNumeric(value: unknown, format?: string): string {
 }
 /** Safe in an `href`: http(s) or a same-origin path. Popup links are built from feature data. */
 export function isSafeHref(href: string): boolean {
-    const value = href.trim()
-    // `/\host` — browsers normalize the backslash, making it protocol-relative.
-    if (value.startsWith('/')) return value[1] !== '/' && value[1] !== '\\'
-    try {
-        const { protocol } = new URL(value)
-        return protocol === 'https:' || protocol === 'http:'
-    } catch {
-        return false
-    }
+  const value = href.trim();
+  // `/\host` — browsers normalize the backslash, making it protocol-relative.
+  if (value.startsWith('/')) return value[1] !== '/' && value[1] !== '\\';
+  try {
+    const { protocol } = new URL(value);
+    return protocol === 'https:' || protocol === 'http:';
+  } catch {
+    return false;
+  }
 }

@@ -38,33 +38,33 @@ describe('toSentenceCase', () => {
 });
 
 describe('isSafeHref', () => {
-    it('allows http(s) links', () => {
-        expect(isSafeHref('https://maps.geology.utah.gov/subsurface?lat=39')).toBe(true)
-        expect(isSafeHref('http://example.org')).toBe(true)
-    })
+  it('allows http(s) links', () => {
+    expect(isSafeHref('https://maps.geology.utah.gov/subsurface?lat=39')).toBe(true);
+    expect(isSafeHref('http://example.org')).toBe(true);
+  });
 
-    it('allows same-origin paths', () => {
-        expect(isSafeHref('/subsurface?zoom=12')).toBe(true)
-    })
+  it('allows same-origin paths', () => {
+    expect(isSafeHref('/subsurface?zoom=12')).toBe(true);
+  });
 
-    it('rejects script and data URLs, however they are spelled', () => {
-        expect(isSafeHref('javascript:alert(1)')).toBe(false)
-        expect(isSafeHref('  JavaScript:alert(1)')).toBe(false)
-        expect(isSafeHref('data:text/html,<script>alert(1)</script>')).toBe(false)
-        expect(isSafeHref('vbscript:msgbox(1)')).toBe(false)
-    })
+  it('rejects script and data URLs, however they are spelled', () => {
+    expect(isSafeHref('javascript:alert(1)')).toBe(false);
+    expect(isSafeHref('  JavaScript:alert(1)')).toBe(false);
+    expect(isSafeHref('data:text/html,<script>alert(1)</script>')).toBe(false);
+    expect(isSafeHref('vbscript:msgbox(1)')).toBe(false);
+  });
 
-    it('rejects protocol-relative links, which inherit whatever scheme the page has', () => {
-        expect(isSafeHref('//evil.example')).toBe(false)
-    })
+  it('rejects protocol-relative links, which inherit whatever scheme the page has', () => {
+    expect(isSafeHref('//evil.example')).toBe(false);
+  });
 
-    it('rejects backslash paths, which browsers normalize into protocol-relative links', () => {
-        expect(isSafeHref('/\\evil.example')).toBe(false)
-        expect(isSafeHref('/\\\\evil.example')).toBe(false)
-        expect(isSafeHref('/\\/evil.example')).toBe(false)
-    })
+  it('rejects backslash paths, which browsers normalize into protocol-relative links', () => {
+    expect(isSafeHref('/\\evil.example')).toBe(false);
+    expect(isSafeHref('/\\\\evil.example')).toBe(false);
+    expect(isSafeHref('/\\/evil.example')).toBe(false);
+  });
 
-    it('rejects an empty or unparseable value', () => {
-        expect(isSafeHref('')).toBe(false)
-    })
-})
+  it('rejects an empty or unparseable value', () => {
+    expect(isSafeHref('')).toBe(false);
+  });
+});
