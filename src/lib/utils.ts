@@ -61,9 +61,9 @@ export function formatNumeric(value: unknown, format?: string): string {
  */
 export function isSafeHref(href: string): boolean {
     const value = href.trim()
-    // `//host` inherits the page's scheme, so it is not a same-origin path.
-    if (value.startsWith('//')) return false
-    if (value.startsWith('/')) return true
+    // Browsers normalize `\` to `/` for http(s), so `/\host` resolves to the
+    // protocol-relative `//host` — an external site, not a path on this one.
+    if (value.startsWith('/')) return value[1] !== '/' && value[1] !== '\\'
     try {
         const { protocol } = new URL(value)
         return protocol === 'https:' || protocol === 'http:'

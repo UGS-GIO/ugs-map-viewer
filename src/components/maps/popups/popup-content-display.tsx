@@ -145,7 +145,8 @@ const renderFieldContent = (
         return (
             <>
                 {hrefs.map((item, i) => {
-                    if (item.href === null || item.href === '') {
+                    // A config transform can build the href out of feature properties.
+                    if (!item.href || !isSafeHref(item.href)) {
                         return <div key={`${item.label}-${i}`}><span className="break-words inline-block">{item.label}</span></div>;
                     }
                     return (
@@ -165,7 +166,7 @@ const renderFieldContent = (
     }
 
     // 2. Check for generic URL pattern
-    if (urlPattern.test(value)) {
+    if (urlPattern.test(value) && isSafeHref(value)) {
         return (
             <Button
                 className="p-0 h-auto whitespace-normal text-left font-normal inline-flex items-start max-w-full"

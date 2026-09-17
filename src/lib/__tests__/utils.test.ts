@@ -58,6 +58,12 @@ describe('isSafeHref', () => {
         expect(isSafeHref('//evil.example')).toBe(false)
     })
 
+    it('rejects backslash paths, which browsers normalize into protocol-relative links', () => {
+        expect(isSafeHref('/\\evil.example')).toBe(false)
+        expect(isSafeHref('/\\\\evil.example')).toBe(false)
+        expect(isSafeHref('/\\/evil.example')).toBe(false)
+    })
+
     it('rejects an empty or unparseable value', () => {
         expect(isSafeHref('')).toBe(false)
     })
