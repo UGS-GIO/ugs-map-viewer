@@ -77,7 +77,16 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 // checked rather than asserted.
 const isSearchFeature = (value: unknown): value is SearchFeature =>
     isRecord(value) && value.type === 'Feature' &&
-    (value.geometry === null || isRecord(value.geometry));
+    (value.geometry == null || isRecord(value.geometry));
+
+/** A geometry RPC answers with a collection or a bare feature array, depending on the function. */
+export const featuresFromPayload = (payload: unknown): SearchFeature[] => {
+    if (Array.isArray(payload)) return payload.filter(isSearchFeature);
+    if (isRecord(payload) && payload.type === 'FeatureCollection' && Array.isArray(payload.features)) {
+        return payload.features.filter(isSearchFeature);
+    }
+    return [];
+};
 
 export async function fetchPostgRESTResults(
     source: PostgRESTConfig,

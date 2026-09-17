@@ -28,11 +28,14 @@ import type {
     SearchComboboxProps,
 } from './search-types';
 import { formatAddressCase, getDisplayValue, getSourceDisplayName, resultHasData, appendFunctionParams, resolveDefaultSourceIndex } from './search-utils';
-import { fetchMasqueradeSuggestions, fetchPostgRESTResults, fetchParquetResults, withParquetGeometry, prewarmParquetSources } from './search-fetchers';
+import { fetchMasqueradeSuggestions, fetchPostgRESTResults, fetchParquetResults, withParquetGeometry, prewarmParquetSources, featuresFromPayload } from './search-fetchers';
 
 // Re-export types and handlers for consumers
 export type { SearchSourceConfig, MasqueradeConfig, PostgRESTConfig, ParquetSearchConfig, SearchComboboxHandle, ExtendedGeometry } from './search-types';
 export { handleSearchSelect, handleCollectionSelect } from './search-handlers';
+
+const isLocated = (feature: SearchFeature): feature is Feature<Geometry, GeoJsonProperties> =>
+    feature.geometry != null;
 
 export const defaultMasqueradeConfig: SearchSourceConfig = {
     type: 'masquerade',
@@ -84,7 +87,8 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                 headers: { ...sourceConfig.headers, 'Accept': 'application/geo+json' },
             });
             if (!response.ok) throw new Error(`Failed to fetch geometries: ${response.status}`);
-            return response.json();
+            const payload: unknown = await response.json();
+            return payload;
         },
     });
 
@@ -244,12 +248,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                             searchParams: { search_key: searchValue },
                             sourceConfig,
                         });
-                        let features: Feature<Geometry, GeoJsonProperties>[] = [];
-                        if (data?.type === 'FeatureCollection' && data.features?.length > 0) {
-                            features = data.features;
-                        } else if (Array.isArray(data) && data.length > 0 && data[0]?.type === 'Feature') {
-                            features = data;
-                        }
+                        const features = featuresFromPayload(data).filter(isLocated);
                         if (features.length === 1) result = features[0];
                         else if (features.length > 1) result = featureCollection(features);
                     } catch (error) {
@@ -325,7 +324,8 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                         searchParams: { [sourceConfig.searchTerm]: `%${currentSearchTerm}%` },
                         sourceConfig,
                     });
-                    if (data?.type === 'FeatureCollection' && data.features?.length > 0) return data.features;
+                    const fetched = featuresFromPayload(data);
+                    if (fetched.length > 0) return fetched;
                 }
             } catch (error) {
                 console.error(`Error fetching geometries for search source ${index}:`, error);
@@ -339,7 +339,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
         layerTitlesToShow.forEach(ensureLayerVisibleByTitle);
 
         const locatedFeatures = allVisibleFeatures.filter(
-            (feature): feature is Feature<Geometry, GeoJsonProperties> => feature.geometry != null,
+            isLocated,
         );
         const combinedCollection = locatedFeatures.length > 0 ? featureCollection(locatedFeatures) : null;
 
