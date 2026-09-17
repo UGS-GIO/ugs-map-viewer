@@ -12,8 +12,30 @@ import {
     ArrowDown,
 } from 'lucide-react';
 import type { ColumnConfig, RowData } from './types';
-import type { RelatedTable } from '@/lib/types/mapping-types';
+import type { FieldConfig, RelatedTable } from '@/lib/types/mapping-types';
 import { formatFieldValue } from '@/lib/field-formatting';
+
+/**
+ * Resolve how a column sorts from its field config. Exported (and pure) so the
+ * derivation is unit-tested without a table harness.
+ *
+ * - string/number/date sort by their own field (numbers numerically); custom is
+ *   unsortable by default because its cell is a transform-rendered string.
+ * - a custom column opts into numeric sorting by declaring `sortField` — the real
+ *   numeric property to order by (the cell still renders from the transform, so
+ *   repointing the sort key doesn't change what's shown).
+ * - an explicit `sortable` always wins.
+ */
+export function resolveColumnSort(
+    fieldConfig: FieldConfig | undefined,
+    field: string,
+): { enabled: boolean; sortKey: string; numeric: boolean } {
+    const sortField = fieldConfig?.sortField;
+    const isCustom = fieldConfig?.type === 'custom';
+    const numeric = fieldConfig?.type === 'number' || sortField != null;
+    const enabled = fieldConfig?.sortable ?? (!isCustom || sortField != null);
+    return { enabled, sortKey: sortField ?? field, numeric };
+}
 
 export function useTableColumns(
     columnConfigs: ColumnConfig[],
@@ -44,18 +66,16 @@ export function useTableColumns(
             },
         ];
 
-        // Custom fields are unsortable by default — their accessorFn returns raw property
-        // values but the cell renders via transform(properties), so sort order wouldn't
-        // match what the user sees.
+        // Custom fields are unsortable by default — their cell renders via
+        // transform(properties), so a raw accessor value wouldn't match what the
+        // user sees. A custom column can opt into numeric sorting with `sortField`.
         for (const config of columnConfigs) {
-            const isNumeric = config.fieldConfig?.type === 'number';
-            const isCustom = config.fieldConfig?.type === 'custom';
-            const isSortable = config.fieldConfig?.sortable ?? !isCustom;
+            const { enabled: isSortable, sortKey, numeric: isNumeric } = resolveColumnSort(config.fieldConfig, config.field);
             cols.push({
                 id: config.id,
                 meta: { columnConfig: config },
                 accessorFn: (row) => {
-                    const val = row.properties[config.field];
+                    const val = row.properties[sortKey];
                     if (isNumeric) {
                         const num = Number(val);
                         return Number.isFinite(num) ? num : undefined;

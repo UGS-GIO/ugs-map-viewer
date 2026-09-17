@@ -1024,6 +1024,10 @@ function makeDisplacementPopupFields(typeValue: DisplacementType): Record<string
         'Vertical Displacement': {
             field: 'value_inches_min',
             type: 'custom',
+            // Cell shows the formatted range; sort the column numerically by the
+            // deep edge (value_inches_min) so the one quantitative column stays
+            // sortable despite being a custom transform.
+            sortField: 'value_inches_min',
             transform: (props) => formatDisplacementRange(props?.value_inches_min, props?.value_inches_max, typeValue),
         },
         'Data Quality': { field: 'data_qual', type: 'string', transform: capitalizeFirst },
