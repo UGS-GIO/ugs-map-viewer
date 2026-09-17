@@ -105,8 +105,14 @@ export function useTour(options: UseTourOptions = {}) {
         popover.wrapper.setAttribute('role', 'dialog');
         // A step may define no title, and then there is no title node.
         if (popover.title) {
-          // role=heading is not allowed on <header>; the dialog is named by it instead.
+          // <header> may not carry role=heading, so it goes presentational and the text
+          // moves into a span that can.
           popover.title.setAttribute('role', 'presentation');
+          const heading = document.createElement('span');
+          heading.setAttribute('role', 'heading');
+          heading.setAttribute('aria-level', '2');
+          heading.textContent = popover.title.textContent;
+          popover.title.replaceChildren(heading);
           if (!popover.title.id) popover.title.id = 'driver-popover-title';
           popover.wrapper.setAttribute('aria-labelledby', popover.title.id);
         } else {
