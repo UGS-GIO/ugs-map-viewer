@@ -62,26 +62,32 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
     if (bins.length === 0) return null
 
     return (
-        <div className="flex flex-col gap-2 px-1 py-1">
-            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vertical Displacement</div>
-            {zeroBin && Number.isFinite(Math.max(Math.abs(zeroBin.min), Math.abs(zeroBin.max))) && (
-                <p className="text-xs text-muted-foreground">0–{Math.max(Math.abs(zeroBin.min), Math.abs(zeroBin.max))} {unit} within error</p>
-            )}
+        <div className="flex flex-col gap-1.5 px-1 py-1">
+            {/* Header carries the units inline so they don't need their own line. */}
+            <div className="flex items-baseline justify-between gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vertical Displacement</span>
+                <span className="text-[11px] italic text-muted-foreground">{getUnitsLabelForType(typeValue)}</span>
+            </div>
             <div className="grid grid-cols-2 gap-x-3 text-xs text-foreground">
                 <LegendGroup label="Uplift" bins={upliftBins} unit={unit} />
                 <LegendGroup label="Subsidence" bins={subsidenceBins} unit={unit} />
             </div>
-            {/* Confirmed-low contours are drawn hatched over their color (see the
-                SLD's hatch FeatureTypeStyle). The swatch mimics the diagonal fill. */}
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <span
-                    aria-hidden
-                    className="inline-block h-3 w-3 shrink-0 rounded-[2px] border border-border"
-                    style={{ backgroundImage: 'repeating-linear-gradient(45deg, currentColor 0 1px, transparent 1px 3px)' }}
-                />
-                <span>Hatched: lower data quality, independently confirmed</span>
+            {/* Map-reading footnotes on one compact, wrapping row: the hatch key
+                (135deg so the swatch leans the same way as the SLD's shape://slash)
+                + the within-error band. Keeps the legend short vertically. */}
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5">
+                    <span
+                        aria-hidden
+                        className="inline-block h-3 w-3 shrink-0 rounded-[2px] border border-border"
+                        style={{ backgroundImage: 'repeating-linear-gradient(135deg, currentColor 0 1px, transparent 1px 3px)' }}
+                    />
+                    Hatched = low quality, confirmed
+                </span>
+                {zeroBin && Number.isFinite(Math.max(Math.abs(zeroBin.min), Math.abs(zeroBin.max))) && (
+                    <span>0–{Math.max(Math.abs(zeroBin.min), Math.abs(zeroBin.max))} {unit} within error</span>
+                )}
             </div>
-            <p className="text-xs italic text-muted-foreground">Units: {getUnitsLabelForType(typeValue)}.</p>
         </div>
     )
 }
