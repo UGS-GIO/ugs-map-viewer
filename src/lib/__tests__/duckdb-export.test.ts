@@ -79,6 +79,14 @@ describe('joinedRelationSql', () => {
 })
 
 describe('mergedColumnNames', () => {
+    it('skips internal columns, as the join does', () => {
+        const withInternal: RelatedTable = {
+            ...intervals,
+            displayFields: [{ field: '_dbt_source' }, { field: 'bbox_xmin' }, { field: 'sample_type' }],
+        }
+        expect(mergedColumnNames(['uwi'], [withInternal])).toEqual(['sample_type'])
+    })
+
     it('reports the names the export will emit, not the raw fields', () => {
         expect(mergedColumnNames(['uwi', 'notes_public'], [intervals]))
             .toEqual(['sample_type', 'top_ft', 'sample_types_notes_public'])

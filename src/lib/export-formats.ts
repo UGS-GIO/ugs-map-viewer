@@ -5,6 +5,7 @@
  */
 
 import type { RelatedTable } from '@/lib/types/mapping-types';
+import { isInternalColumn } from '@/lib/export-fields';
 
 export type ExportFormat = 'parquet' | 'geojson' | 'csv' | 'gpkg' | 'shp' | 'gdb' | 'fgb';
 
@@ -27,7 +28,8 @@ export const mergedColumnNames = (mainColumns: string[], tables: RelatedTable[])
     const names: string[] = [];
     for (const table of tables) {
         for (const { field } of table.displayFields ?? []) {
-            if (!field) continue;
+            // Same skip the join applies, or the warning counts columns the file never carries.
+            if (!field || isInternalColumn(field)) continue;
             names.push(uniqueColumnName(field, table.fieldLabel, taken));
         }
     }
