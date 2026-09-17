@@ -132,7 +132,12 @@ let attrTableSeq = 0
 async function materializePoints(
     conn: DuckDbConnection,
     tableSource: string,
-    opts: { xExpr: string; yExpr: string; where: string; excludeCol?: string; featureCount?: number; label: string },
+    opts: {
+        xExpr: string; yExpr: string; where: string; excludeCol?: string; featureCount?: number; label: string
+        /** Handed the background attribute build, so the caller can keep an
+         *  uploaded file registered until it has been read. */
+        onAttributeBuild?: (build: Promise<void> | undefined) => void
+    },
 ): Promise<ParquetDeckData> {
     const base = `pq_${(attrTableSeq++).toString(36)}_${Date.now().toString(36)}`
     const pointTable = `${base}_pts`
@@ -180,6 +185,7 @@ async function materializePoints(
     }
 
     startAttributeBuild(attrTable, tableSource, opts)
+    opts.onAttributeBuild?.(attributeBuilds.get(attrTable))
 
     return {
         kind: 'points',
@@ -210,16 +216,28 @@ function startAttributeBuild(
 ): void {
     const excluded = [opts.excludeCol, FILE_ROW_NUMBER].filter((c): c is string => !!c)
     const attrs = `* EXCLUDE (${excluded.map(quoteIdent).join(', ')})`
-    const build = withConnection(conn => conn.query(`
-        CREATE OR REPLACE TABLE ${quoteIdent(attrTable)} AS
-        SELECT ${FILE_ROW_NUMBER} AS ${quoteIdent(ROW_ID)}, ${attrs}
-        FROM ${tableSource}
-        WHERE ${opts.where}
-    `)).then(() => undefined, (e: unknown) => {
+    const build = withConnection(async (conn) => {
+        // The setting is per connection and this is a fresh one; without it
+        // spatial's GeoParquet reader handles the file and chokes on the
+        // warehouse's CRS metadata ("stoi: no conversion").
+        try {
+            await conn.query('SET enable_geoparquet_conversion = false')
+        } catch {
+            /* older/newer builds may not expose it */
+        }
+        await conn.query(`
+            CREATE OR REPLACE TABLE ${quoteIdent(attrTable)} AS
+            SELECT ${FILE_ROW_NUMBER} AS ${quoteIdent(ROW_ID)}, ${attrs}
+            FROM ${tableSource}
+            WHERE ${opts.where}
+        `)
+    }).then(() => undefined, (e: unknown) => {
         console.warn(`[user-layers] attribute table ${attrTable} failed to build:`, e)
     })
     attributeBuilds.set(attrTable, build)
 }
+
+
 
 /**
  * Most points Deck is asked to draw at once.
@@ -384,6 +402,8 @@ export async function loadParquetForDeck(source: string | File, opts: LoadParque
         // expression, so the bare name is kept alongside the scan source.
         let crsFileName: string
         const label = opts.name ?? (typeof source === 'string' ? source : source.name)
+        let attributeBuild: Promise<void> | undefined
+        const onAttributeBuild = (build: Promise<void> | undefined) => { attributeBuild = build }
 
         if (typeof source === 'string') {
             tableSource = `read_parquet('${escapeSql(source)}', file_row_number=true)`
@@ -444,12 +464,13 @@ export async function loadParquetForDeck(source: string | File, opts: LoadParque
             // Plain coordinate columns carry no CRS metadata, so they are taken
             // as lon/lat and checked against the geographic range afterwards.
             if (lonCol && latCol && !geomCol) {
-                return materializePoints(conn, tableSource, {
+                return await materializePoints(conn, tableSource, {
                     xExpr: quoteIdent(lonCol),
                     yExpr: quoteIdent(latCol),
                     where: `${quoteIdent(lonCol)} IS NOT NULL AND ${quoteIdent(latCol)} IS NOT NULL`,
                     featureCount,
                     label,
+                    onAttributeBuild,
                 })
             }
 
@@ -480,13 +501,14 @@ export async function loadParquetForDeck(source: string | File, opts: LoadParque
 
             // Points -> binary coordinates on the GPU
             if (isPoint) {
-                return materializePoints(conn, tableSource, {
+                return await materializePoints(conn, tableSource, {
                     xExpr: `ST_X(${geomExpr})`,
                     yExpr: `ST_Y(${geomExpr})`,
                     where: `${quoteIdent(geomCol)} IS NOT NULL`,
                     excludeCol: geomCol,
                     featureCount,
                     label,
+                    onAttributeBuild,
                 })
             }
 
@@ -528,11 +550,17 @@ export async function loadParquetForDeck(source: string | File, opts: LoadParque
             }
         } finally {
             if (virtualName) {
-                try {
-                    await db.dropFile(virtualName)
-                } catch {
-                    // Ignore drop error
+                const drop = async () => {
+                    try {
+                        await db.dropFile(virtualName)
+                    } catch {
+                        // Ignore drop error
+                    }
                 }
+                // The attribute build reads this file on its own connection, so
+                // unregistering it now would pull the file out from under it.
+                if (attributeBuild) void attributeBuild.then(drop)
+                else await drop()
             }
         }
     })

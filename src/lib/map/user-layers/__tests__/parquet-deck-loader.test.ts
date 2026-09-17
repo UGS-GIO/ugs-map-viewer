@@ -60,9 +60,15 @@ async function* fakeStreamRows(c: StreamConn, sql: string): AsyncGenerator<Recor
     for await (const batch of await c.send(sql)) yield* fakeResultRows(batch)
 }
 
+/** The registered-file side of the db handle, shared so call order is visible. */
+const dbApi = vi.hoisted(() => ({
+    registerFileHandle: vi.fn(),
+    registerFileBuffer: vi.fn(async () => undefined),
+    dropFile: vi.fn(async () => undefined),
+}))
+
 vi.mock('@/lib/duckdb/client', () => ({
-    withConnection: vi.fn(async (fn: (c: unknown, d: unknown) => unknown) =>
-        fn(conn, { registerFileHandle: vi.fn(), registerFileBuffer: vi.fn(), dropFile: vi.fn() })),
+    withConnection: vi.fn(async (fn: (c: unknown, d: unknown) => unknown) => fn(conn, dbApi)),
     loadSpatial: vi.fn(),
     streamRows: fakeStreamRows,
     resultRows: fakeResultRows,
@@ -94,6 +100,8 @@ function lonLatSource(rowCount: number) {
 }
 
 beforeEach(() => {
+    dbApi.dropFile.mockClear()
+    dbApi.registerFileBuffer.mockClear()
     queries.length = 0
     streamed.length = 0
     conn.query.mockClear()
@@ -181,6 +189,29 @@ describe('point materialization', () => {
             expect(q).toMatch(/file_row_number AS "__rid__"/)
         }
         expect(queries.some(q => /read_parquet\('https:\/\/x.org\/wells.parquet', file_row_number=true\)/.test(q))).toBe(true)
+    })
+
+    it('sets the GeoParquet override on the attribute build\u2019s own connection', async () => {
+        lonLatSource(2)
+        await loadParquetForDeck('https://x.org/wells.parquet')
+        // The setting is per connection; without it the background build reads
+        // through spatial and chokes on warehouse CRS metadata.
+        const overrides = queries.filter(q => /enable_geoparquet_conversion = false/.test(q))
+        expect(overrides.length).toBeGreaterThanOrEqual(2)
+    })
+
+    it('keeps an uploaded file registered until the attribute build has read it', async () => {
+        lonLatSource(2)
+        await loadParquetForDeck(new File([new Uint8Array([1, 2, 3])], 'wells.parquet'))
+        // Flush the background build and the drop chained onto it.
+        await new Promise(resolve => setTimeout(resolve, 0))
+
+        const attrsCall = conn.query.mock.calls.findIndex(([sql]) => /CREATE OR REPLACE TABLE .*_attrs/.test(sql))
+        expect(attrsCall).toBeGreaterThanOrEqual(0)
+        // Dropping the virtual file before the build reads it would fail the build.
+        expect(dbApi.dropFile).toHaveBeenCalled()
+        expect(dbApi.dropFile.mock.invocationCallOrder[0])
+            .toBeGreaterThan(conn.query.mock.invocationCallOrder[attrsCall])
     })
 
     it('never walks the point rows at load time', async () => {
@@ -283,7 +314,7 @@ describe('uploaded files', () => {
         expect(registerFileHandle).not.toHaveBeenCalled()
     })
 
-    it('drops the registered file once the read is done', async () => {
+    it('drops the registered file once the background build has read it', async () => {
         lonLatSource(2)
         const dropFile = vi.fn()
         const { withConnection } = await import('@/lib/duckdb/client')
@@ -294,6 +325,9 @@ describe('uploaded files', () => {
             fn(conn, { registerFileBuffer: vi.fn(), dropFile }))
 
         await loadParquetForDeck(new File([new Uint8Array(16)], 'wells.parquet'))
+        // Deferred: the attribute build is still reading the file at this point.
+        expect(dropFile).not.toHaveBeenCalled()
+        await new Promise(resolve => setTimeout(resolve, 0))
         expect(dropFile).toHaveBeenCalledOnce()
     })
 })
