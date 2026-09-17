@@ -1,3 +1,21 @@
+## 2.11.0 (2026-09-17)
+
+* **feat**(`common`): adopt Utah Design System header, tokens, and state logo in app shell (#517) ([517](///issues/517))
+* **feat**(`common`): client-side parquet search (#561) ([561](///issues/561))
+* **feat**(`common`): let each app pick its own basemap default and menu (#588) ([588](///issues/588))
+* **fix**(`common`): finish the accessibility sweep from the design-system PR (#592) ([592](///issues/592))
+* **fix**(`common`): leave a missing popup number blank instead of rendering 0 (#585) ([585](///issues/585))
+* **fix**(`common`): only render popup footer links with a safe URL scheme (#591) ([591](///issues/591))
+* **ci**: add automated PR reviewer (run-gemini-cli on Vertex) (#587) ([587](///issues/587))
+* ****: Develop => Master (#590) ([590](///issues/590)) ([584](///issues/584)) ([568](///issues/568)) ([561](///issues/561)) ([565](///issues/565)) ([585](///issues/585)) ([586](///issues/586)) ([588](///issues/588)) ([587](///issues/587)) ([582](///issues/582)) ([517](///issues/517)) ([591](///issues/591)) ([589](///issues/589)) ([592](///issues/592))
+* **docs**: add review scope + severity floor to the rubric
+* **feat**(`ccs`): add NATCARB Atlas (2015) layer (#565) ([565](///issues/565))
+* **feat**(`ccs`): swap cores and cuttings for the UCRC inventory layer (#568) ([568](///issues/568))
+* **fix**(`subsurface`): fold sample-type intervals into the UCRC download (#589) ([589](///issues/589))
+* **fix**(`subsurface`): hide a legend group's only child (#584) ([584](///issues/584))
+* **fix**(`subsurface`): match sample-type tokens exactly and keep every legend category (#582) ([582](///issues/582))
+* **fix**(`subsurface`): sort core boxes by type, then box number (#586) ([586](///issues/586))
+
 ## 2.10.0 (2026-09-11)
 
 * **fix**(`common`): checker legend swatches so hollow polygons don't vanish into the panel (#549) ([549](///issues/549))
