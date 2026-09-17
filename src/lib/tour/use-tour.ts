@@ -12,11 +12,24 @@ interface UseTourOptions {
   onComplete?: () => void;
 }
 
-// driver.js parks these on a role-less placeholder div, where they are invalid.
+// driver.js stamps `aria-haspopup`/`aria-expanded` on whatever it highlights — its own
+// placeholder div, or one of ours — where neither attribute is allowed without a matching
+// role. It rewrites that element per step, sometimes after the hook returns, so also strip
+// on the next tick. Elements that legitimately carry them (a real button, a combobox) keep them.
+const HOLDS_POPUP = ['button', 'a', 'input'];
+const POPUP_ROLES = ['button', 'combobox', 'menuitem', 'link'];
+
 const stripDummyAria = () => {
-  const dummy = document.getElementById('driver-dummy-element');
-  dummy?.removeAttribute('aria-haspopup');
-  dummy?.removeAttribute('aria-expanded');
+  const strip = () => {
+    for (const el of document.querySelectorAll('.driver-active-element')) {
+      const role = el.getAttribute('role') ?? '';
+      if (HOLDS_POPUP.includes(el.tagName.toLowerCase()) || POPUP_ROLES.includes(role)) continue;
+      el.removeAttribute('aria-haspopup');
+      el.removeAttribute('aria-expanded');
+    }
+  };
+  strip();
+  setTimeout(strip, 0);
 };
 
 export function useTour(options: UseTourOptions = {}) {
@@ -89,9 +102,15 @@ export function useTour(options: UseTourOptions = {}) {
       // driver.js ships the popover title as a <header> — a second banner landmark beside the
       // app bar — and points aria-haspopup at a role-less dummy div, which it rewrites per step.
       onPopoverRender: (popover) => {
-        popover.title.setAttribute('role', 'presentation');
         popover.wrapper.setAttribute('role', 'dialog');
-        popover.wrapper.setAttribute('aria-labelledby', popover.title.id || 'driver-popover-title');
+        // A step may carry no title, in which case driver.js renders no title node.
+        if (popover.title) {
+          popover.title.setAttribute('role', 'presentation');
+          if (!popover.title.id) popover.title.id = 'driver-popover-title';
+          popover.wrapper.setAttribute('aria-labelledby', popover.title.id);
+        } else {
+          popover.wrapper.setAttribute('aria-label', 'Tour step');
+        }
         stripDummyAria();
       },
       onHighlighted: () => stripDummyAria(),

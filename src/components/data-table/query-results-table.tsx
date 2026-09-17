@@ -409,6 +409,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             ))}
                         </select>
                         <Input
+                            aria-label="Search within the selected column"
                             placeholder="Search..."
                             value={filter.value}
                             onChange={(e) => setFilter(prev => ({ ...prev, value: e.target.value }))}
