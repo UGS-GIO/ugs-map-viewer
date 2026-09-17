@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { BASEMAP_STYLES, DEFAULT_BASEMAP, resolveAppBasemaps } from '../basemaps'
+import { BASEMAP_STYLES, DEFAULT_BASEMAP, getBasemapUrl, resolveAppBasemaps } from '../basemaps'
 
 describe('resolveAppBasemaps', () => {
     it('gives an unconfigured route every style and the global default', () => {
@@ -34,5 +34,17 @@ describe('resolveAppBasemaps', () => {
     it('leaves unlisted styles in the dropdown', () => {
         const long = resolveAppBasemaps('hazards').styles.filter(b => b.type === 'long').map(b => b.id)
         expect(long).toEqual(['hybrid', 'none'])
+    })
+})
+
+describe('getBasemapUrl', () => {
+    it('returns the configured url for a known id', () => {
+        expect(getBasemapUrl('liberty')).toBe(DEFAULT_BASEMAP.url)
+        const terrain = BASEMAP_STYLES.find(b => b.id === 'terrain')
+        expect(getBasemapUrl('terrain')).toBe(terrain?.url)
+    })
+
+    it('throws on an unknown id', () => {
+        expect(() => getBasemapUrl('nope')).toThrow(/unknown basemap id/i)
     })
 })
