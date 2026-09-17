@@ -11,7 +11,7 @@
  */
 
 import * as duckdb from '@duckdb/duckdb-wasm';
-import { EXPORT_FORMATS, isCombinedTable, type ExportFormat } from '@/lib/export-formats';
+import { EXPORT_FORMATS, isCombinedTable, uniqueColumnName, type ExportFormat } from '@/lib/export-formats';
 import { withConnection, loadSpatial, escapeSql, quoteIdent, queryParquetDistinctValues } from '@/lib/duckdb/client';
 import { downloadZip } from '@/lib/download-utils';
 import { isInternalColumn } from '@/lib/export-fields';
@@ -85,18 +85,6 @@ const columnNames = async (conn: duckdb.AsyncDuckDBConnection, relation: string)
     });
 };
 
-const columnPrefix = (label: string): string =>
-    label.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'related';
-
-/** A projection name no other column has taken: the field, then label-prefixed, then numbered. */
-const uniqueName = (field: string, label: string, taken: Set<string>): string => {
-    let name = field;
-    if (taken.has(name)) name = `${columnPrefix(label)}_${field}`;
-    for (let n = 2; taken.has(name); n++) name = `${columnPrefix(label)}_${field}_${n}`;
-    taken.add(name);
-    return name;
-};
-
 /**
  * The relation every format reads from: the layer's parquet, LEFT JOINed to each
  * `combineIntoExport` table so its fields ride along on the row. A well with three
@@ -121,7 +109,7 @@ export const joinedRelationSql = (
 
         for (const { field } of displayFields ?? []) {
             if (!field || isInternalColumn(field)) continue;
-            selects.push(`${alias}.${quoteIdent(field)} AS ${quoteIdent(uniqueName(field, fieldLabel, taken))}`);
+            selects.push(`${alias}.${quoteIdent(field)} AS ${quoteIdent(uniqueColumnName(field, fieldLabel, taken))}`);
         }
         joins.push(
             `LEFT JOIN read_parquet('${escapeSql(url)}') AS ${alias}` +

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { joinedRelationSql } from '../duckdb-export'
+import { mergedColumnNames } from '../export-formats'
 import type { RelatedTable } from '@/lib/types/mapping-types'
 
 const MAIN = "read_parquet('https://example.org/wells.parquet')"
@@ -74,5 +75,17 @@ describe('joinedRelationSql', () => {
     it('escapes quotes in a related url', () => {
         const sneaky: RelatedTable = { ...intervals, url: "https://example.org/a'b.parquet" }
         expect(joinedRelationSql(MAIN, ['uwi'], [sneaky])).toContain("a''b.parquet")
+    })
+})
+
+describe('mergedColumnNames', () => {
+    it('reports the names the export will emit, not the raw fields', () => {
+        expect(mergedColumnNames(['uwi', 'notes_public'], [intervals]))
+            .toEqual(['sample_type', 'top_ft', 'sample_types_notes_public'])
+    })
+
+    it('does not repeat a main column, so the shapefile check sees no phantom collision', () => {
+        const names = mergedColumnNames(['uwi', 'notes_public'], [intervals])
+        expect(names).not.toContain('notes_public')
     })
 })

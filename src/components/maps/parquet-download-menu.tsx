@@ -13,7 +13,7 @@ import {
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useParquetSchema } from '@/hooks/use-parquet-schema';
-import { EXPORT_FORMATS, availableFormats, isCombinedTable, type ExportFormat } from '@/lib/export-formats';
+import { EXPORT_FORMATS, availableFormats, isCombinedTable, mergedColumnNames, type ExportFormat } from '@/lib/export-formats';
 import { shapefileFieldChecks } from '@/lib/gdal-export';
 import type { RelatedTable } from '@/lib/types/mapping-types';
 
@@ -50,9 +50,10 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
     // can still proceed, but not unknowingly.
     const shapefileIssues = useMemo(() => {
         if (!schema) return null;
-        // Merged columns land in the file too, so they face the same 10-character limit.
-        const mergedFields = combined.flatMap(t => (t.displayFields ?? []).map(f => f.field));
-        const attrs = [...schema.columns, ...mergedFields].filter(c => c !== schema.geometryColumn);
+        // Merged columns land in the file too, under the names the export gives them after
+        // collisions are resolved — warning on the raw names would both miss and invent problems.
+        const attrs = [...schema.columns, ...mergedColumnNames(schema.columns, combined)]
+            .filter(c => c !== schema.geometryColumn);
         const { longNames, collisions, tooManyFields, fieldCount } = shapefileFieldChecks(attrs);
         if (!longNames.length && !collisions.length && !tooManyFields) return null;
         return { longNames, collisions, tooManyFields, fieldCount };
