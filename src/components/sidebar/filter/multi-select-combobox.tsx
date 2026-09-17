@@ -128,8 +128,14 @@ const MultiSelectCombobox = ({
                                 {isLoading ? 'Loading...' : error ? 'Error loading data' : 'No results.'}
                             </CommandEmpty>
                             <CommandGroup>
+                                {/* cmdk keys items by value; an empty one drops the whole list out
+                                    of keyboard navigation, so every item carries a real one. */}
                                 {clearAllLabel && (
-                                    <CommandItem value="" onSelect={() => onChange([])} className="text-xs">
+                                    <CommandItem
+                                        value={clearAllLabel.toLowerCase()}
+                                        onSelect={() => onChange([])}
+                                        className="text-xs"
+                                    >
                                         <Check className={cn('mr-2 h-3 w-3', selected.length === 0 ? 'opacity-100' : 'opacity-0')} />
                                         {clearAllLabel}
                                     </CommandItem>
@@ -137,7 +143,7 @@ const MultiSelectCombobox = ({
                                 {items.map(({ value, label: optionLabel }) => (
                                     <CommandItem
                                         key={value}
-                                        value={optionLabel}
+                                        value={optionLabel.toLowerCase()}
                                         onSelect={() => handleSelect(value)}
                                         className="text-xs"
                                     >
