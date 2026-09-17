@@ -1038,7 +1038,7 @@ function makeDisplacementPopupFields(typeValue: DisplacementType): Record<string
                 const v = props?.independent_confirmation;
                 if (v === true || v === 'true') return 'Yes';
                 if (v === false || v === 'false') return 'No';
-                return '—';
+                return ''; // absent → let the popup hide the row (not a stray "—")
             },
         },
     };

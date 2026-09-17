@@ -115,6 +115,9 @@ export function formatDisplacementRange(minRaw: unknown, maxRaw: unknown, type: 
 
     const lo = Math.min(Math.abs(min), Math.abs(max))
     const hi = Math.max(Math.abs(min), Math.abs(max))
+    // Flat zero on both ends: no direction to name (max <= 0 would otherwise call
+    // it "subsidence"). Report the zero magnitude on its own.
+    if (hi === 0) return `0 ${unit}`
     const direction = max <= 0 ? 'subsidence' : 'uplift'
     const magnitude = lo === hi ? num(hi) : `${num(lo)} – ${num(hi)}`
     return `${magnitude} ${unit} ${direction}`

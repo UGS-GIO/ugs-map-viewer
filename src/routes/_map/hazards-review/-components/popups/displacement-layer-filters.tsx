@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
+import { HatchSwatch } from './displacement-chart-hover'
 import {
     DATA_QUAL_DESCRIPTIONS,
     DEFAULT_EXCLUDED_DATA_QUALS,
@@ -69,7 +70,12 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
     // always show, hatched — the CQL override handles that regardless of this).
     const highTierQuals = useMemo(() => dataQuals.filter(q => !(LOW_DATA_QUALS as readonly string[]).includes(q)), [dataQuals])
     const hasLowQuals = useMemo(() => dataQuals.some(q => (LOW_DATA_QUALS as readonly string[]).includes(q)), [dataQuals])
-    const unconfirmedLowVisible = !(LOW_DATA_QUALS as readonly string[]).some(q => excludedQuals.has(q))
+    // One toggle drives both low tiers together, but a hand-edited URL can exclude
+    // just one. Reflect that honestly: all-visible = checked, all-hidden = unchecked,
+    // a split = indeterminate (clicking then re-syncs both).
+    const unconfirmedLowExcluded = (LOW_DATA_QUALS as readonly string[]).filter(q => excludedQuals.has(q)).length
+    const unconfirmedLowVisible = unconfirmedLowExcluded === 0
+    const unconfirmedLowIndeterminate = unconfirmedLowExcluded > 0 && unconfirmedLowExcluded < LOW_DATA_QUALS.length
 
     // Year dropdown always reflects the effective year (override or latest).
     // Empty string is a transient state only while features are still loading.
@@ -269,11 +275,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                                                 {/* Confirmed low/very-low: always shown, hatched (the review rule) —
                                                     informational, not a toggle. Swatch matches the map + legend. */}
                                                 <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                                                    <span
-                                                        aria-hidden
-                                                        className="mt-0.5 inline-block h-3.5 w-3.5 shrink-0 rounded-[2px] border border-border"
-                                                        style={{ backgroundImage: 'repeating-linear-gradient(135deg, currentColor 0 1px, transparent 1px 3px)' }}
-                                                    />
+                                                    <HatchSwatch className="mt-0.5 h-3.5 w-3.5" />
                                                     <span className="flex flex-col leading-tight">
                                                         <span className="text-foreground">Confirmed low quality</span>
                                                         <span className="text-[10px]">Always shown, hatched</span>
@@ -282,7 +284,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                                                 {/* Unconfirmed low + very-low: the noise. One toggle, off by default. */}
                                                 <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
                                                     <Checkbox
-                                                        checked={unconfirmedLowVisible}
+                                                        checked={unconfirmedLowIndeterminate ? 'indeterminate' : unconfirmedLowVisible}
                                                         onCheckedChange={(v) => setDataQualsVisible(typeValue, LOW_DATA_QUALS, v === true)}
                                                         aria-label="Toggle unconfirmed low-quality contours"
                                                         className="mt-0.5"

@@ -10,7 +10,8 @@ import {
     isDisplacementLayerTitle,
     type DisplacementType,
 } from './displacement-layers'
-import { magnitudeLabel, type SldBin } from './displacement-sld-legend'
+import { getZeroBound, magnitudeLabel, type SldBin } from './displacement-sld-legend'
+import { HatchSwatch } from './displacement-chart-hover'
 
 /**
  * `layerLegendRender` for the hazards-review layer list. Replaces the default
@@ -44,7 +45,9 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
     const styleName = getStyleNameForType(typeValue) ?? ''
     const { data: bins = [], isLoading } = useDisplacementSldBins(styleName)
 
-    const zeroBin = useMemo(() => bins.find(b => b.isZero), [bins])
+    // Deadband bound from the shared, hardened helper (returns null when the SLD
+    // has no parseable Zero rule) rather than re-deriving it inline.
+    const zeroBound = useMemo(() => getZeroBound(bins), [bins])
     // Same split + ordering as the chart's SignedLegendGroup: closest-to-zero
     // bin first within each side, deepest/highest band last.
     const subsidenceBins = useMemo(
@@ -77,15 +80,11 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
                 + the within-error band. Keeps the legend short vertically. */}
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
-                    <span
-                        aria-hidden
-                        className="inline-block h-3 w-3 shrink-0 rounded-[2px] border border-border"
-                        style={{ backgroundImage: 'repeating-linear-gradient(135deg, currentColor 0 1px, transparent 1px 3px)' }}
-                    />
+                    <HatchSwatch />
                     Hatched = low quality, confirmed
                 </span>
-                {zeroBin && Number.isFinite(Math.max(Math.abs(zeroBin.min), Math.abs(zeroBin.max))) && (
-                    <span>0–{Math.max(Math.abs(zeroBin.min), Math.abs(zeroBin.max))} {unit} within error</span>
+                {zeroBound != null && (
+                    <span>0–{zeroBound} {unit} within error</span>
                 )}
             </div>
         </div>

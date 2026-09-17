@@ -4,6 +4,7 @@ import {
     DISPLACEMENT_LAYER_TYPES,
     CHARTED_TYPES,
     DEFAULT_EXCLUDED_DATA_QUALS,
+    LOW_DATA_QUALS,
     isChartedType,
     type ChartedType,
     type DisplacementLayerTitle,
@@ -278,8 +279,8 @@ export function useDisplacementFilters(): DisplacementFilterState {
  */
 export function useEffectiveYear(type: DisplacementType): string | null {
     const { yearOverridesByType } = useDisplacementFilters()
-    const latestByType = useDisplacementLatestYearByType()
-    return yearOverridesByType[type] ?? latestByType[type] ?? null
+    const { byType } = useDisplacementLatestYearByType()
+    return yearOverridesByType[type] ?? byType[type] ?? null
 }
 
 /**
@@ -319,24 +320,26 @@ export function useDisplacementLayerFilters(): Record<string, string> {
     const effective = useEffectiveThresholdsIn()
     const cumulativeSld = useDisplacementSldZeroBound('Cumulative')
     const yearlySld = useDisplacementSldZeroBound('Yearly')
-    const latestByType = useDisplacementLatestYearByType()
+    const { byType: latestByType, isPending: latestYearPending } = useDisplacementLatestYearByType()
     return useMemo(() => {
         const zeroBoundByType: Record<ChartedType, number | null> = { 'Cumulative': cumulativeSld, 'Yearly': yearlySld }
         const out: Record<DisplacementLayerTitle, string> = {} as Record<DisplacementLayerTitle, string>
         for (const [title, typeValue] of Object.entries(DISPLACEMENT_LAYER_TYPES) as [DisplacementLayerTitle, DisplacementType][]) {
             const clauses: string[] = []
             const effectiveYear = yearOverridesByType[typeValue] ?? latestByType[typeValue] ?? null
-            if (!effectiveYear) {
-                // Latest year not resolved yet: gate the layer to a no-match clause
-                // instead of letting GeoServer paint every year-window stacked (the
-                // first-load "overlap flash"). The cheap latest-year lookup resolves
-                // in ~0.3s, then the real year replaces this.
+            if (effectiveYear) {
+                // `year` is an int column holding the window's closing year, so an
+                // unquoted equality works for every type.
+                clauses.push(`year=${Number(effectiveYear)}`)
+            } else if (latestYearPending) {
+                // Still resolving: gate to a no-match clause so the layer stays blank
+                // rather than painting every year-window stacked (the first-load
+                // "overlap flash"); the real year replaces this once it lands. Only
+                // while pending — a persistent lookup failure falls through with no
+                // year clause (visible all-years) instead of a silent permanent blank.
                 out[title] = 'year = -1'
                 continue
             }
-            // `year` is an int column holding the window's closing year, so an
-            // unquoted equality works for every type.
-            clauses.push(`year=${Number(effectiveYear)}`)
             if (isChartedType(typeValue)) {
                 const thresholdIn = effective[typeValue]
                 if (thresholdIn > 0) {
@@ -366,10 +369,14 @@ export function useDisplacementLayerFilters(): Record<string, string> {
             const excludedQuals = excludedDataQualsByType[typeValue]
             if (excludedQuals && excludedQuals.size > 0) {
                 const list = Array.from(excludedQuals).map(quoteCqlLiteral).join(', ')
-                clauses.push(`(data_qual NOT IN (${list}) OR (independent_confirmation = true AND data_qual IN ('low', 'very low')))`)
+                // Build the confirmed-low override list from LOW_DATA_QUALS (single
+                // source of truth) rather than a hardcoded literal, so it stays in
+                // sync with the tiers the filter UI + SLD hatch key on.
+                const lowList = LOW_DATA_QUALS.map(quoteCqlLiteral).join(', ')
+                clauses.push(`(data_qual NOT IN (${list}) OR (independent_confirmation = true AND data_qual IN (${lowList})))`)
             }
             if (clauses.length > 0) out[title] = clauses.join(' AND ')
         }
         return out
-    }, [yearOverridesByType, latestByType, effective, cumulativeSld, yearlySld, basinsByType, excludedDataQualsByType])
+    }, [yearOverridesByType, latestByType, latestYearPending, effective, cumulativeSld, yearlySld, basinsByType, excludedDataQualsByType])
 }

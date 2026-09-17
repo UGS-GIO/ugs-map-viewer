@@ -82,15 +82,13 @@ async function fetchLatestYearsByType(): Promise<Record<DisplacementType, string
             outputFormat: 'application/json',
             CQL_FILTER: `type='${type}'`,
         }).toString()
-        try {
-            const res = await fetch(url)
-            if (!res.ok) return [type, null]
-            const fc = await res.json()
-            const y = fc?.features?.[0]?.properties?.year
-            return [type, y == null ? null : String(y)]
-        } catch {
-            return [type, null]
-        }
+        // Throw (don't swallow to null): a rejected query retries and exposes
+        // isError, and the map gates on the loading state — never a silent blank.
+        const res = await fetch(url)
+        if (!res.ok) throw new Error(`WFS latest-year lookup failed for ${type}: ${res.status}`)
+        const fc = await res.json()
+        const y = fc?.features?.[0]?.properties?.year
+        return [type, y == null ? null : String(y)]
     }))
     return Object.fromEntries(entries) as Record<DisplacementType, string | null>
 }
@@ -260,23 +258,21 @@ export function useDisplacementDefaultThresholdForType(type: DisplacementType): 
     }, [bins, magnitudes])
 }
 
-// Latest year present for a given type — Yearly uses water year, period-keyed
-// types use end_date year. Drives the default selection when no explicit
-// override is in place (the year filter is mandatory: no "all years" sentinel
-// any more, since picking all years for Cumulative paints every nested window
-// at once and makes popups unreadable).
-export function useDisplacementLatestYearForType(type: DisplacementType): string | null {
-    const select = useCallback((features: DisplacementFeature[]) => {
-        let latest: string | null = null
-        for (const f of features) {
-            if (f.properties.type !== type) continue
-            const y = getBucketYear(f.properties)
-            if (y && (latest === null || y > latest)) latest = y
-        }
-        return latest
-    }, [type])
-    const { data = null } = useQuery({ ...displacementFeaturesQueryOptions(), select })
-    return data
+// Derive latest year per type from the bulk features array. Used only as the
+// fail-loud fallback when the cheap dedicated lookup errors (see
+// useDisplacementLatestYearByType) — the year filter is mandatory (no "all years"
+// sentinel: picking all years for Cumulative paints every nested window at once
+// and makes popups unreadable).
+function selectLatestYearsFromFeatures(features: DisplacementFeature[]): Record<DisplacementType, string | null> {
+    const latest: Record<string, string | null> = {}
+    for (const f of features) {
+        const t = f.properties.type
+        const y = getBucketYear(f.properties)
+        if (!y) continue
+        const cur = latest[t]
+        if (cur == null || y > cur) latest[t] = y
+    }
+    return latest as Record<DisplacementType, string | null>
 }
 
 export interface DisplacementQualityCaps {
@@ -310,11 +306,37 @@ export function useDisplacementHasQualityFields(): DisplacementQualityCaps {
     return data ?? { dataQual: false }
 }
 
+// Minimal settled/loading shape of the two year queries, so the pending
+// derivation can be unit-tested without a React Query harness.
+interface YearQueryState {
+    data?: unknown
+    isError: boolean
+}
+
+// Is the latest-year lookup still genuinely loading? It MUST return false on every
+// terminal state, or a lookup failure gates the map to blank forever (the exact bug
+// this cheap-lookup + bulk-fallback exists to prevent). By state:
+//   cheap in flight (no data, no error)        → pending
+//   cheap errored, bulk fallback in flight      → pending
+//   cheap has data / bulk fell back / BOTH fail → settled
+// On both-fail we settle with no year; the filter then drops the year clause
+// (all-years visible) instead of emitting a no-match `year = -1`. Key off
+// .data/.isError, not .isPending — a disabled bulk query reports status 'pending'
+// in TanStack v5, so bulk's loading state is only meaningful once cheap errored.
+export function isLatestYearLookupPending(cheap: YearQueryState, bulk: YearQueryState): boolean {
+    return (!cheap.data && !cheap.isError) || (cheap.isError && !bulk.data && !bulk.isError)
+}
+
 // Per-type latest-year map for callers that need to resolve year filters
 // across every type in one pass (e.g. cql_filter assembly).
 // Latest year per type, from the cheap dedicated lookup (not the 20k-feature bulk
 // pull) so the map's year clause resolves fast and doesn't wait on chart data.
-export function useDisplacementLatestYearByType(): Record<DisplacementType, string | null> {
-    const { data } = useQuery(displacementLatestYearsQueryOptions())
-    return data ?? ({} as Record<DisplacementType, string | null>)
+export function useDisplacementLatestYearByType(): { byType: Record<DisplacementType, string | null>; isPending: boolean } {
+    const cheap = useQuery(displacementLatestYearsQueryOptions())
+    // Fallback source only if the cheap lookup errors — `enabled` keeps the 20k
+    // bulk pull off the happy path.
+    const bulk = useQuery({ ...displacementFeaturesQueryOptions(), select: selectLatestYearsFromFeatures, enabled: cheap.isError })
+    const byType = (cheap.data ?? bulk.data ?? {}) as Record<DisplacementType, string | null>
+    const isPending = isLatestYearLookupPending(cheap, bulk)
+    return { byType, isPending }
 }
