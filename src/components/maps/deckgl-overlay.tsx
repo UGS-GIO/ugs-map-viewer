@@ -189,7 +189,7 @@ export function DeckGlOverlay({ map, layers, overlayRef }: DeckGlOverlayProps) {
     const { zoom, lat, lon } = useSearch({ strict: false })
 
     const pointLayers = useMemo(
-        () => layers.filter(l => l.visible !== false && l.deckData?.kind === 'points' && !!l.deckData.attrTable),
+        () => layers.filter(l => l.visible !== false && l.deckData?.kind === 'points' && !!l.deckData.pointTable),
         [layers],
     )
 
@@ -213,9 +213,9 @@ export function DeckGlOverlay({ map, layers, overlayRef }: DeckGlOverlayProps) {
      */
     const views = useQueries({
         queries: pointLayers.map(layer => ({
-            queryKey: ['parquet-viewport', layer.deckData?.attrTable, bbox] as const,
-            queryFn: () => queryPointsInViewport(layer.deckData?.attrTable ?? '', bbox ?? [0, 0, 0, 0]),
-            enabled: !!bbox && !!layer.deckData?.attrTable,
+            queryKey: ['parquet-viewport', layer.deckData?.pointTable, bbox] as const,
+            queryFn: () => queryPointsInViewport(layer.deckData?.pointTable ?? '', bbox ?? [0, 0, 0, 0]),
+            enabled: !!bbox && !!layer.deckData?.pointTable,
             placeholderData: keepPreviousData,
             staleTime: Infinity,
         })),

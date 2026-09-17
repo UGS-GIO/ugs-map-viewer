@@ -90,10 +90,13 @@ export interface ParquetDeckData {
         count: number
     }
     geojson?: FeatureCollection
+    /** DuckDB table of row id + coordinates. Read per viewport; see
+     *  {@link queryPointsInViewport}. Dropped with the layer. */
+    pointTable?: string
     /**
-     * Name of the DuckDB table holding this layer's point rows (id, x, y, and
-     * every attribute). Attributes stay in DuckDB rather than being pulled into
-     * JS, and are read back one row at a time on click — see
+     * DuckDB table of row id + every source attribute, built in the background
+     * after the map has drawn. Attributes stay in DuckDB rather than being
+     * pulled into JS, and are read back a row at a time on click — see
      * {@link queryParquetRowProperties}. Dropped with the layer.
      */
     attrTable?: string
@@ -101,6 +104,10 @@ export interface ParquetDeckData {
     /** Rows in the source, as reported by `COUNT(*)`. Only set when the guard ran. */
     featureCount?: number
 }
+
+/** The parquet's own physical row number, exposed by `file_row_number=true`.
+ *  Stable across scans, unlike `row_number()` over a parallel one. */
+const FILE_ROW_NUMBER = 'file_row_number'
 
 /** Columns the point table adds on top of the source's own. */
 const ROW_ID = '__rid__'
@@ -127,15 +134,19 @@ async function materializePoints(
     tableSource: string,
     opts: { xExpr: string; yExpr: string; where: string; excludeCol?: string; featureCount?: number; label: string },
 ): Promise<ParquetDeckData> {
-    const table = `pq_pts_${(attrTableSeq++).toString(36)}_${Date.now().toString(36)}`
-    const attrs = opts.excludeCol ? `* EXCLUDE (${quoteIdent(opts.excludeCol)})` : '*'
+    const base = `pq_${(attrTableSeq++).toString(36)}_${Date.now().toString(36)}`
+    const pointTable = `${base}_pts`
+    const attrTable = `${base}_attrs`
+
+    // Coordinates only. Copying the attributes here as well is what used to make
+    // this the slowest step of a load — 4.8s against 257ms on a 1.1M-row Overture
+    // file, whose nested `names`/`categories`/`sources` columns nothing draws.
     await conn.query(`
-        CREATE OR REPLACE TABLE ${quoteIdent(table)} AS
+        CREATE OR REPLACE TABLE ${quoteIdent(pointTable)} AS
         SELECT
-            row_number() OVER () - 1 AS ${quoteIdent(ROW_ID)},
+            ${FILE_ROW_NUMBER} AS ${quoteIdent(ROW_ID)},
             ${opts.xExpr}::FLOAT AS ${quoteIdent(POINT_X)},
-            ${opts.yExpr}::FLOAT AS ${quoteIdent(POINT_Y)},
-            ${attrs}
+            ${opts.yExpr}::FLOAT AS ${quoteIdent(POINT_Y)}
         FROM ${tableSource}
         WHERE ${opts.where}
     `)
@@ -147,7 +158,7 @@ async function materializePoints(
         SELECT count(*) AS n,
                min(${quoteIdent(POINT_X)}) AS minx, min(${quoteIdent(POINT_Y)}) AS miny,
                max(${quoteIdent(POINT_X)}) AS maxx, max(${quoteIdent(POINT_Y)}) AS maxy
-        FROM ${quoteIdent(table)}
+        FROM ${quoteIdent(pointTable)}
     `))
     const count = cellToNumber(stats?.n) ?? 0
     const minx = cellToNumber(stats?.minx)
@@ -164,17 +175,50 @@ async function materializePoints(
     try {
         assertGeographicBounds(bounds, opts.label)
     } catch (e) {
-        await conn.query(`DROP TABLE IF EXISTS ${quoteIdent(table)}`).catch(() => {})
+        await conn.query(`DROP TABLE IF EXISTS ${quoteIdent(pointTable)}`).catch(() => {})
         throw e
     }
+
+    startAttributeBuild(attrTable, tableSource, opts)
 
     return {
         kind: 'points',
         points: { count },
         bounds,
         featureCount: opts.featureCount,
-        attrTable: table,
+        pointTable,
+        attrTable,
     }
+}
+
+/** Attribute tables still being built, by table name. */
+const attributeBuilds = new Map<string, Promise<void>>()
+
+/**
+ * Build the attribute table off the critical path.
+ *
+ * Nothing needs the attributes until something is clicked, and the same scan
+ * that copies them takes twenty times longer than the coordinates, so the map
+ * draws first and this catches up. Row ids are the parquet's own
+ * `file_row_number`, so the two tables line up without depending on two scans
+ * producing rows in the same order.
+ */
+function startAttributeBuild(
+    attrTable: string,
+    tableSource: string,
+    opts: { where: string; excludeCol?: string },
+): void {
+    const excluded = [opts.excludeCol, FILE_ROW_NUMBER].filter((c): c is string => !!c)
+    const attrs = `* EXCLUDE (${excluded.map(quoteIdent).join(', ')})`
+    const build = withConnection(conn => conn.query(`
+        CREATE OR REPLACE TABLE ${quoteIdent(attrTable)} AS
+        SELECT ${FILE_ROW_NUMBER} AS ${quoteIdent(ROW_ID)}, ${attrs}
+        FROM ${tableSource}
+        WHERE ${opts.where}
+    `)).then(() => undefined, (e: unknown) => {
+        console.warn(`[user-layers] attribute table ${attrTable} failed to build:`, e)
+    })
+    attributeBuilds.set(attrTable, build)
 }
 
 /**
@@ -274,10 +318,12 @@ export async function queryParquetRowProperties(
     const idList = rowIds.map(n => Math.trunc(Number(n))).filter(Number.isFinite).join(',')
     if (!idList) return out
 
+    // The table may still be building — a click can beat it on a large file.
+    await attributeBuilds.get(attrTable)
+
     return withConnection(async (conn) => {
         const res = await conn.query(
-            `SELECT * EXCLUDE (${quoteIdent(POINT_X)}, ${quoteIdent(POINT_Y)})
-             FROM ${quoteIdent(attrTable)} WHERE ${quoteIdent(ROW_ID)} IN (${idList})`,
+            `SELECT * FROM ${quoteIdent(attrTable)} WHERE ${quoteIdent(ROW_ID)} IN (${idList})`,
         )
         for (const obj of resultRows(res)) {
             const rid = cellToNumber(obj[ROW_ID])
@@ -310,13 +356,20 @@ function sampleBounds(features: Feature[]): [number, number, number, number] | u
     return minX !== Infinity ? [minX, minY, maxX, maxY] : undefined
 }
 
-/** Drop a layer's point table. Called when the layer is removed. */
-export async function dropParquetAttributeTable(attrTable: string): Promise<void> {
+/** Drop a layer's DuckDB tables. Called when the layer is removed. */
+export async function dropParquetTables(data: Pick<ParquetDeckData, 'pointTable' | 'attrTable'>): Promise<void> {
+    const tables = [data.pointTable, data.attrTable].filter((t): t is string => !!t)
+    if (tables.length === 0) return
+    // A build still in flight would otherwise recreate the table after the drop.
+    if (data.attrTable) await attributeBuilds.get(data.attrTable)
     try {
-        await withConnection(conn => conn.query(`DROP TABLE IF EXISTS ${quoteIdent(attrTable)}`))
+        await withConnection(async (conn) => {
+            for (const table of tables) await conn.query(`DROP TABLE IF EXISTS ${quoteIdent(table)}`)
+        })
     } catch (e) {
-        console.warn(`[user-layers] could not drop attribute table ${attrTable}:`, e)
+        console.warn(`[user-layers] could not drop tables ${tables.join(', ')}:`, e)
     }
+    if (data.attrTable) attributeBuilds.delete(data.attrTable)
 }
 
 export async function loadParquetForDeck(source: string | File, opts: LoadParquetOptions = {}): Promise<ParquetDeckData> {
@@ -333,7 +386,7 @@ export async function loadParquetForDeck(source: string | File, opts: LoadParque
         const label = opts.name ?? (typeof source === 'string' ? source : source.name)
 
         if (typeof source === 'string') {
-            tableSource = `read_parquet('${escapeSql(source)}')`
+            tableSource = `read_parquet('${escapeSql(source)}', file_row_number=true)`
             crsFileName = source
         } else {
             virtualName = `user-upload-${crypto.randomUUID()}.parquet`
@@ -345,7 +398,7 @@ export async function loadParquetForDeck(source: string | File, opts: LoadParque
             // two — which is why the upload ceiling is what it is.
             const buffer = new Uint8Array(await source.arrayBuffer())
             await db.registerFileBuffer(virtualName, buffer)
-            tableSource = `read_parquet('${virtualName}')`
+            tableSource = `read_parquet('${virtualName}', file_row_number=true)`
             crsFileName = virtualName
         }
 
@@ -441,7 +494,7 @@ export async function loadParquetForDeck(source: string | File, opts: LoadParque
             const query = `
                 SELECT
                     ST_AsGeoJSON(${geomExpr}) AS __geom__,
-                    * EXCLUDE (${quoteIdent(geomCol)})
+                    * EXCLUDE (${quoteIdent(geomCol)}, ${quoteIdent(FILE_ROW_NUMBER)})
                 FROM ${tableSource}
             `
             const features: Feature[] = []

@@ -149,9 +149,38 @@ describe('point materialization', () => {
 
         expect(data.kind).toBe('points')
         expect(data.points?.count).toBe(2)
-        // The attribute table is the handle used for click lookups and for the
-        // viewport reads that feed the GPU.
-        expect(data.attrTable).toMatch(/^pq_pts_/)
+        // Two tables: coordinates for the GPU, attributes for click lookups.
+        expect(data.pointTable).toMatch(/_pts$/)
+        expect(data.attrTable).toMatch(/_attrs$/)
+    })
+
+    it('keeps attributes out of the table the map draws from', async () => {
+        lonLatSource(2)
+        await loadParquetForDeck('https://x.org/wells.parquet')
+        const pts = queries.find(q => /CREATE OR REPLACE TABLE .*_pts/.test(q))
+        // Coordinates and an id, nothing else — copying the attributes here is
+        // what used to dominate the load.
+        expect(pts).toMatch(/"__x__"/)
+        expect(pts).not.toMatch(/\*/)
+    })
+
+    it('builds the attribute table after the one the map needs', async () => {
+        lonLatSource(2)
+        await loadParquetForDeck('https://x.org/wells.parquet')
+        const ptsAt = queries.findIndex(q => /CREATE OR REPLACE TABLE .*_pts/.test(q))
+        const attrsAt = queries.findIndex(q => /CREATE OR REPLACE TABLE .*_attrs/.test(q))
+        expect(ptsAt).toBeGreaterThanOrEqual(0)
+        expect(attrsAt).toBeGreaterThan(ptsAt)
+    })
+
+    it('keys both tables on the parquet\u2019s own row number', async () => {
+        lonLatSource(2)
+        await loadParquetForDeck('https://x.org/wells.parquet')
+        // `row_number()` over a parallel scan would not line the tables up.
+        for (const q of queries.filter(q => /CREATE OR REPLACE TABLE/.test(q))) {
+            expect(q).toMatch(/file_row_number AS "__rid__"/)
+        }
+        expect(queries.some(q => /read_parquet\('https:\/\/x.org\/wells.parquet', file_row_number=true\)/.test(q))).toBe(true)
     })
 
     it('never walks the point rows at load time', async () => {
@@ -181,8 +210,8 @@ describe('point materialization', () => {
         ]
         const data = await loadParquetForDeck('https://x.org/wells.parquet')
         expect(data.kind).toBe('points')
-        const create = queries.find(q => /CREATE OR REPLACE TABLE/.test(q))
-        expect(create).toMatch(/EXCLUDE \("geom"\)/)
+        const create = queries.find(q => /CREATE OR REPLACE TABLE .*_attrs/.test(q))
+        expect(create).toMatch(/EXCLUDE \("geom", "file_row_number"\)/)
     })
 })
 
@@ -319,10 +348,10 @@ describe('queryParquetRowProperties', () => {
         expect(queries[0]).toContain('IN (4,9)')
     })
 
-    it('leaves the coordinate columns out of the popup', async () => {
+    it('reads the attribute table, which never held the coordinates', async () => {
         routes = [[/FROM "tbl"/, result([{ __rid__: 0 }])]]
         await queryParquetRowProperties('tbl', [0])
-        expect(queries[0]).toMatch(/EXCLUDE \("__x__", "__y__"\)/)
+        expect(queries[0]).toMatch(/SELECT \* FROM "tbl"/)
     })
 
     it('runs no query for an empty pick', async () => {

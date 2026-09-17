@@ -20,7 +20,7 @@ import { useQueries } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import type { LayerProps, ParquetLayerProps } from '@/lib/types/mapping-types'
 import { buildLayerFromUrl, objectUrlForCog, releaseUploadedLayer, type UploadedLayer, type DetectedFormat } from '@/lib/map/user-layers/detect'
-import { loadParquetForDeck, dropParquetAttributeTable } from '@/lib/map/user-layers/parquet-deck-loader'
+import { loadParquetForDeck, dropParquetTables } from '@/lib/map/user-layers/parquet-deck-loader'
 import { getAllUserLayers, putUserLayer, deleteUserLayer } from '@/lib/map/user-layers/idb'
 import { registerLocalPMTiles } from '@/lib/map/pmtiles/setup'
 
@@ -270,8 +270,8 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
         // React tree, so it has to be dropped explicitly (remote or uploaded).
         const removed = userLayers.find(l => l.title === title)
         if (removed?.type === 'parquet') {
-            const attrTable = (removed as ParquetLayerProps).deckData?.attrTable
-            if (attrTable) void dropParquetAttributeTable(attrTable)
+            const deckData = (removed as ParquetLayerProps).deckData
+            if (deckData) void dropParquetTables(deckData)
         }
 
         // Upload? Also remove from IndexedDB + state.
