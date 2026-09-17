@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { resolveDefaultSourceIndex } from '../search-utils';
-import type { SearchSourceConfig } from '../search-types';
+import { resolveDefaultSourceIndex, getDisplayValue, getSourceDisplayName } from '../search-utils';
+import type { SearchSourceConfig, ParquetSearchConfig } from '../search-types';
 
 const source = (sourceName: string): SearchSourceConfig => ({
     type: 'postgREST',
@@ -40,5 +40,30 @@ describe('resolveDefaultSourceIndex', () => {
     it('tracks the source by name, not position, after a reorder', () => {
         const reordered = [config[2], config[0], config[1]];
         expect(resolveDefaultSourceIndex(reordered, 'UCRC Collection')).toBe(1);
+    });
+});
+
+describe('getDisplayValue for parquet source', () => {
+    it('formats display value for section search', () => {
+        const parquetConfig: ParquetSearchConfig = {
+            type: 'parquet',
+            parquetUrl: 'https://example.com/enmin_plss_sections.parquet',
+            displayField: 'label',
+            secondaryDisplayField: 'section',
+        };
+        const properties = { label: 'T43S R11W', section: '31' };
+        expect(getDisplayValue(properties, parquetConfig)).toBe('T43S R11W — Sec 31');
+    });
+});
+
+describe('getSourceDisplayName for parquet source', () => {
+    it('uses sourceName if present', () => {
+        const parquetConfig: ParquetSearchConfig = {
+            type: 'parquet',
+            parquetUrl: 'https://example.com/enmin_plss_sections.parquet',
+            sourceName: 'Utah Township, Range & Section',
+            displayField: 'label',
+        };
+        expect(getSourceDisplayName(parquetConfig)).toBe('Utah Township, Range & Section');
     });
 });

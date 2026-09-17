@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight, ExternalLink, Info } from "lucide-react";
 import { RelatedDataTable } from "@/components/maps/popups/related-data-table";
 import { DocumentsPanel } from "@/components/maps/popups/documents-panel";
 import { listedDocumentRows } from "@/lib/documents/classify";
+import { isSafeHref } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { LayerContentProps } from "@/components/maps/popups/types";
 import { Link } from "@/components/ui/link";
@@ -79,7 +80,7 @@ const getColorStyle = (
     if (mode === 'background') {
         return {
             style: { backgroundColor: color, color: '#1a1a1a' },
-            className: 'px-1.5 py-0.5 rounded inline-block',
+            className: 'px-1.5 py-0.5 rounded-md inline-block',
         };
     }
 
@@ -144,7 +145,7 @@ const renderFieldContent = (
         return (
             <>
                 {hrefs.map((item, i) => {
-                    if (item.href === null || item.href === '') {
+                    if (!item.href || !isSafeHref(item.href)) {
                         return <div key={`${item.label}-${i}`}><span className="break-words inline-block">{item.label}</span></div>;
                     }
                     return (
@@ -164,12 +165,12 @@ const renderFieldContent = (
     }
 
     // 2. Check for generic URL pattern
-    if (urlPattern.test(value)) {
+    if (urlPattern.test(value) && isSafeHref(value)) {
         return (
             <Button
                 className="p-0 h-auto whitespace-normal text-left font-normal inline-flex items-start max-w-full"
                 variant="link"
-                onClick={() => window.open(value, '_blank')}
+                onClick={() => window.open(value, '_blank', 'noopener,noreferrer')}
             >
                 <span className="break-all inline-block">{value}</span>
                 <ExternalLink className="flex-shrink-0 ml-1 mt-1" size={16} />
@@ -246,7 +247,7 @@ function CollapsibleSection({ label, count, children }: { label: string; count?:
                 onClick={() => setIsOpen(o => !o)}
                 aria-expanded={isOpen}
                 aria-controls={contentId}
-                className="flex items-center gap-1 font-bold text-foreground hover:text-foreground/80 hover:bg-muted/50 rounded px-1 -ml-1 transition-colors w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="flex items-center gap-1 font-bold text-foreground hover:text-foreground/80 hover:bg-muted/50 rounded-md px-1 -ml-1 transition-colors w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
                 {isOpen
                     ? <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
@@ -305,7 +306,7 @@ function PopupTable({ headers, rows }: { headers?: ReactNode[]; rows: ReactNode[
 
 // --- Main Component ---
 const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, relatedLoading }: PopupContentDisplayProps) => {
-    const { relatedTables, relatedTablesPosition, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource } = layer;
+    const { relatedTables, relatedTablesPosition, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource, popupFooterLink } = layer;
 
     // Convert bulk data to the format expected by getRelatedTableValues
     const data = useMemo((): ProcessedRelatedData[][] => {
@@ -531,7 +532,8 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
                 <RelatedDataTable
                     rows={data[tableIndex] as Record<string, unknown>[]}
                     displayFields={table.displayFields!}
-                    initialSort={table.sortBy ? { id: table.sortBy, desc: table.sortDirection === 'desc' } : undefined}
+                    initialSort={(Array.isArray(table.sortBy) ? table.sortBy : table.sortBy ? [table.sortBy] : [])
+                        .map(id => ({ id, desc: table.sortDirection === 'desc' }))}
                 />
             );
         } else {
@@ -604,6 +606,29 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
             originalIndex: 2000 + tableIndex,
         });
     });
+
+    // Footer link — high originalIndex pins it below everything (incl. related tables).
+    if (popupFooterLink) {
+        const footerHref = popupFooterLink.getHref(properties ?? null);
+        if (footerHref && isSafeHref(footerHref)) {
+            contentItems.push({
+                content: (
+                    <a
+                        key="popup-footer-link"
+                        href={footerHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-1 flex w-full items-center justify-center gap-1.5 rounded-md border border-primary/40 bg-primary/5 px-3 py-2 text-xs font-medium text-primary transition-colors hover:bg-primary/10"
+                    >
+                        {popupFooterLink.label}
+                        <ExternalLink size={13} />
+                    </a>
+                ),
+                isLongContent: true,
+                originalIndex: 100000,
+            });
+        }
+    }
 
     // --- Layout Rendering ---
     // Render every item in config order (feature fields, then related tables, then popup

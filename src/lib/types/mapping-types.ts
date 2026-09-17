@@ -104,6 +104,12 @@ export type ExtendedSublayerProperties = {
 
 
 
+/** Link rendered at the bottom of a feature popup; `getHref` builds it per-feature (null = none). */
+export interface PopupFooterLink {
+    label: string;
+    getHref: (properties: Record<string, unknown> | null) => string | null;
+}
+
 interface BaseLayerProps {
     type: 'feature' | 'tile' | 'map-image' | 'geojson' | 'imagery' | 'wms' | 'group' | 'pmtiles' | 'cog' | 'wfs';
     title: string;
@@ -114,6 +120,8 @@ interface BaseLayerProps {
     options?: any;
     opacity?: number;
     maxZoomLevel?: number;
+    /** Optional per-feature link at the bottom of this layer's popups (set per-route). */
+    popupFooterLink?: PopupFooterLink;
     customLegend?: React.ReactNode;
     /** Structured bivariate legend config — works in both sidebar and print export */
     bivariateLegend?: { xLabel: string; yLabel: string };
@@ -382,7 +390,8 @@ export interface RelatedTable {
     headers?: Record<string, string>;
     displayFields?: DisplayField[];
     logicalOperator?: string;
-    sortBy?: string;
+    /** Sort key, or keys in precedence order. */
+    sortBy?: string | string[];
     sortDirection?: 'asc' | 'desc';
     /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers, 'gallery' renders a photo gallery, 'accordion' renders one collapsible item per row, 'documents' groups files by type with per-row open/download, search, and pagination */
     displayAs?: 'list' | 'table' | 'gallery' | 'accordion' | 'documents';
@@ -404,6 +413,9 @@ export interface RelatedTable {
     galleryMetadataFields?: { field: string; label: string }[];
     /** Fetch mode: 'postgrest' (default), 'wfs' for GeoServer WFS, or 'parquet' for STAC geoparquet via duckdb-wasm */
     fetchMode?: 'postgrest' | 'wfs' | 'parquet';
+    /** Join this table's `displayFields` into the download itself — one row per related row —
+     *  instead of shipping it as a separate CSV in the zip. Parquet-backed tables only. */
+    combineIntoExport?: boolean;
     /** WFS typeName (required when fetchMode is 'wfs'), e.g. 'emp:sco2_with_grid' */
     wfsTypeName?: string;
 }

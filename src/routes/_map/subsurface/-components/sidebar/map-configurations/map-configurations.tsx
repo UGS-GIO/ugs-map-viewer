@@ -40,7 +40,7 @@ function MapConfigurations() {
             <BackToMenuButton />
             <div className='space-y-2'>
                 <div className="mb-4">
-                    <h3 className="text-lg font-medium mb-2">Map Configurations</h3>
+                    <h2 className="text-lg font-medium mb-2">Map Configurations</h2>
                 </div>
 
                 <Card>

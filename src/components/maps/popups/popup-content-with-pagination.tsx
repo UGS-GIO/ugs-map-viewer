@@ -284,7 +284,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                     >
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <SelectTrigger className="w-full">
+                                <SelectTrigger aria-label="Choose which layer's results to show" className="w-full">
                                     <SelectValue />
                                 </SelectTrigger>
                             </TooltipTrigger>

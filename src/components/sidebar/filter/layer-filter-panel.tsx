@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DualRangeSlider } from '@/components/ui/dual-range-slider';
@@ -13,6 +13,10 @@ import type {
     FilterState,
     FilterFieldValue,
 } from '@/lib/filter/types';
+
+/** Label → legal id. Escapes rather than collapses: "Oil Gas" and "Oil & Gas" need distinct ids. */
+export const optionId = (label: string) =>
+    label.replace(/[^a-z0-9]/gi, char => `_${char.charCodeAt(0).toString(16).padStart(4, '0')}`);
 
 /* ─── Field renderers ──────────────────────────────────────────────────── */
 
@@ -36,6 +40,8 @@ function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<
     const selected = v && (v.kind === 'multiSelect' || v.kind === 'containsAny') ? v.values : [];
     const filtered = field.optionLabelFilter ? options.filter(field.optionLabelFilter) : options;
 
+    const optionIdPrefix = useId();
+
     const toggle = (label: string, checked: boolean) => {
         const next = new Set(selected);
         if (checked) next.add(label); else next.delete(label);
@@ -51,7 +57,7 @@ function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<
                 {filtered.map(label => (
                     <div key={label} className="flex items-center space-x-2">
                         <Checkbox
-                            id={`${field.field}-${label}`}
+                            id={`${optionIdPrefix}-${optionId(label)}`}
                             checked={selected.includes(label)}
                             onCheckedChange={checked => toggle(label, checked === true)}
                         />
@@ -64,7 +70,7 @@ function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<
                                 }}
                             />
                         )}
-                        <Label htmlFor={`${field.field}-${label}`} className="text-sm cursor-pointer">
+                        <Label htmlFor={`${optionIdPrefix}-${optionId(label)}`} className="text-sm cursor-pointer">
                             {label}
                             {counts[label] != null && (
                                 <span className="ml-1 text-muted-foreground">({counts[label].toLocaleString()})</span>
@@ -84,7 +90,8 @@ function MultiSelectComboboxField({ schema, state, field, onChange }: FieldProps
         field,
         splitCommaDelimited: field.kind === 'containsAny',
     });
-    const options = data?.options ?? [];
+    const rawOptions = data?.options ?? [];
+    const options = field.optionLabelFilter ? rawOptions.filter(field.optionLabelFilter) : rawOptions;
     const counts = data?.counts ?? {};
     const value = state[field.field];
     const selected = value && (value.kind === 'multiSelect' || value.kind === 'containsAny') ? value.values : [];

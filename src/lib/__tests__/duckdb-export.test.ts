@@ -1,0 +1,99 @@
+import { describe, it, expect } from 'vitest'
+import { joinedRelationSql } from '../duckdb-export'
+import { mergedColumnNames } from '../export-formats'
+import type { RelatedTable } from '@/lib/types/mapping-types'
+
+const MAIN = "read_parquet('https://example.org/wells.parquet')"
+
+const intervals: RelatedTable = {
+    fieldLabel: 'Sample Types',
+    fetchMode: 'parquet',
+    url: 'https://example.org/intervals.parquet',
+    matchingField: 'uwi',
+    targetField: 'uwi',
+    sortBy: 'top_ft',
+    combineIntoExport: true,
+    displayFields: [
+        { field: 'sample_type', label: 'Type' },
+        { field: 'top_ft', label: 'Top (ft)' },
+        { field: 'notes_public', label: 'Notes' },
+    ],
+}
+
+describe('joinedRelationSql', () => {
+    it('leaves the main relation alone when nothing is combined', () => {
+        expect(joinedRelationSql(MAIN, ['uwi'], [])).toBe(MAIN)
+    })
+
+    it('left joins on the configured keys so wells without rows survive', () => {
+        const sql = joinedRelationSql(MAIN, ['uwi'], [intervals])
+        expect(sql).toContain(`LEFT JOIN read_parquet('https://example.org/intervals.parquet') AS r0`)
+        expect(sql).toContain('ON m."uwi" = r0."uwi"')
+    })
+
+    it('carries each display field through under its own name', () => {
+        const sql = joinedRelationSql(MAIN, ['uwi'], [intervals])
+        expect(sql).toContain('r0."sample_type" AS "sample_type"')
+        expect(sql).toContain('r0."top_ft" AS "top_ft"')
+    })
+
+    it('prefixes a field whose name the layer already uses', () => {
+        const sql = joinedRelationSql(MAIN, ['uwi', 'notes_public'], [intervals])
+        expect(sql).toContain('r0."notes_public" AS "sample_types_notes_public"')
+        expect(sql).not.toContain('r0."notes_public" AS "notes_public"')
+    })
+
+    it('groups rows by join key, then by the table\'s sort key', () => {
+        expect(joinedRelationSql(MAIN, ['uwi'], [intervals])).toContain('ORDER BY m."uwi", r0."top_ft"')
+    })
+
+    it('numbers a prefixed name that is also taken', () => {
+        const sql = joinedRelationSql(MAIN, ['uwi', 'notes_public', 'sample_types_notes_public'], [intervals])
+        expect(sql).toContain('r0."notes_public" AS "sample_types_notes_public_2"')
+    })
+
+    it('skips a table missing its join keys rather than emitting broken SQL', () => {
+        const unresolved: RelatedTable = { ...intervals, matchingField: undefined }
+        expect(joinedRelationSql(MAIN, ['uwi'], [unresolved])).toBe(MAIN)
+    })
+
+    it('gives each combined table its own alias and join', () => {
+        const boxes: RelatedTable = {
+            ...intervals,
+            fieldLabel: 'Core Boxes',
+            url: 'https://example.org/boxes.parquet',
+            sortBy: 'box_number',
+            displayFields: [{ field: 'box_number' }, { field: 'sample_type' }],
+        }
+        const sql = joinedRelationSql(MAIN, ['uwi'], [intervals, boxes])
+        expect(sql).toContain('AS r0')
+        expect(sql).toContain('AS r1')
+        expect(sql).toContain('r1."sample_type" AS "core_boxes_sample_type"')
+        expect(sql).toContain('ORDER BY m."uwi", r0."top_ft", r1."box_number"')
+    })
+
+    it('escapes quotes in a related url', () => {
+        const sneaky: RelatedTable = { ...intervals, url: "https://example.org/a'b.parquet" }
+        expect(joinedRelationSql(MAIN, ['uwi'], [sneaky])).toContain("a''b.parquet")
+    })
+})
+
+describe('mergedColumnNames', () => {
+    it('skips internal columns, as the join does', () => {
+        const withInternal: RelatedTable = {
+            ...intervals,
+            displayFields: [{ field: '_dbt_source' }, { field: 'bbox_xmin' }, { field: 'sample_type' }],
+        }
+        expect(mergedColumnNames(['uwi'], [withInternal])).toEqual(['sample_type'])
+    })
+
+    it('reports the names the export will emit, not the raw fields', () => {
+        expect(mergedColumnNames(['uwi', 'notes_public'], [intervals]))
+            .toEqual(['sample_type', 'top_ft', 'sample_types_notes_public'])
+    })
+
+    it('does not repeat a main column, so the shapefile check sees no phantom collision', () => {
+        const names = mergedColumnNames(['uwi', 'notes_public'], [intervals])
+        expect(names).not.toContain('notes_public')
+    })
+})

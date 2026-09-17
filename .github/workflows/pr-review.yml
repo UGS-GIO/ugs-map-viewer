@@ -1,0 +1,21 @@
+name: PR review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
+
+jobs:
+  review:
+    if: github.event_name != 'issue_comment' || github.event.issue.pull_request != null
+    permissions:
+      contents: read
+      # Required for Workload Identity Federation; never granted by default.
+      id-token: write
+      pull-requests: write
+      issues: write
+    # Ref stays `v1`: the WIF trust condition matches on `job_workflow_ref`, so a commit pin
+    # fails auth with IAM_PERMISSION_DENIED until that binding is widened.
+    uses: UGS-GIO/ugs-gha-pr-review/.github/workflows/review.yml@v1
+    secrets: inherit
