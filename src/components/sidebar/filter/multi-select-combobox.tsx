@@ -63,7 +63,15 @@ const MultiSelectCombobox = ({
     // Referencing the trigger too keeps its own text in the name.
     const triggerId = useId();
 
-    const items = useMemo(() => options.map(toOption), [options]);
+    // Two labels can map to one value (the formation aliases do), which would duplicate React keys.
+    const items = useMemo(() => {
+        const byValue = new Map<string, ComboboxOption>();
+        for (const option of options) {
+            const item = toOption(option);
+            if (!byValue.has(item.value)) byValue.set(item.value, item);
+        }
+        return [...byValue.values()];
+    }, [options]);
     const labels = useMemo(() => new Map(items.map(o => [o.value, o.label])), [items]);
 
     const handleSelect = useCallback((value: string) => {
