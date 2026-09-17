@@ -17,7 +17,7 @@ interface UseTourOptions {
 const HOLDS_POPUP = ['button', 'a', 'input'];
 const POPUP_ROLES = ['button', 'combobox', 'menuitem', 'link'];
 
-const stripDummyAria = () => {
+const stripHighlightAria = () => {
   const strip = () => {
     for (const el of document.querySelectorAll('.driver-active-element')) {
       const role = el.getAttribute('role') ?? '';
@@ -109,9 +109,9 @@ export function useTour(options: UseTourOptions = {}) {
         } else {
           popover.wrapper.setAttribute('aria-label', 'Tour step');
         }
-        stripDummyAria();
+        stripHighlightAria();
       },
-      onHighlighted: () => stripDummyAria(),
+      onHighlighted: () => stripHighlightAria(),
       onDestroyStarted: () => {
         // Called when user tries to close (X, Escape, or overlay click)
         // This allows the tour to be exited at any time
@@ -124,7 +124,7 @@ export function useTour(options: UseTourOptions = {}) {
     });
 
     driverRef.current.drive();
-    stripDummyAria();
+    stripHighlightAria();
   }, [route, markTourCompleted, onComplete]);
 
   // Stop the tour
