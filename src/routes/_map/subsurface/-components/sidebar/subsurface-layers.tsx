@@ -1,7 +1,7 @@
 import { BackToMenuButton } from '@/components/ui/back-to-menu-button'
 import { useCustomLayerList } from '@/hooks/use-custom-layerlist'
 import { useGetLayerConfigs } from '@/hooks/use-get-layer-configs'
-import { renderSubsurfaceLayerFilters } from './subsurface-layer-filters'
+import { renderSubsurfaceLayerFilters, SUBSURFACE_FILTER_SCHEMAS } from './subsurface-layer-filters'
 import { renderSubsurfaceLegend } from './subsurface-symbology-legend'
 
 /**
@@ -15,6 +15,7 @@ function SubsurfaceLayers({ disableExport = false }: { disableExport?: boolean }
     const layerList = useCustomLayerList({
         config: layerConfigs,
         disableExport,
+        hasLayerFilters: (title) => title in SUBSURFACE_FILTER_SCHEMAS,
         layerExtrasRender: renderSubsurfaceLayerFilters,
         layerLegendRender: renderSubsurfaceLegend,
     })
