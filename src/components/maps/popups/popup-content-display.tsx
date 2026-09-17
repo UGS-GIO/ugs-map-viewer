@@ -170,7 +170,7 @@ const renderFieldContent = (
             <Button
                 className="p-0 h-auto whitespace-normal text-left font-normal inline-flex items-start max-w-full"
                 variant="link"
-                onClick={() => window.open(value, '_blank')}
+                onClick={() => window.open(value, '_blank', 'noopener,noreferrer')}
             >
                 <span className="break-all inline-block">{value}</span>
                 <ExternalLink className="flex-shrink-0 ml-1 mt-1" size={16} />
