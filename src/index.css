@@ -187,7 +187,7 @@ body > #root {
   }
 }
 
-/* WCAG 2.3.3: honour the OS setting rather than animating sidebars, accordions and panels. */
+/* WCAG 2.3.3 — honour the OS setting. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -198,7 +198,7 @@ body > #root {
     scroll-behavior: auto !important;
   }
 
-  /* Progress indicators keep moving, slower: frozen mid-load they read as a hung app. */
+  /* Progress keeps moving, slower: frozen mid-load it reads as a hung app. */
   .animate-spin,
   .animate-pulse {
     animation-duration: 1.6s !important;

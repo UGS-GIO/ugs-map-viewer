@@ -32,7 +32,7 @@ const MultiSelectCombobox = ({
 }: MultiSelectComboboxProps) => {
     const [open, setOpen] = useState(false);
     const labelId = useId();
-    // Referencing the trigger itself keeps its own text — the selection summary — in the name.
+    // Referencing the trigger too keeps its own text in the name.
     const triggerId = useId();
 
     const handleSelect = useCallback((value: string) => {

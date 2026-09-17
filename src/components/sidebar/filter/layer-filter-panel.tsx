@@ -36,7 +36,7 @@ function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<
     const selected = v && (v.kind === 'multiSelect' || v.kind === 'containsAny') ? v.values : [];
     const filtered = field.optionLabelFilter ? options.filter(field.optionLabelFilter) : options;
 
-    // Option labels carry spaces; an id may not, so a label built from one associates with nothing.
+    // Labels carry spaces; an id may not.
     const optionIdPrefix = useId();
 
     const toggle = (label: string, checked: boolean) => {
