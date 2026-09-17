@@ -54,3 +54,20 @@ export function formatNumeric(value: unknown, format?: string): string {
 
   return numericFormatters[format](num);
 }
+/**
+ * True for links safe to put in an `href`: http(s) or same-origin paths.
+ * A config's `getHref` builds its URL from feature properties, so a `javascript:`
+ * value arriving from the data would otherwise run on click.
+ */
+export function isSafeHref(href: string): boolean {
+    const value = href.trim()
+    // `//host` inherits the page's scheme, so it is not a same-origin path.
+    if (value.startsWith('//')) return false
+    if (value.startsWith('/')) return true
+    try {
+        const { protocol } = new URL(value)
+        return protocol === 'https:' || protocol === 'http:'
+    } catch {
+        return false
+    }
+}

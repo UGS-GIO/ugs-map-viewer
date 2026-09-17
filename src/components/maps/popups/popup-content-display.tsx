@@ -6,6 +6,7 @@ import { ChevronDown, ChevronRight, ExternalLink, Info } from "lucide-react";
 import { RelatedDataTable } from "@/components/maps/popups/related-data-table";
 import { DocumentsPanel } from "@/components/maps/popups/documents-panel";
 import { listedDocumentRows } from "@/lib/documents/classify";
+import { isSafeHref } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { LayerContentProps } from "@/components/maps/popups/types";
 import { Link } from "@/components/ui/link";
@@ -609,7 +610,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
     // Footer link — high originalIndex pins it below everything (incl. related tables).
     if (popupFooterLink) {
         const footerHref = popupFooterLink.getHref(properties ?? null);
-        if (footerHref) {
+        if (footerHref && isSafeHref(footerHref)) {
             contentItems.push({
                 content: (
                     <a
