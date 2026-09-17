@@ -186,7 +186,7 @@ const buildGeoJSON = (opts: ExportOptions): Promise<GeoJSONBuild> => withConnect
     // double-projects. Longitude caps at 180; Mercator easting is ~1e7, so magnitude tells.
     const probe = await conn.query(`
         SELECT max(abs(ST_X(ST_Centroid(${geom})))) AS max_x
-        FROM (SELECT ${geomCol} FROM ${source} WHERE ${geomCol} IS NOT NULL LIMIT 100)
+        FROM (SELECT ${geomCol} FROM read_parquet('${escapeSql(opts.parquetUrl)}') WHERE ${geomCol} IS NOT NULL LIMIT 100)
     `);
     const maxX = Number((probe.toArray()[0]?.toJSON() as Record<string, unknown>)?.max_x ?? 0);
     const needsTransform = maxX > 180;
