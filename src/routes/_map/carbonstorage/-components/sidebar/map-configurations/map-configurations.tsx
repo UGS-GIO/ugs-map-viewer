@@ -286,7 +286,7 @@ const MapConfigurations = () => {
             <BackToMenuButton />
             <div className='space-y-4 p-4 max-h-full overflow-y-auto'>
                 <div className="mb-4">
-                    <h3 className="text-lg font-medium">Map Configurations</h3>
+                    <h2 className="text-lg font-medium">Map Configurations</h2>
                 </div>
 
                 {/* Card for Coordinate Format */}

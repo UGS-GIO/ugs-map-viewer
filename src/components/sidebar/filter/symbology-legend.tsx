@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useId, useMemo } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
@@ -92,6 +92,7 @@ interface SymbologyLegendProps {
 /** Interactive symbology legend (render dropdown + category filter grid), derived from STAC. */
 export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
     const { value: active } = useVectorSymbology(layer.title ?? '')
+    const symbologyLabelId = useId()
     const navigate = useNavigate()
     const { onLayerTurnedOff } = useMap()
     const mgr = useLayerFilter(schema)
@@ -134,9 +135,10 @@ export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
         <div className="flex flex-col gap-2 px-1 py-1">
             {modes.length > 1 && (
                 <div className="flex flex-col gap-1">
-                    <Label className="text-xs font-medium">Symbolize by</Label>
+                    <Label id={symbologyLabelId} className="text-xs font-medium">Symbolize by</Label>
                     <Select value={mode.id} onValueChange={switchMode}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                        {/* A `combobox` takes no name from its contents. */}
+                        <SelectTrigger aria-labelledby={symbologyLabelId} className="h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {modes.map(m => (
                                 <SelectItem key={m.id} value={m.id} className="text-xs">{m.label}</SelectItem>
