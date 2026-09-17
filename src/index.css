@@ -201,6 +201,8 @@ body > #root {
   background: hsl(var(--popover));
   color: hsl(var(--foreground));
   border-radius: var(--radius);
+  /* Children clip to the chip, so an active button can't square off its corner. */
+  overflow: hidden;
 }
 
 .maplibregl-ctrl.maplibregl-ctrl-group:not(:empty),
