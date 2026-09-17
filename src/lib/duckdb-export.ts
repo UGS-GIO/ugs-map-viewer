@@ -76,7 +76,12 @@ const combinedTables = (opts: ExportOptions): RelatedTable[] =>
 
 const columnNames = async (conn: duckdb.AsyncDuckDBConnection, relation: string): Promise<string[]> => {
     const described = await conn.query(`DESCRIBE SELECT * FROM ${relation}`);
-    return described.toArray().map(row => String((row.toJSON() as Record<string, unknown>).column_name));
+    return described.toArray().flatMap(row => {
+        const json: unknown = row.toJSON();
+        if (json === null || typeof json !== 'object') return [];
+        const name = Reflect.get(json, 'column_name');
+        return typeof name === 'string' ? [name] : [];
+    });
 };
 
 const columnPrefix = (label: string): string =>
