@@ -117,7 +117,7 @@ export const joinedRelationSql = (
         if (order.length === 0) order.push(`m.${quoteIdent(targetField)}`);
 
         for (const { field } of displayFields ?? []) {
-            if (isInternalColumn(field)) continue;
+            if (!field || isInternalColumn(field)) continue;
             selects.push(`${alias}.${quoteIdent(field)} AS ${quoteIdent(uniqueName(field, fieldLabel, taken))}`);
         }
         joins.push(
