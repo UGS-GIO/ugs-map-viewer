@@ -367,7 +367,7 @@ export function AddLayerDialog() {
                             <span className="text-xs text-muted-foreground">.geojson / .json / .pmtiles / .tif / .parquet — stored in this browser only</span>
                             <input
                                 type="file"
-                                accept=".geojson,.json,.pmtiles,.tif,.tiff,.parquet,application/geo+json,application/json,image/tiff,application/vnd.apache.parquet"
+                                accept=".geojson,.json,.pmtiles,.tif,.tiff,.parquet,.gpkg,.fgb,.zip,application/geo+json,application/json,image/tiff,application/vnd.apache.parquet"
                                 className="hidden"
                                 onChange={e => handleFile(e.target.files?.[0])}
                             />

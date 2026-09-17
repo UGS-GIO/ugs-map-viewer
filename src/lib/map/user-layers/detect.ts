@@ -35,6 +35,7 @@ import {
     LARGE_PARQUET_FEATURE_COUNT,
     type LoadParquetOptions,
 } from '@/lib/map/user-layers/parquet-deck-loader'
+import { isOgrFileName, loadOgrForDeck, ogrTitle } from '@/lib/map/user-layers/ogr-loader'
 import {
     parseArcGisUrl,
     fetchArcGisInfo,
@@ -499,8 +500,24 @@ export async function buildLayerFromFile(
         }
         return { def, file }
     }
+    if (isOgrFileName(name)) {
+        const title = ogrTitle(file.name)
+        const deckData = await loadOgrForDeck(file, { name: file.name })
+        const def: ParquetLayerProps = {
+            type: 'parquet',
+            title,
+            idbKey,
+            deckData,
+            color: colorFromTitle(title),
+            visible: true,
+            opacity: 0.85,
+            userAdded: true,
+            local: true,
+        }
+        return { def, file }
+    }
     if (!name.endsWith('.geojson') && !name.endsWith('.json')) {
-        throw new Error('Only GeoJSON (.geojson / .json), PMTiles (.pmtiles), COG (.tif / .tiff) and GeoParquet (.parquet) files can be uploaded.')
+        throw new Error('Only GeoJSON (.geojson / .json), PMTiles (.pmtiles), COG (.tif / .tiff), GeoParquet (.parquet), GeoPackage (.gpkg), FlatGeobuf (.fgb) and zipped Shapefile (.shp.zip) files can be uploaded.')
     }
     let parsed: unknown
     try {

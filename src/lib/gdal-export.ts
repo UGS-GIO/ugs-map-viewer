@@ -122,3 +122,25 @@ export function shapefileFieldChecks(cols: string[]): {
     }
     return { longNames, collisions, fieldCount: cols.length, tooManyFields: cols.length > 255 }
 }
+
+/**
+ * Any OGR-readable upload → FlatGeobuf bytes, for formats DuckDB's own GDAL
+ * build cannot open (notably `.gdb`). FlatGeobuf because DuckDB reads it and it
+ * carries a spatial index, unlike a GeoJSON hop.
+ */
+export async function convertToFlatGeobuf(file: File): Promise<Uint8Array> {
+    const gdal = await getGdal()
+    const { datasets } = await gdal.open(file)
+    const ds = datasets[0]
+    if (!ds) throw new Error(`GDAL could not open "${file.name}".`)
+    const stem = basename(file.name).replace(/\.[^.]+$/, '')
+    try {
+        // No `-t_srs`: a source with no declared CRS makes ogr2ogr bail outright.
+        // Coordinates stay native and the DuckDB read reprojects from the SRS the
+        // converted file carries.
+        const result = await gdal.ogr2ogr(ds, ['-f', 'FlatGeobuf', '-nln', stem], `${stem}.fgb`)
+        return await gdal.getFileBytes(result)
+    } finally {
+        try { await gdal.close(ds) } catch { /* best-effort */ }
+    }
+}

@@ -21,6 +21,7 @@ import { toast } from 'sonner'
 import type { LayerProps, ParquetLayerProps } from '@/lib/types/mapping-types'
 import { buildLayerFromUrl, objectUrlForCog, releaseUploadedLayer, type UploadedLayer, type DetectedFormat } from '@/lib/map/user-layers/detect'
 import { loadParquetForDeck, dropParquetTables } from '@/lib/map/user-layers/parquet-deck-loader'
+import { isOgrFileName, loadOgrForDeck } from '@/lib/map/user-layers/ogr-loader'
 import { getAllUserLayers, putUserLayer, deleteUserLayer } from '@/lib/map/user-layers/idb'
 import { registerLocalPMTiles } from '@/lib/map/pmtiles/setup'
 
@@ -169,7 +170,12 @@ export const UserLayersProvider = ({ children }: { children: ReactNode }) => {
                                 // `cogUrl` is stale — always mint a fresh one.
                                 restored.push({ ...def, cogUrl: objectUrlForCog(r.file) })
                             } else if (def.type === 'parquet') {
-                                const deckData = await loadParquetForDeck(r.file)
+                                // GDAL-backed uploads share the parquet layer type but are not
+                                // parquet files; reading one with `read_parquet` fails on the
+                                // magic bytes.
+                                const deckData = isOgrFileName(r.file.name)
+                                    ? await loadOgrForDeck(r.file)
+                                    : await loadParquetForDeck(r.file)
                                 restored.push({ ...def, deckData })
                             }
                         } catch (e) {
