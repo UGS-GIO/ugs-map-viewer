@@ -158,6 +158,8 @@ export default function Sidebar({ className }: SidebarProps) {
       aria-label="Map tools"
       className={cn(
         "absolute left-0 right-0 top-0 z-50 w-full md:bottom-0 md:right-auto md:h-full md:border-r-2 md:border-r-muted",
+        // Mobile drawer grows with its links; cap it so a long list scrolls instead of spilling.
+        "max-h-dvh overflow-y-auto md:max-h-none md:overflow-visible",
         navOpened ? "border-b" : "hidden md:block",
         !isDragging && "transition-[width] duration-200 ease-linear",
         className
