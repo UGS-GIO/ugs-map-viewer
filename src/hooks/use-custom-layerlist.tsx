@@ -260,7 +260,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                 className="mx-2"
                             />
                             <AccordionHeader level={headingLevel} className="flex-1">
-                            <AccordionTrigger>
+                                <AccordionTrigger>
                                 <div className="text-left">
                                     <span className="font-medium text-md">
                                         {layerConfig.title}
@@ -351,7 +351,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                             />
                         )}
                         <AccordionHeader level={headingLevel} className="flex-1">
-                        <AccordionTrigger>
+                            <AccordionTrigger>
                             <div className="text-left">
                                 <span
                                     className={`block text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}

@@ -17,18 +17,14 @@ function Info() {
   const [modalType, setModalType] = useState<ModalType | ''>('');
   const { setCurrentContent } = useSidebar();
   const contentRef = useRef<HTMLDivElement>(null);
-  const [isMapDetailsExpanded, setIsMapDetailsExpanded] = useState(true);
-  const [isDataSourcesExpanded, setIsDataSourcesExpanded] = useState(false);
+  // Driven by the accordions: a handler on the heading also fired on its padding, leaving
+  // the summary out of step with the section it summarises.
+  const [openDetails, setOpenDetails] = useState<string[]>(['map-details-accordion-item-1']);
+  const [openSources, setOpenSources] = useState<string[]>([]);
+  const isMapDetailsExpanded = openDetails.includes('map-details-accordion-item-1');
+  const isDataSourcesExpanded = openSources.includes('data-sources-accordion-item-1');
   const drawerTriggerRef = useRef<HTMLButtonElement>(null);
   const { data: pageInfo, isLoading: isInfoLoading } = useGetPageInfo();
-
-  const toggleMapDetails = () => {
-    setIsMapDetailsExpanded(!isMapDetailsExpanded);
-  };
-
-  const toggleDataSources = () => {
-    setIsDataSourcesExpanded(!isDataSourcesExpanded);
-  };
 
   const handleOpenModal = (type: ModalType) => {
     setModalType(type);
@@ -65,9 +61,9 @@ function Info() {
       <div className="ml-2 overflow-y-auto flex-grow" ref={contentRef}>
         {/* Map Details Accordion */}
         <div className="mr-2" key="map-details-accordion">
-          <Accordion type="multiple" defaultValue={['map-details-accordion-item-1']}>
+          <Accordion type="multiple" value={openDetails} onValueChange={setOpenDetails}>
             <AccordionItem value="map-details-accordion-item-1">
-              <AccordionHeader level={2} onClick={toggleMapDetails}>
+              <AccordionHeader level={2}>
                 <AccordionTrigger>
                   <div className="flex flex-col mx-2 items-start">
                     <span className="font-large text-left text-lg">Map Details</span>
@@ -88,9 +84,9 @@ function Info() {
 
         {/* Data Sources Accordion */}
         <div className="mr-2" key="data-sources-accordion">
-          <Accordion type="multiple">
+          <Accordion type="multiple" value={openSources} onValueChange={setOpenSources}>
             <AccordionItem value="data-sources-accordion-item-1">
-              <AccordionHeader level={2} onClick={toggleDataSources}>
+              <AccordionHeader level={2}>
                 <AccordionTrigger>
                   <div className="flex flex-col mx-2 items-start">
                     <span className="font-large text-left text-lg">Data Sources</span>
