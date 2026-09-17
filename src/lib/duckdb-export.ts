@@ -68,7 +68,6 @@ const bufferToBlob = async (
     return new Blob([bytes], { type: mimeType });
 };
 
-
 const combinedTables = (opts: ExportOptions): RelatedTable[] =>
     (opts.relatedTables ?? []).filter(isCombinedTable);
 

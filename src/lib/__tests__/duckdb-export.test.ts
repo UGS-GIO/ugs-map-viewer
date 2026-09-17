@@ -56,6 +56,21 @@ describe('joinedRelationSql', () => {
         expect(joinedRelationSql(MAIN, ['uwi'], [unresolved])).toBe(MAIN)
     })
 
+    it('gives each combined table its own alias and join', () => {
+        const boxes: RelatedTable = {
+            ...intervals,
+            fieldLabel: 'Core Boxes',
+            url: 'https://example.org/boxes.parquet',
+            sortBy: 'box_number',
+            displayFields: [{ field: 'box_number' }, { field: 'sample_type' }],
+        }
+        const sql = joinedRelationSql(MAIN, ['uwi'], [intervals, boxes])
+        expect(sql).toContain('AS r0')
+        expect(sql).toContain('AS r1')
+        expect(sql).toContain('r1."sample_type" AS "core_boxes_sample_type"')
+        expect(sql).toContain('ORDER BY m."uwi", r0."top_ft", r1."box_number"')
+    })
+
     it('escapes quotes in a related url', () => {
         const sneaky: RelatedTable = { ...intervals, url: "https://example.org/a'b.parquet" }
         expect(joinedRelationSql(MAIN, ['uwi'], [sneaky])).toContain("a''b.parquet")
