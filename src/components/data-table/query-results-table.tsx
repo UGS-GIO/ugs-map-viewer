@@ -309,6 +309,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             <div className="flex items-center justify-between gap-2 py-1.5 px-2 md:px-4 border-b shrink-0 bg-background">
                 {layersWithData.length > 1 ? (
                     <select
+                        aria-label="Choose which layer's results to show"
                         value={selectedLayerIndex}
                         onChange={(e) => handleLayerChange(Number(e.target.value))}
                         className="h-7 px-2 rounded-md border border-input bg-background text-sm font-medium truncate flex-1 min-w-0"
@@ -395,6 +396,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 ) : (
                     <>
                         <select
+                            aria-label="Column to search"
                             value={filter.column}
                             onChange={(e) => setFilter({ column: e.target.value, value: '' })}
                             className="h-7 px-2 rounded-md border border-input bg-background text-sm shrink-0"
@@ -464,6 +466,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                         <Button
                             variant="ghost"
                             size="sm"
+                            aria-label="Show or hide columns"
                             className="h-6 px-2 text-xs text-muted-foreground"
                         >
                             <Columns3 className="h-3 w-3" />

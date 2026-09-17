@@ -32,7 +32,7 @@ export function TablePagination<T>({ table, totalRows }: TablePaginationProps<T>
                     value={String(table.getState().pagination.pageSize)}
                     onValueChange={(value) => table.setPageSize(Number(value))}
                 >
-                    <SelectTrigger className="h-7 w-16">
+                    <SelectTrigger aria-label="Rows per page" className="h-7 w-16">
                         <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -51,13 +51,15 @@ export function TablePagination<T>({ table, totalRows }: TablePaginationProps<T>
             </div>
 
             <div className="flex items-center gap-1">
-                <span className="text-sm text-muted-foreground">
+                <span className="text-sm text-muted-foreground" aria-live="polite">
+                    <span className="sr-only">Page </span>
                     {table.getState().pagination.pageIndex + 1}/{table.getPageCount() || 1}
                 </span>
                 <Button
                     variant="outline"
                     size="sm"
                     className="h-7 w-7 p-0 hidden sm:flex"
+                    aria-label="First page"
                     onClick={() => table.setPageIndex(0)}
                     disabled={!table.getCanPreviousPage()}
                 >
@@ -67,6 +69,7 @@ export function TablePagination<T>({ table, totalRows }: TablePaginationProps<T>
                     variant="outline"
                     size="sm"
                     className="h-7 w-7 p-0"
+                    aria-label="Previous page"
                     onClick={() => table.previousPage()}
                     disabled={!table.getCanPreviousPage()}
                 >
@@ -76,6 +79,7 @@ export function TablePagination<T>({ table, totalRows }: TablePaginationProps<T>
                     variant="outline"
                     size="sm"
                     className="h-7 w-7 p-0"
+                    aria-label="Next page"
                     onClick={() => table.nextPage()}
                     disabled={!table.getCanNextPage()}
                 >
@@ -85,6 +89,7 @@ export function TablePagination<T>({ table, totalRows }: TablePaginationProps<T>
                     variant="outline"
                     size="sm"
                     className="h-7 w-7 p-0 hidden sm:flex"
+                    aria-label="Last page"
                     onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                     disabled={!table.getCanNextPage()}
                 >
