@@ -131,6 +131,13 @@ export const DATA_QUAL_ORDER = ['high', 'medium', 'low', 'very low', 'unknown'] 
 // to this set, not to all-visible.
 export const DEFAULT_VISIBLE_DATA_QUALS = ['high', 'medium'] as const
 
+// The low-quality tiers Tara's rule governs: independently-confirmed members are
+// always shown (hatched by the SLD), the rest are dropped unless a reviewer opts
+// in. Must stay in sync with the SLD hatch filter + the confirmed-low CQL
+// override in displacement-filter-context. Grouped as one "unconfirmed low
+// quality" control in the filter UI since they behave identically here.
+export const LOW_DATA_QUALS = ['low', 'very low'] as const
+
 // What each data-quality category means: share of valid pixels behind the
 // measurement. Surfaced under each data-quality checkbox. Keyed by the same
 // lowercase tokens as DATA_QUAL_ORDER; categories without an entry (e.g.

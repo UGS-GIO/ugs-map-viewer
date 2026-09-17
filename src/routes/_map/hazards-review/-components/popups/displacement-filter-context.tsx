@@ -55,6 +55,9 @@ interface DisplacementFilterState {
     removeBasin: (type: DisplacementType, location: string) => void
     clearBasins: (type: DisplacementType) => void
     toggleDataQual: (type: DisplacementType, qual: string) => void
+    /** Show/hide several data_qual categories at once (e.g. low + very-low as one
+     * "unconfirmed low quality" toggle). */
+    setDataQualsVisible: (type: DisplacementType, quals: readonly string[], visible: boolean) => void
     clearDataQuals: (type: DisplacementType) => void
 }
 
@@ -199,6 +202,24 @@ export function DisplacementFilterProvider({ children }: { children: ReactNode }
         })
     }, [update])
 
+    // Show/hide a group of categories together (the low + very-low pair behind
+    // the single "unconfirmed low quality" toggle). visible=true un-excludes them,
+    // false excludes them; prunes back to the default key when they land there.
+    const setDataQualsVisible = useCallback((type: DisplacementType, quals: readonly string[], visible: boolean) => {
+        update(cur => {
+            const set = new Set(readExcluded(cur, type))
+            for (const q of quals) {
+                if (visible) set.delete(q)
+                else set.add(q)
+            }
+            const arr = [...set]
+            const excludedQuals = { ...cur.excludedQuals }
+            if (isDefaultQuals(arr)) delete excludedQuals[type]
+            else excludedQuals[type] = arr
+            return { ...cur, excludedQuals }
+        })
+    }, [update])
+
     // "Reset" returns to the high/medium default = drop the per-type key.
     const clearDataQuals = useCallback((type: DisplacementType) => {
         update(cur => {
@@ -238,7 +259,7 @@ export function DisplacementFilterProvider({ children }: { children: ReactNode }
     }, [update])
 
     return (
-        <DisplacementFilterContext.Provider value={{ yearOverridesByType, thresholdsIn, basinsByType, excludedDataQualsByType, setYearOverride, setThreshold, addBasin, removeBasin, clearBasins, toggleDataQual, clearDataQuals }}>
+        <DisplacementFilterContext.Provider value={{ yearOverridesByType, thresholdsIn, basinsByType, excludedDataQualsByType, setYearOverride, setThreshold, addBasin, removeBasin, clearBasins, toggleDataQual, setDataQualsVisible, clearDataQuals }}>
             {children}
         </DisplacementFilterContext.Provider>
     )
