@@ -413,6 +413,9 @@ export interface RelatedTable {
     galleryMetadataFields?: { field: string; label: string }[];
     /** Fetch mode: 'postgrest' (default), 'wfs' for GeoServer WFS, or 'parquet' for STAC geoparquet via duckdb-wasm */
     fetchMode?: 'postgrest' | 'wfs' | 'parquet';
+    /** Join this table's `displayFields` into the download itself — one row per related row —
+     *  instead of shipping it as a separate CSV in the zip. Parquet-backed tables only. */
+    combineIntoExport?: boolean;
     /** WFS typeName (required when fetchMode is 'wfs'), e.g. 'emp:sco2_with_grid' */
     wfsTypeName?: string;
 }

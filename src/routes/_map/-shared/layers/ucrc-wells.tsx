@@ -62,6 +62,8 @@ export const ucrcWellsConfig: PMTilesLayerProps = {
                     ],
                     sortBy: 'top_ft',
                     sortDirection: 'asc',
+                    // Inventory downloads carry the intervals inline (#578), not as a side CSV.
+                    combineIntoExport: true,
                 },
                 {
                     // STAC-backed: url + uwi join filled from the enmin_ucrc_boxes related asset.
