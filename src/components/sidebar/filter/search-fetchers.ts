@@ -1,4 +1,4 @@
-import type { FeatureCollection, Geometry, GeoJsonProperties, Feature } from 'geojson';
+import type { Geometry, GeoJsonProperties, Feature } from 'geojson';
 import { featureCollection } from '@turf/helpers';
 import type { MasqueradeConfig, ParquetSearchConfig, PostgRESTConfig, SearchFeature, SearchFeatureCollection, Suggestion } from './search-types';
 import { appendFunctionParams } from './search-utils';
@@ -70,6 +70,15 @@ export function buildPostgrestSearchParams(fields: string[], searchTerm: string)
     return params;
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null;
+
+// PostgREST returns whatever the view/function was written to return, so the shape is
+// checked rather than asserted.
+const isSearchFeature = (value: unknown): value is SearchFeature =>
+    isRecord(value) && value.type === 'Feature' &&
+    (value.geometry === null || isRecord(value.geometry));
+
 export async function fetchPostgRESTResults(
     source: PostgRESTConfig,
     searchTerm: string,
@@ -120,22 +129,23 @@ export async function fetchPostgRESTResults(
     if (!response.ok) {
         throw new Error(`PostgREST error (${response.status}) from ${apiUrl}`);
     }
-    const data = await response.json();
+    const data: unknown = await response.json();
 
-    if (data && Array.isArray(data)) {
-        if (data.length === 0 || data[0]?.type === 'Feature') {
-            return featureCollection(data as Feature<Geometry, GeoJsonProperties>[]);
+    if (Array.isArray(data)) {
+        if (data.every(isSearchFeature)) {
+            return { type: 'FeatureCollection', features: data };
         }
-        // Plain objects — convert to pseudo-features for display
-        const pseudoFeatures: SearchFeature[] = data.map((item, idx) => ({
-            type: 'Feature' as const,
+        // Plain rows — wrap as pseudo-features so they can be listed.
+        const pseudoFeatures: SearchFeature[] = data.filter(isRecord).map((item, idx) => ({
+            type: 'Feature',
             id: idx,
             geometry: null,
-            properties: item
+            properties: item,
         }));
         return { type: 'FeatureCollection', features: pseudoFeatures };
-    } else if (data?.type === 'FeatureCollection' && Array.isArray(data.features)) {
-        return data as FeatureCollection<Geometry, GeoJsonProperties>;
+    }
+    if (isRecord(data) && data.type === 'FeatureCollection' && Array.isArray(data.features)) {
+        return { type: 'FeatureCollection', features: data.features.filter(isSearchFeature) };
     }
 
     console.warn(`Unexpected API response from ${apiUrl}`, data);
@@ -365,16 +375,20 @@ export async function withParquetGeometry(
     source: ParquetSearchConfig,
     features: SearchFeature[],
 ): Promise<Feature<Geometry, GeoJsonProperties>[]> {
-    // No idField means no geometry lookup — keep only what already has geometry.
-    if (!source.idField) return features.filter((f): f is Feature<Geometry, GeoJsonProperties> => f.geometry !== null);
+    const located = features.filter((f): f is Feature<Geometry, GeoJsonProperties> => f.geometry !== null);
     const idField = source.idField;
-    const ids = features.map(f => String(f.properties?.[idField] ?? '')).filter(Boolean);
+    const missing = idField ? features.filter(f => f.geometry === null) : [];
+    if (!idField || missing.length === 0) return located;
+
+    const ids = missing.map(f => String(f.properties?.[idField] ?? '')).filter(Boolean);
     const geometries = await fetchParquetGeometries(source, ids);
 
-    return features
+    const fetched = missing
         .map(feature => {
             const geometry = geometries.get(String(feature.properties?.[idField] ?? ''));
             return geometry ? { ...feature, geometry } : null;
         })
         .filter((f): f is Feature<Geometry, GeoJsonProperties> => f !== null);
+
+    return [...located, ...fetched];
 }

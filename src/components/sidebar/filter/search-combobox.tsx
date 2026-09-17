@@ -285,10 +285,9 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
             return;
         }
 
-        let allVisibleFeatures: SearchFeature[] = [];
+        const bySource: { index: number; features: SearchFeature[] }[] = [];
         let firstValidSourceUrl: string | null = null;
         let firstValidSourceIndex: number = -1;
-        let needsGeometryFetch = false;
         const layerTitlesToShow: string[] = [];
         const indicesToCheck = activeSourceIndex !== null ? [activeSourceIndex] : config.map((_, index) => index);
 
@@ -302,47 +301,39 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
             ) {
                 const sourceConfig = config[index];
                 if (sourceConfig.type !== 'masquerade' && sourceResult.data.features.length > 0) {
-                    allVisibleFeatures = allVisibleFeatures.concat(sourceResult.data.features);
+                    bySource.push({ index, features: sourceResult.data.features });
                     if (firstValidSourceIndex === -1) {
                         firstValidSourceUrl = sourceConfig.type === 'parquet' ? sourceConfig.parquetUrl : sourceConfig.url;
                         firstValidSourceIndex = index;
                     }
-                    if (!sourceResult.data.features[0]?.geometry && sourceConfig.type === 'postgREST') needsGeometryFetch = true;
                     if (sourceConfig.layerName) layerTitlesToShow.push(sourceConfig.layerName);
                 }
             }
         }
 
-        // Suggestions are geometry-free; resolve the visible set in one query.
-        if (allVisibleFeatures.length > 0 && firstValidSourceIndex !== -1) {
-            const parquetSource = searchConfig[firstValidSourceIndex];
-            if (parquetSource?.type === 'parquet' && !allVisibleFeatures[0]?.geometry) {
-                try {
-                    allVisibleFeatures = await withParquetGeometry(parquetSource, allVisibleFeatures);
-                } catch (error) {
-                    console.error('Error fetching parquet geometries for collection:', error);
-                    allVisibleFeatures = [];
+        // Suggestions are geometry-free, and an id only resolves against the source it came
+        // from — so each source fetches its own geometry before the results are merged.
+        const resolved = await Promise.all(bySource.map(async ({ index, features }) => {
+            const sourceConfig = searchConfig[index];
+            if (features.every(feature => feature.geometry)) return features;
+            try {
+                if (sourceConfig?.type === 'parquet') {
+                    return await withParquetGeometry(sourceConfig, features);
                 }
-            }
-        }
-
-        // Fetch geometry for features that don't have it
-        if (needsGeometryFetch && allVisibleFeatures.length > 0 && firstValidSourceIndex !== -1) {
-            const sourceConfig = searchConfig[firstValidSourceIndex] as PostgRESTConfig;
-            if (sourceConfig.functionName && sourceConfig.searchTerm) {
-                try {
+                if (sourceConfig?.type === 'postgREST' && sourceConfig.functionName && sourceConfig.searchTerm) {
                     const data = await geometryMutation.mutateAsync({
                         searchParams: { [sourceConfig.searchTerm]: `%${currentSearchTerm}%` },
                         sourceConfig,
                     });
-                    if (data?.type === 'FeatureCollection' && data.features?.length > 0) {
-                        allVisibleFeatures = data.features;
-                    }
-                } catch (error) {
-                    console.error('Error fetching geometries for collection:', error);
+                    if (data?.type === 'FeatureCollection' && data.features?.length > 0) return data.features;
                 }
+            } catch (error) {
+                console.error(`Error fetching geometries for search source ${index}:`, error);
+                return [];
             }
-        }
+            return features;
+        }));
+        const allVisibleFeatures = resolved.flat();
 
         // Same ordering as single selection — layers on, then one camera move.
         layerTitlesToShow.forEach(ensureLayerVisibleByTitle);
@@ -498,11 +489,9 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                                     'features' in sourceResult.data
                                 ) {
                                     const features = sourceResult.data.features;
-                                    const isParquet = sourceResult.type === 'parquet';
-                                    const postgRESTSource = isParquet ? null : (source as PostgRESTConfig);
-                                    const parquetSource = isParquet ? (source as ParquetSearchConfig) : null;
-                                    const groupByField = postgRESTSource?.groupByField || parquetSource?.groupByField;
-                                    const groupLabels = postgRESTSource?.groupLabels || parquetSource?.groupLabels;
+                                    const grouped = source.type === 'masquerade' ? null : source;
+                                    const groupByField = grouped?.groupByField;
+                                    const groupLabels = grouped?.groupLabels;
 
                                     const renderFeatureItems = (items: typeof features) =>
                                         items.map((feature, featureIndex) => {
