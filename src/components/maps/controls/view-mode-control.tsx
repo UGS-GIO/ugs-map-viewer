@@ -35,7 +35,7 @@ export function ViewModeControl({
   return container
     ? createPortal(
         <div
-          className="flex rounded-md bg-background shadow-[0_0_0_2px_rgba(0,0,0,0.1)] dark:shadow-[0_0_0_2px_hsl(var(--border))]"
+          className="map-control-panel flex"
           data-tour="view-mode"
         >
           {modes.map(({ value, label, Icon }, i) => {

@@ -187,23 +187,28 @@ body > #root {
   }
 }
 
-/* MapLibre control overrides — unlayered to beat maplibre-gl.css specificity */
+/* MapLibre control overrides — unlayered to beat maplibre-gl.css specificity.
+   `.map-control-panel` is the same chip for the app's own portal controls, so the
+   two sets can't drift apart on colour, radius or ring. */
 .maplibregl-ctrl.maplibregl-ctrl-group button {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.dark .maplibregl-ctrl-group {
+.maplibregl-ctrl.maplibregl-ctrl-group,
+.map-control-panel {
   background: hsl(var(--popover));
   color: hsl(var(--foreground));
+  border-radius: var(--radius);
 }
 
-.dark .maplibregl-ctrl-group:not(:empty) {
+.maplibregl-ctrl.maplibregl-ctrl-group:not(:empty),
+.map-control-panel {
   box-shadow: 0 0 0 2px hsl(var(--border));
 }
 
-.dark .maplibregl-ctrl-group button + button {
+.maplibregl-ctrl.maplibregl-ctrl-group button + button {
   border-color: hsl(var(--border));
 }
 
@@ -218,8 +223,16 @@ body > #root {
   background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='29' height='29' fill='%23e5e5e5' viewBox='0 0 29 29'%3E%3Cpath d='m10.5 14 4-8 4 8z'/%3E%3Cpath fill='%23666' d='m10.5 16 4 8 4-8z'/%3E%3C/svg%3E");
 }
 
-.dark .maplibregl-ctrl-group button:not(:disabled):hover {
-  background-color: rgba(255, 255, 255, 0.1);
+/* Maplibre's own washes (black 5%) vanish on a dark chip; use the accent token the
+   app's control buttons already hover with. */
+.maplibregl-ctrl.maplibregl-ctrl-group button:not(:disabled):hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.maplibregl-ctrl.maplibregl-ctrl-group button:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px hsl(var(--ring));
 }
 
 .dark .maplibregl-ctrl-attrib {
