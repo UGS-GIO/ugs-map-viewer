@@ -97,18 +97,20 @@ export function useTour(options: UseTourOptions = {}) {
       stageRadius: 8,
       popoverClass: 'ugs-tour-popover',
       steps,
-      // driver.js ships the title as a <header>: a second banner landmark beside the app bar.
+      // driver.js builds the popover from <header>/<footer>: landmarks the dialog shouldn't have.
       onPopoverRender: (popover) => {
         if (!popover?.wrapper) return;
         popover.wrapper.setAttribute('role', 'dialog');
         // A step may define no title, and then there is no title node.
         if (popover.title) {
+          // role=heading is not allowed on <header>; the dialog is named by it instead.
           popover.title.setAttribute('role', 'presentation');
           if (!popover.title.id) popover.title.id = 'driver-popover-title';
           popover.wrapper.setAttribute('aria-labelledby', popover.title.id);
         } else {
           popover.wrapper.setAttribute('aria-label', 'Tour step');
         }
+        popover.footer?.setAttribute('role', 'presentation');
         stripHighlightAria();
       },
       onHighlighted: () => stripHighlightAria(),

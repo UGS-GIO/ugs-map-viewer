@@ -3,9 +3,12 @@ import { optionId } from '../layer-filter-panel'
 
 describe('optionId', () => {
     it('replaces the characters an id may not carry', () => {
-        expect(optionId('Whole Core')).toBe('Whole_Core')
-        expect(optionId('Oil & Gas')).toBe('Oil_Gas')
-        expect(optionId('Core Chips (partial)')).toBe('Core_Chips_partial_')
+        expect(optionId('Whole Core')).toBe('Whole_0020Core')
+        expect(optionId('Core Chips (partial)')).toBe('Core_0020Chips_0020_0028partial_0029')
+    })
+
+    it('keeps labels apart that differ only in punctuation', () => {
+        expect(optionId('Oil Gas')).not.toBe(optionId('Oil & Gas'))
     })
 
     it('is stable for a label regardless of its position in the list', () => {

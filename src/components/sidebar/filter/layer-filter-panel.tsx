@@ -14,8 +14,9 @@ import type {
     FilterFieldValue,
 } from '@/lib/filter/types';
 
-/** An option label is not a legal id (spaces, punctuation) — key on a sanitized form so it survives a reorder. */
-export const optionId = (label: string) => label.replace(/[^a-z0-9]+/gi, '_');
+/** Label → legal id. Escapes rather than collapses: "Oil Gas" and "Oil & Gas" need distinct ids. */
+export const optionId = (label: string) =>
+    label.replace(/[^a-z0-9]/gi, char => `_${char.charCodeAt(0).toString(16).padStart(4, '0')}`);
 
 /* ─── Field renderers ──────────────────────────────────────────────────── */
 
