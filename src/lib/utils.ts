@@ -54,15 +54,10 @@ export function formatNumeric(value: unknown, format?: string): string {
 
   return numericFormatters[format](num);
 }
-/**
- * True for links safe to put in an `href`: http(s) or same-origin paths.
- * A config's `getHref` builds its URL from feature properties, so a `javascript:`
- * value arriving from the data would otherwise run on click.
- */
+/** Safe in an `href`: http(s) or a same-origin path. Popup links are built from feature data. */
 export function isSafeHref(href: string): boolean {
     const value = href.trim()
-    // Browsers normalize `\` to `/` for http(s), so `/\host` resolves to the
-    // protocol-relative `//host` — an external site, not a path on this one.
+    // `/\host` — browsers normalize the backslash, making it protocol-relative.
     if (value.startsWith('/')) return value[1] !== '/' && value[1] !== '\\'
     try {
         const { protocol } = new URL(value)

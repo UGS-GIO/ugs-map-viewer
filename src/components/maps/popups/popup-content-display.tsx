@@ -145,7 +145,6 @@ const renderFieldContent = (
         return (
             <>
                 {hrefs.map((item, i) => {
-                    // A config transform can build the href out of feature properties.
                     if (!item.href || !isSafeHref(item.href)) {
                         return <div key={`${item.label}-${i}`}><span className="break-words inline-block">{item.label}</span></div>;
                     }
