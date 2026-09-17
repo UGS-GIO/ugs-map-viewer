@@ -12,13 +12,47 @@
  * million.
  */
 import { useEffect, useRef, useMemo } from 'react'
+import { useQueries, keepPreviousData } from '@tanstack/react-query'
+import { useSearch } from '@tanstack/react-router'
 import { MapboxOverlay } from '@deck.gl/mapbox'
 import { ScatterplotLayer } from '@deck.gl/layers'
 import type { Layer as DeckLayer, PickingInfo } from '@deck.gl/core'
 import type maplibregl from 'maplibre-gl'
 import type { ParquetLayerProps } from '@/lib/types/mapping-types'
 import type { WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
-import { queryParquetRowProperties } from '@/lib/map/user-layers/parquet-deck-loader'
+import { queryParquetRowProperties, queryPointsInViewport } from '@/lib/map/user-layers/parquet-deck-loader'
+import type { ParquetPointView } from '@/lib/map/user-layers/parquet-deck-loader'
+
+/** How far past the viewport to fetch, as a fraction of its size. Covers a
+ *  small pan before the next slice lands. */
+const VIEWPORT_PAD = 0.3
+
+/**
+ * Prop carrying the drawn slice on the Deck layer itself.
+ *
+ * Deck draws a viewport's worth of points, not the whole table, so a click's
+ * index is an index into that slice. Hanging the slice off the layer is what
+ * lets picking resolve it from `info.layer` alone, with no state on the side to
+ * keep in step.
+ */
+const POINT_VIEW_PROP = 'ugsPointView'
+
+/** Recognize a slice coming back off a Deck layer's props. Deck types props as
+ *  its own shape, so this is checked rather than asserted. */
+function readPointView(props: unknown): ParquetPointView | undefined {
+    if (typeof props !== 'object' || props === null) return undefined
+    const bag: Record<string, unknown> = { ...props }
+    const view = bag[POINT_VIEW_PROP]
+    if (typeof view !== 'object' || view === null) return undefined
+    const candidate: Record<string, unknown> = { ...view }
+    return candidate.positions instanceof Float32Array
+        && candidate.rowIds instanceof Int32Array
+        && typeof candidate.count === 'number'
+        && typeof candidate.inView === 'number'
+        && typeof candidate.stride === 'number'
+        ? { positions: candidate.positions, rowIds: candidate.rowIds, count: candidate.count, inView: candidate.inView, stride: candidate.stride }
+        : undefined
+}
 
 /** Deck layer id for a Parquet layer. Shared with `data-map` so `beforeId`
  *  lookups and picking agree on one id per layer. */
@@ -76,16 +110,16 @@ export function pickParquetPoints(
         // One hit per layer — Deck returns them nearest-first.
         if (!layer || seenLayers.has(layer.title)) continue
 
-        const points = layer.deckData?.points
+        const view = readPointView(info.layer?.props)
         const i = info.index
-        if (!points || i < 0) continue
+        if (!view || i < 0 || i >= view.count) continue
         seenLayers.add(layer.title)
 
         out.push({
             layer,
-            rowId: i,
-            lng: points.positions[i * 2],
-            lat: points.positions[i * 2 + 1],
+            rowId: view.rowIds[i],
+            lng: view.positions[i * 2],
+            lat: view.positions[i * 2 + 1],
         })
     }
     return out
@@ -150,8 +184,50 @@ function hexToRgb(hex: string, alpha = 255): [number, number, number, number] {
 
 export function DeckGlOverlay({ map, layers, overlayRef }: DeckGlOverlayProps) {
     const localRef = useRef<MapboxOverlay | null>(null)
+    // The route's viewport params. They are rewritten on `moveend`, which makes
+    // them the signal to re-read the slice — no move listener of our own.
+    const { zoom, lat, lon } = useSearch({ strict: false })
+
+    const pointLayers = useMemo(
+        () => layers.filter(l => l.visible !== false && l.deckData?.kind === 'points' && !!l.deckData.attrTable),
+        [layers],
+    )
+
+    // Padded so a small pan stays covered by the slice already drawn.
+    const bbox = useMemo<[number, number, number, number] | null>(() => {
+        void zoom; void lat; void lon
+        if (!map) return null
+        const b = map.getBounds()
+        const padX = (b.getEast() - b.getWest()) * VIEWPORT_PAD
+        const padY = (b.getNorth() - b.getSouth()) * VIEWPORT_PAD
+        return [b.getWest() - padX, b.getSouth() - padY, b.getEast() + padX, b.getNorth() + padY]
+    }, [map, zoom, lat, lon])
+
+    /**
+     * One query per point layer for the points inside the current viewport.
+     *
+     * Deck's per-frame cost scales with instances drawn, so what reaches the GPU
+     * is this slice — the padded viewport, thinned to a cap — rather than the
+     * whole table. The previous slice stays on screen while the next one is read,
+     * so a pan never blanks the layer.
+     */
+    const views = useQueries({
+        queries: pointLayers.map(layer => ({
+            queryKey: ['parquet-viewport', layer.deckData?.attrTable, bbox] as const,
+            queryFn: () => queryPointsInViewport(layer.deckData?.attrTable ?? '', bbox ?? [0, 0, 0, 0]),
+            enabled: !!bbox && !!layer.deckData?.attrTable,
+            placeholderData: keepPreviousData,
+            staleTime: Infinity,
+        })),
+    })
 
     const deckLayers = useMemo(() => {
+        const viewByTitle = new Map<string, ParquetPointView>()
+        pointLayers.forEach((layer, i) => {
+            const view = views[i]?.data
+            if (view) viewByTitle.set(layer.title, view)
+        })
+
         return layers
             .filter(l => l.visible !== false && l.deckData)
             .map((layer): DeckLayer | null => {
@@ -159,15 +235,18 @@ export function DeckGlOverlay({ map, layers, overlayRef }: DeckGlOverlayProps) {
                 const color = layer.color || '#2563eb'
                 const opacity = layer.opacity ?? 0.85
 
-                if (data.kind === 'points' && data.points) {
+                if (data.kind === 'points') {
+                    const view = viewByTitle.get(layer.title)
+                    if (!view || view.count === 0) return null
                     return new ScatterplotLayer({
                         id: getDeckLayerId(layer),
                         data: {
-                            length: data.points.count,
+                            length: view.count,
                             attributes: {
-                                getPosition: { value: data.points.positions, size: 2 },
+                                getPosition: { value: view.positions, size: 2 },
                             },
                         },
+                        [POINT_VIEW_PROP]: view,
                         radiusUnits: 'pixels',
                         getRadius: 3,
                         getFillColor: hexToRgb(color, opacity * 255),
@@ -180,7 +259,7 @@ export function DeckGlOverlay({ map, layers, overlayRef }: DeckGlOverlayProps) {
                 return null
             })
             .filter((l): l is DeckLayer => l != null)
-    }, [layers])
+    }, [layers, pointLayers, views])
 
     useEffect(() => {
         if (!map) return

@@ -24,15 +24,45 @@ type DuckDbConnection = {
  */
 async function* streamRows(conn: DuckDbConnection, sql: string): AsyncGenerator<Record<string, unknown>> {
     if (!conn.send) {
-        for (const row of (await conn.query(sql)).toArray()) yield row.toJSON() as Record<string, unknown>
+        yield* rowsOf(await conn.query(sql))
         return
     }
     for await (const batch of await conn.send(sql)) {
-        for (const row of batch.toArray()) yield row.toJSON() as Record<string, unknown>
+        yield* rowsOf(batch)
+    }
+}
+
+/** A result's rows as field bags, skipping anything that isn't one. */
+function* rowsOf(result: DuckDbResult): Generator<Record<string, unknown>> {
+    for (const row of result.toArray()) {
+        const json = row.toJSON()
+        if (isRecord(json)) yield json
     }
 }
 
 const GEOM_CANDIDATES = ['geom', 'geometry', 'wkb_geometry', 'the_geom', 'shape']
+
+/** Narrow a row's `toJSON()` to a field bag. Checked, not asserted: DuckDB
+ *  types it as `unknown` and the shape depends on the query. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/** First row of a result as a field bag, or undefined when empty. */
+function firstRow(result: DuckDbResult): Record<string, unknown> | undefined {
+    const row = result.toArray()[0]
+    if (!row) return undefined
+    const json = row.toJSON()
+    return isRecord(json) ? json : undefined
+}
+
+/** A numeric cell. DuckDB hands back `bigint` for counts and `number` for
+ *  floats; anything else is not a number this code can use. */
+function cellToNumber(value: unknown): number | undefined {
+    if (typeof value === 'bigint') return Number(value)
+    if (typeof value === 'number') return Number.isFinite(value) ? value : undefined
+    return undefined
+}
 
 /**
  * Row count above which the caller is asked before the file is materialized.
@@ -78,14 +108,13 @@ export class ParquetLoadCancelledError extends Error {
  */
 async function countFeatures(conn: DuckDbConnection, tableSource: string): Promise<number> {
     const res = await conn.query(`SELECT count(*) AS n FROM ${tableSource}`)
-    const raw = (res.toArray()[0]?.toJSON() as { n?: unknown } | undefined)?.n
-    return typeof raw === 'bigint' ? Number(raw) : Number(raw ?? 0)
+    return cellToNumber(firstRow(res)?.n) ?? 0
 }
 
 export interface ParquetDeckData {
     kind: 'points' | 'geojson'
     points?: {
-        positions: Float32Array
+        /** Rows in the point table. What is drawn is a viewport slice of it. */
         count: number
     }
     geojson?: FeatureCollection
@@ -139,35 +168,25 @@ async function materializePoints(
         WHERE ${opts.where}
     `)
 
-    // Size the buffer from the table's own count, then fill it batch by batch.
-    // Reading the coordinates as one Arrow result would hold a full copy in the
-    // WASM heap and another in JS at the same time; the destination array is the
-    // only full-size allocation this way, and it is the one Deck keeps anyway.
-    const countRow = (await conn.query(`SELECT count(*) AS n FROM ${quoteIdent(table)}`))
-        .toArray()[0]?.toJSON() as { n?: unknown } | undefined
-    const count = typeof countRow?.n === 'bigint' ? Number(countRow.n) : Number(countRow?.n ?? 0)
-
-    const positions = new Float32Array(count * 2)
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
-    let i = 0
-    const coordSql =
-        `SELECT ${quoteIdent(POINT_X)} AS x, ${quoteIdent(POINT_Y)} AS y
-         FROM ${quoteIdent(table)} ORDER BY ${quoteIdent(ROW_ID)}`
-    for await (const row of streamRows(conn, coordSql)) {
-        if (i >= count) break
-        const px = Number(row.x)
-        const py = Number(row.y)
-        positions[i * 2] = px
-        positions[i * 2 + 1] = py
-        if (px < minX) minX = px
-        if (py < minY) minY = py
-        if (px > maxX) maxX = px
-        if (py > maxY) maxY = py
-        i++
-    }
-
+    // Count and extent come from one aggregate. Nothing walks the rows in JS:
+    // the coordinates that reach the GPU are a viewport slice, read later by
+    // {@link queryPointsInViewport}.
+    const stats = firstRow(await conn.query(`
+        SELECT count(*) AS n,
+               min(${quoteIdent(POINT_X)}) AS minx, min(${quoteIdent(POINT_Y)}) AS miny,
+               max(${quoteIdent(POINT_X)}) AS maxx, max(${quoteIdent(POINT_Y)}) AS maxy
+        FROM ${quoteIdent(table)}
+    `))
+    const count = cellToNumber(stats?.n) ?? 0
+    const minx = cellToNumber(stats?.minx)
+    const miny = cellToNumber(stats?.miny)
+    const maxx = cellToNumber(stats?.maxx)
+    const maxy = cellToNumber(stats?.maxy)
     const bounds: [number, number, number, number] | undefined =
-        minX !== Infinity ? [minX, minY, maxX, maxY] : undefined
+        minx !== undefined && miny !== undefined && maxx !== undefined && maxy !== undefined
+            ? [minx, miny, maxx, maxy]
+            : undefined
+
     // A projected file that declared no CRS gets caught here rather than
     // rendering nowhere. Drop the table first — the layer is not going to load.
     try {
@@ -179,11 +198,93 @@ async function materializePoints(
 
     return {
         kind: 'points',
-        points: { positions, count },
+        points: { count },
         bounds,
         featureCount: opts.featureCount,
         attrTable: table,
     }
+}
+
+/**
+ * Most points Deck is asked to draw at once.
+ *
+ * Cost is per instance, not per pixel: at 1.08M instances a pan runs at 8 fps,
+ * at 200k at 41 fps, at 100k at 60 fps — with point radius and antialiasing
+ * making almost no difference. So the cap, not the styling, is what keeps a pan
+ * smooth, and anything past it is thinned out.
+ */
+export const MAX_DRAWN_POINTS = 120000
+
+/** One viewport's worth of drawable points. */
+export interface ParquetPointView {
+    /** Interleaved lon/lat, ready to hand Deck as a binary attribute. */
+    positions: Float32Array
+    /** Point table row id per drawn point, for click lookups. */
+    rowIds: Int32Array
+    /** Points drawn (`positions.length / 2`). */
+    count: number
+    /** Points the viewport actually holds, before thinning. */
+    inView: number
+    /** 1 = every point drawn; n = every nth. */
+    stride: number
+}
+
+/**
+ * Read the points inside `bbox`, thinned to at most {@link MAX_DRAWN_POINTS}.
+ *
+ * Thinning is `rid % stride`, not a random sample, so the same points survive
+ * from one pan to the next and the map doesn't shimmer. Zoomed in, the viewport
+ * holds fewer points than the cap and every one of them is drawn.
+ */
+export async function queryPointsInViewport(
+    attrTable: string,
+    bbox: [number, number, number, number],
+    cap = MAX_DRAWN_POINTS,
+): Promise<ParquetPointView> {
+    const [minx, miny, maxx, maxy] = bbox.map(n => Number(n))
+    const t = quoteIdent(attrTable)
+    const where =
+        `${quoteIdent(POINT_X)} BETWEEN ${minx} AND ${maxx} AND ` +
+        `${quoteIdent(POINT_Y)} BETWEEN ${miny} AND ${maxy}`
+
+    return withConnection(async (conn) => {
+        const countRow = firstRow(await conn.query(`SELECT count(*) AS n FROM ${t} WHERE ${where}`))
+        const inView = cellToNumber(countRow?.n) ?? 0
+        if (inView === 0) {
+            return { positions: new Float32Array(0), rowIds: new Int32Array(0), count: 0, inView: 0, stride: 1 }
+        }
+
+        const stride = Math.max(1, Math.ceil(inView / cap))
+        const strideClause = stride > 1 ? ` AND ${quoteIdent(ROW_ID)} % ${stride} = 0` : ''
+        // One extra slot: integer division can leave the last surviving id out.
+        const capacity = Math.floor(inView / stride) + 1
+        const positions = new Float32Array(capacity * 2)
+        const rowIds = new Int32Array(capacity)
+
+        let i = 0
+        const sql =
+            `SELECT ${quoteIdent(ROW_ID)} AS rid, ${quoteIdent(POINT_X)} AS x, ${quoteIdent(POINT_Y)} AS y
+             FROM ${t} WHERE ${where}${strideClause}`
+        for await (const row of streamRows(conn, sql)) {
+            if (i >= capacity) break
+            const x = cellToNumber(row.x)
+            const y = cellToNumber(row.y)
+            const rid = cellToNumber(row.rid)
+            if (x === undefined || y === undefined || rid === undefined) continue
+            positions[i * 2] = x
+            positions[i * 2 + 1] = y
+            rowIds[i] = rid
+            i++
+        }
+
+        return {
+            positions: positions.subarray(0, i * 2),
+            rowIds: rowIds.subarray(0, i),
+            count: i,
+            inView,
+            stride,
+        }
+    })
 }
 
 /**
@@ -206,11 +307,12 @@ export async function queryParquetRowProperties(
             `SELECT * EXCLUDE (${quoteIdent(POINT_X)}, ${quoteIdent(POINT_Y)})
              FROM ${quoteIdent(attrTable)} WHERE ${quoteIdent(ROW_ID)} IN (${idList})`,
         )
-        for (const row of res.toArray()) {
-            const obj = row.toJSON() as Record<string, unknown>
-            const rid = Number(obj[ROW_ID])
+        for (const obj of rowsOf(res)) {
+            const rid = cellToNumber(obj[ROW_ID])
+            if (rid === undefined) continue
             delete obj[ROW_ID]
-            out.set(rid, normalizeRow(obj) as Record<string, unknown>)
+            const props = normalizeRow(obj)
+            if (isRecord(props)) out.set(rid, props)
         }
         return out
     })
@@ -298,7 +400,8 @@ export async function loadParquetForDeck(source: string | File, opts: LoadParque
             }
 
             const described = await conn.query(`DESCRIBE SELECT * FROM ${tableSource}`)
-            const columns = described.toArray().map(r => String((r.toJSON() as Record<string, unknown>).column_name))
+            const describedRows = [...rowsOf(described)]
+            const columns = describedRows.map(r => String(r.column_name))
 
             const lonCol = columns.find(c => ['lon', 'longitude', 'x', 'lng'].includes(c.toLowerCase()))
             const latCol = columns.find(c => ['lat', 'latitude', 'y'].includes(c.toLowerCase()))
@@ -306,8 +409,8 @@ export async function loadParquetForDeck(source: string | File, opts: LoadParque
             const geomCol =
                 GEOM_CANDIDATES.find(c => columns.includes(c)) ||
                 columns.find(c => {
-                    const row = described.toArray().find(r => String((r.toJSON() as Record<string, unknown>).column_name) === c)
-                    const colType = String((row?.toJSON() as Record<string, unknown>)?.column_type || '').toUpperCase()
+                    const row = describedRows.find(r => String(r.column_name) === c)
+                    const colType = String(row?.column_type ?? '').toUpperCase()
                     return colType.includes('GEOMETRY') || colType.includes('BLOB') || colType.includes('BYTEA')
                 })
 
@@ -338,8 +441,7 @@ export async function loadParquetForDeck(source: string | File, opts: LoadParque
                     WHERE ${quoteIdent(geomCol)} IS NOT NULL
                     LIMIT 1
                 `)
-                const typeRow = typeRes.toArray()[0]?.toJSON() as { gtype?: string } | undefined
-                const gtype = String(typeRow?.gtype || '').toUpperCase()
+                const gtype = String(firstRow(typeRes)?.gtype ?? '').toUpperCase()
                 isPoint = gtype === 'POINT' || gtype === 'MULTIPOINT'
             } catch {
                 isPoint = false

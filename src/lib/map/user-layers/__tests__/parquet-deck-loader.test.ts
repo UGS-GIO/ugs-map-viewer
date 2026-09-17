@@ -53,6 +53,7 @@ vi.mock('@/lib/duckdb/client', () => ({
 import {
     loadParquetForDeck,
     queryParquetRowProperties,
+    queryPointsInViewport,
     ParquetLoadCancelledError,
     LARGE_PARQUET_FEATURE_COUNT,
 } from '@/lib/map/user-layers/parquet-deck-loader'
@@ -66,7 +67,8 @@ function lonLatSource(rowCount: number) {
             { column_name: 'lat', column_type: 'DOUBLE' },
             { column_name: 'name', column_type: 'VARCHAR' },
         ])],
-        [/ORDER BY "__rid__"/, result([{ x: -111.5, y: 40.2 }, { x: -111.6, y: 40.3 }])],
+        // The point table's count and extent, read as one aggregate.
+        [/min\("__x__"\)/, result([{ n: 2, minx: -111.6, miny: 40.2, maxx: -111.5, maxy: 40.3 }])],
     ]
 }
 
@@ -120,28 +122,27 @@ describe('large-source guard', () => {
 })
 
 describe('point materialization', () => {
-    it('keeps attributes in DuckDB and returns only coordinates to the browser', async () => {
+    it('keeps attributes and coordinates in DuckDB, reporting only the count', async () => {
         lonLatSource(2)
         const data = await loadParquetForDeck('https://x.org/wells.parquet')
 
         expect(data.kind).toBe('points')
         expect(data.points?.count).toBe(2)
-        // Float32 — ~1m of rounding at these longitudes, which is why the popup
-        // reads attributes from DuckDB rather than echoing these back.
-        const expected = [-111.5, 40.2, -111.6, 40.3]
-        data.points!.positions.forEach((v, i) => expect(v).toBeCloseTo(expected[i], 4))
-        // The attribute table is the handle used for click lookups.
+        // The attribute table is the handle used for click lookups and for the
+        // viewport reads that feed the GPU.
         expect(data.attrTable).toMatch(/^pq_pts_/)
     })
 
-    it('reads coordinates back ordered by row id, so index and id are the same number', async () => {
+    it('never walks the point rows at load time', async () => {
         lonLatSource(2)
         await loadParquetForDeck('https://x.org/wells.parquet')
-        const read = queries.find(q => /AS x/.test(q) && /AS y/.test(q) && /FROM "pq_pts_/.test(q))
-        expect(read).toMatch(/ORDER BY "__rid__"/)
+        // Only the aggregate touches the point table; a per-row read would be
+        // a million rows through JS for a file this size.
+        const rowReads = queries.filter(q => /FROM "pq_pts_/.test(q) && !/count\(\*\)/.test(q))
+        expect(rowReads).toEqual([])
     })
 
-    it('computes bounds from the coordinates', async () => {
+    it('computes bounds from the point table\u2019s extent', async () => {
         lonLatSource(2)
         const data = await loadParquetForDeck('https://x.org/wells.parquet')
         const expected = [-111.6, 40.2, -111.5, 40.3]
@@ -264,10 +265,10 @@ describe('row-unbounded reads are streamed', () => {
         expect(streamed.some(q => /ST_AsGeoJSON/.test(q))).toBe(true)
     })
 
-    it('streams the point coordinates too', async () => {
-        lonLatSource(2)
-        await loadParquetForDeck('https://x.org/wells.parquet')
-        expect(streamed.some(q => /AS x/.test(q) && /AS y/.test(q))).toBe(true)
+    it('streams the viewport slice rather than materializing it', async () => {
+        viewportSource(2, [{ rid: 0, x: -111.5, y: 40.2 }, { rid: 1, x: -111.6, y: 40.3 }])
+        await queryPointsInViewport('pq_pts_a', [-112, 40, -111, 41])
+        expect(streamed.some(q => /AS rid/.test(q))).toBe(true)
     })
 
     it('still works where the connection has no streaming API', async () => {
@@ -312,5 +313,61 @@ describe('queryParquetRowProperties', () => {
         routes = [[/FROM "tbl"/, result([])]]
         await queryParquetRowProperties('tbl', [3.7, Number.NaN, 8] as number[])
         expect(queries[0]).toContain('IN (3,8)')
+    })
+})
+
+/** A point table with `inView` rows in the viewport, returning `rows`. */
+function viewportSource(inView: number, rows: Record<string, unknown>[]) {
+    routes = [
+        [/count\(\*\) AS n FROM "pq_pts_/, result([{ n: inView }])],
+        [/AS rid/, result(rows)],
+    ]
+}
+
+describe('viewport slicing', () => {
+    it('draws every point when the viewport holds fewer than the cap', async () => {
+        viewportSource(2, [{ rid: 0, x: -111.5, y: 40.2 }, { rid: 1, x: -111.6, y: 40.3 }])
+        const view = await queryPointsInViewport('pq_pts_a', [-112, 40, -111, 41], 100)
+
+        expect(view.stride).toBe(1)
+        expect(view.count).toBe(2)
+        expect(queries.some(q => /AS rid/.test(q) && /%/.test(q))).toBe(false)
+    })
+
+    it('thins by row id once the viewport holds more than the cap', async () => {
+        viewportSource(10, [{ rid: 0, x: -111.5, y: 40.2 }, { rid: 3, x: -111.6, y: 40.3 }])
+        const view = await queryPointsInViewport('pq_pts_a', [-112, 40, -111, 41], 4)
+
+        // 10 in view, cap 4 -> every 3rd, which is a stable subset across pans
+        // rather than a fresh random sample that would shimmer.
+        expect(view.stride).toBe(3)
+        expect(queries.some(q => /"__rid__" % 3 = 0/.test(q))).toBe(true)
+        expect(view.inView).toBe(10)
+    })
+
+    it('keeps each drawn point\u2019s row id, so a click still finds its row', async () => {
+        viewportSource(10, [{ rid: 0, x: -111.5, y: 40.2 }, { rid: 3, x: -111.6, y: 40.3 }])
+        const view = await queryPointsInViewport('pq_pts_a', [-112, 40, -111, 41], 4)
+
+        expect([...view.rowIds]).toEqual([0, 3])
+        expect(view.positions[0]).toBeCloseTo(-111.5, 4)
+        expect(view.positions[3]).toBeCloseTo(40.3, 4)
+    })
+
+    it('returns an empty slice when the viewport holds nothing', async () => {
+        viewportSource(0, [])
+        const view = await queryPointsInViewport('pq_pts_a', [0, 0, 1, 1])
+
+        expect(view.count).toBe(0)
+        expect(queries.some(q => /AS rid/.test(q))).toBe(false)
+    })
+
+    it('bounds the viewport read to the requested box', async () => {
+        viewportSource(2, [{ rid: 0, x: -111.5, y: 40.2 }])
+        await queryPointsInViewport('pq_pts_a', [-112, 40, -111, 41], 100)
+
+        const read = queries.find(q => /AS rid/.test(q))
+        expect(read).toMatch(/"__x__" BETWEEN -112 AND -111/)
+        expect(read).toMatch(/"__y__" BETWEEN 40 AND 41/)
     })
 })
