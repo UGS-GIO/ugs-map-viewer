@@ -468,6 +468,7 @@ const WellFormationFilter = React.memo(({
                     id={operatorId}
                     checked={useAndOperator}
                     onCheckedChange={onOperatorChange}
+                    disabled={disabled}
                 />
                 <span className={cn(
                     "text-xs font-medium transition-colors",
