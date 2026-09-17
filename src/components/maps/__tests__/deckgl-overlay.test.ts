@@ -2,14 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { PickingInfo } from '@deck.gl/core';
 import type { ParquetLayerProps } from '@/lib/types/mapping-types';
 
-/**
- * Picking Parquet points.
- *
- * Deck draws a viewport slice, not the whole table, so a pick's index means
- * nothing on its own — the row it belongs to comes from the slice hanging off
- * the layer. These tests pin that mapping, because getting it wrong shows the
- * user a real popup full of the wrong feature's values.
- */
+/** A pick's index is an index into the drawn slice, not the table. Getting that
+ *  mapping wrong shows a real popup full of the wrong feature's values. */
 
 const rowQueries: Array<{ attrTable: string; rowIds: number[] }> = [];
 vi.mock('@/lib/map/user-layers/parquet-deck-loader', () => ({

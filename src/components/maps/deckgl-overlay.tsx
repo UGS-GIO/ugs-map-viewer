@@ -1,15 +1,8 @@
 /**
- * Deck.gl overlay for point-only Parquet layers.
- *
- * Points render here rather than through MapLibre so their coordinates can go to
- * the GPU as one binary attribute, with no per-feature object ever built. That
- * beats vector tiles for very large point sets, which is why this path stays
- * even though Parquet polygons and lines are tiled through MapLibre instead
- * (see `parquet-vector-source.tsx`).
- *
- * Picking goes through Deck's own GPU picker (`pickMultipleObjects`) rather than
- * a JS scan over the rows, so a click costs the same at ten points as at ten
- * million.
+ * Deck.gl overlay for point-only Parquet layers: coordinates reach the GPU as
+ * one binary attribute, with no per-feature object ever built, and picking goes
+ * through Deck's GPU picker rather than a JS scan. Parquet polygons and lines
+ * are tiled through MapLibre instead (see `parquet-vector-source.tsx`).
  */
 import { useEffect, useRef, useMemo } from 'react'
 import { useQueries, keepPreviousData } from '@tanstack/react-query'
@@ -29,17 +22,13 @@ import type { ParquetPointView } from '@/lib/map/user-layers/parquet-deck-loader
 const VIEWPORT_PAD = 0.3
 
 /**
- * Prop carrying the drawn slice on the Deck layer itself.
- *
- * Deck draws a viewport's worth of points, not the whole table, so a click's
- * index is an index into that slice. Hanging the slice off the layer is what
- * lets picking resolve it from `info.layer` alone, with no state on the side to
- * keep in step.
+ * The drawn slice, hung off the Deck layer itself so picking can resolve a
+ * click's index from `info.layer` alone, with no state on the side to keep in
+ * step.
  */
 const POINT_VIEW_PROP = 'ugsPointView'
 
-/** Recognize a slice coming back off a Deck layer's props. Deck types props as
- *  its own shape, so this is checked rather than asserted. */
+/** Deck types props as its own shape, so this is checked rather than asserted. */
 function readPointView(props: unknown): ParquetPointView | undefined {
     if (!isRecord(props)) return undefined
     const view = props[POINT_VIEW_PROP]
@@ -69,15 +58,9 @@ export interface ParquetPointHit {
 }
 
 /**
- * Pick Parquet points under a click through Deck's GPU picker.
- *
- * `radius` is the same screen-pixel tolerance the MapLibre queries use, and
- * `depth` lets one click return a hit from each overlapping Parquet layer (Deck
- * drills through, so the cap is the layer count).
- *
- * Only identifies the rows — attributes live in DuckDB and are fetched by
- * {@link hydrateParquetPointHits}, so a click costs the same at ten points as at
- * ten million.
+ * Rows under a click. `depth` lets one click return a hit from each overlapping
+ * layer. Only identifies rows — attributes come from DuckDB via
+ * {@link hydrateParquetPointHits}.
  */
 /** The slice of the Deck overlay picking needs. Structural, so a caller — or a
  *  test — can supply just the picker. */
@@ -138,10 +121,8 @@ export function pickParquetPoints(
 }
 
 /**
- * Read the picked rows' attributes out of DuckDB and shape them for the popup
- * pipeline. Grouped per layer so each contributes one query. A layer whose
- * lookup fails still yields its feature, with empty properties, rather than
- * dropping the click.
+ * The picked rows' attributes, shaped for the popup pipeline — one query per
+ * layer. A failed lookup still yields its feature rather than dropping the click.
  */
 export async function hydrateParquetPointHits(hits: ParquetPointHit[]): Promise<WfsLayerFeature[]> {
     const byLayer = new Map<string, ParquetPointHit[]>()
@@ -215,14 +196,9 @@ export function DeckGlOverlay({ map, layers, overlayRef }: DeckGlOverlayProps) {
         return [b.getWest() - padX, b.getSouth() - padY, b.getEast() + padX, b.getNorth() + padY]
     }, [map, zoom, lat, lon])
 
-    /**
-     * One query per point layer for the points inside the current viewport.
-     *
-     * Deck's per-frame cost scales with instances drawn, so what reaches the GPU
-     * is this slice — the padded viewport, thinned to a cap — rather than the
-     * whole table. The previous slice stays on screen while the next one is read,
-     * so a pan never blanks the layer.
-     */
+    // Deck's per-frame cost scales with instances drawn, so the GPU gets this
+    // slice rather than the whole table. `keepPreviousData` stops a pan blanking
+    // the layer while the next slice is read.
     const views = useQueries({
         queries: pointLayers.map(layer => ({
             queryKey: ['parquet-viewport', layer.deckData?.pointTable, bbox] as const,

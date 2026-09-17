@@ -1,12 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-/**
- * ArcGIS REST reads, against a scripted `fetch`.
- *
- * The cases that matter are the ones a friendly server would hide: an error
- * reported as HTTP 200, a layer whose features arrive over several pages, and
- * the rows a service returns with no geometry at all.
- */
+/** ArcGIS REST reads against a scripted `fetch`: errors reported as HTTP 200,
+ *  paged features, and rows with no geometry. */
 import {
     parseArcGisUrl,
     fetchArcGisInfo,

@@ -1,13 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-/**
- * The remote-parquet readers, exercised against a scripted DuckDB connection.
- *
- * These are the paths behind popup related tables and the whole-layer download,
- * so the cases that matter are the ones a mocked single-batch result would hide:
- * a result that arrives as several record batches, and a connection with no
- * streaming API at all.
- */
+/** The readers behind popup related tables and the whole-layer download. The
+ *  cases that matter are the ones a single-batch mock would hide. */
 
 interface Row { [key: string]: unknown }
 

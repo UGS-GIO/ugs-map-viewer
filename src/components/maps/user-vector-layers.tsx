@@ -1,16 +1,11 @@
 /**
  * The fill + line + circle triple every user-added vector layer renders as.
- *
- * User layers carry no authored symbology, so one generic set of sublayers,
- * filtered by geometry type, handles mixed geometry in a single source. It is
- * shared rather than repeated because the GeoJSON and tiled-Parquet sources
- * differ only in their source type and metadata flag — and when the paint lived
- * in both, the two copies drifted.
+ * Shared because the GeoJSON and tiled-Parquet sources differ only in source
+ * type — and when each kept its own copy, the paint drifted.
  */
 import { Layer } from 'react-map-gl/maplibre'
 import type maplibregl from 'maplibre-gl'
 
-/** Default opacity per sublayer, used when the layer sets none. */
 const FILL_OPACITY = 0.35
 const LINE_WIDTH = 1.4
 const CIRCLE_RADIUS = 4
@@ -19,8 +14,7 @@ const CIRCLE_RADIUS = 4
 const POLYGON_ONLY = ['==', ['geometry-type'], 'Polygon'] as unknown as maplibregl.FilterSpecification
 const POINT_ONLY = ['==', ['geometry-type'], 'Point'] as unknown as maplibregl.FilterSpecification
 
-/** Paint for a PMTiles style fragment, which is JSON rather than JSX. Kept here
- *  so the three renderings of a user layer cannot disagree. */
+/** Also used for the PMTiles style fragment, which is JSON rather than JSX. */
 export const userVectorPaint = (color: string) => ({
     fill: { 'fill-color': color, 'fill-opacity': FILL_OPACITY },
     line: { 'line-color': color, 'line-width': LINE_WIDTH },
@@ -33,7 +27,7 @@ export const userVectorPaint = (color: string) => ({
 })
 
 export interface UserVectorLayersProps {
-    /** Canonical layer id; the line sublayer takes it, so `beforeId` lookups resolve. */
+    /** The line sublayer takes this id, so `beforeId` lookups resolve. */
     primaryId: string
     sourceId: string
     /** Vector sources need the tile's layer name; a GeoJSON source has none. */

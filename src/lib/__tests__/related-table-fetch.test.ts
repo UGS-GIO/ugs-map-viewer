@@ -1,13 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { RelatedTable } from '@/lib/types/mapping-types';
 
-/**
- * Related-table reads, shared by popups and the whole-layer download.
- *
- * The interesting behaviour is the dispatch between backends and, for the bulk
- * path, the chunking that keeps a thousand join keys from becoming one URL the
- * server rejects.
- */
+/** Backend dispatch, and the chunking that keeps a thousand join keys from
+ *  becoming one URL the server rejects. */
 
 const parquetCalls: Array<Record<string, unknown>> = [];
 vi.mock('@/lib/duckdb/client', () => ({

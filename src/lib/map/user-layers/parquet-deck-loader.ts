@@ -111,19 +111,7 @@ const POINT_Y = '__y__'
 
 let attrTableSeq = 0
 
-/**
- * Materialize a point layer into a DuckDB table: a dense row id, the projected
- * coordinates, and every source attribute.
- *
- * The id is what makes click-to-row lookup correct. `row_number()` is evaluated
- * after `WHERE`, so ids are dense over the surviving rows, and reading the
- * coordinates back `ORDER BY` that id makes the position array's index and the
- * row id the same number.
- *
- * Keeping the attributes here rather than in a JS array is the point: a million
- * rows of columnar DuckDB data costs a fraction of a million JS objects, and the
- * popup only ever needs the row that was clicked.
- */
+/** Materialize a point layer's coordinates into a DuckDB table. */
 async function materializePoints(
     conn: DuckDbConnection,
     tableSource: string,
@@ -138,9 +126,8 @@ async function materializePoints(
     const pointTable = `${base}_pts`
     const attrTable = `${base}_attrs`
 
-    // Coordinates only. Copying the attributes here as well is what used to make
-    // this the slowest step of a load — 4.8s against 257ms on a 1.1M-row Overture
-    // file, whose nested `names`/`categories`/`sources` columns nothing draws.
+    // Coordinates only: copying the attributes here too cost 4.8s against 257ms
+    // on a 1.1M-row Overture file, for columns nothing draws.
     await conn.query(`
         CREATE OR REPLACE TABLE ${quoteIdent(pointTable)} AS
         SELECT
@@ -151,9 +138,7 @@ async function materializePoints(
         WHERE ${opts.where}
     `)
 
-    // Count and extent come from one aggregate. Nothing walks the rows in JS:
-    // the coordinates that reach the GPU are a viewport slice, read later by
-    // {@link queryPointsInViewport}.
+    // One aggregate, so nothing walks the rows in JS.
     const stats = firstRow(await conn.query(`
         SELECT count(*) AS n,
                min(${quoteIdent(POINT_X)}) AS minx, min(${quoteIdent(POINT_Y)}) AS miny,
@@ -196,13 +181,10 @@ async function materializePoints(
 const attributeBuilds = new Map<string, Promise<void>>()
 
 /**
- * Build the attribute table off the critical path.
- *
- * Nothing needs the attributes until something is clicked, and the same scan
- * that copies them takes twenty times longer than the coordinates, so the map
- * draws first and this catches up. Row ids are the parquet's own
- * `file_row_number`, so the two tables line up without depending on two scans
- * producing rows in the same order.
+ * Build the attribute table off the critical path — nothing needs it until
+ * something is clicked, and it is ~20x the coordinate scan. Both tables key on
+ * `file_row_number` so they line up without depending on two scans agreeing on
+ * row order.
  */
 function startAttributeBuild(
     attrTable: string,
@@ -235,12 +217,9 @@ function startAttributeBuild(
 
 
 /**
- * Most points Deck is asked to draw at once.
- *
- * Cost is per instance, not per pixel: at 1.08M instances a pan runs at 8 fps,
- * at 200k at 41 fps, at 100k at 60 fps — with point radius and antialiasing
- * making almost no difference. So the cap, not the styling, is what keeps a pan
- * smooth, and anything past it is thinned out.
+ * Most points Deck is asked to draw at once. Cost is per instance, not per
+ * pixel: 1.08M ran at 8fps, 200k at 41fps, 100k at 60fps, with radius and
+ * antialiasing making almost no difference.
  */
 export const MAX_DRAWN_POINTS = 120000
 
@@ -248,22 +227,19 @@ export const MAX_DRAWN_POINTS = 120000
 export interface ParquetPointView {
     /** Interleaved lon/lat, ready to hand Deck as a binary attribute. */
     positions: Float32Array
-    /** Point table row id per drawn point, for click lookups. */
+    /** Row id per drawn point, for click lookups. */
     rowIds: Int32Array
-    /** Points drawn (`positions.length / 2`). */
     count: number
-    /** Points the viewport actually holds, before thinning. */
+    /** Points the viewport holds, before thinning. */
     inView: number
     /** 1 = every point drawn; n = every nth. */
     stride: number
 }
 
 /**
- * Read the points inside `bbox`, thinned to at most {@link MAX_DRAWN_POINTS}.
- *
- * Thinning is `rid % stride`, not a random sample, so the same points survive
- * from one pan to the next and the map doesn't shimmer. Zoomed in, the viewport
- * holds fewer points than the cap and every one of them is drawn.
+ * Points inside `bbox`, thinned to {@link MAX_DRAWN_POINTS} by `rid % stride` —
+ * a stable subset rather than a fresh random sample, which would shimmer as you
+ * pan. Zoomed in, everything in view is drawn.
  */
 export async function queryPointsInViewport(
     attrTable: string,
@@ -316,10 +292,7 @@ export async function queryPointsInViewport(
     })
 }
 
-/**
- * Read the attributes of specific point rows by id. Called on click with the
- * handful of rows actually picked, so cost is independent of the layer's size.
- */
+/** Attributes of the rows actually clicked, so cost is independent of layer size. */
 export async function queryParquetRowProperties(
     attrTable: string,
     rowIds: number[],
@@ -349,11 +322,7 @@ export async function queryParquetRowProperties(
     })
 }
 
-/**
- * Rough extent from the first coordinate of a sample of features — enough to
- * tell lon/lat from projected metres, without walking every ring of every
- * polygon. Used only for the geographic-range backstop.
- */
+/** Rough extent from a sample — enough to tell lon/lat from projected metres. */
 function sampleBounds(features: Feature[]): [number, number, number, number] | undefined {
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
     for (const f of features.slice(0, 100)) {

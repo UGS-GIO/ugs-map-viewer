@@ -1,17 +1,7 @@
 /**
- * ArcGIS REST services — URL shapes, service metadata, and feature reads.
- *
- * Two kinds of endpoint matter:
- * - a **service** (`.../MapServer`, `.../FeatureServer`), which is a container
- *   of layers. MapServer can also draw itself as one image, which is how the
- *   app's configured Esri layers render.
- * - a **layer** (`.../MapServer/3`, `.../FeatureServer/0`), which has fields and
- *   features and can be queried as GeoJSON — that is what gives us a real vector
- *   layer with a popup instead of a picture of one.
- *
- * Everything here is parsed defensively: these are third-party servers and the
- * JSON shape varies by version, so responses are narrowed at runtime rather than
- * asserted.
+ * ArcGIS REST services. A *layer* (`.../FeatureServer/0`) can be queried as
+ * GeoJSON; a bare *service* can only draw itself as an image. Responses are
+ * narrowed at runtime — the JSON shape varies by server version.
  */
 import type { FeatureCollection, Feature, Geometry } from 'geojson'
 import { isRecord } from '@/lib/utils'
@@ -21,16 +11,13 @@ const SERVICE_RE = /\/(FeatureServer|MapServer)(?:\/(\d+))?\/?$/i
 
 export type ArcGisServiceKind = 'MapServer' | 'FeatureServer'
 
-/** An ArcGIS REST URL, split into the parts the rest of this module needs. */
 export interface ArcGisUrlParts {
-    /** Service root, no trailing slash and no layer index. */
+    /** Service root: no trailing slash, no layer index. */
     serviceUrl: string
     kind: ArcGisServiceKind
-    /** Layer index when the URL pointed at one layer, else undefined. */
     layerId?: number
 }
 
-/** Recognize an ArcGIS REST endpoint, ignoring any query string. */
 export function parseArcGisUrl(raw: string): ArcGisUrlParts | null {
     const [path] = raw.split('?')
     const match = SERVICE_RE.exec(path)
@@ -61,21 +48,16 @@ async function fetchArcGisJson(url: string, params: Record<string, string>): Pro
     return body
 }
 
-/** One layer advertised by a service. */
 export interface ArcGisLayerSummary {
     id: number
     name: string
 }
 
-/** What a service or layer endpoint tells us about itself. */
 export interface ArcGisServiceInfo {
-    /** Service or layer name, for the layer title. */
     name: string
-    /** Layers the service advertises. Empty when the URL named a single layer. */
+    /** Empty when the URL named a single layer. */
     layers: ArcGisLayerSummary[]
-    /** True when the endpoint is a single queryable layer. */
     isLayer: boolean
-    /** Whether the layer/service can answer `query` requests. */
     queryable: boolean
 }
 
@@ -93,7 +75,6 @@ function layerSummaries(value: unknown): ArcGisLayerSummary[] {
     return out
 }
 
-/** Read a service's (or layer's) metadata. */
 export async function fetchArcGisInfo(parts: ArcGisUrlParts): Promise<ArcGisServiceInfo> {
     const url = parts.layerId === undefined ? parts.serviceUrl : `${parts.serviceUrl}/${parts.layerId}`
     const body = await fetchArcGisJson(url, {})
@@ -127,7 +108,6 @@ const GEOMETRY_TYPES = new Set([
     'Point', 'MultiPoint', 'LineString', 'MultiLineString', 'Polygon', 'MultiPolygon', 'GeometryCollection',
 ])
 
-/** Checked narrowing for a GeoJSON geometry. */
 function isGeometry(value: unknown): value is Geometry {
     if (!isRecord(value) || typeof value.type !== 'string' || !GEOMETRY_TYPES.has(value.type)) return false
     return value.type === 'GeometryCollection' ? Array.isArray(value.geometries) : Array.isArray(value.coordinates)
@@ -159,19 +139,14 @@ export class ArcGisTooManyFeaturesError extends Error {
     }
 }
 
-/** Row count for a layer, which ArcGIS answers from metadata. */
 export async function fetchArcGisCount(layerUrl: string): Promise<number> {
     const body = await fetchArcGisJson(`${layerUrl}/query`, { where: '1=1', returnCountOnly: 'true' })
     return typeof body.count === 'number' ? body.count : 0
 }
 
 /**
- * Read every feature of one layer as GeoJSON.
- *
- * ArcGIS caps a response at its own `maxRecordCount` and sets
- * `exceededTransferLimit`, so this pages with `resultOffset` until a short page
- * comes back. `outSR=4326` because MapLibre works in lon/lat and the service's
- * native projection is often Web Mercator or a state plane.
+ * Every feature of one layer, as GeoJSON. Pages with `resultOffset` until a
+ * short page comes back — ArcGIS caps each response at its own `maxRecordCount`.
  */
 export async function fetchArcGisGeoJSON(
     layerUrl: string,

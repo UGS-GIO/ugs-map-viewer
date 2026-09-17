@@ -1,12 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-/**
- * Local PMTiles registration.
- *
- * The contract that matters: an uploaded archive must be registered under the
- * file NAME before its layer renders, because a cache miss makes the protocol
- * treat that key as a URL and fetch a file that does not exist.
- */
+/** An uploaded archive must be registered under the file NAME before its layer
+ *  renders: on a miss the protocol treats the key as a URL and fetches nothing. */
 
 // Hoisted so the mock factories (which vitest lifts above imports) can see them.
 const { addProtocol, added, tiles } = vi.hoisted(() => ({
