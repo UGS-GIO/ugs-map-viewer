@@ -56,8 +56,9 @@ export function formatNumeric(value: unknown, format?: string): string {
 }
 /** Safe in an `href`: http(s) or a same-origin path. Popup links are built from feature data. */
 export function isSafeHref(href: string): boolean {
-  const value = href.trim();
-  // `/\host` — browsers normalize the backslash, making it protocol-relative.
+  // Browsers drop tabs/newlines anywhere in a URL, so strip them before judging it.
+  const value = href.replace(/[\t\n\r]/g, '').trim();
+  // `/\host` — the backslash normalizes too, making the link protocol-relative.
   if (value.startsWith('/')) return value[1] !== '/' && value[1] !== '\\';
   try {
     const { protocol } = new URL(value);

@@ -64,6 +64,13 @@ describe('isSafeHref', () => {
     expect(isSafeHref('/\\/evil.example')).toBe(false);
   });
 
+  it('rejects tabs and newlines that browsers strip back into a protocol-relative link', () => {
+    expect(isSafeHref('/\t/evil.example')).toBe(false);
+    expect(isSafeHref('/\n/evil.example')).toBe(false);
+    expect(isSafeHref('/\r/evil.example')).toBe(false);
+    expect(isSafeHref('java\tscript:alert(1)')).toBe(false);
+  });
+
   it('rejects an empty or unparseable value', () => {
     expect(isSafeHref('')).toBe(false);
   });
