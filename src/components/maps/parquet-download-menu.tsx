@@ -39,8 +39,8 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
     const [open, setOpen] = useState(false);
     const { data: schema, isLoading: schemaLoading, isError: schemaError } = useParquetSchema(parquetUrl, open);
     const [includeRelated, setIncludeRelated] = useState(true);
-    // Combined tables are columns of the file itself, so the checkbox governs only the
-    // ones that would ship as their own CSVs.
+    // Combined tables are columns of the file itself — the checkbox is labelled for the
+    // ones that would ship as their own CSVs, and governs only those.
     const combined = useMemo(() => (relatedTables ?? []).filter(t => t.combineIntoExport), [relatedTables]);
     const separate = useMemo(() => (relatedTables ?? []).filter(t => !t.combineIntoExport), [relatedTables]);
     const hasRelatedTables = separate.length > 0;
@@ -154,7 +154,7 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
                             onCheckedChange={setIncludeRelated}
                             onSelect={(e) => e.preventDefault()}
                         >
-                            Include related data
+                            Include related tables as extra CSVs
                         </DropdownMenuCheckboxItem>
                     </>
                 )}
