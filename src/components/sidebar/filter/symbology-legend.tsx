@@ -5,10 +5,12 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useLayerFilter } from '@/hooks/use-layer-filter'
+import { useMap } from '@/hooks/use-map'
 import { useDistinctFieldOptions } from '@/hooks/use-distinct-field-options'
 import { orderedCategories } from '@/lib/filter/legend-categories'
 import { cn } from '@/lib/utils'
-import type { FilterSchema, FilterFieldKind } from '@/lib/filter/types'
+import { emptyFieldValue, type FilterSchema, type FilterFieldKind } from '@/lib/filter/types'
+import { toCql } from '@/lib/filter/generators'
 import type { PMTilesLayerProps, PMTilesRender, LegendEntry } from '@/lib/types/mapping-types'
 
 /**
@@ -89,13 +91,42 @@ interface SymbologyLegendProps {
 
 /** Interactive symbology legend (render dropdown + category filter grid), derived from STAC. */
 export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
-    const { value: active, setValue: setActive } = useVectorSymbology(layer.title ?? '')
+    const { value: active } = useVectorSymbology(layer.title ?? '')
+    const navigate = useNavigate()
+    const { onLayerTurnedOff } = useMap()
+    const mgr = useLayerFilter(schema)
     const modes = useMemo(() => modesFromRenders(layer.renders ?? []), [layer.renders])
     // Empty param → the layer's default render. Selecting a render writes its real id.
     const mode = modes.find(m => m.id === active)
         ?? modes.find(m => m.id === layer.defaultRenderId)
         ?? modes[0]
     const field = mode ? schema.fields.find(f => f.field === mode.field) : undefined
+    const layerTitle = layer.title ?? ''
+
+    // Switching renders resets the outgoing field, so an all-off legend can't leave the map
+    // empty with nothing on screen explaining why. One navigate: two in a tick clobber `prev`.
+    const switchMode = useCallback((next: string) => {
+        const cleared = field ? toCql(schema, { ...mgr.state, [field.field]: emptyFieldValue(field) }) : ''
+        navigate({
+            to: '.',
+            search: (prev: Record<string, unknown>) => {
+                const symbology = { ...(prev.vector_symbology as Record<string, string> | undefined), [layerTitle]: next }
+                const prevFilters = prev.filters
+                const filters = prevFilters && typeof prevFilters === 'object' && !Array.isArray(prevFilters)
+                    ? { ...(prevFilters as Record<string, string>) }
+                    : {}
+                if (cleared) filters[schema.recordKey] = cleared
+                else delete filters[schema.recordKey]
+                return {
+                    ...prev,
+                    vector_symbology: symbology,
+                    filters: Object.keys(filters).length > 0 ? filters : undefined,
+                }
+            },
+            replace: true,
+        })
+        onLayerTurnedOff(schema.recordKey)
+    }, [field, schema, mgr.state, navigate, layerTitle, onLayerTurnedOff])
 
     if (!mode || !field) return null
 
@@ -104,7 +135,7 @@ export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
             {modes.length > 1 && (
                 <div className="flex flex-col gap-1">
                     <Label className="text-xs font-medium">Symbolize by</Label>
-                    <Select value={mode.id} onValueChange={setActive}>
+                    <Select value={mode.id} onValueChange={switchMode}>
                         <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {modes.map(m => (
