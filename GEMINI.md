@@ -33,3 +33,11 @@ unrelated pre-existing issues, and group minor nits.
   or unescaped popup HTML built from feature properties.
 - Flag accessibility regressions (missing labels/roles/keyboard, insufficient contrast); treat a
   **critical or serious** a11y issue as a blocker.
+
+## Review scope & severity
+- Skip (don't post findings): `src/routeTree.gen.ts` (TanStack Router generated) and
+  `package-lock.json`; `dist/` build output is gitignored, not committed.
+- Blocking here (not a nit): merge to `develop` auto-deploys to the dev Firebase site and rides the
+  `develop`→`master` release PR to prod (both run `npm run build`), so a build break or functional
+  regression is blocking — as is a client-bundle secret, feature-data DOM injection, or a
+  critical/serious a11y regression on this public app.
