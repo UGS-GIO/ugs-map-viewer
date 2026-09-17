@@ -143,7 +143,7 @@ const MultiSelectCombobox = ({
                                 {items.map(({ value, label: optionLabel }) => (
                                     <CommandItem
                                         key={value}
-                                        value={optionLabel.toLowerCase()}
+                                        value={(optionLabel.trim() || value).toLowerCase()}
                                         onSelect={() => handleSelect(value)}
                                         className="text-xs"
                                     >
