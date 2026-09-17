@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatNumeric, toTitleCase, toSentenceCase } from '../utils';
+import { formatNumeric, toTitleCase, toSentenceCase, isSafeHref } from '../utils';
 
 describe('formatNumeric', () => {
   it('returns empty string for null/undefined/empty', () => {
@@ -34,5 +34,44 @@ describe('toTitleCase', () => {
 describe('toSentenceCase', () => {
   it('capitalizes only the first letter', () => {
     expect(toSentenceCase('hello WORLD')).toBe('Hello world');
+  });
+});
+
+describe('isSafeHref', () => {
+  it('allows http(s) links', () => {
+    expect(isSafeHref('https://maps.geology.utah.gov/subsurface?lat=39')).toBe(true);
+    expect(isSafeHref('http://example.org')).toBe(true);
+  });
+
+  it('allows same-origin paths', () => {
+    expect(isSafeHref('/subsurface?zoom=12')).toBe(true);
+  });
+
+  it('rejects script and data URLs, however they are spelled', () => {
+    expect(isSafeHref('javascript:alert(1)')).toBe(false);
+    expect(isSafeHref('  JavaScript:alert(1)')).toBe(false);
+    expect(isSafeHref('data:text/html,<script>alert(1)</script>')).toBe(false);
+    expect(isSafeHref('vbscript:msgbox(1)')).toBe(false);
+  });
+
+  it('rejects protocol-relative links, which inherit whatever scheme the page has', () => {
+    expect(isSafeHref('//evil.example')).toBe(false);
+  });
+
+  it('rejects backslash paths, which browsers normalize into protocol-relative links', () => {
+    expect(isSafeHref('/\\evil.example')).toBe(false);
+    expect(isSafeHref('/\\\\evil.example')).toBe(false);
+    expect(isSafeHref('/\\/evil.example')).toBe(false);
+  });
+
+  it('rejects tabs and newlines that browsers strip back into a protocol-relative link', () => {
+    expect(isSafeHref('/\t/evil.example')).toBe(false);
+    expect(isSafeHref('/\n/evil.example')).toBe(false);
+    expect(isSafeHref('/\r/evil.example')).toBe(false);
+    expect(isSafeHref('java\tscript:alert(1)')).toBe(false);
+  });
+
+  it('rejects an empty or unparseable value', () => {
+    expect(isSafeHref('')).toBe(false);
   });
 });
