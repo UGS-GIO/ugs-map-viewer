@@ -99,6 +99,7 @@ export function useTour(options: UseTourOptions = {}) {
       steps,
       // driver.js ships the title as a <header>: a second banner landmark beside the app bar.
       onPopoverRender: (popover) => {
+        if (!popover?.wrapper) return;
         popover.wrapper.setAttribute('role', 'dialog');
         // A step may define no title, and then there is no title node.
         if (popover.title) {

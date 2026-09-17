@@ -336,6 +336,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             size="sm"
                             onClick={() => onViewModeChange('map')}
                             className="h-7 w-7 p-0"
+                            aria-label="Map view"
                             title="Map view"
                         >
                             <Map className="h-4 w-4" />
@@ -345,6 +346,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             size="sm"
                             onClick={() => onViewModeChange('split')}
                             className="h-7 w-7 p-0"
+                            aria-label="Split view"
                             title="Split view"
                         >
                             <SplitSquareVertical className="h-4 w-4" />
@@ -354,6 +356,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             size="sm"
                             onClick={() => onViewModeChange('table')}
                             className="h-7 w-7 p-0"
+                            aria-label="Table view"
                             title="Table view"
                         >
                             <Table2 className="h-4 w-4" />
@@ -361,7 +364,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                     </div>
                 )}
                 {onClose && (
-                    <Button variant="ghost" size="sm" onClick={onClose} className="h-7 w-7 p-0 shrink-0" title="Clear results">
+                    <Button variant="ghost" size="sm" onClick={onClose} className="h-7 w-7 p-0 shrink-0" aria-label="Clear results" title="Clear results">
                         <X className="h-4 w-4" />
                     </Button>
                 )}
