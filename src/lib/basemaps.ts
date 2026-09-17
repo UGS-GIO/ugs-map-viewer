@@ -74,3 +74,47 @@ export const BASEMAP_STYLES: BasemapStyle[] = [
 
 // Default basemap
 export const DEFAULT_BASEMAP = BASEMAP_STYLES[0];
+
+export interface AppBasemapConfig {
+  default: string;
+  /** Top-level nav buttons, in this order; the rest move to "More". */
+  short?: string[];
+  hide?: string[];
+}
+
+/** Apps left out get every style and `DEFAULT_BASEMAP`. */
+const APP_BASEMAPS: Record<string, AppBasemapConfig> = {
+  hazards: {
+    default: 'utah-satellite',
+    short: ['liberty', 'utah-satellite', 'lite', 'terrain'],
+    hide: ['sentinel'],
+  },
+  'hazards-review': {
+    default: 'utah-satellite',
+    short: ['liberty', 'utah-satellite', 'lite', 'terrain'],
+    hide: ['sentinel'],
+  },
+};
+
+export interface AppBasemaps {
+  styles: BasemapStyle[];
+  defaultStyle: BasemapStyle;
+}
+
+/** Resolve an app's basemap menu from its route segment (e.g. 'hazards'). */
+export function resolveAppBasemaps(page: string): AppBasemaps {
+  const config = APP_BASEMAPS[page];
+  if (!config) return { styles: BASEMAP_STYLES, defaultStyle: DEFAULT_BASEMAP };
+
+  const hidden = new Set(config.hide ?? []);
+  const short = config.short ?? BASEMAP_STYLES.filter(b => b.type === 'short').map(b => b.id);
+  const visible = BASEMAP_STYLES
+    .filter(b => !hidden.has(b.id))
+    .map((b): BasemapStyle => ({ ...b, type: short.includes(b.id) ? 'short' : 'long' }));
+
+  const styles = [
+    ...short.map(id => visible.find(b => b.id === id)).filter((b): b is BasemapStyle => b !== undefined),
+    ...visible.filter(b => b.type === 'long'),
+  ];
+  return { styles, defaultStyle: styles.find(b => b.id === config.default) ?? DEFAULT_BASEMAP };
+}
