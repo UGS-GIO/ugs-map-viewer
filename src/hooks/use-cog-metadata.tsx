@@ -1,15 +1,19 @@
 import { useQuery } from '@tanstack/react-query'
-import { fromUrl, GeoTIFF } from 'geotiff'
+import { fromUrl, GeoTIFF, GeoTIFFImage } from 'geotiff'
 import type { Polygon } from 'geojson'
 import type { COGLayerProps } from '@/lib/types/mapping-types'
 import { convertCoordinate } from '@/lib/map/conversion-utils'
 import { queryKeys } from '@/lib/query-keys'
+import { isRecord } from '@/lib/utils'
 
 export interface CogMetadata {
-    minimum: number
-    maximum: number
-    mean: number
-    stddev: number
+    /** Band stats. Absent on RGB/palette images, which carry no meaningful stretch. */
+    minimum?: number
+    maximum?: number
+    mean?: number
+    stddev?: number
+    /** True when the image draws as its own colours (RGB(A) or palette) instead of through a ramp. */
+    rgb?: boolean
     /** [pixelW, pixelH] in COG's native CRS units (positive). undefined if not readable. */
     pixelSize?: [number, number]
     /** [x, y] of upper-left pixel origin in COG's native CRS. undefined if not readable. */
@@ -39,11 +43,18 @@ export function useCogMetadata(cogUrl?: string, stacFallbackUrl?: string) {
     })
 }
 
-/** Resolves a COG layer's render range from embedded stats / STAC. Returns undefined while loading or on fetch failure. */
+/** Resolves a COG layer's render range from embedded stats / STAC. Returns undefined while loading, on fetch failure, or for RGB images. */
 export function useCogRange(layer: COGLayerProps): [number, number] | undefined {
     const { data } = useCogMetadata(layer.cogUrl, layer.stacUrl)
     if (!data) return undefined
     return deriveRange(data, layer.stretchMode ?? 'minmax')
+}
+
+/** Null until the COG is readable; then a range for single-band data, or an empty result for RGB images that need no ramp. */
+export function useCogRender(layer: COGLayerProps): { range: [number, number] | undefined } | null {
+    const { data } = useCogMetadata(layer.cogUrl, layer.stacUrl)
+    if (!data) return null
+    return { range: deriveRange(data, layer.stretchMode ?? 'minmax') }
 }
 
 // Module-level cache so repeated fromUrl(cogUrl) calls share a parsed GeoTIFF instance
@@ -66,32 +77,53 @@ export async function loadCogMetadata(cogUrl: string, stacFallbackUrl?: string):
     return null
 }
 
+function readNumber(md: Record<string, unknown>, key: string): number | undefined {
+    const raw = md[key]
+    const n = typeof raw === 'number' ? raw : typeof raw === 'string' ? parseFloat(raw) : NaN
+    return Number.isFinite(n) ? n : undefined
+}
+
+/** Grid info — used to snap a click to the pixel cell for highlighting. */
+function readGrid(image: GeoTIFFImage): Pick<CogMetadata, 'pixelSize' | 'origin' | 'epsg'> {
+    try {
+        const [px, py] = image.getResolution()
+        const [ox, oy] = image.getOrigin()
+        const keys: unknown = image.getGeoKeys()
+        const code = isRecord(keys) ? keys.ProjectedCSTypeGeoKey ?? keys.GeographicTypeGeoKey : undefined
+        return {
+            pixelSize: [Math.abs(px), Math.abs(py)],
+            origin: [ox, oy],
+            epsg: typeof code === 'number' ? code : undefined,
+        }
+    } catch {
+        return {}
+    }
+}
+
+/** PhotometricInterpretation 2 = RGB, 3 = palette. Both render without a colour ramp. */
+function isRgbImage(image: GeoTIFFImage): boolean {
+    const photometric: unknown = isRecord(image.fileDirectory) ? image.fileDirectory.PhotometricInterpretation : undefined
+    if (photometric === 2 || photometric === 3) return true
+    return image.getSamplesPerPixel() >= 3
+}
+
 async function readCogMetadata(cogUrl: string): Promise<CogMetadata | null> {
     try {
         const tiff = await getTiff(cogUrl)
         const image = await tiff.getImage(0)
-        const md = image.getGDALMetadata(0) as Record<string, string> | null
-        if (!md) return null
-        const min = parseFloat(md.STATISTICS_MINIMUM)
-        const max = parseFloat(md.STATISTICS_MAXIMUM)
-        const mean = parseFloat(md.STATISTICS_MEAN)
-        const stddev = parseFloat(md.STATISTICS_STDDEV)
-        if ([min, max, mean, stddev].some(v => !Number.isFinite(v))) return null
-
-        // Grid info — used to snap click to pixel cell for highlighting
-        let pixelSize: [number, number] | undefined
-        let origin: [number, number] | undefined
-        let epsg: number | undefined
-        try {
-            const [px, py] = image.getResolution()
-            const [ox, oy] = image.getOrigin()
-            pixelSize = [Math.abs(px), Math.abs(py)]
-            origin = [ox, oy]
-            const code = image.getGeoKeys()?.ProjectedCSTypeGeoKey ?? image.getGeoKeys()?.GeographicTypeGeoKey
-            if (typeof code === 'number') epsg = code
-        } catch { /* metadata optional */ }
-
-        return { minimum: min, maximum: max, mean, stddev, pixelSize, origin, epsg }
+        const grid = readGrid(image)
+        const raw: unknown = image.getGDALMetadata(0)
+        const md = isRecord(raw) ? raw : {}
+        const minimum = readNumber(md, 'STATISTICS_MINIMUM')
+        const maximum = readNumber(md, 'STATISTICS_MAXIMUM')
+        const mean = readNumber(md, 'STATISTICS_MEAN')
+        const stddev = readNumber(md, 'STATISTICS_STDDEV')
+        // Scanned maps ship as RGB with no stats; they are still renderable, so they
+        // must not fall through to the STAC lookup and then to "unreadable".
+        if (minimum === undefined || maximum === undefined || mean === undefined || stddev === undefined) {
+            return isRgbImage(image) ? { rgb: true, ...grid } : null
+        }
+        return { minimum, maximum, mean, stddev, ...grid }
     } catch {
         return null
     }
@@ -112,9 +144,12 @@ async function readStacStats(stacUrl: string): Promise<CogMetadata | null> {
     return { minimum: s.minimum, maximum: s.maximum, mean: s.mean, stddev: s.stddev }
 }
 
-export function deriveRange(stats: CogMetadata, mode: 'minmax' | 'sigma'): [number, number] {
-    if (mode === 'sigma') return [stats.mean - 2 * stats.stddev, stats.mean + 2 * stats.stddev]
-    return [stats.minimum, stats.maximum]
+/** Undefined when the image carries no stats to stretch (RGB scans). */
+export function deriveRange(stats: CogMetadata, mode: 'minmax' | 'sigma'): [number, number] | undefined {
+    const { minimum, maximum, mean, stddev } = stats
+    if (mode === 'sigma' && mean !== undefined && stddev !== undefined) return [mean - 2 * stddev, mean + 2 * stddev]
+    if (minimum === undefined || maximum === undefined) return undefined
+    return [minimum, maximum]
 }
 
 /**

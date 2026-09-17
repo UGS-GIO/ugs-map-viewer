@@ -16,6 +16,15 @@ describe('deriveRange', () => {
     it('sigma returns mean ± 2σ', () => {
         expect(deriveRange(baseStats, 'sigma')).toEqual([0, 100])
     })
+
+    it('returns undefined for an RGB image, which has no stats to stretch', () => {
+        expect(deriveRange({ rgb: true, epsg: 3857 }, 'minmax')).toBeUndefined()
+        expect(deriveRange({ rgb: true, epsg: 3857 }, 'sigma')).toBeUndefined()
+    })
+
+    it('falls back to minmax when sigma has no mean/stddev', () => {
+        expect(deriveRange({ minimum: 1, maximum: 9 }, 'sigma')).toEqual([1, 9])
+    })
 })
 
 describe('computeCogPixelPolygon', () => {

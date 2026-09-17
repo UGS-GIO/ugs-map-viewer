@@ -24,7 +24,7 @@ import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerP
 import type maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 
-import { useCogRange } from '@/hooks/use-cog-metadata'
+import { useCogRender } from '@/hooks/use-cog-metadata'
 import { CogPixelHighlight } from '@/components/maps/cog-pixel-highlight'
 import { buildCogProtocolUrl } from '@/lib/map/cog/setup'
 import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
@@ -56,9 +56,9 @@ function getLayerId(layer: DataLayer): string {
 
 function CogLayerSource({ layer, beforeId, hidden, opacity }: { layer: COGLayerProps; beforeId: string | undefined; hidden?: boolean; opacity?: number }) {
   // Dynamic stretch from COG-embedded stats (gdal_edit -stats); STAC URL is fallback.
-  const range = useCogRange(layer)
-  if (!range) return null
-  const tileUrl = buildCogProtocolUrl(layer, range)
+  const render = useCogRender(layer)
+  if (!render) return null
+  const tileUrl = buildCogProtocolUrl(layer, render.range)
   return (
     <Source id={`cog-${layer.title}`} type="raster" url={tileUrl} tileSize={256}>
       <Layer
