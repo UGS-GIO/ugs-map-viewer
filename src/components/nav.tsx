@@ -347,48 +347,50 @@ export function NavLinkIcon({
     showsPanel && 'bg-accent text-accent-foreground before:bg-primary'
   )
 
+  // The trigger wraps the control, not the icon: an svg takes no focus, so a
+  // keyboard user tabbing the rail would never see the tooltip.
   return link.href ? (
-    <Link
-      target='_blank'
-      rel='noopener noreferrer'
-      to={link.href}
-      aria-label={`${link.title} (opens in a new tab)`}
-      className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), railItem)}
-      aria-current={checkActiveNav(link.componentPath ?? '') ? 'page' : undefined}
-      data-tour={link.title?.toLowerCase() === 'feedback' ? 'feedback' : undefined}
-    >
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Link
+            target='_blank'
+            rel='noopener noreferrer'
+            to={link.href}
+            aria-label={`${link.title} (opens in a new tab)`}
+            className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), railItem)}
+            aria-current={checkActiveNav(link.componentPath ?? '') ? 'page' : undefined}
+            data-tour={link.title?.toLowerCase() === 'feedback' ? 'feedback' : undefined}
+          >
             {link.icon}
-          </TooltipTrigger>
-          <TooltipContent side='right'>
-            <p>{link.title}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    </Link>
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side='right'>
+          <p>{link.title}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   ) : (
-    <Button
-      variant="ghost"
-      size="icon"
-      aria-label={link.title}
-      aria-expanded={isHome ? undefined : showsPanel}
-      aria-controls={showsPanel && !isHome ? TOOL_PANEL_ID : undefined}
-      className={cn(railItem, 'z-50', !showsPanel && 'hover:bg-accent hover:text-accent-foreground')}
-      onClick={handleClick}
-    >
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={link.title}
+            aria-expanded={isHome ? undefined : showsPanel}
+            aria-controls={showsPanel && !isHome ? TOOL_PANEL_ID : undefined}
+            className={cn(railItem, 'z-50', !showsPanel && 'hover:bg-accent hover:text-accent-foreground')}
+            onClick={handleClick}
+          >
             {link.icon}
-          </TooltipTrigger>
-          <TooltipContent side='right'>
-            <p>{link.title}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    </Button>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side='right'>
+          <p>{link.title}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 

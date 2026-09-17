@@ -9,7 +9,7 @@ export default function ThemeSwitch() {
   // the wrong icon and a label for a switch that changes nothing. Resolve it first.
   const isDark =
     theme === 'system'
-      ? window.matchMedia('(prefers-color-scheme: dark)').matches
+      ? !!globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches
       : theme === 'dark'
 
   return (
