@@ -228,7 +228,9 @@ function CategoryLegendGrid(
                         key={value}
                         className={cn(
                             "flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer",
-                            isZero && "opacity-40 cursor-not-allowed",
+                            // Dimming by opacity dropped this text to 2.3:1; say "no rows" with
+                            // the muted token, which still meets AA.
+                            isZero && "text-muted-foreground cursor-not-allowed",
                         )}
                     >
                         <Checkbox
