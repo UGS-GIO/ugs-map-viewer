@@ -14,14 +14,13 @@ import type { GeoJSONLayerProps } from '@/lib/types/mapping-types'
 import type { WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
 import { colorFromTitle } from '@/lib/map/user-layers/detect'
 import { UserVectorLayers } from '@/components/maps/user-vector-layers'
+import { hashString } from '@/lib/utils'
 
 /** Stable source id per GeoJSON layer. Hashed rather than slugified: lowercasing
  *  and collapsing whitespace would map "My Data" and "my-data" onto one id, and
  *  user layer titles are free text. */
 export function getGeojsonSourceId(layer: GeoJSONLayerProps): string {
-    let h = 0
-    for (let i = 0; i < layer.title.length; i++) h = (h * 31 + layer.title.charCodeAt(i)) >>> 0
-    return `geojson-${h.toString(36)}`
+    return `geojson-${hashString(layer.title).toString(36)}`
 }
 
 /** Canonical first-sublayer id for z-order (`beforeId`) lookups. */

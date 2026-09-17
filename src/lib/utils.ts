@@ -54,3 +54,15 @@ export function formatNumeric(value: unknown, format?: string): string {
 
   return numericFormatters[format](num);
 }
+/**
+ * Stable 32-bit hash of a string (djb2-style, ×31).
+ *
+ * Used wherever free text has to become a deterministic id or index — a layer
+ * title's colour, its source id, a cache table name — so those all agree and a
+ * layer keeps the same colour and id across reloads.
+ */
+export function hashString(value: string): number {
+    let h = 0
+    for (let i = 0; i < value.length; i++) h = (Math.imul(h, 31) + value.charCodeAt(i)) >>> 0
+    return h
+}

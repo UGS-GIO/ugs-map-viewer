@@ -6,6 +6,7 @@
 
 import * as duckdb from '@duckdb/duckdb-wasm';
 import type { PostgRESTRow } from '@/lib/types/postgrest-types';
+import { hashString } from '@/lib/utils';
 
 // ── DuckDB singleton (lazy, module-scoped) ───────────────────────────────────
 
@@ -258,10 +259,7 @@ export const queryParquetAll = async (
  */
 const attributeTables = new Map<string, Promise<string>>();
 
-const attributeTableName = (key: string): string => {
-    const hash = [...key].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) | 0, 7);
-    return `attrs_${(hash >>> 0).toString(36)}`;
-};
+const attributeTableName = (key: string): string => `attrs_${hashString(key).toString(36)}`;
 
 export const materializedAttributes = async (
     { url, columns, expressions, geometryField = 'geom' }: {

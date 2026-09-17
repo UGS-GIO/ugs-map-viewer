@@ -28,6 +28,7 @@ import {
 import { loadCogMetadata } from '@/hooks/use-cog-metadata'
 import { registerLocalPMTiles, unregisterLocalPMTiles } from '@/lib/map/pmtiles/setup'
 import { userVectorPaint } from '@/components/maps/user-vector-layers'
+import { hashString } from '@/lib/utils'
 import {
     loadParquetForDeck,
     ParquetLoadCancelledError,
@@ -65,9 +66,7 @@ function formatBytes(bytes: number): string {
 /** Deterministic colour from a title so a layer keeps its colour across reloads. */
 const PALETTE = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#7c3aed', '#0891b2', '#db2777', '#65a30d']
 export function colorFromTitle(title: string): string {
-    let h = 0
-    for (let i = 0; i < title.length; i++) h = (h * 31 + title.charCodeAt(i)) >>> 0
-    return PALETTE[h % PALETTE.length]
+    return PALETTE[hashString(title) % PALETTE.length]
 }
 
 /** Default viridis-like ramp for user COG layers with no styling metadata. */
