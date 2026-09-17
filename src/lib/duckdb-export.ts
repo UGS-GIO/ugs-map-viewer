@@ -55,6 +55,10 @@ const triggerDownload = (blob: Blob, filename: string): void => {
 };
 
 /** Materialize a DuckDB virtual file into a Blob and clean up. Handles SharedArrayBuffer-backed results. */
+let exportSeq = 0;
+/** Unique per page session: two concurrent exports must not share a path in the WASM filesystem. */
+const virtualExportPath = (extension: string): string => `export_${Date.now()}_${exportSeq++}.${extension}`;
+
 const bufferToBlob = async (
     db: duckdb.AsyncDuckDB,
     virtualPath: string,
@@ -254,7 +258,7 @@ const handlers: Record<ExportFormat, Handler> = {
         return withConnection(async (conn, db) => {
             opts.onProgress?.({ stage: 'converting', message: 'Combining tables…' });
             const source = await exportSource(conn, opts);
-            const virtualPath = `export_${crypto.randomUUID()}.parquet`;
+            const virtualPath = virtualExportPath('parquet');
             await conn.query(`COPY (SELECT * FROM ${source}) TO '${virtualPath}' (FORMAT PARQUET)`);
             return bufferToBlob(db, virtualPath, EXPORT_FORMATS.parquet.mimeType);
         });
@@ -280,7 +284,7 @@ const handlers: Record<ExportFormat, Handler> = {
         `);
 
         opts.onProgress?.({ stage: 'converting', message: 'Writing CSV…' });
-        const virtualPath = `export_${crypto.randomUUID()}.csv`;
+        const virtualPath = virtualExportPath('csv');
         await conn.query(`COPY export_view TO '${virtualPath}' (HEADER, DELIMITER ',')`);
         return bufferToBlob(db, virtualPath, EXPORT_FORMATS.csv.mimeType);
     }),
