@@ -1,5 +1,5 @@
 import type { FeatureCollection, Feature } from 'geojson'
-import { withConnection, loadSpatial, escapeSql, quoteIdent, normalizeRow } from '@/lib/duckdb/client'
+import { withConnection, loadSpatial, escapeSql, quoteIdent, normalizeRow, streamRows, resultRows } from '@/lib/duckdb/client'
 import { readGeoParquetCrs, reprojectToWgs84, assertGeographicBounds } from '@/lib/map/user-layers/geoparquet-crs'
 
 /** The slice of an `AsyncDuckDBConnection` this module uses. */
@@ -10,34 +10,6 @@ type DuckDbConnection = {
     query: (sql: string) => Promise<DuckDbResult>
     /** Streams the result a record batch at a time. Required for anything row-unbounded. */
     send?: (sql: string) => Promise<AsyncIterable<DuckDbResult>>
-}
-
-/**
- * Iterate a query's rows without materializing the whole result.
- *
- * `conn.query` builds the entire Arrow result as one contiguous buffer in
- * DuckDB's 32-bit WASM heap before handing it over. For a row-unbounded read —
- * every polygon's GeoJSON text, say — that single allocation is the thing that
- * dies as "malloc of size N failed", long before the browser is out of memory.
- * `conn.send` hands back record batches instead, so only one batch is live at a
- * time. Falls back to `query` where `send` is unavailable (notably in tests).
- */
-async function* streamRows(conn: DuckDbConnection, sql: string): AsyncGenerator<Record<string, unknown>> {
-    if (!conn.send) {
-        yield* rowsOf(await conn.query(sql))
-        return
-    }
-    for await (const batch of await conn.send(sql)) {
-        yield* rowsOf(batch)
-    }
-}
-
-/** A result's rows as field bags, skipping anything that isn't one. */
-function* rowsOf(result: DuckDbResult): Generator<Record<string, unknown>> {
-    for (const row of result.toArray()) {
-        const json = row.toJSON()
-        if (isRecord(json)) yield json
-    }
 }
 
 const GEOM_CANDIDATES = ['geom', 'geometry', 'wkb_geometry', 'the_geom', 'shape']
@@ -307,7 +279,7 @@ export async function queryParquetRowProperties(
             `SELECT * EXCLUDE (${quoteIdent(POINT_X)}, ${quoteIdent(POINT_Y)})
              FROM ${quoteIdent(attrTable)} WHERE ${quoteIdent(ROW_ID)} IN (${idList})`,
         )
-        for (const obj of rowsOf(res)) {
+        for (const obj of resultRows(res)) {
             const rid = cellToNumber(obj[ROW_ID])
             if (rid === undefined) continue
             delete obj[ROW_ID]
@@ -400,7 +372,7 @@ export async function loadParquetForDeck(source: string | File, opts: LoadParque
             }
 
             const described = await conn.query(`DESCRIBE SELECT * FROM ${tableSource}`)
-            const describedRows = [...rowsOf(described)]
+            const describedRows = [...resultRows(described)]
             const columns = describedRows.map(r => String(r.column_name))
 
             const lonCol = columns.find(c => ['lon', 'longitude', 'x', 'lng'].includes(c.toLowerCase()))

@@ -95,6 +95,47 @@ export const loadSpatial = async (
     }
 };
 
+/**
+ * Iterate a query's rows without materializing the whole result.
+ *
+ * `conn.query` builds the entire Arrow result as one contiguous buffer in
+ * DuckDB's 32-bit WASM heap before handing it over. For a row-unbounded read —
+ * a whole related table, say — that single allocation is what dies as "malloc
+ * of size N failed", long before the browser is out of memory. `send` hands back
+ * record batches instead, so only one batch is live at a time. Falls back to
+ * `query` where `send` is unavailable (notably in tests).
+ */
+export async function* streamRows(
+    conn: StreamableConnection,
+    sql: string,
+): AsyncGenerator<Record<string, unknown>> {
+    if (!conn.send) {
+        yield* resultRows(await conn.query(sql));
+        return;
+    }
+    for await (const batch of await conn.send(sql)) {
+        yield* resultRows(batch);
+    }
+}
+
+/** The slice of an Arrow result these helpers read. */
+interface ArrowLikeResult { toArray: () => { toJSON: () => unknown }[] }
+
+/** The slice of a connection {@link streamRows} needs. Structural so a scripted
+ *  connection in a test satisfies it as well as duckdb-wasm's own. */
+export interface StreamableConnection {
+    query: (sql: string) => Promise<ArrowLikeResult>
+    send?: (sql: string) => Promise<AsyncIterable<ArrowLikeResult>>
+}
+
+/** A result's rows as field bags, skipping anything that isn't one. */
+export function* resultRows(result: ArrowLikeResult): Generator<Record<string, unknown>> {
+    for (const row of result.toArray()) {
+        const json = row.toJSON();
+        if (typeof json === 'object' && json !== null && !Array.isArray(json)) yield { ...json };
+    }
+}
+
 // ── SQL helpers ──────────────────────────────────────────────────────────────
 
 /** Escape a single-quoted SQL string literal. */
@@ -168,10 +209,11 @@ export const queryParquetByValues = async (
         // Cast the join column to VARCHAR so string-quoted values match regardless of the
         // column's parquet type (e.g. uwi VARCHAR or box_pk INTEGER) — duckdb won't compare
         // INTEGER IN (VARCHAR…) without an explicit cast.
-        const result = await conn.query(
-            `SELECT * FROM read_parquet('${escapeSql(url)}') WHERE CAST(${quoteIdent(matchingField)} AS VARCHAR) IN (${inList})${order}`,
-        );
-        return result.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>));
+        const sql =
+            `SELECT * FROM read_parquet('${escapeSql(url)}') WHERE CAST(${quoteIdent(matchingField)} AS VARCHAR) IN (${inList})${order}`;
+        const rows: PostgRESTRow[] = [];
+        for await (const row of streamRows(conn, sql)) rows.push(normalizeRow(row));
+        return rows;
     });
 };
 
@@ -192,10 +234,10 @@ export const queryParquetAll = async (
 ): Promise<PostgRESTRow[]> => {
     return withConnection(async (conn) => {
         const order = orderByClause(sortBy, sortDirection);
-        const result = await conn.query(
-            `SELECT * FROM read_parquet('${escapeSql(url)}')${order}`,
-        );
-        return result.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>));
+        const sql = `SELECT * FROM read_parquet('${escapeSql(url)}')${order}`;
+        const rows: PostgRESTRow[] = [];
+        for await (const row of streamRows(conn, sql)) rows.push(normalizeRow(row));
+        return rows;
     });
 };
 
@@ -287,13 +329,13 @@ export const queryParquetDistinctValues = async (
     { url, field }: { url: string; field: string },
 ): Promise<string[]> => {
     return withConnection(async (conn) => {
-        const result = await conn.query(
-            `SELECT DISTINCT CAST(${quoteIdent(field)} AS VARCHAR) AS v FROM read_parquet('${escapeSql(url)}') WHERE ${quoteIdent(field)} IS NOT NULL`,
-        );
-        return result.toArray()
-            .map(r => (r.toJSON() as { v: unknown }).v)
-            .filter((v): v is string => v != null)
-            .map(String);
+        const sql =
+            `SELECT DISTINCT CAST(${quoteIdent(field)} AS VARCHAR) AS v FROM read_parquet('${escapeSql(url)}') WHERE ${quoteIdent(field)} IS NOT NULL`;
+        const values: string[] = [];
+        for await (const row of streamRows(conn, sql)) {
+            if (typeof row.v === 'string') values.push(row.v);
+        }
+        return values;
     });
 };
 

@@ -41,10 +41,31 @@ const conn = {
     }),
 }
 
+type ArrowLike = { toArray: () => { toJSON: () => unknown }[] }
+type StreamConn = { query: (sql: string) => Promise<ArrowLike>; send?: (sql: string) => Promise<AsyncIterable<ArrowLike>> }
+
+/** Same contract as the real helpers, over the scripted connection above. */
+function* fakeResultRows(result: ArrowLike): Generator<Record<string, unknown>> {
+    for (const row of result.toArray()) {
+        const json = row.toJSON()
+        if (typeof json === 'object' && json !== null && !Array.isArray(json)) yield { ...json }
+    }
+}
+
+async function* fakeStreamRows(c: StreamConn, sql: string): AsyncGenerator<Record<string, unknown>> {
+    if (!c.send) {
+        yield* fakeResultRows(await c.query(sql))
+        return
+    }
+    for await (const batch of await c.send(sql)) yield* fakeResultRows(batch)
+}
+
 vi.mock('@/lib/duckdb/client', () => ({
     withConnection: vi.fn(async (fn: (c: unknown, d: unknown) => unknown) =>
         fn(conn, { registerFileHandle: vi.fn(), registerFileBuffer: vi.fn(), dropFile: vi.fn() })),
     loadSpatial: vi.fn(),
+    streamRows: fakeStreamRows,
+    resultRows: fakeResultRows,
     escapeSql: (s: string) => s.replace(/'/g, "''"),
     quoteIdent: (s: string) => `"${s.replace(/"/g, '""')}"`,
     normalizeRow: (row: Record<string, unknown>) => row,
