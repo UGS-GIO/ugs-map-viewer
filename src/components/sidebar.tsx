@@ -12,6 +12,8 @@ const SIDEBAR_RESIZE_STEP = 24;
 
 interface SidebarProps extends React.HTMLAttributes<HTMLElement> { }
 
+const clampWidth = (px: number) => Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, px));
+
 export default function Sidebar({ className }: SidebarProps) {
   const { navOpened, setNavOpened, isCollapsed, setIsCollapsed, sidebarWidthPx, setSidebarWidthPx } = useSidebar();
   const { data: sidebarLinks, isLoading: areLinksLoading } = useGetSidebarLinks();
@@ -31,8 +33,6 @@ export default function Sidebar({ className }: SidebarProps) {
   const getDefaultWidth = useCallback(() => {
     return window.innerWidth >= 1280 ? SIDEBAR_WIDTH_XL : SIDEBAR_WIDTH_MD;
   }, []);
-
-  const clampWidth = (px: number) => Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, px));
 
   const toggleCollapsed = useCallback(() => {
     if (isCollapsed) {
@@ -165,6 +165,8 @@ export default function Sidebar({ className }: SidebarProps) {
       style={sidebarStyle}
     >
       <div
+        role="presentation"
+        aria-hidden="true"
         onClick={() => setNavOpened(false)}
         className={`absolute inset-0 transition-opacity duration-700 ${navOpened ? 'h-full opacity-50' : 'h-0 opacity-0'
           } w-full bg-black md:hidden`}
