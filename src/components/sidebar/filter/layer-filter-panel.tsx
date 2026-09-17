@@ -84,7 +84,8 @@ function MultiSelectComboboxField({ schema, state, field, onChange }: FieldProps
         field,
         splitCommaDelimited: field.kind === 'containsAny',
     });
-    const options = data?.options ?? [];
+    const rawOptions = data?.options ?? [];
+    const options = field.optionLabelFilter ? rawOptions.filter(field.optionLabelFilter) : rawOptions;
     const counts = data?.counts ?? {};
     const value = state[field.field];
     const selected = value && (value.kind === 'multiSelect' || value.kind === 'containsAny') ? value.values : [];
