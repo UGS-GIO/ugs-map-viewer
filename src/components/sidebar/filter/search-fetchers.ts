@@ -1,6 +1,6 @@
 import type { FeatureCollection, Geometry, GeoJsonProperties, Feature } from 'geojson';
 import { featureCollection } from '@turf/helpers';
-import type { MasqueradeConfig, ParquetSearchConfig, PostgRESTConfig, Suggestion } from './search-types';
+import type { MasqueradeConfig, ParquetSearchConfig, PostgRESTConfig, SearchFeature, SearchFeatureCollection, Suggestion } from './search-types';
 import { appendFunctionParams } from './search-utils';
 
 // Label words people type ("T43S R11W Sec 31"). Tokens are ANDed, so these match nothing
@@ -74,7 +74,7 @@ export async function fetchPostgRESTResults(
     source: PostgRESTConfig,
     searchTerm: string,
     sourceIndex: number,
-): Promise<FeatureCollection<Geometry, GeoJsonProperties>> {
+): Promise<SearchFeatureCollection> {
     const params = source.params;
     const urlParams = new URLSearchParams();
     let apiUrl = '';
@@ -127,13 +127,13 @@ export async function fetchPostgRESTResults(
             return featureCollection(data as Feature<Geometry, GeoJsonProperties>[]);
         }
         // Plain objects — convert to pseudo-features for display
-        const pseudoFeatures: Feature<Geometry, GeoJsonProperties>[] = data.map((item, idx) => ({
+        const pseudoFeatures: SearchFeature[] = data.map((item, idx) => ({
             type: 'Feature' as const,
             id: idx,
-            geometry: null as unknown as Geometry,
+            geometry: null,
             properties: item
         }));
-        return featureCollection(pseudoFeatures);
+        return { type: 'FeatureCollection', features: pseudoFeatures };
     } else if (data?.type === 'FeatureCollection' && Array.isArray(data.features)) {
         return data as FeatureCollection<Geometry, GeoJsonProperties>;
     }
@@ -204,7 +204,7 @@ export function prewarmParquetSources(sources: readonly ParquetSearchConfig[]): 
 export async function fetchParquetResults(
     source: ParquetSearchConfig,
     searchTerm: string,
-): Promise<FeatureCollection<Geometry, GeoJsonProperties>> {
+): Promise<SearchFeatureCollection> {
     const tokens = searchTokens(searchTerm);
     if (tokens.length === 0) return featureCollection([]);
 
@@ -246,16 +246,16 @@ export async function fetchParquetResults(
         return result.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>));
     });
 
-    const features: Feature<Geometry, GeoJsonProperties>[] = rows.map((row, idx) => ({
+    const features: SearchFeature[] = rows.map((row, idx) => ({
         type: 'Feature' as const,
         id: idx,
-        geometry: null as unknown as Geometry,
+        geometry: null,
         properties: source.groupByMatch
             ? { ...row, [source.groupByField ?? 'match_type']: matchGroup(row, source.groupByMatch, tokens) }
             : row,
     }));
 
-    return featureCollection(features);
+    return { type: 'FeatureCollection', features };
 }
 
 /**
@@ -363,9 +363,10 @@ export async function fetchParquetGeometries(
 /** Attach geometry to suggestion features, dropping any the parquet can't supply. */
 export async function withParquetGeometry(
     source: ParquetSearchConfig,
-    features: Feature<Geometry, GeoJsonProperties>[],
+    features: SearchFeature[],
 ): Promise<Feature<Geometry, GeoJsonProperties>[]> {
-    if (!source.idField) return features;
+    // No idField means no geometry lookup — keep only what already has geometry.
+    if (!source.idField) return features.filter((f): f is Feature<Geometry, GeoJsonProperties> => f.geometry !== null);
     const idField = source.idField;
     const ids = features.map(f => String(f.properties?.[idField] ?? '')).filter(Boolean);
     const geometries = await fetchParquetGeometries(source, ids);

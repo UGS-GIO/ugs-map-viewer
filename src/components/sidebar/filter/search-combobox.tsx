@@ -23,6 +23,7 @@ import type {
     Suggestion,
     QueryData,
     QueryResultWrapper,
+    SearchFeature,
     SearchComboboxHandle,
     SearchComboboxProps,
 } from './search-types';
@@ -182,7 +183,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
     const handleResultSelect = async (
         value: string,
         sourceIndex: number,
-        itemData: Feature<Geometry, GeoJsonProperties> | Suggestion,
+        itemData: SearchFeature | Suggestion,
         searchConfig: SearchSourceConfig[]
     ) => {
         if (!map) return;
@@ -223,7 +224,8 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
             const displayValue = getDisplayValue(itemData.properties, sourceConfig);
             setInputValue(displayValue || value);
 
-            let result: Feature<Geometry, GeoJsonProperties> | FeatureCollection<Geometry, GeoJsonProperties> | null = itemData;
+            let result: Feature<Geometry, GeoJsonProperties> | FeatureCollection<Geometry, GeoJsonProperties> | null =
+                itemData.geometry ? { ...itemData, geometry: itemData.geometry } : null;
 
             if (!itemData.geometry && sourceConfig.type === 'parquet') {
                 try {
@@ -283,7 +285,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
             return;
         }
 
-        let allVisibleFeatures: Feature<Geometry, GeoJsonProperties>[] = [];
+        let allVisibleFeatures: SearchFeature[] = [];
         let firstValidSourceUrl: string | null = null;
         let firstValidSourceIndex: number = -1;
         let needsGeometryFetch = false;
@@ -345,7 +347,10 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
         // Same ordering as single selection — layers on, then one camera move.
         layerTitlesToShow.forEach(ensureLayerVisibleByTitle);
 
-        const combinedCollection = allVisibleFeatures.length > 0 ? featureCollection(allVisibleFeatures) : null;
+        const locatedFeatures = allVisibleFeatures.filter(
+            (feature): feature is Feature<Geometry, GeoJsonProperties> => feature.geometry !== null,
+        );
+        const combinedCollection = locatedFeatures.length > 0 ? featureCollection(locatedFeatures) : null;
 
         if (map) {
             onCollectionSelect?.(combinedCollection, firstValidSourceUrl, firstValidSourceIndex, searchConfig, map);
