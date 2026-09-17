@@ -106,7 +106,7 @@ function Info() {
           {!isDataSourcesExpanded && (
             <div>
               {pageInfo?.dataSourcesShortened || (
-                <div className="animate-pulse h-4 bg-gray-200 rounded-md w-2/3"></div>
+                <div className="animate-pulse h-4 bg-muted rounded-md w-2/3"></div>
               )}
             </div>
           )}

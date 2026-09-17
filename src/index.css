@@ -198,8 +198,9 @@ body > #root {
     scroll-behavior: auto !important;
   }
 
-  /* Spinners keep turning, slower: frozen mid-export they read as a hung app. */
-  .animate-spin {
+  /* Progress indicators keep moving, slower: frozen mid-load they read as a hung app. */
+  .animate-spin,
+  .animate-pulse {
     animation-duration: 1.6s !important;
     animation-iteration-count: infinite !important;
   }
