@@ -4,7 +4,14 @@
  * dropdown + handler dispatch both pick it up.
  */
 
+import type { RelatedTable } from '@/lib/types/mapping-types';
+
 export type ExportFormat = 'parquet' | 'geojson' | 'csv' | 'gpkg' | 'shp' | 'gdb' | 'fgb';
+
+/** Merged into the exported file itself, rather than shipped as its own CSV. Parquet-backed only. */
+export const isCombinedTable = (table: RelatedTable): boolean =>
+    !!table.combineIntoExport && table.fetchMode === 'parquet'
+    && !!table.url && !!table.matchingField && !!table.targetField;
 
 /** Formats converted by gdal3.js rather than DuckDB — see `gdal-export.ts`. */
 export const GDAL_FORMATS = ['gpkg', 'shp', 'gdb', 'fgb'] as const;

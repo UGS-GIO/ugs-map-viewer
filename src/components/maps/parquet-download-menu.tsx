@@ -13,7 +13,7 @@ import {
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useParquetSchema } from '@/hooks/use-parquet-schema';
-import { EXPORT_FORMATS, availableFormats, type ExportFormat } from '@/lib/export-formats';
+import { EXPORT_FORMATS, availableFormats, isCombinedTable, type ExportFormat } from '@/lib/export-formats';
 import { shapefileFieldChecks } from '@/lib/gdal-export';
 import type { RelatedTable } from '@/lib/types/mapping-types';
 
@@ -41,8 +41,8 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
     const [includeRelated, setIncludeRelated] = useState(true);
     // Combined tables are columns of the file itself — the checkbox is labelled for the
     // ones that would ship as their own CSVs, and governs only those.
-    const combined = useMemo(() => (relatedTables ?? []).filter(t => t.combineIntoExport), [relatedTables]);
-    const separate = useMemo(() => (relatedTables ?? []).filter(t => !t.combineIntoExport), [relatedTables]);
+    const combined = useMemo(() => (relatedTables ?? []).filter(isCombinedTable), [relatedTables]);
+    const separate = useMemo(() => (relatedTables ?? []).filter(t => !isCombinedTable(t)), [relatedTables]);
     const hasRelatedTables = separate.length > 0;
 
     // Shapefile silently truncates field names past 10 chars and drops columns whose

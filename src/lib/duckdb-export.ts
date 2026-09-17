@@ -11,7 +11,7 @@
  */
 
 import * as duckdb from '@duckdb/duckdb-wasm';
-import { EXPORT_FORMATS, type ExportFormat } from '@/lib/export-formats';
+import { EXPORT_FORMATS, isCombinedTable, type ExportFormat } from '@/lib/export-formats';
 import { withConnection, loadSpatial, escapeSql, quoteIdent, queryParquetDistinctValues } from '@/lib/duckdb/client';
 import { downloadZip } from '@/lib/download-utils';
 import { isInternalColumn } from '@/lib/export-fields';
@@ -69,10 +69,8 @@ const bufferToBlob = async (
 };
 
 
-/** Parquet-backed related tables the layer wants merged into the file itself. */
 const combinedTables = (opts: ExportOptions): RelatedTable[] =>
-    (opts.relatedTables ?? []).filter(t =>
-        t.combineIntoExport && t.fetchMode === 'parquet' && t.url && t.matchingField && t.targetField);
+    (opts.relatedTables ?? []).filter(isCombinedTable);
 
 const columnNames = async (conn: duckdb.AsyncDuckDBConnection, relation: string): Promise<string[]> => {
     const described = await conn.query(`DESCRIBE SELECT * FROM ${relation}`);
@@ -365,10 +363,8 @@ export const exportParquet = async (opts: ExportOptions): Promise<void> => {
     const meta = EXPORT_FORMATS[opts.format];
     try {
         const blob = await handlers[opts.format](opts);
-        // Only tables that really were merged drop out of the zip: one flagged
-        // `combineIntoExport` but not parquet-backed still ships as its own CSV.
-        const merged = new Set(combinedTables(opts));
-        const relatedTables = (opts.relatedTables ?? []).filter(t => !merged.has(t));
+        // One flagged `combineIntoExport` but not parquet-backed still ships as its own CSV.
+        const relatedTables = (opts.relatedTables ?? []).filter(t => !isCombinedTable(t));
 
         if (relatedTables.length === 0) {
             opts.onProgress?.({ stage: 'writing', message: 'Saving file…' });
