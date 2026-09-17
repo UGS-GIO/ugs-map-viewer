@@ -70,9 +70,7 @@ const MultiSelectCombobox = ({
                     <Button
                         variant="outline"
                         role="combobox"
-                        // `combobox` takes no name from its contents, so the visible
-                        // placeholder does not name it — point at the field's label.
-                        aria-labelledby={labelId}
+                        aria-labelledby={labelId} // `combobox` takes no name from its contents
                         aria-expanded={open}
                         className="w-full justify-between text-xs h-9"
                         disabled={isLoading}

@@ -20,8 +20,7 @@ const BooleanFilter = ({
     disabled = false,
     disabledMessage,
 }: BooleanFilterProps) => {
-    // A label like "Has Core Photos" carries spaces, which an id may not: `htmlFor` then matches
-    // nothing and each radio reaches the a11y tree unnamed.
+    // Label text has spaces; an id may not, so `htmlFor` matched nothing and left the radios unnamed.
     const groupId = useId();
     const labelId = `${groupId}-label`;
 

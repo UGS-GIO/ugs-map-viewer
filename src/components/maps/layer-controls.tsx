@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { LegendAccordion } from '@/components/maps/legend-accordion';
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Toggle } from '@/components/ui/toggle';
 import { LayerDescriptionAccordion } from '@/components/maps/layer-description-accordion';
 import { useQuery } from '@tanstack/react-query';
@@ -62,6 +62,8 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     // describe the layer and stacking them is redundant). Filters + Stats each
     // get their own independent open state so reviewers can keep both visible
     // alongside Info or Legend if they want.
+    const opacityId = useId(); // a layer title has spaces; an id may not
+
     const [prevOpenLegend, setPrevOpenLegend] = useState(openLegend);
     const [activeTab, setActiveTab] = useState<'info' | 'legend' | null>(openLegend ? 'legend' : null);
     const [filtersOpen, setFiltersOpen] = useState(false);
@@ -107,11 +109,12 @@ const LayerControls: React.FC<LayerControlsProps> = ({
             <div className="flex flex-col gap-y-4 mx-8">
                 <div className="flex flex-col justify-between items-center w-full gap-y-4">
                     <div className="flex flex-row items-center justify-around gap-x-2 w-full mx-auto" data-tour="layer-opacity">
-                        <Label className={layerOpacity === null ? 'text-muted-foreground' : ''}>
+                        <Label htmlFor={opacityId} className={layerOpacity === null ? 'text-muted-foreground' : ''}>
                             Opacity
                         </Label>
                         {layerOpacity !== null ? (
                             <Slider
+                                id={opacityId}
                                 className="flex-grow"
                                 aria-label={`${title} opacity`}
                                 value={[dragValue ?? layerOpacity * 100]}
@@ -126,6 +129,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                             />
                         ) : (
                             <Slider
+                                id={opacityId}
                                 className="flex-grow opacity-50"
                                 aria-label={`${title} opacity`}
                                 value={[lastOpacityRef.current * 100]}

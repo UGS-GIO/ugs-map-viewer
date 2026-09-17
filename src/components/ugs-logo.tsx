@@ -13,9 +13,8 @@ interface UgsLogoProps {
 export function UgsLogo({ variant = 'lockup', className, alt = 'Utah Geological Survey' }: UgsLogoProps) {
   const [navy, white] = variant === 'mark' ? [mark, markWhite] : [lockupBlue, lockupWhite]
 
-  // Both inks are decorative: whichever one the theme hides would otherwise take the alt text with
-  // it, leaving a bare logo link nameless in that theme. `lazy` keeps the hidden ink (and, on a
-  // phone, the hidden wide lockup) off the wire until something actually shows it.
+  // Both inks are decorative — the hidden one would otherwise take the alt text with it.
+  // `lazy` keeps the hidden ink and, on a phone, the wide lockup off the wire.
   return (
     <>
       <img src={navy} alt='' aria-hidden='true' loading='lazy' decoding='async' className={cn('ugs-logo-navy dark:hidden', className)} />

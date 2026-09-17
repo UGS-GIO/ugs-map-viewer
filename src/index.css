@@ -23,7 +23,7 @@
     --muted-foreground: 0 0% 38%; /* UDS gray-medium #616161 */
     --accent: 0 0% 94%;
     --accent-foreground: 0 0% 20%;
-    --gold: 41 54% 47%; /* UDS gold */
+    --gold: 41 54% 30%; /* darkened from the UDS tone, which reads 2.97:1 on white */
     --gold-foreground: 0 0% 100%;
     --destructive: 0 100% 36%; /* UDS danger #ba0000 */
     --destructive-foreground: 0 0% 100%;
@@ -63,7 +63,7 @@
     --accent-foreground: 0 0% 96%;
     --gold: 41 50% 52%;
     --gold-foreground: 0 0% 10%;
-    --destructive: 0 72% 60%;
+    --destructive: 0 72% 66%; /* 4.6:1 on popovers; the UDS tone read 3.8:1 */
     --destructive-foreground: 0 0% 10%;
     --border: 0 0% 28%;
     --input: 0 0% 28%;
