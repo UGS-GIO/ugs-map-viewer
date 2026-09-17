@@ -260,6 +260,14 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
             // After the fetch: enabling re-renders the map, racing fitBounds against the style reload.
             ensureLayerVisibleByTitle(sourceConfig.layerName);
 
+            if (!result) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Location unavailable',
+                    description: `Could not load the map geometry for "${displayValue || value}".`,
+                });
+            }
+
             const sourceUrl = sourceConfig.type === 'parquet' ? sourceConfig.parquetUrl : sourceConfig.url;
             onFeatureSelect?.(result, sourceUrl, sourceIndex, searchConfig, map);
         }
@@ -329,7 +337,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                 }
             } catch (error) {
                 console.error(`Error fetching geometries for search source ${index}:`, error);
-                return [];
+                return features.filter(isLocated);
             }
             return features;
         }));
