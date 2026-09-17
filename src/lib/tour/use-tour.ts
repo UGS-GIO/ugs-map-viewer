@@ -28,6 +28,8 @@ const stripHighlightAria = () => {
   };
   strip();
   setTimeout(strip, 0);
+  // driver.js re-applies the attributes when its 300-400ms move transition lands.
+  setTimeout(strip, 450);
 };
 
 export function useTour(options: UseTourOptions = {}) {
