@@ -375,9 +375,9 @@ export async function withParquetGeometry(
     source: ParquetSearchConfig,
     features: SearchFeature[],
 ): Promise<Feature<Geometry, GeoJsonProperties>[]> {
-    const located = features.filter((f): f is Feature<Geometry, GeoJsonProperties> => f.geometry !== null);
+    const located = features.filter((f): f is Feature<Geometry, GeoJsonProperties> => f.geometry != null);
     const idField = source.idField;
-    const missing = idField ? features.filter(f => f.geometry === null) : [];
+    const missing = idField ? features.filter(f => f.geometry == null) : [];
     if (!idField || missing.length === 0) return located;
 
     const ids = missing.map(f => String(f.properties?.[idField] ?? '')).filter(Boolean);

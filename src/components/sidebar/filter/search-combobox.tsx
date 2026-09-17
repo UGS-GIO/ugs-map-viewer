@@ -314,7 +314,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
         // Suggestions are geometry-free, and an id only resolves against the source it came
         // from — so each source fetches its own geometry before the results are merged.
         const resolved = await Promise.all(bySource.map(async ({ index, features }) => {
-            const sourceConfig = searchConfig[index];
+            const sourceConfig = config[index];
             if (features.every(feature => feature.geometry)) return features;
             try {
                 if (sourceConfig?.type === 'parquet') {
@@ -339,7 +339,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
         layerTitlesToShow.forEach(ensureLayerVisibleByTitle);
 
         const locatedFeatures = allVisibleFeatures.filter(
-            (feature): feature is Feature<Geometry, GeoJsonProperties> => feature.geometry !== null,
+            (feature): feature is Feature<Geometry, GeoJsonProperties> => feature.geometry != null,
         );
         const combinedCollection = locatedFeatures.length > 0 ? featureCollection(locatedFeatures) : null;
 
