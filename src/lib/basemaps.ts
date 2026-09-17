@@ -82,18 +82,25 @@ export interface AppBasemapConfig {
   hide?: string[];
 }
 
-/** Apps left out get every style and `DEFAULT_BASEMAP`. */
+/** Every app, so the table is the whole story. An app left out falls back to all styles + `DEFAULT_BASEMAP`. */
+const STANDARD_SHORT = ['liberty', 'sentinel', 'lite', 'terrain'];
+
+/** Hazards reads landforms off UGRC's current statewide imagery; Sentinel-2's 2020 mosaic is too coarse for it. */
+const HAZARDS_BASEMAPS: AppBasemapConfig = {
+  default: 'utah-satellite',
+  short: ['liberty', 'utah-satellite', 'lite', 'terrain'],
+  hide: ['sentinel'],
+};
+
 const APP_BASEMAPS: Record<string, AppBasemapConfig> = {
-  hazards: {
-    default: 'utah-satellite',
-    short: ['liberty', 'utah-satellite', 'lite', 'terrain'],
-    hide: ['sentinel'],
-  },
-  'hazards-review': {
-    default: 'utah-satellite',
-    short: ['liberty', 'utah-satellite', 'lite', 'terrain'],
-    hide: ['sentinel'],
-  },
+  hazards: HAZARDS_BASEMAPS,
+  'hazards-review': HAZARDS_BASEMAPS,
+  carbonstorage: { default: 'liberty', short: STANDARD_SHORT },
+  geophysics: { default: 'liberty', short: STANDARD_SHORT },
+  minerals: { default: 'liberty', short: STANDARD_SHORT },
+  subsurface: { default: 'liberty', short: STANDARD_SHORT },
+  wetlands: { default: 'liberty', short: STANDARD_SHORT },
+  wetlandplants: { default: 'liberty', short: STANDARD_SHORT },
 };
 
 export interface AppBasemaps {
