@@ -20,8 +20,11 @@ const MapShell = ({ search, actions, children }: MapShellProps) => {
     // Mobile puts the sidebar over the map instead of beside it.
     const sidebarWidth = isMobile ? 0 : isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : sidebarWidthPx
 
+    // overflow-clip (not -hidden) on the shell root below: it is fixed chrome and must never
+    // scroll. An overflow-hidden box is still scrollable by focus()/scrollIntoView (e.g. focusing
+    // a below-fold filter radio), which would jerk the shell and strand the footer; clip cannot.
     return (
-        <div className="grid h-full grid-rows-[auto_1fr_auto] overflow-hidden bg-background">
+        <div className="grid h-full grid-rows-[auto_1fr_auto] overflow-clip bg-background">
             <a
                 href="#content"
                 className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-[100] focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:ring-2 focus:ring-ring"

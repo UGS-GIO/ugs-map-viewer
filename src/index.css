@@ -128,7 +128,11 @@ body {
 body > #root {
   height: 100%;
   position: relative;
-  overflow-x: hidden;
+  /* Clip, not hidden: the shell owns the viewport and must never be a scroll container.
+     `overflow-x: hidden` alone promotes overflow-y to `auto`, so a focus()/scrollIntoView on
+     off-screen content (e.g. a filter radio, the tour) can scroll the whole shell and strand
+     the footer. `clip` clips both axes and can't be scrolled. */
+  overflow: clip;
 }
 
 @media print {
