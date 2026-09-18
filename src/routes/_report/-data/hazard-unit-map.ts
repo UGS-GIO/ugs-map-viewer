@@ -42,6 +42,8 @@ export const hazardLayerNameMap = {
 // TODO: All layers will eventually migrate to 'geom'
 const geometryFieldOverrides: Record<string, string> = {
     [quaternaryFaultsHazardCode]: 'geom',
+    // SFR migrated shape -> geom on GeoServer (verified via DescribeFeatureType); native CRS stays EPSG:26912.
+    'SFR': 'geom',
 };
 
 // Native CRS per layer (default is EPSG:26912, override where different)
