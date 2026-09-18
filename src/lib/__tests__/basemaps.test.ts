@@ -38,10 +38,10 @@ describe('resolveAppBasemaps', () => {
 })
 
 describe('getBasemapUrl', () => {
-    it('returns the configured url for a known id', () => {
-        expect(getBasemapUrl('liberty')).toBe(DEFAULT_BASEMAP.url)
-        const terrain = BASEMAP_STYLES.find(b => b.id === 'terrain')
-        expect(getBasemapUrl('terrain')).toBe(terrain?.url)
+    it('returns each configured basemap url by id', () => {
+        for (const style of BASEMAP_STYLES) {
+            expect(getBasemapUrl(style.id)).toBe(style.url)
+        }
     })
 
     it('throws on an unknown id', () => {

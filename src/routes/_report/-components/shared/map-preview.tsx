@@ -9,11 +9,12 @@ import { calculateScaleBar, type ScaleBarInfo } from '@/routes/_report/-utils/sc
 
 const hazardLayerNameMap: Record<string, string> = importedHazardLayerNameMap as Record<string, string>;
 
-// Overview basemap: UGRC Discover "Terrain" raster tiles (Utah's state basemap; CORS-enabled,
+// Overview basemap: UGRC Discover "Lite" raster tiles (Utah's state basemap; CORS-enabled,
 // 256px {z}/{x}/{y}), sourced from the shared app basemap config the main viewer already uses
-// (its quad-word auth lives there). CARTO's free raster tiles now return watermarked
-// ("API KEY REQUIRED") and are being retired, so the report no longer uses them.
-const TILE_URL = getBasemapUrl('terrain');
+// (its quad-word auth lives there). "Lite" is a clean, low-contrast base so the hazard overlays
+// stay readable. CARTO's free raster tiles now return watermarked ("API KEY REQUIRED") and are
+// being retired, so the report no longer uses them.
+const TILE_URL = getBasemapUrl('lite');
 
 // Padding around polygon in pixels (matching MapLibre fitBounds behavior)
 const MAP_PADDING_PX = 50;
