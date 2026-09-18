@@ -574,6 +574,11 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
             <p className="mt-2 px-2 text-xs italic text-muted-foreground">
                 Units: {getUnitsLabelForType(typeValue)}.
             </p>
+            {/* General reading caveats — kept with the Units note as quiet fine-print
+                for the whole panel, not captioning the chart directly above. */}
+            <p className="mt-1 px-2 text-xs italic text-muted-foreground">
+                Contours are disjoint bands, so area totals are not double-counted. Blank map areas are unmeasured, not necessarily stable. InSAR measures vertical motion, not its cause.
+            </p>
         </div>
     )
 
@@ -790,7 +795,7 @@ export function BasinList({
     unit = 'in',
     formatValue = fmt1,
     heading = 'Subsidence by Basin',
-    caption = 'Basins ranked by their deepest contour value. Click a row to focus the panel on that basin; unselected rows grey out while one is active.',
+    caption = 'Basins ranked by their maximum subsidence. Click a row to focus the panel on that basin; unselected rows grey out while one is active.',
     emptyText = 'No basins above threshold.',
 }: BasinListProps) {
     const [page, setPage] = useState(0)

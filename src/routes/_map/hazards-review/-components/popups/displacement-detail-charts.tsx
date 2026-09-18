@@ -239,10 +239,14 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
                 )}
             </section>
 
-            <div className="flex flex-col gap-1.5 border-t border-dashed border-border pt-3 text-xs text-muted-foreground">
-                {typeValue === 'Yearly' && <p>The first year carries the multi-year baseline, not a single-year change.</p>}
-                <p>Contours are disjoint bands, so area totals are not double-counted. Blank map areas are unmeasured, not necessarily stable. InSAR measures vertical motion, not its cause.</p>
-            </div>
+            {/* Yearly-only footnote about the seed epoch. The general reading caveats
+                (disjoint bands / unmeasured blanks / motion-not-cause) moved to the
+                panel's Units fine-print so they read as panel-wide, not chart captions. */}
+            {typeValue === 'Yearly' && (
+                <div className="flex flex-col gap-1.5 border-t border-dashed border-border pt-3 text-xs text-muted-foreground">
+                    <p>The first year carries the multi-year baseline, not a single-year change.</p>
+                </div>
+            )}
         </div>
     )
 })
