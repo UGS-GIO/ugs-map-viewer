@@ -128,7 +128,10 @@ body {
 body > #root {
   height: 100%;
   position: relative;
-  overflow-x: hidden;
+  /* #root owns the viewport and must never be a scroll container: overflow: clip keeps it
+     non-scrollable even to focus()/scrollIntoView on off-screen content (a filter radio, the
+     tour), which would otherwise scroll the whole shell and strand the footer. */
+  overflow: clip;
 }
 
 @media print {
