@@ -78,7 +78,11 @@ export interface Suggestion {
     isCollection?: boolean;
 }
 
-export type QueryData = Suggestion[] | FeatureCollection<Geometry, GeoJsonProperties>;
+/** Search results carry no geometry until one is picked — it's fetched on selection. */
+export type SearchFeature = Feature<Geometry | null, GeoJsonProperties>;
+export type SearchFeatureCollection = FeatureCollection<Geometry | null, GeoJsonProperties>;
+
+export type QueryData = Suggestion[] | SearchFeatureCollection;
 
 export interface QueryResultWrapper {
     data: QueryData | undefined;
