@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { AlertCircle, Home, RotateCcw } from 'lucide-react';
+import { ErrorPage } from '@/components/error-page';
 
 interface RouteErrorBoundaryProps {
     error: Error;
@@ -53,66 +54,62 @@ export function RouteErrorBoundary({ error }: RouteErrorBoundaryProps) {
     const { title, message } = getErrorInfo();
 
     return (
-        <div className="flex h-full w-full items-center justify-center bg-background px-4">
-            <div className="w-full max-w-md">
-                <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-6">
-                    {/* Error Icon */}
-                    <div className="mb-4 flex justify-center">
-                        <AlertCircle className="h-12 w-12 text-destructive" />
-                    </div>
-
-                    {/* Error Title */}
-                    <h1 className="mb-2 text-center text-xl font-bold text-foreground">
-                        {title}
-                    </h1>
-
-                    {/* Error Message */}
-                    <p className="mb-4 text-center text-sm text-muted-foreground">
-                        {message}
-                    </p>
-
-                    {/* Error Details (Dev mode) */}
-                    {process.env.NODE_ENV === 'development' && rawErrorMessage && (
-                        <div className="mb-4 rounded-md bg-muted p-3">
-                            <p className="text-xs font-mono text-muted-foreground">
-                                {rawErrorMessage}
-                            </p>
-                            {errorDetails && (
-                                <details className="mt-2">
-                                    <summary className="cursor-pointer text-xs font-semibold text-muted-foreground">
-                                        Stack trace
-                                    </summary>
-                                    <pre className="mt-2 overflow-auto text-xs text-muted-foreground">
-                                        {errorDetails}
-                                    </pre>
-                                </details>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-3">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => window.history.back()}
-                        >
-                            <RotateCcw className="mr-2 h-4 w-4" />
-                            Go Back
-                        </Button>
-                        <Button
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => window.location.href = '/'}
-                        >
-                            <Home className="mr-2 h-4 w-4" />
-                            Home
-                        </Button>
-                    </div>
-                </div>
+        <ErrorPage>
+            {/* Error Icon */}
+            <div className="mb-4 flex justify-center">
+                <AlertCircle className="h-12 w-12 text-destructive" />
             </div>
-        </div>
+
+            {/* Error Title */}
+            <h1 className="mb-2 text-center text-xl font-bold text-foreground">
+                {title}
+            </h1>
+
+            {/* Error Message */}
+            <p className="mb-4 text-center text-sm text-muted-foreground">
+                {message}
+            </p>
+
+            {/* Error Details (Dev mode) */}
+            {process.env.NODE_ENV === 'development' && rawErrorMessage && (
+                <div className="mb-4 rounded-md bg-muted p-3">
+                    <p className="text-xs font-mono text-muted-foreground">
+                        {rawErrorMessage}
+                    </p>
+                    {errorDetails && (
+                        <details className="mt-2">
+                            <summary className="cursor-pointer text-xs font-semibold text-muted-foreground">
+                                Stack trace
+                            </summary>
+                            <pre className="mt-2 overflow-auto text-xs text-muted-foreground">
+                                {errorDetails}
+                            </pre>
+                        </details>
+                    )}
+                </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => window.history.back()}
+                >
+                    <RotateCcw className="mr-2 h-4 w-4" />
+                    Go Back
+                </Button>
+                <Button
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => window.location.href = '/'}
+                >
+                    <Home className="mr-2 h-4 w-4" />
+                    Home
+                </Button>
+            </div>
+        </ErrorPage>
     );
 }
 
