@@ -75,6 +75,13 @@ export const BASEMAP_STYLES: BasemapStyle[] = [
 // Default basemap
 export const DEFAULT_BASEMAP = BASEMAP_STYLES[0];
 
+/** Resolve a basemap's URL by id; throws (fail loud) if the id isn't in BASEMAP_STYLES. */
+export function getBasemapUrl(id: string): string {
+  const style = BASEMAP_STYLES.find((b) => b.id === id);
+  if (!style) throw new Error(`Unknown basemap id: ${id}`);
+  return style.url;
+}
+
 export interface AppBasemapConfig {
   default: string;
   /** Top-level nav buttons, in this order; the rest move to "More". */

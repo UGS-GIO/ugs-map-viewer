@@ -2,14 +2,19 @@ import { useRef, useMemo, useEffect, useState, useCallback, useId } from 'react'
 import { useQueryClient } from '@tanstack/react-query';
 import { hazardLayerNameMap as importedHazardLayerNameMap } from '@/routes/_report/-data/hazard-unit-map';
 import { PROD_GEOSERVER_URL } from '@/lib/constants';
+import { getBasemapUrl } from '@/lib/basemaps';
 import { convertCoordinate, calculateBounds, convertPolygonToWGS84 } from '@/lib/map/conversion-utils';
 import { useScreenshotLoading } from '@/routes/_report/-context/screenshot-loading-context';
 import { calculateScaleBar, type ScaleBarInfo } from '@/routes/_report/-utils/scale-bar';
 
 const hazardLayerNameMap: Record<string, string> = importedHazardLayerNameMap as Record<string, string>;
 
-// Static tile URL - using standard 256px tiles (not @2x)
-const TILE_URL = 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
+// Overview basemap: UGRC Discover "Lite" raster tiles (Utah's state basemap; CORS-enabled,
+// 256px {z}/{x}/{y}), sourced from the shared app basemap config the main viewer already uses
+// (its quad-word auth lives there). "Lite" is a clean, low-contrast base so the hazard overlays
+// stay readable. CARTO's free raster tiles now return watermarked ("API KEY REQUIRED") and are
+// being retired, so the report no longer uses them.
+const TILE_URL = getBasemapUrl('lite');
 
 // Padding around polygon in pixels (matching MapLibre fitBounds behavior)
 const MAP_PADDING_PX = 50;
