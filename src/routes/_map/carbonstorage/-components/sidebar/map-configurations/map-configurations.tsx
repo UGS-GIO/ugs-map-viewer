@@ -1,28 +1,17 @@
 import React from 'react';
-import { useState, useMemo, useEffect, useCallback, useId, useRef } from 'react';
+import { useMemo, useEffect, useCallback, useId, useRef } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
+import { MultiSelectCombobox } from '@/components/sidebar/filter/multi-select-combobox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { BackToMenuButton } from '@/components/ui/back-to-menu-button';
 import { useMap } from '@/hooks/use-map';
 import { wellWithTopsWMSTitle } from '../../../-data/layers/layers';
-import { Badge } from '@/components/ui/badge';
 import { applyLayerFilter } from '@/lib/sidebar/filter/util';
 
 type YesNoAll = "yes" | "no" | "all";
@@ -463,161 +452,55 @@ const WellFormationFilter = React.memo(({
     useAndOperator,
     onOperatorChange
 }: WellFormationFilterProps) => {
-    const [open, setOpen] = useState(false);
+    const operatorId = useId();
 
-    const handleSelect = useCallback((formationValue: string) => {
-        const isSelected = value.includes(formationValue);
-        if (formationValue === "") {
-            onChange([]);
-        } else if (isSelected) {
-            onChange(value.filter(v => v !== formationValue));
-        } else {
-            onChange([...value, formationValue]);
-        }
-    }, [value, onChange]);
-
-    const removeFormation = useCallback((formationValue: string) =>
-        onChange(value.filter(v => v !== formationValue)),
-        [value, onChange]
-    );
-
-    const formationLabels = useMemo(() =>
-        new Map(mappings.map(m => [m.value, m.label])),
-        [mappings]
-    );
-    const formationLabelId = useId();
-    const formationTriggerId = useId();
-    const operatorToggleId = useId();
+    // Only meaningful once two formations are picked: one selection combines with nothing.
+    const operatorToggle = value.length > 1 ? (
+        <div className="mb-3 flex items-center space-x-3">
+            <div className="flex items-center space-x-2">
+                <span className={cn(
+                    "text-xs font-medium transition-colors",
+                    !useAndOperator ? "text-primary" : "text-muted-foreground"
+                )}>
+                    OR
+                </span>
+                <Switch
+                    id={operatorId}
+                    checked={useAndOperator}
+                    onCheckedChange={onOperatorChange}
+                    disabled={disabled}
+                />
+                <span className={cn(
+                    "text-xs font-medium transition-colors",
+                    useAndOperator ? "text-primary" : "text-muted-foreground"
+                )}>
+                    AND
+                </span>
+            </div>
+            <Label htmlFor={operatorId} className="text-xs text-muted-foreground cursor-pointer">
+                {useAndOperator
+                    ? "Wells must have all selected formations"
+                    : "Wells can have any selected formation"
+                }
+            </Label>
+        </div>
+    ) : null;
 
     return (
-        <div>
-            <Label id={formationLabelId} className="text-sm font-medium text-muted-foreground mb-2 block">
-                {formationNameMappingConfig.label}
-            </Label>
-
-            {value.length > 1 && (
-                <div className="mb-3 flex items-center space-x-3">
-                    <div className="flex items-center space-x-2">
-                        <span className={cn(
-                            "text-xs font-medium transition-colors",
-                            !useAndOperator ? "text-primary" : "text-muted-foreground"
-                        )}>
-                            OR
-                        </span>
-                        <Switch
-                            id={operatorToggleId}
-                            checked={useAndOperator}
-                            onCheckedChange={onOperatorChange}
-                        />
-                        <span className={cn(
-                            "text-xs font-medium transition-colors",
-                            useAndOperator ? "text-primary" : "text-muted-foreground"
-                        )}>
-                            AND
-                        </span>
-                    </div>
-                    <Label
-                        htmlFor={operatorToggleId}
-                        className="text-xs text-muted-foreground cursor-pointer"
-                    >
-                        {useAndOperator
-                            ? "Wells must have all selected formations"
-                            : "Wells can have any selected formation"
-                        }
-                    </Label>
-                </div>
-            )}
-
-            {value.length > 0 && (
-                <div className="mb-2 flex flex-wrap gap-2">
-                    {value.map((formationValue, index) => {
-                        const label = formationLabels.get(formationValue) || formationValue;
-                        return (
-                            <div key={formationValue} className="flex items-center">
-                                {index > 0 && (
-                                    <span className="text-xs text-muted-foreground mr-2">
-                                        {useAndOperator ? 'AND' : 'OR'}
-                                    </span>
-                                )}
-                                <Badge
-                                    variant="default"
-                                    className="cursor-pointer flex items-center"
-                                    onClick={() => removeFormation(formationValue)}
-                                >
-                                    {label}
-                                    <X className="ml-1 h-3 w-3 flex-shrink-0" />
-                                </Badge>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-
-            <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                    <Button
-                        disabled={disabled || isLoading || !!error}
-                        variant="outline"
-                        role="combobox"
-                        id={formationTriggerId}
-                        aria-labelledby={`${formationLabelId} ${formationTriggerId}`}
-                        aria-expanded={open}
-                        className="w-full justify-between text-xs h-9"
-                    >
-                        {value.length === 0
-                            ? "Select formations..."
-                            : `${value.length} formation${value.length === 1 ? '' : 's'} selected`
-                        }
-                        <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                    <Command>
-                        <CommandInput placeholder="Search formation..." className="h-8 text-xs" />
-                        <CommandList>
-                            <CommandEmpty>
-                                {isLoading
-                                    ? "Loading..."
-                                    : error
-                                        ? "Error loading data"
-                                        : "No formations found."
-                                }
-                            </CommandEmpty>
-                            <CommandGroup>
-                                <CommandItem
-                                    value=""
-                                    onSelect={() => handleSelect("")}
-                                    className="text-xs"
-                                >
-                                    <Check className={cn(
-                                        "mr-2 h-3 w-3",
-                                        value.length === 0 ? "opacity-100" : "opacity-0"
-                                    )} />
-                                    Clear All Selections
-                                </CommandItem>
-                                {mappings.map(mapping => {
-                                    const isSelected = value.includes(mapping.value);
-                                    return (
-                                        <CommandItem
-                                            key={mapping.value}
-                                            value={mapping.label}
-                                            onSelect={() => handleSelect(mapping.value)}
-                                            className="text-xs"
-                                        >
-                                            <Check className={cn(
-                                                "mr-2 h-3 w-3",
-                                                isSelected ? "opacity-100" : "opacity-0"
-                                            )} />
-                                            {mapping.label}
-                                        </CommandItem>
-                                    );
-                                })}
-                            </CommandGroup>
-                        </CommandList>
-                    </Command>
-                </PopoverContent>
-            </Popover>
-        </div>
+        <MultiSelectCombobox
+            label={formationNameMappingConfig.label}
+            placeholder="Select formations..."
+            options={mappings}
+            selected={value}
+            onChange={onChange}
+            isLoading={isLoading}
+            error={error}
+            disabled={disabled}
+            controls={operatorToggle}
+            chipSeparator={useAndOperator ? 'AND' : 'OR'}
+            clearAllLabel="Clear All Selections"
+            selectedSummary={(count) => `${count} formation${count === 1 ? '' : 's'} selected`}
+        />
     );
 });
 

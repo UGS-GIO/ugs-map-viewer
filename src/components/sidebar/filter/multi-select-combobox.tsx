@@ -1,8 +1,7 @@
-import { useState, useCallback } from 'react';
-import { useId } from 'react';
+import { useState, useCallback, useMemo, useId, type ReactNode } from 'react';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { badgeVariants } from '@/components/ui/badge';
 import {
     Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
 } from '@/components/ui/command';
@@ -10,16 +9,44 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Check, ChevronsUpDown, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+/** A value the filter stores paired with the text a user reads. */
+export interface ComboboxOption {
+    value: string;
+    label: string;
+}
+
 interface MultiSelectComboboxProps {
     label: string;
     placeholder: string;
-    options: string[];
+    /** Plain strings when the stored value IS the label; pairs when they differ. */
+    options: readonly (string | ComboboxOption)[];
     /** Optional per-option row counts, shown right-aligned in each item. */
     counts?: Record<string, number>;
     isLoading?: boolean;
+    /** Disables the trigger and replaces the empty text. */
+    error?: Error | null;
+    disabled?: boolean;
     selected: string[];
     onChange: (values: string[]) => void;
+    /** Rendered between the label and the chips — e.g. an AND/OR toggle. */
+    controls?: ReactNode;
+    /** Drawn between chips to show how the selections combine. */
+    chipSeparator?: string;
+    /** Adds an item that clears the selection, using this text. */
+    clearAllLabel?: string;
+    /** Trigger text once something is selected. Defaults to "n selected". */
+    selectedSummary?: (count: number) => string;
 }
+
+const toOption = (option: string | ComboboxOption): ComboboxOption =>
+    typeof option === 'string' ? { value: option, label: option } : option;
+
+// cmdk keys items by this string: two options sharing a label would collide, and an empty
+// one drops the whole list out of keyboard navigation.
+const searchValue = (label: string, value: string) => {
+    const trimmed = label.trim();
+    return (trimmed && trimmed !== value ? `${trimmed} ${value}` : value).toLowerCase();
+};
 
 const MultiSelectCombobox = ({
     label,
@@ -27,42 +54,68 @@ const MultiSelectCombobox = ({
     options,
     counts,
     isLoading = false,
+    error = null,
+    disabled = false,
     selected,
     onChange,
+    controls,
+    chipSeparator,
+    clearAllLabel,
+    selectedSummary,
 }: MultiSelectComboboxProps) => {
     const [open, setOpen] = useState(false);
+    // `combobox` takes no name from its contents; referencing the label AND the trigger keeps
+    // the field name and the current selection in the announced name.
     const labelId = useId();
     // Referencing the trigger too keeps its own text in the name.
     const triggerId = useId();
 
-    const handleSelect = useCallback((value: string) => {
-        if (selected.includes(value)) {
-            onChange(selected.filter(v => v !== value));
-        } else {
-            onChange([...selected, value]);
+    // Two labels can map to one value (the formation aliases do), which would duplicate React keys.
+    const items = useMemo(() => {
+        const byValue = new Map<string, ComboboxOption>();
+        for (const option of options) {
+            const item = toOption(option);
+            if (!byValue.has(item.value)) byValue.set(item.value, item);
         }
+        return [...byValue.values()];
+    }, [options]);
+    const labels = useMemo(() => new Map(items.map(o => [o.value, o.label])), [items]);
+
+    const handleSelect = useCallback((value: string) => {
+        if (selected.includes(value)) onChange(selected.filter(v => v !== value));
+        else onChange([...selected, value]);
     }, [selected, onChange]);
 
     const handleRemove = useCallback((value: string) => {
         onChange(selected.filter(v => v !== value));
     }, [selected, onChange]);
 
+    const summary = selectedSummary?.(selected.length) ?? `${selected.length} selected`;
+
     return (
         <div>
             <Label id={labelId} className="text-sm font-medium text-muted-foreground mb-2 block">{label}</Label>
 
+            {controls}
+
             {selected.length > 0 && (
-                <div className="mb-2 flex flex-wrap gap-1">
-                    {selected.map(val => (
-                        <Badge
-                            key={val}
-                            variant="default"
-                            className="cursor-pointer flex items-center text-xs"
-                            onClick={() => handleRemove(val)}
-                        >
-                            {val}
-                            <X className="ml-1 h-3 w-3 flex-shrink-0" />
-                        </Badge>
+                <div className="mb-2 flex flex-wrap items-center gap-1">
+                    {selected.map((value, index) => (
+                        <div key={value} className="flex items-center">
+                            {index > 0 && chipSeparator && (
+                                <span className="mr-1 text-xs text-muted-foreground">{chipSeparator}</span>
+                            )}
+                            {/* A real button: a chip is the only way to drop one selection. */}
+                            <button
+                                type="button"
+                                onClick={() => handleRemove(value)}
+                                aria-label={`Remove ${labels.get(value) ?? value}`}
+                                className={cn(badgeVariants({ variant: 'default' }), 'cursor-pointer text-xs')}
+                            >
+                                {labels.get(value) ?? value}
+                                <X className="ml-1 h-3 w-3 flex-shrink-0" aria-hidden="true" />
+                            </button>
+                        </div>
                     ))}
                 </div>
             )}
@@ -76,34 +129,47 @@ const MultiSelectCombobox = ({
                         aria-labelledby={`${labelId} ${triggerId}`}
                         aria-expanded={open}
                         className="w-full justify-between text-xs h-9"
-                        disabled={isLoading}
+                        disabled={disabled || isLoading || !!error}
                     >
-                        {selected.length === 0
-                            ? placeholder
-                            : `${selected.length} selected`}
+                        {selected.length === 0 ? placeholder : summary}
                         <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                {/* Radix gives the content role="dialog", which needs its own name. */}
+                <PopoverContent aria-label={`${label} options`} className="w-[--radix-popover-trigger-width] p-0">
                     <Command>
                         <CommandInput placeholder={`Search ${label.toLowerCase()}...`} className="h-8 text-xs" />
                         <CommandList>
-                            <CommandEmpty>{isLoading ? 'Loading...' : 'No results.'}</CommandEmpty>
+                            <CommandEmpty>
+                                {isLoading ? 'Loading...' : error ? 'Error loading data' : 'No results.'}
+                            </CommandEmpty>
                             <CommandGroup>
-                                {options.map(opt => (
+                                {clearAllLabel && (
                                     <CommandItem
-                                        key={opt}
-                                        value={opt}
-                                        onSelect={() => handleSelect(opt)}
+                                        key="clear-all"
+                                        value={clearAllLabel.toLowerCase()}
+                                        onSelect={() => onChange([])}
+                                        className="text-xs"
+                                    >
+                                        {/* An action, not an option — the check only reserves its column. */}
+                                        <Check className="mr-2 h-3 w-3 opacity-0" aria-hidden />
+                                        {clearAllLabel}
+                                    </CommandItem>
+                                )}
+                                {items.map(({ value, label: optionLabel }) => (
+                                    <CommandItem
+                                        key={value}
+                                        value={searchValue(optionLabel, value)}
+                                        onSelect={() => handleSelect(value)}
                                         className="text-xs"
                                     >
                                         <Check className={cn(
-                                            "mr-2 h-3 w-3",
-                                            selected.includes(opt) ? "opacity-100" : "opacity-0"
+                                            'mr-2 h-3 w-3',
+                                            selected.includes(value) ? 'opacity-100' : 'opacity-0'
                                         )} />
-                                        {opt}
-                                        {counts?.[opt] != null && (
-                                            <span className="ml-auto pl-2 text-muted-foreground">{counts[opt].toLocaleString()}</span>
+                                        {optionLabel}
+                                        {counts?.[value] != null && (
+                                            <span className="ml-auto pl-2 text-muted-foreground">{counts[value].toLocaleString()}</span>
                                         )}
                                     </CommandItem>
                                 ))}
