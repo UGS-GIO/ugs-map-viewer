@@ -22,9 +22,6 @@ export function useReportMap(options: UseReportMapOptions) {
 
         const map = new maplibregl.Map({
             container: mapContainerRef.current,
-            // Keyless OpenFreeMap "liberty" vector style - the app's only keyless vector GL style
-            // (the UGRC basemaps are raster XYZ, unusable as a MapLibre style URL). Replaces CARTO's
-            // free basemaps, which now render an "API KEY REQUIRED" watermark.
             style: getBasemapUrl('liberty'),
             center,
             zoom,
