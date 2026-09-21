@@ -1,5 +1,6 @@
 import { useRef, useEffect, useState } from 'react';
 import maplibregl from 'maplibre-gl';
+import { getBasemapUrl } from '@/lib/basemaps';
 
 interface UseReportMapOptions {
     center: [number, number];
@@ -21,7 +22,7 @@ export function useReportMap(options: UseReportMapOptions) {
 
         const map = new maplibregl.Map({
             container: mapContainerRef.current,
-            style: 'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json',
+            style: getBasemapUrl('liberty'),
             center,
             zoom,
             attributionControl: false,

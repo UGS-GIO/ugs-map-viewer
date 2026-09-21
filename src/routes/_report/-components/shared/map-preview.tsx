@@ -2,14 +2,15 @@ import { useRef, useMemo, useEffect, useState, useCallback, useId } from 'react'
 import { useQueryClient } from '@tanstack/react-query';
 import { hazardLayerNameMap as importedHazardLayerNameMap } from '@/routes/_report/-data/hazard-unit-map';
 import { PROD_GEOSERVER_URL } from '@/lib/constants';
+import { getBasemapUrl } from '@/lib/basemaps';
 import { convertCoordinate, calculateBounds, convertPolygonToWGS84 } from '@/lib/map/conversion-utils';
 import { useScreenshotLoading } from '@/routes/_report/-context/screenshot-loading-context';
 import { calculateScaleBar, type ScaleBarInfo } from '@/routes/_report/-utils/scale-bar';
 
 const hazardLayerNameMap: Record<string, string> = importedHazardLayerNameMap as Record<string, string>;
 
-// Static tile URL - using standard 256px tiles (not @2x)
-const TILE_URL = 'https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
+// UGRC "Lite": clean, low-contrast raster so the hazard overlays stay readable.
+const TILE_URL = getBasemapUrl('lite');
 
 // Padding around polygon in pixels (matching MapLibre fitBounds behavior)
 const MAP_PADDING_PX = 50;
