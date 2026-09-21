@@ -86,8 +86,16 @@ const fieldToMaplibre = (field: FilterFieldKind, state: FilterState): Expr | nul
     const v = state[field.field];
     if (!v) return null;
     switch (field.kind) {
-        case 'multiSelect':
-            return v.kind === 'multiSelect' ? inAnyOf(field.field, v.values) : null;
+        case 'multiSelect': {
+            if (v.kind !== 'multiSelect') return null;
+            if (field.relatedAsset) return null;
+            const primary = inAnyOf(field.field, v.values);
+            if (field.alternateField) {
+                const secondary = inAnyOf(field.alternateField, v.values);
+                return primary && secondary ? ['any', primary, secondary] : primary;
+            }
+            return primary;
+        }
         case 'containsAny':
             return v.kind === 'containsAny' ? containsAny(field.field, v.values) : null;
         case 'range': {
@@ -149,9 +157,14 @@ const fieldToPostgrestParts = (field: FilterFieldKind, state: FilterState): stri
     const v = state[field.field];
     if (!v) return [];
     switch (field.kind) {
-        case 'multiSelect':
-            if (v.kind !== 'multiSelect' || v.values.length === 0) return [];
-            return [`${field.field}=in.(${v.values.map(encodeInValue).join(',')})`];
+        case 'multiSelect': {
+            if (v.kind !== 'multiSelect' || v.values.length === 0 || field.relatedAsset) return [];
+            const inList = v.values.map(encodeInValue).join(',');
+            if (field.alternateField) {
+                return [`or=(${field.field}.in.(${inList}),${field.alternateField}.in.(${inList}))`];
+            }
+            return [`${field.field}=in.(${inList})`];
+        }
         case 'containsAny': {
             // Still substring: PostgREST can't concat delimiters onto the column. Dormant —
             // the only containsAny field takes the parquet branch. Fix before adding another.
@@ -202,9 +215,16 @@ const fieldToSqlParts = (field: FilterFieldKind, state: FilterState): string[] =
     if (!v) return [];
     const col = sqlIdent(field.field);
     switch (field.kind) {
-        case 'multiSelect':
-            if (v.kind !== 'multiSelect' || v.values.length === 0) return [];
-            return [`CAST(${col} AS VARCHAR) IN (${v.values.map(sqlLiteral).join(',')})`];
+        case 'multiSelect': {
+            if (v.kind !== 'multiSelect' || v.values.length === 0 || field.relatedAsset) return [];
+            const inList = v.values.map(sqlLiteral).join(',');
+            const primary = `CAST(${col} AS VARCHAR) IN (${inList})`;
+            if (field.alternateField) {
+                const altCol = sqlIdent(field.alternateField);
+                return [`(${primary} OR CAST(${altCol} AS VARCHAR) IN (${inList}))`];
+            }
+            return [primary];
+        }
         case 'containsAny': {
             // Split-and-compare, not LIKE: `%`/`_` in a value would act as wildcards.
             if (v.kind !== 'containsAny' || v.values.length === 0) return [];

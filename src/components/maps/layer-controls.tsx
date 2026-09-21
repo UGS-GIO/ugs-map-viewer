@@ -66,12 +66,19 @@ const LayerControls: React.FC<LayerControlsProps> = ({
 
     const [prevOpenLegend, setPrevOpenLegend] = useState(openLegend);
     const [activeTab, setActiveTab] = useState<'info' | 'legend' | null>(openLegend ? 'legend' : null);
-    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [prevHasFiltersContent, setPrevHasFiltersContent] = useState(Boolean(filtersContent));
+    const [filtersOpen, setFiltersOpen] = useState(Boolean(filtersContent));
     const [statsOpen, setStatsOpen] = useState(false);
 
     if (openLegend !== prevOpenLegend) {
         setPrevOpenLegend(openLegend);
         if (openLegend) setActiveTab('legend');
+    }
+
+    const hasFiltersContent = Boolean(filtersContent);
+    if (hasFiltersContent !== prevHasFiltersContent) {
+        setPrevHasFiltersContent(hasFiltersContent);
+        if (hasFiltersContent) setFiltersOpen(true);
     }
 
     const [dragValue, setDragValue] = useState<number | null>(null);

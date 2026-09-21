@@ -46,9 +46,11 @@ export const useDistinctFieldOptions = ({
     splitCommaDelimited = false,
     enabled = true,
 }: Options) => {
-    const { parquetUrl, isResolving } = useSchemaParquetUrl(schema);
+    const isRelated = field.kind === 'multiSelect' && !!field.relatedAsset;
+    const assetKey = isRelated ? field.relatedAsset : 'data';
+    const { parquetUrl, isResolving } = useSchemaParquetUrl(schema, assetKey);
     const url = buildUrl(schema, field, state);
-    const predicates = parquetUrl ? toSqlPredicates(schema, state, field.field) : [];
+    const predicates = parquetUrl && !isRelated ? toSqlPredicates(schema, state, field.field) : [];
 
     const parquetQuery = useQuery({
         queryKey: ['distinct-field-options', 'parquet', parquetUrl, field.field, predicates, splitCommaDelimited],
