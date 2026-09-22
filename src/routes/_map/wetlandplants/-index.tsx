@@ -45,13 +45,13 @@ export default function Map() {
     );
     const speciesAsset = (speciesField && 'relatedAsset' in speciesField ? speciesField.relatedAsset : undefined) ?? 'wetlands_plants_species';
     const speciesJoinKey = (speciesField && 'foreignKey' in speciesField ? speciesField.foreignKey : undefined) ?? 'surveyeventid';
-    const stacItemId = wetlandPlantsFilterSchema.stacItemId!;
+    const stacItemId = wetlandPlantsFilterSchema.stacItemId;
 
     // Resolve matching surveyeventid numbers for selected species via DuckDB-WASM
     const { data: speciesEventIds, isLoading: isSpeciesLoading } = useQuery({
         queryKey: ['wetlands-species-event-ids', speciesNames],
         queryFn: async () => {
-            if (speciesNames.length === 0) return [];
+            if (speciesNames.length === 0 || !stacItemId) return [];
             const { fetchStacAssetHref } = await import('@/lib/map/stac/stac-layer');
             const url = await fetchStacAssetHref(stacItemId, speciesAsset);
             if (!url) {
@@ -72,7 +72,7 @@ export default function Map() {
                     .map(Number);
             });
         },
-        enabled: speciesNames.length > 0,
+        enabled: speciesNames.length > 0 && !!stacItemId,
         placeholderData: keepPreviousData,
         staleTime: 1000 * 60 * 10,
     });
