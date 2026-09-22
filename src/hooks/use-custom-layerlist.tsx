@@ -300,27 +300,35 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                     onValueChange={(val) => setIsUserExpanded(val === 'item-1')}
                 >
                     <AccordionItem value="item-1">
-                        <AccordionHeader>
+                        <div className="flex items-center justify-between">
                             {isTopLevel ? (
-                                <Switch checked={isOn} onCheckedChange={toggleOn} className="mx-2" />
+                                <Switch
+                                    checked={isOn}
+                                    onCheckedChange={toggleOn}
+                                    aria-label={`Show ${layerConfig.title}`}
+                                    className="mx-2"
+                                />
                             ) : (
                                 <Checkbox
                                     checked={isOn}
                                     onCheckedChange={(checked) => { if (typeof checked === 'boolean') toggleOn(checked); }}
+                                    aria-label={`Show ${layerConfig.title}`}
                                     className="mx-2"
                                 />
                             )}
-                            <AccordionTrigger>
-                                <div className="text-left">
-                                    <h3 className="text-md font-medium">{layerConfig.title}</h3>
-                                    {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
-                                        <p className="text-xs font-normal text-muted-foreground">
-                                            {layerConfig.subtitle ?? layerConfig.sourceAgency}
-                                        </p>
-                                    )}
-                                </div>
-                            </AccordionTrigger>
-                        </AccordionHeader>
+                            <AccordionHeader level={headingLevel} className="flex-1">
+                                <AccordionTrigger>
+                                    <div className="text-left">
+                                        <span className="block text-md font-medium">{layerConfig.title}</span>
+                                        {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
+                                            <p className="text-xs font-normal text-muted-foreground">
+                                                {layerConfig.subtitle ?? layerConfig.sourceAgency}
+                                            </p>
+                                        )}
+                                    </div>
+                                </AccordionTrigger>
+                            </AccordionHeader>
+                        </div>
                         <AccordionContent>
                             {variants.length > 1 && (
                                 <div className="mx-8 mb-1 mt-2">
@@ -342,7 +350,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                                                     key={v.title}
                                                     type="button"
                                                     role="radio"
-                                                    aria-checked={active}
+                                                    aria-checked={highlighted}
                                                     tabIndex={active ? 0 : -1}
                                                     title={v.title}
                                                     onClick={() => pickVariant(v.title)}
