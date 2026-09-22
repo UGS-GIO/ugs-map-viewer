@@ -71,7 +71,7 @@ const YEAR_LOOKUP_TYPES: DisplacementType[] = ['Cumulative', 'Yearly', 'Vertical
 // descending, count=1, year-only — returns in ~0.3s / a few hundred bytes, versus
 // the multi-second 20k-feature bulk pull. Decoupling the map's year from that
 // pull is what stops every year-window painting stacked while features load.
-async function fetchLatestYearsByType(): Promise<Record<DisplacementType, string | null>> {
+async function fetchLatestYearsByType(signal: AbortSignal): Promise<Record<DisplacementType, string | null>> {
     const entries = await Promise.all(YEAR_LOOKUP_TYPES.map(async (type): Promise<[DisplacementType, string | null]> => {
         const url = `${PROD_GEOSERVER_URL}/wfs?` + new URLSearchParams({
             service: 'WFS', version: '2.0.0', request: 'GetFeature',
@@ -84,7 +84,7 @@ async function fetchLatestYearsByType(): Promise<Record<DisplacementType, string
         }).toString()
         // Throw (don't swallow to null): a rejected query retries and exposes
         // isError, and the map gates on the loading state — never a silent blank.
-        const res = await fetch(url)
+        const res = await fetch(url, { signal })
         if (!res.ok) throw new Error(`WFS latest-year lookup failed for ${type}: ${res.status}`)
         const fc = await res.json()
         const y = fc?.features?.[0]?.properties?.year
@@ -95,7 +95,7 @@ async function fetchLatestYearsByType(): Promise<Record<DisplacementType, string
 
 export const displacementLatestYearsQueryOptions = () => queryOptions({
     queryKey: queryKeys.hazards.displacementLatestYears(),
-    queryFn: fetchLatestYearsByType,
+    queryFn: ({ signal }) => fetchLatestYearsByType(signal),
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
