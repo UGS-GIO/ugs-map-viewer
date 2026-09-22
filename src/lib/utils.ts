@@ -55,3 +55,18 @@ export function formatNumeric(value: unknown, format?: string): string {
 
   return numericFormatters[format](num);
 }
+
+/** Safe in an `href`: http(s) or a same-origin path. Popup links are built from feature data. */
+export function isSafeHref(href: string): boolean {
+  // Browsers drop C0 controls anywhere in a URL, so strip them before judging it.
+  // eslint-disable-next-line no-control-regex
+  const value = href.replace(/[\u0000-\u001F\u007F]/g, '').trim();
+  // `/\host` — the backslash normalizes too, making the link protocol-relative.
+  if (value.startsWith('/')) return value[1] !== '/' && value[1] !== '\\';
+  try {
+    const { protocol } = new URL(value);
+    return protocol === 'https:' || protocol === 'http:';
+  } catch {
+    return false;
+  }
+}

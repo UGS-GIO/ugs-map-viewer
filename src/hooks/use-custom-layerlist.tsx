@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionHeader } from '@/components/ui/accordion';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight, SlidersHorizontal } from 'lucide-react';
@@ -26,10 +26,12 @@ interface LayerAccordionItemProps {
     layerConfig: LayerProps;
     isTopLevel: boolean;
     disableExport?: boolean;
+    /** Optional predicate to check if a layer has filters without rendering JSX */
+    hasLayerFilters?: (layerTitle: string) => boolean;
     /** Optional render-prop for content shown inside a group's accordion */
     groupExtrasRender?: (groupTitle: string) => React.ReactNode;
     /** Optional render-prop for content shown inside a single layer's accordion */
-    layerExtrasRender?: (layerTitle: string) => React.ReactNode;
+    layerExtrasRender?: (layerTitle: string, layer: LayerProps) => React.ReactNode;
     /** Optional render-prop for whole-layer stats / charts rendered via the Stats toggle */
     layerStatsRender?: (layerTitle: string) => React.ReactNode;
     /** Optional render-prop overriding a layer's legend content (e.g. an interactive symbology legend). */
@@ -52,7 +54,7 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
     return (
         <div className="mx-8 mt-2">
             <Collapsible open={open} onOpenChange={setOpen}>
-                <CollapsibleTrigger className="flex w-full items-center gap-1.5 rounded border border-border bg-muted/40 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted">
+                <CollapsibleTrigger className="flex w-full items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted">
                     <ChevronRight className={`h-3 w-3 transition-transform ${open ? 'rotate-90' : ''}`} />
                     <SlidersHorizontal className="h-3 w-3" />
                     <span>Filters</span>
@@ -65,7 +67,7 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
     );
 }
 
-const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender, embedded }: LayerAccordionItemProps) => {
+const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFilters, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender, embedded }: LayerAccordionItemProps) => {
     const {
         isSelected,
         handleToggleSelection,
@@ -85,6 +87,11 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
         if (layerConfig.type === 'group') {
             // If it is, expand it ONLY if any of its children are selected.
             return groupCheckboxState === 'all' || groupCheckboxState === 'some';
+        }
+
+        // Expand layers with custom filters by default so controls are immediately visible.
+        if (layerConfig.title && hasLayerFilters?.(layerConfig.title)) {
+            return true;
         }
 
         // If it's not a group, it's a single layer. ALWAYS start collapsed.
@@ -237,6 +244,10 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
 
     const accordionValue = isUserExpanded ? "item-1" : "";
 
+    // The app title is the page's only h1, so a top-level entry is an h2 and its children h3s.
+    const headingLevel = isTopLevel ? 2 : 3;
+    const selectAllId = useId();
+
 
     // --- Variant-Selector Group Rendering ---
     // One entry with a segmented "surface" switch that keeps exactly one child
@@ -381,7 +392,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
         const childLayers = [...(layerConfig.layers || [])];
 
         return (
-            <div className="mr-2 border border-secondary rounded my-1">
+            <div className="mr-2 border border-secondary rounded-md my-1">
                 <Accordion
                     type="single"
                     collapsible
@@ -389,17 +400,21 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                     onValueChange={(val) => setIsUserExpanded(val === "item-1")}
                 >
                     <AccordionItem value="item-1">
-                        <AccordionHeader>
+                        {/* Only the trigger sits in the heading: a screen reader jumping by
+                            heading would otherwise also announce the visibility control. */}
+                        <div className="flex items-center justify-between">
                             <Switch
                                 checked={isGroupLayerVisible}
                                 onCheckedChange={handleGroupVisibilityToggle}
+                                aria-label={`Show ${layerConfig.title} layers`}
                                 className="mx-2"
                             />
-                            <AccordionTrigger>
+                            <AccordionHeader level={headingLevel} className="flex-1">
+                                <AccordionTrigger>
                                 <div className="text-left">
-                                    <h3 className="font-medium text-md">
+                                    <span className="font-medium text-md">
                                         {layerConfig.title}
-                                    </h3>
+                                    </span>
                                     {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
                                         <p className="text-xs font-normal text-muted-foreground">
                                             {layerConfig.subtitle ?? layerConfig.sourceAgency}
@@ -407,19 +422,22 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                     )}
                                 </div>
                             </AccordionTrigger>
-                        </AccordionHeader>
+                            </AccordionHeader>
+                        </div>
                         <AccordionContent>
                             {layerConfig.title && (
                                 <FiltersCollapsible
                                     content={groupExtrasRender?.(layerConfig.title)}
                                 />
                             )}
-                            <div className="flex items-center space-x-2">
+                            <div className="ml-4 flex items-center gap-2 px-2 py-1">
                                 <Checkbox
                                     checked={groupCheckboxState === 'all'}
                                     onCheckedChange={handleSelectAllToggle}
+                                    id={selectAllId}
+                                    aria-label={`Select all ${layerConfig.title} layers`}
                                 />
-                                <label className="text-sm font-medium italic">Select All</label>
+                                <label htmlFor={selectAllId} className="text-sm font-medium italic">Select All</label>
                             </div>
                             {childLayers.map((child) => (
                                 <div className="ml-4" key={child.title}>
@@ -471,7 +489,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
             downloadParquetUrl={layerConfig.downloadParquetUrl}
             relatedTables={relatedTables}
             disableExport={disableExport}
-            filtersContent={layerConfig.title ? layerExtrasRender?.(layerConfig.title) : undefined}
+            filtersContent={layerConfig.title ? layerExtrasRender?.(layerConfig.title, layerConfig) : undefined}
             statsContent={layerConfig.title ? layerStatsRender?.(layerConfig.title) : undefined}
             styleName={isWMSLayer(layerConfig) ? layerConfig.styleName : undefined}
             defaultFiltersOpen={embedded}
@@ -495,7 +513,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
     }
 
     return (
-        <div className={`mr-2 my-1 ${isTopLevel ? 'border border-secondary rounded' : ''}`}>
+        <div className={`mr-2 my-1 ${isTopLevel ? 'border border-secondary rounded-md' : ''}`}>
             <Accordion
                 type="single"
                 collapsible
@@ -503,11 +521,12 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                 onValueChange={(val) => setIsUserExpanded(val === 'item-1')}
             >
                 <AccordionItem value="item-1">
-                    <AccordionHeader>
+                    <div className="flex items-center justify-between">
                         {isTopLevel ? (
                             <Switch
                                 checked={isSelected}
                                 onCheckedChange={handleLocalToggle}
+                                aria-label={`Show ${layerConfig.title}`}
                                 className="mx-2"
                             />
                         ) : (
@@ -518,16 +537,18 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                         handleLocalToggle(checked);
                                     }
                                 }}
+                                aria-label={`Show ${layerConfig.title}`}
                                 className="mx-2"
                             />
                         )}
-                        <AccordionTrigger>
+                        <AccordionHeader level={headingLevel} className="flex-1">
+                            <AccordionTrigger>
                             <div className="text-left">
-                                <h3
-                                    className={`text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}
+                                <span
+                                    className={`block text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}
                                 >
                                     {layerConfig.title}
-                                </h3>
+                                </span>
                                 {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
                                     <p className="text-xs font-normal text-muted-foreground">
                                         {layerConfig.subtitle ?? layerConfig.sourceAgency}
@@ -535,7 +556,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                 )}
                             </div>
                         </AccordionTrigger>
-                    </AccordionHeader>
+                        </AccordionHeader>
+                    </div>
                     {zoomHint && visibleZoomRange && (
                         <div className="px-2 pb-2 -mt-1">
                             <ZoomHintPill
@@ -555,7 +577,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
 };
 
 
-export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: { config: LayerProps[] | null; disableExport?: boolean; groupExtrasRender?: (groupTitle: string) => React.ReactNode; layerExtrasRender?: (layerTitle: string) => React.ReactNode; layerStatsRender?: (layerTitle: string) => React.ReactNode; layerLegendRender?: (layer: LayerProps) => React.ReactNode }) => {
+export const useCustomLayerList = ({ config, disableExport, hasLayerFilters, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: { config: LayerProps[] | null; disableExport?: boolean; hasLayerFilters?: (layerTitle: string) => boolean; groupExtrasRender?: (groupTitle: string) => React.ReactNode; layerExtrasRender?: (layerTitle: string, layer: LayerProps) => React.ReactNode; layerStatsRender?: (layerTitle: string) => React.ReactNode; layerLegendRender?: (layer: LayerProps) => React.ReactNode }) => {
 
     const layerList = useMemo(() => {
         if (!config) return [];
@@ -566,6 +588,7 @@ export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, l
                     layerConfig={layer}
                     isTopLevel={true}
                     disableExport={disableExport}
+                    hasLayerFilters={hasLayerFilters}
                     groupExtrasRender={groupExtrasRender}
                     layerExtrasRender={layerExtrasRender}
                     layerStatsRender={layerStatsRender}
@@ -573,7 +596,7 @@ export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, l
                 />
             )
         });
-    }, [config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender]);
+    }, [config, disableExport, hasLayerFilters, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender]);
 
     return layerList;
 };

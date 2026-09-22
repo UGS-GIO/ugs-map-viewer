@@ -11,7 +11,7 @@
  */
 
 import * as duckdb from '@duckdb/duckdb-wasm';
-import { EXPORT_FORMATS, type ExportFormat } from '@/lib/export-formats';
+import { EXPORT_FORMATS, isCombinedTable, uniqueColumnName, type ExportFormat } from '@/lib/export-formats';
 import { withConnection, loadSpatial, escapeSql, quoteIdent, queryParquetDistinctValues } from '@/lib/duckdb/client';
 import { downloadZip } from '@/lib/download-utils';
 import { isInternalColumn } from '@/lib/export-fields';
@@ -55,6 +55,10 @@ const triggerDownload = (blob: Blob, filename: string): void => {
 };
 
 /** Materialize a DuckDB virtual file into a Blob and clean up. Handles SharedArrayBuffer-backed results. */
+let exportSeq = 0;
+/** Unique per page session: two concurrent exports must not share a path in the WASM filesystem. */
+const virtualExportPath = (extension: string): string => `export_${Date.now()}_${exportSeq++}.${extension}`;
+
 const bufferToBlob = async (
     db: duckdb.AsyncDuckDB,
     virtualPath: string,
@@ -66,6 +70,63 @@ const bufferToBlob = async (
     const bytes = new Uint8Array(buffer.byteLength);
     bytes.set(buffer);
     return new Blob([bytes], { type: mimeType });
+};
+
+const combinedTables = (opts: ExportOptions): RelatedTable[] =>
+    (opts.relatedTables ?? []).filter(isCombinedTable);
+
+const columnNames = async (conn: duckdb.AsyncDuckDBConnection, relation: string): Promise<string[]> => {
+    const described = await conn.query(`DESCRIBE SELECT * FROM ${relation}`);
+    return described.toArray().flatMap(row => {
+        const json: unknown = row.toJSON();
+        if (json === null || typeof json !== 'object') return [];
+        const name = Reflect.get(json, 'column_name');
+        return typeof name === 'string' ? [name] : [];
+    });
+};
+
+/**
+ * The relation every format reads from: the layer's parquet, LEFT JOINed to each
+ * `combineIntoExport` table so its fields ride along on the row. A well with three
+ * sample intervals comes out as three rows; one with none keeps its row with blanks.
+ * A related field whose name the layer already uses is prefixed with the table's label.
+ */
+export const joinedRelationSql = (
+    main: string,
+    mainColumns: string[],
+    tables: RelatedTable[],
+): string => {
+    const taken = new Set(mainColumns);
+    const selects = ['m.*'];
+    const joins: string[] = [];
+    const order: string[] = [];
+
+    tables.forEach((table, idx) => {
+        const { url, matchingField, targetField, displayFields, fieldLabel, sortBy } = table;
+        if (!url || !matchingField || !targetField) return;
+        const alias = `r${idx}`;
+        if (order.length === 0) order.push(`m.${quoteIdent(targetField)}`);
+
+        for (const { field } of displayFields ?? []) {
+            if (!field || isInternalColumn(field)) continue;
+            selects.push(`${alias}.${quoteIdent(field)} AS ${quoteIdent(uniqueColumnName(field, fieldLabel, taken))}`);
+        }
+        joins.push(
+            `LEFT JOIN read_parquet('${escapeSql(url)}') AS ${alias}` +
+            ` ON m.${quoteIdent(targetField)} = ${alias}.${quoteIdent(matchingField)}`,
+        );
+        for (const key of [sortBy ?? []].flat()) order.push(`${alias}.${quoteIdent(key)}`);
+    });
+
+    if (joins.length === 0) return main;
+    return `(SELECT ${selects.join(', ')} FROM ${main} AS m ${joins.join(' ')} ORDER BY ${order.join(', ')})`;
+};
+
+const exportSource = async (conn: duckdb.AsyncDuckDBConnection, opts: ExportOptions): Promise<string> => {
+    const main = `read_parquet('${escapeSql(opts.parquetUrl)}')`;
+    const tables = combinedTables(opts);
+    if (tables.length === 0) return main;
+    return joinedRelationSql(main, await columnNames(conn, main), tables);
 };
 
 // ── Per-format handlers ──────────────────────────────────────────────────────
@@ -96,10 +157,10 @@ const buildGeoJSON = (opts: ExportOptions): Promise<GeoJSONBuild> => withConnect
     // Disabling it yields raw WKB, and works whatever already loaded the extension.
     await conn.query(`SET enable_geoparquet_conversion = false`);
 
-    const escaped = escapeSql(opts.parquetUrl);
+    const source = await exportSource(conn, opts);
     const geomCol = opts.geometryColumn;
 
-    const described = await conn.query(`DESCRIBE SELECT * FROM read_parquet('${escaped}')`);
+    const described = await conn.query(`DESCRIBE SELECT * FROM ${source}`);
     const cols: string[] = [];
     const floatCols: string[] = [];
     const dropped: string[] = [geomCol];
@@ -125,7 +186,7 @@ const buildGeoJSON = (opts: ExportOptions): Promise<GeoJSONBuild> => withConnect
     // double-projects. Longitude caps at 180; Mercator easting is ~1e7, so magnitude tells.
     const probe = await conn.query(`
         SELECT max(abs(ST_X(ST_Centroid(${geom})))) AS max_x
-        FROM (SELECT ${geomCol} FROM read_parquet('${escaped}') WHERE ${geomCol} IS NOT NULL LIMIT 100)
+        FROM (SELECT ${geomCol} FROM read_parquet('${escapeSql(opts.parquetUrl)}') WHERE ${geomCol} IS NOT NULL LIMIT 100)
     `);
     const maxX = Number((probe.toArray()[0]?.toJSON() as Record<string, unknown>)?.max_x ?? 0);
     const needsTransform = maxX > 180;
@@ -138,7 +199,7 @@ const buildGeoJSON = (opts: ExportOptions): Promise<GeoJSONBuild> => withConnect
         SELECT
             ST_AsGeoJSON(${geom4326}) AS __g,
             *${excludeClause(dropped)}
-        FROM read_parquet('${escaped}')
+        FROM ${source}
     `);
 
     const features: string[] = [];
@@ -176,10 +237,19 @@ const gdalHandler = (format: ExportFormat): Handler => async (opts) => {
 const handlers: Record<ExportFormat, Handler> = {
     // Direct pass-through — no DuckDB needed.
     parquet: async (opts) => {
-        opts.onProgress?.({ stage: 'downloading', message: 'Fetching parquet…' });
-        const res = await fetch(opts.parquetUrl);
-        if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
-        return res.blob();
+        if (combinedTables(opts).length === 0) {
+            opts.onProgress?.({ stage: 'downloading', message: 'Fetching parquet…' });
+            const res = await fetch(opts.parquetUrl);
+            if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+            return res.blob();
+        }
+        return withConnection(async (conn, db) => {
+            opts.onProgress?.({ stage: 'converting', message: 'Combining tables…' });
+            const source = await exportSource(conn, opts);
+            const virtualPath = virtualExportPath('parquet');
+            await conn.query(`COPY (SELECT * FROM ${source}) TO '${virtualPath}' (FORMAT PARQUET)`);
+            return bufferToBlob(db, virtualPath, EXPORT_FORMATS.parquet.mimeType);
+        });
     },
 
     geojson: async (opts) => {
@@ -189,22 +259,17 @@ const handlers: Record<ExportFormat, Handler> = {
     },
 
     csv: (opts) => withConnection(async (conn, db) => {
-        const escaped = escapeSql(opts.parquetUrl);
-
         opts.onProgress?.({ stage: 'downloading', message: 'Fetching parquet…' });
-        const described = await conn.query(`DESCRIBE SELECT * FROM read_parquet('${escaped}')`);
-        const dropped = described.toArray()
-            .map(row => String((row.toJSON() as Record<string, unknown>).column_name))
+        const source = await exportSource(conn, opts);
+        const dropped = (await columnNames(conn, source))
             .filter(col => col === opts.geometryColumn || isInternalColumn(col));
 
-        await conn.query(`
-            CREATE OR REPLACE VIEW export_view AS
-            SELECT *${excludeClause(dropped)} FROM read_parquet('${escaped}')
-        `);
-
         opts.onProgress?.({ stage: 'converting', message: 'Writing CSV…' });
-        const virtualPath = `export_${Date.now()}.csv`;
-        await conn.query(`COPY export_view TO '${virtualPath}' (HEADER, DELIMITER ',')`);
+        const virtualPath = virtualExportPath('csv');
+        // Straight from a subquery: a named view is global, so two exports at once would collide.
+        await conn.query(
+            `COPY (SELECT *${excludeClause(dropped)} FROM ${source}) TO '${virtualPath}' (HEADER, DELIMITER ',')`,
+        );
         return bufferToBlob(db, virtualPath, EXPORT_FORMATS.csv.mimeType);
     }),
 
@@ -285,7 +350,8 @@ export const exportParquet = async (opts: ExportOptions): Promise<void> => {
     const meta = EXPORT_FORMATS[opts.format];
     try {
         const blob = await handlers[opts.format](opts);
-        const relatedTables = opts.relatedTables ?? [];
+        // One flagged `combineIntoExport` but not parquet-backed still ships as its own CSV.
+        const relatedTables = (opts.relatedTables ?? []).filter(t => !isCombinedTable(t));
 
         if (relatedTables.length === 0) {
             opts.onProgress?.({ stage: 'writing', message: 'Saving file…' });

@@ -298,7 +298,7 @@ export function PopupImageGallery({ images, trigger, compact, downloadName }: Po
                                             {images.map((img, i) => (
                                                 <CarouselItem key={img.url} className="flex items-center justify-center">
                                                     <div className="flex flex-col items-center gap-2 p-4">
-                                                        <LoadingImage src={img.url} alt={img.label || `Image ${i + 1}`} className="max-w-full max-h-[45svh] sm:max-h-[55svh] object-contain rounded" placeholder="spinner" />
+                                                        <LoadingImage src={img.url} alt={img.label || `Image ${i + 1}`} className="max-w-full max-h-[45svh] sm:max-h-[55svh] object-contain rounded-md" placeholder="spinner" />
                                                     </div>
                                                 </CarouselItem>
                                             ))}
