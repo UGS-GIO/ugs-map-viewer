@@ -105,6 +105,40 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
         );
     }
 
+    if (relatedTable.displayAs === 'outline') {
+        return (
+            <TableRow className="bg-muted/30">
+                <TableCell colSpan={colSpan} className="px-4 py-3">
+                    {sectionHeader}
+                    {isOpen && (
+                        <div className="space-y-3 max-w-4xl">
+                            {rows.map((r, i) => (
+                                <div key={i} className="rounded-md border bg-background/90 p-3 space-y-2.5 text-xs shadow-sm">
+                                    {rows.length > 1 && (
+                                        <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pb-1 border-b">
+                                            Record {i + 1} of {rows.length}
+                                        </div>
+                                    )}
+                                    {relatedTable.displayFields?.map((df, j) => {
+                                        const raw = r[df.field];
+                                        const formatted = formatNumeric(raw, df.format);
+                                        const value = df.transform ? df.transform(formatted, r, rows) : formatted;
+                                        return (
+                                            <div key={j} className="flex flex-col gap-0.5">
+                                                <span className="font-semibold text-muted-foreground">{df.label || df.field}</span>
+                                                <div className="text-foreground leading-relaxed break-words">{value || '—'}</div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </TableCell>
+            </TableRow>
+        );
+    }
+
     // Table display
     const headers = relatedTable.displayFields?.map(df => df.label || df.field) || [];
 

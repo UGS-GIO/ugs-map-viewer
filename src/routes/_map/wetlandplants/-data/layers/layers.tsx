@@ -84,7 +84,7 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
                     fetchMode: 'parquet',
                     targetField: 'project',
                     matchingField: 'projectcode',
-                    displayAs: 'table',
+                    displayAs: 'outline',
                     displayFields: [
                         { field: 'projectcode', label: 'Project Code' },
                         { field: 'organization', label: 'Organization' },
@@ -93,7 +93,7 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
                             label: 'Contact Info',
                             transform: (v) => {
                                 if (!v) return '—';
-                                const str = String(v);
+                                const str = String(v).trim();
                                 if (/^https?:\/\//i.test(str)) {
                                     return <Link to={str}>{str}</Link>;
                                 }

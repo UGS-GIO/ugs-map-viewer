@@ -393,8 +393,8 @@ export interface RelatedTable {
     /** Sort key, or keys in precedence order. */
     sortBy?: string | string[];
     sortDirection?: 'asc' | 'desc';
-    /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers, 'gallery' renders a photo gallery, 'accordion' renders one collapsible item per row, 'documents' groups files by type with per-row open/download, search, and pagination */
-    displayAs?: 'list' | 'table' | 'gallery' | 'accordion' | 'documents';
+    /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers, 'gallery' renders a photo gallery, 'accordion' renders one collapsible item per row, 'documents' groups files by type with per-row open/download, search, and pagination, 'outline' renders stacked key-value outline cards per record */
+    displayAs?: 'list' | 'table' | 'gallery' | 'accordion' | 'documents' | 'outline';
     /** Render in a collapsible accordion. Defaults to true when `fieldLabel` is set, else inline. */
     collapsible?: boolean;
     /** Required when displayAs is 'gallery'. Field name containing the full-size image URL */

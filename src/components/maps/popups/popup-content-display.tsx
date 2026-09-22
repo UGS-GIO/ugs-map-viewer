@@ -525,6 +525,35 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
             innerContent = (
                 <DocumentsPanel table={table} rows={documentRows!} />
             );
+        } else if (table.displayAs === 'outline') {
+            innerContent = (
+                <div className="space-y-3">
+                    {groupedValues.map((group, groupIdx) => (
+                        <div
+                            key={`group-${groupIdx}`}
+                            className="rounded-md border bg-muted/20 p-3 space-y-2.5 text-xs"
+                        >
+                            {groupedValues.length > 1 && (
+                                <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pb-1 border-b">
+                                    Record {groupIdx + 1} of {groupedValues.length}
+                                </div>
+                            )}
+                            {group.map((item, valueIdx) => (
+                                <div key={`item-${item.label}-${valueIdx}`} className="flex flex-col gap-0.5">
+                                    {item.label && (
+                                        <span className="font-semibold text-muted-foreground">
+                                            {item.label}
+                                        </span>
+                                    )}
+                                    <div className="text-foreground leading-relaxed break-words">
+                                        {item.value}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+                </div>
+            );
         } else if (useTableFormat) {
             // Sortable: raw rows + column defs (TanStack) so sorting is numeric/
             // alphabetical on the underlying values, not the rendered cells.
@@ -564,7 +593,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
         );
 
         const totalWords = flatValues.map(v => String(v.value)).join(" ").split(/\s+/).length;
-        const isLongContent = useTableFormat || table.displayAs === 'accordion' || table.displayAs === 'documents' || totalWords > 20 || flatValues.length > 3;
+        const isLongContent = useTableFormat || table.displayAs === 'accordion' || table.displayAs === 'documents' || table.displayAs === 'outline' || totalWords > 20 || flatValues.length > 3;
         // 'above' sorts related tables before the feature fields (which start at 0); 'below' (default) after them.
         const relatedIndex = (relatedTablesPosition === 'above' ? -1000 : 1000) + tableIndex;
         contentItems.push({ content: relatedContent, isLongContent, originalIndex: relatedIndex });

@@ -31,7 +31,7 @@ describe('wetlandplants layers configuration', () => {
         expect(projectTable?.targetField).toBe('project');
         expect(projectTable?.matchingField).toBe('projectcode');
         expect(projectTable?.url).toContain('parquet/wetlands_plants_projects/wetlands_plants_projects.parquet');
-        expect(projectTable?.displayAs).toBe('table');
+        expect(projectTable?.displayAs).toBe('outline');
         expect(projectTable?.sortBy).toBe('projectcode');
 
         const fields = projectTable?.displayFields?.map(f => f.field);
