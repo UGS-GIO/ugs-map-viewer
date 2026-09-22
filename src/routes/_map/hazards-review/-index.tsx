@@ -147,7 +147,6 @@ function FilteredMapContainer() {
   return (
     <GenericMapContainer
       layerFilters={layerFilters}
-      defaultBasemapId="lite"
       popupLayerHeaderRender={renderDisplacementLayerHeader}
       popupFeatureFilter={popupFeatureFilter}
     />

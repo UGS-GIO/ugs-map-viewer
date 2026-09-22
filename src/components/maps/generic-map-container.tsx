@@ -282,8 +282,6 @@ interface GenericMapContainerProps {
   popupFeatureRender?: (feature: ExtendedFeature, layer: LayerContentProps) => React.ReactNode
   /** Optional predicate; features for which it returns false are hidden from the popup */
   popupFeatureFilter?: (feature: ExtendedFeature, layer: LayerContentProps) => boolean
-  /** Per-route default basemap id (e.g. 'lite'); used when no basemap is in the URL. */
-  defaultBasemapId?: string
 }
 
 export default function GenericMapContainer({
@@ -298,7 +296,6 @@ export default function GenericMapContainer({
   popupLayerHeaderRender,
   popupFeatureRender,
   popupFeatureFilter,
-  defaultBasemapId,
 }: GenericMapContainerProps) {
   const isMobile = useIsMobile()
   const currentPage = useGetCurrentPage()
@@ -644,7 +641,6 @@ export default function GenericMapContainer({
             vectorLayerSymbology={vectorLayerSymbology}
             onMapReady={handleMapReady}
             basemapId={basemap ?? defaultBasemap.id}
-            defaultBasemapId={defaultBasemapId}
             clickBufferBounds={clickBufferBounds}
             onClickBufferChange={handleClickBufferChange}
             featureBbox={featureBbox}
