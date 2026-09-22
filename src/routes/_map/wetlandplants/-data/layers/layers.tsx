@@ -1,3 +1,5 @@
+import { Link } from "@/components/ui/link";
+import { parquetUrl } from "@/lib/constants";
 import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 
 // Wetland Survey Sites — from warehouse item `wetlands_plants_site`.
@@ -5,10 +7,9 @@ import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/
 // Symbology: yellow for exact locations, red for confidential/approximate.
 // Confidential coordinates are jittered on the backend upstream before ingest.
 //
-// RELATED TABLE: the STAC item carries a `wetlands_plants_species` asset with
-// `ugs:foreign_keys` on `surveyeventid` — the per-site species list. `wetlands_wetdash_
-// siteattributes` shared no key with this dataset (sitecode vs siteid, 654 vs 1563 rows) and
-// isn't used anywhere in this file.
+// RELATED TABLES:
+// - Plant Species: STAC-backed (`wetlands_plants_species`) joined on `surveyeventid`.
+// - Project Information: Parquet-backed (`wetlands_plants_projects`) joined on `project` -> `projectcode`.
 const wetlandSurveySitesLayerName = 'wetlands_plants_site';
 export const wetlandSurveySitesTitle = 'Wetland Survey Sites';
 const wetlandSurveySitesConfig: PMTilesLayerProps = {
@@ -76,6 +77,42 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
                     ],
                     sortBy: 'cover',
                     sortDirection: 'desc',
+                },
+                {
+                    fieldLabel: 'Project Information',
+                    url: parquetUrl('wetlands_plants_projects'),
+                    fetchMode: 'parquet',
+                    targetField: 'project',
+                    matchingField: 'projectcode',
+                    displayAs: 'table',
+                    displayFields: [
+                        { field: 'projectcode', label: 'Project Code' },
+                        { field: 'organization', label: 'Organization' },
+                        {
+                            field: 'contactinfo',
+                            label: 'Contact Info',
+                            transform: (v) => {
+                                if (!v) return '—';
+                                const str = String(v);
+                                if (/^https?:\/\//i.test(str)) {
+                                    return <Link to={str}>{str}</Link>;
+                                }
+                                return str;
+                            },
+                        },
+                        { field: 'projectgoal', label: 'Project Goal' },
+                        { field: 'methodname', label: 'Method Name' },
+                        { field: 'assessmentareadescription', label: 'Assessment Area Description' },
+                        { field: 'vegetationmethod', label: 'Vegetation Method' },
+                        { field: 'vegetationcalculation', label: 'Vegetation Calculation' },
+                        {
+                            field: 'reportlink',
+                            label: 'Report Link',
+                            transform: (v) => v ? <Link to={String(v)}>View Report</Link> : '—',
+                        },
+                    ],
+                    sortBy: 'projectcode',
+                    sortDirection: 'asc',
                 },
             ],
         },
