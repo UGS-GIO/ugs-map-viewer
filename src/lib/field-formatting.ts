@@ -104,6 +104,15 @@ export const formatStringValue = (value: unknown): string => {
 }
 
 /**
+ * A value that isn't a usable number. `Number(null)`, `Number('')` and `Number('  ')` are all
+ * 0, so these have to be caught before coercing.
+ */
+export const isMissingNumber = (value: unknown): boolean =>
+  value == null
+  || (typeof value === 'string' && value.trim() === '')
+  || Number.isNaN(Number(value))
+
+/**
  * Format a field value based on its config
  * Works for string, number, date, and custom field types
  */
@@ -123,13 +132,14 @@ export const formatFieldValue = (
 
   // Handle number fields
   if (isNumberField(fieldConfig)) {
-    const numberForTransform = rawValue === null ? null : Number(rawValue)
-    const numberForDefault = Number(rawValue ?? 0)
+    const numberValue = isMissingNumber(rawValue) ? null : Number(rawValue)
 
     if (fieldConfig.transform) {
-      return fieldConfig.transform(numberForTransform) ?? ''
+      return fieldConfig.transform(numberValue) ?? ''
     }
-    return getNumberFieldTransform(fieldConfig)(numberForDefault)
+    // A missing number is blank, not 0 — `shouldDisplayValue` then drops the row.
+    if (numberValue === null) return ''
+    return getNumberFieldTransform(fieldConfig)(numberValue)
   }
 
   // Handle date fields

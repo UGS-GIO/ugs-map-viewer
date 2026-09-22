@@ -12,6 +12,26 @@ interface UseTourOptions {
   onComplete?: () => void;
 }
 
+// driver.js stamps `aria-haspopup`/`aria-expanded` on whatever it highlights, where neither is
+// allowed without a matching role — and rewrites it per step, sometimes after the hook returns.
+const HOLDS_POPUP = ['button', 'a', 'input'];
+const POPUP_ROLES = ['button', 'combobox', 'menuitem', 'link'];
+
+const stripHighlightAria = () => {
+  const strip = () => {
+    for (const el of document.querySelectorAll('.driver-active-element')) {
+      const role = el.getAttribute('role') ?? '';
+      if (HOLDS_POPUP.includes(el.tagName.toLowerCase()) || POPUP_ROLES.includes(role)) continue;
+      el.removeAttribute('aria-haspopup');
+      el.removeAttribute('aria-expanded');
+    }
+  };
+  strip();
+  setTimeout(strip, 0);
+  // driver.js re-applies the attributes when its 300-400ms move transition lands.
+  setTimeout(strip, 450);
+};
+
 export function useTour(options: UseTourOptions = {}) {
   const { route, autoStart = false, onComplete } = options;
   const driverRef = useRef<Driver | null>(null);
@@ -63,7 +83,6 @@ export function useTour(options: UseTourOptions = {}) {
     }
   }, []);
 
-  // Start the tour
   const startTour = useCallback(() => {
     const steps = getTourSteps(route);
     
@@ -80,6 +99,29 @@ export function useTour(options: UseTourOptions = {}) {
       stageRadius: 8,
       popoverClass: 'ugs-tour-popover',
       steps,
+      // driver.js builds the popover from <header>/<footer>: landmarks the dialog shouldn't have.
+      onPopoverRender: (popover) => {
+        if (!popover?.wrapper) return;
+        popover.wrapper.setAttribute('role', 'dialog');
+        // A step may define no title, and then there is no title node.
+        if (popover.title) {
+          // <header> may not carry role=heading, so it goes presentational and the text
+          // moves into a span that can.
+          popover.title.setAttribute('role', 'presentation');
+          const heading = document.createElement('span');
+          heading.setAttribute('role', 'heading');
+          heading.setAttribute('aria-level', '2');
+          heading.textContent = popover.title.textContent;
+          popover.title.replaceChildren(heading);
+          if (!popover.title.id) popover.title.id = 'driver-popover-title';
+          popover.wrapper.setAttribute('aria-labelledby', popover.title.id);
+        } else {
+          popover.wrapper.setAttribute('aria-label', 'Tour step');
+        }
+        popover.footer?.setAttribute('role', 'presentation');
+        stripHighlightAria();
+      },
+      onHighlighted: () => stripHighlightAria(),
       onDestroyStarted: () => {
         // Called when user tries to close (X, Escape, or overlay click)
         // This allows the tour to be exited at any time
@@ -92,6 +134,7 @@ export function useTour(options: UseTourOptions = {}) {
     });
 
     driverRef.current.drive();
+    stripHighlightAria();
   }, [route, markTourCompleted, onComplete]);
 
   // Stop the tour
