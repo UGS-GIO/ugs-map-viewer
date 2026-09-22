@@ -7,7 +7,11 @@ export const useSchemaParquetUrl = (schema: FilterSchema, assetKey: string = 'da
     const stacItemId = schema.stacItemId;
     const { data } = useQuery({
         queryKey: ['schema-parquet-url', stacItemId, assetKey],
-        queryFn: () => fetchStacAssetHref(stacItemId!, assetKey).then(href => href ?? null),
+        queryFn: async () => {
+            if (!stacItemId) return null;
+            const href = await fetchStacAssetHref(stacItemId, assetKey);
+            return href ?? null;
+        },
         enabled: !!stacItemId,
         staleTime: 1000 * 60 * 30,
     });
