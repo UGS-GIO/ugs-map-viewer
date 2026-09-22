@@ -108,7 +108,14 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
                         {
                             field: 'reportlink',
                             label: 'Report Link',
-                            transform: (v) => v ? <Link to={String(v)}>View Report</Link> : '—',
+                            transform: (v) => {
+                                if (!v) return '—';
+                                const str = String(v).trim();
+                                if (/^https?:\/\//i.test(str)) {
+                                    return <Link to={str}>View Report</Link>;
+                                }
+                                return str;
+                            },
                         },
                     ],
                     sortBy: 'projectcode',

@@ -46,5 +46,15 @@ describe('wetlandplants layers configuration', () => {
             'vegetationcalculation',
             'reportlink',
         ]);
+
+        // Transform tests
+        const reportlinkField = projectTable?.displayFields?.find(f => f.field === 'reportlink');
+        expect(reportlinkField?.transform?.('')).toBe('—');
+        expect(reportlinkField?.transform?.('javascript:alert(1)')).toBe('javascript:alert(1)');
+        expect(reportlinkField?.transform?.('https://doi.org/10.34191/RI-291')).not.toBe('—');
+
+        const contactinfoField = projectTable?.displayFields?.find(f => f.field === 'contactinfo');
+        expect(contactinfoField?.transform?.('')).toBe('—');
+        expect(contactinfoField?.transform?.('user@example.com')).toBe('user@example.com');
     });
 });
