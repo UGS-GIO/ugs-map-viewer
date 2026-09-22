@@ -41,9 +41,10 @@ export async function fetchRelatedRows(config: RelatedTable, values: string[]): 
         wfsUrl.searchParams.set('typeName', config.wfsTypeName);
         wfsUrl.searchParams.set('outputFormat', 'application/json');
         wfsUrl.searchParams.set('CQL_FILTER', cqlFilter);
-        if (config.sortBy) {
+        const wfsKeys = Array.isArray(config.sortBy) ? config.sortBy : config.sortBy ? [config.sortBy] : [];
+        if (wfsKeys.length) {
             const dir = config.sortDirection === 'desc' ? ' D' : ' A';
-            wfsUrl.searchParams.set('sortBy', `${config.sortBy}${dir}`);
+            wfsUrl.searchParams.set('sortBy', wfsKeys.map(k => `${k}${dir}`).join(','));
         }
 
         const response = await fetch(wfsUrl.toString());
@@ -58,9 +59,10 @@ export async function fetchRelatedRows(config: RelatedTable, values: string[]): 
     if (config.url) {
         const inValues = uniqueValues.join(',');
         let queryUrl = `${config.url}?${matchingField}=in.(${inValues})`;
-        if (config.sortBy) {
+        const orderKeys = Array.isArray(config.sortBy) ? config.sortBy : config.sortBy ? [config.sortBy] : [];
+        if (orderKeys.length) {
             const dir = config.sortDirection === 'desc' ? 'desc' : 'asc';
-            queryUrl += `&order=${config.sortBy}.${dir}`;
+            queryUrl += `&order=${orderKeys.map(k => `${k}.${dir}`).join(',')}`;
         }
 
         const response = await fetch(queryUrl, { headers: config.headers });

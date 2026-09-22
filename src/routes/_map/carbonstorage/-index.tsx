@@ -1,20 +1,14 @@
 import { useMemo, useEffect, useRef } from 'react'
 import { useSearch } from '@tanstack/react-router'
-import { Layout } from '@/components/layout/layout'
-import { TopNav } from '@/components/top-nav'
-import { MapFooter } from '@/components/maps/map-footer'
-import { cn } from '@/lib/utils'
 import GenericMapContainer from '@/components/maps/generic-map-container'
-import Sidebar from '@/components/sidebar'
-import { useSidebar } from '@/hooks/use-sidebar'
-import { useIsMobile } from '@/hooks/use-mobile'
+import { MapShell } from '@/components/maps/map-shell'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, utTownshipRangesTitle, powerplantsTitle } from './-data/layers/layers'
+import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, sectionsTitle, powerplantsTitle } from './-data/layers/layers'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, type SearchComboboxHandle } from '@/components/sidebar/filter/search-combobox'
-import { PROD_POSTGREST_URL } from '@/lib/constants'
+import { PROD_POSTGREST_URL, parquetUrl } from '@/lib/constants'
 import { powerplantsFilterSchema } from './-data/layers/powerplants-schema'
 import { toMaplibreFilter } from '@/lib/filter/generators'
 import { fromCql } from '@/lib/filter/parse'
@@ -44,47 +38,47 @@ const searchConfig: SearchSourceConfig[] = [
     },
   },
   {
-    type: 'postgREST',
-    url: `${PROD_POSTGREST_URL}/enmin_plss_townshiprange_current`,
-    sourceName: 'Utah Township & Ranges',
-    layerName: utTownshipRangesTitle,
-    displayField: 'twnshplab',
-    secondaryDisplayField: 'label',
+    type: 'parquet',
+    parquetUrl: parquetUrl('enmin_plss_sections'),
+    sourceName: 'Utah Township, Range & Section',
+    layerName: sectionsTitle,
+    displayField: 'label',
+    secondaryDisplayField: 'section',
+    idField: 'frstdivid',
     params: {
-      targetFields: ['twnshplab', 'label'],
-      select: 'twnshplab,label,geom',
-    },
-    headers: {
-      'Accept-Profile': 'emp',
-      'Accept': 'application/geo+json',
+      targetFields: ['label', 'section'],
     },
   },
   {
-    type: 'postgREST',
-    url: PROD_POSTGREST_URL,
-    functionName: "search_geologic_units",
-    searchTerm: "search_term",
-    functionParams: { search_scale: 'small' },
+    type: 'parquet',
+    // `search_scale: 'small'` selected the 500k units; that scale is its own warehouse item.
+    parquetUrl: parquetUrl('geolmap_geolunits_500k'),
     sourceName: 'Geologic Units',
     layerName: seamlessGeolunitsWMSTitle,
-    displayField: "unit_label",
-    params: { select: 'unit_label,match_type' },
+    // The RPC returned a pre-joined label; the warehouse keeps name and symbol apart.
+    derivedFields: {
+      unit_label: `unitname || ' (' || unitsymbol || ')'`,
+    },
+    displayField: 'unit_label',
+    idField: 'geology_id',
+    params: { targetFields: ['unitname', 'unitsymbol', 'notes'] },
+    // Stands in for the RPC's `match_type`: which column the term hit, in the same
+    // precedence the groups are listed. `notes` is the description column here.
     groupByField: 'match_type',
+    groupByMatch: [
+      { key: 'name', field: 'unitname' },
+      { key: 'symbol', field: 'unitsymbol' },
+      { key: 'description', field: 'notes' },
+    ],
     groupLabels: {
       name: 'Name Matches',
       symbol: 'Symbol Matches',
       description: 'Description Matches',
     },
-    headers: {
-      'Accept-Profile': 'mapping',
-    }
   },
 ]
 
 export default function Map() {
-  const { isCollapsed, sidebarWidthPx } = useSidebar();
-  const isMobile = useIsMobile();
-  const sidebarMargin = isMobile ? 0 : (isCollapsed ? 56 : sidebarWidthPx);
   const { updateLayerSelection } = useLayerUrl()
   const { contextValue } = useMapContextState();
   const searchRef = useRef<SearchComboboxHandle>(null);
@@ -131,44 +125,23 @@ export default function Map() {
   return (
     <MapContext.Provider value={contextValue}>
       <TourAutoStart route="ccs" />
-      <div className="relative h-svh overflow-hidden bg-background">
-        <Sidebar />
-        <main
-          id="content"
-          className="overflow-x-hidden pt-[var(--header-height)] transition-[margin] duration-200 ease-linear md:overflow-y-hidden md:pt-0 h-full"
-          style={{ marginLeft: `${sidebarMargin}px` }}
-        >
-          <Layout>
-            {/* ===== Top Heading ===== */}
-            <Layout.Header className='hidden md:flex items-center justify-between px-4 md:px-6'>
-              <TopNav />
-              <div className='flex items-center flex-1 min-w-0 md:flex-initial md:w-1/3 md:ml-auto space-x-2'>
-                <div className="flex-1 min-w-0">
-                  <SearchCombobox
-                    ref={searchRef}
-                    config={searchConfig}
-                    onFeatureSelect={onFeatureSelect}
-                    onCollectionSelect={onCollectionSelect}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            </Layout.Header>
-
-            {/* ===== Main ===== */}
-            <Layout.Body>
-              <GenericMapContainer
-                layerFilters={layerFilters}
-                vectorLayerFilters={vectorLayerFilters}
-                onClearSearch={() => searchRef.current?.clear()}
-              />
-            </Layout.Body>
-
-            {/* ===== Footer ===== */}
-            <Layout.Footer className={cn('hidden md:flex z-20')} dynamicContent={<MapFooter />} />
-          </Layout>
-        </main>
-      </div>
+      <MapShell
+        search={
+          <SearchCombobox
+            ref={searchRef}
+            config={searchConfig}
+            onFeatureSelect={onFeatureSelect}
+            onCollectionSelect={onCollectionSelect}
+            className="w-full"
+          />
+        }
+      >
+        <GenericMapContainer
+          layerFilters={layerFilters}
+          vectorLayerFilters={vectorLayerFilters}
+          onClearSearch={() => searchRef.current?.clear()}
+        />
+      </MapShell>
     </MapContext.Provider>
   )
 }

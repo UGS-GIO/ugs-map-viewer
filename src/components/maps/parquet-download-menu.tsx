@@ -13,7 +13,7 @@ import {
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useParquetSchema } from '@/hooks/use-parquet-schema';
-import { EXPORT_FORMATS, availableFormats, type ExportFormat } from '@/lib/export-formats';
+import { EXPORT_FORMATS, availableFormats, isCombinedTable, mergedColumnNames, type ExportFormat } from '@/lib/export-formats';
 import { shapefileFieldChecks } from '@/lib/gdal-export';
 import type { RelatedTable } from '@/lib/types/mapping-types';
 
@@ -39,18 +39,25 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
     const [open, setOpen] = useState(false);
     const { data: schema, isLoading: schemaLoading, isError: schemaError } = useParquetSchema(parquetUrl, open);
     const [includeRelated, setIncludeRelated] = useState(true);
-    const hasRelatedTables = (relatedTables?.length ?? 0) > 0;
+    // Combined tables are columns of the file itself — the checkbox is labelled for the
+    // ones that would ship as their own CSVs, and governs only those.
+    const combined = useMemo(() => (relatedTables ?? []).filter(isCombinedTable), [relatedTables]);
+    const separate = useMemo(() => (relatedTables ?? []).filter(t => !isCombinedTable(t)), [relatedTables]);
+    const hasRelatedTables = separate.length > 0;
 
     // Shapefile silently truncates field names past 10 chars and drops columns whose
     // truncations collide. Warned up front from the schema we already have — the user
     // can still proceed, but not unknowingly.
     const shapefileIssues = useMemo(() => {
         if (!schema) return null;
-        const attrs = schema.columns.filter(c => c !== schema.geometryColumn);
+        // Merged columns land in the file too, under the names the export gives them after
+        // collisions are resolved — warning on the raw names would both miss and invent problems.
+        const attrs = [...schema.columns, ...mergedColumnNames(schema.columns, combined)]
+            .filter(c => c !== schema.geometryColumn);
         const { longNames, collisions, tooManyFields, fieldCount } = shapefileFieldChecks(attrs);
         if (!longNames.length && !collisions.length && !tooManyFields) return null;
         return { longNames, collisions, tooManyFields, fieldCount };
-    }, [schema]);
+    }, [schema, combined]);
 
     const download = useMutation({
         mutationFn: async (format: ExportFormat) => {
@@ -72,7 +79,7 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
                 filename: safeFilename(layerTitle),
                 format,
                 geometryColumn: schema?.geometryColumn ?? null,
-                relatedTables: hasRelatedTables && includeRelated ? relatedTables : undefined,
+                relatedTables: includeRelated ? [...combined, ...separate] : combined,
                 onProgress: (stage) => {
                     if (stage.stage === 'error') {
                         // Let mutation onError handle display; no-op here
@@ -150,7 +157,7 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
                             onCheckedChange={setIncludeRelated}
                             onSelect={(e) => e.preventDefault()}
                         >
-                            Include related data
+                            Include related tables as extra CSVs
                         </DropdownMenuCheckboxItem>
                     </>
                 )}

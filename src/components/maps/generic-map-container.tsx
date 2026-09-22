@@ -21,6 +21,7 @@ import { MobileMapNav } from './mobile-map-nav'
 import { PROD_GEOSERVER_URL, POPUP_TITLES } from '@/lib/constants'
 import { useMap } from '@/hooks/use-map'
 import { useGetCurrentPage } from '@/hooks/use-get-current-page'
+import { useAppBasemaps } from '@/hooks/use-app-basemaps'
 import { HomeControl, DualScaleControl } from '@/components/maps/controls'
 import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
@@ -301,6 +302,7 @@ export default function GenericMapContainer({
 }: GenericMapContainerProps) {
   const isMobile = useIsMobile()
   const currentPage = useGetCurrentPage()
+  const { defaultStyle: defaultBasemap } = useAppBasemaps()
   const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
   const { viewMode, setViewMode, center, zoom, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
   const { setNavOpened } = useSidebar()
@@ -641,7 +643,7 @@ export default function GenericMapContainer({
             vectorLayerFilters={vectorLayerFilters}
             vectorLayerSymbology={vectorLayerSymbology}
             onMapReady={handleMapReady}
-            basemapId={basemap}
+            basemapId={basemap ?? defaultBasemap.id}
             defaultBasemapId={defaultBasemapId}
             clickBufferBounds={clickBufferBounds}
             onClickBufferChange={handleClickBufferChange}

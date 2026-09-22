@@ -22,9 +22,12 @@ function formatName(name: string): string {
 
 export function getDisplayValue(properties: GeoJsonProperties, source: SearchSourceConfig): string {
     const primary = String(properties?.[source.displayField] ?? '');
-    if (source.type === 'postgREST' && source.secondaryDisplayField) {
+    if ((source.type === 'postgREST' || source.type === 'parquet') && source.secondaryDisplayField) {
         const secondary = String(properties?.[source.secondaryDisplayField] ?? '');
-        if (secondary) return `${primary} — ${secondary}`;
+        if (secondary) {
+            const secondaryText = source.secondaryDisplayField === 'section' ? `Sec ${secondary}` : secondary;
+            return `${primary} — ${secondaryText}`;
+        }
     }
     return primary;
 }
@@ -40,8 +43,25 @@ export function appendFunctionParams(params: URLSearchParams, source: PostgRESTC
 export function resultHasData(result: QueryResultWrapper): boolean {
     if (!result.data) return false;
     if (result.type === 'masquerade') return Array.isArray(result.data) && result.data.length > 0;
-    if (result.type === 'postgREST') return 'features' in result.data && result.data.features.length > 0;
+    if (result.type === 'postgREST' || result.type === 'parquet') return 'features' in result.data && result.data.features.length > 0;
     return false;
+}
+
+/**
+ * Resolve the index of the source to pre-select on load, matched by its authored
+ * `sourceName`. Matching by name (not a hardcoded index) keeps the default stable if
+ * the source list is reordered; matching the authored field rather than the derived
+ * display name avoids depending on getSourceDisplayName's formatting fallback. Returns
+ * null when no name is given or none matches, which the combobox treats as "no source
+ * pre-selected" (search all).
+ */
+export function resolveDefaultSourceIndex(
+    config: SearchSourceConfig[],
+    defaultSourceName?: string,
+): number | null {
+    if (!defaultSourceName) return null;
+    const index = config.findIndex(source => source.sourceName === defaultSourceName);
+    return index >= 0 ? index : null;
 }
 
 export function getSourceDisplayName(sourceConfig: SearchSourceConfig): string {
@@ -54,8 +74,10 @@ export function getSourceDisplayName(sourceConfig: SearchSourceConfig): string {
         } else {
             name = sourceConfig.url.split('/').pop() || '';
         }
+    } else if (sourceConfig.type === 'parquet') {
+        name = sourceConfig.parquetUrl.split('/').pop()?.replace(/\.parquet$/, '') || '';
     } else if (sourceConfig.type === 'masquerade') {
         name = "Address Search: e.g. 123 Main St";
     }
-    return formatName(name || sourceConfig.url.split('/').pop() || 'Unknown Source');
+    return formatName(name || sourceConfig.url?.split('/').pop() || 'Unknown Source');
 }

@@ -8,7 +8,9 @@ const linkVariants = cva(
     {
         variants: {
             variant: {
-                primary: 'text-primary', // Uses your CSS variable for primary
+                // Underlined, not just recoloured: inside a paragraph, colour alone is not enough
+                // to mark a link (WCAG 1.4.1).
+                primary: 'text-link underline underline-offset-4',
                 foreground: 'text-foreground', // Uses your CSS variable for foreground
             },
         },
@@ -23,15 +25,21 @@ type LinkProps = {
     className?: string;
     children: React.ReactNode;
     variant?: VariantProps<typeof linkVariants>['variant']; // Include variant as a prop
+    target?: React.HTMLAttributeAnchorTarget;
+    rel?: string;
 };
 
-const Link = ({ children, variant, className, ...props }: LinkProps) => {
+const isExternal = (to: string) => /^[a-z][a-z0-9+.-]*:/i.test(to);
+
+/** In-app routes navigate in place; only off-site links open a tab. */
+const Link = ({ children, variant, className, target, rel, ...props }: LinkProps) => {
+    const external = isExternal(props.to);
 
     return (
         <RouterLink
             className={cn(linkVariants({ variant }), className)}
-            target="_blank"
-            rel="noopener noreferrer"
+            target={target ?? (external ? '_blank' : undefined)}
+            rel={rel ?? (external ? 'noopener noreferrer' : undefined)}
             {...props}
         >
             {children}

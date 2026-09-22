@@ -74,7 +74,7 @@ const seamlessGeolunitsLayerName = 'mapping_geolunits_500k'
 const seamlessGeolunitsWMSTitle = 'Geologic Units (500k)';
 const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/mapping/wms`,
+    url: `${PROD_GEOSERVER_URL}/wms`,
     title: seamlessGeolunitsWMSTitle,
     opacity: 0.5,
     visible: false,
