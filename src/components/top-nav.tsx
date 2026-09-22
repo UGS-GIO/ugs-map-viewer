@@ -7,11 +7,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { BasemapIcon } from '@/assets/basemap-icons';
-import { BASEMAP_STYLES, DEFAULT_BASEMAP, BasemapStyle } from '@/lib/basemaps';
+import { ChevronDown } from 'lucide-react';
+import { BasemapStyle } from '@/lib/basemaps';
+import { useAppBasemaps } from '@/hooks/use-app-basemaps';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import type { MapSearchParams } from '@/routes/_map';
 
-interface TopNavProps extends React.HTMLAttributes<HTMLElement> { defaultBasemapId?: string }
+interface TopNavProps extends React.HTMLAttributes<HTMLElement> { }
 
 interface BasemapProps {
   links: BasemapStyle[];
@@ -22,7 +24,7 @@ interface BasemapProps {
 
 const BasemapDropdown = ({ links, trigger, onBasemapChange, activeBasemap }: BasemapProps) => {
   return (
-    <DropdownMenu>
+    <DropdownMenu modal={false}>
       <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
       <DropdownMenuContent side="bottom" align="start">
         {links.map(({ id, title }) => {
@@ -32,6 +34,7 @@ const BasemapDropdown = ({ links, trigger, onBasemapChange, activeBasemap }: Bas
             <DropdownMenuItem key={id} asChild>
               <Button
                 variant="ghost"
+                aria-current={isActive || undefined}
                 className={cn('w-full justify-start', !isActive ? 'text-muted-foreground' : 'underline')}
                 onClick={() => onBasemapChange(id)}
               >
@@ -45,11 +48,12 @@ const BasemapDropdown = ({ links, trigger, onBasemapChange, activeBasemap }: Bas
   );
 };
 
-function TopNav({ className, defaultBasemapId, ...props }: TopNavProps) {
+function TopNav({ className, ...props }: TopNavProps) {
   const navigate = useNavigate();
   const searchParams = useSearch({ strict: false }) as MapSearchParams;
 
-  const activeBasemap = searchParams.basemap || defaultBasemapId || DEFAULT_BASEMAP.id;
+  const { styles, defaultStyle } = useAppBasemaps();
+  const activeBasemap = searchParams.basemap || defaultStyle.id;
 
   // Just update URL - DataMap handles the actual basemap change
   const handleBasemapChange = (basemapId: string) => {
@@ -61,16 +65,16 @@ function TopNav({ className, defaultBasemapId, ...props }: TopNavProps) {
   };
 
   // Check if any long-type basemap is active
-  const isLongActive = BASEMAP_STYLES
+  const isLongActive = styles
     .filter(({ type }) => type === 'long')
     .some(({ id }) => activeBasemap === id);
 
   // Get current basemap title for collapsed view
-  const currentBasemapTitle = BASEMAP_STYLES.find(b => b.id === activeBasemap)?.title || 'Basemap';
+  const currentBasemapTitle = styles.find(b => b.id === activeBasemap)?.title || 'Basemap';
 
   // Collapsed trigger (icon only)
   const collapsedIconTrigger = (
-    <Button size="icon" variant="outline">
+    <Button size="icon" variant="outline" aria-label={`Basemap: ${currentBasemapTitle}`}>
       <BasemapIcon />
     </Button>
   );
@@ -86,13 +90,14 @@ function TopNav({ className, defaultBasemapId, ...props }: TopNavProps) {
   const moreTrigger = (
     <Button
       className={cn(
-        'text-muted-foreground',
+        'px-2 text-muted-foreground',
         isLongActive && 'text-secondary-foreground underline',
         'focus-visible:outline-none'
       )}
       variant="ghost"
     >
       More
+      <ChevronDown className="h-4 w-4" aria-hidden="true" />
     </Button>
   );
 
@@ -101,7 +106,7 @@ function TopNav({ className, defaultBasemapId, ...props }: TopNavProps) {
       {/* Collapsed view - icon only (small screens) */}
       <div className="sm:hidden">
         <BasemapDropdown
-          links={BASEMAP_STYLES}
+          links={styles}
           trigger={collapsedIconTrigger}
           onBasemapChange={handleBasemapChange}
           activeBasemap={activeBasemap}
@@ -111,7 +116,7 @@ function TopNav({ className, defaultBasemapId, ...props }: TopNavProps) {
       {/* Collapsed view - with label (medium screens) */}
       <div className="hidden sm:block lg:hidden">
         <BasemapDropdown
-          links={BASEMAP_STYLES}
+          links={styles}
           trigger={collapsedLabelTrigger}
           onBasemapChange={handleBasemapChange}
           activeBasemap={activeBasemap}
@@ -121,12 +126,12 @@ function TopNav({ className, defaultBasemapId, ...props }: TopNavProps) {
       {/* Expanded view - individual buttons (large screens) */}
       <nav
         className={cn(
-          'hidden items-center space-x-4 lg:flex xl:space-x-6',
+          'hidden items-center space-x-0.5 lg:flex xl:space-x-1',
           className
         )}
         {...props}
       >
-        {BASEMAP_STYLES
+        {styles
           .filter(({ type }) => type === 'short')
           .map(({ id, title }) => {
             const isActive = activeBasemap === id;
@@ -135,9 +140,10 @@ function TopNav({ className, defaultBasemapId, ...props }: TopNavProps) {
               <Button
                 variant="ghost"
                 key={id}
+                aria-current={isActive || undefined}
                 onClick={() => handleBasemapChange(id)}
                 className={cn(
-                  'text-sm font-medium transition-colors hover:text-secondary-foreground',
+                  'px-2 text-sm font-medium transition-colors hover:text-secondary-foreground',
                   isActive ? 'underline' : 'text-muted-foreground'
                 )}
               >
@@ -146,7 +152,7 @@ function TopNav({ className, defaultBasemapId, ...props }: TopNavProps) {
             );
           })}
         <BasemapDropdown
-          links={BASEMAP_STYLES.filter(({ type}) => type === 'long')}
+          links={styles.filter(({ type }) => type === 'long')}
           trigger={moreTrigger}
           onBasemapChange={handleBasemapChange}
           activeBasemap={activeBasemap}

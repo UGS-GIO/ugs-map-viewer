@@ -21,7 +21,9 @@ function LegendRow({ color, label, strokeColor }: { color: string; label: string
                         cy="10"
                         r="5"
                         fill={color}
-                        stroke={strokeColor ?? '#000'}
+                        // Ink from the swatch palette, not pure black: these sit on the panel, which
+                        // is dark half the time.
+                        stroke={strokeColor ?? '#333333'}
                         strokeWidth="1"
                     />
                 </svg>

@@ -11,6 +11,7 @@ import {
     ArrowUp,
     ArrowDown,
 } from 'lucide-react';
+import { isMissingNumber } from '@/lib/field-formatting';
 import type { ColumnConfig, RowData } from './types';
 import type { FieldConfig, RelatedTable } from '@/lib/types/mapping-types';
 import { formatFieldValue } from '@/lib/field-formatting';
@@ -77,8 +78,8 @@ export function useTableColumns(
                 accessorFn: (row) => {
                     const val = row.properties[sortKey];
                     if (isNumeric) {
-                        const num = Number(val);
-                        return Number.isFinite(num) ? num : undefined;
+                        // undefined, not 0 — otherwise a blank cell sorts as zero.
+                        return isMissingNumber(val) ? undefined : Number(val);
                     }
                     return val;
                 },

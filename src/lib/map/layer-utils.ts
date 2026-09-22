@@ -219,3 +219,62 @@ export function getWmsLayerName(layer: WMSLayerProps): string {
 export function buildArcGisExportUrl(baseUrl: string): string {
   return `${baseUrl}/export?bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image&bbox={bbox-epsg-3857}`
 }
+
+// ── PMTiles fragment layers ──────────────────────────────────────────
+
+/**
+ * Map a config `visibleZoomRange` to maplibre `minzoom`/`maxzoom`; empty when
+ * unset. Direct indexing (not `||`) so a legitimate zoom-0 bound survives.
+ */
+export function zoomRangeToBounds(
+  visibleZoomRange?: [number, number],
+): { minzoom?: number; maxzoom?: number } {
+  return visibleZoomRange
+    ? { minzoom: visibleZoomRange[0], maxzoom: visibleZoomRange[1] }
+    : {}
+}
+
+/** The fields the viewer injects when turning a style fragment into a layer. */
+export interface FragmentLayerInjection {
+  layerId: string
+  sourceId: string
+  sourceLayer: string
+  /** Viewer-owned metadata; the fragment's own metadata never leaks through. */
+  metadata: Record<string, unknown>
+  visible: boolean
+  /** Paint after viewer overrides (e.g. the opacity slider). Omit to keep the fragment's. */
+  paint?: Record<string, unknown>
+  /** Filter after merging the fragment's with any user filter. Omit to keep the fragment's. */
+  filter?: unknown
+  visibleZoomRange?: [number, number]
+}
+
+/**
+ * Turn one layer from an ugs-styles style fragment (`{ layers: [...] }`) into a
+ * MapLibre layer spec. Preserves EVERYTHING the fragment authored — paint,
+ * layout, filter, minzoom/maxzoom, and any future property — so cartographic
+ * intent set in ugs-styles is never silently dropped (a dropped minzoom is why
+ * PLSS sections drew at every zoom). Overrides only what the viewer must own:
+ * the namespaced `id`, the injected `source` (+ `source-layer` when the fragment
+ * omits it), `layout.visibility`, viewer `metadata`, and the paint/filter the
+ * viewer recomputed. A config `visibleZoomRange`, when set, wins over the
+ * fragment's own zoom.
+ */
+export function buildFragmentLayerSpec(
+  fragmentLayer: Record<string, unknown>,
+  opts: FragmentLayerInjection,
+): Record<string, unknown> {
+  const fragmentLayout = (fragmentLayer.layout as Record<string, unknown> | undefined) ?? {}
+  const fragmentSourceLayer = fragmentLayer['source-layer'] as string | undefined
+  return {
+    ...fragmentLayer,
+    id: opts.layerId,
+    source: opts.sourceId,
+    'source-layer': fragmentSourceLayer ?? opts.sourceLayer,
+    layout: { ...fragmentLayout, visibility: opts.visible ? 'visible' : 'none' },
+    ...(opts.paint ? { paint: opts.paint } : {}),
+    ...(opts.filter ? { filter: opts.filter } : {}),
+    metadata: opts.metadata,
+    ...zoomRangeToBounds(opts.visibleZoomRange),
+  }
+}

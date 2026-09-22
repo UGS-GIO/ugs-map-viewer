@@ -3,16 +3,17 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Spinner } from '../ui/loading-spinner';
 
 interface NavSkeletonProps {
+    id?: string;
     className?: string;
 }
 
-export function NavSkeleton({ className }: NavSkeletonProps) {
+export function NavSkeleton({ id, className }: NavSkeletonProps) {
     return (
-        <div className={cn('flex flex-1 overflow-hidden', className)}>
+        <div id={id} className={cn('flex flex-1 overflow-hidden', className)}>
             {/* Skeleton for the Left Icon Bar (Desktop) */}
             <div className='hidden md:flex flex-col items-center gap-4 pt-2 border-r p-2'>
                 {[...Array(6)].map((_, i) => (
-                    <Skeleton key={i} className='h-10 w-10 rounded' />
+                    <Skeleton key={i} className='h-10 w-10 rounded-md' />
                 ))}
             </div>
 
