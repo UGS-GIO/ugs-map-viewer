@@ -95,6 +95,9 @@ export const queryKeys = {
     /** Parsed SLD legend bins keyed by style name. */
     displacementSldBins: (styleName: string) =>
       [...queryKeys.hazards.all, 'displacement-sld-bins', styleName] as const,
+    /** Cheap max-year-per-type lookup for the map cql (no geometry / no bulk pull). */
+    displacementLatestYears: () =>
+      [...queryKeys.hazards.all, 'displacement-latest-years'] as const,
   },
 } as const;
 

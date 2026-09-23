@@ -4,6 +4,7 @@ import {
     DISPLACEMENT_LAYER_TYPES,
     CHARTED_TYPES,
     DEFAULT_EXCLUDED_DATA_QUALS,
+    LOW_DATA_QUALS,
     isChartedType,
     type ChartedType,
     type DisplacementLayerTitle,
@@ -55,6 +56,9 @@ interface DisplacementFilterState {
     removeBasin: (type: DisplacementType, location: string) => void
     clearBasins: (type: DisplacementType) => void
     toggleDataQual: (type: DisplacementType, qual: string) => void
+    /** Show/hide several data_qual categories at once (e.g. low + very-low as one
+     * "unconfirmed low quality" toggle). */
+    setDataQualsVisible: (type: DisplacementType, quals: readonly string[], visible: boolean) => void
     clearDataQuals: (type: DisplacementType) => void
 }
 
@@ -199,6 +203,24 @@ export function DisplacementFilterProvider({ children }: { children: ReactNode }
         })
     }, [update])
 
+    // Show/hide a group of categories together (the low + very-low pair behind
+    // the single "unconfirmed low quality" toggle). visible=true un-excludes them,
+    // false excludes them; prunes back to the default key when they land there.
+    const setDataQualsVisible = useCallback((type: DisplacementType, quals: readonly string[], visible: boolean) => {
+        update(cur => {
+            const set = new Set(readExcluded(cur, type))
+            for (const q of quals) {
+                if (visible) set.delete(q)
+                else set.add(q)
+            }
+            const arr = [...set]
+            const excludedQuals = { ...cur.excludedQuals }
+            if (isDefaultQuals(arr)) delete excludedQuals[type]
+            else excludedQuals[type] = arr
+            return { ...cur, excludedQuals }
+        })
+    }, [update])
+
     // "Reset" returns to the high/medium default = drop the per-type key.
     const clearDataQuals = useCallback((type: DisplacementType) => {
         update(cur => {
@@ -238,7 +260,7 @@ export function DisplacementFilterProvider({ children }: { children: ReactNode }
     }, [update])
 
     return (
-        <DisplacementFilterContext.Provider value={{ yearOverridesByType, thresholdsIn, basinsByType, excludedDataQualsByType, setYearOverride, setThreshold, addBasin, removeBasin, clearBasins, toggleDataQual, clearDataQuals }}>
+        <DisplacementFilterContext.Provider value={{ yearOverridesByType, thresholdsIn, basinsByType, excludedDataQualsByType, setYearOverride, setThreshold, addBasin, removeBasin, clearBasins, toggleDataQual, setDataQualsVisible, clearDataQuals }}>
             {children}
         </DisplacementFilterContext.Provider>
     )
@@ -257,8 +279,8 @@ export function useDisplacementFilters(): DisplacementFilterState {
  */
 export function useEffectiveYear(type: DisplacementType): string | null {
     const { yearOverridesByType } = useDisplacementFilters()
-    const latestByType = useDisplacementLatestYearByType()
-    return yearOverridesByType[type] ?? latestByType[type] ?? null
+    const { byType } = useDisplacementLatestYearByType()
+    return yearOverridesByType[type] ?? byType[type] ?? null
 }
 
 /**
@@ -298,7 +320,7 @@ export function useDisplacementLayerFilters(): Record<string, string> {
     const effective = useEffectiveThresholdsIn()
     const cumulativeSld = useDisplacementSldZeroBound('Cumulative')
     const yearlySld = useDisplacementSldZeroBound('Yearly')
-    const latestByType = useDisplacementLatestYearByType()
+    const { byType: latestByType, isPending: latestYearPending } = useDisplacementLatestYearByType()
     return useMemo(() => {
         const zeroBoundByType: Record<ChartedType, number | null> = { 'Cumulative': cumulativeSld, 'Yearly': yearlySld }
         const out: Record<DisplacementLayerTitle, string> = {} as Record<DisplacementLayerTitle, string>
@@ -309,6 +331,14 @@ export function useDisplacementLayerFilters(): Record<string, string> {
                 // `year` is an int column holding the window's closing year, so an
                 // unquoted equality works for every type.
                 clauses.push(`year=${Number(effectiveYear)}`)
+            } else if (latestYearPending) {
+                // Still resolving: gate to a no-match clause so the layer stays blank
+                // rather than painting every year-window stacked (the first-load
+                // "overlap flash"); the real year replaces this once it lands. Only
+                // while pending — a persistent lookup failure falls through with no
+                // year clause (visible all-years) instead of a silent permanent blank.
+                out[title] = 'year = -1'
+                continue
             }
             if (isChartedType(typeValue)) {
                 const thresholdIn = effective[typeValue]
@@ -331,14 +361,22 @@ export function useDisplacementLayerFilters(): Record<string, string> {
             }
             // Data-quality: exclude unchecked categories. Empty exclusion set =
             // no clause (all qualities shown). NOT IN keeps unknown future
-            // categories visible by default.
+            // categories visible by default. Exception (Tara's rule): a low/very-low
+            // contour that is independently confirmed is ALWAYS shown — the SLD
+            // hatches it — even when its quality is excluded; only the UNCONFIRMED
+            // low/very-low are dropped. Scoped to low/very-low so excluding
+            // high/medium still hides their confirmed members.
             const excludedQuals = excludedDataQualsByType[typeValue]
             if (excludedQuals && excludedQuals.size > 0) {
                 const list = Array.from(excludedQuals).map(quoteCqlLiteral).join(', ')
-                clauses.push(`data_qual NOT IN (${list})`)
+                // Build the confirmed-low override list from LOW_DATA_QUALS (single
+                // source of truth) rather than a hardcoded literal, so it stays in
+                // sync with the tiers the filter UI + SLD hatch key on.
+                const lowList = LOW_DATA_QUALS.map(quoteCqlLiteral).join(', ')
+                clauses.push(`(data_qual NOT IN (${list}) OR (independent_confirmation = true AND data_qual IN (${lowList})))`)
             }
             if (clauses.length > 0) out[title] = clauses.join(' AND ')
         }
         return out
-    }, [yearOverridesByType, latestByType, effective, cumulativeSld, yearlySld, basinsByType, excludedDataQualsByType])
+    }, [yearOverridesByType, latestByType, latestYearPending, effective, cumulativeSld, yearlySld, basinsByType, excludedDataQualsByType])
 }

@@ -43,6 +43,15 @@ interface BaseFieldConfig {
     description?: string;
     /** Whether this field is sortable in the table. Defaults to true for string/number/date, false for custom. */
     sortable?: boolean;
+    /**
+     * Property to order this column by, compared numerically. Lets a `custom`
+     * column — whose cell is a transform-rendered string with no inherently
+     * sortable value — sort by a real numeric field (e.g. a formatted range that
+     * sorts by `value_inches_min`). Setting it opts the column into sorting.
+     * Intended for `custom` columns only: on a non-custom column the cell renders
+     * from the accessor, so repointing it here would also change what's displayed.
+     */
+    sortField?: string;
 }
 
 // String-specific field configuration

@@ -1,11 +1,11 @@
-import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useId, useMemo, useRef, useState } from 'react'
 import { ChevronDown, ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
 import area from '@turf/area'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LegendSwatchGrid, type LegendSwatchItem } from '@/components/maps/legend-swatch-grid'
-import { BarChart, Bar, LineChart, Line, Rectangle, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label as RechartsLabel, useActiveTooltipLabel, useIsTooltipActive, type BarShapeProps, type XAxisTickContentProps } from 'recharts'
+import { BarChart, Bar, LineChart, Line, Rectangle, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label as RechartsLabel, type BarShapeProps, type XAxisTickContentProps } from 'recharts'
 import type { LayerContentProps } from '@/components/maps/popups/types'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import { useMap } from '@/hooks/use-map'
@@ -19,7 +19,7 @@ import {
 } from './use-displacement-queries'
 import { deepestSubsidenceByYear } from './displacement-analytics'
 import { DisplacementDetailCharts } from './displacement-detail-charts'
-import { ChartHoverReadout, type ChartReadoutItem } from './displacement-chart-hover'
+import { ChartHoverReadout, HoveredChartLabelReporter, renderNoChartTooltip, type ChartReadoutItem } from './displacement-chart-hover'
 import { DisplacementAnalysisLayout } from './displacement-analysis-layout'
 import { renderDisplacementLayerFilters } from './displacement-layer-filters'
 
@@ -35,9 +35,6 @@ const fmt1 = (n: number): string => n.toFixed(1)
 
 // One chart column: the year plus a signed mi² total per SLD bin name.
 type ChartRow = { year: string; [binName: string]: string | number }
-
-// Stable identity so recharts doesn't see a new content component each render.
-const renderNoTooltip = () => null
 
 // Values stay signed so uplift and subsidence can't cancel out in the legend.
 function sumByBin(rows: ChartRow[]): Record<string, number> {
@@ -577,6 +574,11 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
             <p className="mt-2 px-2 text-xs italic text-muted-foreground">
                 Units: {getUnitsLabelForType(typeValue)}.
             </p>
+            {/* General reading caveats — kept with the Units note as quiet fine-print
+                for the whole panel, not captioning the chart directly above. */}
+            <p className="mt-1 px-2 text-xs italic text-muted-foreground">
+                Contours are disjoint bands, so area totals are not double-counted. Blank map areas are unmeasured, not necessarily stable. InSAR measures vertical motion, not its cause.
+            </p>
         </div>
     )
 
@@ -632,7 +634,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     if (isLoading) summaryLine = 'Loading…'
     else if (distinctBasins === 0) summaryLine = 'No measured subsidence in the current filters.'
     else if (typeValue === 'Cumulative')
-        summaryLine = `Since ${period?.from ?? '—'}, land in ${whereText} has sunk up to ${fmt1(maxDisplacement)} in — about ${fmt1(totalAreaSqMi)} mi² is subsiding now.`
+        summaryLine = `Since ${period?.from ?? '—'}, land in ${whereText} has subsided up to ${fmt1(maxDisplacement)} in — about ${fmt1(totalAreaSqMi)} mi² is subsiding now.`
     else
         summaryLine = `In ${year ?? '—'}, land in ${whereText} sank up to ${fmt1(maxDisplacement)} in — about ${fmt1(totalAreaSqMi)} mi² subsided.`
 
@@ -793,7 +795,7 @@ export function BasinList({
     unit = 'in',
     formatValue = fmt1,
     heading = 'Subsidence by Basin',
-    caption = 'Basins ranked by their deepest contour value. Click a row to focus the panel on that basin; unselected rows grey out while one is active.',
+    caption = 'Basins ranked by their maximum subsidence. Click a row to focus the panel on that basin; unselected rows grey out while one is active.',
     emptyText = 'No basins above threshold.',
 }: BasinListProps) {
     const [page, setPage] = useState(0)
@@ -970,14 +972,14 @@ const StackedYearChart = memo(function StackedYearChart({ data, bins, year, type
                     tick={{ fill: 'currentColor', fontSize: 11 }}
                     width={60}
                     tickMargin={2}
-                    tickFormatter={(v: number) => `${fmt1(Math.abs(v))} mi²`}
+                    tickFormatter={(v: number) => fmt1(Math.abs(v))}
                 >
                     <RechartsLabel value="↑ Uplift · Subsidence ↓ (mi²)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
                 </YAxis>
                 <ReferenceLine y={0} stroke="currentColor" strokeOpacity={0.5} />
-                <HoveredYearReporter onHover={onHover} />
+                <HoveredChartLabelReporter onHover={onHover} />
                 {/* Kept for the column highlight; the readout lives in the legend. */}
-                <Tooltip cursor={{ fill: 'currentColor', fillOpacity: 0.05 }} content={renderNoTooltip} />
+                <Tooltip cursor={{ fill: 'currentColor', fillOpacity: 0.05 }} content={renderNoChartTooltip} />
                 {bins.map((bin, i) => (
                     <Bar
                         key={bin.name}
@@ -1045,7 +1047,7 @@ const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markS
                     tick={{ fill: 'currentColor', fontSize: 11 }}
                     width={52}
                     tickMargin={2}
-                    tickFormatter={(v: number) => `${fmt1(v)} in`}
+                    tickFormatter={(v: number) => fmt1(v)}
                 >
                     <RechartsLabel value="Subsidence (in)" angle={-90} position="insideLeft" style={{ fontSize: 11, fill: 'currentColor', textAnchor: 'middle' }} />
                 </YAxis>
@@ -1055,28 +1057,13 @@ const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markS
                 {selectedYear && data.some(d => d.year === selectedYear) && (
                     <ReferenceLine x={selectedYear} stroke="currentColor" strokeOpacity={0.4} strokeDasharray="3 3" />
                 )}
-                {onHover && <HoveredYearReporter onHover={onHover} />}
-                <Tooltip cursor={{ stroke: 'currentColor', strokeOpacity: 0.2 }} content={renderNoTooltip} />
+                {onHover && <HoveredChartLabelReporter onHover={onHover} />}
+                <Tooltip cursor={{ stroke: 'currentColor', strokeOpacity: 0.2 }} content={renderNoChartTooltip} />
                 <Line type="monotone" dataKey="depthIn" stroke={lineColor} strokeWidth={2} dot={renderDot} activeDot={{ r: 3 }} isAnimationActive={false} />
             </LineChart>
         </ResponsiveContainer>
     )
 })
-
-// Renders nothing — reports the hovered column to the parent. The recharts
-// hooks only resolve inside <BarChart>, so reading hover state means living in
-// the tree; the effect keeps the parent's setState out of render.
-function HoveredYearReporter({ onHover }: { onHover: (year: string | null) => void }) {
-    const isActive = useIsTooltipActive()
-    const label = useActiveTooltipLabel()
-    const hovered = isActive && typeof label === 'string' ? label : null
-
-    useEffect(() => {
-        onHover(hovered)
-    }, [hovered, onHover])
-
-    return null
-}
 
 // Under-chart legend group (Uplift / Subsidence column). Only ever receives
 // bins that actually contributed a segment to the currently plotted years

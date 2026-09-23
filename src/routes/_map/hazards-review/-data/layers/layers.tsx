@@ -1024,9 +1024,26 @@ function makeDisplacementPopupFields(typeValue: DisplacementType): Record<string
         'Vertical Displacement': {
             field: 'value_inches_min',
             type: 'custom',
+            // Cell shows the formatted range; sort the column numerically by the
+            // deep edge (value_inches_min) so the one quantitative column stays
+            // sortable despite being a custom transform.
+            sortField: 'value_inches_min',
             transform: (props) => formatDisplacementRange(props?.value_inches_min, props?.value_inches_max, typeValue),
         },
         'Data Quality': { field: 'data_qual', type: 'string', transform: capitalizeFirst },
+        // Why a low/very-low contour is shown (hatched) rather than dropped: it's
+        // independently confirmed. Surfaced for every contour so a reviewer can
+        // read the hatch.
+        'Independently Confirmed': {
+            field: 'independent_confirmation',
+            type: 'custom',
+            transform: (props) => {
+                const v = props?.independent_confirmation;
+                if (v === true) return 'Yes';
+                if (v === false) return 'No';
+                return ''; // absent → let the popup hide the row (not a stray "—")
+            },
+        },
     };
 }
 
