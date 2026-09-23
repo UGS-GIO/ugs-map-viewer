@@ -119,14 +119,15 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
                                             Record {i + 1} of {rows.length}
                                         </div>
                                     )}
-                                    {relatedTable.displayFields?.map((df, j) => {
+                                    {relatedTable.displayFields?.map((df) => {
                                         const raw = r[df.field];
                                         const formatted = formatNumeric(raw, df.format);
                                         const value = df.transform ? df.transform(formatted, r, rows) : formatted;
+                                        const displayValue = (value === undefined || value === null || value === '') ? '—' : value;
                                         return (
-                                            <div key={j} className="flex flex-col gap-0.5">
+                                            <div key={df.field} className="flex flex-col gap-0.5">
                                                 <span className="font-semibold text-muted-foreground">{df.label || df.field}</span>
-                                                <div className="text-foreground leading-relaxed break-words">{value || '—'}</div>
+                                                <div className="text-foreground leading-relaxed break-words">{displayValue}</div>
                                             </div>
                                         );
                                     })}
