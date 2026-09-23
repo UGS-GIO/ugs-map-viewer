@@ -167,16 +167,43 @@ function CategoryLegendGrid(
 
     // Colour per value, derived from the render's legend. Flat renders: entry label == value.
     // Grouped renders: each group's `values` carry per-item shades. `stroke` is a flat-render
-    // swatch outline. Item shade wins, then flat swatch, then default.
+    // swatch outline. Item shade wins, then schema swatch, then flat swatch, then default.
     const swatch = useMemo(() => new Map(entries.map(e => [e.label, e.color])), [entries])
     const stroke = useMemo(() => new Map(entries.map(e => [e.label, e.stroke])), [entries])
+    const lowerSwatch = useMemo(() => new Map(entries.map(e => [e.label.toLowerCase(), e.color])), [entries])
+    const lowerStroke = useMemo(() => new Map(entries.map(e => [e.label.toLowerCase(), e.stroke])), [entries])
     const itemColor = useMemo(() => new Map(entries.flatMap(e => (e.values ?? []).map(v => [v.value, v.color] as const))), [entries])
-    const colorFor = (value: string) => itemColor.get(value) ?? swatch.get(value) ?? '#bdbdbd'
-    // Display text per raw value — grouped renders may carry a friendlier `label` for a shouty-case
-    // managed code (e.g. 'CORESAMPLES' -> 'Core Samples'); flat renders have no per-item labels, so
-    // this is a no-op there and the raw field value (already fit to show) is used as-is.
     const itemLabel = useMemo(() => new Map(entries.flatMap(e => (e.values ?? []).map(v => [v.value, v.label] as const))), [entries])
-    const displayLabel = (value: string) => itemLabel.get(value) ?? value
+
+    const valueLabels = 'valueLabels' in field ? field.valueLabels : undefined
+    const optionSwatches = 'optionSwatches' in field ? field.optionSwatches : undefined
+    const optionStrokes = 'optionStrokes' in field ? field.optionStrokes : undefined
+
+    const displayLabel = (value: string) =>
+        itemLabel.get(value)
+        ?? valueLabels?.[value]
+        ?? value
+
+    const colorFor = (value: string) => {
+        const dl = displayLabel(value)
+        return itemColor.get(value)
+            ?? optionSwatches?.[value]
+            ?? swatch.get(value)
+            ?? swatch.get(dl)
+            ?? lowerSwatch.get(value.toLowerCase())
+            ?? lowerSwatch.get(dl.toLowerCase())
+            ?? '#bdbdbd'
+    }
+
+    const strokeFor = (value: string) => {
+        const dl = displayLabel(value)
+        return optionStrokes?.[value]
+            ?? stroke.get(value)
+            ?? stroke.get(dl)
+            ?? lowerStroke.get(value.toLowerCase())
+            ?? lowerStroke.get(dl.toLowerCase())
+            ?? 'rgba(0,0,0,0.3)'
+    }
     // Grouped render when any legend entry carries `values`; each entry becomes a colour group.
     const groups = useMemo<LegendGroup[] | null>(() =>
         entries.some(e => e.values && e.values.length)
@@ -241,7 +268,7 @@ function CategoryLegendGrid(
                         {showSwatch && (
                             <span
                                 className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
-                                style={{ backgroundColor: colorFor(value), borderColor: stroke.get(value) ?? 'rgba(0,0,0,0.3)' }}
+                                style={{ backgroundColor: colorFor(value), borderColor: strokeFor(value) }}
                             />
                         )}
                         <span className="min-w-0 break-words leading-tight">

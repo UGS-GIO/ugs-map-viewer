@@ -28,6 +28,8 @@ export type FilterFieldKind =
         optionStrokes?: Record<string, string>;
         /** Optional label overrides for each value (e.g. skip 'Other / Unknown'). */
         optionLabelFilter?: (label: string) => boolean;
+        /** Optional friendly label mapping for each raw DB value (e.g. { Shared: 'Exact Location' }). */
+        valueLabels?: Record<string, string>;
     }
     /** Substring match against a comma-delimited column (e.g. `box_type_codes`). */
     | {
@@ -41,6 +43,8 @@ export type FilterFieldKind =
         optionStrokes?: Record<string, string>;
         /** Optional label filter to hide certain options. */
         optionLabelFilter?: (label: string) => boolean;
+        /** Optional friendly label mapping for each raw DB value. */
+        valueLabels?: Record<string, string>;
     }
     /** Numeric min/max range. */
     | {
