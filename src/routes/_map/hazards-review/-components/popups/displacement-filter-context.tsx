@@ -1,5 +1,6 @@
 import { createContext, useContext, useCallback, useMemo, type ReactNode } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
+import { z } from 'zod'
 import {
     DISPLACEMENT_LAYER_TYPES,
     CHARTED_TYPES,
@@ -71,12 +72,15 @@ const DisplacementFilterContext = createContext<DisplacementFilterState | null>(
 // per-type `excludedQuals` entry means the high/medium default applies.
 const DISPLACEMENT_FILTER_KEY = 'Displacement Contours'
 
-interface DisplacementSearch {
-    years?: Record<string, string>
-    thresholds?: Record<string, number>
-    basins?: Record<string, string[]>
-    excludedQuals?: Record<string, string[]>
-}
+// Validated on read so a hand-edited entry can't throw (new Set(5)) or reach the cql as year=NaN.
+const displacementSearchSchema = z.object({
+    years: z.record(z.string(), z.string().regex(/^\d{4}$/)).optional(),
+    thresholds: z.record(z.string(), z.number().finite()).optional(),
+    basins: z.record(z.string(), z.array(z.string())).optional(),
+    excludedQuals: z.record(z.string(), z.array(z.string())).optional(),
+})
+
+type DisplacementSearch = z.infer<typeof displacementSearchSchema>
 
 const DEFAULT_EXCLUDED_SET = new Set<string>(DEFAULT_EXCLUDED_DATA_QUALS)
 const isDefaultQuals = (arr: readonly string[]): boolean =>
@@ -106,14 +110,16 @@ function pruneDisplacement(d: DisplacementSearch): DisplacementSearch | undefine
 // Parse the JSON-encoded displacement entry out of the `filters` record. Returns
 // undefined for a missing/blank/corrupt value so the provider falls back to
 // defaults instead of throwing on a hand-edited URL.
-function parseDisplacement(raw: string | undefined): DisplacementSearch | undefined {
+export function parseDisplacement(raw: string | undefined): DisplacementSearch | undefined {
     if (!raw) return undefined
     try {
-        const o = JSON.parse(raw)
-        return o && typeof o === 'object' && !Array.isArray(o) ? (o as DisplacementSearch) : undefined
-    } catch {
-        return undefined
+        const parsed = displacementSearchSchema.safeParse(JSON.parse(raw))
+        if (parsed.success) return parsed.data
+        console.warn('[displacement-filters] Ignoring invalid URL filter state:', parsed.error.issues)
+    } catch (err) {
+        console.warn('[displacement-filters] Ignoring unparseable URL filter state:', err)
     }
+    return undefined
 }
 
 export function DisplacementFilterProvider({ children }: { children: ReactNode }) {

@@ -92,23 +92,23 @@ export async function fetchDisplacementSldBins(styleName: string): Promise<SldBi
     if (!res.ok) throw new Error(`WMS legend ${res.status}`)
     const data = await res.json() as LegendResponse
     const rules = data.Legend?.[0]?.rules ?? []
-    const bins: SldBin[] = rules
-        .filter(r => r.filter && r.symbolizers?.[0]?.Polygon?.fill)
-        .map(r => {
-            const { include, exclude, min, max } = parseRuleFilter(r.filter!)
-            return {
-                name: r.name ?? '',
-                title: r.title ?? '',
-                min,
-                max,
-                include,
-                exclude,
-                color: r.symbolizers![0].Polygon!.fill ?? '#999',
-                // The deadband is the one class spanning both signs. Structural,
-                // not by rule name — styles spell it 'Zero', 'excluded', etc.
-                isZero: min < 0 && max > 0,
-            }
-        })
+    const bins: SldBin[] = rules.flatMap(r => {
+        const fill = r.symbolizers?.[0]?.Polygon?.fill
+        if (!r.filter || !fill) return []
+        const { include, exclude, min, max } = parseRuleFilter(r.filter)
+        return [{
+            name: r.name ?? '',
+            title: r.title ?? '',
+            min,
+            max,
+            include,
+            exclude,
+            color: fill,
+            // The deadband is the one class spanning both signs. Structural,
+            // not by rule name — styles spell it 'Zero', 'excluded', etc.
+            isZero: min < 0 && max > 0,
+        }]
+    })
     // Sort by lower bound so stacked bars + legend swatches read left-to-right.
     bins.sort((a, b) => a.min - b.min)
     return bins

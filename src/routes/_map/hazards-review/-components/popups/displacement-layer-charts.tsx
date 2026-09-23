@@ -323,13 +323,16 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
             if (!bin) continue
             const y = getBucketYear(f.properties)
             if (!y) continue
-            if (!yearToBins.has(y)) yearToBins.set(y, {})
+            let buckets = yearToBins.get(y)
+            if (!buckets) {
+                buckets = {}
+                yearToBins.set(y, buckets)
+            }
             // Negative-sign bins contribute area below zero so subsidence
             // stacks down and uplift stacks up — the chart geometry itself
             // encodes the direction of motion.
             const signed = bin.max <= 0 ? -1 : 1
             const a = area(f) * SQM_TO_SQMI * signed
-            const buckets = yearToBins.get(y)!
             buckets[bin.name] = (buckets[bin.name] ?? 0) + a
         }
         return Array.from(yearToBins, ([year, b]): ChartRow => ({ year, ...b }))
