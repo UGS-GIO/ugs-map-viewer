@@ -1,3 +1,18 @@
+## 2.12.0 (2026-09-23)
+
+* **fix**(`common`): app-shell scroll-jerk strands the footer when using filters (#603) ([603](///issues/603)) ([root](///issues/root)) ([root](///issues/root)) ([root](///issues/root)) ([root](///issues/root))
+* ****: [ALL-5892] feat(wetlands): add survey sites filters and species search (#573) ([573](///issues/573))
+* ****: [ALL-6002] fix(wetlandplants): drop non-null assertions on stacItemId, guard queries instead (#608) ([608](///issues/608))
+* **chore**: add Gemini Code Assist app config (.gemini/) — port hardened review prompt (#604) ([604](///issues/604))
+* **chore**: sync master into develop after squash-merged releases
+* ****: Develop => Master (#605) ([605](///issues/605)) ([604](///issues/604)) ([603](///issues/603)) ([root](///issues/root)) ([root](///issues/root)) ([root](///issues/root)) ([root](///issues/root))
+* ****: Develop => Master (#607) ([607](///issues/607)) ([604](///issues/604)) ([603](///issues/603)) ([root](///issues/root)) ([root](///issues/root)) ([root](///issues/root)) ([root](///issues/root)) ([596](///issues/596)) ([573](///issues/573)) ([608](///issues/608))
+* ****: Merge pull request #612 from UGS-GIO/chore/sync-master-to-develop-2 ([612](///issues/612))
+* ****: Merge pull request #614 from UGS-GIO/develop ([614](///issues/614))
+* **feat**(`hazards`): insar layers and stats (#426) ([426](///issues/426)) ([426](///issues/426)) ([500](///issues/500)) ([521](///issues/521)) ([522](///issues/522)) ([520](///issues/520)) ([521](///issues/521)) ([524](///issues/524)) ([523](///issues/523)) ([525](///issues/525)) ([523](///issues/523)) ([525](///issues/525)) ([531](///issues/531)) ([530](///issues/530)) ([426](///issues/426)) ([532](///issues/532)) ([426](///issues/426))
+* **fix**(`hazards`): keep the InSAR latest-year lookup result stable while loading (#616) ([616](///issues/616))
+* **fix**(`hazards`): migrate report basemaps off watermarked CARTO to UGRC Lite + OpenFreeMap (#596) ([596](///issues/596))
+
 ## 2.11.0 (2026-09-17)
 
 * **feat**(`common`): adopt Utah Design System header, tokens, and state logo in app shell (#517) ([517](///issues/517))
