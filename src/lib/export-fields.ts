@@ -13,6 +13,7 @@ const INTERNAL_COLUMNS = new Set([
     'fid',
     'objectid',
     'ogc_fid',
+    'pk',
     'shape_area',
     'shape_length',
     // Parquet exports drop their geometry column via `geometryColumn`; this is for the

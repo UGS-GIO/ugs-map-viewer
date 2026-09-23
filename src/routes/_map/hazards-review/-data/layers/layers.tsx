@@ -1,5 +1,15 @@
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE, PROD_POSTGREST_URL, GEN_GIS_WORKSPACE } from "@/lib/constants";
-import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { FieldConfig, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { capitalizeFirst } from "@/lib/field-formatting";
+import {
+    DISPLACEMENT_LAYERS,
+    DISPLACEMENT_TYPE_NAME,
+    LAND_SUBSIDENCE_GROUP_TITLE,
+    getUnitsLabelForType,
+    formatDisplacementRange,
+    type DisplacementLayerTitle,
+    type DisplacementType,
+} from "../../-components/popups/displacement-layers";
 import GeoJSON from "geojson";
 
 export const landslideLegacyLayerName = 'landslidelegacy_current';
@@ -984,64 +994,141 @@ const aquifersCombinedConfig: WMSLayerProps = {
             queryable: true,
             popupFields: {
                 'Name': { field: 'name', type: 'string' },
-                'Publication': { field: 'publication', type: 'string' },
-                'DOI': { field: 'doi', type: 'string' },
-                'Office': { field: 'office_1', type: 'string' },
+                'HUC 1': { field: 'huc_1', type: 'string' },
+                'HUC 2': { field: 'huc_2', type: 'string' },
+                'HUC 3': { field: 'huc_3', type: 'string' },
+                'Office': { field: 'office', type: 'string' },
+                'Office 2': { field: 'office_2', type: 'string' },
             }
         },
     ],
 };
 
-const aquiferDelineationConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Aquifer Delineation (Source: Utah Geological Survey): Review',
-    visible: true,
-    sublayers: [
-        {
-            name: `${HAZARDS_WORKSPACE}:hazards_aquifer_delineation_review`,
-            popupEnabled: true,
-            queryable: true,
-            popupFields: {
-                'Aquifer': { field: 'aquifer', type: 'string' },
-                'Broader Aquifer': { field: 'broader', type: 'string' },
-                'Details': { field: 'details', type: 'string' },
-                'Depletion (Early 21st C.)': { field: 'early21stc', type: 'number' },
-                'Depletion (Late 20th C.)': { field: 'late20thce', type: 'number' },
-            }
-        },
-    ],
-};
+// The registry already provides the workspace-qualified type name and per-title
+// type + style metadata, so layer configs just look up what they need.
+const DISPLACEMENT_CONTOURS_LAYER = DISPLACEMENT_TYPE_NAME;
 
-const displacementContoursConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Displacement Contours (Source: Utah Geological Survey): Review',
-    visible: true,
-    sublayers: [
-        {
-            name: `${HAZARDS_WORKSPACE}:hazards_displacement_contours_review`,
-            popupEnabled: true,
-            queryable: true,
-            popupFields: {
-                'Location': { field: 'location', type: 'string' },
-                'Type': { field: 'type', type: 'string' },
-                'Year': { field: 'year', type: 'string' },
-                'Period': { field: 'start_date', type: 'string' },
-                'Displacement (cm)': { field: 'value_cm', type: 'number' },
-                'Displacement (in)': { field: 'value_inch', type: 'number' },
-                'HUC': { field: 'huc', type: 'string' },
-            }
+// Popup fields for the displacement layers, built per type. Displacement shows
+// the band's range with direction and unit baked in (see formatDisplacementRange)
+// — Vertical Displacement Rate reads in/year, Cumulative and Yearly in inches.
+// Year is omitted: the period (Period Start → Period End, MM-YYYY) carries the
+// timeframe. Data Quality is normalized to first-letter caps ("high" -> "High").
+function makeDisplacementPopupFields(typeValue: DisplacementType): Record<string, FieldConfig> {
+    return {
+        'Location': { field: 'location', type: 'string' },
+        'Type': { field: 'type', type: 'string' },
+        'Period Start': { field: 'start_date', type: 'date', format: 'monthYear' },
+        'Period End': { field: 'end_date', type: 'date', format: 'monthYear' },
+        // The layer stores each band as value_inches_min / value_inches_max; show
+        // the range with its direction. Custom so the transform reads both bounds.
+        'Vertical Displacement': {
+            field: 'value_inches_min',
+            type: 'custom',
+            // Cell shows the formatted range; sort the column numerically by the
+            // deep edge (value_inches_min) so the one quantitative column stays
+            // sortable despite being a custom transform.
+            sortField: 'value_inches_min',
+            transform: (props) => formatDisplacementRange(props?.value_inches_min, props?.value_inches_max, typeValue),
         },
+        'Data Quality': { field: 'data_qual', type: 'string', transform: capitalizeFirst },
+        // Why a low/very-low contour is shown (hatched) rather than dropped: it's
+        // independently confirmed. Surfaced for every contour so a reviewer can
+        // read the hatch.
+        'Independently Confirmed': {
+            field: 'independent_confirmation',
+            type: 'custom',
+            transform: (props) => {
+                const v = props?.independent_confirmation;
+                if (v === true) return 'Yes';
+                if (v === false) return 'No';
+                return ''; // absent → let the popup hide the row (not a stray "—")
+            },
+        },
+    };
+}
+
+// Short caption for the surface switch in the consolidated entry. Vertical
+// Displacement Rate shortens to "Rate"; the others read as their type name.
+function displacementVariantLabel(typeValue: DisplacementType): string {
+    return typeValue === 'Vertical Displacement Rate' ? 'Rate' : typeValue;
+}
+
+// One-line, plain-language explainer shown under the surface switch — "Cumulative"
+// vs "Yearly" is jargon, so spell out what each means and how it relates to the map
+// (the #1 confusion for non-specialists).
+function displacementVariantDescription(typeValue: DisplacementType): string {
+    switch (typeValue) {
+        case 'Yearly':
+            return 'Subsidence during the selected year only — years stand alone and don’t add up to the cumulative total.';
+        case 'Vertical Displacement Rate':
+            return 'How fast the ground is sinking now, in inches per year — a speed, not a total.';
+        default: // Cumulative
+            return 'Total subsidence since monitoring began — the map shows the running total through the selected year, so it only grows.';
+    }
+}
+
+// `visible` seeds the default map selection (getDefaultSelected). Inside the
+// variant group only ONE surface should default on, so callers opt a single
+// surface in and leave the rest off.
+function makeDisplacementContoursConfig(title: DisplacementLayerTitle, visible = false): WMSLayerProps {
+    const { type: typeValue, styleName } = DISPLACEMENT_LAYERS[title];
+    return {
+        type: 'wms',
+        url: `${PROD_GEOSERVER_URL}/wms`,
+        title,
+        visible,
+        variantLabel: displacementVariantLabel(typeValue),
+        variantDescription: displacementVariantDescription(typeValue),
+        styleName,
+        legendUnit: getUnitsLabelForType(typeValue),
+        customLayerParameters: { cql_filter: `type='${typeValue}'` },
+        sublayers: [
+            {
+                name: DISPLACEMENT_CONTOURS_LAYER,
+                popupEnabled: true,
+                queryable: true,
+                popupFields: makeDisplacementPopupFields(typeValue),
+            },
+        ],
+    };
+}
+
+// The three InSAR surfaces are one GeoServer layer shown three ways (each config
+// differs only by style + a `type='…'` cql clause). They collapse into a single
+// variantSelector entry: one sidebar row with a surface switch that keeps exactly
+// one surface selected at a time. Adding a fourth surface = adding a child here.
+// Cumulative defaults on (the primary read); the map/stats/legend all follow the
+// active surface automatically because only the selected child ever renders.
+const displacementCumulativeConfig = makeDisplacementContoursConfig('Displacement Contours - Cumulative', true);
+const displacementYearlyConfig = makeDisplacementContoursConfig('Displacement Contours - Yearly');
+const displacementVerticalDisplacementRateConfig = makeDisplacementContoursConfig('Displacement Contours - Vertical Displacement Rate');
+
+const displacementInsarGroup: LayerProps = {
+    type: 'group',
+    title: 'Displacement (InSAR)',
+    subtitle: 'Cumulative, yearly & rate surfaces',
+    variantSelector: true,
+    // No explicit `visible`: let getDefaultGroupVisibility derive it from the
+    // selected surface. A hard `false` here would be a phantom map-visibility gate
+    // (resolveLeafVisibility ANDs every ancestor group), so the default-on surface
+    // wouldn't paint even after the parent group is switched on. The parent "Land
+    // Subsidence" group remains the single intended gate.
+    layers: [
+        displacementCumulativeConfig,
+        displacementYearlyConfig,
+        displacementVerticalDisplacementRateConfig,
     ],
 };
 
 const extraLayersConfig: LayerProps = {
     type: 'group',
-    title: 'Land Subsidence',
+    title: LAND_SUBSIDENCE_GROUP_TITLE,
     visible: false,
-    alwaysShowInReview: true,
-    layers: [earthFissureWMSConfig, aquifersCombinedConfig, aquiferDelineationConfig, displacementContoursConfig],
+    layers: [
+        earthFissureWMSConfig,
+        aquifersCombinedConfig,
+        displacementInsarGroup,
+    ],
 };
 
 const layersConfig: LayerProps[] = [
