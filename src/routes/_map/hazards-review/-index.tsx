@@ -132,7 +132,7 @@ export default function Map() {
 
 function FilteredMapContainer() {
   const { yearOverridesByType, basinsByType } = useDisplacementFilters()
-  const latestByType = useDisplacementLatestYearByType()
+  const { byType: latestByType } = useDisplacementLatestYearByType()
   const layerFilters = useDisplacementLayerFilters()
   // Build a per-type concrete year map: that type's user pick wins, else latest
   // from data. Per-type so one layer's year never leaks into another's popup.

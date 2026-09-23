@@ -6,8 +6,8 @@
  * keep the turf dependency and these functions stay trivially testable.
  *
  * Sign convention (matches the SLD + the source data): subsidence is negative
- * `value_inches`, uplift positive. "Depth" is the downward magnitude —
- * `-value_inches` for a sinking feature, 0 for a rising/flat one.
+ * `value_inches_min`, uplift positive. "Depth" is the downward magnitude —
+ * `-value_inches_min` for a sinking feature, 0 for a rising/flat one.
  *
  * Contours are disjoint bands (verified: the -1in polygon does not contain the
  * -5in polygon), so summing the areas of every band at/below a threshold is an
@@ -24,7 +24,7 @@ function bucketYear(f: DisplacementFeature): string | null {
 
 /** Downward displacement (subsidence depth, inches); 0 when the feature is rising or flat. */
 export function subsidenceDepthIn(f: DisplacementFeature): number {
-    const v = f.properties.value_inches
+    const v = f.properties.value_inches_min
     return v < 0 ? -v : 0
 }
 
@@ -57,7 +57,7 @@ export interface YearDepth {
  * only motion is uplift is KEPT here at depth 0 (a continuous time axis shouldn't
  * silently drop interior years), whereas an uplift-only basin is dropped from the
  * ranking. Callers that want a strictly-subsidence series pre-filter their
- * features to `value_inches < 0` before calling.
+ * features to `value_inches_min < 0` before calling.
  */
 export function deepestSubsidenceByYear(features: DisplacementFeature[]): Map<string, YearDepth> {
     const out = new Map<string, YearDepth>()

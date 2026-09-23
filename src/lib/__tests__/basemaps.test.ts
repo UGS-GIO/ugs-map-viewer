@@ -22,6 +22,12 @@ describe('resolveAppBasemaps', () => {
         expect(resolveAppBasemaps('hazards').defaultStyle.id).toBe('utah-satellite')
     })
 
+    it('opens hazards-review on Lite, with the hazards menu', () => {
+        const review = resolveAppBasemaps('hazards-review')
+        expect(review.defaultStyle.id).toBe('lite')
+        expect(review.styles).toEqual(resolveAppBasemaps('hazards').styles)
+    })
+
     it('hides Sentinel-2 from hazards', () => {
         expect(resolveAppBasemaps('hazards').styles.map(b => b.id)).not.toContain('sentinel')
     })
