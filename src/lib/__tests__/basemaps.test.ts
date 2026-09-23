@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { BASEMAP_STYLES, DEFAULT_BASEMAP, getBasemapUrl, resolveAppBasemaps } from '../basemaps'
+import { BASEMAP_STYLES, DEFAULT_BASEMAP, buildBasemapStyle, getBasemapUrl, resolveAppBasemaps, type BasemapStyle } from '../basemaps'
 
 describe('resolveAppBasemaps', () => {
     it('gives an unconfigured route every style and the global default', () => {
@@ -46,5 +46,31 @@ describe('getBasemapUrl', () => {
 
     it('throws on an unknown id', () => {
         expect(() => getBasemapUrl('nope')).toThrow(/unknown basemap id/i)
+    })
+})
+
+describe('buildBasemapStyle', () => {
+    const byId = (id: string): BasemapStyle => {
+        const style = BASEMAP_STYLES.find(b => b.id === id)
+        if (!style) throw new Error(id)
+        return style
+    }
+    const layerIds = (id: string) => {
+        const style = buildBasemapStyle(byId(id))
+        return typeof style === 'string' ? style : style.layers.map(l => l.id)
+    }
+
+    it('passes vector style URLs through', () => {
+        expect(buildBasemapStyle(byId('liberty'))).toBe(byId('liberty').url)
+    })
+
+    it('draws the Sentinel-2 underlay beneath the Utah-only rasters', () => {
+        expect(layerIds('utah-satellite')).toEqual(['underlay-layer', 'raster-layer'])
+        expect(layerIds('hybrid')).toEqual(['underlay-layer', 'raster-layer'])
+    })
+
+    it('adds no underlay to rasters that are opaque outside Utah', () => {
+        expect(layerIds('lite')).toEqual(['raster-layer'])
+        expect(layerIds('terrain')).toEqual(['raster-layer'])
     })
 })

@@ -10,7 +10,7 @@ import {
   BOX_SELECT_PAGE_SIZE,
   BOX_SELECT_MIN_ZOOM,
 } from './constants'
-import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
+import { BASEMAP_STYLES, DEFAULT_BASEMAP, buildBasemapStyle } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
 import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds } from '@/lib/map/layer-utils'
@@ -567,34 +567,7 @@ export default function DataMap({
     [basemapId]
   )
 
-  // Build map style - handle raster tiles vs vector style URLs
-  const mapStyle = useMemo((): string | maplibregl.StyleSpecification => {
-    if (!currentBasemap.url) {
-      return {
-        version: 8,
-        sources: {},
-        layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#f0f0f0' } }],
-      } as maplibregl.StyleSpecification
-    }
-
-    if (currentBasemap.url.includes('{z}') && currentBasemap.url.includes('{x}') && currentBasemap.url.includes('{y}')) {
-      const isUGRC = currentBasemap.url.includes('discover.agrc.utah.gov')
-      return {
-        version: 8,
-        sources: {
-          'raster-tiles': {
-            type: 'raster',
-            tiles: [currentBasemap.url],
-            tileSize: 256,
-            attribution: isUGRC ? '© <a href="https://gis.utah.gov">UGRC</a>' : '© Sentinel-2 by EOX',
-          },
-        },
-        layers: [{ id: 'raster-layer', type: 'raster', source: 'raster-tiles' }],
-      } as maplibregl.StyleSpecification
-    }
-
-    return currentBasemap.url
-  }, [currentBasemap])
+  const mapStyle = useMemo(() => buildBasemapStyle(currentBasemap), [currentBasemap])
 
   // Handle map click - triggers mutation instead of direct fetch
   const handleMapClick = useCallback((e: MapLayerMouseEvent) => {
