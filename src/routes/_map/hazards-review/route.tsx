@@ -9,8 +9,8 @@ export const Route = createFileRoute('/_map/hazards-review')({
   validateSearch: HazardsReviewSearchParamsSchema,
   errorComponent: RouteErrorBoundary,
   beforeLoad: async ({ location }) => {
-    // Bypass auth on dev + preview/develop builds; production (mode=production, master branch) still gates.
-    if (import.meta.env.MODE !== 'production') return
+    // Only the local dev server skips sign-in; every deployed build (dev site, PR previews, prod) requires it.
+    if (import.meta.env.DEV) return
 
     await new Promise<void>((resolve) => {
       const unsubscribe = auth.onAuthStateChanged(() => {
