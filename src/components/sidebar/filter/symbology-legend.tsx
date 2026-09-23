@@ -170,8 +170,8 @@ function CategoryLegendGrid(
     // swatch outline. Item shade wins, then schema swatch, then flat swatch, then default.
     const swatch = useMemo(() => new Map(entries.map(e => [e.label, e.color])), [entries])
     const stroke = useMemo(() => new Map(entries.map(e => [e.label, e.stroke])), [entries])
-    const lowerSwatch = useMemo(() => new Map(entries.map(e => [e.label.toLowerCase(), e.color])), [entries])
-    const lowerStroke = useMemo(() => new Map(entries.map(e => [e.label.toLowerCase(), e.stroke])), [entries])
+    const lowerSwatch = useMemo(() => new Map(entries.map(e => [e.label?.toLowerCase(), e.color])), [entries])
+    const lowerStroke = useMemo(() => new Map(entries.map(e => [e.label?.toLowerCase(), e.stroke])), [entries])
     const itemColor = useMemo(() => new Map(entries.flatMap(e => (e.values ?? []).map(v => [v.value, v.color] as const))), [entries])
     const itemLabel = useMemo(() => new Map(entries.flatMap(e => (e.values ?? []).map(v => [v.value, v.label] as const))), [entries])
 
