@@ -327,16 +327,24 @@ export function isLatestYearLookupPending(cheap: YearQueryState, bulk: YearQuery
     return (!cheap.data && !cheap.isError) || (cheap.isError && !bulk.data && !bulk.isError)
 }
 
+// One shared object while neither source has data (loading, or both lookups
+// failed), so memos keyed on `byType` don't rebuild on every render.
+const NO_LATEST_YEARS: Readonly<Record<DisplacementType, string | null>> = {
+    'Cumulative': null,
+    'Yearly': null,
+    'Vertical Displacement Rate': null,
+}
+
 // Per-type latest-year map for callers that need to resolve year filters
 // across every type in one pass (e.g. cql_filter assembly).
 // Latest year per type, from the cheap dedicated lookup (not the 20k-feature bulk
 // pull) so the map's year clause resolves fast and doesn't wait on chart data.
-export function useDisplacementLatestYearByType(): { byType: Record<DisplacementType, string | null>; isPending: boolean } {
+export function useDisplacementLatestYearByType(): { byType: Readonly<Record<DisplacementType, string | null>>; isPending: boolean } {
     const cheap = useQuery(displacementLatestYearsQueryOptions())
     // Fallback source only if the cheap lookup errors — `enabled` keeps the 20k
     // bulk pull off the happy path.
     const bulk = useQuery({ ...displacementFeaturesQueryOptions(), select: selectLatestYearsFromFeatures, enabled: cheap.isError })
-    const byType = (cheap.data ?? bulk.data ?? {}) as Record<DisplacementType, string | null>
+    const byType = cheap.data ?? bulk.data ?? NO_LATEST_YEARS
     const isPending = isLatestYearLookupPending(cheap, bulk)
     return { byType, isPending }
 }
