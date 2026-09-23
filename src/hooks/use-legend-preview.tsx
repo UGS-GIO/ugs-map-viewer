@@ -34,13 +34,14 @@ export type PreviewItem = {
 };
 
 /** Fetches GeoServer GetLegendGraphic JSON and converts each rule into a preview item. */
-const useLegendPreview = (url: string, layerName?: string, skip?: boolean, legendUnit?: string) => {
+const useLegendPreview = (url: string, layerName?: string, skip?: boolean, legendUnit?: string, styleName?: string) => {
     const fetchLegendData = async (): Promise<PreviewItem[]> => {
         if (!url || !layerName) {
             return [];
         }
 
-        const legendUrl = `${url}?service=WMS&request=GetLegendGraphic&format=application/json&layer=${layerName}&version=1.3.0`;
+        const styleParam = styleName ? `&style=${encodeURIComponent(styleName)}` : '';
+        const legendUrl = `${url}?service=WMS&request=GetLegendGraphic&format=application/json&layer=${layerName}&version=1.3.0${styleParam}`;
 
         try {
             const response = await fetch(legendUrl, {
@@ -118,7 +119,7 @@ const useLegendPreview = (url: string, layerName?: string, skip?: boolean, legen
     };
 
     const { data: preview = [], isLoading, error } = useQuery({
-        queryKey: queryKeys.layers.legend(layerName || '', url),
+        queryKey: [...queryKeys.layers.legend(layerName || '', url), styleName ?? ''],
         queryFn: fetchLegendData,
         enabled: !!url && !!layerName && !skip,
         staleTime: 1000 * 60 * 60, // Cache for 1 hour

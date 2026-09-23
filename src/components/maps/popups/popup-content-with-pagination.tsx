@@ -39,6 +39,10 @@ interface PopupContentWithPaginationProps {
     layerContent: LayerContentProps[]
     onHighlightChange?: (features: HighlightFeature[]) => void
     clickPoint?: { lng: number; lat: number } | null
+    /** Optional render-prop for content shown under each layer's heading */
+    layerHeaderExtras?: (layer: LayerContentProps) => React.ReactNode
+    /** Optional render-prop for content shown inside each feature card */
+    featureExtras?: (feature: ExtendedFeature, layer: LayerContentProps) => React.ReactNode
 }
 
 const FeatureCard = memo(({
@@ -48,6 +52,7 @@ const FeatureCard = memo(({
     handleZoomToFeature,
     bulkRelatedData,
     relatedLoading,
+    featureExtras,
 }: {
     layer: LayerContentProps,
     feature: ExtendedFeature,
@@ -55,6 +60,7 @@ const FeatureCard = memo(({
     handleZoomToFeature: (feature: ExtendedFeature, sourceCRS: string, maxZoomLevel?: number) => void,
     bulkRelatedData?: RelatedDataMap[],
     relatedLoading?: boolean,
+    featureExtras?: (feature: ExtendedFeature, layer: LayerContentProps) => React.ReactNode,
 }) => {
     return (
         <div className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
@@ -73,6 +79,7 @@ const FeatureCard = memo(({
                 bulkRelatedData={bulkRelatedData}
                 relatedLoading={relatedLoading}
             />
+            {featureExtras?.(feature, layer)}
         </div>
     )
 });
@@ -86,12 +93,14 @@ const PaginatedFeatureList = memo(({
     handleZoomToFeature,
     bulkRelatedData,
     relatedLoading,
+    featureExtras,
 }: {
     layer: LayerContentProps,
     buttons: React.ReactNode[] | null,
     handleZoomToFeature: (feature: ExtendedFeature, sourceCRS: string, maxZoomLevel?: number) => void,
     bulkRelatedData?: RelatedDataMap[],
     relatedLoading?: boolean,
+    featureExtras?: (feature: ExtendedFeature, layer: LayerContentProps) => React.ReactNode,
 }) => {
     const [page, setPage] = useState(0)
     const total = layer.features.length
@@ -120,6 +129,7 @@ const PaginatedFeatureList = memo(({
                     handleZoomToFeature={handleZoomToFeature}
                     bulkRelatedData={bulkRelatedData}
                     relatedLoading={relatedLoading}
+                    featureExtras={featureExtras}
                 />
             ))}
         </>
@@ -156,7 +166,7 @@ const RasterOnlyCard = memo(({
 });
 RasterOnlyCard.displayName = 'RasterOnlyCard';
 
-const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clickPoint }: PopupContentWithPaginationProps) => {
+const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clickPoint, layerHeaderExtras, featureExtras }: PopupContentWithPaginationProps) => {
     const { zoomTo } = useZoomToFeature({ onHighlightChange })
 
     const handleZoomToPixel = useCallback(async (layer: LayerContentProps, point: { lng: number; lat: number }) => {
@@ -337,6 +347,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                                     )}
                                     <span><span className="uppercase tracking-wide">Layer:</span> <span className="capitalize">{layer.layerTitle || layer.groupLayerTitle}</span></span>
                                 </div>
+                                {layerHeaderExtras?.(layer)}
                                 {/* Features or raster-only content */}
                                 <div className="space-y-2">
                                     {hasFeatures ? (
@@ -346,6 +357,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                                             handleZoomToFeature={handleZoomToFeature}
                                             bulkRelatedData={layer.relatedTables?.length ? bulkRelatedData : undefined}
                                             relatedLoading={layer.relatedTables?.length ? relatedLoading : false}
+                                            featureExtras={featureExtras}
                                         />
                                     ) : hasRaster ? (
                                         <RasterOnlyCard layer={layer} clickPoint={clickPoint} onZoomToPixel={handleZoomToPixel} />
@@ -356,6 +368,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                     })
                 ) : selectedLayer ? (
                     <div className="space-y-2">
+                        {layerHeaderExtras?.(selectedLayer)}
                         {selectedLayer.features.length > 0 ? (
                             <PaginatedFeatureList
                                 layer={selectedLayer}
@@ -363,6 +376,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                                 handleZoomToFeature={handleZoomToFeature}
                                 bulkRelatedData={selectedLayer.relatedTables?.length ? bulkRelatedData : undefined}
                                 relatedLoading={selectedLayer.relatedTables?.length ? relatedLoading : false}
+                                featureExtras={featureExtras}
                             />
                         ) : hasRasterData(selectedLayer) ? (
                             <RasterOnlyCard layer={selectedLayer} clickPoint={clickPoint} onZoomToPixel={handleZoomToPixel} />

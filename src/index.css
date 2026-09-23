@@ -33,6 +33,7 @@
     --link: 215 49% 50%; /* UDS blue #4277be: 4.6:1 on white (WCAG AA accessible) */
     --radius: 0.375rem; /* rounded-md lands on 4px, matching the cards */
     --header-height: 3.5rem;
+    --chart-1: 32 71% 23%;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 0 0% 20%;
     --sidebar-primary: 215 49% 50%;
@@ -69,6 +70,7 @@
     --input: 0 0% 28%;
     --ring: 20 73% 59%;
     --link: 20 73% 59%; /* Creamsicle orange #e37d49: 5.75:1 on dark */
+    --chart-1: 20 73% 59%;
     color-scheme: dark; /* changing the scrollbar color */
     --sidebar-background: 0 0% 14%;
     --sidebar-foreground: 0 0% 96%;

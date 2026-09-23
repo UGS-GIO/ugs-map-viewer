@@ -11,7 +11,8 @@ import { PROD_GEOSERVER_URL } from '@/lib/constants'
  */
 export function buildGetLegendGraphicUrl(
     layer: string,
-    baseUrl: string = PROD_GEOSERVER_URL
+    baseUrl: string = PROD_GEOSERVER_URL,
+    style?: string,
 ): string {
     const params = new URLSearchParams({
         service: 'WMS',
@@ -19,6 +20,7 @@ export function buildGetLegendGraphicUrl(
         format: 'application/json',
         layer
     })
+    if (style) params.set('style', style)
     return `${baseUrl}/wms?${params.toString()}`
 }
 

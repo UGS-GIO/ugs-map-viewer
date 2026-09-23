@@ -101,7 +101,7 @@ const HAZARDS_BASEMAPS: AppBasemapConfig = {
 
 const APP_BASEMAPS: Record<string, AppBasemapConfig> = {
   hazards: HAZARDS_BASEMAPS,
-  'hazards-review': HAZARDS_BASEMAPS,
+  'hazards-review': { ...HAZARDS_BASEMAPS, default: 'lite' },
   carbonstorage: { default: 'liberty', short: STANDARD_SHORT },
   geophysics: { default: 'liberty', short: STANDARD_SHORT },
   minerals: { default: 'liberty', short: STANDARD_SHORT },
