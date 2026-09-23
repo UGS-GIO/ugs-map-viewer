@@ -569,7 +569,7 @@ export default function GenericMapContainer({
     if (!popupFeatureFilter) return rawPopupContent
     return rawPopupContent.map(layer => ({
       ...layer,
-      features: layer.features.filter(f => popupFeatureFilter(f, layer)),
+      features: layer.features?.filter(f => popupFeatureFilter(f, layer)),
     }))
   }, [rawPopupContent, popupFeatureFilter])
 
