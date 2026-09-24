@@ -5,6 +5,7 @@ import { Feature, Geometry, GeoJsonProperties } from "geojson";
 import { ChevronDown, ChevronRight, ExternalLink, Info } from "lucide-react";
 import { RelatedDataTable } from "@/components/maps/popups/related-data-table";
 import { DocumentsPanel } from "@/components/maps/popups/documents-panel";
+import { OutlineCard } from "@/components/maps/popups/outline-card";
 import { listedDocumentRows } from "@/lib/documents/classify";
 import { isSafeHref } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -525,6 +526,23 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
             innerContent = (
                 <DocumentsPanel table={table} rows={documentRows!} />
             );
+        } else if (table.displayAs === 'outline') {
+            const outlineRows = (data[tableIndex] ?? []) as Record<string, unknown>[];
+            innerContent = (
+                <div className="space-y-3">
+                    {outlineRows.map((r, i) => (
+                        <OutlineCard
+                            key={i}
+                            recordIndex={i}
+                            totalRecords={outlineRows.length}
+                            row={r}
+                            allRows={outlineRows}
+                            displayFields={table.displayFields}
+                            className="bg-muted/20 shadow-none"
+                        />
+                    ))}
+                </div>
+            );
         } else if (useTableFormat) {
             // Sortable: raw rows + column defs (TanStack) so sorting is numeric/
             // alphabetical on the underlying values, not the rendered cells.
@@ -564,7 +582,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
         );
 
         const totalWords = flatValues.map(v => String(v.value)).join(" ").split(/\s+/).length;
-        const isLongContent = useTableFormat || table.displayAs === 'accordion' || table.displayAs === 'documents' || totalWords > 20 || flatValues.length > 3;
+        const isLongContent = useTableFormat || table.displayAs === 'accordion' || table.displayAs === 'documents' || table.displayAs === 'outline' || totalWords > 20 || flatValues.length > 3;
         // 'above' sorts related tables before the feature fields (which start at 0); 'below' (default) after them.
         const relatedIndex = (relatedTablesPosition === 'above' ? -1000 : 1000) + tableIndex;
         contentItems.push({ content: relatedContent, isLongContent, originalIndex: relatedIndex });

@@ -15,6 +15,7 @@ import { PopupImageGallery, type GalleryImage } from '@/components/maps/popups/p
 import { relatedRowToGalleryImage } from '@/lib/gallery-utils';
 import { sanitizeFilename } from '@/lib/download-utils';
 import { DocumentsPanel } from '@/components/maps/popups/documents-panel';
+import { OutlineCard } from '@/components/maps/popups/outline-card';
 import { listedDocumentRows } from '@/lib/documents/classify';
 
 interface ExpandedRelatedTableProps {
@@ -100,6 +101,31 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
                 <TableCell colSpan={colSpan} className="px-3 py-2">
                     {sectionHeader}
                     {isOpen && <DocumentsPanel table={relatedTable} rows={documentRows} />}
+                </TableCell>
+            </TableRow>
+        );
+    }
+
+    if (relatedTable.displayAs === 'outline') {
+        return (
+            <TableRow className="bg-muted/30">
+                <TableCell colSpan={colSpan} className="px-4 py-3">
+                    {sectionHeader}
+                    {isOpen && (
+                        <div className="space-y-3 max-w-4xl">
+                            {rows.map((r, i) => (
+                                <OutlineCard
+                                    key={i}
+                                    recordIndex={i}
+                                    totalRecords={rows.length}
+                                    row={r}
+                                    allRows={rows}
+                                    displayFields={relatedTable.displayFields}
+                                    className="bg-background/90"
+                                />
+                            ))}
+                        </div>
+                    )}
                 </TableCell>
             </TableRow>
         );
