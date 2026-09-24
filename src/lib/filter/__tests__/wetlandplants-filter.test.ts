@@ -5,7 +5,7 @@ import { wetlandPlantsFilterSchema } from '@/routes/_map/wetlandplants/-data/lay
 import type { FilterState } from '../types';
 
 describe('wetlandPlantsFilterSchema', () => {
-    it('defines the 5 expected filter fields', () => {
+    it('defines the 6 expected filter fields', () => {
         const fields = wetlandPlantsFilterSchema.fields.map(f => f.field);
         expect(fields).toEqual([
             'ecoregionalgroup',
@@ -13,6 +13,7 @@ describe('wetlandPlantsFilterSchema', () => {
             'watershed',
             'vegetationcondition',
             'scientificname',
+            'privacystatus',
         ]);
     });
 
@@ -30,6 +31,21 @@ describe('wetlandPlantsFilterSchema', () => {
         if (spField && spField.kind === 'multiSelect') {
             expect(spField.relatedAsset).toBe('wetlands_plants_species');
             expect(spField.foreignKey).toBe('surveyeventid');
+        }
+    });
+
+    it('configures privacystatus with valueLabels and swatches for symbology legend', () => {
+        const privacyField = wetlandPlantsFilterSchema.fields.find(f => f.field === 'privacystatus');
+        expect(privacyField).toBeDefined();
+        if (privacyField && privacyField.kind === 'multiSelect') {
+            expect(privacyField.valueLabels).toEqual({
+                Shared: 'Exact Location',
+                Confidential: 'Confidential (Approximate)',
+            });
+            expect(privacyField.optionSwatches).toEqual({
+                Shared: '#FFD700',
+                Confidential: '#D7191C',
+            });
         }
     });
 });
@@ -73,6 +89,14 @@ describe('wetland filter generators & parsers', () => {
         expect(predicates).toEqual([]);
     });
 
+    it('generates MapLibre expression matching privacystatus', () => {
+        const state: FilterState = {
+            privacystatus: { kind: 'multiSelect', values: ['Shared'] },
+        };
+        const filter = toMaplibreFilter(wetlandPlantsFilterSchema, state);
+        expect(filter).toEqual(['in', ['get', 'privacystatus'], ['literal', ['Shared']]]);
+    });
+
     it('round-trips attribute and species filter state through CQL', () => {
         const originalState: FilterState = {
             ecoregionalgroup: { kind: 'multiSelect', values: ['Basin and Range'] },
@@ -80,6 +104,7 @@ describe('wetland filter generators & parsers', () => {
             watershed: { kind: 'multiSelect', values: ['Jordan'] },
             vegetationcondition: { kind: 'multiSelect', values: ['High Quality Reference'] },
             scientificname: { kind: 'multiSelect', values: ['Typha latifolia'] },
+            privacystatus: { kind: 'multiSelect', values: ['Shared'] },
         };
         const cql = toCql(wetlandPlantsFilterSchema, originalState);
         expect(cql).toContain("ecoregionalgroup = 'Basin and Range'");
@@ -87,6 +112,7 @@ describe('wetland filter generators & parsers', () => {
         expect(cql).toContain("watershed = 'Jordan'");
         expect(cql).toContain("vegetationcondition = 'High Quality Reference'");
         expect(cql).toContain("scientificname = 'Typha latifolia'");
+        expect(cql).toContain("privacystatus = 'Shared'");
 
         const parsed = fromCql(wetlandPlantsFilterSchema, cql);
         expect(parsed.ecoregionalgroup).toEqual({ kind: 'multiSelect', values: ['Basin and Range'] });
@@ -94,5 +120,6 @@ describe('wetland filter generators & parsers', () => {
         expect(parsed.watershed).toEqual({ kind: 'multiSelect', values: ['Jordan'] });
         expect(parsed.vegetationcondition).toEqual({ kind: 'multiSelect', values: ['High Quality Reference'] });
         expect(parsed.scientificname).toEqual({ kind: 'multiSelect', values: ['Typha latifolia'] });
+        expect(parsed.privacystatus).toEqual({ kind: 'multiSelect', values: ['Shared'] });
     });
 });

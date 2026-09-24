@@ -11,7 +11,7 @@ import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/
 // isn't used anywhere in this file.
 const wetlandSurveySitesLayerName = 'wetlands_plants_site';
 export const wetlandSurveySitesTitle = 'Wetland Survey Sites';
-const wetlandSurveySitesConfig: PMTilesLayerProps = {
+export const wetlandSurveySitesConfig: PMTilesLayerProps = {
     type: 'pmtiles',
     stacItemId: wetlandSurveySitesLayerName,
     pmtilesUrl: '',
