@@ -69,3 +69,7 @@ export function isSafeHref(href: string): boolean {
     return false;
   }
 }
+
+/** True if `v` is a string and a valid absolute URL with http: or https: protocol. */
+export const isHttpUrl = (v: unknown): v is string =>
+  typeof v === 'string' && URL.canParse(v.trim()) && ['http:', 'https:'].includes(new URL(v.trim()).protocol);

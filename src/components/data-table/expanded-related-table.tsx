@@ -15,6 +15,7 @@ import { PopupImageGallery, type GalleryImage } from '@/components/maps/popups/p
 import { relatedRowToGalleryImage } from '@/lib/gallery-utils';
 import { sanitizeFilename } from '@/lib/download-utils';
 import { DocumentsPanel } from '@/components/maps/popups/documents-panel';
+import { OutlineCard } from '@/components/maps/popups/outline-card';
 import { listedDocumentRows } from '@/lib/documents/classify';
 
 interface ExpandedRelatedTableProps {
@@ -113,25 +114,15 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
                     {isOpen && (
                         <div className="space-y-3 max-w-4xl">
                             {rows.map((r, i) => (
-                                <div key={i} className="rounded-md border bg-background/90 p-3 space-y-2.5 text-xs shadow-sm">
-                                    {rows.length > 1 && (
-                                        <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pb-1 border-b">
-                                            Record {i + 1} of {rows.length}
-                                        </div>
-                                    )}
-                                    {relatedTable.displayFields?.map((df) => {
-                                        const raw = r[df.field];
-                                        const formatted = formatNumeric(raw, df.format);
-                                        const value = df.transform ? df.transform(formatted, r, rows) : formatted;
-                                        const displayValue = (value === undefined || value === null || value === '') ? '—' : value;
-                                        return (
-                                            <div key={df.field} className="flex flex-col gap-0.5">
-                                                <span className="font-semibold text-muted-foreground">{df.label || df.field}</span>
-                                                <div className="text-foreground leading-relaxed break-words">{displayValue}</div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                <OutlineCard
+                                    key={i}
+                                    recordIndex={i}
+                                    totalRecords={rows.length}
+                                    row={r}
+                                    allRows={rows}
+                                    displayFields={relatedTable.displayFields}
+                                    className="bg-background/90"
+                                />
                             ))}
                         </div>
                     )}

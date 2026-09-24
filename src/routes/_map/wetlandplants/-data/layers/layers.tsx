@@ -1,4 +1,4 @@
-import { Link } from "@/components/ui/link";
+import { linkIfUrl } from "@/components/ui/link";
 import { parquetUrl } from "@/lib/constants";
 import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 
@@ -91,14 +91,7 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
                         {
                             field: 'contactinfo',
                             label: 'Contact Info',
-                            transform: (v) => {
-                                if (!v) return '—';
-                                const str = String(v).trim();
-                                if (/^https?:\/\//i.test(str)) {
-                                    return <Link to={str}>{str}</Link>;
-                                }
-                                return str;
-                            },
+                            transform: linkIfUrl(),
                         },
                         { field: 'projectgoal', label: 'Project Goal' },
                         { field: 'methodname', label: 'Method Name' },
@@ -108,14 +101,7 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
                         {
                             field: 'reportlink',
                             label: 'Report Link',
-                            transform: (v) => {
-                                if (!v) return '—';
-                                const str = String(v).trim();
-                                if (/^https?:\/\//i.test(str)) {
-                                    return <Link to={str}>View Report</Link>;
-                                }
-                                return str;
-                            },
+                            transform: linkIfUrl('View Report'),
                         },
                     ],
                     sortBy: 'projectcode',

@@ -5,6 +5,7 @@ import { Feature, Geometry, GeoJsonProperties } from "geojson";
 import { ChevronDown, ChevronRight, ExternalLink, Info } from "lucide-react";
 import { RelatedDataTable } from "@/components/maps/popups/related-data-table";
 import { DocumentsPanel } from "@/components/maps/popups/documents-panel";
+import { OutlineCard } from "@/components/maps/popups/outline-card";
 import { listedDocumentRows } from "@/lib/documents/classify";
 import { isSafeHref } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -526,31 +527,19 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
                 <DocumentsPanel table={table} rows={documentRows!} />
             );
         } else if (table.displayAs === 'outline') {
+            const outlineRows = (data[tableIndex] ?? []) as Record<string, unknown>[];
             innerContent = (
                 <div className="space-y-3">
-                    {groupedValues.map((group, groupIdx) => (
-                        <div
-                            key={`group-${groupIdx}`}
-                            className="rounded-md border bg-muted/20 p-3 space-y-2.5 text-xs"
-                        >
-                            {groupedValues.length > 1 && (
-                                <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider pb-1 border-b">
-                                    Record {groupIdx + 1} of {groupedValues.length}
-                                </div>
-                            )}
-                            {group.map((item, valueIdx) => (
-                                <div key={`item-${item.label}-${valueIdx}`} className="flex flex-col gap-0.5">
-                                    {item.label && (
-                                        <span className="font-semibold text-muted-foreground">
-                                            {item.label}
-                                        </span>
-                                    )}
-                                    <div className="text-foreground leading-relaxed break-words">
-                                        {item.value}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                    {outlineRows.map((r, i) => (
+                        <OutlineCard
+                            key={i}
+                            recordIndex={i}
+                            totalRecords={outlineRows.length}
+                            row={r}
+                            allRows={outlineRows}
+                            displayFields={table.displayFields}
+                            className="bg-muted/20 shadow-none"
+                        />
                     ))}
                 </div>
             );
