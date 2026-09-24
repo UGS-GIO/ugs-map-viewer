@@ -31,12 +31,19 @@ describe('OutlineCard', () => {
     })
 
     expect(result).toBeDefined()
+    expect(result.props.className).toContain('text-sm')
     // Since totalRecords is 1, header is not rendered
     expect(result.props.children[0]).toBe(false)
 
     const fields = result.props.children[1]
     expect(fields).toHaveLength(4)
+    expect(fields[0].props.children[0].props.className).toContain(
+      'text-foreground'
+    )
     expect(fields[0].props.children[0].props.children).toBe('Project Code')
+    expect(fields[0].props.children[1].props.className).toContain(
+      'text-muted-foreground'
+    )
     expect(fields[0].props.children[1].props.children).toBe('PRJ-100')
     expect(fields[1].props.children[0].props.children).toBe('Total Count')
     expect(fields[1].props.children[1].props.children).toBe('1,500')
