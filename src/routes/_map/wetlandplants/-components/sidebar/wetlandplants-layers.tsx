@@ -2,6 +2,7 @@ import { BackToMenuButton } from '@/components/ui/back-to-menu-button';
 import { useCustomLayerList } from '@/hooks/use-custom-layerlist';
 import { useGetLayerConfigs } from '@/hooks/use-get-layer-configs';
 import { renderWetlandPlantsLayerFilters, WETLANDPLANTS_FILTER_SCHEMAS } from './wetlandplants-layer-filters';
+import { renderWetlandPlantsLegend } from './wetlandplants-symbology-legend';
 
 function WetlandPlantsLayers({ disableExport = false }: { disableExport?: boolean } = {}) {
     const { layerConfigs, isLoading } = useGetLayerConfigs('layers');
@@ -10,6 +11,7 @@ function WetlandPlantsLayers({ disableExport = false }: { disableExport?: boolea
         disableExport,
         hasLayerFilters: (title) => title in WETLANDPLANTS_FILTER_SCHEMAS,
         layerExtrasRender: renderWetlandPlantsLayerFilters,
+        layerLegendRender: renderWetlandPlantsLegend,
     });
 
     if (isLoading) {

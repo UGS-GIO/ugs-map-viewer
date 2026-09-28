@@ -11,7 +11,7 @@ interface WetlandPlantsFilterConfig {
 }
 
 export const WETLANDPLANTS_FILTER_SCHEMAS: Record<string, WetlandPlantsFilterConfig> = {
-    [wetlandSurveySitesTitle]: { schema: wetlandPlantsFilterSchema },
+    [wetlandSurveySitesTitle]: { schema: wetlandPlantsFilterSchema, hideFields: ['privacystatus'] },
 };
 
 export function renderWetlandPlantsLayerFilters(layerTitle: string): React.ReactNode {
