@@ -34,19 +34,10 @@ describe('wetlandPlantsFilterSchema', () => {
         }
     });
 
-    it('configures privacystatus with valueLabels and swatches for symbology legend', () => {
+    it('configures privacystatus as a multiSelect filter field', () => {
         const privacyField = wetlandPlantsFilterSchema.fields.find(f => f.field === 'privacystatus');
         expect(privacyField).toBeDefined();
-        if (privacyField && privacyField.kind === 'multiSelect') {
-            expect(privacyField.valueLabels).toEqual({
-                Shared: 'Exact Location',
-                Confidential: 'Confidential (Approximate)',
-            });
-            expect(privacyField.optionSwatches).toEqual({
-                Shared: '#FFD700',
-                Confidential: '#D7191C',
-            });
-        }
+        expect(privacyField?.kind).toBe('multiSelect');
     });
 });
 

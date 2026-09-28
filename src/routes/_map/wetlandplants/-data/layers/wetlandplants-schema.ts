@@ -51,18 +51,6 @@ export const wetlandPlantsFilterSchema: FilterSchema = {
             field: 'privacystatus',
             label: 'Location Privacy',
             placeholder: 'Select privacy status...',
-            valueLabels: {
-                Shared: 'Exact Location',
-                Confidential: 'Confidential (Approximate)',
-            },
-            optionSwatches: {
-                Shared: '#FFD700',
-                Confidential: '#D7191C',
-            },
-            optionStrokes: {
-                Shared: '#8A6D00',
-                Confidential: '#8B1213',
-            },
         },
     ],
 };
