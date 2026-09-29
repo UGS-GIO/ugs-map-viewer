@@ -4,14 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { BackToMenuButton } from '@/components/ui/back-to-menu-button';
 import { useMapCoordinates } from '@/hooks/use-map-coordinates';
 
-
-
 function MapConfigurations() {
     const { setIsDecimalDegrees, locationCoordinateFormat } = useMapCoordinates();
     const handleCoordFormatChange = (value: string) => {
-        if (value && setIsDecimalDegrees) {
-            setIsDecimalDegrees(value === "Decimal Degrees");
-        }
+        setIsDecimalDegrees(value === "Decimal Degrees");
     };
 
     return (
@@ -26,7 +22,6 @@ function MapConfigurations() {
                         <CardTitle>
                             Location Coordinate Format
                         </CardTitle>
-                        {/* <CardDescription>Choose a coordinate format to toggle between decimal degrees and degrees, minutes, seconds.</CardDescription> */}
                     </CardHeader>
                     <CardContent>
                         <RadioGroup
@@ -55,16 +50,6 @@ function MapConfigurations() {
                         </RadioGroup>
                     </CardContent>
                 </Card>
-                {/* <Card>
-                    <CardHeader>
-                        <CardTitle>
-                            Filter by
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        Filter SearchBox goes here
-                    </CardContent>
-                </Card> */}
             </div>
         </>
     );
