@@ -2,7 +2,7 @@ import { LayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 
 // Utah Flux Network stations, from the app's station feed via the warehouse.
 // TODO: confirm the STAC item id once the warehouse publishes the stations topic.
-const fluxStationsLayerName = 'flux_stations';
+const fluxStationsLayerName = 'flux_ufn_stations';
 export const fluxStationsTitle = 'Flux Stations';
 const fluxStationsConfig: PMTilesLayerProps = {
     type: 'pmtiles',
