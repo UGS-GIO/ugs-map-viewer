@@ -8,7 +8,7 @@ describe('resolveAppBasemaps', () => {
         expect(defaultStyle).toBe(DEFAULT_BASEMAP)
     })
 
-    it.each(['carbonstorage', 'geophysics', 'minerals', 'subsurface', 'wetlands', 'wetlandplants'])(
+    it.each(['carbonstorage', 'geophysics', 'minerals', 'subsurface', 'wetlands', 'wetlandplants', 'flux'])(
         'leaves %s on the stock menu',
         page => {
             const { styles, defaultStyle } = resolveAppBasemaps(page)
