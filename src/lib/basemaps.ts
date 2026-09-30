@@ -12,6 +12,8 @@
  * - Cloudless satellite imagery
  */
 
+import type { StyleSpecification, RasterSourceSpecification } from 'maplibre-gl';
+
 // UGRC Discover quad-word for authenticated access
 const UGRC_QUAD_WORD = 'nebula-east-focus-virgo';
 const UGRC_BASE_URL = `https://discover.agrc.utah.gov/login/path/${UGRC_QUAD_WORD}`;
@@ -21,6 +23,8 @@ export interface BasemapStyle {
   title: string;
   url: string;
   type: 'short' | 'long'; // short = main nav, long = dropdown
+  /** Basemap id drawn beneath; only useful when this style's tiles are transparent outside Utah. */
+  underlay?: string;
 }
 
 // All available basemap styles
@@ -55,12 +59,14 @@ export const BASEMAP_STYLES: BasemapStyle[] = [
   {
     id: 'hybrid',
     title: 'Utah Hybrid',
+    underlay: 'sentinel',
     url: `${UGRC_BASE_URL}/tiles/hybrid_basemap/{z}/{x}/{y}`,
     type: 'long',
   },
   {
     id: 'utah-satellite',
     title: 'Utah Satellite',
+    underlay: 'sentinel',
     url: `${UGRC_BASE_URL}/tiles/utah/{z}/{x}/{y}`,
     type: 'long',
   },
@@ -80,6 +86,42 @@ export function getBasemapUrl(id: string): string {
   const style = BASEMAP_STYLES.find((b) => b.id === id);
   if (!style) throw new Error(`Unknown basemap id: ${id}`);
   return style.url;
+}
+
+const isRasterUrl = (url: string) => url.includes('{z}') && url.includes('{x}') && url.includes('{y}');
+
+function rasterSource(url: string): RasterSourceSpecification {
+  return {
+    type: 'raster',
+    tiles: [url],
+    tileSize: 256,
+    attribution: url.includes('discover.agrc.utah.gov') ? '© <a href="https://gis.utah.gov">UGRC</a>' : '© Sentinel-2 by EOX',
+  };
+}
+
+/** MapLibre style for a basemap: a vector style URL as-is, or raster tiles (plus any underlay). */
+export function buildBasemapStyle(style: BasemapStyle): string | StyleSpecification {
+  if (!style.url) {
+    return {
+      version: 8,
+      sources: {},
+      layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#f0f0f0' } }],
+    };
+  }
+  if (!isRasterUrl(style.url)) return style.url;
+
+  const underlayUrl = style.underlay ? getBasemapUrl(style.underlay) : undefined;
+  return {
+    version: 8,
+    sources: {
+      ...(underlayUrl && { 'underlay-tiles': rasterSource(underlayUrl) }),
+      'raster-tiles': rasterSource(style.url),
+    },
+    layers: [
+      ...(underlayUrl ? [{ id: 'underlay-layer', type: 'raster' as const, source: 'underlay-tiles' }] : []),
+      { id: 'raster-layer', type: 'raster', source: 'raster-tiles' },
+    ],
+  };
 }
 
 export interface AppBasemapConfig {
