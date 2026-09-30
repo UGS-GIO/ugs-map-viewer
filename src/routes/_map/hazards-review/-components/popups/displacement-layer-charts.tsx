@@ -288,14 +288,19 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     )
 
     // Deepest subsidence reading in the selected year (magnitude of the most
-    // negative measured value). Subsidence-only so "Max subsidence" is accurate.
-    const maxDisplacement = useMemo(() => {
+    // negative measured value) and the basin it's in. Subsidence-only so "Max
+    // subsidence" is accurate; basin-scoped so the name always matches the number.
+    const { maxDisplacement, deepestBasin } = useMemo(() => {
         let max = 0
+        let basin: string | undefined
         for (const f of measuredSubsidence) {
             const a = Math.abs(f.properties.value_inches_min)
-            if (a > max) max = a
+            if (a > max) {
+                max = a
+                basin = f.properties.location ?? undefined
+            }
         }
-        return max
+        return { maxDisplacement: max, deepestBasin: basin }
     }, [measuredSubsidence])
 
     const distinctBasins = useMemo(() => new Set(measuredSubsidence.map(f => f.properties.location)).size, [measuredSubsidence])
@@ -620,11 +625,6 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     // One-sentence, scope-aware read of the panel — the questions a person asks
     // (how deep, how many basins, how much area) in plain prose. Subject is "land"
     // so the verb agrees whether whereText is one basin or "N basins".
-    // The ranking ignores the basin filter (stays complete), so its top entry is
-    // the STATEWIDE deepest basin — which wouldn't match the scoped hero number
-    // when drilled into one basin. The summary already names that basin, so drop
-    // the "· basin" suffix then.
-    const deepestBasin = basinFilterActive && selectedBasins.size === 1 ? undefined : basinsByDepth[0]?.location
     // Static readout under the depth line — the hovered year's reading, in place
     // of the floating tooltip (which overlapped the plot).
     const depthHoverPoint = depthHoverYear != null ? depthByYear.find(d => d.year === depthHoverYear) : undefined

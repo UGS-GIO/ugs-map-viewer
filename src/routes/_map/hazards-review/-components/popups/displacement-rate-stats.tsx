@@ -70,13 +70,19 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
         [scoped, isMeasured],
     )
 
-    const maxRate = useMemo(() => {
+    // Fastest rate in scope and the basin it's in, so the hero's basin name always
+    // matches its number (the ranking below stays statewide).
+    const { maxRate, fastestBasin } = useMemo(() => {
         let m = 0
+        let basin: string | undefined
         for (const f of measuredScoped) {
             const a = Math.abs(f.properties.value_inches_min)
-            if (a > m) m = a
+            if (a > m) {
+                m = a
+                basin = f.properties.location ?? undefined
+            }
         }
-        return m
+        return { maxRate: m, fastestBasin: basin }
     }, [measuredScoped])
 
     const totalAreaSqMi = useMemo(
@@ -188,10 +194,6 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
 
     // One-sentence, scope-aware read — rate is a velocity snapshot, so it reads
     // "subsiding at up to X in/year", not a cumulative depth.
-    // The ranking ignores the basin filter (stays complete), so its top entry is
-    // the STATEWIDE fastest basin — drop the "· basin" suffix when drilled into one
-    // (the summary already names it, and the hero number is scope-filtered).
-    const fastestBasin = basinFilterActive && selectedBasins.size === 1 ? undefined : basinsByRate[0]?.location
     const whereText = basinFilterActive && selectedBasins.size === 1
         ? [...selectedBasins][0]
         : `${distinctBasins} ${distinctBasins === 1 ? 'basin' : 'basins'}`
