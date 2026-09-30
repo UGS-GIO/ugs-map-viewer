@@ -4,7 +4,7 @@ import { getPopulatedBinBoundaries } from './displacement-thresholds'
 import type { Feature, Polygon, MultiPolygon } from 'geojson'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
-import { fetchWfsFeatures } from '@/lib/map/wfs-service'
+import { fetchAllWfsFeatures } from '@/lib/map/wfs-service'
 import { DATA_QUAL_ORDER, DISPLACEMENT_TYPE_NAME, getStyleNameForType, type ChartedType, type DisplacementType } from './displacement-layers'
 import { fetchDisplacementSldBins, getZeroBound, type SldBin } from './displacement-sld-legend'
 
@@ -41,12 +41,11 @@ export function getBucketYear(props: Pick<DisplacementProps, 'year'>): string | 
 }
 
 async function fetchAllDisplacement(): Promise<DisplacementFeature[]> {
-    const fc = await fetchWfsFeatures<Polygon | MultiPolygon, DisplacementProps>(
+    return fetchAllWfsFeatures<Polygon | MultiPolygon, DisplacementProps>(
         `${PROD_GEOSERVER_URL}/wfs`,
         DISPLACEMENT_TYPE_NAME,
-        { count: 20000 },
+        { sortBy: 'fid' },
     )
-    return fc.features
 }
 
 // Single source of truth for the bulk WFS pull. Every chart/filter/legend that
@@ -56,7 +55,7 @@ async function fetchAllDisplacement(): Promise<DisplacementFeature[]> {
 export const displacementFeaturesQueryOptions = () => queryOptions({
     queryKey: queryKeys.hazards.displacementFeatures(),
     queryFn: fetchAllDisplacement,
-    // 20k feature pull is expensive; treat as session-stable. gcTime keeps it
+    // The full-layer pull is expensive; treat as session-stable. gcTime keeps it
     // around long enough that a user toggling layers off+on doesn't refetch.
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -69,7 +68,7 @@ const YEAR_LOOKUP_TYPES: DisplacementType[] = ['Cumulative', 'Yearly', 'Vertical
 // Cheap "latest year per type" lookup for the MAP's cql, which needs only the
 // year (not geometry). One tiny WFS GetFeature per type — sorted by year
 // descending, count=1, year-only — returns in ~0.3s / a few hundred bytes, versus
-// the multi-second 20k-feature bulk pull. Decoupling the map's year from that
+// the multi-second full-layer bulk pull. Decoupling the map's year from that
 // pull is what stops every year-window painting stacked while features load.
 async function fetchLatestYearsByType(signal: AbortSignal): Promise<Record<DisplacementType, string | null>> {
     const entries = await Promise.all(YEAR_LOOKUP_TYPES.map(async (type): Promise<[DisplacementType, string | null]> => {
@@ -145,7 +144,7 @@ export function useDisplacementSldZeroBound(type: ChartedType): number | null {
 }
 
 // Distinct, sorted values of one property across a type's features, derived in
-// TanStack `select` so the raw 20k-feature array never reaches the component.
+// TanStack `select` so the raw full-layer array never reaches the component.
 // Backs the year / basin / data-quality option lists — extractor + sort are the
 // only things that differ between them.
 function useDistinctByType(
@@ -337,11 +336,11 @@ const NO_LATEST_YEARS: Readonly<Record<DisplacementType, string | null>> = {
 
 // Per-type latest-year map for callers that need to resolve year filters
 // across every type in one pass (e.g. cql_filter assembly).
-// Latest year per type, from the cheap dedicated lookup (not the 20k-feature bulk
+// Latest year per type, from the cheap dedicated lookup (not the full-layer bulk
 // pull) so the map's year clause resolves fast and doesn't wait on chart data.
 export function useDisplacementLatestYearByType(): { byType: Readonly<Record<DisplacementType, string | null>>; isPending: boolean } {
     const cheap = useQuery(displacementLatestYearsQueryOptions())
-    // Fallback source only if the cheap lookup errors — `enabled` keeps the 20k
+    // Fallback source only if the cheap lookup errors — `enabled` keeps the full-layer
     // bulk pull off the happy path.
     const bulk = useQuery({ ...displacementFeaturesQueryOptions(), select: selectLatestYearsFromFeatures, enabled: cheap.isError })
     const byType = cheap.data ?? bulk.data ?? NO_LATEST_YEARS

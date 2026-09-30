@@ -12,7 +12,15 @@ export interface FetchWfsFeaturesOptions {
   crs?: string
   /** Optional CQL attribute filter applied via `CQL_FILTER`. */
   cqlFilter?: string
+  /** Zero-based offset of the first feature (WFS 2.0 paging). */
+  startIndex?: number
+  /** Attribute to sort ascending on; GeoServer needs one for stable paging. */
+  sortBy?: string
 }
+
+/** GeoServer's GeoJSON output adds the WFS 2.0 match counts to the collection. */
+export type WfsFeatureCollection<G extends Geometry = Geometry, P = Record<string, unknown>> =
+  FeatureCollection<G, P> & { numberMatched?: number; numberReturned?: number }
 
 /**
  * Plain WFS 2.0 GetFeature — fetches the entire FeatureCollection for a
@@ -24,8 +32,8 @@ export async function fetchWfsFeatures<G extends Geometry = Geometry, P = Record
   wfsUrl: string,
   typeName: string,
   options: FetchWfsFeaturesOptions = {},
-): Promise<FeatureCollection<G, P>> {
-  const { count, crs = 'EPSG:4326', cqlFilter } = options
+): Promise<WfsFeatureCollection<G, P>> {
+  const { count, crs = 'EPSG:4326', cqlFilter, startIndex, sortBy } = options
   const url = new URL(wfsUrl)
   url.searchParams.set('service', 'WFS')
   url.searchParams.set('version', '2.0.0')
@@ -35,12 +43,49 @@ export async function fetchWfsFeatures<G extends Geometry = Geometry, P = Record
   url.searchParams.set('srsName', crs)
   if (count) url.searchParams.set('count', String(count))
   if (cqlFilter) url.searchParams.set('CQL_FILTER', cqlFilter)
+  if (startIndex) url.searchParams.set('startIndex', String(startIndex))
+  if (sortBy) url.searchParams.set('sortBy', `${sortBy} A`)
 
   const response = await fetch(url.toString())
   if (!response.ok) {
     throw new Error(`WFS request failed: ${response.status} ${response.statusText}`)
   }
-  return response.json() as Promise<FeatureCollection<G, P>>
+  return response.json() as Promise<WfsFeatureCollection<G, P>>
+}
+
+export interface FetchAllWfsFeaturesOptions extends Omit<FetchWfsFeaturesOptions, 'count' | 'startIndex'> {
+  /** Features per request. */
+  pageSize?: number
+  /** Sort attribute; required so pages don't overlap or skip rows. */
+  sortBy: string
+}
+
+/**
+ * Fetches every feature for a typeName, paging past GeoServer's per-request
+ * limit. The first page reports `numberMatched`; the rest load in parallel.
+ * Throws when the loaded count doesn't match, so callers never compute stats
+ * on a silently partial set.
+ */
+export async function fetchAllWfsFeatures<G extends Geometry = Geometry, P = Record<string, unknown>>(
+  wfsUrl: string,
+  typeName: string,
+  { pageSize = 10000, ...options }: FetchAllWfsFeaturesOptions,
+): Promise<Feature<G, P>[]> {
+  const first = await fetchWfsFeatures<G, P>(wfsUrl, typeName, { ...options, count: pageSize })
+  const total = first.numberMatched
+  if (typeof total !== 'number') {
+    throw new Error(`WFS ${typeName}: response has no numberMatched, can't confirm the full set loaded`)
+  }
+  const offsets: number[] = []
+  for (let start = pageSize; start < total; start += pageSize) offsets.push(start)
+  const rest = await Promise.all(
+    offsets.map(startIndex => fetchWfsFeatures<G, P>(wfsUrl, typeName, { ...options, count: pageSize, startIndex })),
+  )
+  const features = [first, ...rest].flatMap(fc => fc.features)
+  if (features.length !== total) {
+    throw new Error(`WFS ${typeName}: loaded ${features.length} of ${total} features`)
+  }
+  return features
 }
 
 export interface WfsFeature {
