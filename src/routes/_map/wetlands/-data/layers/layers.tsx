@@ -16,21 +16,6 @@ const wetMetaConfig: PMTilesLayerProps = {
     title: wetMetaTitle,
     visible: false,
     opacity: 0.75,
-    styleUrl: `data:application/json,${encodeURIComponent(
-        JSON.stringify({
-            layers: [
-                {
-                    id: 'wetlands_wetlands_metadata-fill',
-                    type: 'fill',
-                    paint: {
-                        'fill-color': '#8A6D3B',
-                        'fill-opacity': 0.35,
-                        'fill-outline-color': '#333333'
-                    }
-                }
-            ]
-        })
-    )}`,
     sublayers: [
         {
             name: wetMetaLayerName,
@@ -79,33 +64,6 @@ const wetNonRiverineConfig: PMTilesLayerProps = {
     title: wetNonRiverineTitle,
     visible: true,
     opacity: 0.75,
-    styleUrl: `data:application/json,${encodeURIComponent(
-        JSON.stringify({
-            layers: [
-                {
-                    id: 'wetlands_nonriverine-fill',
-                    type: 'fill',
-                    paint: {
-                        'fill-color': [
-                            'match',
-                            ['get', 'wetland_type'],
-                            'Freshwater Emergent Wetland',
-                            '#B4D79E',
-                            'Freshwater Forested/Shrub Wetland',
-                            '#FFD37F',
-                            'Freshwater Pond',
-                            '#BEE8FF',
-                            'Lake',
-                            '#73B2FF',
-                            '#D0D0D0'
-                        ],
-                        'fill-opacity': 0.65,
-                        'fill-outline-color': 'rgba(0,0,0,0.2)'
-                    }
-                }
-            ]
-        })
-    )}`,
     sublayers: [
         {
             name: wetNonRiverineLayerName,
@@ -140,21 +98,6 @@ const riverineConfig: PMTilesLayerProps = {
     title: riverineTitle,
     visible: false,
     opacity: 0.75,
-    styleUrl: `data:application/json,${encodeURIComponent(
-        JSON.stringify({
-            layers: [
-                {
-                    id: 'wetlands_riverine-fill',
-                    type: 'fill',
-                    paint: {
-                        'fill-color': '#016100',
-                        'fill-opacity': 0.65,
-                        'fill-outline-color': 'rgba(0,0,0,0.3)'
-                    }
-                }
-            ]
-        })
-    )}`,
     sublayers: [
         {
             name: riverineLayerName,
