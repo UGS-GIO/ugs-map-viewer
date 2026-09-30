@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useMapInstance } from '@/context/map-instance-context';
 import { convertDDToDMS } from '@/lib/map/conversion-utils';
+import { metersPerPixelAtCenter, scaleDenominator } from '@/lib/map/map-scale';
 import type maplibregl from 'maplibre-gl';
 
 const COORD_PRECISION = 3;
@@ -61,10 +62,7 @@ export function useMapCoordinates() {
                     convertDDToDMS
                 ));
 
-                // Calculate scale from zoom level (approximate)
-                const zoomLevel = mapLibreInstance.getZoom();
-                const approximateScale = 559192 / Math.pow(2, zoomLevel);
-                setScale(Math.round(approximateScale));
+                setScale(Math.round(scaleDenominator(metersPerPixelAtCenter(mapLibreInstance))));
             };
 
             // Update on initial load
