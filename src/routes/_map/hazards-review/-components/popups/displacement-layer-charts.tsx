@@ -580,7 +580,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
             {/* General reading caveats — kept with the Units note as quiet fine-print
                 for the whole panel, not captioning the chart directly above. */}
             <p className="mt-1 px-2 text-xs italic text-muted-foreground">
-                Contours are disjoint bands, so area totals are not double-counted. Blank map areas are unmeasured, not necessarily stable. InSAR measures vertical motion, not its cause.
+                Contours are disjoint bands, so area totals are not double-counted. Blank map areas are unmeasured, not necessarily stable. InSAR measures vertical ground motion, not its cause.
             </p>
         </div>
     )
@@ -697,7 +697,6 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                 </div>
                 <p className="mb-1 mt-0.5 text-xs text-muted-foreground">
                     Maximum subsidence each {yearAxisLabel.toLowerCase()} (hover for the basin). Click a point to jump to that year.
-                    {typeValue === 'Yearly' && ' The first year carries the multi-year baseline, not a single-year change.'}
                 </p>
                 <div
                     role="figure"
@@ -706,7 +705,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                     style={{ height: CHART_HEIGHT_PX }}
                 >
                     {isLoading ? <Skeleton className="h-full w-full" /> : (
-                        <DepthByYearChart data={depthByYear} lineColor={lineColor} markSeedYear={typeValue === 'Yearly'} selectedYear={year} onSelectYear={selectYear} onHover={setDepthHoverYear} />
+                        <DepthByYearChart data={depthByYear} lineColor={lineColor} selectedYear={year} onSelectYear={selectYear} onHover={setDepthHoverYear} />
                     )}
                 </div>
                 {!isLoading && <ChartHoverReadout activeLabel={depthHoverYear} items={depthReadoutItems} />}
@@ -1011,25 +1010,10 @@ interface DepthPoint { year: string; depthIn: number; location?: string | null }
 // Memoized like its sibling StackedYearChart: the parent re-renders on every
 // hover of the stacked chart (to refresh the legend), and both props here are
 // stable, so memo makes those hover re-renders a no-op.
-const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, markSeedYear = false, selectedYear = null, onSelectYear, onHover }: { data: DepthPoint[]; lineColor: string; markSeedYear?: boolean; selectedYear?: string | null; onSelectYear?: (year: string) => void; onHover?: (year: string | null) => void }) {
-    // The Yearly seed epoch carries the multi-year baseline (Yearly==Cumulative by
-    // construction), so it's the single deepest point — not a real one-year spike.
-    // Flag that point (the max, not index 0 — the record may start before the seed)
-    // with a hollow ring + label so reviewers read it as the baseline it is.
-    const seedIndex = markSeedYear && data.length > 0
-        ? data.reduce((mi, d, i, arr) => (d.depthIn > arr[mi].depthIn ? i : mi), 0)
-        : -1
-    const renderDot = (props: { cx?: number; cy?: number; index?: number; key?: string | number | bigint | null }) => {
-        const { cx, cy, index, key } = props
+const DepthByYearChart = memo(function DepthByYearChart({ data, lineColor, selectedYear = null, onSelectYear, onHover }: { data: DepthPoint[]; lineColor: string; selectedYear?: string | null; onSelectYear?: (year: string) => void; onHover?: (year: string | null) => void }) {
+    const renderDot = (props: { cx?: number; cy?: number; key?: string | number | bigint | null }) => {
+        const { cx, cy, key } = props
         if (cx == null || cy == null) return <g key={key} />
-        if (index === seedIndex) {
-            return (
-                <g key={key}>
-                    <circle cx={cx} cy={cy} r={4} fill="hsl(var(--background))" stroke={lineColor} strokeWidth={2} />
-                    <text x={cx + 7} y={cy + 3} fontSize={9} fill="currentColor" fillOpacity={0.7}>baseline</text>
-                </g>
-            )
-        }
         return <circle key={key} cx={cx} cy={cy} r={2} fill={lineColor} />
     }
     // Click a year to set it as the active year (syncs with the year dropdown via
