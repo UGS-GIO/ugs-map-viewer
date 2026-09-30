@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { queryOptions, useQuery } from '@tanstack/react-query'
-import { getPopulatedBinBoundaries } from './displacement-thresholds'
+import { bandShallowMagnitude, getPopulatedBinBoundaries } from './displacement-thresholds'
 import type { Feature, Polygon, MultiPolygon } from 'geojson'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
@@ -17,10 +17,10 @@ export interface DisplacementProps {
     start_date?: string | null
     end_date?: string | null
     /**
-     * Displacement band bounds. The layer stores each contour as a range;
-     * `value_inches_min` is the deep edge and equals the old single value_inches,
-     * so charts / filters / thresholds / SLD bins key on it. `value_inches_max` is
-     * the shallow edge, used only for the popup range. In/year for the Rate surface.
+     * Displacement band bounds. The layer stores each contour as a range. Depth
+     * and SLD classes key on `value_inches_min` (the deep edge of a subsidence
+     * band); thresholds key on the edge nearer zero (see bandShallowMagnitude).
+     * The popup shows both. In/year for the Rate surface.
      */
     value_inches_min: number
     value_inches_max: number
@@ -225,18 +225,17 @@ export function useDisplacementDataQualsForType(type: DisplacementType): string[
     return useDistinctByType(type, extractDataQual, sortByDataQualOrder)
 }
 
-// Distinct |value_inches_min| magnitudes present for a type, ascending. Backs the
-// threshold dropdown: an edge only earns a slot when real features sit in the
-// band above it, so an SLD class the data never fills (e.g. Cumulative's
-// 1–3 in band) doesn't yield a redundant option that filters identically to the
-// next one.
+// Distinct band shallow-edge magnitudes present for a type, ascending. Backs the
+// threshold dropdown: an edge only earns a slot when a real band starts above
+// it, so an SLD class the data never fills doesn't yield a redundant option that
+// filters identically to the next one.
 export function useDisplacementValueMagnitudesForType(type: DisplacementType): number[] {
     const select = useCallback((features: DisplacementFeature[]) => {
         const set = new Set<number>()
         for (const f of features) {
             if (f.properties.type !== type) continue
-            const v = f.properties.value_inches_min
-            if (typeof v === 'number' && Number.isFinite(v)) set.add(Math.abs(v))
+            const { value_inches_min: lo, value_inches_max: hi } = f.properties
+            if (Number.isFinite(lo) && Number.isFinite(hi)) set.add(bandShallowMagnitude(lo, hi))
         }
         return Array.from(set).sort((a, b) => a - b)
     }, [type])

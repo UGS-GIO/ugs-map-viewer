@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getPopulatedBinBoundaries } from '../displacement-thresholds'
+import { bandAtLeastCql, bandShallowMagnitude, getPopulatedBinBoundaries } from '../displacement-thresholds'
 import type { SldBin } from '../displacement-sld-legend'
 
 const bin = (min: number, max: number, isZero = false): SldBin => ({
@@ -17,28 +17,44 @@ const cumulativeBins: SldBin[] = [
     bin(1, 3), bin(3, 5), bin(5, 7), bin(7, 9), bin(9, Infinity),
 ]
 
-describe('getPopulatedBinBoundaries', () => {
-    it('drops the empty 1-3 band for Cumulative so "1 in" no longer duplicates "3 in"', () => {
-        // Real Cumulative contours are odd inches and |1| is the deadband, so no
-        // feature falls in [1, 3) — the 1 edge is redundant with 3.
-        const magnitudes = [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25]
-        const opts = getPopulatedBinBoundaries(cumulativeBins, magnitudes)
-        expect(opts).not.toContain(1)
-        expect(opts[0]).toBe(3)
+describe('bandShallowMagnitude', () => {
+    it('uses the edge nearer zero for subsidence and uplift bands', () => {
+        expect(bandShallowMagnitude(-3, -1)).toBe(1)
+        expect(bandShallowMagnitude(-25, -23)).toBe(23)
+        expect(bandShallowMagnitude(1, 3)).toBe(1)
     })
 
-    it('keeps the 1 edge when a real feature sits in the 1-3 band above the deadband', () => {
-        // A |2| reading makes [1, 3) non-empty, so "1 in" now filters differently
-        // from "3 in" and is offered.
-        const magnitudes = [1, 2, 3, 5, 7, 9]
+    it('gives 0 for a band that straddles zero (within error)', () => {
+        expect(bandShallowMagnitude(-1, 1)).toBe(0)
+        expect(bandShallowMagnitude(-0.3, 0)).toBe(0)
+        expect(bandShallowMagnitude(0, 1)).toBe(0)
+    })
+})
+
+describe('bandAtLeastCql', () => {
+    it('matches bands whose shallow edge reaches the threshold on either side', () => {
+        expect(bandAtLeastCql(3)).toBe('(value_inches_max <= -3 OR value_inches_min >= 3)')
+    })
+})
+
+describe('getPopulatedBinBoundaries', () => {
+    // Shallow-edge magnitudes from live Cumulative bands: 0 is the [-1, 1]
+    // within-error band, 1 is the 1-3 in bands on either side, and so on.
+    it('offers 1 in, as the default, when the 1-3 in band has data', () => {
+        const magnitudes = [0, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23]
         const opts = getPopulatedBinBoundaries(cumulativeBins, magnitudes)
         expect(opts[0]).toBe(1)
         expect(opts).toContain(3)
     })
 
-    it('drops the open top edge when no feature reaches it', () => {
-        // Only |3| and |5| present, so the 7/9/11/13 edges' bands are empty.
-        expect(getPopulatedBinBoundaries(cumulativeBins, [1, 3, 5])).toEqual([3, 5])
+    it('skips an edge no band starts in, so two options never filter the same', () => {
+        const opts = getPopulatedBinBoundaries(cumulativeBins, [0, 3, 5, 7])
+        expect(opts).not.toContain(1)
+        expect(opts[0]).toBe(3)
+    })
+
+    it('drops the open top edge when no band reaches it', () => {
+        expect(getPopulatedBinBoundaries(cumulativeBins, [0, 1, 3])).toEqual([1, 3])
     })
 
     it('offers nothing while feature magnitudes are still loading', () => {

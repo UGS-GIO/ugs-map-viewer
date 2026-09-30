@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { deepestSubsidenceByYear, subsidedAreaByYear } from './displacement-analytics'
 import { binMatches, type SldBin } from './displacement-sld-legend'
-import { getBinBoundaries } from './displacement-thresholds'
+import { bandShallowMagnitude, getBinBoundaries } from './displacement-thresholds'
 import type { ChartedType } from './displacement-layers'
 import type { DisplacementFeature } from './use-displacement-queries'
 import { ChartHoverReadout, HoveredChartLabelReporter, renderNoChartTooltip, type ChartReadoutItem } from './displacement-chart-hover'
@@ -86,8 +86,8 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
 
     const rows = useMemo<DetailRow[]>(() => {
         const measured = scoped.filter(f => {
-            const v = f.properties.value_inches_min
-            return v < 0 && Math.abs(v) >= threshold && findBinLocal(plotBins, v) !== undefined
+            const { value_inches_min: v, value_inches_max: hi } = f.properties
+            return v < 0 && bandShallowMagnitude(v, hi) >= threshold && findBinLocal(plotBins, v) !== undefined
         })
         const areaMi2Of = (f: DisplacementFeature) => area(f) * SQM_TO_SQMI
         const depthMap = deepestSubsidenceByYear(measured)

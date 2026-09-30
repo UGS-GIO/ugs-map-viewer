@@ -11,6 +11,7 @@ import {
     type DisplacementType,
 } from './displacement-layers'
 import { dataQualityCql } from './displacement-quality'
+import { bandAtLeastCql } from './displacement-thresholds'
 import { useDisplacementDefaultThresholdForType, useDisplacementLatestYearByType, useDisplacementSldZeroBound } from './use-displacement-queries'
 
 // Re-export the type predicates + token sets so existing call sites keep
@@ -349,7 +350,7 @@ export function useDisplacementLayerFilters(): Record<string, string> {
             if (isChartedType(typeValue)) {
                 const thresholdIn = effective[typeValue]
                 if (thresholdIn > 0) {
-                    clauses.push(`(value_inches_min >= ${thresholdIn} OR value_inches_min <= ${-thresholdIn})`)
+                    clauses.push(bandAtLeastCql(thresholdIn))
                 }
                 // Exclude the SLD "within uncertainty" deadband so the map matches
                 // the chart (which never plots deadband features) — including during
@@ -357,7 +358,7 @@ export function useDisplacementLayerFilters(): Record<string, string> {
                 // bound, otherwise the ±deadband contours flash in and back out.
                 const zeroBound = zeroBoundByType[typeValue]
                 if (zeroBound != null && zeroBound > 0) {
-                    clauses.push(`(value_inches_min > ${zeroBound} OR value_inches_min < ${-zeroBound})`)
+                    clauses.push(bandAtLeastCql(zeroBound))
                 }
             }
             const basins = basinsByType[typeValue]

@@ -10,6 +10,7 @@ import type { LayerContentProps } from '@/components/maps/popups/types'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import { useMap } from '@/hooks/use-map'
 import { passesDataQuality } from './displacement-quality'
+import { bandShallowMagnitude } from './displacement-thresholds'
 import { DISPLACEMENT_LAYER_TYPES, getStyleNameForType, getUnitsLabelForType, isChartedType, isDisplacementLayerTitle, type ChartedType, type DisplacementType } from './displacement-layers'
 import { binMatches, getZeroBound, magnitudeLabel, type SldBin } from './displacement-sld-legend'
 import {
@@ -196,13 +197,16 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     const zeroBound = useMemo(() => getZeroBound(sldBins), [sldBins])
     // One test behind KPI, chart, and basin ranking: clear the reviewer's floor
     // AND land in a band the map paints. Keeps all three agreeing with the map.
+    // A band is measured when its shallow edge clears the threshold (so "≥ 3 in"
+    // hides the 1-3 in band) and its deep edge lands in a class the map paints.
     const isMeasured = useCallback(
-        (v: number) => Math.abs(v) >= threshold && findBin(plotBins, v) !== undefined,
+        (p: { value_inches_min: number; value_inches_max: number }) => {
+            const shallow = bandShallowMagnitude(p.value_inches_min, p.value_inches_max)
+            return shallow > 0 && shallow >= threshold && findBin(plotBins, p.value_inches_min) !== undefined
+        },
         [threshold, plotBins]
     )
-    const thresholdLabel = zeroBound != null && threshold <= zeroBound
-        ? `|value| > ${fmt1(zeroBound)} in`
-        : `|value| ≥ ${fmt1(threshold)} in`
+    const thresholdLabel = `|value| ≥ ${fmt1(Math.max(threshold, zeroBound ?? 0))} in`
 
     // Split SLD bins by sign and order each side so the stack reads outward
     // from zero: closest-to-zero bin first, deepest band last. Negative bins
@@ -252,7 +256,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     // whole record, not just the selected year.
     const depthByYear = useMemo(
         () => Array.from(
-            deepestSubsidenceByYear(scoped.filter(f => f.properties.value_inches_min < 0 && isMeasured(f.properties.value_inches_min))),
+            deepestSubsidenceByYear(scoped.filter(f => f.properties.value_inches_min < 0 && isMeasured(f.properties))),
             ([yr, d]) => ({ year: yr, depthIn: d.depthIn, location: d.location }),
         ).sort((a, b) => a.year.localeCompare(b.year)),
         [scoped, isMeasured],
@@ -278,7 +282,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     // never netted into these subsidence metrics. (The stacked chart keeps its own
     // both-signs gate — only these scalar/ranking paths are subsidence-only.)
     const measuredSubsidence = useMemo(
-        () => filtered.filter(f => f.properties.value_inches_min < 0 && isMeasured(f.properties.value_inches_min)),
+        () => filtered.filter(f => f.properties.value_inches_min < 0 && isMeasured(f.properties)),
         [filtered, isMeasured]
     )
 
@@ -324,7 +328,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
         const yearToBins = new Map<string, Record<string, number>>()
         for (const f of scoped) {
             const v = f.properties.value_inches_min
-            if (!isMeasured(v)) continue
+            if (!isMeasured(f.properties)) continue
             const bin = findBin(plotBins, v)
             if (!bin) continue
             const y = getBucketYear(f.properties)
@@ -387,7 +391,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
             // uplift-dominated basin must not appear (matches Rate's basinsByRate).
             if (v >= 0) continue
             const a = Math.abs(v)
-            if (!isMeasured(v)) continue
+            if (!isMeasured(f.properties)) continue
             const cur = byLocation.get(loc)
             if (!cur) {
                 byLocation.set(loc, { signed: v, abs: a, features: [f] })

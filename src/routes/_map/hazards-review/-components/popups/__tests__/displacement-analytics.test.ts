@@ -10,8 +10,8 @@ import type { DisplacementFeature } from '../use-displacement-queries'
 import type { DisplacementType } from '../displacement-layers'
 
 // Minimal feature fixture — geometry is a stub since area is injected in tests.
-// Analytics key on the band's deep edge (value_inches_min); value_inches_max is
-// popup-only, so it just mirrors _min here.
+// Depth keys on the band's deep edge (value_inches_min), thresholds on its
+// shallow edge (value_inches_max); point fixtures mirror _min into _max.
 const feat = (
     location: string,
     value_inches_min: number,
@@ -75,6 +75,13 @@ describe('subsidedAreaByYear', () => {
         expect(m.get('2019')).toBe(2)
         expect(m.get('2020')).toBe(2)
         expect(m.size).toBe(2)
+    })
+
+    it('counts a ranged band only when its shallow edge clears the threshold', () => {
+        const point = feat('A', -3, 2024)
+        const band: DisplacementFeature = { ...point, properties: { ...point.properties, value_inches_max: -1 } }
+        expect(subsidedAreaByYear([band], 3, unitArea).get('2024')).toBeUndefined()
+        expect(subsidedAreaByYear([band], 1, unitArea).get('2024')).toBe(1)
     })
 })
 
