@@ -16,7 +16,21 @@ const wetMetaConfig: PMTilesLayerProps = {
     title: wetMetaTitle,
     visible: false,
     opacity: 0.75,
-    styleUrl: 'data:application/json;base64,eyJsYXllcnMiOlt7ImlkIjoid2V0bGFuZHNfd2V0bGFuZHNfbWV0YWRhdGEtZmlsbCIsInR5cGUiOiJmaWxsIiwicGFpbnQiOnsiZmlsbC1jb2xvciI6IiM4QTZEM0IiLCJmaWxsLW9wYWNpdHkiOjAuMzUsImZpbGwtb3V0bGluZS1jb2xvciI6IiMzMzMzMzMifX1dfQ==',
+    styleUrl: `data:application/json,${encodeURIComponent(
+        JSON.stringify({
+            layers: [
+                {
+                    id: 'wetlands_wetlands_metadata-fill',
+                    type: 'fill',
+                    paint: {
+                        'fill-color': '#8A6D3B',
+                        'fill-opacity': 0.35,
+                        'fill-outline-color': '#333333'
+                    }
+                }
+            ]
+        })
+    )}`,
     sublayers: [
         {
             name: wetMetaLayerName,
@@ -65,7 +79,33 @@ const wetNonRiverineConfig: PMTilesLayerProps = {
     title: wetNonRiverineTitle,
     visible: true,
     opacity: 0.75,
-    styleUrl: 'data:application/json;base64,eyJsYXllcnMiOlt7ImlkIjoid2V0bGFuZHNfbm9ucml2ZXJpbmUtZmlsbCIsInR5cGUiOiJmaWxsIiwicGFpbnQiOnsiZmlsbC1jb2xvciI6WyJtYXRjaCIsWyJnZXQiLCJ3ZXRsYW5kX3R5cGUiXSwiRnJlc2h3YXRlciBFbWVyZ2VudCBXZXRsYW5kIiwiI0I0RDc5RSIsIkZyZXNod2F0ZXIgRm9yZXN0ZWQvU2hydWIgV2V0bGFuZCIsIiNGRkQzN0YiLCJGcmVzaHdhdGVyIFBvbmQiLCIjQkVFOEZGIiwiTGFrZSIsIiM3M0IyRkYiLCIjRDBEMEQwIl0sImZpbGwtb3BhY2l0eSI6MC42NSwiZmlsbC1vdXRsaW5lLWNvbG9yIjoicmdiYSgwLDAsMCwwLjIpIn19XX0=',
+    styleUrl: `data:application/json,${encodeURIComponent(
+        JSON.stringify({
+            layers: [
+                {
+                    id: 'wetlands_nonriverine-fill',
+                    type: 'fill',
+                    paint: {
+                        'fill-color': [
+                            'match',
+                            ['get', 'wetland_type'],
+                            'Freshwater Emergent Wetland',
+                            '#B4D79E',
+                            'Freshwater Forested/Shrub Wetland',
+                            '#FFD37F',
+                            'Freshwater Pond',
+                            '#BEE8FF',
+                            'Lake',
+                            '#73B2FF',
+                            '#D0D0D0'
+                        ],
+                        'fill-opacity': 0.65,
+                        'fill-outline-color': 'rgba(0,0,0,0.2)'
+                    }
+                }
+            ]
+        })
+    )}`,
     sublayers: [
         {
             name: wetNonRiverineLayerName,
@@ -100,7 +140,21 @@ const riverineConfig: PMTilesLayerProps = {
     title: riverineTitle,
     visible: false,
     opacity: 0.75,
-    styleUrl: 'data:application/json;base64,eyJsYXllcnMiOlt7ImlkIjoid2V0bGFuZHNfcml2ZXJpbmUtZmlsbCIsInR5cGUiOiJmaWxsIiwicGFpbnQiOnsiZmlsbC1jb2xvciI6IiMwMTYxMDAiLCJmaWxsLW9wYWNpdHkiOjAuNjUsImZpbGwtb3V0bGluZS1jb2xvciI6InJnYmEoMCwwLDAsMC4zKSJ9fV19',
+    styleUrl: `data:application/json,${encodeURIComponent(
+        JSON.stringify({
+            layers: [
+                {
+                    id: 'wetlands_riverine-fill',
+                    type: 'fill',
+                    paint: {
+                        'fill-color': '#016100',
+                        'fill-opacity': 0.65,
+                        'fill-outline-color': 'rgba(0,0,0,0.3)'
+                    }
+                }
+            ]
+        })
+    )}`,
     sublayers: [
         {
             name: riverineLayerName,
