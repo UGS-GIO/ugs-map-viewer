@@ -49,7 +49,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
     const isCharted = isChartedType(typeValue)
 
     // Year options + basin options both derived inside TanStack `select` so the
-    // raw 20k-feature array doesn't reach this component. hasYear flips on once
+    // raw full-layer array doesn't reach this component. hasYear flips on once
     // any years exist for this type so the dropdown stays hidden if nothing to
     // pick.
     const years = useDisplacementYearsForType(typeValue)

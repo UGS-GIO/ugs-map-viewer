@@ -26,6 +26,10 @@ describe('passesDataQuality', () => {
         expect(passesDataQuality(medium, excluded)).toBe(true)
     })
 
+    it('keeps a feature with no data_qual, like the CQL does', () => {
+        expect(passesDataQuality({ data_qual: null }, new Set(['low', CONFIRMED_LOW_KEY]))).toBe(true)
+    })
+
     it('excluding medium hides confirmed medium too (confirmation only matters for low tiers)', () => {
         expect(passesDataQuality(medium, new Set(['medium']))).toBe(false)
     })
@@ -38,19 +42,19 @@ describe('dataQualityCql', () => {
 
     it('keeps confirmed low when only categories are excluded', () => {
         expect(dataQualityCql(new Set(['low', 'very low']))).toBe(
-            "((independent_confirmation = true AND data_qual IN ('low', 'very low')) OR data_qual NOT IN ('low', 'very low'))",
+            "((independent_confirmation = true AND data_qual IN ('low', 'very low')) OR (data_qual IS NULL OR data_qual NOT IN ('low', 'very low')))",
         )
     })
 
     it('drops confirmed low, treating a null confirmation as unconfirmed', () => {
         expect(dataQualityCql(new Set([CONFIRMED_LOW_KEY]))).toBe(
-            "(data_qual NOT IN ('low', 'very low') OR independent_confirmation = false OR independent_confirmation IS NULL)",
+            "(data_qual IS NULL OR data_qual NOT IN ('low', 'very low') OR independent_confirmation = false OR independent_confirmation IS NULL)",
         )
     })
 
     it('combines the confirmed-low toggle with excluded categories', () => {
         expect(dataQualityCql(new Set([CONFIRMED_LOW_KEY, 'high']))).toBe(
-            "((data_qual NOT IN ('low', 'very low') OR independent_confirmation = false OR independent_confirmation IS NULL) AND data_qual NOT IN ('high'))",
+            "((data_qual IS NULL OR data_qual NOT IN ('low', 'very low') OR independent_confirmation = false OR independent_confirmation IS NULL) AND (data_qual IS NULL OR data_qual NOT IN ('high')))",
         )
     })
 })

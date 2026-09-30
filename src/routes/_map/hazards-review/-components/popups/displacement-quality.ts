@@ -26,20 +26,23 @@ export function passesDataQuality(p: QualityProps, excluded: ReadonlySet<string>
     return !excluded.has(String(p.data_qual ?? ''))
 }
 
-function quoteCqlLiteral(value: string): string {
+// Escape single quotes per the SQL/CQL string-literal convention so values with
+// apostrophes don't break a filter (e.g. "O'Brien Valley").
+export function quoteCqlLiteral(value: string): string {
     return `'${value.replace(/'/g, "''")}'`
 }
 
 // CQL for the same rule, or null when nothing is filtered. NOT IN keeps unknown
-// future categories visible by default. A null independent_confirmation counts
-// as unconfirmed, matching passesDataQuality.
+// future categories visible by default. Nulls are spelled out because SQL drops a
+// row whose NOT IN is unknown: a null data_qual stays visible and a null
+// independent_confirmation counts as unconfirmed, matching passesDataQuality.
 export function dataQualityCql(excluded: ReadonlySet<string>): string | null {
     const lowList = LOW.map(quoteCqlLiteral).join(', ')
     const confirmedLow = `(independent_confirmation = true AND data_qual IN (${lowList}))`
-    const notConfirmedLow = `(data_qual NOT IN (${lowList}) OR independent_confirmation = false OR independent_confirmation IS NULL)`
+    const notConfirmedLow = `(data_qual IS NULL OR data_qual NOT IN (${lowList}) OR independent_confirmation = false OR independent_confirmation IS NULL)`
     const categories = [...excluded].filter(q => q !== CONFIRMED_LOW_KEY)
     const categoryClause = categories.length > 0
-        ? `data_qual NOT IN (${categories.map(quoteCqlLiteral).join(', ')})`
+        ? `(data_qual IS NULL OR data_qual NOT IN (${categories.map(quoteCqlLiteral).join(', ')}))`
         : null
     if (excluded.has(CONFIRMED_LOW_KEY)) {
         return categoryClause ? `(${notConfirmedLow} AND ${categoryClause})` : notConfirmedLow

@@ -10,7 +10,7 @@ import {
     type DisplacementLayerTitle,
     type DisplacementType,
 } from './displacement-layers'
-import { dataQualityCql } from './displacement-quality'
+import { dataQualityCql, quoteCqlLiteral } from './displacement-quality'
 import { bandAtLeastCql } from './displacement-thresholds'
 import { useDisplacementDefaultThresholdForType, useDisplacementLatestYearByType, useDisplacementSldZeroBound } from './use-displacement-queries'
 
@@ -316,11 +316,6 @@ export function useEffectiveThresholdsIn(): Record<ChartedType, number> {
  * customLayerParameters — GeoServer concatenates these clauses. Only charted
  * types get a threshold clause (others have no threshold UI to tune it from).
  */
-// Escape single quotes per the SQL/CQL string-literal convention so basin names
-// containing apostrophes don't break the filter (e.g. "O'Brien Valley").
-function quoteCqlLiteral(value: string): string {
-    return `'${value.replace(/'/g, "''")}'`
-}
 
 export function useDisplacementLayerFilters(): Record<string, string> {
     const { yearOverridesByType, basinsByType, excludedDataQualsByType } = useDisplacementFilters()

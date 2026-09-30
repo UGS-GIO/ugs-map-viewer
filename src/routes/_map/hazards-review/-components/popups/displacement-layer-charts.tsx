@@ -19,7 +19,7 @@ import {
     useDisplacementSldBins,
     type DisplacementFeature,
 } from './use-displacement-queries'
-import { deepestSubsidenceByYear } from './displacement-analytics'
+import { deepestSubsidenceByYear, maxReadingWithBasin } from './displacement-analytics'
 import { DisplacementDetailCharts } from './displacement-detail-charts'
 import { ChartHoverReadout, HoveredChartLabelReporter, renderNoChartTooltip, type ChartReadoutItem } from './displacement-chart-hover'
 import { DisplacementAnalysisLayout } from './displacement-analysis-layout'
@@ -198,7 +198,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     // One test behind KPI, chart, and basin ranking: clear the reviewer's floor
     // AND land in a band the map paints. Keeps all three agreeing with the map.
     // A band is measured when its shallow edge clears the threshold (so "≥ 3 in"
-    // hides the 1-3 in band) and its deep edge lands in a class the map paints.
+    // hides the 1-3 in band) and its value_inches_min lands in a class the map paints.
     const isMeasured = useCallback(
         (p: { value_inches_min: number; value_inches_max: number }) => {
             const shallow = bandShallowMagnitude(p.value_inches_min, p.value_inches_max)
@@ -292,19 +292,11 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     )
 
     // Deepest subsidence reading in the selected year (magnitude of the most
-    // negative measured value) and the basin it's in. Subsidence-only so "Max
+    // negative measured value) and where it is. Subsidence-only so "Max
     // subsidence" is accurate; basin-scoped so the name always matches the number.
     const { maxDisplacement, deepestBasin } = useMemo(() => {
-        let max = 0
-        let basin: string | undefined
-        for (const f of measuredSubsidence) {
-            const a = Math.abs(f.properties.value_inches_min)
-            if (a > max) {
-                max = a
-                basin = f.properties.location ?? undefined
-            }
-        }
-        return { maxDisplacement: max, deepestBasin: basin }
+        const { max, where } = maxReadingWithBasin(measuredSubsidence)
+        return { maxDisplacement: max, deepestBasin: where }
     }, [measuredSubsidence])
 
     const distinctBasins = useMemo(() => new Set(measuredSubsidence.map(f => f.properties.location)).size, [measuredSubsidence])

@@ -10,6 +10,7 @@ import {
 } from './use-displacement-queries'
 import { getShortUnitForType, getStyleNameForType } from './displacement-layers'
 import { passesDataQuality } from './displacement-quality'
+import { maxReadingWithBasin } from './displacement-analytics'
 import { BasinList, KPI, combinedBbox, findBin, useZoomToBboxes } from './displacement-layer-charts'
 import { DisplacementAnalysisLayout } from './displacement-analysis-layout'
 import { renderDisplacementLayerFilters } from './displacement-layer-filters'
@@ -22,7 +23,7 @@ import { renderDisplacementLayerFilters } from './displacement-layer-filters'
 const RATE_TYPE = 'Vertical Displacement Rate' as const
 const SQM_TO_SQMI = 1 / 2_589_988.110336
 const fmt1 = (n: number): string => n.toFixed(1)
-// Rate magnitudes are small (SLD bands start at 0.075 in/yr), so two decimals.
+// Rate magnitudes are small (bands are 0.3 in/yr wide), so two decimals.
 const fmt2 = (n: number): string => n.toFixed(2)
 
 // `mode='panel'` (default) is the compact sidebar column; `mode='analysis'` is the
@@ -73,16 +74,8 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
     // Fastest rate in scope and the basin it's in, so the hero's basin name always
     // matches its number (the ranking below stays statewide).
     const { maxRate, fastestBasin } = useMemo(() => {
-        let m = 0
-        let basin: string | undefined
-        for (const f of measuredScoped) {
-            const a = Math.abs(f.properties.value_inches_min)
-            if (a > m) {
-                m = a
-                basin = f.properties.location ?? undefined
-            }
-        }
-        return { maxRate: m, fastestBasin: basin }
+        const { max, where } = maxReadingWithBasin(measuredScoped)
+        return { maxRate: max, fastestBasin: where }
     }, [measuredScoped])
 
     const totalAreaSqMi = useMemo(

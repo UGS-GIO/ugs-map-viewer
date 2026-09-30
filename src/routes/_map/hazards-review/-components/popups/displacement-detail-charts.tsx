@@ -87,7 +87,8 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
     const rows = useMemo<DetailRow[]>(() => {
         const measured = scoped.filter(f => {
             const { value_inches_min: v, value_inches_max: hi } = f.properties
-            return v < 0 && bandShallowMagnitude(v, hi) >= threshold && findBinLocal(plotBins, v) !== undefined
+            const shallow = bandShallowMagnitude(v, hi)
+            return v < 0 && shallow > 0 && shallow >= threshold && findBinLocal(plotBins, v) !== undefined
         })
         const areaMi2Of = (f: DisplacementFeature) => area(f) * SQM_TO_SQMI
         const depthMap = deepestSubsidenceByYear(measured)

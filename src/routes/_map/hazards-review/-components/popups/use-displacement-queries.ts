@@ -42,11 +42,11 @@ export function getBucketYear(props: Pick<DisplacementProps, 'year'>): string | 
     return props.year == null ? null : String(props.year)
 }
 
-async function fetchAllDisplacement(): Promise<DisplacementFeature[]> {
+async function fetchAllDisplacement(signal?: AbortSignal): Promise<DisplacementFeature[]> {
     return fetchAllWfsFeatures<Polygon | MultiPolygon, DisplacementProps>(
         `${PROD_GEOSERVER_URL}/wfs`,
         DISPLACEMENT_TYPE_NAME,
-        { sortBy: 'fid' },
+        { sortBy: 'fid', signal },
     )
 }
 
@@ -56,7 +56,7 @@ async function fetchAllDisplacement(): Promise<DisplacementFeature[]> {
 // cache without coupling to a component.
 export const displacementFeaturesQueryOptions = () => queryOptions({
     queryKey: queryKeys.hazards.displacementFeatures(),
-    queryFn: fetchAllDisplacement,
+    queryFn: ({ signal }) => fetchAllDisplacement(signal),
     // The full-layer pull is expensive; treat as session-stable. gcTime keeps it
     // around long enough that a user toggling layers off+on doesn't refetch.
     staleTime: 10 * 60 * 1000,

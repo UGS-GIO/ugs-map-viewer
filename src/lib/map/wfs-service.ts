@@ -16,6 +16,8 @@ export interface FetchWfsFeaturesOptions {
   startIndex?: number
   /** Attribute to sort ascending on; GeoServer needs one for stable paging. */
   sortBy?: string
+  /** Cancels the request (e.g. TanStack Query's signal). */
+  signal?: AbortSignal
 }
 
 /** GeoServer's GeoJSON output adds the WFS 2.0 match counts to the collection. */
@@ -33,7 +35,7 @@ export async function fetchWfsFeatures<G extends Geometry = Geometry, P = Record
   typeName: string,
   options: FetchWfsFeaturesOptions = {},
 ): Promise<WfsFeatureCollection<G, P>> {
-  const { count, crs = 'EPSG:4326', cqlFilter, startIndex, sortBy } = options
+  const { count, crs = 'EPSG:4326', cqlFilter, startIndex, sortBy, signal } = options
   const url = new URL(wfsUrl)
   url.searchParams.set('service', 'WFS')
   url.searchParams.set('version', '2.0.0')
@@ -46,7 +48,7 @@ export async function fetchWfsFeatures<G extends Geometry = Geometry, P = Record
   if (startIndex) url.searchParams.set('startIndex', String(startIndex))
   if (sortBy) url.searchParams.set('sortBy', `${sortBy} A`)
 
-  const response = await fetch(url.toString())
+  const response = await fetch(url.toString(), { signal })
   if (!response.ok) {
     throw new Error(`WFS request failed: ${response.status} ${response.statusText}`)
   }
@@ -56,15 +58,16 @@ export async function fetchWfsFeatures<G extends Geometry = Geometry, P = Record
 export interface FetchAllWfsFeaturesOptions extends Omit<FetchWfsFeaturesOptions, 'count' | 'startIndex'> {
   /** Features per request. */
   pageSize?: number
-  /** Sort attribute; required so pages don't overlap or skip rows. */
+  /** Unique sort attribute; required so pages don't overlap or skip rows. */
   sortBy: string
 }
 
 /**
- * Fetches every feature for a typeName, paging past GeoServer's per-request
- * limit. The first page reports `numberMatched`; the rest load in parallel.
- * Throws when the loaded count doesn't match, so callers never compute stats
- * on a silently partial set.
+ * Fetches every feature for a typeName in pages, so no single request has to
+ * carry the whole layer. The first page reports `numberMatched`; the rest load in
+ * parallel. Throws when the loaded set isn't exactly `numberMatched` distinct
+ * rows (short pages, or the layer changing between pages), so callers never
+ * compute stats on a silently partial or duplicated set.
  */
 export async function fetchAllWfsFeatures<G extends Geometry = Geometry, P = Record<string, unknown>>(
   wfsUrl: string,
@@ -84,6 +87,10 @@ export async function fetchAllWfsFeatures<G extends Geometry = Geometry, P = Rec
   const features = [first, ...rest].flatMap(fc => fc.features)
   if (features.length !== total) {
     throw new Error(`WFS ${typeName}: loaded ${features.length} of ${total} features`)
+  }
+  const distinct = new Set(features.map(f => (f.properties as Record<string, unknown> | null)?.[options.sortBy]))
+  if (distinct.size !== total) {
+    throw new Error(`WFS ${typeName}: pages overlapped (${distinct.size} distinct ${options.sortBy} of ${total}); the layer may have changed mid-load`)
   }
   return features
 }

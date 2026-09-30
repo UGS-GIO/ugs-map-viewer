@@ -10,8 +10,8 @@ export function scaleDenominator(metersPerPixel: number): number {
 
 /**
  * Ground meters per CSS pixel at the center of the view, measured across a
- * horizontal span like the on-map scale bar does, so the 1:X readout and the
- * bar always agree (and both account for latitude).
+ * horizontal span. The on-map scale bar and the footer 1:X readout both use it,
+ * so both account for latitude. Returns 0 before the canvas has a size.
  */
 export function metersPerPixelAtCenter(map: maplibregl.Map, span = 100): number {
   const canvas = map.getCanvas()

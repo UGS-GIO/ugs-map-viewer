@@ -46,6 +46,15 @@ describe('fetchAllWfsFeatures', () => {
       .rejects.toThrow('loaded 24999 of 25000')
   })
 
+  it('throws when pages overlap instead of returning duplicated rows', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+      type: 'FeatureCollection', numberMatched: 2,
+      features: [{ type: 'Feature', geometry: null, properties: { fid: 1 } }, { type: 'Feature', geometry: null, properties: { fid: 1 } }],
+    }), { status: 200 })))
+    await expect(fetchAllWfsFeatures('https://gs.example/wfs', 'ns:layer', { sortBy: 'fid' }))
+      .rejects.toThrow('pages overlapped')
+  })
+
   it('throws when the server does not report numberMatched', async () => {
     mockGeoServer(10, { withNumberMatched: false })
     await expect(fetchAllWfsFeatures('https://gs.example/wfs', 'ns:layer', { sortBy: 'fid' }))

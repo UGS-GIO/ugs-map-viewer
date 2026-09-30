@@ -128,3 +128,26 @@ export function displacementSummary(
     }
     return { maxDepthIn, areaMi2, basinCount: basins.size }
 }
+
+/**
+ * Largest |value_inches_min| in the set and where it was read: the basin name,
+ * "N basins" when several tie (band values are discrete, so ties are common), or
+ * undefined for an empty set.
+ */
+export function maxReadingWithBasin(features: DisplacementFeature[]): { max: number; where: string | undefined } {
+    let max = 0
+    const basins = new Set<string>()
+    for (const f of features) {
+        const a = Math.abs(f.properties.value_inches_min)
+        const loc = f.properties.location
+        if (a > max) {
+            max = a
+            basins.clear()
+            if (loc) basins.add(loc)
+        } else if (a === max && a > 0 && loc) {
+            basins.add(loc)
+        }
+    }
+    const where = basins.size === 1 ? [...basins][0] : basins.size > 1 ? `${basins.size} basins` : undefined
+    return { max, where }
+}

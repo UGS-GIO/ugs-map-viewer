@@ -5,6 +5,7 @@ import {
     deepestSubsidenceByYear,
     subsidedAreaByYear,
     displacementSummary,
+    maxReadingWithBasin,
 } from '../displacement-analytics'
 import type { DisplacementFeature } from '../use-displacement-queries'
 import type { DisplacementType } from '../displacement-layers'
@@ -100,5 +101,19 @@ describe('displacementSummary', () => {
     it('is all-zero when nothing clears the threshold', () => {
         const s = displacementSummary([feat('A', -1, 2024), feat('B', 2, 2024)], 3, unitArea)
         expect(s).toEqual({ maxDepthIn: 0, areaMi2: 0, basinCount: 0 })
+    })
+})
+
+describe('maxReadingWithBasin', () => {
+    it('names the basin of the largest reading', () => {
+        expect(maxReadingWithBasin([feat('A', -5, 2024), feat('B', -9, 2024)])).toEqual({ max: 9, where: 'B' })
+    })
+
+    it('counts basins that tie for the largest reading instead of picking one', () => {
+        expect(maxReadingWithBasin([feat('A', -9, 2024), feat('B', -9, 2024), feat('A', -9, 2024)])).toEqual({ max: 9, where: '2 basins' })
+    })
+
+    it('is empty for no features', () => {
+        expect(maxReadingWithBasin([])).toEqual({ max: 0, where: undefined })
     })
 })

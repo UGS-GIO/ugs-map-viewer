@@ -44,7 +44,7 @@ const MapCoordinates = () => {
                 <UnitSwitch />
                 <div className="h-3 md:h-4 w-px bg-border" aria-hidden="true" />
                 <span className="text-xs md:text-sm text-muted-foreground">
-                    Scale: 1:{addThousandsSeparator(scale?.toFixed(0).toString() || '')}
+                    Scale: {scale > 0 ? `1:${addThousandsSeparator(scale.toFixed(0))}` : '—'}
                 </span>
             </div>
         </div>
