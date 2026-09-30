@@ -1,23 +1,25 @@
 import { parquetUrl } from "@/lib/constants";
-import { ArcGISMapServerLayerProps, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 
 export const PROD_GEOSERVER_URL = 'https://ugs-geoserver-prod-flbcoqv7oa-uc.a.run.app/geoserver';
 const WETLANDS_WORKSPACE = 'wetlands';
 
 
 // Wetlands Mapping Layer Configurations
-const wetMetaLayerName = 'wetlandsapp_metadata';
+const wetMetaLayerName = 'wetlands_wetlands_metadata';
 const wetMetaTitle = 'Wetland Project Information';
-const wetMetaConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
+const wetMetaConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: wetMetaLayerName,
+    pmtilesUrl: '',
+    sourceLayer: wetMetaLayerName,
     title: wetMetaTitle,
     visible: false,
     opacity: 0.75,
-    crs: 'EPSG:26912',
+    styleUrl: 'data:application/json;base64,eyJsYXllcnMiOlt7ImlkIjoid2V0bGFuZHNfd2V0bGFuZHNfbWV0YWRhdGEtZmlsbCIsInR5cGUiOiJmaWxsIiwicGFpbnQiOnsiZmlsbC1jb2xvciI6IiM4QTZEM0IiLCJmaWxsLW9wYWNpdHkiOjAuMzUsImZpbGwtb3V0bGluZS1jb2xvciI6IiMzMzMzMzMifX1dfQ==',
     sublayers: [
         {
-            name: `${WETLANDS_WORKSPACE}:${wetMetaLayerName}`,
+            name: wetMetaLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
@@ -53,19 +55,20 @@ const wetMetaConfig: WMSLayerProps = {
     ]
 };
 
-const wetNonRiverineLayerName = 'wetlandsapp_non_riverine';
+const wetNonRiverineLayerName = 'wetlands_nonriverine';
 const wetNonRiverineTitle = 'Wetlands (non-riverine)';
-const wetNonRiverineConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
+const wetNonRiverineConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: wetNonRiverineLayerName,
+    pmtilesUrl: '',
+    sourceLayer: wetNonRiverineLayerName,
     title: wetNonRiverineTitle,
     visible: true,
     opacity: 0.75,
-    crs: 'EPSG:26912',
-    downloadParquetUrl: parquetUrl("wetlandsapp_non_riverine"),
+    styleUrl: 'data:application/json;base64,eyJsYXllcnMiOlt7ImlkIjoid2V0bGFuZHNfbm9ucml2ZXJpbmUtZmlsbCIsInR5cGUiOiJmaWxsIiwicGFpbnQiOnsiZmlsbC1jb2xvciI6WyJtYXRjaCIsWyJnZXQiLCJ3ZXRsYW5kX3R5cGUiXSwiRnJlc2h3YXRlciBFbWVyZ2VudCBXZXRsYW5kIiwiI0I0RDc5RSIsIkZyZXNod2F0ZXIgRm9yZXN0ZWQvU2hydWIgV2V0bGFuZCIsIiNGRkQzN0YiLCJGcmVzaHdhdGVyIFBvbmQiLCIjQkVFOEZGIiwiTGFrZSIsIiM3M0IyRkYiLCIjRDBEMEQwIl0sImZpbGwtb3BhY2l0eSI6MC42NSwiZmlsbC1vdXRsaW5lLWNvbG9yIjoicmdiYSgwLDAsMCwwLjIpIn19XX0=',
     sublayers: [
         {
-            name: `${WETLANDS_WORKSPACE}:${wetNonRiverineLayerName}`,
+            name: wetNonRiverineLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
@@ -87,18 +90,20 @@ const wetNonRiverineConfig: WMSLayerProps = {
     ]
 };
 
-const riverineLayerName = 'wetlandsapp_riverine';
+const riverineLayerName = 'wetlands_riverine';
 const riverineTitle = 'Riverine';
-const riverineConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
+const riverineConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: riverineLayerName,
+    pmtilesUrl: '',
+    sourceLayer: riverineLayerName,
     title: riverineTitle,
     visible: false,
     opacity: 0.75,
-    crs: 'EPSG:26912',
+    styleUrl: 'data:application/json;base64,eyJsYXllcnMiOlt7ImlkIjoid2V0bGFuZHNfcml2ZXJpbmUtZmlsbCIsInR5cGUiOiJmaWxsIiwicGFpbnQiOnsiZmlsbC1jb2xvciI6IiMwMTYxMDAiLCJmaWxsLW9wYWNpdHkiOjAuNjUsImZpbGwtb3V0bGluZS1jb2xvciI6InJnYmEoMCwwLDAsMC4zKSJ9fV19',
     sublayers: [
         {
-            name: `${WETLANDS_WORKSPACE}:${riverineLayerName}`,
+            name: riverineLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
@@ -116,7 +121,7 @@ const riverineConfig: WMSLayerProps = {
                 'Image Year': { field: 'image_yr', type: 'string' },
                 'Additional Attributes Available': { field: 'llww', type: 'string' }
             }
-        },
+        }
     ]
 };
 
