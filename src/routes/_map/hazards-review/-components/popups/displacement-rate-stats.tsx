@@ -9,6 +9,7 @@ import {
     type DisplacementFeature,
 } from './use-displacement-queries'
 import { getShortUnitForType, getStyleNameForType } from './displacement-layers'
+import { passesDataQuality } from './displacement-quality'
 import { BasinList, KPI, combinedBbox, findBin, useZoomToBboxes } from './displacement-layer-charts'
 import { DisplacementAnalysisLayout } from './displacement-analysis-layout'
 import { renderDisplacementLayerFilters } from './displacement-layer-filters'
@@ -53,7 +54,7 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
     const qualFiltered = useMemo(
         () => excludedQuals.size === 0
             ? features
-            : features.filter(f => !excludedQuals.has(String(f.properties.data_qual ?? ''))),
+            : features.filter(f => passesDataQuality(f.properties, excludedQuals)),
         [features, excludedQuals],
     )
     // Basin-scoped view drives the KPIs; the ranking below intentionally ignores

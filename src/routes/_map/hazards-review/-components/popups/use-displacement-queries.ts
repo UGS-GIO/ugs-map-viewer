@@ -30,6 +30,8 @@ export interface DisplacementProps {
      * typed permissively until the rollout spec is finalized.
      */
     data_qual?: number | string | null
+    /** True when a low/very-low contour was confirmed by independent observations (drawn hatched). */
+    independent_confirmation?: boolean | null
 }
 
 export type DisplacementFeature = Feature<Polygon | MultiPolygon, DisplacementProps>

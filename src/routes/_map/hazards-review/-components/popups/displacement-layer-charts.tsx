@@ -9,6 +9,7 @@ import { BarChart, Bar, LineChart, Line, Rectangle, XAxis, YAxis, Tooltip, Respo
 import type { LayerContentProps } from '@/components/maps/popups/types'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import { useMap } from '@/hooks/use-map'
+import { passesDataQuality } from './displacement-quality'
 import { DISPLACEMENT_LAYER_TYPES, getStyleNameForType, getUnitsLabelForType, isChartedType, isDisplacementLayerTitle, type ChartedType, type DisplacementType } from './displacement-layers'
 import { binMatches, getZeroBound, magnitudeLabel, type SldBin } from './displacement-sld-legend'
 import {
@@ -223,14 +224,14 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     )
     const isLoading = featuresLoading || binsLoading
 
-    // Data-quality filter: drop features whose data_qual the reviewer unchecked.
-    // Empty exclusion set = pass everything. Applied before basin/year scoping so
+    // Data-quality filter: the same rule as the map cql (unchecked categories out,
+    // confirmed low on its own toggle). Empty exclusion set = pass everything. Applied before basin/year scoping so
     // KPIs, chart, and the basin ranking all honor it (matching the map cql).
     const excludedQuals = excludedDataQualsByType[typeValue]
     const qualFiltered = useMemo(
         () => excludedQuals.size === 0
             ? features
-            : features.filter(f => !excludedQuals.has(String(f.properties.data_qual ?? ''))),
+            : features.filter(f => passesDataQuality(f.properties, excludedQuals)),
         [features, excludedQuals]
     )
 

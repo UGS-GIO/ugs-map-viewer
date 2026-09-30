@@ -20,6 +20,7 @@ import {
 } from './displacement-layers'
 import { useDisplacementBasinsForType, useDisplacementBasinYearIndexForType, useDisplacementDataQualsForType, useDisplacementSldBins, useDisplacementValueMagnitudesForType, useDisplacementYearsForType } from './use-displacement-queries'
 import { getPopulatedBinBoundaries } from './displacement-thresholds'
+import { CONFIRMED_LOW_KEY } from './displacement-quality'
 
 // Compare a live exclusion set against the high/medium default so "dirty" means
 // "the reviewer changed data-quality from the default", not "anything excluded".
@@ -66,8 +67,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
     const excludedQuals = excludedDataQualsByType[typeValue]
     const dataQualsDirty = !isDefaultDataQuals(excludedQuals)
     // Split tiers for the UI: high/medium stay individual toggles; low + very-low
-    // collapse into one "unconfirmed low quality" toggle (their confirmed members
-    // always show, hatched — the CQL override handles that regardless of this).
+    // show as two rows, confirmed (hatched) and unconfirmed, each its own toggle.
     const highTierQuals = useMemo(() => dataQuals.filter(q => !(LOW_DATA_QUALS as readonly string[]).includes(q)), [dataQuals])
     const hasLowQuals = useMemo(() => dataQuals.some(q => (LOW_DATA_QUALS as readonly string[]).includes(q)), [dataQuals])
     // One toggle drives both low tiers together, but a hand-edited URL can exclude
@@ -272,15 +272,22 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                                         ))}
                                         {hasLowQuals && (
                                             <>
-                                                {/* Confirmed low/very-low: always shown, hatched (the review rule) —
-                                                    informational, not a toggle. Swatch matches the map + legend. */}
-                                                <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                                                    <HatchSwatch className="mt-0.5 h-3.5 w-3.5" />
+                                                {/* Confirmed low/very-low: drawn hatched, on by default. Swatch matches the map + legend. */}
+                                                <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
+                                                    <Checkbox
+                                                        checked={!excludedQuals.has(CONFIRMED_LOW_KEY)}
+                                                        onCheckedChange={() => toggleDataQual(typeValue, CONFIRMED_LOW_KEY)}
+                                                        aria-label="Toggle low-quality contours with independent observations"
+                                                        className="mt-0.5"
+                                                    />
                                                     <span className="flex flex-col leading-tight">
-                                                        <span className="text-foreground">Confirmed low quality</span>
-                                                        <span className="text-[10px]">Always shown, hatched</span>
+                                                        <span className="flex items-center gap-1.5">
+                                                            Low quality, independent observations
+                                                            <HatchSwatch className="h-3 w-3" />
+                                                        </span>
+                                                        <span className="text-[10px] text-muted-foreground">{DATA_QUAL_DESCRIPTIONS['low']}, hatched on the map</span>
                                                     </span>
-                                                </div>
+                                                </label>
                                                 {/* Unconfirmed low + very-low: the noise. One toggle, off by default. */}
                                                 <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
                                                     <Checkbox
@@ -291,7 +298,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                                                     />
                                                     <span className="flex flex-col leading-tight">
                                                         <span>Unconfirmed low quality</span>
-                                                        <span className="text-[10px] text-muted-foreground">Lowest-confidence, not independently confirmed</span>
+                                                        <span className="text-[10px] text-muted-foreground">{DATA_QUAL_DESCRIPTIONS['low']}, not independently confirmed</span>
                                                     </span>
                                                 </label>
                                             </>

@@ -5,12 +5,12 @@ import {
     DISPLACEMENT_LAYER_TYPES,
     CHARTED_TYPES,
     DEFAULT_EXCLUDED_DATA_QUALS,
-    LOW_DATA_QUALS,
     isChartedType,
     type ChartedType,
     type DisplacementLayerTitle,
     type DisplacementType,
 } from './displacement-layers'
+import { dataQualityCql } from './displacement-quality'
 import { useDisplacementDefaultThresholdForType, useDisplacementLatestYearByType, useDisplacementSldZeroBound } from './use-displacement-queries'
 
 // Re-export the type predicates + token sets so existing call sites keep
@@ -365,22 +365,10 @@ export function useDisplacementLayerFilters(): Record<string, string> {
                 const list = Array.from(basins).map(quoteCqlLiteral).join(', ')
                 clauses.push(`location IN (${list})`)
             }
-            // Data-quality: exclude unchecked categories. Empty exclusion set =
-            // no clause (all qualities shown). NOT IN keeps unknown future
-            // categories visible by default. Exception (Tara's rule): a low/very-low
-            // contour that is independently confirmed is ALWAYS shown — the SLD
-            // hatches it — even when its quality is excluded; only the UNCONFIRMED
-            // low/very-low are dropped. Scoped to low/very-low so excluding
-            // high/medium still hides their confirmed members.
-            const excludedQuals = excludedDataQualsByType[typeValue]
-            if (excludedQuals && excludedQuals.size > 0) {
-                const list = Array.from(excludedQuals).map(quoteCqlLiteral).join(', ')
-                // Build the confirmed-low override list from LOW_DATA_QUALS (single
-                // source of truth) rather than a hardcoded literal, so it stays in
-                // sync with the tiers the filter UI + SLD hatch key on.
-                const lowList = LOW_DATA_QUALS.map(quoteCqlLiteral).join(', ')
-                clauses.push(`(data_qual NOT IN (${list}) OR (independent_confirmation = true AND data_qual IN (${lowList})))`)
-            }
+            // Data-quality: unchecked categories are dropped; confirmed low/very-low
+            // (hatched) has its own toggle. Same rule the charts apply client-side.
+            const qualityClause = dataQualityCql(excludedDataQualsByType[typeValue])
+            if (qualityClause) clauses.push(qualityClause)
             if (clauses.length > 0) out[title] = clauses.join(' AND ')
         }
         return out

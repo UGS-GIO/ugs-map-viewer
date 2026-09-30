@@ -81,7 +81,7 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
                     <HatchSwatch />
-                    Hatched = low quality, confirmed
+                    Hatched = low quality, independent observations
                 </span>
                 {zeroBound != null && (
                     <span>0–{zeroBound} {unit} within error</span>
