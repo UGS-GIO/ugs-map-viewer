@@ -31,21 +31,20 @@ function toSwatchItems(bins: SldBin[], label: (b: SldBin) => string = b => b.tit
     return bins.map(b => ({ key: b.name, label: label(b), color: b.color }))
 }
 
-// The within-error band leads each column (it's the class nearest zero on both
-// sides), drawn with the SLD's own deadband color.
-function LegendGroup({ label, bins, unit, withinError }: { label: string; bins: SldBin[]; unit: string; withinError: SldBin | null }) {
+// The within-error band leads each column (it's the range nearest zero on both
+// sides) as an asterisk note, not a swatch: the map doesn't draw it.
+function LegendGroup({ label, bins, unit, zeroBound }: { label: string; bins: SldBin[]; unit: string; zeroBound: number | null }) {
     if (bins.length === 0) return <div />
-    const zeroBound = withinError ? getZeroBound([withinError]) : null
-    const items = [
-        ...(withinError && zeroBound != null
-            ? [{ key: `${withinError.name}-${label}`, label: `0–${zeroBound} ${unit} within error`, color: withinError.color }]
-            : []),
-        ...toSwatchItems(bins, b => magnitudeLabel(b, unit)),
-    ]
     return (
         <div className="flex flex-col gap-1 min-w-0">
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-            <LegendSwatchGrid items={items} columns="single" />
+            {zeroBound != null && (
+                <div className="flex items-start gap-1.5 pr-1 text-xs text-muted-foreground">
+                    <span className="w-3 shrink-0 text-center leading-tight" aria-hidden>*</span>
+                    <span className="leading-tight">0–{zeroBound} {unit} within error</span>
+                </div>
+            )}
+            <LegendSwatchGrid items={toSwatchItems(bins, b => magnitudeLabel(b, unit))} columns="single" />
         </div>
     )
 }
@@ -54,7 +53,7 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
     const styleName = getStyleNameForType(typeValue) ?? ''
     const { data: bins = [], isLoading } = useDisplacementSldBins(styleName)
 
-    const withinError = useMemo(() => bins.find(b => b.isZero) ?? null, [bins])
+    const zeroBound = useMemo(() => getZeroBound(bins), [bins])
     // Same split + ordering as the chart's SignedLegendGroup: closest-to-zero
     // bin first within each side, deepest/highest band last.
     const subsidenceBins = useMemo(
@@ -79,8 +78,8 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
                 <span className="text-[11px] italic text-muted-foreground">{getUnitsLabelForType(typeValue)}</span>
             </div>
             <div className="grid grid-cols-2 gap-x-3 text-xs text-foreground">
-                <LegendGroup label="Uplift" bins={upliftBins} unit={unit} withinError={withinError} />
-                <LegendGroup label="Subsidence" bins={subsidenceBins} unit={unit} withinError={withinError} />
+                <LegendGroup label="Uplift" bins={upliftBins} unit={unit} zeroBound={zeroBound} />
+                <LegendGroup label="Subsidence" bins={subsidenceBins} unit={unit} zeroBound={zeroBound} />
             </div>
             {/* Hatch key (135deg so the swatch leans the same way as the SLD's shape://slash). */}
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">

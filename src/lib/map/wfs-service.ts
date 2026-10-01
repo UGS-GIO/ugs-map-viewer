@@ -63,28 +63,29 @@ export interface FetchAllWfsFeaturesOptions extends Omit<FetchWfsFeaturesOptions
 }
 
 /**
- * Fetches every feature for a typeName in pages, so no single request has to
- * carry the whole layer. The first page reports `numberMatched`; the rest load in
- * parallel. Throws when the loaded set isn't exactly `numberMatched` distinct
- * rows (short pages, or the layer changing between pages), so callers never
- * compute stats on a silently partial or duplicated set.
+ * Fetches every feature for a typeName in pages loaded in parallel: a 1-row
+ * request reports `numberMatched`, then every page goes out at once (GeoServer
+ * builds several smaller responses faster than one big one). Throws when the
+ * loaded set isn't exactly `numberMatched` distinct rows (short pages, or the
+ * layer changing between pages), so callers never compute stats on a silently
+ * partial or duplicated set.
  */
 export async function fetchAllWfsFeatures<G extends Geometry = Geometry, P = Record<string, unknown>>(
   wfsUrl: string,
   typeName: string,
-  { pageSize = 10000, ...options }: FetchAllWfsFeaturesOptions,
+  { pageSize = 5000, ...options }: FetchAllWfsFeaturesOptions,
 ): Promise<Feature<G, P>[]> {
-  const first = await fetchWfsFeatures<G, P>(wfsUrl, typeName, { ...options, count: pageSize })
-  const total = first.numberMatched
+  const probe = await fetchWfsFeatures<G, P>(wfsUrl, typeName, { ...options, count: 1 })
+  const total = probe.numberMatched
   if (typeof total !== 'number') {
     throw new Error(`WFS ${typeName}: response has no numberMatched, can't confirm the full set loaded`)
   }
   const offsets: number[] = []
-  for (let start = pageSize; start < total; start += pageSize) offsets.push(start)
-  const rest = await Promise.all(
+  for (let start = 0; start < total; start += pageSize) offsets.push(start)
+  const pages = await Promise.all(
     offsets.map(startIndex => fetchWfsFeatures<G, P>(wfsUrl, typeName, { ...options, count: pageSize, startIndex })),
   )
-  const features = [first, ...rest].flatMap(fc => fc.features)
+  const features = pages.flatMap(fc => fc.features)
   if (features.length !== total) {
     throw new Error(`WFS ${typeName}: loaded ${features.length} of ${total} features`)
   }

@@ -5,7 +5,7 @@ import type { Feature, Polygon, MultiPolygon } from 'geojson'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
 import { fetchAllWfsFeatures } from '@/lib/map/wfs-service'
-import { DATA_QUAL_ORDER, DISPLACEMENT_TYPE_NAME, getStyleNameForType, type ChartedType, type DisplacementType } from './displacement-layers'
+import { DATA_QUAL_ORDER, DISPLACEMENT_TYPE_NAME, getStyleNameForType, type DisplacementType } from './displacement-layers'
 import { fetchDisplacementSldBins, getZeroBound, type SldBin } from './displacement-sld-legend'
 
 export interface DisplacementProps {
@@ -132,7 +132,7 @@ export function useDisplacementSldBins(styleName: string) {
 
 // Resolve the SLD "Zero" deadband for a charted type. Returns null when bins
 // aren't loaded yet or the style omits a Zero rule.
-export function useDisplacementSldZeroBound(type: ChartedType): number | null {
+export function useDisplacementSldZeroBound(type: DisplacementType): number | null {
     const styleName = getStyleNameForType(type) ?? ''
     const select = useCallback(
         (bins: SldBin[]) => (bins.length > 0 ? getZeroBound(bins) : null),

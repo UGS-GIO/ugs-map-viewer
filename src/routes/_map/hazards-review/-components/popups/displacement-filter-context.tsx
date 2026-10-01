@@ -314,7 +314,8 @@ export function useEffectiveThresholdsIn(): Record<ChartedType, number> {
  * Translate filter state into per-layer cql_filter strings keyed by displacement
  * layer title. Combines with each layer's static `type='...'` cql via AND in
  * customLayerParameters — GeoServer concatenates these clauses. Only charted
- * types get a threshold clause (others have no threshold UI to tune it from).
+ * types get a threshold clause (Rate has no threshold UI); every type hides its
+ * within-error band.
  */
 
 export function useDisplacementLayerFilters(): Record<string, string> {
@@ -322,9 +323,14 @@ export function useDisplacementLayerFilters(): Record<string, string> {
     const effective = useEffectiveThresholdsIn()
     const cumulativeSld = useDisplacementSldZeroBound('Cumulative')
     const yearlySld = useDisplacementSldZeroBound('Yearly')
+    const rateSld = useDisplacementSldZeroBound('Vertical Displacement Rate')
     const { byType: latestByType, isPending: latestYearPending } = useDisplacementLatestYearByType()
     return useMemo(() => {
-        const zeroBoundByType: Record<ChartedType, number | null> = { 'Cumulative': cumulativeSld, 'Yearly': yearlySld }
+        const zeroBoundByType: Record<DisplacementType, number | null> = {
+            'Cumulative': cumulativeSld,
+            'Yearly': yearlySld,
+            'Vertical Displacement Rate': rateSld,
+        }
         const out: Record<DisplacementLayerTitle, string> = {} as Record<DisplacementLayerTitle, string>
         for (const [title, typeValue] of Object.entries(DISPLACEMENT_LAYER_TYPES) as [DisplacementLayerTitle, DisplacementType][]) {
             const clauses: string[] = []
@@ -347,14 +353,14 @@ export function useDisplacementLayerFilters(): Record<string, string> {
                 if (thresholdIn > 0) {
                     clauses.push(bandAtLeastCql(thresholdIn))
                 }
-                // Exclude the SLD "within uncertainty" deadband so the map matches
-                // the chart (which never plots deadband features) — including during
-                // the load window before the data-driven default tightens past the
-                // bound, otherwise the ±deadband contours flash in and back out.
-                const zeroBound = zeroBoundByType[typeValue]
-                if (zeroBound != null && zeroBound > 0) {
-                    clauses.push(bandAtLeastCql(zeroBound))
-                }
+            }
+            // Exclude the SLD "within error" band so the map matches the stats
+            // (which never count it) — including during the load window before a
+            // charted type's data-driven default tightens past the bound, otherwise
+            // the within-error contours flash in and back out.
+            const zeroBound = zeroBoundByType[typeValue]
+            if (zeroBound != null && zeroBound > 0) {
+                clauses.push(bandAtLeastCql(zeroBound))
             }
             const basins = basinsByType[typeValue]
             if (basins && basins.size > 0) {
@@ -368,5 +374,5 @@ export function useDisplacementLayerFilters(): Record<string, string> {
             if (clauses.length > 0) out[title] = clauses.join(' AND ')
         }
         return out
-    }, [yearOverridesByType, latestByType, latestYearPending, effective, cumulativeSld, yearlySld, basinsByType, excludedDataQualsByType])
+    }, [yearOverridesByType, latestByType, latestYearPending, effective, cumulativeSld, yearlySld, rateSld, basinsByType, excludedDataQualsByType])
 }
