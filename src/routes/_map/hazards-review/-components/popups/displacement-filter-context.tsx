@@ -59,7 +59,7 @@ interface DisplacementFilterState {
     clearBasins: (type: DisplacementType) => void
     toggleDataQual: (type: DisplacementType, qual: string) => void
     /** Show/hide several data_qual categories at once (e.g. low + very-low as one
-     * "unconfirmed low quality" toggle). */
+     * unconfirmed "Low quality" toggle). */
     setDataQualsVisible: (type: DisplacementType, quals: readonly string[], visible: boolean) => void
     clearDataQuals: (type: DisplacementType) => void
 }
@@ -211,7 +211,7 @@ export function DisplacementFilterProvider({ children }: { children: ReactNode }
     }, [update])
 
     // Show/hide a group of categories together (the low + very-low pair behind
-    // the single "unconfirmed low quality" toggle). visible=true un-excludes them,
+    // the single unconfirmed "Low quality" toggle). visible=true un-excludes them,
     // false excludes them; prunes back to the default key when they land there.
     const setDataQualsVisible = useCallback((type: DisplacementType, quals: readonly string[], visible: boolean) => {
         update(cur => {

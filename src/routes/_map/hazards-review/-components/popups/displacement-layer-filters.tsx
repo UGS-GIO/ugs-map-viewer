@@ -293,11 +293,11 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                                                     <Checkbox
                                                         checked={unconfirmedLowIndeterminate ? 'indeterminate' : unconfirmedLowVisible}
                                                         onCheckedChange={(v) => setDataQualsVisible(typeValue, LOW_DATA_QUALS, v === true)}
-                                                        aria-label="Toggle unconfirmed low-quality contours"
+                                                        aria-label="Toggle low-quality contours without independent observations"
                                                         className="mt-0.5"
                                                     />
                                                     <span className="flex flex-col leading-tight">
-                                                        <span>Unconfirmed low quality</span>
+                                                        <span>Low quality</span>
                                                         <span className="text-[10px] text-muted-foreground">{DATA_QUAL_DESCRIPTIONS['low']}, not independently confirmed</span>
                                                     </span>
                                                 </label>

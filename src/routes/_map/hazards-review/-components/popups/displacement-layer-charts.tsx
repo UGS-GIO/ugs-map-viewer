@@ -582,7 +582,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
             {/* General reading caveats — kept with the Units note as quiet fine-print
                 for the whole panel, not captioning the chart directly above. */}
             <p className="mt-1 px-2 text-xs italic text-muted-foreground">
-                Contours are disjoint bands, so area totals are not double-counted. Blank map areas are unmeasured, not necessarily stable. InSAR measures vertical ground motion, not its cause.
+                Contours are disjoint bands, so area totals are not double-counted. Blank map areas are unmeasured, not necessarily stable. InSAR measures ground motion, not its cause.
             </p>
         </div>
     )
