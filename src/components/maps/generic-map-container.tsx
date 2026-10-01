@@ -337,6 +337,8 @@ export default function GenericMapContainer({
     handleDrawComplete,
     registerPrepareForDraw,
     registerLayerTurnedOff,
+    registerSelectFeatures,
+    registerClearSelections,
     onMapReady,
   } = useMap()
 
@@ -382,6 +384,8 @@ export default function GenericMapContainer({
 
   // Register layer turned off callback with parent context (safe - callback is stable)
   registerLayerTurnedOff(handleLayerTurnedOff)
+  registerSelectFeatures(handleFeatureClick)
+  registerClearSelections(clearAllSelections)
 
   // Add map controls when map is ready (desktop only)
   useEffect(() => {
