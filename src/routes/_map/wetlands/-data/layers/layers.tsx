@@ -1,8 +1,48 @@
 import {
   ArcGISMapServerLayerProps,
   LayerProps,
+  LinkDefinition,
   PMTilesLayerProps,
 } from '@/lib/types/mapping-types'
+
+const createFilenameLinkTransform = (
+  value: string | null | undefined
+): LinkDefinition[] => {
+  if (!value || value === 'None') {
+    return [
+      {
+        href: '',
+        label: 'Not currently available',
+      },
+    ]
+  }
+  const parts = value.split('/').pop() || 'Unknown'
+  return [
+    {
+      href: value,
+      label: parts,
+    },
+  ]
+}
+
+const createPlotLinkTransform = (
+  value: string | null | undefined
+): LinkDefinition[] => {
+  if (!value) {
+    return [
+      {
+        href: '',
+        label: 'Not available',
+      },
+    ]
+  }
+  return [
+    {
+      href: value,
+      label: 'Open in a new tab',
+    },
+  ]
+}
 
 // Wetlands Mapping Layer Configurations
 const wetMetaLayerName = 'wetlands_wetlands_metadata'
@@ -30,23 +70,7 @@ const wetMetaConfig: PMTilesLayerProps = {
       linkFields: {
         suppmapinfo: {
           baseUrl: '',
-          transform: (value: string) => {
-            if (value === 'None') {
-              const transformedValues = {
-                href: '',
-                label: 'Not currently available',
-              }
-              return [transformedValues]
-            } else {
-              // the value is a url that needs to be transformed into href and label for the link
-              const parts = value.split('/').pop() || 'Unknown'
-              const transformedValues = {
-                href: value,
-                label: `${parts}`,
-              }
-              return [transformedValues]
-            }
-          },
+          transform: createFilenameLinkTransform,
         },
       },
     },
@@ -156,15 +180,7 @@ const ripMetaConfig: PMTilesLayerProps = {
       linkFields: {
         suppmapinfo: {
           baseUrl: '',
-          transform: (value: string) => {
-            // the value is a url that needs to be transformed into href and label for the link
-            const parts = value.split('/').pop()
-            const transformedValues = {
-              href: value,
-              label: `${parts}`,
-            }
-            return [transformedValues]
-          },
+          transform: createFilenameLinkTransform,
         },
       },
     },
@@ -271,15 +287,7 @@ const cacheProjectsConfig: PMTilesLayerProps = {
       linkFields: {
         report: {
           baseUrl: '',
-          transform: (value: string) => {
-            // the value is a url that needs to be transformed into href and label for the link
-            const parts = value.split('/').pop()
-            const transformedValues = {
-              href: value,
-              label: `${parts}`,
-            }
-            return [transformedValues]
-          },
+          transform: createFilenameLinkTransform,
         },
       },
     },
@@ -338,15 +346,7 @@ const assessmentConfig: PMTilesLayerProps = {
       linkFields: {
         projectreport: {
           baseUrl: '',
-          transform: (value: string) => {
-            // the value is a url that needs to be transformed into href and label for the link
-            const parts = value.split('/').pop()
-            const transformedValues = {
-              href: value,
-              label: `${parts}`,
-            }
-            return [transformedValues]
-          },
+          transform: createFilenameLinkTransform,
         },
       },
     },
@@ -485,13 +485,7 @@ const huc12ecoConfig: PMTilesLayerProps = {
       linkFields: {
         surface_water_plot: {
           baseUrl: '',
-          transform: (value: string) => {
-            const transformedValues = {
-              href: value,
-              label: `Open in a new tab`,
-            }
-            return [transformedValues]
-          },
+          transform: createPlotLinkTransform,
         },
       },
     },
@@ -522,13 +516,7 @@ const huc12Config: PMTilesLayerProps = {
       linkFields: {
         surface_water_plot: {
           baseUrl: '',
-          transform: (value: string) => {
-            const transformedValues = {
-              href: value,
-              label: `Open in a new tab`,
-            }
-            return [transformedValues]
-          },
+          transform: createPlotLinkTransform,
         },
       },
     },
@@ -560,13 +548,7 @@ const huc8ecoConfig: PMTilesLayerProps = {
       linkFields: {
         surface_water_plot: {
           baseUrl: '',
-          transform: (value: string) => {
-            const transformedValues = {
-              href: value,
-              label: `Open in a new tab`,
-            }
-            return [transformedValues]
-          },
+          transform: createPlotLinkTransform,
         },
       },
     },
@@ -597,13 +579,7 @@ const huc8Config: PMTilesLayerProps = {
       linkFields: {
         surface_water_plot: {
           baseUrl: '',
-          transform: (value: string) => {
-            const transformedValues = {
-              href: value,
-              label: `Open in a new tab`,
-            }
-            return [transformedValues]
-          },
+          transform: createPlotLinkTransform,
         },
       },
     },
