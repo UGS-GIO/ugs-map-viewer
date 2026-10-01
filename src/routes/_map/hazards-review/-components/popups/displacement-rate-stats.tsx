@@ -2,8 +2,9 @@ import { useCallback, useMemo, useRef } from 'react'
 import { ChevronLeft, MapPin } from 'lucide-react'
 import area from '@turf/area'
 import { Button } from '@/components/ui/button'
-import { useDisplacementFilters } from './displacement-filter-context'
+import { useDisplacementFilters, useEffectiveYear } from './displacement-filter-context'
 import {
+    getBucketYear,
     useDisplacementFeaturesByType,
     useDisplacementSldBins,
     type DisplacementFeature,
@@ -58,13 +59,20 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
             : features.filter(f => passesDataQuality(f.properties, excludedQuals)),
         [features, excludedQuals],
     )
+    // Rate spans several period-end years; the map draws only the selected one, so
+    // the KPIs and ranking use the same year. Null while the year is resolving.
+    const year = useEffectiveYear(RATE_TYPE)
+    const yearFiltered = useMemo(
+        () => (year ? qualFiltered.filter(f => getBucketYear(f.properties) === year) : []),
+        [qualFiltered, year],
+    )
     // Basin-scoped view drives the KPIs; the ranking below intentionally ignores
     // the basin filter so it stays complete (matching the charted BasinList).
     const scoped = useMemo(
         () => selectedBasins.size === 0
-            ? qualFiltered
-            : qualFiltered.filter(f => selectedBasins.has(f.properties.location)),
-        [qualFiltered, selectedBasins],
+            ? yearFiltered
+            : yearFiltered.filter(f => selectedBasins.has(f.properties.location)),
+        [yearFiltered, selectedBasins],
     )
     const measuredScoped = useMemo(
         () => scoped.filter(f => isMeasured(f.properties.value_inches_min)),
@@ -97,12 +105,12 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
         return { from, to }
     }, [scoped])
 
-    // Deepest (fastest) subsidence rate per basin, over ALL basins (skips the
+    // Deepest (fastest) subsidence rate per basin in the selected year, over ALL basins (skips the
     // basin filter like the charted ranking); precompute bbox per basin so the
     // click-to-zoom combines baked numbers instead of re-walking coordinates.
     const basinsByRate = useMemo(() => {
         const byLoc = new Map<string, { abs: number; signed: number; features: DisplacementFeature[] }>()
-        for (const f of qualFiltered) {
+        for (const f of yearFiltered) {
             const v = f.properties.value_inches_min
             if (!isMeasured(v)) continue
             const loc = f.properties.location
@@ -122,7 +130,7 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
             bbox: combinedBbox(locFeatures),
             bin: findBin(plotBins, signed),
         })).sort((a, b) => b.abs - a.abs)
-    }, [qualFiltered, isMeasured, plotBins])
+    }, [yearFiltered, isMeasured, plotBins])
 
     // Bar-width denominator: the fastest rate across the whole dataset, so a
     // basin's bar keeps the same physical meaning regardless of the active filter.

@@ -31,12 +31,21 @@ function toSwatchItems(bins: SldBin[], label: (b: SldBin) => string = b => b.tit
     return bins.map(b => ({ key: b.name, label: label(b), color: b.color }))
 }
 
-function LegendGroup({ label, bins, unit }: { label: string; bins: SldBin[]; unit: string }) {
+// The within-error band leads each column (it's the class nearest zero on both
+// sides), drawn with the SLD's own deadband color.
+function LegendGroup({ label, bins, unit, withinError }: { label: string; bins: SldBin[]; unit: string; withinError: SldBin | null }) {
     if (bins.length === 0) return <div />
+    const zeroBound = withinError ? getZeroBound([withinError]) : null
+    const items = [
+        ...(withinError && zeroBound != null
+            ? [{ key: `${withinError.name}-${label}`, label: `0–${zeroBound} ${unit} within error`, color: withinError.color }]
+            : []),
+        ...toSwatchItems(bins, b => magnitudeLabel(b, unit)),
+    ]
     return (
         <div className="flex flex-col gap-1 min-w-0">
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-            <LegendSwatchGrid items={toSwatchItems(bins, b => magnitudeLabel(b, unit))} columns="single" />
+            <LegendSwatchGrid items={items} columns="single" />
         </div>
     )
 }
@@ -45,9 +54,7 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
     const styleName = getStyleNameForType(typeValue) ?? ''
     const { data: bins = [], isLoading } = useDisplacementSldBins(styleName)
 
-    // Deadband bound from the shared, hardened helper (returns null when the SLD
-    // has no parseable Zero rule) rather than re-deriving it inline.
-    const zeroBound = useMemo(() => getZeroBound(bins), [bins])
+    const withinError = useMemo(() => bins.find(b => b.isZero) ?? null, [bins])
     // Same split + ordering as the chart's SignedLegendGroup: closest-to-zero
     // bin first within each side, deepest/highest band last.
     const subsidenceBins = useMemo(
@@ -72,20 +79,13 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
                 <span className="text-[11px] italic text-muted-foreground">{getUnitsLabelForType(typeValue)}</span>
             </div>
             <div className="grid grid-cols-2 gap-x-3 text-xs text-foreground">
-                <LegendGroup label="Uplift" bins={upliftBins} unit={unit} />
-                <LegendGroup label="Subsidence" bins={subsidenceBins} unit={unit} />
+                <LegendGroup label="Uplift" bins={upliftBins} unit={unit} withinError={withinError} />
+                <LegendGroup label="Subsidence" bins={subsidenceBins} unit={unit} withinError={withinError} />
             </div>
-            {/* Map-reading footnotes on one compact, wrapping row: the hatch key
-                (135deg so the swatch leans the same way as the SLD's shape://slash)
-                + the within-error band. Keeps the legend short vertically. */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5">
-                    <HatchSwatch />
-                    Hatched = low quality, independent observations
-                </span>
-                {zeroBound != null && (
-                    <span>0–{zeroBound} {unit} within error</span>
-                )}
+            {/* Hatch key (135deg so the swatch leans the same way as the SLD's shape://slash). */}
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <HatchSwatch />
+                Low quality, independent observations
             </div>
         </div>
     )

@@ -78,12 +78,16 @@ export function useMapCoordinates() {
             };
             mapLibreInstance.on('zoom', handleZoom);
 
-            // The scale depends on the center latitude too, so refresh it after any
-            // pan (keyboard, fly-to, zoom-to) without touching the cursor readout.
+            // The scale depends on the center latitude and the canvas size, so refresh
+            // it after any pan (keyboard, fly-to, zoom-to), on resize, and once the first
+            // frame has rendered (the canvas can still be 0px wide at mount), without
+            // touching the cursor readout.
             const handleMoveEnd = () => {
                 setScale(Math.round(scaleDenominator(metersPerPixelAtCenter(mapLibreInstance))));
             };
             mapLibreInstance.on('moveend', handleMoveEnd);
+            mapLibreInstance.on('resize', handleMoveEnd);
+            mapLibreInstance.once('idle', handleMoveEnd);
 
             // Throttle mousemove the same way - fires on every pixel of movement
             let moveRaf: number | null = null;
@@ -96,6 +100,8 @@ export function useMapCoordinates() {
             return () => {
                 mapLibreInstance.off('zoom', handleZoom);
                 mapLibreInstance.off('moveend', handleMoveEnd);
+                mapLibreInstance.off('resize', handleMoveEnd);
+                mapLibreInstance.off('idle', handleMoveEnd);
                 mapLibreInstance.off('mousemove', handleMouseMove);
                 if (zoomRaf) cancelAnimationFrame(zoomRaf);
                 if (moveRaf) cancelAnimationFrame(moveRaf);

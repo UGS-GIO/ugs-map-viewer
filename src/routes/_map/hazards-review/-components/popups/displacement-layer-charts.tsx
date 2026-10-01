@@ -636,7 +636,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     else if (typeValue === 'Cumulative')
         summaryLine = `Since ${period?.from ?? '—'}, land in ${whereText} has subsided up to ${fmt1(maxDisplacement)} in — about ${fmt1(totalAreaSqMi)} mi² is subsiding now.`
     else
-        summaryLine = `In ${year ?? '—'}, land in ${whereText} sank up to ${fmt1(maxDisplacement)} in — about ${fmt1(totalAreaSqMi)} mi² subsided.`
+        summaryLine = `In ${year ?? '—'}, land in ${whereText} subsided up to ${fmt1(maxDisplacement)} in — about ${fmt1(totalAreaSqMi)} mi² subsided.`
 
     return (
         <div className="mb-3 flex flex-col gap-3 px-2 py-1">
