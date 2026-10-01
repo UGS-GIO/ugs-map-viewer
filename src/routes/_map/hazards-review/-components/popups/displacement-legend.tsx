@@ -71,7 +71,7 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
             </div>
             {/* One note for both directions; the map doesn't draw this band. */}
             {zeroBound != null && (
-                <div className="text-xs text-muted-foreground">0–{zeroBound} {unit} within error</div>
+                <div className="text-xs text-muted-foreground">* 0–{zeroBound} {unit} within error</div>
             )}
             <div className="grid grid-cols-2 gap-x-3 text-xs text-foreground">
                 <LegendGroup label="Uplift" bins={upliftBins} unit={unit} />
