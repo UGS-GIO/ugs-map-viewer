@@ -12,7 +12,17 @@ export interface FetchWfsFeaturesOptions {
   crs?: string
   /** Optional CQL attribute filter applied via `CQL_FILTER`. */
   cqlFilter?: string
+  /** Zero-based offset of the first feature (WFS 2.0 paging). */
+  startIndex?: number
+  /** Attribute to sort ascending on; GeoServer needs one for stable paging. */
+  sortBy?: string
+  /** Cancels the request (e.g. TanStack Query's signal). */
+  signal?: AbortSignal
 }
+
+/** GeoServer's GeoJSON output adds the WFS 2.0 match counts to the collection. */
+export type WfsFeatureCollection<G extends Geometry = Geometry, P = Record<string, unknown>> =
+  FeatureCollection<G, P> & { numberMatched?: number; numberReturned?: number }
 
 /**
  * Plain WFS 2.0 GetFeature — fetches the entire FeatureCollection for a
@@ -24,8 +34,8 @@ export async function fetchWfsFeatures<G extends Geometry = Geometry, P = Record
   wfsUrl: string,
   typeName: string,
   options: FetchWfsFeaturesOptions = {},
-): Promise<FeatureCollection<G, P>> {
-  const { count, crs = 'EPSG:4326', cqlFilter } = options
+): Promise<WfsFeatureCollection<G, P>> {
+  const { count, crs = 'EPSG:4326', cqlFilter, startIndex, sortBy, signal } = options
   const url = new URL(wfsUrl)
   url.searchParams.set('service', 'WFS')
   url.searchParams.set('version', '2.0.0')
@@ -35,12 +45,55 @@ export async function fetchWfsFeatures<G extends Geometry = Geometry, P = Record
   url.searchParams.set('srsName', crs)
   if (count) url.searchParams.set('count', String(count))
   if (cqlFilter) url.searchParams.set('CQL_FILTER', cqlFilter)
+  if (startIndex) url.searchParams.set('startIndex', String(startIndex))
+  if (sortBy) url.searchParams.set('sortBy', `${sortBy} A`)
 
-  const response = await fetch(url.toString())
+  const response = await fetch(url.toString(), { signal })
   if (!response.ok) {
     throw new Error(`WFS request failed: ${response.status} ${response.statusText}`)
   }
-  return response.json() as Promise<FeatureCollection<G, P>>
+  return response.json() as Promise<WfsFeatureCollection<G, P>>
+}
+
+export interface FetchAllWfsFeaturesOptions extends Omit<FetchWfsFeaturesOptions, 'count' | 'startIndex'> {
+  /** Features per request. */
+  pageSize?: number
+  /** Unique sort attribute; required so pages don't overlap or skip rows. */
+  sortBy: string
+}
+
+/**
+ * Fetches every feature for a typeName in pages loaded in parallel: a 1-row
+ * request reports `numberMatched`, then every page goes out at once (GeoServer
+ * builds several smaller responses faster than one big one). Throws when the
+ * loaded set isn't exactly `numberMatched` distinct rows (short pages, or the
+ * layer changing between pages), so callers never compute stats on a silently
+ * partial or duplicated set.
+ */
+export async function fetchAllWfsFeatures<G extends Geometry = Geometry, P = Record<string, unknown>>(
+  wfsUrl: string,
+  typeName: string,
+  { pageSize = 5000, ...options }: FetchAllWfsFeaturesOptions,
+): Promise<Feature<G, P>[]> {
+  const probe = await fetchWfsFeatures<G, P>(wfsUrl, typeName, { ...options, count: 1 })
+  const total = probe.numberMatched
+  if (typeof total !== 'number') {
+    throw new Error(`WFS ${typeName}: response has no numberMatched, can't confirm the full set loaded`)
+  }
+  const offsets: number[] = []
+  for (let start = 0; start < total; start += pageSize) offsets.push(start)
+  const pages = await Promise.all(
+    offsets.map(startIndex => fetchWfsFeatures<G, P>(wfsUrl, typeName, { ...options, count: pageSize, startIndex })),
+  )
+  const features = pages.flatMap(fc => fc.features)
+  if (features.length !== total) {
+    throw new Error(`WFS ${typeName}: loaded ${features.length} of ${total} features`)
+  }
+  const distinct = new Set(features.map(f => (f.properties as Record<string, unknown> | null)?.[options.sortBy]))
+  if (distinct.size !== total) {
+    throw new Error(`WFS ${typeName}: pages overlapped (${distinct.size} distinct ${options.sortBy} of ${total}); the layer may have changed mid-load`)
+  }
+  return features
 }
 
 export interface WfsFeature {

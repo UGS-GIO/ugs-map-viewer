@@ -28,6 +28,12 @@ export function subsidenceDepthIn(f: DisplacementFeature): number {
     return v < 0 ? -v : 0
 }
 
+/** Least subsidence anywhere in the band: its shallow edge, 0 unless the whole band sinks. */
+function subsidenceFloorIn(f: DisplacementFeature): number {
+    const v = f.properties.value_inches_max
+    return v < 0 ? -v : 0
+}
+
 /** Deepest subsidence (inches) per basin. Basins whose only motion is uplift are omitted. */
 export function deepestSubsidenceByBasin(features: DisplacementFeature[]): Map<string, number> {
     const out = new Map<string, number>()
@@ -72,9 +78,9 @@ export function deepestSubsidenceByYear(features: DisplacementFeature[]): Map<st
 }
 
 /**
- * Total area (mi²) of features sinking at least `minInches`, per closing year.
- * Bands are disjoint, so this sum is the true footprint at/below the threshold.
- * `areaMi2Of` maps a feature to its area in square miles.
+ * Total area (mi²) of bands sinking at least `minInches` throughout (shallow edge
+ * at or past it), per closing year. Bands are disjoint, so this sum is the true
+ * footprint at/below the threshold. `areaMi2Of` maps a feature to its area in mi².
  */
 export function subsidedAreaByYear(
     features: DisplacementFeature[],
@@ -83,7 +89,7 @@ export function subsidedAreaByYear(
 ): Map<string, number> {
     const out = new Map<string, number>()
     for (const f of features) {
-        if (subsidenceDepthIn(f) < minInches) continue
+        if (subsidenceFloorIn(f) < minInches) continue
         const y = bucketYear(f)
         if (!y) continue
         out.set(y, (out.get(y) ?? 0) + areaMi2Of(f))
@@ -114,11 +120,34 @@ export function displacementSummary(
     let areaMi2 = 0
     const basins = new Set<string>()
     for (const f of features) {
+        if (subsidenceFloorIn(f) < minInches) continue
         const depth = subsidenceDepthIn(f)
-        if (depth < minInches) continue
         if (depth > maxDepthIn) maxDepthIn = depth
         areaMi2 += areaMi2Of(f)
         if (f.properties.location) basins.add(f.properties.location)
     }
     return { maxDepthIn, areaMi2, basinCount: basins.size }
+}
+
+/**
+ * Largest |value_inches_min| in the set and where it was read: the basin name,
+ * "N basins" when several tie (band values are discrete, so ties are common), or
+ * undefined for an empty set.
+ */
+export function maxReadingWithBasin(features: DisplacementFeature[]): { max: number; where: string | undefined } {
+    let max = 0
+    const basins = new Set<string>()
+    for (const f of features) {
+        const a = Math.abs(f.properties.value_inches_min)
+        const loc = f.properties.location
+        if (a > max) {
+            max = a
+            basins.clear()
+            if (loc) basins.add(loc)
+        } else if (a === max && a > 0 && loc) {
+            basins.add(loc)
+        }
+    }
+    const where = basins.size === 1 ? [...basins][0] : basins.size > 1 ? `${basins.size} basins` : undefined
+    return { max, where }
 }

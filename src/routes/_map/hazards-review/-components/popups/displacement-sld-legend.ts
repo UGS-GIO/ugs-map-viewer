@@ -46,10 +46,10 @@ function parseComparisons(text: string): SldComparison[] {
 
 // Parse a SLD CQL-style filter like:
 //   [value_inches_min >= '-12' AND value_inches_min < '-8' AND NOT (value_inches_min >= '-2' AND value_inches_min <= '2')]
-// The NOT-deadband subclause is kept, not stripped: it's inclusive at both ends
-// while band bounds are half-open, so values on a shared edge (every contour —
-// they're whole inches) belong to the deadband alone. {min, max} is still
-// derived for ordering and deadband detection.
+// The NOT-deadband subclause is kept, not stripped, so a value on a shared edge
+// goes to whichever class the style says owns it (the ranged styles use [lo, hi)
+// everywhere, older ones made the deadband inclusive at both ends). {min, max} is
+// still derived for ordering and deadband detection.
 export function parseRuleFilter(filter: string): { include: SldComparison[]; exclude: SldComparison[]; min: number; max: number } {
     const excluded: string[] = []
     const stripped = filter.replace(/\s*AND\s+NOT\s*\(([^)]+)\)/g, (_full, inner: string) => {
