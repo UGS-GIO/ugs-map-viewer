@@ -8,6 +8,8 @@ import {
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { useMap } from '@/hooks/use-map'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { useSidebar } from '@/hooks/use-sidebar'
 import { type FilterSchema } from '@/lib/filter/types'
 import { wetlandSurveySitesTitle } from '../../-data/layers/layers'
 import { wetlandPlantsFilterSchema } from '../../-data/layers/wetlandplants-schema'
@@ -44,6 +46,8 @@ function SchemaFilters({ schema, hideFields }: WetlandPlantsFilterConfig) {
   const { selectFeatures, clearAllSelections } = useMap()
   const navigate = useNavigate()
   const search = useSearch({ from: '/_map' })
+  const isMobile = useIsMobile()
+  const { setNavOpened } = useSidebar()
   const isTableOpen = search.view === 'split' || search.view === 'table'
 
   const openTableMutation = useMutation({
@@ -99,6 +103,7 @@ function SchemaFilters({ schema, hideFields }: WetlandPlantsFilterConfig) {
                         * EXCLUDE (geom)
                     FROM read_parquet('${escapeSql(url)}')
                     ${whereClause}
+                    LIMIT 10000
                 `)
         let fallbackId = 0
         return res.toArray().map((row) => {
@@ -128,11 +133,14 @@ function SchemaFilters({ schema, hideFields }: WetlandPlantsFilterConfig) {
     },
     onSuccess: (features) => {
       selectFeatures(features)
+      if (isMobile) {
+        setNavOpened(false)
+      }
       navigate({
         to: '.',
         search: (prev: Record<string, unknown>) => ({
           ...prev,
-          view: 'split' as const,
+          view: isMobile ? ('table' as const) : ('split' as const),
         }),
         replace: true,
       })
@@ -141,6 +149,9 @@ function SchemaFilters({ schema, hideFields }: WetlandPlantsFilterConfig) {
 
   const handleCloseTable = () => {
     clearAllSelections()
+    if (isMobile) {
+      setNavOpened(false)
+    }
     navigate({
       to: '.',
       search: (prev: Record<string, unknown>) => ({ ...prev, view: undefined }),

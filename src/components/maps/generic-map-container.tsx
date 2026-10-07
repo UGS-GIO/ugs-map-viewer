@@ -382,10 +382,19 @@ export default function GenericMapContainer({
     awaitingRasterOpenRef.current = !!bounds && viewMode === 'map'
   }, [setClickBufferBounds, viewMode])
 
-  // Register layer turned off callback with parent context (safe - callback is stable)
-  registerLayerTurnedOff(handleLayerTurnedOff)
-  registerSelectFeatures(handleFeatureClick)
-  registerClearSelections(clearAllSelections)
+  // Register callbacks with parent context
+  useEffect(() => {
+    registerLayerTurnedOff(handleLayerTurnedOff)
+    registerSelectFeatures(handleFeatureClick)
+    registerClearSelections(clearAllSelections)
+  }, [
+    registerLayerTurnedOff,
+    handleLayerTurnedOff,
+    registerSelectFeatures,
+    handleFeatureClick,
+    registerClearSelections,
+    clearAllSelections,
+  ])
 
   // Add map controls when map is ready (desktop only)
   useEffect(() => {
@@ -485,8 +494,9 @@ export default function GenericMapContainer({
     setToolbarDrawShape('off')
   }, [clearSelectionState])
 
-  // Register once (safe - callback is stable)
-  registerPrepareForDraw(prepareForDraw)
+  useEffect(() => {
+    registerPrepareForDraw(prepareForDraw)
+  }, [registerPrepareForDraw, prepareForDraw])
 
   // Centralized mode setter - handles mutual exclusivity (non-draw modes)
   const setActiveMode = useCallback((
