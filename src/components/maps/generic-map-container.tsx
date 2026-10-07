@@ -768,11 +768,11 @@ export default function GenericMapContainer({
 
       {/* Table section */}
       <div
-        className="bg-background border-t overflow-hidden"
+        className="bg-background border-t overflow-hidden min-h-0 min-w-0 w-full"
         style={{
           flex: viewMode === 'map' ? '0 0 0%'
             : viewMode === 'split' ? `1 1 ${panelState.tablePanelSize}%`
-            : '1 1 100%'
+            : '1 1 0%'
         }}
       >
         {(viewMode === 'split' || viewMode === 'table') && (

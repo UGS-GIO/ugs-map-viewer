@@ -141,6 +141,7 @@ function SchemaFilters({ schema, hideFields }: WetlandPlantsFilterConfig) {
         search: (prev: Record<string, unknown>) => ({
           ...prev,
           view: isMobile ? ('table' as const) : ('split' as const),
+          tab: isMobile ? 'home' : (prev.tab as string | undefined),
         }),
         replace: true,
       })
@@ -154,7 +155,11 @@ function SchemaFilters({ schema, hideFields }: WetlandPlantsFilterConfig) {
     }
     navigate({
       to: '.',
-      search: (prev: Record<string, unknown>) => ({ ...prev, view: undefined }),
+      search: (prev: Record<string, unknown>) => ({
+        ...prev,
+        view: undefined,
+        tab: isMobile ? 'home' : (prev.tab as string | undefined),
+      }),
       replace: true,
     })
   }
