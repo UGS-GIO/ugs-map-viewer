@@ -14,12 +14,11 @@ interface AppBarProps {
 }
 
 const AppBar = ({ search, actions }: AppBarProps) => {
-  const { navOpened, setNavOpened, isCollapsed, setIsCollapsed } = useSidebar()
+  const { navOpened, setNavOpened } = useSidebar()
   const appTitle = getAppTitle(useGetCurrentPage())
 
   const handleMenuClick = () => {
     setNavOpened((prev) => !prev)
-    if (!isCollapsed) setIsCollapsed(true)
   }
 
   return (

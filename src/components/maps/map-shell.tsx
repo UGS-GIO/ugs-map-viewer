@@ -32,13 +32,13 @@ const MapShell = ({ search, actions, children }: MapShellProps) => {
                 Skip to map
             </a>
             <AppBar search={search} actions={actions} />
-            <div className="relative min-h-0">
+            <div className="relative min-h-0 min-w-0 overflow-hidden">
                 <Sidebar />
                 <main
                     id="content"
                     tabIndex={-1}
                     aria-label="Map"
-                    className="h-full overflow-hidden transition-[margin] duration-200 ease-linear"
+                    className="h-full min-w-0 overflow-hidden transition-[margin] duration-200 ease-linear"
                     style={{ marginLeft: `${sidebarWidth}px` }}
                 >
                     {children}

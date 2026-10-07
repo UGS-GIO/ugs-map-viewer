@@ -303,9 +303,9 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
     }
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full min-w-0 w-full overflow-hidden">
             {/* Header row 1: Layer selector + close */}
-            <div className="flex items-center justify-between gap-2 py-1.5 px-2 md:px-4 border-b shrink-0 bg-background">
+            <div className="flex items-center justify-between gap-2 py-1.5 px-2 md:px-4 border-b shrink-0 bg-background min-w-0 w-full">
                 {layersWithData.length > 1 ? (
                     <select
                         aria-label="Choose which layer's results to show"
@@ -324,7 +324,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                         })}
                     </select>
                 ) : (
-                    <span className="text-sm font-medium truncate">
+                    <span className="text-sm font-medium truncate min-w-0 flex-1">
                         {selectedLayer?.layerTitle || selectedLayer?.groupLayerTitle} ({rowData.length})
                     </span>
                 )}
@@ -370,7 +370,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             </div>
 
             {/* Header row 2: Selection actions / Column filter + search */}
-            <div className="flex items-center gap-2 py-1.5 px-2 md:px-4 border-b shrink-0 bg-muted/30">
+            <div className="flex items-center gap-2 py-1.5 px-2 md:px-4 border-b shrink-0 bg-muted/30 min-w-0 w-full">
                 {hasSelection ? (
                     <div className="flex items-center gap-2 flex-1">
                         <span className="text-xs text-muted-foreground">
@@ -401,7 +401,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             aria-label="Column to search"
                             value={filter.column}
                             onChange={(e) => setFilter({ column: e.target.value, value: '' })}
-                            className="h-7 px-2 rounded-md border border-input bg-background text-sm shrink-0"
+                            className="h-7 px-2 rounded-md border border-input bg-background text-sm shrink-0 max-w-[130px] truncate"
                         >
                             <option value="all">All</option>
                             {columnConfigs.map((config) => (
@@ -496,8 +496,8 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             </div>
 
             {/* Table */}
-            <div className="flex-1 min-h-0 overflow-hidden">
-                <div className="h-full overflow-auto">
+            <div className="flex-1 min-h-0 min-w-0 w-full overflow-hidden">
+                <div className="h-full w-full overflow-auto">
                     <Table style={{ minWidth: table.getCenterTotalSize() }}>
                         <TableHeader className="sticky top-0 bg-background z-10">
                             {table.getHeaderGroups().map((headerGroup) => (

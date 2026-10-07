@@ -18,6 +18,7 @@ import { Suspense } from 'react'
 import { ChevronLeft } from 'lucide-react'
 import { Spinner } from './ui/loading-spinner'
 import { useSidebar } from '@/hooks/use-sidebar'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { SideLink } from '@/lib/types/sidelink-types'
 import ThemeSwitch from '@/components/theme-switch'
 import { TourButton } from '@/components/tour-button'
@@ -43,6 +44,7 @@ export default function Nav({
   className,
 }: NavProps) {
   const { currentContent, setCurrentContent } = useSidebar()
+  const isMobile = useIsMobile()
   const renderLink = (link: SideLink) => {
     const key = `${link.title}`
 
@@ -57,7 +59,7 @@ export default function Nav({
     //     />
     //   )
 
-    if (isCollapsed) return;
+    if (isCollapsed && !isMobile) return;
 
     if (link.sub)
       return (
@@ -76,7 +78,7 @@ export default function Nav({
         closeNav={closeNav}
         setCurrentContent={setCurrentContent}
         currentContent={currentContent}
-        isCollapsed={isCollapsed}
+        isCollapsed={isMobile ? false : isCollapsed}
       />
     )
   }

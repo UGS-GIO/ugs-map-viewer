@@ -337,6 +337,8 @@ export default function GenericMapContainer({
     handleDrawComplete,
     registerPrepareForDraw,
     registerLayerTurnedOff,
+    registerSelectFeatures,
+    registerClearSelections,
     onMapReady,
   } = useMap()
 
@@ -380,8 +382,19 @@ export default function GenericMapContainer({
     awaitingRasterOpenRef.current = !!bounds && viewMode === 'map'
   }, [setClickBufferBounds, viewMode])
 
-  // Register layer turned off callback with parent context (safe - callback is stable)
-  registerLayerTurnedOff(handleLayerTurnedOff)
+  // Register callbacks with parent context
+  useEffect(() => {
+    registerLayerTurnedOff(handleLayerTurnedOff)
+    registerSelectFeatures(handleFeatureClick)
+    registerClearSelections(clearAllSelections)
+  }, [
+    registerLayerTurnedOff,
+    handleLayerTurnedOff,
+    registerSelectFeatures,
+    handleFeatureClick,
+    registerClearSelections,
+    clearAllSelections,
+  ])
 
   // Add map controls when map is ready (desktop only)
   useEffect(() => {
@@ -481,8 +494,9 @@ export default function GenericMapContainer({
     setToolbarDrawShape('off')
   }, [clearSelectionState])
 
-  // Register once (safe - callback is stable)
-  registerPrepareForDraw(prepareForDraw)
+  useEffect(() => {
+    registerPrepareForDraw(prepareForDraw)
+  }, [registerPrepareForDraw, prepareForDraw])
 
   // Centralized mode setter - handles mutual exclusivity (non-draw modes)
   const setActiveMode = useCallback((
@@ -754,11 +768,11 @@ export default function GenericMapContainer({
 
       {/* Table section */}
       <div
-        className="bg-background border-t overflow-hidden"
+        className="bg-background border-t overflow-hidden min-h-0 min-w-0 w-full"
         style={{
           flex: viewMode === 'map' ? '0 0 0%'
             : viewMode === 'split' ? `1 1 ${panelState.tablePanelSize}%`
-            : '1 1 100%'
+            : '1 1 0%'
         }}
       >
         {(viewMode === 'split' || viewMode === 'table') && (
