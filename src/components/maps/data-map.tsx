@@ -845,16 +845,17 @@ export default function DataMap({
           }
           if (isPMTilesLayer(layer)) {
             const fragment = pmtilesFragments.get(layer.title || '')!
-            const activeSymbology = vectorLayerSymbology[layer.title] || ''
-            const styleOverride = pmtilesStyleOverrides[layer.title]
+            const title = layer.title || ''
+            const activeSymbology = title ? vectorLayerSymbology[title] || '' : ''
+            const styleOverride = title ? pmtilesStyleOverrides[title] : undefined
             return (
               <PMTilesLayerSource
-                key={`${layer.title}-${activeSymbology}`}
+                key={`${title}-${activeSymbology}`}
                 layer={layer}
                 fragment={fragment}
                 activeSymbology={activeSymbology}
                 beforeId={beforeId}
-                layerFilter={vectorLayerFilters[layer.title]}
+                layerFilter={title ? vectorLayerFilters[title] : undefined}
                 hidden={hidden}
                 opacity={opacity}
                 styleOverride={styleOverride}
