@@ -36,7 +36,7 @@ import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
 import { toast } from 'sonner'
 
 // Re-export types for consumers
-export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps } from './types'
+export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps, PMTilesStyleOverride } from './types'
 
 type DataLayer = WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps | PMTilesLayerProps
 
@@ -273,6 +273,7 @@ export default function DataMap({
   layerStyles = {},
   vectorLayerFilters = {},
   vectorLayerSymbology = {},
+  pmtilesStyleOverrides = {},
   onMapReady,
   basemapId,
   clickBufferBounds,
@@ -851,6 +852,7 @@ export default function DataMap({
           if (isPMTilesLayer(layer)) {
             const fragment = pmtilesFragments.get(layer.title || '')!
             const activeSymbology = vectorLayerSymbology[layer.title] || ''
+            const styleOverride = pmtilesStyleOverrides[layer.title]
             return (
               <PMTilesLayerSource
                 key={`${layer.title}-${activeSymbology}`}
@@ -861,6 +863,7 @@ export default function DataMap({
                 layerFilter={vectorLayerFilters[layer.title]}
                 hidden={hidden}
                 opacity={opacity}
+                styleOverride={styleOverride}
               />
             )
           }
