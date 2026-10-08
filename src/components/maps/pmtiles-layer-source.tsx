@@ -215,6 +215,11 @@ function withOpacity(paint: Record<string, unknown> | undefined, type: string, o
     return out
 }
 
+export interface PMTilesStyleOverride {
+    fillColor?: unknown
+    paint?: Record<string, unknown>
+}
+
 /**
  * Build the MapLibre layer specs for one PMTiles layer's active style fragment.
  *
@@ -224,30 +229,58 @@ function withOpacity(paint: Record<string, unknown> | undefined, type: string, o
  * Kept separate from the JSX so the mapping is unit-testable. [ALL-5727]
  */
 export function buildPmtilesLayerSpecs({
-    layer, fragment, layerFilter, hidden, opacity,
+    layer, fragment, layerFilter, hidden, opacity, styleOverride,
 }: {
     layer: PMTilesLayerProps
     fragment: StyleFragment
     layerFilter?: maplibregl.FilterSpecification
     hidden?: boolean
     opacity?: number
+    styleOverride?: PMTilesStyleOverride
 }): LayerProps[] {
     const sourceId = getPmtilesSourceId(layer)
     const primaryId = getPmtilesLayerId(layer)
-    const styleLayers = (fragment.layers ?? []).filter(
+    const rawLayers = fragment.layers ?? []
+    const styleLayers = rawLayers.filter(
         l => l['source-layer'] == null || l['source-layer'] === layer.sourceLayer,
     )
 
-    return styleLayers.map((l, i) => {
+    let layersToRender = [...styleLayers]
+    if (styleOverride?.fillColor) {
+        const hasFill = layersToRender.some(l => l.type === 'fill')
+        if (!hasFill) {
+            const fillLayer: StyleFragmentLayer = {
+                id: `${primaryId}-dynamic-fill`,
+                type: 'fill',
+                'source-layer': layer.sourceLayer,
+                paint: {
+                    'fill-color': styleOverride.fillColor,
+                    'fill-opacity': 0.75,
+                },
+            }
+            layersToRender = [fillLayer, ...layersToRender]
+        }
+    }
+
+    return layersToRender.map((l, i) => {
         const fragmentFilter = l.filter as maplibregl.FilterSpecification | undefined
         const filters = [fragmentFilter, layerFilter].filter(Boolean) as maplibregl.FilterSpecification[]
         const filter = filters.length === 2 ? (['all', ...filters] as unknown as maplibregl.FilterSpecification) : filters[0]
+
+        let paint = l.paint
+        if (styleOverride?.fillColor && l.type === 'fill') {
+            paint = { ...paint, 'fill-color': styleOverride.fillColor }
+        }
+        if (styleOverride?.paint) {
+            paint = { ...paint, ...styleOverride.paint }
+        }
+
         return buildFragmentLayerSpec(l, {
             layerId: i === 0 ? primaryId : `${primaryId}-${i}`,
             sourceId,
             sourceLayer: layer.sourceLayer,
             visible: !hidden,
-            paint: withOpacity(l.paint, l.type, opacity ?? layer.opacity),
+            paint: withOpacity(paint, l.type, opacity ?? layer.opacity),
             filter,
             metadata: { title: layer.title, pmtilesLayer: true, pmtilesSourceId: sourceId },
             visibleZoomRange: layer.visibleZoomRange,
@@ -256,7 +289,7 @@ export function buildPmtilesLayerSpecs({
 }
 
 export function PMTilesLayerSource({
-    layer, fragment, activeSymbology, beforeId, layerFilter, hidden, opacity,
+    layer, fragment, activeSymbology, beforeId, layerFilter, hidden, opacity, styleOverride,
 }: {
     layer: PMTilesLayerProps
     fragment: StyleFragment
@@ -265,6 +298,7 @@ export function PMTilesLayerSource({
     layerFilter?: maplibregl.FilterSpecification
     hidden?: boolean
     opacity?: number
+    styleOverride?: PMTilesStyleOverride
 }) {
     const { current: mapRef } = useMap()
     const sourceId = getPmtilesSourceId(layer)
@@ -283,7 +317,7 @@ export function PMTilesLayerSource({
         )
     }, [render, mapRef, layer.title])
 
-    const specs = buildPmtilesLayerSpecs({ layer, fragment, layerFilter, hidden, opacity })
+    const specs = buildPmtilesLayerSpecs({ layer, fragment, layerFilter, hidden, opacity, styleOverride })
 
     return (
         <Source id={sourceId} type="vector" url={url}>
