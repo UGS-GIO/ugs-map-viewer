@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMemo, useEffect } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearch } from '@tanstack/react-router'
 import {
   LANDSCAPE_GROUP_TITLE,
+  LANDSCAPE_SCALES,
   getStacItemIdForScale,
   resolveMetricsForLayer,
   computeClassBreaks,
@@ -45,14 +46,63 @@ export interface LandscapeChoroplethResult {
 }
 
 function formatValue(val: number, unit?: string): string {
+  const unitSuffix = unit ? (unit === '%' ? '%' : ` ${unit}`) : ''
   if (Math.abs(val) >= 1000) {
-    return `${Math.round(val).toLocaleString()}${unit ? ` ${unit}` : ''}`
+    return `${Math.round(val).toLocaleString()}${unitSuffix}`
   }
   if (Math.abs(val) < 0.01 && val !== 0) {
-    return `${val.toExponential(1)}${unit ? ` ${unit}` : ''}`
+    return `${val.toExponential(1)}${unitSuffix}`
   }
-  const formatted = Number(val.toFixed(2)).toString()
-  return `${formatted}${unit === '%' ? '%' : unit ? ` ${unit}` : ''}`
+  return `${Number(val.toFixed(2))}${unitSuffix}`
+}
+
+export function getLandscapeParquetUrl(stacItemId: string): string {
+  return `https://maps-assets.geology.utah.gov/warehouse/geoparquet/${stacItemId}/${stacItemId}.parquet`
+}
+
+export async function fetchLandscapeMetricValues(stacItemId: string, metric: string): Promise<number[]> {
+  const url = getLandscapeParquetUrl(stacItemId)
+  const { withConnection, escapeSql, quoteIdent } = await import('@/lib/duckdb/client')
+
+  return withConnection(async (conn) => {
+    const res = await conn.query(`
+      SELECT ${quoteIdent(metric)} as val
+      FROM read_parquet('${escapeSql(url)}')
+      WHERE ${quoteIdent(metric)} IS NOT NULL
+    `)
+    const values: number[] = []
+    for (const row of res.toArray()) {
+      const v = Number(row.val)
+      if (!isNaN(v)) values.push(v)
+    }
+    values.sort((a, b) => a - b)
+    return values
+  })
+}
+
+/**
+ * Preload the active metric across all 5 spatial scales in the background.
+ * Ensures that clicking between HUC12, HUC8, Ecoregion, etc. resolves instantly from cache.
+ */
+export function usePreloadLandscapeData() {
+  const queryClient = useQueryClient()
+  const filterState = useLandscapeFilterState()
+
+  useEffect(() => {
+    const metric = filterState.metric
+    if (!metric || metric === 'surface_water_trend') return
+
+    for (const scale of LANDSCAPE_SCALES) {
+      const allowed = resolveMetricsForLayer(scale.value)
+      if (!allowed.some((m) => m.value === metric)) continue
+
+      queryClient.prefetchQuery({
+        queryKey: ['landscape-raw-values', scale.stacItemId, metric],
+        queryFn: () => fetchLandscapeMetricValues(scale.stacItemId, metric),
+        staleTime: Infinity,
+      })
+    }
+  }, [filterState.metric, queryClient])
 }
 
 export function useLandscapeFilterState(): LandscapeFilterState {
@@ -93,28 +143,7 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
     queryKey: ['landscape-raw-values', stacItemId, activeMetric?.value],
     queryFn: async () => {
       if (!stacItemId || !activeMetric || isCategorical) return null
-
-      const { fetchStacAssetHref } = await import('@/lib/map/stac/stac-layer')
-      const url = await fetchStacAssetHref(stacItemId, 'data')
-      if (!url) throw new Error('Parquet asset URL missing')
-
-      const { withConnection, escapeSql, quoteIdent } = await import('@/lib/duckdb/client')
-      const col = activeMetric.value
-
-      return withConnection(async (conn) => {
-        const res = await conn.query(`
-          SELECT ${quoteIdent(col)} as val
-          FROM read_parquet('${escapeSql(url)}')
-          WHERE ${quoteIdent(col)} IS NOT NULL
-          ORDER BY ${quoteIdent(col)} ASC
-        `)
-        const values: number[] = []
-        for (const row of res.toArray()) {
-          const v = Number(row.val)
-          if (!isNaN(v)) values.push(v)
-        }
-        return values
-      })
+      return fetchLandscapeMetricValues(stacItemId, activeMetric.value)
     },
     enabled: !!stacItemId && !!activeMetric && !isCategorical,
     staleTime: Infinity,
@@ -229,8 +258,8 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
     const actualClasses = breaks.length + 1
     const colors = getColorRampColors(filterState.colorRamp, actualClasses)
 
-    // Build strictly ascending MapLibre step expression
-    const stepArgs: unknown[] = ['step', ['to-number', ['get', activeMetric.value]], colors[0]]
+    // Build strictly ascending MapLibre step expression (fallback to minVal on non-numeric)
+    const stepArgs: unknown[] = ['step', ['to-number', ['get', activeMetric.value], minVal], colors[0]]
     for (let i = 0; i < breaks.length; i++) {
       stepArgs.push(breaks[i], colors[i + 1] ?? colors[colors.length - 1])
     }
