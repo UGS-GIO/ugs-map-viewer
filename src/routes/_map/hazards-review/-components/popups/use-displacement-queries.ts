@@ -1,11 +1,11 @@
 import { useCallback, useMemo } from 'react'
 import { queryOptions, useQuery } from '@tanstack/react-query'
-import { getPopulatedBinBoundaries } from './displacement-thresholds'
+import { bandShallowMagnitude, getPopulatedBinBoundaries } from './displacement-thresholds'
 import type { Feature, Polygon, MultiPolygon } from 'geojson'
 import { PROD_GEOSERVER_URL } from '@/lib/constants'
 import { queryKeys } from '@/lib/query-keys'
-import { fetchWfsFeatures } from '@/lib/map/wfs-service'
-import { DATA_QUAL_ORDER, DISPLACEMENT_TYPE_NAME, getStyleNameForType, type ChartedType, type DisplacementType } from './displacement-layers'
+import { fetchAllWfsFeatures } from '@/lib/map/wfs-service'
+import { DATA_QUAL_ORDER, DISPLACEMENT_TYPE_NAME, getStyleNameForType, type DisplacementType } from './displacement-layers'
 import { fetchDisplacementSldBins, getZeroBound, type SldBin } from './displacement-sld-legend'
 
 export interface DisplacementProps {
@@ -17,10 +17,10 @@ export interface DisplacementProps {
     start_date?: string | null
     end_date?: string | null
     /**
-     * Displacement band bounds. The layer stores each contour as a range;
-     * `value_inches_min` is the deep edge and equals the old single value_inches,
-     * so charts / filters / thresholds / SLD bins key on it. `value_inches_max` is
-     * the shallow edge, used only for the popup range. In/year for the Rate surface.
+     * Displacement band bounds. The layer stores each contour as a range. Depth
+     * and SLD classes key on `value_inches_min` (the deep edge of a subsidence
+     * band); thresholds key on the edge nearer zero (see bandShallowMagnitude).
+     * The popup shows both. In/year for the Rate surface.
      */
     value_inches_min: number
     value_inches_max: number
@@ -30,6 +30,8 @@ export interface DisplacementProps {
      * typed permissively until the rollout spec is finalized.
      */
     data_qual?: number | string | null
+    /** True when a low/very-low contour was confirmed by independent observations (drawn hatched). */
+    independent_confirmation?: boolean | null
 }
 
 export type DisplacementFeature = Feature<Polygon | MultiPolygon, DisplacementProps>
@@ -40,13 +42,12 @@ export function getBucketYear(props: Pick<DisplacementProps, 'year'>): string | 
     return props.year == null ? null : String(props.year)
 }
 
-async function fetchAllDisplacement(): Promise<DisplacementFeature[]> {
-    const fc = await fetchWfsFeatures<Polygon | MultiPolygon, DisplacementProps>(
+async function fetchAllDisplacement(signal?: AbortSignal): Promise<DisplacementFeature[]> {
+    return fetchAllWfsFeatures<Polygon | MultiPolygon, DisplacementProps>(
         `${PROD_GEOSERVER_URL}/wfs`,
         DISPLACEMENT_TYPE_NAME,
-        { count: 20000 },
+        { sortBy: 'fid', signal },
     )
-    return fc.features
 }
 
 // Single source of truth for the bulk WFS pull. Every chart/filter/legend that
@@ -55,8 +56,8 @@ async function fetchAllDisplacement(): Promise<DisplacementFeature[]> {
 // cache without coupling to a component.
 export const displacementFeaturesQueryOptions = () => queryOptions({
     queryKey: queryKeys.hazards.displacementFeatures(),
-    queryFn: fetchAllDisplacement,
-    // 20k feature pull is expensive; treat as session-stable. gcTime keeps it
+    queryFn: ({ signal }) => fetchAllDisplacement(signal),
+    // The full-layer pull is expensive; treat as session-stable. gcTime keeps it
     // around long enough that a user toggling layers off+on doesn't refetch.
     staleTime: 10 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
@@ -69,7 +70,7 @@ const YEAR_LOOKUP_TYPES: DisplacementType[] = ['Cumulative', 'Yearly', 'Vertical
 // Cheap "latest year per type" lookup for the MAP's cql, which needs only the
 // year (not geometry). One tiny WFS GetFeature per type — sorted by year
 // descending, count=1, year-only — returns in ~0.3s / a few hundred bytes, versus
-// the multi-second 20k-feature bulk pull. Decoupling the map's year from that
+// the multi-second full-layer bulk pull. Decoupling the map's year from that
 // pull is what stops every year-window painting stacked while features load.
 async function fetchLatestYearsByType(signal: AbortSignal): Promise<Record<DisplacementType, string | null>> {
     const entries = await Promise.all(YEAR_LOOKUP_TYPES.map(async (type): Promise<[DisplacementType, string | null]> => {
@@ -131,7 +132,7 @@ export function useDisplacementSldBins(styleName: string) {
 
 // Resolve the SLD "Zero" deadband for a charted type. Returns null when bins
 // aren't loaded yet or the style omits a Zero rule.
-export function useDisplacementSldZeroBound(type: ChartedType): number | null {
+export function useDisplacementSldZeroBound(type: DisplacementType): number | null {
     const styleName = getStyleNameForType(type) ?? ''
     const select = useCallback(
         (bins: SldBin[]) => (bins.length > 0 ? getZeroBound(bins) : null),
@@ -145,7 +146,7 @@ export function useDisplacementSldZeroBound(type: ChartedType): number | null {
 }
 
 // Distinct, sorted values of one property across a type's features, derived in
-// TanStack `select` so the raw 20k-feature array never reaches the component.
+// TanStack `select` so the raw full-layer array never reaches the component.
 // Backs the year / basin / data-quality option lists — extractor + sort are the
 // only things that differ between them.
 function useDistinctByType(
@@ -224,18 +225,17 @@ export function useDisplacementDataQualsForType(type: DisplacementType): string[
     return useDistinctByType(type, extractDataQual, sortByDataQualOrder)
 }
 
-// Distinct |value_inches_min| magnitudes present for a type, ascending. Backs the
-// threshold dropdown: an edge only earns a slot when real features sit in the
-// band above it, so an SLD class the data never fills (e.g. Cumulative's
-// 1–3 in band) doesn't yield a redundant option that filters identically to the
-// next one.
+// Distinct band shallow-edge magnitudes present for a type, ascending. Backs the
+// threshold dropdown: an edge only earns a slot when a real band starts above
+// it, so an SLD class the data never fills doesn't yield a redundant option that
+// filters identically to the next one.
 export function useDisplacementValueMagnitudesForType(type: DisplacementType): number[] {
     const select = useCallback((features: DisplacementFeature[]) => {
         const set = new Set<number>()
         for (const f of features) {
             if (f.properties.type !== type) continue
-            const v = f.properties.value_inches_min
-            if (typeof v === 'number' && Number.isFinite(v)) set.add(Math.abs(v))
+            const { value_inches_min: lo, value_inches_max: hi } = f.properties
+            if (Number.isFinite(lo) && Number.isFinite(hi)) set.add(bandShallowMagnitude(lo, hi))
         }
         return Array.from(set).sort((a, b) => a - b)
     }, [type])
@@ -337,11 +337,11 @@ const NO_LATEST_YEARS: Readonly<Record<DisplacementType, string | null>> = {
 
 // Per-type latest-year map for callers that need to resolve year filters
 // across every type in one pass (e.g. cql_filter assembly).
-// Latest year per type, from the cheap dedicated lookup (not the 20k-feature bulk
+// Latest year per type, from the cheap dedicated lookup (not the full-layer bulk
 // pull) so the map's year clause resolves fast and doesn't wait on chart data.
 export function useDisplacementLatestYearByType(): { byType: Readonly<Record<DisplacementType, string | null>>; isPending: boolean } {
     const cheap = useQuery(displacementLatestYearsQueryOptions())
-    // Fallback source only if the cheap lookup errors — `enabled` keeps the 20k
+    // Fallback source only if the cheap lookup errors — `enabled` keeps the full-layer
     // bulk pull off the happy path.
     const bulk = useQuery({ ...displacementFeaturesQueryOptions(), select: selectLatestYearsFromFeatures, enabled: cheap.isError })
     const byType = cheap.data ?? bulk.data ?? NO_LATEST_YEARS

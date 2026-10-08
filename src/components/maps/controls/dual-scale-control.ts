@@ -1,4 +1,5 @@
 import maplibregl from 'maplibre-gl';
+import { metersPerPixelAtCenter } from '@/lib/map/map-scale';
 
 const FEET_PER_METER = 3.28084;
 const FEET_PER_MILE = 5280;
@@ -87,13 +88,7 @@ export class DualScaleControl implements maplibregl.IControl {
         // viewport rather than deriving it from zoom, which requires assuming a tile
         // size (MapLibre uses 512px, not the more commonly quoted 256px) and ignores
         // pitch and bearing.
-        const canvas = this.map!.getCanvas();
-        const x = canvas.clientWidth / 2;
-        const y = canvas.clientHeight / 2;
-        const span = Math.min(this.maxWidth, canvas.clientWidth);
-        const left = this.map!.unproject([x - span / 2, y]);
-        const right = this.map!.unproject([x + span / 2, y]);
-        return left.distanceTo(right) / span;
+        return metersPerPixelAtCenter(this.map!, this.maxWidth);
     }
 
     private getRoundScale(minDistance: number, maxDistance: number, unit: 'metric' | 'imperial'): { distance: number; label: string } {
