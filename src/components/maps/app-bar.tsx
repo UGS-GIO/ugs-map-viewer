@@ -14,11 +14,13 @@ interface AppBarProps {
 }
 
 const AppBar = ({ search, actions }: AppBarProps) => {
-  const { navOpened, setNavOpened } = useSidebar()
+  const { navOpened, setNavOpened, setCurrentContent } = useSidebar()
   const appTitle = getAppTitle(useGetCurrentPage())
 
+  // The menu button always opens on the menu, not on whichever panel was last shown.
   const handleMenuClick = () => {
-    setNavOpened((prev) => !prev)
+    if (!navOpened) setCurrentContent(null)
+    setNavOpened(!navOpened)
   }
 
   return (

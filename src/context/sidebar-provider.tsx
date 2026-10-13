@@ -2,8 +2,9 @@ import Info from '@/components/sidebar/info';
 import { SideLink } from '@/lib/types/sidelink-types';
 import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links';
 import { InfoIcon } from 'lucide-react';
-import React, { createContext, useState, ReactNode, Dispatch, SetStateAction, useCallback, useMemo } from 'react';
+import React, { createContext, useState, ReactNode, Dispatch, SetStateAction, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export type SidebarWidth = 'icon' | 'wide' | 'narrow';
 
@@ -64,6 +65,13 @@ export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children })
 
     const { data: dynamicLinks } = useGetSidebarLinks();
     const [navOpened, setNavOpened] = useState<boolean>(false);
+    const isMobile = useIsMobile();
+
+    // The drawer only exists on mobile; an open one left over from a rotate or resize would keep
+    // the page scroll-locked on desktop.
+    useEffect(() => {
+        if (!isMobile) setNavOpened(false);
+    }, [isMobile]);
     const [sidebarWidthPx, setSidebarWidthPx] = useState<number>(getInitialSidebarWidth);
 
     const allAvailableLinks = useMemo(() => {
@@ -93,7 +101,10 @@ export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children })
             }),
             replace: true,
         });
-    }, [navigate]);
+        // On mobile the panel lives in the drawer, so choosing one from outside it (the bottom
+        // bar, a popup button) must open the drawer or nothing visible happens.
+        if (content && isMobile) setNavOpened(true);
+    }, [navigate, isMobile]);
 
     const handleSetIsCollapsed = useCallback((value: boolean | ((prevState: boolean) => boolean)) => {
         const newCollapsedValue = typeof value === 'function' ? value(isCollapsed) : value;

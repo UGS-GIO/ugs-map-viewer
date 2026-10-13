@@ -16,6 +16,7 @@ import { flattenDataLayersWithAncestors, resolveLeafVisibility } from '@/lib/map
 import { useMapUrlSync, type ViewMode } from '@/hooks/use-map-url-sync'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useSidebar } from '@/hooks/use-sidebar'
+import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links'
 import { cn } from '@/lib/utils'
 import { MobileMapNav } from './mobile-map-nav'
 import { PROD_GEOSERVER_URL, POPUP_TITLES } from '@/lib/constants'
@@ -302,7 +303,8 @@ export default function GenericMapContainer({
   const { defaultStyle: defaultBasemap } = useAppBasemaps()
   const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
   const { viewMode, setViewMode, center, zoom, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
-  const { setNavOpened } = useSidebar()
+  const { setNavOpened, setCurrentContent } = useSidebar()
+  const { data: sidebarLinks } = useGetSidebarLinks()
   const rawLayersConfig = useGetLayerConfigsData(layerConfigKey)
   const { selectedLayerTitles, groupVisibility } = useLayerUrl()
   const layersConfig = rawLayersConfig || []
@@ -794,7 +796,15 @@ export default function GenericMapContainer({
         <MobileMapNav
           viewMode={viewMode}
           onViewModeChange={handleViewModeChange}
-          onOpenLayers={() => setNavOpened(true)}
+          onOpenLayers={() => {
+            const layersLink = sidebarLinks?.find((link) => link.title === 'Layers')
+            if (layersLink) {
+              setCurrentContent(layersLink)
+            } else {
+              setCurrentContent(null)
+              setNavOpened(true)
+            }
+          }}
         />
       )}
     </div>

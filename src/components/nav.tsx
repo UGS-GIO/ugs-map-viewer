@@ -137,7 +137,7 @@ export default function Nav({
               </Suspense>
             </div>
           ) : (
-            <nav className='grid gap-4 group-[[data-collapsed=true]]:justify-center group-[[data-collapsed=true]]:px-2'>
+            <nav className='grid max-h-full content-start gap-4 overflow-y-auto group-[[data-collapsed=true]]:justify-center group-[[data-collapsed=true]]:px-2'>
               {links.map(renderLink)}
             </nav>
           )}

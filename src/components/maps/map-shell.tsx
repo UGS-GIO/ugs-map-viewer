@@ -22,9 +22,10 @@ const MapShell = ({ search, actions, children }: MapShellProps) => {
 
     // The shell is fixed chrome and must never scroll: overflow-clip keeps it non-scrollable even
     // to focus()/scrollIntoView (e.g. focusing a below-fold filter radio), which would otherwise
-    // jerk the whole shell and strand the footer.
+    // jerk the whole shell and strand the footer. The minmax(0,1fr) column stops a long app-bar
+    // title from widening the grid past the viewport and pushing the map's right edge off-screen.
     return (
-        <div className="grid h-full grid-rows-[auto_1fr_auto] overflow-clip bg-background">
+        <div className="grid h-full grid-cols-[minmax(0,1fr)] grid-rows-[auto_1fr_auto] overflow-clip bg-background">
             <a
                 href="#content"
                 className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-[100] focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:ring-2 focus:ring-ring"
@@ -34,11 +35,13 @@ const MapShell = ({ search, actions, children }: MapShellProps) => {
             <AppBar search={search} actions={actions} />
             <div className="relative min-h-0 min-w-0 overflow-hidden">
                 <Sidebar />
+                {/* isolate: the map's own overlays (the mobile results sheet) stack inside main, so
+                    the mobile drawer always opens above them. */}
                 <main
                     id="content"
                     tabIndex={-1}
                     aria-label="Map"
-                    className="h-full min-w-0 overflow-hidden transition-[margin] duration-200 ease-linear"
+                    className="isolate h-full min-w-0 overflow-hidden transition-[margin] duration-200 ease-linear"
                     style={{ marginLeft: `${sidebarWidth}px` }}
                 >
                     {children}
