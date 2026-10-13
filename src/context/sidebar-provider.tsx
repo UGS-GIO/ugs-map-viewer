@@ -2,7 +2,7 @@ import Info from '@/components/sidebar/info';
 import { SideLink } from '@/lib/types/sidelink-types';
 import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links';
 import { InfoIcon } from 'lucide-react';
-import React, { createContext, useState, ReactNode, Dispatch, SetStateAction, useCallback, useEffect, useMemo } from 'react';
+import React, { createContext, useState, ReactNode, Dispatch, SetStateAction, useCallback, useMemo } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -27,6 +27,7 @@ const getInitialSidebarWidth = () => {
 
 interface SidebarContextProps {
     currentContent: SideLink | null;
+    /** Also opens the drawer on mobile when given a panel. */
     setCurrentContent: (content: SideLink | null) => void;
     isCollapsed: boolean;
     setIsCollapsed: Dispatch<SetStateAction<boolean>>;
@@ -66,12 +67,6 @@ export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children })
     const { data: dynamicLinks } = useGetSidebarLinks();
     const [navOpened, setNavOpened] = useState<boolean>(false);
     const isMobile = useIsMobile();
-
-    // The drawer only exists on mobile; an open one left over from a rotate or resize would keep
-    // the page scroll-locked on desktop.
-    useEffect(() => {
-        if (!isMobile) setNavOpened(false);
-    }, [isMobile]);
     const [sidebarWidthPx, setSidebarWidthPx] = useState<number>(getInitialSidebarWidth);
 
     const allAvailableLinks = useMemo(() => {
@@ -140,7 +135,8 @@ export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children })
                 setSidebarWidth: handleSetSidebarWidth,
                 sidebarWidthPx,
                 setSidebarWidthPx,
-                navOpened,
+                // The drawer only exists on mobile, so it can't stay open (and scroll-locked) on desktop.
+                navOpened: navOpened && isMobile,
                 setNavOpened,
             }}
         >

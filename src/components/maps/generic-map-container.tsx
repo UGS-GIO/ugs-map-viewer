@@ -801,6 +801,7 @@ export default function GenericMapContainer({
             if (layersLink) {
               setCurrentContent(layersLink)
             } else {
+              console.warn(`No 'Layers' sidebar link on ${currentPage}; opening the menu instead.`)
               setCurrentContent(null)
               setNavOpened(true)
             }

@@ -20,7 +20,7 @@ const AppBar = ({ search, actions }: AppBarProps) => {
   // The menu button always opens on the menu, not on whichever panel was last shown.
   const handleMenuClick = () => {
     if (!navOpened) setCurrentContent(null)
-    setNavOpened(!navOpened)
+    setNavOpened((prev) => !prev)
   }
 
   return (
