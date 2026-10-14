@@ -1,6 +1,7 @@
-import { ChevronRight, CircleHelp, ExternalLink } from 'lucide-react'
+import { Switch } from '@base-ui/react/switch'
+import { ChevronRight, CircleHelp, ExternalLink, Moon } from 'lucide-react'
 import type { SideLink } from '@/lib/types/sidelink-types'
-import ThemeSwitch from '@/components/theme-switch'
+import { useDarkTheme } from '@/hooks/use-dark-theme'
 import { TOUR_ROUTE_BY_PAGE, useTour } from '@/lib/tour'
 
 // Covered by their own tabs, or by the map itself.
@@ -12,6 +13,7 @@ const icon = 'shrink-0 text-muted-foreground [&_svg]:h-5 [&_svg]:w-5'
 /** The More tab, as an iOS list: the route's other panels and links, the tour, and the theme. */
 export function MoreList({ links, page, onOpen }: { links: SideLink[]; page: string; onOpen: (tab: string) => void }) {
   const { startTour } = useTour({ route: TOUR_ROUTE_BY_PAGE[page] })
+  const { isDark, setDark } = useDarkTheme()
   const items = links.filter((l) => !ON_TABS.has(l.title))
   return (
     <ul className='divide-y'>
@@ -40,9 +42,19 @@ export function MoreList({ links, page, onOpen }: { links: SideLink[]; page: str
           <ChevronRight className='ml-auto h-5 w-5 text-muted-foreground' aria-hidden='true' />
         </button>
       </li>
-      <li className={row}>
-        <span className='flex-1'>Theme</span>
-        <ThemeSwitch />
+      <li>
+        {/* A settings row: the whole row toggles, with the switch at the end. */}
+        <label className={row}>
+          <Moon className='h-5 w-5 shrink-0 text-muted-foreground' aria-hidden='true' />
+          <span className='flex-1'>Dark mode</span>
+          <Switch.Root
+            checked={isDark}
+            onCheckedChange={setDark}
+            className='relative flex h-7 w-12 shrink-0 rounded-full bg-muted p-0.5 transition-colors data-[checked]:bg-primary'
+          >
+            <Switch.Thumb className='h-6 w-6 rounded-full bg-background shadow transition-transform data-[checked]:translate-x-5' />
+          </Switch.Root>
+        </label>
       </li>
     </ul>
   )

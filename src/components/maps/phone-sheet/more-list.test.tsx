@@ -9,7 +9,7 @@ vi.mock('@/lib/tour', () => ({
   useTour: () => ({ startTour }),
   TOUR_ROUTE_BY_PAGE: { hazards: 'hazards' },
 }))
-vi.mock('@/components/theme-switch', () => ({ default: () => <button type="button">theme</button> }))
+vi.mock('@/hooks/use-dark-theme', () => ({ useDarkTheme: () => ({ isDark: false, setDark: () => {} }) }))
 
 const Panel = () => <div />
 const links: SideLink[] = [
