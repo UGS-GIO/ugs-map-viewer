@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionHeader, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ExternalLink, Layers as LayersIcon } from 'lucide-react';
 import { Button } from '../ui/button';
@@ -10,14 +10,10 @@ import { useGetPageInfo } from '@/hooks/use-get-page-info';
 import { DatasetDownloads } from '@/components/sidebar/dataset-downloads';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { usePhoneSheet } from '@/components/maps/phone-sheet/use-phone-sheet';
-import type { InfoDetail } from '@/components/maps/phone-sheet/sheet-model';
+import { INFO_DETAIL_TITLE } from '@/components/maps/phone-sheet/sheet-model';
 
 function Info() {
-  type ModalType = 'references' | 'disclaimer' | 'acknowledgments' | '';
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<ModalType | ''>('');
   const { setCurrentContent } = useSidebar();
-  const contentRef = useRef<HTMLDivElement>(null);
   // Driven by the accordions: a handler on the heading also fired on its padding, leaving
   // the summary out of step with the section it summarises.
   const [openDetails, setOpenDetails] = useState<string[]>(['map-details-accordion-item-1']);
@@ -26,20 +22,14 @@ function Info() {
   const isDataSourcesExpanded = openSources.includes('data-sources-accordion-item-1');
   const { data: pageInfo, isLoading: isInfoLoading } = useGetPageInfo();
   const isMobile = useIsMobile();
-  const { detail, openDetail: openPhoneDetail } = usePhoneSheet();
 
-  const handleOpenModal = (type: ModalType) => {
-    setModalType(type);
-    setModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setModalType('');
-  };
-
-  // Phones open a detail in the sheet; desktop keeps its dialog.
-  const openDetail = (type: InfoDetail) => (isMobile ? openPhoneDetail(type) : handleOpenModal(type));
+  // The detail lives in the URL: phones show it in the sheet, desktop in a dialog.
+  const { detail, openDetail } = usePhoneSheet();
+  const detailText = detail && {
+    disclaimer: pageInfo?.dataDisclaimer,
+    references: pageInfo?.references,
+    acknowledgments: pageInfo?.acknowledgments,
+  }[detail];
 
   // Show loading spinner while page info is loading
   if (isInfoLoading) {
@@ -54,15 +44,12 @@ function Info() {
 
   // On phones a detail opens in the sheet itself; the sheet's header shows its title and "‹ Info".
   if (isMobile && detail) {
-    const text = detail === 'disclaimer' ? pageInfo?.dataDisclaimer
-      : detail === 'references' ? pageInfo?.references
-      : pageInfo?.acknowledgments;
-    return <div className="text-sm text-muted-foreground">{text}</div>;
+    return <div className="text-sm text-muted-foreground">{detailText}</div>;
   }
 
   return (
     <div className="flex flex-col h-full">
-      <div className="ml-2 overflow-y-auto flex-grow" ref={contentRef}>
+      <div className="ml-2 overflow-y-auto flex-grow">
         {/* Map Details Accordion */}
         <div className="mr-2" key="map-details-accordion">
           <Accordion type="multiple" value={openDetails} onValueChange={setOpenDetails}>
@@ -128,45 +115,15 @@ function Info() {
           </Button>
         </div>
 
-        {/* Dialog for desktop */}
-        <Dialog open={modalOpen} onOpenChange={handleCloseModal}>
-          <DialogTrigger asChild>
-            <div className="hidden"></div>
-          </DialogTrigger>
+        <Dialog open={!isMobile && detail !== null} onOpenChange={(open) => { if (!open) openDetail(null) }}>
           <DialogContent>
-            {modalType === 'disclaimer' && (
+            {detail && (
               <>
                 <DialogHeader>
-                  <DialogTitle>Data Disclaimer</DialogTitle>
+                  <DialogTitle>{INFO_DETAIL_TITLE[detail]}</DialogTitle>
                 </DialogHeader>
                 <DialogDescription asChild>
-                  <div>
-                    {pageInfo?.dataDisclaimer}
-                  </div>
-                </DialogDescription>
-              </>
-            )}
-            {modalType === 'references' && (
-              <>
-                <DialogHeader>
-                  <DialogTitle>References</DialogTitle>
-                </DialogHeader>
-                <DialogDescription asChild>
-                  <div>
-                    {pageInfo?.references}
-                  </div>
-                </DialogDescription>
-              </>
-            )}
-            {modalType === 'acknowledgments' && (
-              <>
-                <DialogHeader>
-                  <DialogTitle>Acknowledgments</DialogTitle>
-                </DialogHeader>
-                <DialogDescription asChild>
-                  <div>
-                    {pageInfo?.acknowledgments}
-                  </div>
+                  <div>{detailText}</div>
                 </DialogDescription>
               </>
             )}

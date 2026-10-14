@@ -87,7 +87,7 @@ export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children })
         navigate({
             to: '.',
             search: (prev) => {
-                const next = { ...prev, tab: newTab };
+                const next = { ...prev, tab: newTab, detail: undefined };
                 // On phones a panel lives in the sheet, so choosing one from outside it (a popup
                 // button, Info's Start Exploring) also raises the sheet to show it.
                 if (!content || !isMobile) return next;
