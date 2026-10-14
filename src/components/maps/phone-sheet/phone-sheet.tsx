@@ -142,16 +142,10 @@ export function PhoneSheet({ container, detent, activeTab, panelKey, title, summ
                     {!collapsed && headerAction && <div data-base-ui-swipe-ignore className='ml-auto shrink-0'>{headerAction}</div>}
                   </div>
                 </div>
-                {/* On touch screens content scrolls only at full height; below it a drag anywhere moves
-                    the whole sheet, as in Apple Maps. A mouse can't drag content, so it keeps the wheel. */}
                 <Drawer.Content
                   id={contentId}
                   inert={collapsed}
-                  className={cn(
-                    'phone-sheet-content min-h-0 flex-1 overscroll-contain px-4 pb-4',
-                    'overflow-y-auto touch-auto',
-                    detent !== FULL && '[@media(pointer:coarse)]:overflow-hidden [@media(pointer:coarse)]:touch-none',
-                  )}
+                  className='phone-sheet-content min-h-0 flex-1 overflow-y-auto overscroll-contain touch-auto px-4 pb-4'
                 >
                   {children}
                 </Drawer.Content>
