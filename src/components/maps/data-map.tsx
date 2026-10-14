@@ -276,7 +276,6 @@ export default function DataMap({
   viewMode,
   onViewModeChange,
   hasResults = false,
-  fitSavedBounds = true,
 }: DataMapProps) {
   const mapRef = useRef<MapRef>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -550,7 +549,7 @@ export default function DataMap({
     fitBoundsOptions?: { padding: number; maxZoom?: number }
   } | null>(null)
   if (!initialViewRef.current) {
-    const bbox = fitSavedBounds ? featureBbox || clickBufferBounds : null
+    const bbox = featureBbox || clickBufferBounds
     if (bbox) {
       initialViewRef.current = {
         bounds: [bbox.sw, bbox.ne],

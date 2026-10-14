@@ -20,6 +20,7 @@ import { popupContentKey } from '@/components/maps/popups/popup-content-key'
 import { PhoneSheetHost } from './phone-sheet/phone-sheet-host'
 import { ResultsViewToggle } from './phone-sheet/results-view-toggle'
 import { usePhoneSheet } from './phone-sheet/use-phone-sheet'
+import { cn } from '@/lib/utils'
 import { PROD_GEOSERVER_URL, POPUP_TITLES } from '@/lib/constants'
 import { useMap } from '@/hooks/use-map'
 import { useGetCurrentPage } from '@/hooks/use-get-current-page'
@@ -300,10 +301,6 @@ export default function GenericMapContainer({
   popupFeatureFilter,
 }: GenericMapContainerProps) {
   const isMobile = useIsMobile()
-  // The map remounts when the layout crosses the phone query; that remount keeps the URL's view.
-  const mountedAsMobileRef = useRef(isMobile)
-  const layoutSwitchedRef = useRef(false)
-  if (isMobile !== mountedAsMobileRef.current) layoutSwitchedRef.current = true
   const currentPage = useGetCurrentPage()
   const { defaultStyle: defaultBasemap } = useAppBasemaps()
   const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
@@ -647,7 +644,9 @@ export default function GenericMapContainer({
     }
   }, [isMobile, raiseResults, closeResults])
 
-  const shouldShrinkMap = viewMode === 'map' && panelState.isSheetOpen
+  const shouldShrinkMap = !isMobile && viewMode === 'map' && panelState.isSheetOpen
+  // Phones and desktop share this tree down to the map, so crossing the phone query never remounts it.
+  const mapAreaRef = useRef<HTMLDivElement | null>(null)
 
   const mapElement = (
     <DataMap
@@ -688,17 +687,15 @@ export default function GenericMapContainer({
       viewMode={isMobile ? undefined : viewMode}
       onViewModeChange={isMobile ? undefined : handleViewModeChange}
       hasResults={hasResults}
-      fitSavedBounds={!layoutSwitchedRef.current}
     />
   )
 
   const resultsView = phoneSheet.state.results ?? 'cards'
   const resultsCount = popupContent.reduce((n, layer) => n + (layer.features ? layer.features.length : 1), 0)
 
-  if (isMobile) {
-    return (
+  const phoneSheetHost = isMobile && (
       <PhoneSheetHost
-        map={mapElement}
+        container={mapAreaRef}
         resultsSummary={hasResults ? `${resultsCount} result${resultsCount === 1 ? '' : 's'}` : undefined}
         layersSummary={`${displayedTitles.size} layer${displayedTitles.size === 1 ? '' : 's'} on`}
         results={
@@ -734,30 +731,31 @@ export default function GenericMapContainer({
           )
         }
       />
-    )
-  }
+  )
 
   return (
     <div className="relative h-full w-full flex flex-col overflow-hidden">
       {/* Map + Drawer row */}
       <div
+        ref={mapAreaRef}
         className="relative flex min-h-0 overflow-hidden"
         style={{
-          flex: viewMode === 'table' ? '0 0 0%'
-            : viewMode === 'split' ? `1 1 ${100 - panelState.tablePanelSize}%`
+          flex: selectionView === 'table' ? '0 0 0%'
+            : selectionView === 'split' ? `1 1 ${100 - panelState.tablePanelSize}%`
             : '1 1 100%'
         }}
       >
         {/* Map section */}
         <div
-          className="relative h-full overflow-hidden transition-[width] duration-200 ease-linear"
+          data-tour={isMobile ? 'phone-map' : undefined}
+          className={cn('relative h-full overflow-hidden transition-[width] duration-200 ease-linear', isMobile && 'phone-map')}
           style={{ width: shouldShrinkMap ? `calc(100% - ${panelState.sheetWidth}px)` : '100%' }}
         >
           {mapElement}
         </div>
 
         {/* Popup sheet - desktop */}
-        {viewMode === 'map' && (
+        {!isMobile && viewMode === 'map' && (
           <div
             className="h-full border-l bg-background overflow-hidden transition-[width] duration-200 ease-linear"
             style={{ width: panelState.isSheetOpen ? `${panelState.sheetWidth}px` : 0 }}
@@ -782,8 +780,10 @@ export default function GenericMapContainer({
         )}
       </div>
 
+      {phoneSheetHost}
+
       {/* Resize handle - only in split mode */}
-      {viewMode === 'split' && (
+      {!isMobile && viewMode === 'split' && (
         <div
           className="h-3 bg-border hover:bg-accent active:bg-accent cursor-row-resize flex items-center justify-center shrink-0 touch-none"
           onMouseDown={(e) => {
@@ -814,7 +814,7 @@ export default function GenericMapContainer({
       )}
 
       {/* Table section */}
-      <div
+      {!isMobile && <div
         className="bg-background border-t overflow-hidden min-h-0 min-w-0 w-full"
         style={{
           flex: viewMode === 'map' ? '0 0 0%'
@@ -834,7 +834,7 @@ export default function GenericMapContainer({
             disableExport={disableExport}
           />
         )}
-      </div>
+      </div>}
     </div>
   )
 }

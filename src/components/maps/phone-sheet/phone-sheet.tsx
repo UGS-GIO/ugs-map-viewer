@@ -1,4 +1,4 @@
-import { useCallback, useRef, type KeyboardEvent, type ReactNode } from 'react'
+import { useCallback, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { Drawer } from '@base-ui/react/drawer'
 import { ChevronLeft, Ellipsis, Info, Layers, List, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -29,7 +29,8 @@ const GRABBER_LABEL = ['Expand panel', 'Expand panel to full height', 'Collapse 
 const TOUCH_CHROME = 'select-none [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none]'
 
 export interface PhoneSheetProps {
-  map: ReactNode
+  /** The map area the sheet slides over. Rendered before this component so the ref is set. */
+  container: RefObject<HTMLElement | null>
   detent: Detent
   activeTab: PhoneTab
   /** What the sheet shows; focus moves to the title when it changes. */
@@ -43,9 +44,8 @@ export interface PhoneSheetProps {
   children: ReactNode
 }
 
-/** Full map, one always-open non-modal drawer over it, and the tab bar that picks what it holds. */
-export function PhoneSheet({ map, detent, activeTab, panelKey, title, summary, back, onSelectTab, onSetDetent, children }: PhoneSheetProps) {
-  const areaRef = useRef<HTMLDivElement | null>(null)
+/** One always-open non-modal drawer over the map, and the tab bar that picks what it holds. */
+export function PhoneSheet({ container, detent, activeTab, panelKey, title, summary, back, onSelectTab, onSetDetent, children }: PhoneSheetProps) {
   const collapsed = detent === PEEK
 
   // A newly opened panel puts focus on its title so screen readers announce it. Page load, and a
@@ -64,13 +64,7 @@ export function PhoneSheet({ map, detent, activeTab, panelKey, title, summary, b
   }
 
   return (
-    <div className='flex h-full min-h-0 flex-col'>
-      <div ref={areaRef} className='relative min-h-0 flex-1'>
-        <div className='phone-map absolute inset-0' data-tour='phone-map'>
-          {map}
-        </div>
-      </div>
-      {/* After the area, not inside it: the portal reads areaRef once the area has committed. */}
+    <>
       <Drawer.Root
         open
         modal={false}
@@ -90,7 +84,7 @@ export function PhoneSheet({ map, detent, activeTab, panelKey, title, summary, b
         }}
       >
         <Drawer.VirtualKeyboardProvider>
-          <Drawer.Portal container={areaRef}>
+          <Drawer.Portal container={container}>
             <Drawer.Viewport className='pointer-events-none absolute inset-0 z-20 flex items-end'>
               <Drawer.Popup
                 initialFocus={false}
@@ -160,6 +154,6 @@ export function PhoneSheet({ map, detent, activeTab, panelKey, title, summary, b
           )
         })}
       </nav>
-    </div>
+    </>
   )
 }

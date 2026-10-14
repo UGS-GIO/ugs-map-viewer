@@ -93,6 +93,4 @@ export interface DataMapProps {
   onViewModeChange?: (mode: 'map' | 'split' | 'table') => void
   /** Whether the map has query results (enables split/table modes) */
   hasResults?: boolean
-  /** Fit the URL's saved selection bounds when the map mounts; false resumes from centre and zoom. */
-  fitSavedBounds?: boolean
 }

@@ -1,4 +1,4 @@
-import { Suspense, type ReactNode } from 'react'
+import { Suspense, type ReactNode, type RefObject } from 'react'
 import { Spinner } from '@/components/ui/loading-spinner'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links'
@@ -9,14 +9,14 @@ import { MoreList } from './more-list'
 import { usePhoneSheet } from './use-phone-sheet'
 
 interface PhoneSheetHostProps {
-  map: ReactNode
+  container: RefObject<HTMLElement | null>
   results: ReactNode
   resultsSummary?: string
   layersSummary?: string
 }
 
 /** Puts the route's panels, the More list and the results into the phone sheet. */
-export function PhoneSheetHost({ map, results, resultsSummary, layersSummary }: PhoneSheetHostProps) {
+export function PhoneSheetHost({ container, results, resultsSummary, layersSummary }: PhoneSheetHostProps) {
   const sheet = usePhoneSheet()
   const { currentContent } = useSidebar()
   const { data: links = [], isSuccess: linksLoaded, isError: linksFailed } = useGetSidebarLinks()
@@ -55,7 +55,7 @@ export function PhoneSheetHost({ map, results, resultsSummary, layersSummary }: 
 
   return (
     <PhoneSheet
-      map={map}
+      container={container}
       detent={sheet.state.detent}
       activeTab={active}
       panelKey={`${active}:${sheet.tab}:${detail ?? ''}`}
