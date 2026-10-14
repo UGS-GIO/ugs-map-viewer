@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Label } from '@/components/ui/label'
 import { useLayerUrl } from '@/context/layer-url-provider'
@@ -51,6 +51,7 @@ export function LandscapeDataFilters({ layer }: LandscapeDataFiltersProps) {
     (updates: Partial<LandscapeFilterState>) => {
       const next: LandscapeFilterState = {
         ...filterState,
+        metric: activeMetricObj?.value || filterState.metric,
         ...updates,
       }
       navigate({
@@ -68,15 +69,29 @@ export function LandscapeDataFilters({ layer }: LandscapeDataFiltersProps) {
         replace: true,
       })
     },
-    [filterState, navigate]
+    [filterState, activeMetricObj, navigate]
   )
 
   const handleScaleChange = useCallback(
     (newScaleTitle: string) => {
       setExclusiveSelection(newScaleTitle, LANDSCAPE_LAYER_TITLES)
+      const newAllowed = resolveMetricsForLayer(newScaleTitle)
+      const isMetricValid = newAllowed.some((m) => m.value === filterState.metric)
+      if (!isMetricValid && newAllowed.length > 0) {
+        updateFilter({ metric: newAllowed[0].value })
+      }
     },
-    [setExclusiveSelection]
+    [setExclusiveSelection, filterState.metric, updateFilter]
   )
+
+  // Verify and reset metric in URL search params if it is invalid for the active scale
+  useEffect(() => {
+    if (allowedMetrics.length === 0) return
+    const isMetricValid = allowedMetrics.some((m) => m.value === filterState.metric)
+    if (!isMetricValid) {
+      updateFilter({ metric: allowedMetrics[0].value })
+    }
+  }, [allowedMetrics, filterState.metric, updateFilter])
 
   const handleReset = useCallback(() => {
     navigate({

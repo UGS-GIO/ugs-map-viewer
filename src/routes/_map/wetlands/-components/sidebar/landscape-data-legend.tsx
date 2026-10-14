@@ -46,6 +46,7 @@ export function LandscapeDataLegend({ layer }: LandscapeDataLegendProps) {
         {legendData.bins.map((bin, i) => (
           <div key={i} className='flex items-center gap-2'>
             <span
+              aria-hidden='true'
               className='h-3.5 w-5 shrink-0 rounded-sm border border-border shadow-xs'
               style={{ backgroundColor: bin.color }}
             />
