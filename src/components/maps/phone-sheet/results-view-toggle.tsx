@@ -1,4 +1,5 @@
-import { cn } from '@/lib/utils'
+import { Toggle } from '@base-ui/react/toggle'
+import { ToggleGroup } from '@base-ui/react/toggle-group'
 import type { ResultsView } from './sheet-model'
 
 const OPTIONS: { value: ResultsView; label: string }[] = [
@@ -9,21 +10,22 @@ const OPTIONS: { value: ResultsView; label: string }[] = [
 /** A segmented control, the iOS form of a switch between two views of the same results. */
 export function ResultsViewToggle({ value, onChange }: { value: ResultsView; onChange: (v: ResultsView) => void }) {
   return (
-    <div role='group' aria-label='Show results as' className='inline-flex self-start rounded-lg bg-muted p-0.5'>
+    <ToggleGroup
+      aria-label='Show results as'
+      value={[value]}
+      // A tap on the pressed option would empty the group; keep the current view instead.
+      onValueChange={([next]) => next && onChange(next)}
+      className='inline-flex self-start rounded-lg bg-muted p-0.5'
+    >
       {OPTIONS.map((o) => (
-        <button
+        <Toggle
           key={o.value}
-          type='button'
-          aria-pressed={value === o.value}
-          onClick={() => onChange(o.value)}
-          className={cn(
-            'min-h-11 rounded-md px-4 text-sm font-medium',
-            value === o.value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground',
-          )}
+          value={o.value}
+          className='min-h-11 rounded-md px-4 text-sm font-medium text-muted-foreground data-[pressed]:bg-background data-[pressed]:text-foreground data-[pressed]:shadow-sm'
         >
           {o.label}
-        </button>
+        </Toggle>
       ))}
-    </div>
+    </ToggleGroup>
   )
 }
