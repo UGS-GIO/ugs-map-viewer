@@ -5,6 +5,7 @@ import { Sheet, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "
 import { cn } from "@/lib/utils";
 import type { LayerContentProps, ExtendedFeature } from "@/components/maps/popups/types";
 import { PopupContentWithPagination } from "@/components/maps/popups/popup-content-with-pagination";
+import { popupContentKey } from "@/components/maps/popups/popup-content-key";
 import { XIcon } from "lucide-react";
 import type { HighlightFeature } from "@/components/maps/types";
 
@@ -75,11 +76,7 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
         open: () => updateOpen(true),
     }), [updateOpen]);
 
-    const contentKey = useMemo(() => {
-        return popupContent
-            .map(item => `${item.groupLayerTitle}-${item.layerTitle}`)
-            .join('|');
-    }, [popupContent]);
+    const contentKey = useMemo(() => popupContentKey(popupContent), [popupContent]);
 
     const setContainerRef = useCallback((node: HTMLDivElement | null) => {
         containerRef.current = node;

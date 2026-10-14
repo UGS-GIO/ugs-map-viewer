@@ -15,10 +15,11 @@ import { useLayerUrl } from '@/context/layer-url-provider'
 import { flattenDataLayersWithAncestors, resolveLeafVisibility } from '@/lib/map/layer-utils'
 import { useMapUrlSync, type ViewMode } from '@/hooks/use-map-url-sync'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { useSidebar } from '@/hooks/use-sidebar'
-import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links'
-import { cn } from '@/lib/utils'
-import { MobileMapNav } from './mobile-map-nav'
+import { PopupContentWithPagination } from '@/components/maps/popups/popup-content-with-pagination'
+import { popupContentKey } from '@/components/maps/popups/popup-content-key'
+import { PhoneSheetHost } from './phone-sheet/phone-sheet-host'
+import { ResultsViewToggle } from './phone-sheet/results-view-toggle'
+import { usePhoneSheet } from './phone-sheet/use-phone-sheet'
 import { PROD_GEOSERVER_URL, POPUP_TITLES } from '@/lib/constants'
 import { useMap } from '@/hooks/use-map'
 import { useGetCurrentPage } from '@/hooks/use-get-current-page'
@@ -303,12 +304,13 @@ export default function GenericMapContainer({
   const { defaultStyle: defaultBasemap } = useAppBasemaps()
   const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
   const { viewMode, setViewMode, center, zoom, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
-  const { setNavOpened, setCurrentContent } = useSidebar()
-  const { data: sidebarLinks } = useGetSidebarLinks()
+  // Phones select straight from the map, whatever a desktop link's `view` still says.
+  const selectionView: ViewMode = isMobile ? 'map' : viewMode
+  const phoneSheet = usePhoneSheet()
   const rawLayersConfig = useGetLayerConfigsData(layerConfigKey)
   const { selectedLayerTitles, groupVisibility } = useLayerUrl()
   const layersConfig = rawLayersConfig || []
-  const popupSheetRef = useRef<PopupSheetRef>(null)
+  const popupSheetRef = useRef<PopupSheetRef | null>(null)
   const sheetTriggerRef = useRef<HTMLButtonElement>(null)
 
   // Currently-displayed titles: leaf is checked AND every enclosing group toggle is on.
@@ -364,7 +366,7 @@ export default function GenericMapContainer({
     handleLayerTurnedOff,
     clearAllSelections,
   } = useFeatureSelection({
-    viewMode,
+    viewMode: selectionView,
     selectedFeatureRefs,
     setSelectedFeatureRefs,
     setClickBufferBounds,
@@ -381,8 +383,8 @@ export default function GenericMapContainer({
   const awaitingRasterOpenRef = useRef(false)
   const handleClickBufferChange = useCallback((bounds: { sw: [number, number]; ne: [number, number] } | null) => {
     setClickBufferBounds(bounds)
-    awaitingRasterOpenRef.current = !!bounds && viewMode === 'map'
-  }, [setClickBufferBounds, viewMode])
+    awaitingRasterOpenRef.current = !!bounds && selectionView === 'map'
+  }, [setClickBufferBounds, selectionView])
 
   // Register callbacks with parent context
   useEffect(() => {
@@ -598,10 +600,10 @@ export default function GenericMapContainer({
   useEffect(() => {
     if (!awaitingRasterOpenRef.current || isLoadingRaster) return
     awaitingRasterOpenRef.current = false
-    if (hasResults && viewMode === 'map') {
+    if (hasResults && selectionView === 'map') {
       requestAnimationFrame(() => popupSheetRef.current?.open())
     }
-  }, [isLoadingRaster, hasResults, viewMode])
+  }, [isLoadingRaster, hasResults, selectionView])
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode)
@@ -625,7 +627,122 @@ export default function GenericMapContainer({
     setPanelState(prev => ({ ...prev, isSheetOpen: open }))
   }, [])
 
-  const shouldShrinkMap = viewMode === 'map' && panelState.isSheetOpen && !isMobile
+  // On phones the results live in the sheet: the open() that raises the desktop popup raises
+  // Results instead, as a table when the selection came from an area tool (box select or a drawn
+  // filter), keeping the user's Cards or Table choice while Results is open.
+  const phoneRoute = useRef({ sheet: phoneSheet, area: false })
+  useEffect(() => {
+    phoneRoute.current = { sheet: phoneSheet, area: !!spatialFilter || !!boxSelectBounds }
+  })
+  useEffect(() => {
+    if (!isMobile) return
+    const handle: PopupSheetRef = {
+      open: () => (phoneRoute.current.area ? phoneRoute.current.sheet.showResults('table') : phoneRoute.current.sheet.raiseResults('cards')),
+      close: () => phoneRoute.current.sheet.closeResults(),
+    }
+    popupSheetRef.current = handle
+    // The desktop PopupSheet attaches its handle in a layout effect, before this cleanup runs on
+    // the way back to desktop; only clear the ref if it is still the phone's.
+    return () => {
+      if (popupSheetRef.current === handle) popupSheetRef.current = null
+    }
+  }, [isMobile])
+
+  const { closeResults } = phoneSheet
+  const handleClearPhoneResults = useCallback(() => {
+    handleSheetClose()
+    closeResults()
+  }, [handleSheetClose, closeResults])
+
+  const shouldShrinkMap = viewMode === 'map' && panelState.isSheetOpen
+
+  const mapElement = (
+    <DataMap
+      wmsUrl={`${PROD_GEOSERVER_URL}/wms`}
+      layers={layersConfig}
+      center={center}
+      zoom={zoom}
+      highlightFeatures={highlightedFeatures}
+      onFeatureClick={(...args) => { setPopupCoords(null); handleFeatureClick(...args) }}
+      onMoveEnd={setMapPosition}
+      layerFilters={layerFilters}
+      layerStyles={layerStyles}
+      vectorLayerFilters={vectorLayerFilters}
+      vectorLayerSymbology={vectorLayerSymbology}
+      onMapReady={handleMapReady}
+      basemapId={basemap ?? defaultBasemap.id}
+      clickBufferBounds={clickBufferBounds}
+      onClickBufferChange={handleClickBufferChange}
+      featureBbox={featureBbox}
+      onFeatureBboxChange={setFeatureBbox}
+      activeDrawShape={activeDrawShape}
+      onDrawReset={handleDrawReset}
+      onDrawComplete={handleDrawComplete}
+      toolbarDrawShape={toolbarDrawShape}
+      onToolbarDrawToggle={handleToolbarDrawToggle}
+      onCancelMode={handleCancelMode}
+      spatialFilter={spatialFilter}
+      onSpatialFilterChange={handleSpatialFilterChange}
+      boxSelectMode={boxSelectMode}
+      onBoxSelectModeChange={handleBoxSelectModeChange}
+      boxSelectBounds={boxSelectBounds}
+      onBoxSelectConfirm={handleBoxSelectConfirm}
+      isAdditiveMode={isAdditiveMode}
+      onAdditiveModeToggle={() => additiveModeToggled ? setActiveMode('none') : setActiveMode('additive')}
+      onClearSelection={handleClearAllSelections}
+      pinCoords={popupCoords}
+      onPinChange={setPopupCoords}
+      viewMode={isMobile ? undefined : viewMode}
+      onViewModeChange={isMobile ? undefined : handleViewModeChange}
+      hasResults={hasResults}
+    />
+  )
+
+  const resultsView = phoneSheet.state.results ?? 'cards'
+  const resultsCount = popupContent.reduce((n, layer) => n + (layer.features?.length || 1), 0)
+
+  if (isMobile) {
+    return (
+      <PhoneSheetHost
+        map={mapElement}
+        resultsSummary={hasResults ? `${resultsCount} result${resultsCount === 1 ? '' : 's'}` : undefined}
+        layersSummary={`${displayedTitles.size} layer${displayedTitles.size === 1 ? '' : 's'} on`}
+        onClearResults={hasResults ? handleClearPhoneResults : undefined}
+        results={
+          hasResults ? (
+            <div className="flex h-full min-h-0 flex-col gap-3 pt-1">
+              <ResultsViewToggle value={resultsView} onChange={phoneSheet.setResultsView} />
+              {popupHeaderRender?.(popupContent)}
+              {resultsView === 'cards' ? (
+                <PopupContentWithPagination
+                  key={popupContentKey(popupContent)}
+                  layerContent={popupContent}
+                  onHighlightChange={handleHighlightChange}
+                  clickPoint={clickPoint}
+                  layerHeaderExtras={popupLayerHeaderRender}
+                  featureExtras={popupFeatureRender}
+                />
+              ) : (
+                <div className="min-h-[18rem] flex-1">
+                  <QueryResultsTable
+                    layerContent={popupContent}
+                    selectedFeatureRefs={selectedFeatureRefs}
+                    onSelectedFeaturesChange={setSelectedFeatureRefs}
+                    onHighlightChange={handleHighlightChange}
+                    disableExport={disableExport}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {isLoadingRaster ? 'Loading results' : "Tap the map to see what's there."}
+            </p>
+          )
+        }
+      />
+    )
+  }
 
   return (
     <div className="relative h-full w-full flex flex-col overflow-hidden">
@@ -643,49 +760,11 @@ export default function GenericMapContainer({
           className="relative h-full overflow-hidden transition-[width] duration-200 ease-linear"
           style={{ width: shouldShrinkMap ? `calc(100% - ${panelState.sheetWidth}px)` : '100%' }}
         >
-          <DataMap
-            wmsUrl={`${PROD_GEOSERVER_URL}/wms`}
-            layers={layersConfig}
-            center={center}
-            zoom={zoom}
-            highlightFeatures={highlightedFeatures}
-            onFeatureClick={(...args) => { setPopupCoords(null); handleFeatureClick(...args) }}
-            onMoveEnd={setMapPosition}
-            layerFilters={layerFilters}
-            layerStyles={layerStyles}
-            vectorLayerFilters={vectorLayerFilters}
-            vectorLayerSymbology={vectorLayerSymbology}
-            onMapReady={handleMapReady}
-            basemapId={basemap ?? defaultBasemap.id}
-            clickBufferBounds={clickBufferBounds}
-            onClickBufferChange={handleClickBufferChange}
-            featureBbox={featureBbox}
-            onFeatureBboxChange={setFeatureBbox}
-            activeDrawShape={activeDrawShape}
-            onDrawReset={handleDrawReset}
-            onDrawComplete={handleDrawComplete}
-            toolbarDrawShape={toolbarDrawShape}
-            onToolbarDrawToggle={handleToolbarDrawToggle}
-            onCancelMode={handleCancelMode}
-            spatialFilter={spatialFilter}
-            onSpatialFilterChange={handleSpatialFilterChange}
-            boxSelectMode={boxSelectMode}
-            onBoxSelectModeChange={handleBoxSelectModeChange}
-            boxSelectBounds={boxSelectBounds}
-            onBoxSelectConfirm={handleBoxSelectConfirm}
-            isAdditiveMode={isAdditiveMode}
-            onAdditiveModeToggle={() => additiveModeToggled ? setActiveMode('none') : setActiveMode('additive')}
-            onClearSelection={handleClearAllSelections}
-            pinCoords={popupCoords}
-            onPinChange={setPopupCoords}
-            viewMode={viewMode}
-            onViewModeChange={handleViewModeChange}
-            hasResults={hasResults}
-          />
+          {mapElement}
         </div>
 
         {/* Popup sheet - desktop */}
-        {viewMode === 'map' && !isMobile && (
+        {viewMode === 'map' && (
           <div
             className="h-full border-l bg-background overflow-hidden transition-[width] duration-200 ease-linear"
             style={{ width: panelState.isSheetOpen ? `${panelState.sheetWidth}px` : 0 }}
@@ -700,33 +779,6 @@ export default function GenericMapContainer({
               onHighlightChange={handleHighlightChange}
               width={panelState.sheetWidth}
               onWidthChange={(width) => setPanelState(prev => ({ ...prev, sheetWidth: width }))}
-              isOpen={panelState.isSheetOpen}
-              clickPoint={clickPoint}
-              headerExtras={popupHeaderRender?.(popupContent)}
-              layerHeaderExtras={popupLayerHeaderRender}
-              featureExtras={popupFeatureRender}
-            />
-          </div>
-        )}
-
-        {/* Mobile sheet */}
-        {viewMode === 'map' && isMobile && (
-          <div
-            className={cn(
-              "absolute inset-x-0 bottom-0 z-50 bg-background border-t rounded-t-xl shadow-lg",
-              "transition-transform duration-200 ease-linear",
-              panelState.isSheetOpen ? "translate-y-0" : "translate-y-full"
-            )}
-            style={{ height: '70%' }}
-          >
-            <PopupSheet
-              ref={popupSheetRef}
-              sheetTriggerRef={sheetTriggerRef}
-              popupContent={popupContent}
-              popupTitle={popupTitle}
-              onClose={handleSheetClose}
-              onOpenChange={handleSheetOpenChange}
-              onHighlightChange={handleHighlightChange}
               isOpen={panelState.isSheetOpen}
               clickPoint={clickPoint}
               headerExtras={popupHeaderRender?.(popupContent)}
@@ -790,24 +842,6 @@ export default function GenericMapContainer({
           />
         )}
       </div>
-
-      {/* Mobile bottom navigation */}
-      {isMobile && (
-        <MobileMapNav
-          viewMode={viewMode}
-          onViewModeChange={handleViewModeChange}
-          onOpenLayers={() => {
-            const layersLink = sidebarLinks?.find((link) => link.title === 'Layers')
-            if (layersLink) {
-              setCurrentContent(layersLink)
-            } else {
-              console.warn(`No 'Layers' sidebar link on ${currentPage}; opening the menu instead.`)
-              setCurrentContent(null)
-              setNavOpened(true)
-            }
-          }}
-        />
-      )}
     </div>
   )
 }

@@ -1,7 +1,4 @@
-import { Menu, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
 import { TopNav } from '@/components/top-nav'
-import { useSidebar } from '@/hooks/use-sidebar'
 import { useGetCurrentPage } from '@/hooks/use-get-current-page'
 import { getAppTitle } from '@/lib/app-titles'
 import { UgsLogo } from '@/components/ugs-logo'
@@ -14,29 +11,10 @@ interface AppBarProps {
 }
 
 const AppBar = ({ search, actions }: AppBarProps) => {
-  const { navOpened, setNavOpened, setCurrentContent } = useSidebar()
   const appTitle = getAppTitle(useGetCurrentPage())
-
-  // The menu button always opens on the menu, not on whichever panel was last shown.
-  const handleMenuClick = () => {
-    if (!navOpened) setCurrentContent(null)
-    setNavOpened((prev) => !prev)
-  }
 
   return (
     <header className='flex h-14 shrink-0 items-center gap-3 border-b bg-background px-3 md:px-4'>
-      <Button
-        variant='ghost'
-        size='icon'
-        className='shrink-0 md:hidden'
-        aria-label='Toggle navigation'
-        aria-controls='sidebar-menu'
-        aria-expanded={navOpened}
-        onClick={handleMenuClick}
-      >
-        {navOpened ? <X /> : <Menu />}
-      </Button>
-
       {/* This bar is the only header: the app owns the lockup, the title, and the controls. */}
       <a
         href='https://geology.utah.gov'

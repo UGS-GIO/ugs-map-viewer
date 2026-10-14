@@ -32,9 +32,10 @@ const MapShell = ({ search, actions, children }: MapShellProps) => {
             >
                 Skip to map
             </a>
-            <AppBar search={search} actions={actions} />
+            <AppBar search={isMobile ? undefined : search} actions={actions} />
             <div className="relative min-h-0 min-w-0 overflow-hidden">
-                <Sidebar />
+                {/* Phones put every panel in the map's sheet, and have no room for the footer bar. */}
+                {!isMobile && <Sidebar />}
                 {/* isolate: the map's own overlays (the mobile results sheet) stack inside main, so
                     the mobile drawer always opens above them. */}
                 <main
@@ -47,7 +48,7 @@ const MapShell = ({ search, actions, children }: MapShellProps) => {
                     {children}
                 </main>
             </div>
-            <MapFooterBar />
+            {!isMobile && <MapFooterBar />}
         </div>
     )
 }
