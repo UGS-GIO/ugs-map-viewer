@@ -307,3 +307,33 @@ body > #root {
   );
   background-size: 8px 8px;
 }
+
+/* Phones (matches PHONE_QUERY in hooks/use-mobile.tsx). */
+@media (max-width: 767px), (pointer: coarse) and (max-height: 500px) {
+  /* Text fields at 16px, below which iOS zooms the page when one takes focus. Global, so popovers
+     rendered outside the sheet are covered too. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  /* The map's loading spinner shows in the part of the map the sheet leaves visible. */
+  .phone-map [data-loading-overlay] {
+    align-items: flex-start;
+    padding-top: 20%;
+  }
+  /* No pull-to-refresh or rubber-banding when a swipe lands on the app bar or tab bar. */
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+  /* MapLibre's bottom controls sit above the sheet's peek, its 4.5rem header. */
+  .phone-map .maplibregl-ctrl-bottom-left,
+  .phone-map .maplibregl-ctrl-bottom-right {
+    bottom: 4.5rem;
+  }
+  /* Preview builds render the router devtools toggle bottom-left, over the Layers tab. */
+  button[aria-label="Open TanStack Router Devtools"] {
+    display: none;
+  }
+}

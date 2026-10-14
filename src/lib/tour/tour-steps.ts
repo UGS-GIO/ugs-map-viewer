@@ -206,6 +206,15 @@ export const hazardsSteps: DriveStep[] = [
 
 export type TourRoute = 'hazards' | 'ccs' | 'geologic' | 'groundwater' | 'energy' | 'wetlands';
 
+// Each map route's tour, matching the route prop its TourAutoStart passes.
+export const TOUR_ROUTE_BY_PAGE: Partial<Record<string, TourRoute>> = {
+  hazards: 'hazards',
+  'hazards-review': 'hazards',
+  carbonstorage: 'ccs',
+  subsurface: 'ccs',
+  wetlands: 'wetlands',
+};
+
 const routeSteps: Record<TourRoute, DriveStep[]> = {
   hazards: hazardsSteps,
   ccs: ccsSteps,
