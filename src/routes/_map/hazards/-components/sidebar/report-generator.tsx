@@ -3,7 +3,6 @@ import { useMap } from '@/hooks/use-map';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { MapPreview } from '@/routes/_report/-components/shared/map-preview';
-import { BackToMenuButton } from "@/components/ui/back-to-menu-button";
 import { usePhoneSheetActions } from "@/components/maps/phone-sheet/use-phone-sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -294,7 +293,6 @@ function ReportGenerator() {
 
     return (
         <div>
-            <BackToMenuButton />
             <div className="p-4 space-y-4" data-tour="report-generator">
                 <div>
                     <h2 className="text-lg font-medium mb-2">Report Generator</h2>

@@ -5,11 +5,12 @@ import { ExternalLink, Layers as LayersIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Spinner } from '../ui/loading-spinner';
 import Layers from '@/components/sidebar/layers';
-import { BackToMenuButton } from '../ui/back-to-menu-button';
 import { useSidebar } from '@/hooks/use-sidebar';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { useGetPageInfo } from '@/hooks/use-get-page-info';
 import { DatasetDownloads } from '@/components/sidebar/dataset-downloads';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { usePhoneSheet } from '@/components/maps/phone-sheet/use-phone-sheet';
+import type { InfoDetail } from '@/components/maps/phone-sheet/sheet-model';
 
 function Info() {
   type ModalType = 'references' | 'disclaimer' | 'acknowledgments' | '';
@@ -23,8 +24,9 @@ function Info() {
   const [openSources, setOpenSources] = useState<string[]>([]);
   const isMapDetailsExpanded = openDetails.includes('map-details-accordion-item-1');
   const isDataSourcesExpanded = openSources.includes('data-sources-accordion-item-1');
-  const drawerTriggerRef = useRef<HTMLButtonElement>(null);
   const { data: pageInfo, isLoading: isInfoLoading } = useGetPageInfo();
+  const isMobile = useIsMobile();
+  const { detail, openDetail: openPhoneDetail } = usePhoneSheet();
 
   const handleOpenModal = (type: ModalType) => {
     setModalType(type);
@@ -36,18 +38,13 @@ function Info() {
     setModalType('');
   };
 
-  const handleOpenDrawer = (type: ModalType) => {
-    setModalType(type);
-    if (drawerTriggerRef.current) {
-      drawerTriggerRef.current.click();
-    }
-  };
+  // Phones open a detail in the sheet; desktop keeps its dialog.
+  const openDetail = (type: InfoDetail) => (isMobile ? openPhoneDetail(type) : handleOpenModal(type));
 
   // Show loading spinner while page info is loading
   if (isInfoLoading) {
     return (
       <div className="flex flex-col h-full">
-        <BackToMenuButton />
         <div className="flex-1 flex items-center justify-center">
           <Spinner />
         </div>
@@ -55,9 +52,16 @@ function Info() {
     );
   }
 
+  // On phones a detail opens in the sheet itself; the sheet's header shows its title and "‹ Info".
+  if (isMobile && detail) {
+    const text = detail === 'disclaimer' ? pageInfo?.dataDisclaimer
+      : detail === 'references' ? pageInfo?.references
+      : pageInfo?.acknowledgments;
+    return <div className="text-sm text-muted-foreground">{text}</div>;
+  }
+
   return (
     <div className="flex flex-col h-full">
-      <BackToMenuButton />
       <div className="ml-2 overflow-y-auto flex-grow" ref={contentRef}>
         {/* Map Details Accordion */}
         <div className="mr-2" key="map-details-accordion">
@@ -112,70 +116,17 @@ function Info() {
           )}
         </div>
 
-        {/* Desktop Modal Buttons */}
-        <div className="flex flex-wrap justify-center mx-2 hidden md:flex">
-          <Button variant={'link'} onClick={() => handleOpenModal('references')}>
+        <div className="flex flex-wrap justify-center mx-2">
+          <Button variant={'link'} onClick={() => openDetail('references')}>
             References
           </Button>
-          <Button variant={'link'} onClick={() => handleOpenModal('acknowledgments')}>
+          <Button variant={'link'} onClick={() => openDetail('acknowledgments')}>
             Acknowledgments
           </Button>
           <Button variant={'link'} onClick={() => window.open('https://geology.utah.gov/about-us/contact-webmaster/', '_blank')}>
             Contact Webmaster&nbsp;<ExternalLink size={16} />
           </Button>
         </div>
-
-        {/* Mobile Modal Buttons */}
-        <div className="flex flex-wrap justify-center mx-2 md:hidden">
-          <Button variant={'link'} onClick={() => handleOpenDrawer('references')}>
-            References
-          </Button>
-          <Button variant={'link'} onClick={() => handleOpenDrawer('acknowledgments')}>
-            Acknowledgments
-          </Button>
-          <Button variant={'link'} onClick={() => window.open('https://geology.utah.gov/about-us/contact-webmaster/', '_blank')}>
-            Contact Webmaster&nbsp;<ExternalLink size={16} />
-          </Button>
-        </div>
-
-        {/* Sheet for mobile */}
-        <Sheet>
-          <SheetTrigger asChild>
-            <button ref={drawerTriggerRef} className="hidden">
-              Open Dialog
-            </button>
-          </SheetTrigger>
-          <SheetContent side="bottom" className="h-[95vh]">
-            <SheetHeader>
-              {modalType === 'disclaimer' && <SheetTitle>Data Disclaimer</SheetTitle>}
-              {modalType === 'references' && <SheetTitle>References</SheetTitle>}
-              {modalType === 'acknowledgments' && <SheetTitle>Acknowledgments</SheetTitle>}
-            </SheetHeader>
-            <div className="overflow-y-auto p-4 h-[calc(100%-4rem)]">
-              {modalType === 'disclaimer' && (
-                <SheetDescription asChild>
-                  <div>
-                    {pageInfo?.dataDisclaimer}
-                  </div>
-                </SheetDescription>
-              )}
-              {modalType === 'references' && (
-                <SheetDescription asChild>
-                  <div>
-                    {pageInfo?.references}
-                  </div>
-                </SheetDescription>
-              )}
-              {modalType === 'acknowledgments' && (
-                <SheetDescription asChild>
-                  <div>
-                    {pageInfo?.acknowledgments}
-                  </div>
-                </SheetDescription>
-              )}
-            </div>
-          </SheetContent>
-        </Sheet>
 
         {/* Dialog for desktop */}
         <Dialog open={modalOpen} onOpenChange={handleCloseModal}>
@@ -237,16 +188,9 @@ function Info() {
             Start Exploring
           </Button>
           <Button
-            className='text-foreground hidden md:inline-flex'
+            className='text-foreground'
             variant='link'
-            onClick={() => handleOpenModal('disclaimer')}
-          >
-            Open Data Disclaimer
-          </Button>
-          <Button
-            className='text-foreground md:hidden'
-            variant='link'
-            onClick={() => handleOpenDrawer('disclaimer')}
+            onClick={() => openDetail('disclaimer')}
           >
             Open Data Disclaimer
           </Button>
