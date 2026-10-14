@@ -18,7 +18,6 @@ import LayerControls from '@/components/maps/layer-controls';
 import { WfsVectorLegend } from '@/components/maps/wfs-vector-legend';
 import { StacRenderLegend } from '@/components/maps/stac-render-legend';
 import { ZoomHintPill } from '@/components/maps/zoom-hint-pill';
-import { useIsMobile } from './use-mobile';
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from '@/lib/constants';
 import { useLayerUrl } from '@/context/layer-url-provider';
 
@@ -82,7 +81,6 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
     const [variantActivePick, setVariantActivePick] = useState<string | null>(null);
     const { peek } = usePhoneSheetActions();
     const { data: layerDescriptions } = useFetchLayerDescriptions();
-    const isMobile = useIsMobile();
     const [isUserExpanded, setIsUserExpanded] = useState(() => {
         if (layerConfig.type === 'group') {
             // If it is, expand it ONLY if any of its children are selected.
@@ -233,7 +231,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                     { padding: 50, animate: true }
                 );
                 // Show the zoom: on phones the sheet drops to its peek.
-                if (isMobile) peek();
+                peek();
             }
         } catch (error) {
             console.error("Error in handleZoomToLayer:", error);

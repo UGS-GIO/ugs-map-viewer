@@ -5,7 +5,7 @@ import { InfoIcon } from 'lucide-react';
 import React, { createContext, useState, ReactNode, Dispatch, SetStateAction, useCallback, useMemo } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { raise, sheetFromUrl, writeSheet } from '@/components/maps/phone-sheet/sheet-model';
+import { applyStep, openPanelStep } from '@/components/maps/phone-sheet/sheet-model';
 
 export type SidebarWidth = 'icon' | 'wide' | 'narrow';
 
@@ -91,7 +91,7 @@ export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children })
                 // On phones a panel lives in the sheet, so choosing one from outside it (a popup
                 // button, Info's Start Exploring) also raises the sheet to show it.
                 if (!content || !isMobile) return next;
-                return writeSheet(next, { results: null, detent: raise(sheetFromUrl(prev).detent) }, newTab);
+                return applyStep(next, openPanelStep(newTab));
             },
             replace: true,
         });

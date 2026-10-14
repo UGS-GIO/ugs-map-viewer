@@ -216,7 +216,7 @@ function ReportGenerator() {
         // Cancel any existing drawing first
         cancelDraw();
         setActiveButton('customArea');
-        if (isMobile) peek();
+        peek();
 
         // Set sketching state synchronously with ref
         isSketchingRef.current = true;

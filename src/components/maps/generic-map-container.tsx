@@ -545,9 +545,9 @@ export default function GenericMapContainer({
     if (filter) {
       setHighlightedFeatures([])
       clearAllSelections()
-      if (isMobile) showResults('table')
+      showResults('table')
     }
-  }, [clearAllSelections, isMobile, showResults])
+  }, [clearAllSelections, showResults])
 
   // Handler for box select toggle from toolbar
   const handleBoxSelectModeChange = useCallback((active: boolean) => {
@@ -556,8 +556,8 @@ export default function GenericMapContainer({
 
   const handleBoxSelectConfirm = useCallback((bounds: { sw: [number, number]; ne: [number, number] }) => {
     setBoxSelectBounds(bounds)
-    if (isMobile) showResults('table')
-  }, [isMobile, showResults])
+    showResults('table')
+  }, [showResults])
 
   // Clear highlights when selections are cleared
   const handleClearAllSelections = useCallback(() => {

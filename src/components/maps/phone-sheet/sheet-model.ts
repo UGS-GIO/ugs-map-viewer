@@ -44,6 +44,17 @@ export function writeSheet<T extends object>(prev: T, next: SheetState, tab?: st
   return tab === undefined ? sheet : { ...sheet, tab, detail: undefined }
 }
 
+export type Step = (cur: SheetState, tab: string) => { sheet: SheetState; tab?: string }
+
+// Applies a step to the URL it reads, so a raise queued behind another navigation is never stale.
+export function applyStep<T extends SheetSearch & { tab?: string }>(prev: T, step: Step) {
+  const next = step(sheetFromUrl(prev), prev.tab ?? 'info')
+  return writeSheet(prev, next.sheet, next.tab)
+}
+
+// Shows a panel, raising a sheet at the peek to half.
+export const openPanelStep = (tab: string): Step => (cur) => ({ sheet: { results: null, detent: raise(cur.detent) }, tab })
+
 export type PhoneTab = 'layers' | 'results' | 'info' | 'more'
 
 // The sidebar context's tab value for "no panel", which the phone shows as the More list.
