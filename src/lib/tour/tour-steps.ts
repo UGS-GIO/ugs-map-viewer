@@ -173,13 +173,12 @@ export const baseMapSteps: DriveStep[] = [
 // =============================================================================
 // Phones have no sidebar: the tour walks the sheet and its tab bar instead.
 
+// The desktop intro and outro, reworded for touch. The outro skips desktop's jump to the Home tab.
+const desktopIntro = baseMapSteps[0];
+const desktopOutro = baseMapSteps[baseMapSteps.length - 1];
+
 export const phoneSteps: DriveStep[] = [
-  {
-    popover: {
-      title: 'Welcome to the Map Viewer',
-      description: 'This quick tour shows the main features. Tap outside it to leave at any time.',
-    },
-  },
+  { popover: { ...desktopIntro.popover, description: 'This quick tour shows the main features. Tap outside it to leave at any time.' } },
   {
     element: '[data-tour="phone-tabs"]',
     popover: {
@@ -225,12 +224,7 @@ export const phoneSteps: DriveStep[] = [
       align: 'end',
     },
   },
-  {
-    popover: {
-      title: 'Tour Complete!',
-      description: 'You can take this tour again from More. Happy exploring!',
-    },
-  },
+  { popover: { ...desktopOutro.popover, description: 'You can take this tour again from More. Happy exploring!' } },
 ];
 
 // =============================================================================
