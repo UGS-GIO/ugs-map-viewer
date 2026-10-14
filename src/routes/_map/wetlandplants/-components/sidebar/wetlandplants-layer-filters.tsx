@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { useMap } from '@/hooks/use-map'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { useSidebar } from '@/hooks/use-sidebar'
+import { usePhoneSheetActions } from '@/components/maps/phone-sheet/use-phone-sheet'
 import { type FilterSchema } from '@/lib/filter/types'
 import { wetlandSurveySitesTitle } from '../../-data/layers/layers'
 import { wetlandPlantsFilterSchema } from '../../-data/layers/wetlandplants-schema'
@@ -47,7 +47,7 @@ function SchemaFilters({ schema, hideFields }: WetlandPlantsFilterConfig) {
   const navigate = useNavigate()
   const search = useSearch({ from: '/_map' })
   const isMobile = useIsMobile()
-  const { setNavOpened } = useSidebar()
+  const { showResults } = usePhoneSheetActions()
   const isTableOpen = search.view === 'split' || search.view === 'table'
 
   const openTableMutation = useMutation({
@@ -134,15 +134,12 @@ function SchemaFilters({ schema, hideFields }: WetlandPlantsFilterConfig) {
     onSuccess: (features) => {
       selectFeatures(features)
       if (isMobile) {
-        setNavOpened(false)
+        showResults('table')
+        return
       }
       navigate({
         to: '.',
-        search: (prev: Record<string, unknown>) => ({
-          ...prev,
-          view: isMobile ? ('table' as const) : ('split' as const),
-          tab: isMobile ? 'home' : (prev.tab as string | undefined),
-        }),
+        search: (prev: Record<string, unknown>) => ({ ...prev, view: 'split' as const }),
         replace: true,
       })
     },
@@ -150,16 +147,9 @@ function SchemaFilters({ schema, hideFields }: WetlandPlantsFilterConfig) {
 
   const handleCloseTable = () => {
     clearAllSelections()
-    if (isMobile) {
-      setNavOpened(false)
-    }
     navigate({
       to: '.',
-      search: (prev: Record<string, unknown>) => ({
-        ...prev,
-        view: undefined,
-        tab: isMobile ? 'home' : (prev.tab as string | undefined),
-      }),
+      search: (prev: Record<string, unknown>) => ({ ...prev, view: undefined }),
       replace: true,
     })
   }
@@ -188,15 +178,17 @@ function SchemaFilters({ schema, hideFields }: WetlandPlantsFilterConfig) {
         >
           {openTableMutation.isPending ? 'Opening...' : 'Open table'}
         </Button>
-        <Button
-          variant='outline'
-          size='sm'
-          className='flex-1 text-xs'
-          onClick={handleCloseTable}
-          disabled={!isTableOpen || openTableMutation.isPending}
-        >
-          Close table
-        </Button>
+        {!isMobile && (
+          <Button
+            variant='outline'
+            size='sm'
+            className='flex-1 text-xs'
+            onClick={handleCloseTable}
+            disabled={!isTableOpen || openTableMutation.isPending}
+          >
+            Close table
+          </Button>
+        )}
       </div>
       {openTableMutation.isError && (
         <p className='text-xs text-destructive'>Failed to load table data</p>

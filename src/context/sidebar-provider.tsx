@@ -5,6 +5,7 @@ import { InfoIcon } from 'lucide-react';
 import React, { createContext, useState, ReactNode, Dispatch, SetStateAction, useCallback, useMemo } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { raise, sheetFromUrl, writeSheet } from '@/components/maps/phone-sheet/sheet-model';
 
 export type SidebarWidth = 'icon' | 'wide' | 'narrow';
 
@@ -27,7 +28,7 @@ const getInitialSidebarWidth = () => {
 
 interface SidebarContextProps {
     currentContent: SideLink | null;
-    /** Also opens the drawer on mobile when given a panel. */
+    /** On phones, choosing a panel also raises the sheet to show it. */
     setCurrentContent: (content: SideLink | null) => void;
     isCollapsed: boolean;
     setIsCollapsed: Dispatch<SetStateAction<boolean>>;
@@ -35,8 +36,6 @@ interface SidebarContextProps {
     setSidebarWidth: (width: SidebarWidth) => void;
     sidebarWidthPx: number;
     setSidebarWidthPx: (width: number) => void;
-    navOpened: boolean;
-    setNavOpened: Dispatch<SetStateAction<boolean>>;
 }
 
 export const SidebarContext = createContext<SidebarContextProps>({
@@ -48,8 +47,6 @@ export const SidebarContext = createContext<SidebarContextProps>({
     setSidebarWidth: () => {},
     sidebarWidthPx: SIDEBAR_WIDTH_XL,
     setSidebarWidthPx: () => {},
-    navOpened: false,
-    setNavOpened: () => false,
 });
 
 const defaultInfoLink: SideLink = {
@@ -65,7 +62,6 @@ export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children })
     const search = useSearch({ from: '/_map' });
 
     const { data: dynamicLinks } = useGetSidebarLinks();
-    const [navOpened, setNavOpened] = useState<boolean>(false);
     const isMobile = useIsMobile();
     const [sidebarWidthPx, setSidebarWidthPx] = useState<number>(getInitialSidebarWidth);
 
@@ -90,15 +86,15 @@ export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children })
         const newTab = content ? content.title.toLowerCase() : 'home';
         navigate({
             to: '.',
-            search: (prev) => ({
-                ...prev,
-                tab: newTab,
-            }),
+            search: (prev) => {
+                const next = { ...prev, tab: newTab };
+                // On phones a panel lives in the sheet, so choosing one from outside it (a popup
+                // button, Info's Start Exploring) also raises the sheet to show it.
+                if (!content || !isMobile) return next;
+                return writeSheet(next, { results: null, detent: raise(sheetFromUrl(prev.sheet, prev.view).state.detent) }, newTab);
+            },
             replace: true,
         });
-        // On mobile the panel lives in the drawer, so choosing one from outside it (the bottom
-        // bar, a popup button) must open the drawer or nothing visible happens.
-        if (content && isMobile) setNavOpened(true);
     }, [navigate, isMobile]);
 
     const handleSetIsCollapsed = useCallback((value: boolean | ((prevState: boolean) => boolean)) => {
@@ -135,9 +131,6 @@ export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children })
                 setSidebarWidth: handleSetSidebarWidth,
                 sidebarWidthPx,
                 setSidebarWidthPx,
-                // The drawer only exists on mobile, so it can't stay open (and scroll-locked) on desktop.
-                navOpened: navOpened && isMobile,
-                setNavOpened,
             }}
         >
             {children}

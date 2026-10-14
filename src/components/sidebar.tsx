@@ -1,9 +1,8 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ChevronsLeft, ChevronLeft } from 'lucide-react';
 import Nav from './nav';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/hooks/use-sidebar';
-import { useIsMobile } from '@/hooks/use-mobile';
 import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links';
 import { NavSkeleton } from './sidebar/sidebar-skeleton';
 import { SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_MD, SIDEBAR_WIDTH_XL, SIDEBAR_WIDTH_COLLAPSED } from '@/context/sidebar-provider';
@@ -15,19 +14,15 @@ interface SidebarProps extends React.HTMLAttributes<HTMLElement> { }
 const clampWidth = (px: number) => Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, px));
 
 export default function Sidebar({ className }: SidebarProps) {
-  const { navOpened, setNavOpened, isCollapsed, setIsCollapsed, sidebarWidthPx, setSidebarWidthPx } = useSidebar();
+  const { isCollapsed, setIsCollapsed, sidebarWidthPx, setSidebarWidthPx } = useSidebar();
   const { data: sidebarLinks, isLoading: areLinksLoading } = useGetSidebarLinks();
   const [isDragging, setIsDragging] = useState(false);
-  const isMobile = useIsMobile();
 
-  // Hidden, not unmounted: the panel would otherwise take the flex-1 remainder of the rail — a ~5px
-  // column that paints a scrollbar beside the icons — but unmounting drops the layer groups' local
-  // expansion state on every collapse. Keyed off navOpened, not a breakpoint hook: the mobile
-  // drawer IS the panel, and useIsMobile lags a live resize, which would blank it.
-  const showPanel = navOpened || !isCollapsed;
+  // Hidden, not unmounted: unmounting would drop the layer groups' local expansion state on every collapse.
+  const showPanel = !isCollapsed;
 
   // Collapsed shares one constant with MapShell so the sidebar and the map's margin can't drift.
-  const sidebarStyle = isMobile ? undefined : { width: `${isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : sidebarWidthPx}px` };
+  const sidebarStyle = { width: `${isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : sidebarWidthPx}px` };
 
   // Get default width based on screen size
   const getDefaultWidth = useCallback(() => {
@@ -144,48 +139,23 @@ export default function Sidebar({ className }: SidebarProps) {
     setSidebarWidthPx(clampWidth(sidebarWidthPx + step));
   }, [isCollapsed, setIsCollapsed, sidebarWidthPx, setSidebarWidthPx, toggleCollapsed]);
 
-  /* Make body not scrollable when navBar is opened */
-  useEffect(() => {
-    if (navOpened) {
-      document.body.classList.add('overflow-hidden');
-    } else {
-      document.body.classList.remove('overflow-hidden');
-    }
-  }, [navOpened]);
-
   return (
     <aside
       aria-label="Map tools"
       className={cn(
-        "absolute bottom-0 left-0 right-0 top-0 z-50 w-full max-w-full md:right-auto md:h-full md:border-r-2 md:border-r-muted",
-        // Mobile drawer fills the map area; only its panel or menu scrolls. Clip, not auto: a panel's
-        // absolute children would give the drawer its own scroll range and slide the panel off-screen.
-        "overflow-clip md:overflow-visible",
-        navOpened ? "border-b" : "hidden md:block",
+        "absolute bottom-0 left-0 top-0 z-50 h-full max-w-full border-r-2 border-r-muted",
         !isDragging && "transition-[width] duration-200 ease-linear",
         className
       )}
       style={sidebarStyle}
     >
-      <div
-        role="presentation"
-        aria-hidden="true"
-        onClick={() => setNavOpened(false)}
-        className={`absolute inset-0 transition-opacity duration-700 ${navOpened ? 'h-full opacity-50' : 'h-0 opacity-0'
-          } w-full bg-black md:hidden`}
-      />
-
-      <div className={cn('flex h-full flex-col', navOpened && 'h-full')}>
+      <div className='flex h-full flex-col'>
         {/* Navigation links */}
         {areLinksLoading ?
-          <NavSkeleton id='sidebar-menu' className='hidden h-full flex-1 md:flex' />
+          <NavSkeleton id='sidebar-menu' className='flex h-full flex-1' />
           : <Nav
             id='sidebar-menu'
-            className={cn(
-              'h-full flex-1 overflow-hidden z-40',
-              navOpened ? 'max-h-screen' : 'max-h-0 py-0 md:max-h-screen md:py-2'
-            )}
-            closeNav={() => setNavOpened(!navOpened)}
+            className='h-full flex-1 overflow-hidden z-40 max-h-screen py-2'
             isCollapsed={isCollapsed}
             showPanel={showPanel}
             setIsCollapsed={setIsCollapsed}

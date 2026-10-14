@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { MapPreview } from '@/routes/_report/-components/shared/map-preview';
 import { BackToMenuButton } from "@/components/ui/back-to-menu-button";
-import { useSidebar } from "@/hooks/use-sidebar";
+import { usePhoneSheetActions } from "@/components/maps/phone-sheet/use-phone-sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -39,7 +39,7 @@ function formatAoiArea(aoi: PolygonGeometry): string {
 function ReportGenerator() {
     const { map, setIsSketching, startDraw, cancelDraw } = useMap();
     const [activeButton, setActiveButton] = useState<ActiveButtonOptions>();
-    const { setNavOpened } = useSidebar();
+    const { peek } = usePhoneSheetActions();
     const isMobile = useIsMobile();
     const [activeDialog, setActiveDialog] = useState<DialogType>(null);
     const [pendingAoi, setPendingAoi] = useState<PolygonGeometry | null>(null);
@@ -217,7 +217,7 @@ function ReportGenerator() {
         // Cancel any existing drawing first
         cancelDraw();
         setActiveButton('customArea');
-        if (isMobile) setNavOpened(false);
+        if (isMobile) peek();
 
         // Set sketching state synchronously with ref
         isSketchingRef.current = true;
