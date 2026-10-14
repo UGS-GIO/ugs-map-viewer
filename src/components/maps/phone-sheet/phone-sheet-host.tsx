@@ -1,4 +1,5 @@
-import { Suspense, type ReactNode, type RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
+import { CurrentPanel } from '@/components/sidebar/current-panel'
 import { Spinner } from '@/components/ui/loading-spinner'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links'
@@ -40,11 +41,7 @@ export function PhoneSheetHost({ container, results, resultsSummary, layersSumma
     summary = active === 'layers' ? layersSummary : undefined
     if (detail) back = { label: 'Info', onClick: () => sheet.openDetail(null) }
     else if (active === 'more') back = { label: 'More', onClick: () => sheet.openPanel(MORE_TAB) }
-    body = (
-      <Suspense fallback={<Spinner />}>
-        <Panel />
-      </Suspense>
-    )
+    body = <CurrentPanel />
   } else if (wantsPanel && !missingPanel) {
     title = ''
     body = <Spinner />

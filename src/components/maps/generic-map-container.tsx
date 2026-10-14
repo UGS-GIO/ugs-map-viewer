@@ -16,7 +16,6 @@ import { flattenDataLayersWithAncestors, resolveLeafVisibility } from '@/lib/map
 import { useMapUrlSync, type ViewMode } from '@/hooks/use-map-url-sync'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { PopupContentWithPagination } from '@/components/maps/popups/popup-content-with-pagination'
-import { popupContentKey } from '@/components/maps/popups/popup-content-key'
 import { PhoneSheetHost } from './phone-sheet/phone-sheet-host'
 import { ResultsViewToggle } from './phone-sheet/results-view-toggle'
 import { usePhoneSheet } from './phone-sheet/use-phone-sheet'
@@ -705,7 +704,6 @@ export default function GenericMapContainer({
               {popupHeaderRender?.(popupContent)}
               {resultsView === 'cards' ? (
                 <PopupContentWithPagination
-                  key={popupContentKey(popupContent)}
                   layerContent={popupContent}
                   onHighlightChange={handleHighlightChange}
                   clickPoint={clickPoint}

@@ -14,9 +14,8 @@ import {
 } from './ui/tooltip'
 import { cn } from '@/lib/utils'
 import useCheckActiveNav from '@/hooks/use-check-active-nav'
-import { Suspense } from 'react'
 import { ChevronLeft } from 'lucide-react'
-import { Spinner } from './ui/loading-spinner'
+import { CurrentPanel } from '@/components/sidebar/current-panel'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { SideLink } from '@/lib/types/sidelink-types'
 import ThemeSwitch from '@/components/theme-switch'
@@ -77,10 +76,6 @@ export default function Nav({
   }
 
 
-  const DynamicComponent = currentContent?.component
-    ? currentContent?.component
-    : null
-
   return (
     <div id={id} className="flex flex-1 overflow-hidden">
       <div
@@ -116,17 +111,9 @@ export default function Nav({
         <TooltipProvider delayDuration={0}>
           {currentContent ? (
             <div id={TOOL_PANEL_ID} role="region" aria-label={currentContent.title} className="h-full overflow-y-auto">
-              <Suspense fallback={<div className="px-4"><Spinner /></div>}>
-                {DynamicComponent ? (
-                  <div className="px-4 pb-4">
-                    <DynamicComponent />
-                  </div>
-                ) : (
-                  <div className='w-full flex justify-center'>
-                    <Spinner />
-                  </div>
-                )}
-              </Suspense>
+              <div className="px-4 pb-4">
+                <CurrentPanel />
+              </div>
             </div>
           ) : (
             <nav className='grid max-h-full content-start gap-4 overflow-y-auto group-[[data-collapsed=true]]:justify-center group-[[data-collapsed=true]]:px-2'>

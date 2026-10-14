@@ -1,11 +1,10 @@
 import * as React from "react";
-import { useCallback, useMemo, useRef, useState, useImperativeHandle, forwardRef } from "react";
+import { useCallback, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { LayerContentProps, ExtendedFeature } from "@/components/maps/popups/types";
 import { PopupContentWithPagination } from "@/components/maps/popups/popup-content-with-pagination";
-import { popupContentKey } from "@/components/maps/popups/popup-content-key";
 import { XIcon } from "lucide-react";
 import type { HighlightFeature } from "@/components/maps/types";
 
@@ -76,7 +75,6 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
         open: () => updateOpen(true),
     }), [updateOpen]);
 
-    const contentKey = useMemo(() => popupContentKey(popupContent), [popupContent]);
 
     const setContainerRef = useCallback((node: HTMLDivElement | null) => {
         containerRef.current = node;
@@ -199,7 +197,6 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
                             className="flex flex-1 flex-col gap-4 overflow-y-auto select-text bg-muted/30 p-3"
                         >
                             <PopupContentWithPagination
-                                key={contentKey}
                                 layerContent={popupContent}
                                 onHighlightChange={onHighlightChange}
                                 clickPoint={clickPoint}
