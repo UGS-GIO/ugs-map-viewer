@@ -97,9 +97,11 @@ Moving the sheet:
   to the lower one. Speed is measured from the press, so the slop distance never reads as a flick.
 - A scrolled list scrolls first: while the content is scrolled down, a pull down scrolls it. Once
   it is at its top, a pull down moves the sheet.
-- At the top of the content, a downward pull is claimed from its first move (`preventDefault`,
-  before the 8px slop), so iOS's rubber-band overscroll can't start first. Upward, sideways and
-  scrolled-content moves are left alone.
+- At the top of the content, a clearly vertical downward pull (at least 2px, and more than twice
+  its sideways travel) is claimed from its first move (`preventDefault`, before the 8px slop), so
+  iOS's rubber-band overscroll can't start first. The drag itself still starts only past 8px.
+  Sideways moves, upward moves, scrolled content, two fingers, non-cancelable moves, and anything
+  over a horizontal scroller (`overflow-x` auto or scroll with overflow, or `pan-x`) are left alone.
 - The click that a drag ends with is ignored, checked by a 300ms timestamp because a touch drag
   fires no click. A keyboard click (`detail === 0`) always counts.
 - The handle is a `<button>`. A tap steps peek → half → full → peek, and the up and down arrow
@@ -247,6 +249,9 @@ Callers that used to close the drawer go through `usePhoneSheetActions`:
   Testing Library, and its `@types/react` is 18.3 although the runtime is React 19):
   - the drag hook: slow drags settle, flicks carry, taps stay taps, cancels restore, and every
     content guard
+  - a pull down minimizes; a drag that ends within 8px of its start keeps the height rules
+  - the early claim: only a clearly vertical downward first move at the top, not upward,
+    non-cancelable, tiny, two-finger, or over a horizontal scroller
   - tapping a tab, the open tab, the handle and the arrow keys
   - a click that ends a drag is ignored
   - Escape from a portaled popover does not collapse the sheet

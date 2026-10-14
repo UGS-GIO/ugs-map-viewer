@@ -30,7 +30,7 @@ export function releaseDetent(frac: number, speed: number): Detent {
   return nearestDetent(frac)
 }
 
-// A pull down minimizes the sheet, as the fleet-fuel drawer does; other releases keep the height rules.
+// A pull down minimizes the sheet; other releases keep the height rules.
 export function settleDetent(frac: number, speed: number, pulledDown: boolean): Detent {
   return pulledDown ? PEEK : releaseDetent(frac, speed)
 }

@@ -117,6 +117,19 @@ describe('header drag', () => {
     expect(onRelease).toHaveBeenCalledWith(FULL)
   })
 
+  it('settles by the height rules when a header drag ends within 8px of where it began', () => {
+    const onRelease = vi.fn()
+    const { container } = render(<Harness detent={HALF} onRelease={onRelease} />)
+    setHeight(get(container, 'sheet'), 550)
+    pointer(get(container, 'grabber'), 'pointerdown', 450)
+    for (const y of [480, 520, 480, 455]) {
+      tick(200)
+      pointer(window, 'pointermove', y)
+    }
+    pointer(window, 'pointerup', 455)
+    expect(onRelease).toHaveBeenCalledWith(HALF)
+  })
+
   it('drops a header gesture in progress when the sheet unmounts', () => {
     const onRelease = vi.fn()
     const { container, unmount } = render(<Harness detent={PEEK} onRelease={onRelease} />)
@@ -254,12 +267,55 @@ describe('content drag', () => {
     expect(touch(text, 'touchmove', [{ x: 100, y: 304 }]).defaultPrevented).toBe(false)
   })
 
-  it('leaves a sideways first move alone', () => {
-    const { container } = setup(FULL)
+  describe('early claim of a downward first move', () => {
+    const first = (dx: number, dy: number, opts: { cancelable?: boolean; extra?: boolean } = {}) => {
+      const r = setup(FULL)
+      const text = get(r.container, 'text')
+      touch(text, 'touchstart', [{ x: 100, y: 300 }])
+      tick(100)
+      const pts = [{ x: 100 + dx, y: 300 + dy }]
+      if (opts.extra) pts.push({ x: 50, y: 300 })
+      return touch(text, 'touchmove', pts, opts.cancelable ?? true).defaultPrevented
+    }
+
+    it('claims a clearly vertical pull', () => {
+      expect(first(0, 4)).toBe(true)
+    })
+
+    it('leaves alone an upward, non-cancelable, tiny, or two-finger move', () => {
+      expect(first(0, -4)).toBe(false)
+      expect(first(0, 4, { cancelable: false })).toBe(false)
+      expect(first(0, 1)).toBe(false)
+      expect(first(3, 3)).toBe(false)
+      expect(first(0, 4, { extra: true })).toBe(false)
+    })
+
+    it('leaves a move inside a horizontal scroller to the scroller', () => {
+      const real = window.getComputedStyle.bind(window)
+      vi.spyOn(window, 'getComputedStyle').mockImplementation((el, pseudo) =>
+        el instanceof HTMLElement && el.dataset.testid === 'grip'
+          ? ({ touchAction: 'auto', overflowX: 'auto' } as CSSStyleDeclaration)
+          : real(el, pseudo))
+      Object.defineProperty(HTMLElement.prototype, 'scrollWidth', { configurable: true, get() { return (this as HTMLElement).dataset.testid === 'grip' ? 500 : 0 } })
+      const r = setup(FULL)
+      const grip = get(r.container, 'grip')
+      touch(grip, 'touchstart', [{ x: 100, y: 300 }])
+      tick(100)
+      expect(touch(grip, 'touchmove', [{ x: 101, y: 303 }]).defaultPrevented).toBe(false)
+      delete (HTMLElement.prototype as { scrollWidth?: number }).scrollWidth
+    })
+  })
+
+  it('settles by the height rules when a content drag ends within 8px of where it began', () => {
+    const { container, onRelease } = setup(HALF)
     const text = get(container, 'text')
     touch(text, 'touchstart', [{ x: 100, y: 300 }])
-    tick(100)
-    expect(touch(text, 'touchmove', [{ x: 104, y: 301 }]).defaultPrevented).toBe(false)
+    for (const y of [320, 340, 330, 305]) {
+      tick(100)
+      touch(text, 'touchmove', [{ x: 100, y }])
+    }
+    touch(text, 'touchend', [])
+    expect(onRelease).toHaveBeenCalledWith(HALF)
   })
 
   it('scrolls instead when the content is scrolled down', () => {

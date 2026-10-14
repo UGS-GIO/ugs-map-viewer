@@ -11,7 +11,7 @@ const TAP_SLOP_PX = 4
 // The content claims a touch only past this: below where iOS starts its own scroll, above a thumb's drift.
 const CONTENT_SLOP_PX = 8
 // A release more than this far below the press settles on the peek.
-const PULL_DOWN_PX = CONTENT_SLOP_PX
+const PULL_DOWN_PX = 8
 // A touch this soon after the content scrolled lands on a fling still in motion.
 const SCROLL_SETTLE_MS = 100
 // A click this soon after a drag is the drag's own release. A timestamp, because a touch drag fires no click.
@@ -36,6 +36,18 @@ function scrolledDown(from: Element | null, root: HTMLElement) {
 function handlesOwnTouch(from: Element | null, root: HTMLElement) {
   for (let n = from; n && n !== root; n = n.parentElement) {
     if (getComputedStyle(n).touchAction === 'none') return true
+  }
+  return false
+}
+
+// A horizontal scroller (or a pan-x element) under the finger owns a sideways swipe.
+function scrollsSideways(from: Element | null, root: HTMLElement) {
+  for (let n = from; n && root.contains(n); n = n.parentElement) {
+    const style = getComputedStyle(n)
+    const { overflowX } = style
+    const touchAction = style.touchAction ?? ''
+    if (n.scrollWidth > n.clientWidth && (overflowX === 'auto' || overflowX === 'scroll')) return true
+    if (touchAction.includes('pan-x') && !touchAction.includes('pan-y')) return true
   }
   return false
 }
@@ -169,8 +181,11 @@ export function useSheetDrag(
       const y = e.touches[0]?.clientY ?? y0
       if (state === 'pending') {
         const atTop = !scrolledDown(elementOf(e.target), el)
-        // Claim a downward pull at the top at once, so iOS's rubber-band overscroll can't start first.
-        if (e.cancelable && atTop && y - y0 > 0 && y - y0 >= Math.abs(x - x0)) e.preventDefault()
+        // Claim a clearly vertical pull down at the top at once, so iOS's rubber-band overscroll can't start first.
+        const dy = y - y0
+        if (e.cancelable && atTop && dy >= 2 && dy > 2 * Math.abs(x - x0) && !scrollsSideways(elementOf(e.target), el)) {
+          e.preventDefault()
+        }
         if (Math.hypot(x - x0, y - y0) < CONTENT_SLOP_PX) return
         if (!e.cancelable || !contentTakesDrag(x - x0, y - y0, atTop, latest.current.detent)) {
           state = 'off'
