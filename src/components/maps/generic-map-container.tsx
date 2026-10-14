@@ -634,14 +634,28 @@ export default function GenericMapContainer({
   // On phones the results live in the sheet: the open() that raises the desktop popup raises
   // Results instead, as a table when the selection came from an area tool (box select or a drawn
   // filter), keeping the user's Cards or Table choice while Results is open.
-  const phoneRoute = useRef({ sheet: phoneSheet, area: false })
+  // The area is tracked by value: Results opens as a table once per new area, and later plain map
+  // taps raise Cards.
+  const phoneRoute = useRef<{ sheet: typeof phoneSheet; area: unknown }>({ sheet: phoneSheet, area: null })
+  const shownAreaRef = useRef<unknown>(null)
   useEffect(() => {
-    phoneRoute.current = { sheet: phoneSheet, area: !!spatialFilter || !!boxSelectBounds }
+    phoneRoute.current = { sheet: phoneSheet, area: spatialFilter ?? boxSelectBounds ?? null }
   })
   useEffect(() => {
     if (!isMobile) return
     const handle: PopupSheetRef = {
-      open: () => (phoneRoute.current.area ? phoneRoute.current.sheet.showResults('table') : phoneRoute.current.sheet.raiseResults('cards')),
+      open: () => {
+        const { sheet, area } = phoneRoute.current
+        if (area == null) {
+          shownAreaRef.current = null
+          sheet.raiseResults('cards')
+        } else if (area !== shownAreaRef.current) {
+          shownAreaRef.current = area
+          sheet.showResults('table')
+        } else {
+          sheet.raiseResults('cards')
+        }
+      },
       close: () => phoneRoute.current.sheet.closeResults(),
     }
     popupSheetRef.current = handle
@@ -704,7 +718,7 @@ export default function GenericMapContainer({
   )
 
   const resultsView = phoneSheet.state.results ?? 'cards'
-  const resultsCount = popupContent.reduce((n, layer) => n + (layer.features?.length || 1), 0)
+  const resultsCount = popupContent.reduce((n, layer) => n + (layer.features ? layer.features.length : 1), 0)
 
   if (isMobile) {
     return (

@@ -311,16 +311,17 @@ body > #root {
 /* Phones (matches PHONE_QUERY in hooks/use-mobile.tsx). */
 @media (max-width: 767px), (pointer: coarse) and (max-height: 500px) {
   /* Text fields at 16px, below which iOS zooms the page when one takes focus. Global, so popovers
-     rendered outside the sheet are covered too. */
+     rendered outside the sheet are covered too. !important because utility classes (text-sm,
+     md:text-sm) would otherwise win and iOS would zoom on focus. */
   input,
   select,
   textarea {
-    font-size: 16px;
+    font-size: 16px !important;
   }
   /* The map's loading spinner shows in the part of the map the sheet leaves visible. */
   .phone-map [data-loading-overlay] {
     align-items: flex-start;
-    padding-top: 20%;
+    padding-top: 10vh;
   }
   /* No pull-to-refresh or rubber-banding when a swipe lands on the app bar or tab bar. */
   html,
