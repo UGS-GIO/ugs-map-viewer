@@ -316,7 +316,7 @@ export default function GenericMapContainer({
   // Phones select straight from the map, whatever a desktop link's `view` still says.
   const selectionView: ViewMode = isMobile ? 'map' : viewMode
   const phoneSheet = usePhoneSheet()
-  const { raiseResults, showResults } = phoneSheet
+  const { raiseResults, showResults, peek } = phoneSheet
   const rawLayersConfig = useGetLayerConfigsData(layerConfigKey)
   const { selectedLayerTitles, groupVisibility } = useLayerUrl()
   const layersConfig = rawLayersConfig ?? NO_LAYERS
@@ -524,8 +524,10 @@ export default function GenericMapContainer({
     } else {
       startDraw(mode, undefined, () => setToolbarDrawShape('off'))
       setToolbarDrawShape(mode)
+      // Map tools need the map: on phones the sheet drops to its peek.
+      peek()
     }
-  }, [cancelDraw, startDraw, clearSelectionState])
+  }, [cancelDraw, startDraw, clearSelectionState, peek])
 
   // Called by useTerraDraw when drawing finishes (resets to 'off')
   const handleDrawReset = useCallback(() => {
@@ -551,7 +553,9 @@ export default function GenericMapContainer({
   // Handler for box select toggle from toolbar
   const handleBoxSelectModeChange = useCallback((active: boolean) => {
     setActiveMode(active ? 'boxSelect' : 'none')
-  }, [setActiveMode])
+    // The box sits at the map's center: on phones the sheet drops to its peek so all of it shows.
+    if (active) peek()
+  }, [setActiveMode, peek])
 
   const handleBoxSelectConfirm = useCallback((bounds: { sw: [number, number]; ne: [number, number] }) => {
     setBoxSelectBounds(bounds)
