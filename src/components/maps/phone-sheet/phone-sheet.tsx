@@ -4,7 +4,7 @@ import { Toggle } from '@base-ui/react/toggle'
 import { ToggleGroup } from '@base-ui/react/toggle-group'
 import { ChevronLeft, Ellipsis, Info, Layers, List, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { DETENTS, FULL, HALF, PEEK, type Detent, type PhoneTab } from './sheet-model'
+import { DETENTS, FULL, HALF, PEEK, SHEET_FRACTION, type Detent, type PhoneTab } from './sheet-model'
 
 const TABS: { id: PhoneTab; label: string; Icon: LucideIcon }[] = [
   { id: 'layers', label: 'Layers', Icon: Layers },
@@ -15,7 +15,7 @@ const TABS: { id: PhoneTab; label: string; Icon: LucideIcon }[] = [
 
 // The peek is the header's height; the others are fractions of the map area. index.css keeps the
 // map's bottom controls above these.
-const SNAP: Record<Detent, Drawer.Root.SnapPoint> = { peek: '4.5rem', half: 0.55, full: 0.92 }
+const SNAP: Record<Detent, Drawer.Root.SnapPoint> = { peek: '4.5rem', ...SHEET_FRACTION }
 const SNAP_POINTS = DETENTS.map((d) => SNAP[d])
 // A null snap point (a cancelled swipe-off) is the peek.
 const detentOf = (p: Drawer.Root.SnapPoint | null) => DETENTS.find((d) => SNAP[d] === p) ?? PEEK

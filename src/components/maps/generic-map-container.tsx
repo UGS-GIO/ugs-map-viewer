@@ -8,6 +8,7 @@ import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import maplibregl from 'maplibre-gl'
 import DataMap, { HighlightFeature, DrawMode, SpatialFilter } from '@/components/maps/data-map'
+import type { ClickedFeature } from '@/components/maps/types'
 import { PopupSheet, PopupSheetRef } from '@/components/maps/popups/popup-sheet'
 import type { LayerContentProps, ExtendedFeature } from '@/components/maps/popups/types'
 import { QueryResultsTable } from '@/components/data-table/query-results-table'
@@ -19,6 +20,8 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { PopupContentWithPagination } from '@/components/maps/popups/popup-content-with-pagination'
 import { PhoneSheetHost } from './phone-sheet/phone-sheet-host'
 import { usePhoneSheet } from './phone-sheet/use-phone-sheet'
+import { HALF, raise, SHEET_FRACTION } from './phone-sheet/sheet-model'
+import { bbox as turfBbox } from '@turf/bbox'
 import { cn } from '@/lib/utils'
 import { PROD_GEOSERVER_URL, POPUP_TITLES } from '@/lib/constants'
 import { useMap } from '@/hooks/use-map'
@@ -58,6 +61,9 @@ interface VisibleWmsLayer {
   url: string
   bivariateLegend?: { xLabel: string; yLabel: string }
 }
+
+// Room kept between a tapped spot and the top of the phone sheet.
+const TAP_MARGIN_PX = 32
 
 // One empty list while configs load, so hooks keyed on it don't re-run every render.
 const NO_LAYERS: LayerProps[] = []
@@ -315,12 +321,8 @@ export default function GenericMapContainer({
   const { selectedLayerTitles, groupVisibility } = useLayerUrl()
   const layersConfig = rawLayersConfig ?? NO_LAYERS
   const popupSheetRef = useRef<PopupSheetRef>(null)
-  // A selection raises the desktop popup panel, or on phones the sheet's Results, keeping the
-  // user's Cards or Table choice.
-  const openResults = useCallback(() => {
-    if (isMobile) raiseResults('cards')
-    else popupSheetRef.current?.open()
-  }, [isMobile, raiseResults])
+  // Phones and desktop share this tree down to the map, so crossing the phone query never remounts it.
+  const mapAreaRef = useRef<HTMLDivElement | null>(null)
   const sheetTriggerRef = useRef<HTMLButtonElement>(null)
 
   // Currently-displayed titles: leaf is checked AND every enclosing group toggle is on.
@@ -344,6 +346,7 @@ export default function GenericMapContainer({
 
   // Read draw lifecycle + registrations from context (owned by useMapContextState)
   const {
+    map: mapInstance,
     activeDrawShape,
     startDraw,
     cancelDraw,
@@ -357,6 +360,30 @@ export default function GenericMapContainer({
 
   // Highlighted features state - controlled by popup/table navigation
   const [highlightedFeatures, setHighlightedFeatures] = useState<HighlightFeature[]>([])
+
+  // Where the last map tap landed, for keeping it in view once Results rises over the map.
+  const tapCenter = useRef<{ lng: number; lat: number } | null>(null)
+  // A selection raises the desktop popup panel, or on phones the sheet's Results, keeping the
+  // user's Cards or Table choice. If the half sheet would hide all of the selection, the map pans
+  // the tapped spot just above it. It never zooms, and a selection with any part in view (a big
+  // polygon tapped at neighborhood zoom) leaves the map where the user put it.
+  const openResults = useCallback((selected: ClickedFeature[] = []) => {
+    if (!isMobile) return popupSheetRef.current?.open()
+    const detent = raise(phoneSheet.state.detent)
+    raiseResults('cards')
+    const area = mapAreaRef.current
+    const tap = tapCenter.current
+    if (!mapInstance || !area || !tap || detent !== HALF) return
+    const visibleBottom = area.clientHeight * (1 - SHEET_FRACTION.half) - TAP_MARGIN_PX
+    const tapY = mapInstance.project([tap.lng, tap.lat]).y
+    const cornerYs = selected.flatMap((f) => {
+      if (!f.geometry) return []
+      const [w, s, e, n] = turfBbox(f.geometry)
+      return [[w, n], [e, n], [w, s], [e, s]].map(([lng, lat]) => mapInstance.project([lng, lat]).y)
+    })
+    if (Math.min(tapY, ...cornerYs) < visibleBottom) return
+    mapInstance.panBy([0, tapY - visibleBottom])
+  }, [isMobile, raiseResults, phoneSheet.state.detent, mapInstance])
 
   // Handle map ready callback
   const handleMapReady = useCallback((map: maplibregl.Map) => {
@@ -393,6 +420,7 @@ export default function GenericMapContainer({
   const handleClickBufferChange = useCallback((bounds: { sw: [number, number]; ne: [number, number] } | null) => {
     setClickBufferBounds(bounds)
     const click = ++latestClick.current
+    tapCenter.current = bounds && getBboxCenter(bounds)
     if (!bounds || selectionView !== 'map') return
     const queries = rasterQueries(layersConfig, displayedTitles, getBboxCenter(bounds), bounds)
     // One failed layer must not stop the others' results from opening.
@@ -572,7 +600,7 @@ export default function GenericMapContainer({
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode)
     if (mode === 'map' && hasResults) {
-      requestAnimationFrame(openResults)
+      requestAnimationFrame(() => openResults())
     }
   }, [setViewMode, hasResults, openResults])
 
@@ -592,8 +620,6 @@ export default function GenericMapContainer({
   }, [])
 
   const shouldShrinkMap = !isMobile && viewMode === 'map' && panelState.isSheetOpen
-  // Phones and desktop share this tree down to the map, so crossing the phone query never remounts it.
-  const mapAreaRef = useRef<HTMLDivElement | null>(null)
 
   const mapElement = (
     <DataMap

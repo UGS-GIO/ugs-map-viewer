@@ -13,8 +13,8 @@ interface UseFeatureSelectionOptions {
   setSelectedFeatureRefs: (refs: FeatureRef[]) => void
   setClickBufferBounds: (bounds: { sw: [number, number]; ne: [number, number] } | null) => void
   setFeatureBbox: (bbox: { sw: [number, number]; ne: [number, number] } | null) => void
-  /** Shows the results: the desktop popup panel, or the phone sheet's Results. */
-  openResults: () => void
+  /** Shows the results (the desktop popup panel, or the phone sheet's Results) for a selection. */
+  openResults: (selected: ClickedFeature[]) => void
   onHighlightChange?: (features: HighlightFeature[]) => void
 }
 
@@ -122,7 +122,7 @@ export function useFeatureSelection({
     })
 
     if (features.length > 0 && viewMode === 'map') {
-      requestAnimationFrame(openResults)
+      requestAnimationFrame(() => openResults(features))
     }
   }, [viewMode, openResults, onHighlightChange])
 

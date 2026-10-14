@@ -10,6 +10,9 @@ export type Detent = (typeof DETENTS)[number]
 
 export const raise = (d: Detent): Detent => (d === PEEK ? HALF : d)
 
+// How much of the map area the half and full sheet cover. The peek is the header's height.
+export const SHEET_FRACTION = { half: 0.55, full: 0.92 } as const
+
 export type ResultsView = 'cards' | 'table'
 export type SheetState = { results: ResultsView | null; detent: Detent }
 export const PANEL_PEEK: SheetState = { results: null, detent: PEEK }
