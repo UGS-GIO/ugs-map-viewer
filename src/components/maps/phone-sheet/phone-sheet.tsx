@@ -20,6 +20,12 @@ const SNAP_POINTS = DETENTS.map((d) => SNAP[d])
 // A null snap point (a cancelled swipe-off) is the peek.
 const detentOf = (p: Drawer.Root.SnapPoint | null) => DETENTS.find((d) => SNAP[d] === p) ?? PEEK
 
+// Radix menus, selects and popovers portal into a popper wrapper; dialogs carry their role.
+const inOtherLayer = (target: EventTarget | null, sheet: Element | null) => {
+  const layer = target instanceof Element ? target.closest('[data-radix-popper-content-wrapper], [role=dialog], [role=alertdialog]') : null
+  return layer !== null && layer !== sheet
+}
+
 const NEXT: Record<Detent, Detent> = { peek: HALF, half: FULL, full: PEEK }
 const UP: Record<Detent, Detent> = { peek: HALF, half: FULL, full: FULL }
 const DOWN: Record<Detent, Detent> = { peek: PEEK, half: PEEK, full: HALF }
@@ -52,6 +58,7 @@ export interface PhoneSheetProps {
 export function PhoneSheet({ container, detent, activeTab, panelKey, title, summary, headerAction, back, onSelectTab, onSetDetent, children }: PhoneSheetProps) {
   const collapsed = detent === PEEK
   const contentId = useId()
+  const popupRef = useRef<HTMLDivElement>(null)
 
   // A newly opened panel puts focus on its title so screen readers announce it. Page load, and a
   // title filling in after loading, leave focus alone.
@@ -85,6 +92,8 @@ export function PhoneSheet({ container, detent, activeTab, panelKey, title, summ
         onOpenChange={(open, details) => {
           if (open) return
           details.cancel()
+          // Escape inside a menu, select or dialog over the sheet only closes that layer.
+          if (details.reason === 'escape-key' && inOtherLayer(details.event.target, popupRef.current)) return
           onSetDetent(PEEK)
         }}
       >
@@ -92,6 +101,7 @@ export function PhoneSheet({ container, detent, activeTab, panelKey, title, summ
           <Drawer.Portal container={container}>
             <Drawer.Viewport className='pointer-events-none absolute inset-0 z-20 flex items-end'>
               <Drawer.Popup
+                ref={popupRef}
                 initialFocus={false}
                 finalFocus={false}
                 className={cn(
