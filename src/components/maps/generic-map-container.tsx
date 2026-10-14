@@ -8,7 +8,6 @@ import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import maplibregl from 'maplibre-gl'
 import DataMap, { HighlightFeature, DrawMode, SpatialFilter } from '@/components/maps/data-map'
-import type { ClickedFeature } from '@/components/maps/types'
 import { PopupSheet, PopupSheetRef } from '@/components/maps/popups/popup-sheet'
 import type { LayerContentProps, ExtendedFeature } from '@/components/maps/popups/types'
 import { QueryResultsTable } from '@/components/data-table/query-results-table'
@@ -21,7 +20,6 @@ import { PopupContentWithPagination } from '@/components/maps/popups/popup-conte
 import { PhoneSheetHost } from './phone-sheet/phone-sheet-host'
 import { usePhoneSheet } from './phone-sheet/use-phone-sheet'
 import { HALF, raise, SHEET_FRACTION } from './phone-sheet/sheet-model'
-import { bbox as turfBbox } from '@turf/bbox'
 import { cn } from '@/lib/utils'
 import { PROD_GEOSERVER_URL, POPUP_TITLES } from '@/lib/constants'
 import { useMap } from '@/hooks/use-map'
@@ -364,10 +362,9 @@ export default function GenericMapContainer({
   // Where the last map tap landed, for keeping it in view once Results rises over the map.
   const tapCenter = useRef<{ lng: number; lat: number } | null>(null)
   // A selection raises the desktop popup panel, or on phones the sheet's Results, keeping the
-  // user's Cards or Table choice. If the half sheet would hide all of the selection, the map pans
-  // the tapped spot just above it. It never zooms, and a selection with any part in view (a big
-  // polygon tapped at neighborhood zoom) leaves the map where the user put it.
-  const openResults = useCallback((selected: ClickedFeature[] = []) => {
+  // user's Cards or Table choice. If the half sheet would cover the tapped spot, the map pans it
+  // just above the sheet. It never zooms, so a big polygon tapped up close keeps its zoom.
+  const openResults = useCallback(() => {
     if (!isMobile) return popupSheetRef.current?.open()
     const detent = raise(phoneSheet.state.detent)
     raiseResults('cards')
@@ -375,14 +372,8 @@ export default function GenericMapContainer({
     const tap = tapCenter.current
     if (!mapInstance || !area || !tap || detent !== HALF) return
     const visibleBottom = area.clientHeight * (1 - SHEET_FRACTION.half) - TAP_MARGIN_PX
-    const tapY = mapInstance.project([tap.lng, tap.lat]).y
-    const cornerYs = selected.flatMap((f) => {
-      if (!f.geometry) return []
-      const [w, s, e, n] = turfBbox(f.geometry)
-      return [[w, n], [e, n], [w, s], [e, s]].map(([lng, lat]) => mapInstance.project([lng, lat]).y)
-    })
-    if (Math.min(tapY, ...cornerYs) < visibleBottom) return
-    mapInstance.panBy([0, tapY - visibleBottom])
+    const { y } = mapInstance.project([tap.lng, tap.lat])
+    if (y > visibleBottom) mapInstance.panBy([0, y - visibleBottom])
   }, [isMobile, raiseResults, phoneSheet.state.detent, mapInstance])
 
   // Handle map ready callback
