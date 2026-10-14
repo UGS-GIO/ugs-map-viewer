@@ -19,6 +19,9 @@ import { PopupContentWithPagination } from '@/components/maps/popups/popup-conte
 import { PhoneSheetHost } from './phone-sheet/phone-sheet-host'
 import { ResultsViewToggle } from './phone-sheet/results-view-toggle'
 import { usePhoneSheet } from './phone-sheet/use-phone-sheet'
+
+// Lets index.css keep the map's bottom controls just above the phone sheet.
+const DETENT_NAME = ['peek', 'half', 'full'] as const
 import { cn } from '@/lib/utils'
 import { PROD_GEOSERVER_URL, POPUP_TITLES } from '@/lib/constants'
 import { useMap } from '@/hooks/use-map'
@@ -423,10 +426,20 @@ export default function GenericMapContainer({
       showAccuracyCircle: false,
       fitBoundsOptions: { maxZoom: 18 }
     })
-    mapInstance.addControl(geolocateControl, 'top-left')
+    // Phones put it bottom-right, within thumb reach above the sheet, as Google Maps does.
+    mapInstance.addControl(geolocateControl, isMobile ? 'bottom-right' : 'top-left')
     controls.push(geolocateControl)
 
-    if (isMobile) return removeAll
+    if (isMobile) {
+      // OSM's attribution guidelines allow collapsing it to the ⓘ after five seconds.
+      const collapse = setTimeout(() => {
+        mapInstance.getContainer().querySelector('.maplibregl-compact-show')?.classList.remove('maplibregl-compact-show')
+      }, 5000)
+      return () => {
+        clearTimeout(collapse)
+        removeAll()
+      }
+    }
 
     // Dual scale control (bottom-left)
     const scaleControl = new DualScaleControl({ maxWidth: 150 })
@@ -747,6 +760,7 @@ export default function GenericMapContainer({
         {/* Map section */}
         <div
           data-tour={isMobile ? 'phone-map' : undefined}
+          data-sheet={isMobile ? DETENT_NAME[phoneSheet.state.detent] : undefined}
           className={cn('relative h-full overflow-hidden transition-[width] duration-200 ease-linear', isMobile && 'phone-map')}
           style={{ width: shouldShrinkMap ? `calc(100% - ${panelState.sheetWidth}px)` : '100%' }}
         >

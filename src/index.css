@@ -328,10 +328,21 @@ body > #root {
   body {
     overscroll-behavior: none;
   }
-  /* MapLibre's bottom controls sit above the sheet's peek, its 4.5rem header. */
+  /* MapLibre's bottom controls (locate-me, attribution) ride just above the sheet, and hide
+     behind it at full height. Heights match SNAP_POINTS in phone-sheet.tsx. */
   .phone-map .maplibregl-ctrl-bottom-left,
   .phone-map .maplibregl-ctrl-bottom-right {
     bottom: 4.5rem;
+    transition: bottom 300ms ease-out, opacity 300ms ease-out;
+  }
+  .phone-map[data-sheet="half"] .maplibregl-ctrl-bottom-left,
+  .phone-map[data-sheet="half"] .maplibregl-ctrl-bottom-right {
+    bottom: 55%;
+  }
+  .phone-map[data-sheet="full"] .maplibregl-ctrl-bottom-left,
+  .phone-map[data-sheet="full"] .maplibregl-ctrl-bottom-right {
+    opacity: 0;
+    pointer-events: none;
   }
   /* Preview builds render the router devtools toggle bottom-left, over the Layers tab. */
   button[aria-label="Open TanStack Router Devtools"] {
