@@ -15,6 +15,18 @@ correctness; skip pre-existing issues unrelated to this diff.
   failures / swallow-and-continue, missing tests for new logic, non-idiomatic code, and anything
   that violates the repository conventions below.
 - Performance: obvious inefficiencies, N+1 queries, needless work in hot paths.
+- Reinvented primitives: new code that hand-rolls what a library already does: gesture,
+  drag, snap or fling handling; bottom sheets and drawers; dialogs, popovers and focus traps;
+  toggle groups; virtual-keyboard or visualViewport handling; URL search-param parsing and
+  validation; data fetching and caching; debounce and throttle. Tells: touchmove or pointermove
+  listeners, setPointerCapture, visualViewport, velocity or flick math, requestAnimationFrame
+  animation loops, hand-written search-param parse/serialize. Read package.json first to know
+  what is installed. If an installed dependency covers it, that is a BLOCKER: name the
+  dependency and component that replaces the code. If only a well-known library not yet
+  installed covers it, raise a concern naming that library.
+- New dependencies: flag every dependency added to package.json. Name it, what it replaces or
+  enables, and whether an installed dependency already covers the same need (a blocker if it
+  does). Adding a library is allowed; the point is that it is seen and justified.
 
 Report concerns across a range of confidence, not only near-certain ones — raise a well-reasoned
 concern even when you are not fully sure, and state your confidence briefly.
