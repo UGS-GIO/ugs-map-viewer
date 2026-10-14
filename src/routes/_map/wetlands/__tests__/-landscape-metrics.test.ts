@@ -11,6 +11,7 @@ import {
   HUC12_ECO_TITLE,
   ECOREGION_TITLE,
 } from '../-data/landscape-metrics'
+import { buildChoroplethStepExpression } from '../-hooks/use-landscape-choropleth'
 
 describe('Landscape classification breaks', () => {
   it('calculates equal interval breaks correctly', () => {
@@ -129,5 +130,67 @@ describe('getColorRampColors', () => {
   it('falls back to blues if ramp name is unknown', () => {
     const colors = getColorRampColors('unknown_ramp', 5)
     expect(colors).toHaveLength(5)
+  })
+})
+
+describe('buildChoroplethStepExpression', () => {
+  it('builds step expression with safe fallback when minVal is finite', () => {
+    const expr = buildChoroplethStepExpression('utah_percent', 12.5, [25, 50, 75], ['#c6dbef', '#6baed6', '#2171b5', '#08306b'])
+    expect(expr[0]).toBe('case')
+    expect(expr[1]).toEqual(['all', ['has', 'utah_percent'], ['!=', ['get', 'utah_percent'], null]])
+    const stepArgs = expr[2] as unknown[]
+    expect(stepArgs[0]).toBe('step')
+    expect(stepArgs[1]).toEqual(['to-number', ['get', 'utah_percent'], 12.5])
+    expect(stepArgs[2]).toBe('#c6dbef')
+    expect(stepArgs[3]).toBe(25)
+    expect(stepArgs[4]).toBe('#6baed6')
+    expect(stepArgs[5]).toBe(50)
+    expect(stepArgs[6]).toBe('#2171b5')
+    expect(stepArgs[7]).toBe(75)
+    expect(stepArgs[8]).toBe('#08306b')
+    expect(expr[3]).toBe('rgba(168, 168, 168, 0.15)')
+  })
+
+  it('guards non-finite and NaN minVal with 0 fallback', () => {
+    const nanExpr = buildChoroplethStepExpression('utah_percent', NaN, [25, 50], ['#aaa', '#bbb', '#ccc'])
+    const nanStepArgs = nanExpr[2] as unknown[]
+    expect(nanStepArgs[1]).toEqual(['to-number', ['get', 'utah_percent'], 0])
+
+    const infExpr = buildChoroplethStepExpression('utah_percent', Infinity, [25, 50], ['#aaa', '#bbb', '#ccc'])
+    const infStepArgs = infExpr[2] as unknown[]
+    expect(infStepArgs[1]).toEqual(['to-number', ['get', 'utah_percent'], 0])
+
+    const negInfExpr = buildChoroplethStepExpression('utah_percent', -Infinity, [25, 50], ['#aaa', '#bbb', '#ccc'])
+    const negInfStepArgs = negInfExpr[2] as unknown[]
+    expect(negInfStepArgs[1]).toEqual(['to-number', ['get', 'utah_percent'], 0])
+  })
+})
+
+describe('Metric compatibility and scale switching', () => {
+  it('detects incompatible metric on scale switch and falls back to allowedMetrics[0]', () => {
+    const huc8Metrics = resolveMetricsForLayer(HUC8_TITLE)
+    const ecoregionMetrics = resolveMetricsForLayer(ECOREGION_TITLE)
+
+    const groundwaterMetric = 'pct_wells_rising'
+    expect(huc8Metrics.some((m) => m.value === groundwaterMetric)).toBe(true)
+    expect(ecoregionMetrics.some((m) => m.value === groundwaterMetric)).toBe(false)
+
+    // Verification logic matching LandscapeDataFilters:
+    const isMetricValid = ecoregionMetrics.some((m) => m.value === groundwaterMetric)
+    expect(isMetricValid).toBe(false)
+    const fallbackMetric = ecoregionMetrics.find((m) => m.value === groundwaterMetric) || ecoregionMetrics[0]
+    expect(fallbackMetric.value).toBe('utah_percent')
+  })
+
+  it('preserves compatible metric when switching between scales that both support it', () => {
+    const huc8Metrics = resolveMetricsForLayer(HUC8_TITLE)
+    const huc12Metrics = resolveMetricsForLayer(HUC12_TITLE)
+
+    const trendMetric = 'surface_water_trend'
+    expect(huc8Metrics.some((m) => m.value === trendMetric)).toBe(true)
+    expect(huc12Metrics.some((m) => m.value === trendMetric)).toBe(true)
+
+    const isMetricValidOnHuc12 = huc12Metrics.some((m) => m.value === trendMetric)
+    expect(isMetricValidOnHuc12).toBe(true)
   })
 })

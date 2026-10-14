@@ -56,6 +56,26 @@ function formatValue(val: number, unit?: string): string {
   return `${Number(val.toFixed(2))}${unitSuffix}`
 }
 
+export function buildChoroplethStepExpression(
+  metricCol: string,
+  minVal: number,
+  breaks: number[],
+  colors: string[]
+): unknown[] {
+  const safeFallback = Number.isFinite(minVal) ? minVal : 0
+  const stepArgs: unknown[] = ['step', ['to-number', ['get', metricCol], safeFallback], colors[0]]
+  for (let i = 0; i < breaks.length; i++) {
+    stepArgs.push(breaks[i], colors[i + 1] ?? colors[colors.length - 1])
+  }
+
+  return [
+    'case',
+    ['all', ['has', metricCol], ['!=', ['get', metricCol], null]],
+    stepArgs,
+    'rgba(168, 168, 168, 0.15)',
+  ]
+}
+
 export function getLandscapeParquetUrl(stacItemId: string): string {
   return `https://maps-assets.geology.utah.gov/warehouse/geoparquet/${stacItemId}/${stacItemId}.parquet`
 }
@@ -151,11 +171,15 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
 
   // Build MapLibre style overrides and legend data
   return useMemo(() => {
+    const effectiveFilterState = activeMetric
+      ? { ...filterState, metric: activeMetric.value }
+      : filterState
+
     if (!layerTitle || !activeMetric) {
       return {
         pmtilesStyleOverrides: {},
         legendData: null,
-        filterState,
+        filterState: effectiveFilterState,
         isLoading: false,
         isError: false,
       }
@@ -165,7 +189,7 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
       return {
         pmtilesStyleOverrides: {},
         legendData: null,
-        filterState,
+        filterState: effectiveFilterState,
         isLoading: false,
         isError: true,
       }
@@ -202,7 +226,7 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
           metric: activeMetric,
           bins,
         },
-        filterState,
+        filterState: effectiveFilterState,
         isLoading: false,
         isError: false,
       }
@@ -214,7 +238,7 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
       return {
         pmtilesStyleOverrides: {},
         legendData: null,
-        filterState,
+        filterState: effectiveFilterState,
         isLoading,
         isError: false,
       }
@@ -248,7 +272,7 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
             },
           ],
         },
-        filterState,
+        filterState: effectiveFilterState,
         isLoading: false,
         isError: false,
       }
@@ -258,18 +282,7 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
     const actualClasses = breaks.length + 1
     const colors = getColorRampColors(filterState.colorRamp, actualClasses)
 
-    // Build strictly ascending MapLibre step expression (fallback to minVal on non-numeric)
-    const stepArgs: unknown[] = ['step', ['to-number', ['get', activeMetric.value], minVal], colors[0]]
-    for (let i = 0; i < breaks.length; i++) {
-      stepArgs.push(breaks[i], colors[i + 1] ?? colors[colors.length - 1])
-    }
-
-    const fillColor = [
-      'case',
-      ['all', ['has', activeMetric.value], ['!=', ['get', activeMetric.value], null]],
-      stepArgs,
-      'rgba(168, 168, 168, 0.15)',
-    ]
+    const fillColor = buildChoroplethStepExpression(activeMetric.value, minVal, breaks, colors)
 
     // Build Legend bins matching actualClasses exactly
     const bins: LegendBin[] = []
@@ -293,7 +306,7 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
         metric: activeMetric,
         bins,
       },
-      filterState,
+      filterState: effectiveFilterState,
       isLoading: false,
       isError: false,
     }
