@@ -91,6 +91,18 @@ describe('header drag', () => {
     expect(sheet.style.height).toBe('55%')
   })
 
+  it('drops a header gesture in progress when the sheet unmounts', () => {
+    const onRelease = vi.fn()
+    const { container, unmount } = render(<Harness detent={PEEK} onRelease={onRelease} />)
+    setHeight(get(container, 'sheet'), 60)
+    pointer(get(container, 'grabber'), 'pointerdown', 900)
+    tick(200)
+    pointer(window, 'pointermove', 800)
+    unmount()
+    pointer(window, 'pointerup', 800)
+    expect(onRelease).not.toHaveBeenCalled()
+  })
+
   it('carries a flick one height further', () => {
     const onRelease = vi.fn()
     const { container } = render(<Harness detent={HALF} onRelease={onRelease} />)

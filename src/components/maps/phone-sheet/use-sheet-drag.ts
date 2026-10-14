@@ -3,7 +3,7 @@
 // frame; on release it hands back to the rendered height. Detent math from the ugs-warehouse
 // viewer; the gesture guards from ugs-fleet-fuel-finder's drawer.
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react'
-import { useCallback, useLayoutEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { clampSize, contentTakesDrag, DETENTS, heightPct, releaseDetent, type Detent } from './sheet-model'
 
 // A header press that moves less than this is a tap.
@@ -13,7 +13,7 @@ const CONTENT_SLOP_PX = 8
 // A touch this soon after the content scrolled lands on a fling still in motion.
 const SCROLL_SETTLE_MS = 100
 // A click this soon after a drag is the drag's own release. A timestamp, because a touch drag fires no click.
-export const CLICK_AFTER_DRAG_MS = 300
+const CLICK_AFTER_DRAG_MS = 300
 
 const TYPING = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])'
 
@@ -49,6 +49,8 @@ export function useSheetDrag(
   const dragEndedAt = useRef(-Infinity)
   // Ends the header gesture in progress, so a press whose release never arrived can't leave listeners behind.
   const cancelGesture = useRef<(() => void) | null>(null)
+
+  useEffect(() => () => cancelGesture.current?.(), [])
 
   const heightOf = (d: Drag, y: number) => clampSize(d.h0 + d.y0 - y, d.height * 0.04, d.height * 0.96, d.h0)
 

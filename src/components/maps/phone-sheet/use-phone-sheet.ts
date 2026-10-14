@@ -37,7 +37,7 @@ export function usePhoneSheetActions() {
   }, [navigate])
 
   const openDetail = useCallback((detail: InfoDetail | null) => {
-    navigate({ to: '.', replace: true, search: (prev) => ({ ...prev, detail: detail ?? undefined }) })
+    navigate({ to: '.', replace: true, search: (prev) => ({ ...prev, detail: detail ?? undefined, view: undefined }) })
   }, [navigate])
 
   return useMemo(() => ({

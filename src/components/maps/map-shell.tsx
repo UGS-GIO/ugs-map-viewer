@@ -37,8 +37,7 @@ const MapShell = ({ search, actions, children }: MapShellProps) => {
             <div className="relative min-h-0 min-w-0 overflow-hidden">
                 {/* Phones put every panel in the map's sheet, and have no room for the footer bar. */}
                 {!isMobile && <Sidebar />}
-                {/* isolate: the map's own overlays (the mobile results sheet) stack inside main, so
-                    the mobile drawer always opens above them. */}
+                {/* isolate: the map's own overlays stack inside main, below the app chrome. */}
                 <main
                     id="content"
                     tabIndex={-1}
