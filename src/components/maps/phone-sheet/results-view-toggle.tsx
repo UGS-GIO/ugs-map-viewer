@@ -15,13 +15,13 @@ export function ResultsViewToggle({ value, onChange }: { value: ResultsView; onC
       value={[value]}
       // A tap on the pressed option would empty the group; keep the current view instead.
       onValueChange={([next]) => next && onChange(next)}
-      className='inline-flex self-start rounded-lg bg-muted p-0.5'
+      className='inline-flex rounded-lg bg-muted p-0.5'
     >
       {OPTIONS.map((o) => (
         <Toggle
           key={o.value}
           value={o.value}
-          className='min-h-11 rounded-md px-4 text-sm font-medium text-muted-foreground data-[pressed]:bg-background data-[pressed]:text-foreground data-[pressed]:shadow-sm'
+          className='min-h-11 rounded-md px-3 text-sm font-medium text-muted-foreground data-[pressed]:bg-background data-[pressed]:text-foreground data-[pressed]:shadow-sm'
         >
           {o.label}
         </Toggle>

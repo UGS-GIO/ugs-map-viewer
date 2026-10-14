@@ -40,6 +40,8 @@ export interface PhoneSheetProps {
   title: string
   /** One line beside the title at the peek, such as "2 results". */
   summary?: string
+  /** A control at the end of the header row while the sheet is raised, such as Cards | Table. */
+  headerAction?: ReactNode
   back?: { label: string; onClick: () => void }
   onSelectTab: (tab: PhoneTab) => void
   onSetDetent: (detent: Detent) => void
@@ -47,7 +49,7 @@ export interface PhoneSheetProps {
 }
 
 /** One always-open non-modal drawer over the map, and the tab bar that picks what it holds. */
-export function PhoneSheet({ container, detent, activeTab, panelKey, title, summary, back, onSelectTab, onSetDetent, children }: PhoneSheetProps) {
+export function PhoneSheet({ container, detent, activeTab, panelKey, title, summary, headerAction, back, onSelectTab, onSetDetent, children }: PhoneSheetProps) {
   const collapsed = detent === PEEK
   const contentId = useId()
 
@@ -126,6 +128,8 @@ export function PhoneSheet({ container, detent, activeTab, panelKey, title, summ
                       {title}
                     </Drawer.Title>
                     {collapsed && summary && <span className='min-w-0 truncate text-sm text-muted-foreground'>{summary}</span>}
+                    {/* Ignored by the drag, so a tap on it is never a swipe. */}
+                    {!collapsed && headerAction && <div data-base-ui-swipe-ignore className='ml-auto shrink-0'>{headerAction}</div>}
                   </div>
                 </div>
                 <Drawer.Content id={contentId} inert={collapsed} className='phone-sheet-content min-h-0 flex-1 overflow-y-auto overscroll-contain touch-auto px-4 pb-4'>

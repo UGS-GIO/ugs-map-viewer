@@ -6,6 +6,7 @@ import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links'
 import { useGetCurrentPage } from '@/hooks/use-get-current-page'
 import { activeTabOf, INFO_DETAIL_TITLE, MORE_TAB } from './sheet-model'
 import { PhoneSheet } from './phone-sheet'
+import { ResultsViewToggle } from './results-view-toggle'
 import { MoreList } from './more-list'
 import { usePhoneSheet } from './use-phone-sheet'
 
@@ -30,11 +31,14 @@ export function PhoneSheetHost({ container, results, resultsSummary, layersSumma
 
   let title: string
   let summary: string | undefined
+  let headerAction: ReactNode
   let back: { label: string; onClick: () => void } | undefined
   let body: ReactNode
   if (active === 'results') {
     title = 'Results'
     summary = resultsSummary
+    // Only once there are results to switch between.
+    if (resultsSummary) headerAction = <ResultsViewToggle value={sheet.state.results ?? 'cards'} onChange={sheet.setResultsView} />
     body = results
   } else if (wantsPanel && Panel && currentContent) {
     title = detail ? INFO_DETAIL_TITLE[detail] : currentContent.title
@@ -58,6 +62,7 @@ export function PhoneSheetHost({ container, results, resultsSummary, layersSumma
       panelKey={`${active}:${sheet.tab}:${detail ?? ''}`}
       title={title}
       summary={summary}
+      headerAction={headerAction}
       back={back}
       onSelectTab={sheet.tapTab}
       onSetDetent={sheet.setDetent}

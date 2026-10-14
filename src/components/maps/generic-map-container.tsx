@@ -18,7 +18,6 @@ import { useMapUrlSync, type ViewMode } from '@/hooks/use-map-url-sync'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { PopupContentWithPagination } from '@/components/maps/popups/popup-content-with-pagination'
 import { PhoneSheetHost } from './phone-sheet/phone-sheet-host'
-import { ResultsViewToggle } from './phone-sheet/results-view-toggle'
 import { usePhoneSheet } from './phone-sheet/use-phone-sheet'
 import { cn } from '@/lib/utils'
 import { PROD_GEOSERVER_URL, POPUP_TITLES } from '@/lib/constants'
@@ -660,7 +659,6 @@ export default function GenericMapContainer({
         results={
           hasResults ? (
             <div className="flex h-full min-h-0 flex-col gap-3 pt-1">
-              <ResultsViewToggle value={resultsView} onChange={phoneSheet.setResultsView} />
               {popupHeaderRender?.(popupContent)}
               {resultsView === 'cards' ? (
                 <PopupContentWithPagination
