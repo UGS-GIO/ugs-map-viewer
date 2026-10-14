@@ -297,12 +297,15 @@ describe('content drag', () => {
           ? ({ touchAction: 'auto', overflowX: 'auto' } as CSSStyleDeclaration)
           : real(el, pseudo))
       Object.defineProperty(HTMLElement.prototype, 'scrollWidth', { configurable: true, get() { return (this as HTMLElement).dataset.testid === 'grip' ? 500 : 0 } })
-      const r = setup(FULL)
-      const grip = get(r.container, 'grip')
-      touch(grip, 'touchstart', [{ x: 100, y: 300 }])
-      tick(100)
-      expect(touch(grip, 'touchmove', [{ x: 101, y: 303 }]).defaultPrevented).toBe(false)
-      delete (HTMLElement.prototype as { scrollWidth?: number }).scrollWidth
+      try {
+        const r = setup(FULL)
+        const grip = get(r.container, 'grip')
+        touch(grip, 'touchstart', [{ x: 100, y: 300 }])
+        tick(100)
+        expect(touch(grip, 'touchmove', [{ x: 101, y: 303 }]).defaultPrevented).toBe(false)
+      } finally {
+        delete (HTMLElement.prototype as { scrollWidth?: number }).scrollWidth
+      }
     })
   })
 
