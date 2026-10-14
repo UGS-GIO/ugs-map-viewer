@@ -627,11 +627,9 @@ const ccsResourcesConfig: LayerProps = {
     title: 'Carbon Storage Resources',
     visible: true,
     layers: [
-        sco2Config,
-        basinNamesConfig,
-        co2SourcesConfig,
+        { ...sco2Config, sectionHeading: 'Statewide' },
+        { ...basinNamesConfig, sectionHeading: 'Statewide' },
         sitlaReportsConfig,
-        ccsExclusionAreasConfig
     ]
 };
 
@@ -660,6 +658,8 @@ const infrastructureAndLandUseConfig: LayerProps = {
     title: 'Infrastructure and Land Use',
     visible: false,
     layers: [
+        co2SourcesConfig,
+        ccsExclusionAreasConfig,
         geothermalPowerplantsConfig,
         pipelinesConfig,
         riversConfig,

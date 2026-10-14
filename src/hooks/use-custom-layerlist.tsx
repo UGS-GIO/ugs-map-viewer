@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionHeader } from '@/components/ui/accordion';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight, SlidersHorizontal } from 'lucide-react';
@@ -447,19 +447,38 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                                 />
                                 <label htmlFor={selectAllId} className="text-sm font-medium italic">Select All</label>
                             </div>
-                            {childLayers.map((child) => (
-                                <div className="ml-4" key={child.title}>
-                                    <LayerAccordionItem
-                                        disableExport={disableExport}
-                                        layerConfig={child}
-                                        isTopLevel={false}
-                                        groupExtrasRender={groupExtrasRender}
-                                        layerExtrasRender={layerExtrasRender}
-                                        layerStatsRender={layerStatsRender}
-                                        layerLegendRender={layerLegendRender}
-                                    />
-                                </div>
-                            ))}
+                            {childLayers.map((child, index) => {
+                                const prevChild = index > 0 ? childLayers[index - 1] : undefined;
+                                const isNewSection = Boolean(
+                                    child.sectionHeading && child.sectionHeading !== prevChild?.sectionHeading
+                                );
+
+                                return (
+                                    <Fragment key={child.title || index}>
+                                        {isNewSection && (
+                                            <div
+                                                className="ml-4 mt-3 mb-1 px-2 border-b border-border/50 pb-1"
+                                                data-section-heading={child.sectionHeading}
+                                            >
+                                                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                                    {child.sectionHeading}
+                                                </h4>
+                                            </div>
+                                        )}
+                                        <div className="ml-4">
+                                            <LayerAccordionItem
+                                                disableExport={disableExport}
+                                                layerConfig={child}
+                                                isTopLevel={false}
+                                                groupExtrasRender={groupExtrasRender}
+                                                layerExtrasRender={layerExtrasRender}
+                                                layerStatsRender={layerStatsRender}
+                                                layerLegendRender={layerLegendRender}
+                                            />
+                                        </div>
+                                    </Fragment>
+                                );
+                            })}
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
@@ -589,20 +608,36 @@ export const useCustomLayerList = ({ config, disableExport, hasLayerFilters, gro
 
     const layerList = useMemo(() => {
         if (!config) return [];
-        return [...config].map(layer => {
+        return [...config].map((layer, index) => {
+            const prevLayer = index > 0 ? config[index - 1] : undefined;
+            const isNewSection = Boolean(
+                layer.sectionHeading && layer.sectionHeading !== prevLayer?.sectionHeading
+            );
+
             return (
-                <LayerAccordionItem
-                    key={layer.title}
-                    layerConfig={layer}
-                    isTopLevel={true}
-                    disableExport={disableExport}
-                    hasLayerFilters={hasLayerFilters}
-                    groupExtrasRender={groupExtrasRender}
-                    layerExtrasRender={layerExtrasRender}
-                    layerStatsRender={layerStatsRender}
-                    layerLegendRender={layerLegendRender}
-                />
-            )
+                <Fragment key={layer.title || index}>
+                    {isNewSection && (
+                        <div
+                            className="mr-2 mt-4 mb-1 px-2 border-b border-border/50 pb-1"
+                            data-section-heading={layer.sectionHeading}
+                        >
+                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                {layer.sectionHeading}
+                            </h3>
+                        </div>
+                    )}
+                    <LayerAccordionItem
+                        layerConfig={layer}
+                        isTopLevel={true}
+                        disableExport={disableExport}
+                        hasLayerFilters={hasLayerFilters}
+                        groupExtrasRender={groupExtrasRender}
+                        layerExtrasRender={layerExtrasRender}
+                        layerStatsRender={layerStatsRender}
+                        layerLegendRender={layerLegendRender}
+                    />
+                </Fragment>
+            );
         });
     }, [config, disableExport, hasLayerFilters, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender]);
 

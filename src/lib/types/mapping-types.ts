@@ -146,6 +146,12 @@ interface BaseLayerProps {
     variantLabel?: string;
     /** One-line plain-language description of this variant, shown under the surface switch to explain what it means and how it relates to the map. */
     variantDescription?: string;
+    /**
+     * Optional section heading displayed above this layer in a layer list.
+     * When consecutive child layers share the same sectionHeading, the heading is rendered
+     * only once above the first layer in the section.
+     */
+    sectionHeading?: string;
 }
 
 export interface WMSLayerProps extends BaseLayerProps {
