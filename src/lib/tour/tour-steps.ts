@@ -1,4 +1,5 @@
 import type { DriveStep } from 'driver.js';
+import { isPhoneViewport } from '@/hooks/use-mobile';
 
 // =============================================================================
 // Navigation Helper
@@ -168,6 +169,71 @@ export const baseMapSteps: DriveStep[] = [
 ];
 
 // =============================================================================
+// Phone Tour Steps
+// =============================================================================
+// Phones have no sidebar: the tour walks the sheet and its tab bar instead.
+
+export const phoneSteps: DriveStep[] = [
+  {
+    popover: {
+      title: 'Welcome to the Map Viewer',
+      description: 'This quick tour shows the main features. Tap outside it to leave at any time.',
+    },
+  },
+  {
+    element: '[data-tour="phone-tabs"]',
+    popover: {
+      title: 'Tabs',
+      description: 'Layers, Results, Info and More each open in the panel above. Tap the open tab again to see the whole map.',
+      side: 'top',
+      align: 'center',
+    },
+  },
+  {
+    element: '[data-tour="phone-sheet-header"]',
+    popover: {
+      title: 'The panel',
+      description: 'Drag the panel up or down, or tap its top edge, to see more of it or more of the map.',
+      side: 'top',
+      align: 'center',
+    },
+  },
+  {
+    element: '[data-tour="phone-map"]',
+    popover: {
+      title: 'Tap the map',
+      description: 'Tap anywhere on the map to see what is there. The details open in Results.',
+      side: 'bottom',
+      align: 'center',
+    },
+  },
+  {
+    element: '[data-tour="phone-tab-layers"]',
+    popover: {
+      title: 'Layers',
+      description: 'Turn map layers on and off.',
+      side: 'top',
+      align: 'start',
+    },
+  },
+  {
+    element: '[data-tour="phone-tab-more"]',
+    popover: {
+      title: 'More',
+      description: 'Map settings, links, the light or dark theme, and this tour.',
+      side: 'top',
+      align: 'end',
+    },
+  },
+  {
+    popover: {
+      title: 'Tour Complete!',
+      description: 'You can take this tour again from More. Happy exploring!',
+    },
+  },
+];
+
+// =============================================================================
 // Feature-Specific Tour Steps
 // =============================================================================
 // Add steps for features that only exist on certain routes
@@ -229,10 +295,11 @@ const routeSteps: Record<TourRoute, DriveStep[]> = {
 // =============================================================================
 
 export function getTourSteps(route?: TourRoute): DriveStep[] {
-  const steps = [...baseMapSteps];
+  const phone = isPhoneViewport();
+  const steps = phone ? [...phoneSteps] : [...baseMapSteps];
 
-  // Insert route-specific steps before the final "Tour Complete" step
-  if (route && routeSteps[route] && routeSteps[route].length > 0) {
+  // Route-specific steps point at sidebar panels, which phones don't have.
+  if (!phone && route && routeSteps[route] && routeSteps[route].length > 0) {
     const finalStep = steps.pop(); // Remove "Tour Complete" step
     steps.push(...routeSteps[route]);
     if (finalStep) steps.push(finalStep); // Add it back at the end

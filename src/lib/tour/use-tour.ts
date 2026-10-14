@@ -32,6 +32,10 @@ const stripHighlightAria = () => {
   setTimeout(strip, 450);
 };
 
+// An open Radix dialog (the hazards-review welcome) holds the tour back until it closes.
+const OPEN_DIALOG = '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]';
+const DIALOG_POLL_MS = 400;
+
 export function useTour(options: UseTourOptions = {}) {
   const { route, autoStart = false, onComplete } = options;
   const driverRef = useRef<Driver | null>(null);
@@ -142,13 +146,20 @@ export function useTour(options: UseTourOptions = {}) {
     driverRef.current?.destroy();
   }, []);
 
-  // Auto-start on first visit
+  // Auto-start on first visit, once no dialog is open.
   useEffect(() => {
-    if (autoStart && !isTourCompleted(route)) {
-      // Delay to ensure DOM is ready
-      const timeout = setTimeout(startTour, 500);
-      return () => clearTimeout(timeout);
-    }
+    if (!autoStart || isTourCompleted(route)) return;
+    let timeout: ReturnType<typeof setTimeout>;
+    const tryStart = () => {
+      if (document.querySelector(OPEN_DIALOG)) {
+        timeout = setTimeout(tryStart, DIALOG_POLL_MS);
+        return;
+      }
+      startTour();
+    };
+    // Delay to ensure DOM is ready
+    timeout = setTimeout(tryStart, 500);
+    return () => clearTimeout(timeout);
   }, [autoStart, route, isTourCompleted, startTour]);
 
   // Cleanup on unmount
