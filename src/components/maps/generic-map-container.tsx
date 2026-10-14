@@ -396,11 +396,10 @@ export default function GenericMapContainer({
     const click = ++latestClick.current
     if (!bounds || selectionView !== 'map') return
     const queries = rasterQueries(layersConfig, displayedTitles, getBboxCenter(bounds), bounds)
-    Promise.all(queries.map((q) => queryClient.fetchQuery(q)))
-      .then((results) => {
-        if (click === latestClick.current && results.some((r) => r.data)) openResults()
-      })
-      .catch(console.warn)
+    // One failed layer must not stop the others' results from opening.
+    void Promise.allSettled(queries.map((q) => queryClient.fetchQuery(q))).then((results) => {
+      if (click === latestClick.current && results.some((r) => r.status === 'fulfilled' && r.value.data)) openResults()
+    })
   }, [setClickBufferBounds, selectionView, layersConfig, displayedTitles, queryClient, openResults])
 
   // Register callbacks with parent context

@@ -1,4 +1,4 @@
-import { useCallback, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
+import { useCallback, useId, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { Drawer } from '@base-ui/react/drawer'
 import { Toggle } from '@base-ui/react/toggle'
 import { ToggleGroup } from '@base-ui/react/toggle-group'
@@ -49,6 +49,7 @@ export interface PhoneSheetProps {
 /** One always-open non-modal drawer over the map, and the tab bar that picks what it holds. */
 export function PhoneSheet({ container, detent, activeTab, panelKey, title, summary, back, onSelectTab, onSetDetent, children }: PhoneSheetProps) {
   const collapsed = detent === PEEK
+  const contentId = useId()
 
   // A newly opened panel puts focus on its title so screen readers announce it. Page load, and a
   // title filling in after loading, leave focus alone.
@@ -102,6 +103,7 @@ export function PhoneSheet({ container, detent, activeTab, panelKey, title, summ
                     type='button'
                     aria-label={GRABBER_LABEL[detent]}
                     aria-expanded={!collapsed}
+                    aria-controls={contentId}
                     onClick={() => onSetDetent(NEXT[detent])}
                     onKeyDown={arrows}
                     className='flex h-6 w-full items-end justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring'
@@ -126,7 +128,7 @@ export function PhoneSheet({ container, detent, activeTab, panelKey, title, summ
                     {collapsed && summary && <span className='min-w-0 truncate text-sm text-muted-foreground'>{summary}</span>}
                   </div>
                 </div>
-                <Drawer.Content inert={collapsed} className='phone-sheet-content min-h-0 flex-1 overflow-y-auto overscroll-contain touch-auto px-4 pb-4'>
+                <Drawer.Content id={contentId} inert={collapsed} className='phone-sheet-content min-h-0 flex-1 overflow-y-auto overscroll-contain touch-auto px-4 pb-4'>
                   {children}
                 </Drawer.Content>
               </Drawer.Popup>

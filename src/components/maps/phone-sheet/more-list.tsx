@@ -19,14 +19,14 @@ export function MoreList({ links, page, onOpen }: { links: SideLink[]; page: str
         <li key={link.title}>
           {link.href ? (
             <a href={link.href} target='_blank' rel='noopener noreferrer' className={row}>
-              <span className={icon}>{link.icon}</span>
+              <span className={icon} aria-hidden='true'>{link.icon}</span>
               {link.title}
               <ExternalLink className='ml-auto h-4 w-4 text-muted-foreground' aria-hidden='true' />
               <span className='sr-only'>(opens in a new tab)</span>
             </a>
           ) : (
             <button type='button' onClick={() => onOpen(link.title.toLowerCase())} className={row}>
-              <span className={icon}>{link.icon}</span>
+              <span className={icon} aria-hidden='true'>{link.icon}</span>
               {link.title}
               <ChevronRight className='ml-auto h-5 w-5 text-muted-foreground' aria-hidden='true' />
             </button>
