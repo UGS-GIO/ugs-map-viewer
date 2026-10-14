@@ -17,7 +17,7 @@ export function ResultsViewToggle({ value, onChange }: { value: ResultsView; onC
           aria-pressed={value === o.value}
           onClick={() => onChange(o.value)}
           className={cn(
-            'min-h-9 rounded-md px-4 text-sm font-medium',
+            'min-h-11 rounded-md px-4 text-sm font-medium',
             value === o.value ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground',
           )}
         >
