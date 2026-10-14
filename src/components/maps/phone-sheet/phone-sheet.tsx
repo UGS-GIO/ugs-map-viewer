@@ -1,5 +1,7 @@
 import { useCallback, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react'
 import { Drawer } from '@base-ui/react/drawer'
+import { Toggle } from '@base-ui/react/toggle'
+import { ToggleGroup } from '@base-ui/react/toggle-group'
 import { ChevronLeft, Ellipsis, Info, Layers, List, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { PEEK, type Detent, type PhoneTab } from './sheet-model'
@@ -132,27 +134,25 @@ export function PhoneSheet({ container, detent, activeTab, panelKey, title, summ
           </Drawer.Portal>
         </Drawer.VirtualKeyboardProvider>
       </Drawer.Root>
-      <nav aria-label='Map views' data-tour='phone-tabs' className={cn('z-30 flex shrink-0 touch-manipulation border-t bg-background pb-[env(safe-area-inset-bottom)]', TOUCH_CHROME)}>
-        {TABS.map(({ id, label, Icon }) => {
-          const showing = id === activeTab && !collapsed
-          return (
-            <button
+      <nav aria-label='Map views' data-tour='phone-tabs' className={cn('z-30 shrink-0 touch-manipulation border-t bg-background pb-[env(safe-area-inset-bottom)]', TOUCH_CHROME)}>
+        {/* The showing tab is pressed; pressing it again unpresses it, which drops the sheet to the peek. */}
+        <ToggleGroup
+          value={collapsed ? [] : [activeTab]}
+          onValueChange={([next]) => onSelectTab(next ?? activeTab)}
+          className='flex'
+        >
+          {TABS.map(({ id, label, Icon }) => (
+            <Toggle
               key={id}
-              type='button'
+              value={id}
               data-tour={`phone-tab-${id}`}
-              onClick={() => onSelectTab(id)}
-              aria-current={showing ? 'page' : undefined}
-              aria-expanded={showing}
-              className={cn(
-                'flex h-12 flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium leading-none',
-                showing ? 'text-primary' : 'text-muted-foreground',
-              )}
+              className='group flex h-12 flex-1 flex-col items-center justify-center gap-0.5 text-xs font-medium leading-none text-muted-foreground data-[pressed]:text-primary'
             >
-              <Icon size={22} strokeWidth={showing ? 2.25 : 1.75} aria-hidden='true' />
+              <Icon size={22} aria-hidden='true' className='stroke-[1.75] group-data-[pressed]:stroke-[2.25]' />
               {label}
-            </button>
-          )
-        })}
+            </Toggle>
+          ))}
+        </ToggleGroup>
       </nav>
     </>
   )

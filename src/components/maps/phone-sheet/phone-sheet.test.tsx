@@ -39,12 +39,13 @@ describe('PhoneSheet', () => {
     const { rerender } = render(<PhoneSheet {...props} />)
     click(tab(document.body, 'Info'))
     expect(props.onSelectTab).toHaveBeenCalledWith('info')
-    expect(tab(document.body, 'Layers').getAttribute('aria-current')).toBe('page')
-    expect(tab(document.body, 'Layers').getAttribute('aria-expanded')).toBe('true')
-    expect(tab(document.body, 'Info').hasAttribute('aria-current')).toBe(false)
+    expect(tab(document.body, 'Layers').getAttribute('aria-pressed')).toBe('true')
+    expect(tab(document.body, 'Info').getAttribute('aria-pressed')).toBe('false')
+    // Pressing the showing tab again reports that tab, which drops the sheet to the peek.
+    click(tab(document.body, 'Layers'))
+    expect(props.onSelectTab).toHaveBeenLastCalledWith('layers')
     rerender(<PhoneSheet {...base({ detent: PEEK })} />)
-    expect(tab(document.body, 'Layers').hasAttribute('aria-current')).toBe(false)
-    expect(tab(document.body, 'Layers').getAttribute('aria-expanded')).toBe('false')
+    expect(tab(document.body, 'Layers').getAttribute('aria-pressed')).toBe('false')
   })
 
   it('steps the height from the grabber and names the next step', () => {
