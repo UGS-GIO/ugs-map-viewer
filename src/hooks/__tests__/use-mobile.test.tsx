@@ -29,7 +29,7 @@ function firstRender(matches: boolean) {
 }
 
 describe('useIsMobile', () => {
-  it('is right on the first render, so the map mounts in the right layout once', () => {
+  it('is right on the first render', () => {
     expect(firstRender(true).first).toBe(true)
     expect(firstRender(false).first).toBe(false)
   })
