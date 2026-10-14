@@ -457,7 +457,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                                     <Fragment key={child.title || index}>
                                         {isNewSection && (
                                             <div
-                                                className="ml-4 mt-3 mb-1 px-2 border-b border-border/50 pb-1"
+                                                className="ml-4 mr-2 mt-3 mb-1 px-2 border-b border-border/50 pb-1"
                                                 data-section-heading={child.sectionHeading}
                                             >
                                                 <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">

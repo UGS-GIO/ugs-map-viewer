@@ -17,6 +17,7 @@ const sco2Config: PMTilesLayerProps = {
     styleUrl: CARBONSTORAGE_STYLE_URL,
     sourceLayer: sco2LayerName,
     title: sco2Title,
+    sectionHeading: 'Statewide',
     visible: false,
     opacity: 0.8,
     sublayers: [
@@ -84,6 +85,7 @@ const basinNamesConfig: PMTilesLayerProps = {
     styleUrl: CARBONSTORAGE_STYLE_URL,
     sourceLayer: basinNamesLayerName,
     title: basinNamesTitle,
+    sectionHeading: 'Statewide',
     visible: true,
     opacity: 0.3,
     sublayers: [
@@ -627,8 +629,8 @@ const ccsResourcesConfig: LayerProps = {
     title: 'Carbon Storage Resources',
     visible: true,
     layers: [
-        { ...sco2Config, sectionHeading: 'Statewide' },
-        { ...basinNamesConfig, sectionHeading: 'Statewide' },
+        sco2Config,
+        basinNamesConfig,
         sitlaReportsConfig,
     ]
 };
