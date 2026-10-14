@@ -8,7 +8,8 @@ than inventing a variant.
 
 - **Sheet.** Base UI `Drawer`, always open and non-modal, portaled into the map area. Snap
   points: peek `4.5rem` (the header), half `0.55`, full `0.92`. A swipe past the peek or Escape
-  lands on the peek; it never closes. No ✕: tap the open tab or drag down.
+  lands on the peek; it never closes. No ✕: tap the open tab or drag down. Its content
+  scrolls only at full height; below that a drag anywhere moves the whole sheet, as in Apple Maps.
 - **Map.** `GenericMapContainer` renders the same tree down to `<DataMap>` on both layouts, so
   crossing the phone query never remounts the map.
 - **Results.** Selection calls `popupSheetRef.open()` as on desktop; on phones that raises Results
