@@ -91,7 +91,7 @@ export const SidebarProvider: React.FC<{ children: ReactNode }> = ({ children })
                 // On phones a panel lives in the sheet, so choosing one from outside it (a popup
                 // button, Info's Start Exploring) also raises the sheet to show it.
                 if (!content || !isMobile) return next;
-                return writeSheet(next, { results: null, detent: raise(sheetFromUrl(prev.sheet, prev.view).detent) }, newTab);
+                return writeSheet(next, { results: null, detent: raise(sheetFromUrl(prev).detent) }, newTab);
             },
             replace: true,
         });

@@ -8,8 +8,6 @@ import {
   PEEK,
   raise,
   sheetFromUrl,
-  SHEET_PARAMS,
-  sheetParam,
   tapTab,
   writeSheet,
   type SheetState,
@@ -23,48 +21,47 @@ describe('raise', () => {
   })
 })
 
-describe('the sheet param', () => {
+describe('the sheet params', () => {
   const all: SheetState[] = (['cards', 'table', null] as const).flatMap((results) =>
     [PEEK, HALF, FULL].map((detent) => ({ results, detent })),
   )
 
   it('round-trips every state', () => {
-    for (const s of all) expect(sheetFromUrl(sheetParam(s), undefined)).toEqual(s)
+    for (const s of all) expect(sheetFromUrl(writeSheet({}, s))).toEqual(s)
   })
 
-  it('keeps the default URL bare and writes only listed values', () => {
-    expect(sheetParam(PANEL_PEEK)).toBeUndefined()
-    expect(sheetParam({ results: 'table', detent: FULL })).toBe('table-full')
-    expect(sheetParam({ results: null, detent: HALF })).toBe('half')
-    expect(SHEET_PARAMS).toHaveLength(all.length - 1)
+  it('keeps the default URL bare', () => {
+    expect(writeSheet({}, PANEL_PEEK)).toEqual({ sheet: undefined, results: undefined, view: undefined })
+    expect(writeSheet({}, { results: 'table', detent: FULL })).toMatchObject({ sheet: 'full', results: 'table' })
   })
 })
 
 describe('sheetFromUrl', () => {
-  it('reads sheet first', () => {
-    expect(sheetFromUrl('cards-half', 'table')).toEqual({ results: 'cards', detent: HALF })
+  it('reads sheet and results before view', () => {
+    expect(sheetFromUrl({ sheet: 'half', results: 'cards', view: 'table' })).toEqual({ results: 'cards', detent: HALF })
+    expect(sheetFromUrl({ results: 'table', view: 'split' })).toEqual({ results: 'table', detent: PEEK })
   })
 
   it('opens a desktop view link as a results table', () => {
-    expect(sheetFromUrl(undefined, 'split')).toEqual({ results: 'table', detent: HALF })
-    expect(sheetFromUrl(undefined, 'table')).toEqual({ results: 'table', detent: FULL })
-    expect(sheetFromUrl(undefined, 'map')).toEqual(PANEL_PEEK)
-    expect(sheetFromUrl(undefined, undefined)).toEqual(PANEL_PEEK)
+    expect(sheetFromUrl({ view: 'split' })).toEqual({ results: 'table', detent: HALF })
+    expect(sheetFromUrl({ view: 'table' })).toEqual({ results: 'table', detent: FULL })
+    expect(sheetFromUrl({ view: 'map' })).toEqual(PANEL_PEEK)
+    expect(sheetFromUrl({})).toEqual(PANEL_PEEK)
   })
 })
 
 describe('writeSheet', () => {
-  it('writes sheet, clears view, and keeps everything else', () => {
-    const prev = { zoom: 9, tab: 'layers', view: 'table' as const, sheet: 'table-full' as const, detail: 'references' as const }
+  it('writes sheet and results, clears view, and keeps everything else', () => {
+    const prev = { zoom: 9, tab: 'layers', view: 'table' as const, sheet: 'full' as const, results: 'table' as const, detail: 'references' as const }
     expect(writeSheet(prev, { results: null, detent: HALF })).toEqual({
-      zoom: 9, tab: 'layers', view: undefined, sheet: 'half', detail: 'references',
+      zoom: 9, tab: 'layers', view: undefined, sheet: 'half', results: undefined, detail: 'references',
     })
   })
 
   it('sets tab and clears detail only when given a tab', () => {
     const prev = { tab: 'info', detail: 'references', sheet: 'half' }
     expect(writeSheet(prev, { results: null, detent: HALF }, 'layers')).toEqual({
-      tab: 'layers', detail: undefined, sheet: 'half', view: undefined,
+      tab: 'layers', detail: undefined, sheet: 'half', results: undefined, view: undefined,
     })
   })
 })

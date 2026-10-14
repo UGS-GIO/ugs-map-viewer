@@ -12,30 +12,18 @@ export type ResultsView = 'cards' | 'table'
 export type SheetState = { results: ResultsView | null; detent: Detent }
 export const PANEL_PEEK: SheetState = { results: null, detent: PEEK }
 
-// Every `sheet` value the URL accepts; _map.tsx validates against this list.
-export const SHEET_PARAMS = ['half', 'full', 'cards-peek', 'cards-half', 'cards-full', 'table-peek', 'table-half', 'table-full'] as const
-export type SheetParam = (typeof SHEET_PARAMS)[number]
+// The URL's `sheet` (absent at the peek) and `results` (absent while a panel shows); _map.tsx
+// validates both against these lists.
+export const SHEET_PARAMS = ['half', 'full'] as const
+export const RESULTS_PARAMS = ['cards', 'table'] as const
+const SHEET_AT = [undefined, 'half', 'full'] as const
+const DETENT_OF = { half: HALF, full: FULL } as const
 
-// A panel is `half` or `full` (absent at the peek); Results is `<cards|table>-<peek|half|full>`.
-const SHEETS: Record<SheetParam, SheetState> = {
-  half: { results: null, detent: HALF },
-  full: { results: null, detent: FULL },
-  'cards-peek': { results: 'cards', detent: PEEK },
-  'cards-half': { results: 'cards', detent: HALF },
-  'cards-full': { results: 'cards', detent: FULL },
-  'table-peek': { results: 'table', detent: PEEK },
-  'table-half': { results: 'table', detent: HALF },
-  'table-full': { results: 'table', detent: FULL },
-}
-
-export const sheetParam = ({ results, detent }: SheetState): SheetParam | undefined =>
-  SHEET_PARAMS.find((p) => SHEETS[p].results === results && SHEETS[p].detent === detent)
-
-export type ViewParam = 'map' | 'split' | 'table' | undefined
+type SheetSearch = { sheet?: (typeof SHEET_PARAMS)[number]; results?: ResultsView; view?: 'map' | 'split' | 'table' }
 
 // A desktop link's split or table view opens as a results table on a phone.
-export function sheetFromUrl(sheet: SheetParam | undefined, view: ViewParam): SheetState {
-  if (sheet) return SHEETS[sheet]
+export function sheetFromUrl({ sheet, results, view }: SheetSearch): SheetState {
+  if (sheet || results) return { results: results ?? null, detent: sheet ? DETENT_OF[sheet] : PEEK }
   if (view === 'split') return { results: 'table', detent: HALF }
   if (view === 'table') return { results: 'table', detent: FULL }
   return PANEL_PEEK
@@ -52,7 +40,7 @@ export const INFO_DETAIL_TITLE: Record<InfoDetail, string> = {
 // Clearing `view` keeps a desktop link's split or table view from overriding the sheet afterwards;
 // a new tab drops the Info detail that belonged to the old one.
 export function writeSheet<T extends object>(prev: T, next: SheetState, tab?: string) {
-  const sheet = { ...prev, sheet: sheetParam(next), view: undefined }
+  const sheet = { ...prev, sheet: SHEET_AT[next.detent], results: next.results ?? undefined, view: undefined }
   return tab === undefined ? sheet : { ...sheet, tab, detail: undefined }
 }
 

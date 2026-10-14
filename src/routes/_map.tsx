@@ -3,7 +3,7 @@ import { SidebarProvider } from '@/context/sidebar-provider';
 import { MapInstanceProvider } from '@/context/map-instance-context';
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { z } from 'zod'
-import { INFO_DETAILS, SHEET_PARAMS } from '@/components/maps/phone-sheet/sheet-model'
+import { INFO_DETAILS, RESULTS_PARAMS, SHEET_PARAMS } from '@/components/maps/phone-sheet/sheet-model'
 import { RouteErrorBoundary } from '@/components/route-error-boundary'
 
 // Get responsive default sidebar width based on screen size
@@ -37,8 +37,9 @@ const mapSearchSchema = z.object({
     popup_lon: z.coerce.number().min(-180).max(180).optional(),
     // View mode for split/table layout
     view: z.enum(['map', 'split', 'table']).optional(),
-    // Phone sheet: what it shows and how high, and the Info detail it shows. Unknown values drop.
+    // Phone sheet: how high it is, whether it shows results, and the Info detail. Unknown values drop.
     sheet: z.enum(SHEET_PARAMS).optional().catch(undefined),
+    results: z.enum(RESULTS_PARAMS).optional().catch(undefined),
     detail: z.enum(INFO_DETAILS).optional().catch(undefined),
     // Click buffer bounds for selection visualization (sw_lng,sw_lat,ne_lng,ne_lat)
     click_bbox: z.string().optional(),

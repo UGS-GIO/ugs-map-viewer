@@ -29,7 +29,7 @@ export function usePhoneSheetActions() {
       to: '.',
       replace: true,
       search: (prev) => {
-        const next = step(sheetFromUrl(prev.sheet, prev.view), prev.tab ?? 'info')
+        const next = step(sheetFromUrl(prev), prev.tab ?? 'info')
         return writeSheet(prev, next.sheet, next.tab)
       },
     })
@@ -56,9 +56,10 @@ export function usePhoneSheetActions() {
 /** The phone sheet's state in the URL (`sheet`, `detail`, and the shared `tab`), plus its actions. */
 export function usePhoneSheet() {
   const sheet = useSearch({ from: '/_map', select: (s) => s.sheet })
+  const results = useSearch({ from: '/_map', select: (s) => s.results })
   const view = useSearch({ from: '/_map', select: (s) => s.view })
   const tab = useSearch({ from: '/_map', select: (s) => s.tab ?? 'info' })
   const detail = useSearch({ from: '/_map', select: (s) => s.detail ?? null })
   const actions = usePhoneSheetActions()
-  return { ...actions, state: sheetFromUrl(sheet, view), tab, detail }
+  return { ...actions, state: sheetFromUrl({ sheet, results, view }), tab, detail }
 }
