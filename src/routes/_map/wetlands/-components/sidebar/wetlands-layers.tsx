@@ -43,7 +43,7 @@ function WetlandsLayers({
       <BackToMenuButton />
       <div
         key='layer-list'
-        className='max-h-[calc(100vh)] overflow-y-visible'
+        className='pb-8'
         data-tour='layer-panel'
       >
         {layerList}
