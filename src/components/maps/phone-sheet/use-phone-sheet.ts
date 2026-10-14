@@ -4,7 +4,6 @@ import {
   FULL,
   PANEL_PEEK,
   PEEK,
-  parseDetail,
   raise,
   sheetFromUrl,
   tapTab as nextOnTap,
@@ -30,7 +29,7 @@ export function usePhoneSheetActions() {
       to: '.',
       replace: true,
       search: (prev) => {
-        const next = step(sheetFromUrl(prev.sheet, prev.view).state, prev.tab ?? 'info')
+        const next = step(sheetFromUrl(prev.sheet, prev.view), prev.tab ?? 'info')
         return writeSheet(prev, next.sheet, next.tab)
       },
     })
@@ -59,10 +58,7 @@ export function usePhoneSheet() {
   const sheet = useSearch({ from: '/_map', select: (s) => s.sheet })
   const view = useSearch({ from: '/_map', select: (s) => s.view })
   const tab = useSearch({ from: '/_map', select: (s) => s.tab ?? 'info' })
-  const rawDetail = useSearch({ from: '/_map', select: (s) => s.detail })
+  const detail = useSearch({ from: '/_map', select: (s) => s.detail ?? null })
   const actions = usePhoneSheetActions()
-  const { state, invalid } = useMemo(() => sheetFromUrl(sheet, view), [sheet, view])
-  const detail = rawDetail === undefined ? null : parseDetail(rawDetail)
-  const invalidDetail = rawDetail !== undefined && detail === null ? rawDetail : null
-  return { ...actions, state, invalid, tab, detail, invalidDetail }
+  return { ...actions, state: sheetFromUrl(sheet, view), tab, detail }
 }

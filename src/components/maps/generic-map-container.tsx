@@ -311,6 +311,7 @@ export default function GenericMapContainer({
   // Phones select straight from the map, whatever a desktop link's `view` still says.
   const selectionView: ViewMode = isMobile ? 'map' : viewMode
   const phoneSheet = usePhoneSheet()
+  const { raiseResults, closeResults, showResults } = phoneSheet
   const rawLayersConfig = useGetLayerConfigsData(layerConfigKey)
   const { selectedLayerTitles, groupVisibility } = useLayerUrl()
   const layersConfig = rawLayersConfig || []
@@ -547,8 +548,9 @@ export default function GenericMapContainer({
     if (filter) {
       setHighlightedFeatures([])
       clearAllSelections()
+      if (isMobile) showResults('table')
     }
-  }, [clearAllSelections])
+  }, [clearAllSelections, isMobile, showResults])
 
   // Handler for box select toggle from toolbar
   const handleBoxSelectModeChange = useCallback((active: boolean) => {
@@ -557,7 +559,8 @@ export default function GenericMapContainer({
 
   const handleBoxSelectConfirm = useCallback((bounds: { sw: [number, number]; ne: [number, number] }) => {
     setBoxSelectBounds(bounds)
-  }, [])
+    if (isMobile) showResults('table')
+  }, [isMobile, showResults])
 
   // Clear highlights when selections are cleared
   const handleClearAllSelections = useCallback(() => {
@@ -632,45 +635,17 @@ export default function GenericMapContainer({
   }, [])
 
   // On phones the results live in the sheet: the open() that raises the desktop popup raises
-  // Results instead, as a table when the selection came from an area tool (box select or a drawn
-  // filter), keeping the user's Cards or Table choice while Results is open.
-  // The area is tracked by value: Results opens as a table once per new area, and later plain map
-  // taps raise Cards.
-  const phoneRoute = useRef<{ sheet: typeof phoneSheet; area: unknown }>({ sheet: phoneSheet, area: null })
-  const shownAreaRef = useRef<unknown>(null)
-  useEffect(() => {
-    phoneRoute.current = { sheet: phoneSheet, area: spatialFilter ?? boxSelectBounds ?? null }
-  })
+  // Results instead, keeping the user's Cards or Table choice. Area tools open it as a table.
   useEffect(() => {
     if (!isMobile) return
-    const handle: PopupSheetRef = {
-      open: () => {
-        const { sheet, area } = phoneRoute.current
-        if (area == null) {
-          shownAreaRef.current = null
-          sheet.raiseResults('cards')
-        } else if (area !== shownAreaRef.current) {
-          shownAreaRef.current = area
-          sheet.showResults('table')
-        } else {
-          sheet.raiseResults('cards')
-        }
-      },
-      close: () => phoneRoute.current.sheet.closeResults(),
-    }
+    const handle: PopupSheetRef = { open: () => raiseResults('cards'), close: closeResults }
     popupSheetRef.current = handle
     // The desktop PopupSheet attaches its handle in a layout effect, before this cleanup runs on
     // the way back to desktop; only clear the ref if it is still the phone's.
     return () => {
       if (popupSheetRef.current === handle) popupSheetRef.current = null
     }
-  }, [isMobile])
-
-  const { closeResults } = phoneSheet
-  const handleClearPhoneResults = useCallback(() => {
-    handleSheetClose()
-    closeResults()
-  }, [handleSheetClose, closeResults])
+  }, [isMobile, raiseResults, closeResults])
 
   const shouldShrinkMap = viewMode === 'map' && panelState.isSheetOpen
 
@@ -726,7 +701,6 @@ export default function GenericMapContainer({
         map={mapElement}
         resultsSummary={hasResults ? `${resultsCount} result${resultsCount === 1 ? '' : 's'}` : undefined}
         layersSummary={`${displayedTitles.size} layer${displayedTitles.size === 1 ? '' : 's'} on`}
-        onClearResults={hasResults ? handleClearPhoneResults : undefined}
         results={
           hasResults ? (
             <div className="flex h-full min-h-0 flex-col gap-3 pt-1">

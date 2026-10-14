@@ -8,9 +8,9 @@ modes, and nothing here changes them.
 The second half catches large phones in landscape (about 814-863px wide, under 430px tall), which
 would otherwise get the desktop sidebar on a screen too short for it. Everything else is desktop.
 
-The pattern matches the ugs-warehouse viewer (`viewer/src/map/map-shell.tsx`,
-`use-sheet-drag.ts`, `map-model.ts`), which adapted it from ugs-soil-water-model. The sheet's
-header, close button, tab bar and touch guards follow ugs-fleet-fuel-finder
+The pattern matches the ugs-warehouse viewer (`viewer/src/map/map-shell.tsx`, `map-model.ts`),
+which adapted it from ugs-soil-water-model. The sheet itself is Base UI's `Drawer`
+(`@base-ui/react`), the library those viewers already use. The sheet's header, tab bar and touch guards follow ugs-fleet-fuel-finder
 (`src/components/bottom-drawer.tsx`, `close-button.tsx`, `tab-bar.tsx`, `index.css`). Keeping the
 UGS apps alike is part of the point, so port from those instead of inventing a variant. Where
 they differ, or say nothing, follow iOS sheet behavior (Apple Maps, `UISheetPresentationController`).
@@ -38,15 +38,14 @@ The screen, top to bottom:
   footer bar on phones.
 - **Map.** Full-bleed, mounted once. The sheet slides over it, so switching tabs never
   re-initializes WebGL.
-- **Sheet.** Three heights, as fractions of the map area: peek `0.06`, half `0.55`, full `0.92`.
-  The peek is never shorter than the header (`4.5rem`). No backdrop, so the map stays usable
+- **Sheet.** A Base UI `Drawer` that is always open, non-modal, with three snap points: peek
+  `4.5rem` (the header), half `0.55` and full `0.92` of the map area. No backdrop, so the map stays usable
   around the sheet.
 - **Sheet header.** A grabber, then a title row naming what is open ("Layers", "Results", "Map
   Configurations"). At the peek the title row also carries a short summary ("2 results",
   "4 layers on"). A view opened from inside another shows a back control at the left of the title
-  row: "‹ More" for a More panel, "‹ Info" for an Info detail. Results has a ✕ pinned at the top
-  right (a 44px target) that clears the selection. Panels have no ✕: the user taps the open tab or
-  drags down, as in Apple Maps.
+  row: "‹ More" for a More panel, "‹ Info" for an Info detail. Nothing has a ✕: the user taps the
+  open tab or drags down, as in Apple Maps, and clears a selection from the map toolbar.
 - **Tab bar.** Layers · Results · Info · More, 48px tall, lucide icons at 22px. The tab whose
   content is showing above the peek is in the primary color with a heavier stroke and carries
   `aria-current="page"`. At the peek no tab is highlighted, as in the warehouse and soil-water
@@ -80,49 +79,22 @@ Rules:
 
 Moving the sheet:
 
-- Drag from the header (grabber and title row) or the content. Not from the tab bar: an upward
-  drag there fights the iPhone home-bar gesture.
-- The header captures the pointer only after it moves 4px, so a tap on the grabber or a back
-  control stays a tap. A tap on the header's empty space steps the height like the grabber does.
-  A new press cancels any gesture whose release never arrived.
-- The content takes a drag only when the swipe is mostly vertical and moves more than 8px. Going
-  down, every scroller under the finger must be at its top. Going up, the sheet must still be
-  able to grow, so a swipe up at half expands to full before the content scrolls (the iOS
-  default). It never takes a drag that starts on a text field, uses two fingers, lands within
-  100ms of the content scrolling (a fling still in motion), or arrives as a non-cancelable move.
-- A pull down minimizes. A drag from the header or the content that ends more than 8px below
-  where it started settles on the peek, skipping half, at any speed.
-- Other releases keep the height rules: a flick faster than 0.8 sheet-heights per second goes one
-  height further in its direction, otherwise the sheet settles on the nearest height, and ties go
-  to the lower one. Speed is measured from the press, so the slop distance never reads as a flick.
-- A scrolled list scrolls first: while the content is scrolled down, a pull down scrolls it. Once
-  it is at its top, a pull down moves the sheet.
-- At the top of the content, a clearly vertical downward pull (at least 2px, and more than twice
-  its sideways travel) is claimed from its first move (`preventDefault`, before the 8px slop), so
-  iOS's rubber-band overscroll can't start first. The drag itself still starts only past 8px.
-  Sideways moves, upward moves, scrolled content, two fingers, non-cancelable moves, and anything
-  over a horizontal scroller (`overflow-x` auto or scroll with overflow, or `pan-x`) are left alone.
-- The click that a drag ends with is ignored, checked by a 300ms timestamp because a touch drag
-  fires no click. A keyboard click (`detail === 0`) always counts.
+- Base UI's `Drawer` does the dragging: from the header or the content, never from the tab bar
+  (an upward drag there fights the iPhone home-bar gesture). `snapToSequentialPoints` makes a
+  flick go one height further. A scrolled list scrolls first and moves the sheet once it is at
+  its top; sideways scrollers keep their swipes. Mark anything else that owns a vertical gesture
+  with `data-base-ui-swipe-ignore`.
+- The sheet never closes. A swipe past the peek, or Escape, is cancelled in `onSnapPointChange`
+  and `onOpenChange` and lands on the peek.
 - The handle is a `<button>`. A tap steps peek → half → full → peek, and the up and down arrow
   keys step one height. This is the non-drag path WCAG 2.5.7 requires.
-- During a drag the hook writes the sheet's height straight to the DOM, so there is no React
-  render per frame. On release it hands control back to the rendered height.
-- Elements with `touch-action: none` inside the sheet (a reorder grip, a slider) keep their own
-  gestures; the sheet does not take them.
-- Touch and wheel events inside the sheet stop there, so they never pan or zoom the map.
-- At the peek the content is `inert`. Focus inside it moves to the grabber when the sheet drops.
-- Escape drops the sheet to the peek, unless a popover, select or dialog opened from inside the
-  sheet handled it first.
+- At the peek the content is `inert`.
 
 Keyboard and fields:
 
 - On phones text fields are 16px everywhere, including popovers rendered outside the sheet,
   because iOS zooms the page on focus for anything smaller. Tablets are untouched.
-- While the iOS keyboard is up, the sheet fills the visual viewport above it (iOS keeps the
-  layout viewport fixed, so a sheet sized to the page would sit under the keyboard) and sits above
-  the tab bar. Neither the header nor the content moves the sheet then, and a focused field
-  scrolls into view.
+- `Drawer.VirtualKeyboardProvider` keeps a focused field visible above the software keyboard.
 
 Page:
 
@@ -175,22 +147,16 @@ The sheet keeps its state in the URL, so reloads, shared links and Back all work
   Back and the iOS back swipe leave the page, as they do today. (iOS has no system Back, and in-app
   back controls are its convention.)
 
-`sheet` and `detail` are external input. Both are validated where they are read. An unknown
-value falls back (the panel at its peek; no detail) and logs one `console.warn` naming the value,
-so a bad link still opens the map and the problem is visible in the console.
+`sheet` and `detail` are external input, validated in `_map.tsx`'s search schema as enums
+(`SHEET_PARAMS`, `INFO_DETAILS`) with `.catch(undefined)`. An unknown value drops, so a bad link
+opens the panel at its peek.
 
 ## Components
 
 New, in this folder:
 
-- `sheet-model.ts`. The pure logic: the heights, `nearestDetent`, `releaseDetent`,
-  `contentTakesDrag`, the tab rules, parsing and writing `sheet`, and reading a desktop `view`.
-  Ported from ugs-warehouse `map-model.ts` along with its tests.
-- `use-sheet-drag.ts`. ugs-warehouse's detent math with ugs-fleet-fuel-finder's gesture guards.
-  It gives the header a pointer drag (captured after 4px) and the content a non-passive touch
-  drag (only a non-passive `touchmove` can stop the browser treating the swipe as a scroll).
-- `use-keyboard-viewport.ts`. The visual viewport's top and height while the iOS keyboard covers
-  the page, as ugs-fleet-fuel-finder's drawer reads it; null otherwise.
+- `sheet-model.ts`. The pure logic: the tab rules, the `sheet` values and reading and writing
+  them, and reading a desktop `view`. Ported from ugs-warehouse `map-model.ts`.
 - `use-phone-sheet.ts`. `usePhoneSheet()` reads `sheet`, `tab` and `detail`;
   `usePhoneSheetActions()` only writes them, for callers that don't need to re-render. Other code
   raises or lowers the sheet only through these: `showResults`, `raiseResults`, `openPanel`,
@@ -207,7 +173,8 @@ Where it mounts:
   `PopupContentWithPagination` with the props `PopupSheet` passes it today, and
   `QueryResultsTable`, both unchanged.
 - Selection already opens the desktop popup through `popupSheetRef.open()`. On phones that ref
-  holds a handle that raises Results instead, so the selection code is unchanged.
+  holds a handle that raises Results instead, so the selection code is unchanged. Box select and
+  a drawn filter call `showResults('table')` when the area is set.
 - `MapShell` on phones renders the app bar and the map container only. No `Sidebar`, no footer.
 - Panels come from the existing sidebar context (`currentContent.component`), so each route's
   sidelinks drive Layers, Info and More with no new per-route config.
@@ -226,7 +193,7 @@ Callers that used to close the drawer go through `usePhoneSheetActions`:
 - hazards `report-generator.tsx` calls `peek()` when it starts drawing.
 - wetlandplants `wetlandplants-layer-filters.tsx` calls `showResults('table')` instead of forcing
   `view=table` and `tab=home`. Its "Close table" button is hidden on phones, where the filters
-  (Layers) and the table (Results) are never on screen together and Results' ✕ clears instead.
+  (Layers) and the table (Results) are never on screen together.
 
 ## Accessibility
 
@@ -243,20 +210,11 @@ Callers that used to close the drawer go through `usePhoneSheetActions`:
 
 ## Testing
 
-- Unit (vitest): `sheet-model` (nearest height with ties going lower, flicks both ways,
-  `contentTakesDrag`, the `sheet` round-trip, `view` to Results, unknown values, the tab rules).
-- Hooks and components (vitest in jsdom with React's `createRoot` and `act`; the repo has no
-  Testing Library, and its `@types/react` is 18.3 although the runtime is React 19):
-  - the drag hook: slow drags settle, flicks carry, taps stay taps, cancels restore, and every
-    content guard
-  - a pull down minimizes; a drag that ends within 8px of its start keeps the height rules
-  - the early claim: only a clearly vertical downward first move at the top, not upward,
-    non-cancelable, tiny, two-finger, or over a horizontal scroller
-  - tapping a tab, the open tab, the handle and the arrow keys
-  - a click that ends a drag is ignored
-  - Escape from a portaled popover does not collapse the sheet
-  - More lists the route's links, and `href` links open in a new tab
-  - the phone tour steps
+- Unit (vitest): `sheet-model` (the `sheet` round-trip, `view` to Results, the tab rules).
+- Components (vitest in jsdom with React's `createRoot` and `act`; the repo has no Testing
+  Library): tabs, the handle and arrow keys, Escape to the peek, `inert` at the peek, focus on a
+  new panel, More's links, and the phone tour steps. Dragging is Base UI's and is checked in the
+  browser, not jsdom.
 - Emulated phone (Playwright, iPhone 13 portrait and landscape and Pixel 7 landscape, every map
   route): the full checklist in the plan's Task 9.
 - Real devices: iOS Safari and Android Chrome on the PR preview build. The emulation is Chromium

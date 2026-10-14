@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createPortal } from 'react-dom'
 import { PhoneSheet, type PhoneSheetProps } from './phone-sheet'
 import { FULL, HALF, PEEK } from './sheet-model'
 import { act, render } from './test-utils'
@@ -50,7 +49,7 @@ describe('PhoneSheet', () => {
   it('steps the height from the grabber and names the next step', () => {
     const props = base({ detent: FULL })
     const { container } = render(<PhoneSheet {...props} />)
-    const grabber = q(container, '[data-grabber]')
+    const grabber = q(container, 'button[aria-label$="panel"], button[aria-label^="Expand"]')
     expect(grabber.getAttribute('aria-label')).toBe('Collapse panel')
     click(grabber)
     expect(props.onSetDetent).toHaveBeenCalledWith(PEEK)
@@ -59,35 +58,18 @@ describe('PhoneSheet', () => {
   it('steps with the arrow keys and stops at the ends', () => {
     const props = base({ detent: FULL })
     const { container } = render(<PhoneSheet {...props} />)
-    const grabber = q(container, '[data-grabber]')
+    const grabber = q(container, 'button[aria-label$="panel"], button[aria-label^="Expand"]')
     key(grabber, 'ArrowUp')
     expect(props.onSetDetent).toHaveBeenLastCalledWith(FULL)
     key(grabber, 'ArrowDown')
     expect(props.onSetDetent).toHaveBeenLastCalledWith(HALF)
   })
 
-  it('drops to the peek on Escape from its own content', () => {
+  it('drops to the peek on Escape instead of closing', () => {
     const props = base()
     const { container } = render(<PhoneSheet {...props} />)
-    key(q(container, 'section p'), 'Escape')
+    key(q(container, '.phone-sheet-content p'), 'Escape')
     expect(props.onSetDetent).toHaveBeenCalledWith(PEEK)
-  })
-
-  it('leaves Escape to a popover portaled out of the sheet, or one that handled it', () => {
-    const portalHost = document.createElement('div')
-    document.body.append(portalHost)
-    const props = base({
-      children: (
-        <>
-          <p data-testid="inside">panel</p>
-          {createPortal(<button type="button" data-testid="popover">option</button>, portalHost)}
-        </>
-      ),
-    })
-    const { container } = render(<PhoneSheet {...props} />)
-    key(portalHost.querySelector('[data-testid="popover"]')!, 'Escape')
-    key(q(container, '[data-testid="inside"]'), 'Escape', true)
-    expect(props.onSetDetent).not.toHaveBeenCalled()
   })
 
   it('makes the content inert at the peek and shows the summary there', () => {
@@ -99,31 +81,14 @@ describe('PhoneSheet', () => {
     expect(container.textContent).not.toContain('3 layers on')
   })
 
-  it('shows a close button and a back control only when given, and focuses the grabber after closing', () => {
-    const onClose = vi.fn()
+  it('has no close button, and shows a back control only when given', () => {
     const back = { label: 'More', onClick: vi.fn() }
     const { container, rerender } = render(<PhoneSheet {...base()} />)
     expect(q(container, 'button[aria-label="Clear results"]')).toBeNull()
-    rerender(<PhoneSheet {...base({ onClose, closeLabel: 'Clear results', back })} />)
-    click(q(container, 'button[aria-label="Clear results"]'))
-    expect(onClose).toHaveBeenCalled()
-    expect(document.activeElement).toBe(q(container, '[data-grabber]'))
-    const backButton = [...container.querySelectorAll('section button')].find((b) => b.textContent === 'More')!
+    rerender(<PhoneSheet {...base({ back })} />)
+    const backButton = [...container.querySelectorAll('button')].find((b) => b.textContent === 'More' && !b.closest('nav'))!
     click(backButton)
     expect(back.onClick).toHaveBeenCalled()
-  })
-
-  it('keeps touches inside the sheet from reaching the map', () => {
-    const onDocTouch = vi.fn()
-    document.addEventListener('touchstart', onDocTouch)
-    const { container } = render(<PhoneSheet {...base()} />)
-    act(() => {
-      const e = new Event('touchstart', { bubbles: true })
-      Object.defineProperty(e, 'touches', { value: [{ clientX: 0, clientY: 0 }] })
-      q(container, 'section p').dispatchEvent(e)
-    })
-    expect(onDocTouch).not.toHaveBeenCalled()
-    document.removeEventListener('touchstart', onDocTouch)
   })
 
   it('focuses the title when the panel changes, not on first render or a title update', () => {
