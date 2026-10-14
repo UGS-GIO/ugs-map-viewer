@@ -5,6 +5,7 @@
  */
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import maplibregl from 'maplibre-gl'
 import DataMap, { HighlightFeature, DrawMode, SpatialFilter } from '@/components/maps/data-map'
 import { PopupSheet, PopupSheetRef } from '@/components/maps/popups/popup-sheet'
@@ -24,10 +25,10 @@ import { PROD_GEOSERVER_URL, POPUP_TITLES } from '@/lib/constants'
 import { useMap } from '@/hooks/use-map'
 import { useGetCurrentPage } from '@/hooks/use-get-current-page'
 import { useAppBasemaps } from '@/hooks/use-app-basemaps'
-import { HomeControl, DualScaleControl } from '@/components/maps/controls'
+import { MapChromeControls } from '@/components/maps/controls/map-chrome-controls'
 import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
-import { usePopupData } from '@/hooks/use-popup-data'
+import { rasterQueries, usePopupData } from '@/hooks/use-popup-data'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
 import type { LayerProps, WMSLayerProps, COGLayerProps } from '@/lib/types/mapping-types'
 import { createSVGSymbol } from '@/lib/legend/symbol-generator'
@@ -58,6 +59,9 @@ interface VisibleWmsLayer {
   url: string
   bivariateLegend?: { xLabel: string; yLabel: string }
 }
+
+// One empty list while configs load, so hooks keyed on it don't re-run every render.
+const NO_LAYERS: LayerProps[] = []
 
 // Helper to fetch legend data for currently-displayed WMS layers (filtered by map extent).
 // "Displayed" = leaf checkbox on AND parent group toggle on, computed from URL state.
@@ -310,7 +314,7 @@ export default function GenericMapContainer({
   const { raiseResults, showResults } = phoneSheet
   const rawLayersConfig = useGetLayerConfigsData(layerConfigKey)
   const { selectedLayerTitles, groupVisibility } = useLayerUrl()
-  const layersConfig = rawLayersConfig || []
+  const layersConfig = rawLayersConfig ?? NO_LAYERS
   const popupSheetRef = useRef<PopupSheetRef>(null)
   // A selection raises the desktop popup panel, or on phones the sheet's Results, keeping the
   // user's Cards or Table choice.
@@ -341,7 +345,6 @@ export default function GenericMapContainer({
 
   // Read draw lifecycle + registrations from context (owned by useMapContextState)
   const {
-    map: mapInstance,
     activeDrawShape,
     startDraw,
     cancelDraw,
@@ -382,16 +385,23 @@ export default function GenericMapContainer({
     onHighlightChange: handleHighlightChange,
   })
 
-  // Raster-only layers are sampled async in usePopupData (not part of the
-  // vector/WMS click features), so their popup can't open at click time. Mark the
-  // click as pending; the effect below opens the sheet once raster sampling
-  // settles AND there's something to show — so an empty click no longer opens an
-  // empty sheet. Vector/WMS results open via useFeatureSelection (gated on hits).
-  const awaitingRasterOpenRef = useRef(false)
+  // Raster-only layers are sampled async (not part of the vector/WMS click features), so their
+  // results can't open at click time. The click waits on the same queries usePopupData reads and
+  // opens the results only if a raster layer has a value there, so an empty click opens nothing.
+  // Vector/WMS results open via useFeatureSelection (gated on hits). A newer click wins.
+  const queryClient = useQueryClient()
+  const latestClick = useRef(0)
   const handleClickBufferChange = useCallback((bounds: { sw: [number, number]; ne: [number, number] } | null) => {
     setClickBufferBounds(bounds)
-    awaitingRasterOpenRef.current = !!bounds && selectionView === 'map'
-  }, [setClickBufferBounds, selectionView])
+    const click = ++latestClick.current
+    if (!bounds || selectionView !== 'map') return
+    const queries = rasterQueries(layersConfig, displayedTitles, getBboxCenter(bounds), bounds)
+    Promise.all(queries.map((q) => queryClient.fetchQuery(q)))
+      .then((results) => {
+        if (click === latestClick.current && results.some((r) => r.data)) openResults()
+      })
+      .catch(console.warn)
+  }, [setClickBufferBounds, selectionView, layersConfig, displayedTitles, queryClient, openResults])
 
   // Register callbacks with parent context
   useEffect(() => {
@@ -407,55 +417,11 @@ export default function GenericMapContainer({
     clearAllSelections,
   ])
 
-  // Add map controls when map is ready. Phones get home and locate-me only.
-  useEffect(() => {
-    if (!mapInstance) return
-
-    const controls: maplibregl.IControl[] = []
-    const removeAll = () => controls.forEach(control => {
-      try {
-        mapInstance.removeControl(control)
-      } catch { /* control may already be removed */ }
-    })
-
-    // Home control (reset to default bounds)
-    const homeControl = new HomeControl()
-    mapInstance.addControl(homeControl, 'top-left')
-    controls.push(homeControl)
-
-    // Geolocate control. Phones show the user's dot, as map apps do.
-    const geolocateControl = new maplibregl.GeolocateControl({
-      showUserLocation: isMobile,
-      showAccuracyCircle: false,
-      fitBoundsOptions: { maxZoom: 18 }
-    })
-    // Phones put it bottom-right, within thumb reach above the sheet, as Google Maps does.
-    mapInstance.addControl(geolocateControl, isMobile ? 'bottom-right' : 'top-left')
-    controls.push(geolocateControl)
-
-    if (isMobile) return removeAll
-
-    // Dual scale control (bottom-left)
-    const scaleControl = new DualScaleControl({ maxWidth: 150 })
-    mapInstance.addControl(scaleControl, 'bottom-left')
-    controls.push(scaleControl)
-
-    // Lazy load export control
-    import('@/components/maps/controls/export-control').then(({ ExportControl }) => {
-      const exportControl = new ExportControl({
-        pageSize: 'A4',
-        pageOrientation: 'landscape',
-        format: 'png',
-        dpi: 300,
-        filename: 'ugs-map',
-        getLegendData: (bounds) => fetchLegendDataForVisibleLayers(layersConfigRef.current, displayedTitlesRef.current, bounds)
-      })
-      mapInstance.addControl(exportControl, 'top-left')
-      controls.push(exportControl)
-    }).catch(console.warn)
-
-    return removeAll
-  }, [mapInstance, isMobile])
+  // Legend data for the export control; reads the refs so the control never needs re-creating.
+  const getLegendData = useCallback(
+    (bounds: MapBounds) => fetchLegendDataForVisibleLayers(layersConfigRef.current, displayedTitlesRef.current, bounds),
+    [],
+  )
 
   // UI panel state
   const [panelState, setPanelState] = useState({
@@ -605,17 +571,6 @@ export default function GenericMapContainer({
   // Derived: has results (includes raster-only layers)
   const hasResults = useMemo(() => popupContent.length > 0, [popupContent])
 
-  // Open the sheet for a pending click once raster sampling settles: only if
-  // there are results. No results → no empty sheet. Cleared either way so it
-  // fires once per click.
-  useEffect(() => {
-    if (!awaitingRasterOpenRef.current || isLoadingRaster) return
-    awaitingRasterOpenRef.current = false
-    if (hasResults && selectionView === 'map') {
-      requestAnimationFrame(openResults)
-    }
-  }, [isLoadingRaster, hasResults, selectionView, openResults])
-
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode)
     if (mode === 'map' && hasResults) {
@@ -681,7 +636,9 @@ export default function GenericMapContainer({
       viewMode={isMobile ? undefined : viewMode}
       onViewModeChange={isMobile ? undefined : handleViewModeChange}
       hasResults={hasResults}
-    />
+    >
+      <MapChromeControls isMobile={isMobile} getLegendData={getLegendData} />
+    </DataMap>
   )
 
   // The results table, as both the desktop table panel and the phone sheet's Table view show it.
