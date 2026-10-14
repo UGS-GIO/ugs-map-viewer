@@ -36,6 +36,10 @@ const mapSearchSchema = z.object({
     popup_lon: z.coerce.number().min(-180).max(180).optional(),
     // View mode for split/table layout
     view: z.enum(['map', 'split', 'table']).optional(),
+    // Phone sheet: what it shows and how high, and the Info detail it shows. Validated where they
+    // are read (components/maps/phone-sheet), so unknown values can fall back and be reported.
+    sheet: z.string().optional(),
+    detail: z.string().optional(),
     // Click buffer bounds for selection visualization (sw_lng,sw_lat,ne_lng,ne_lat)
     click_bbox: z.string().optional(),
     // Feature geometry bounds for zoom (sw_lng,sw_lat,ne_lng,ne_lat)
