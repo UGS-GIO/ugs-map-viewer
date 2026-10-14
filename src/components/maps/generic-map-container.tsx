@@ -401,25 +401,32 @@ export default function GenericMapContainer({
     clearAllSelections,
   ])
 
-  // Add map controls when map is ready (desktop only)
+  // Add map controls when map is ready. Phones get home and locate-me only.
   useEffect(() => {
-    if (!mapInstance || isMobile) return
+    if (!mapInstance) return
 
     const controls: maplibregl.IControl[] = []
+    const removeAll = () => controls.forEach(control => {
+      try {
+        mapInstance.removeControl(control)
+      } catch { /* control may already be removed */ }
+    })
 
     // Home control (reset to default bounds)
     const homeControl = new HomeControl()
     mapInstance.addControl(homeControl, 'top-left')
     controls.push(homeControl)
 
-    // Geolocate control
+    // Geolocate control. Phones show the user's dot, as map apps do.
     const geolocateControl = new maplibregl.GeolocateControl({
-      showUserLocation: false,
+      showUserLocation: isMobile,
       showAccuracyCircle: false,
       fitBoundsOptions: { maxZoom: 18 }
     })
     mapInstance.addControl(geolocateControl, 'top-left')
     controls.push(geolocateControl)
+
+    if (isMobile) return removeAll
 
     // Dual scale control (bottom-left)
     const scaleControl = new DualScaleControl({ maxWidth: 150 })
@@ -440,13 +447,7 @@ export default function GenericMapContainer({
       controls.push(exportControl)
     }).catch(console.warn)
 
-    return () => {
-      controls.forEach(control => {
-        try {
-          mapInstance.removeControl(control)
-        } catch { /* control may already be removed */ }
-      })
-    }
+    return removeAll
   }, [mapInstance, isMobile])
 
   // UI panel state
