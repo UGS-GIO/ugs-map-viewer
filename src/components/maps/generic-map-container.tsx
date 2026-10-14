@@ -300,6 +300,10 @@ export default function GenericMapContainer({
   popupFeatureFilter,
 }: GenericMapContainerProps) {
   const isMobile = useIsMobile()
+  // The map remounts when the layout crosses the phone query; that remount keeps the URL's view.
+  const mountedAsMobileRef = useRef(isMobile)
+  const layoutSwitchedRef = useRef(false)
+  if (isMobile !== mountedAsMobileRef.current) layoutSwitchedRef.current = true
   const currentPage = useGetCurrentPage()
   const { defaultStyle: defaultBasemap } = useAppBasemaps()
   const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
@@ -695,6 +699,7 @@ export default function GenericMapContainer({
       viewMode={isMobile ? undefined : viewMode}
       onViewModeChange={isMobile ? undefined : handleViewModeChange}
       hasResults={hasResults}
+      fitSavedBounds={!layoutSwitchedRef.current}
     />
   )
 
