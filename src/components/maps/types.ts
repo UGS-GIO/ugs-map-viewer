@@ -2,6 +2,9 @@ import type { Geometry, Polygon } from 'geojson'
 import type maplibregl from 'maplibre-gl'
 import type { LayerProps } from '@/lib/types/mapping-types'
 import type { WfsFeature } from '@/lib/map/wfs-service'
+import type { PMTilesStyleOverride } from './pmtiles-layer-source'
+
+export type { PMTilesStyleOverride }
 
 // Re-export for convenience
 export type ClickedFeature = WfsFeature
@@ -69,6 +72,8 @@ export interface DataMapProps {
   vectorLayerFilters?: Record<string, maplibregl.FilterSpecification>
   /** Active symbology mode key for vector layers (e.g. 'box-type'); empty/undefined = default circle styling. */
   vectorLayerSymbology?: Record<string, string>
+  /** Dynamic style overrides for PMTiles layers (e.g. choropleth fill-color), keyed by layer title */
+  pmtilesStyleOverrides?: Record<string, PMTilesStyleOverride>
   /** Callback when map is ready - exposes raw MapLibre map instance */
   onMapReady?: (map: maplibregl.Map) => void
   /** Basemap ID from URL */

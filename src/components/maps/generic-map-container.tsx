@@ -6,7 +6,7 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import maplibregl from 'maplibre-gl'
-import DataMap, { HighlightFeature, DrawMode, SpatialFilter } from '@/components/maps/data-map'
+import DataMap, { HighlightFeature, DrawMode, SpatialFilter, type PMTilesStyleOverride } from '@/components/maps/data-map'
 import { PopupSheet, PopupSheetRef } from '@/components/maps/popups/popup-sheet'
 import type { LayerContentProps, ExtendedFeature } from '@/components/maps/popups/types'
 import { QueryResultsTable } from '@/components/data-table/query-results-table'
@@ -268,6 +268,8 @@ interface GenericMapContainerProps {
   vectorLayerFilters?: Record<string, maplibregl.FilterSpecification>
   /** Optional active symbology mode key for vector layers, keyed by layer title */
   vectorLayerSymbology?: Record<string, string>
+  /** Optional style overrides for PMTiles layers (e.g. choropleth fill-color), keyed by layer title */
+  pmtilesStyleOverrides?: Record<string, PMTilesStyleOverride>
   /** Layer config key (default: 'layers') */
   layerConfigKey?: string
   /** Called when all selections are cleared (context menu, popup close, etc.) */
@@ -289,6 +291,7 @@ export default function GenericMapContainer({
   layerStyles = {},
   vectorLayerFilters = {},
   vectorLayerSymbology = {},
+  pmtilesStyleOverrides = {},
   layerConfigKey = 'layers',
   onClearSearch,
   disableExport = false,
@@ -653,6 +656,7 @@ export default function GenericMapContainer({
             layerStyles={layerStyles}
             vectorLayerFilters={vectorLayerFilters}
             vectorLayerSymbology={vectorLayerSymbology}
+            pmtilesStyleOverrides={pmtilesStyleOverrides}
             onMapReady={handleMapReady}
             basemapId={basemap ?? defaultBasemap.id}
             clickBufferBounds={clickBufferBounds}

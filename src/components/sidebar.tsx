@@ -157,9 +157,8 @@ export default function Sidebar({ className }: SidebarProps) {
     <aside
       aria-label="Map tools"
       className={cn(
-        "absolute left-0 right-0 top-0 z-50 w-full max-w-full overflow-x-hidden md:bottom-0 md:right-auto md:h-full md:border-r-2 md:border-r-muted",
-        // Mobile drawer grows with its links; cap it so a long list scrolls instead of spilling.
-        "max-h-dvh overflow-y-auto md:max-h-none md:overflow-visible",
+        "absolute inset-x-0 top-0 bottom-0 z-50 w-full max-w-full overflow-x-hidden md:right-auto md:border-r-2 md:border-r-muted",
+        "h-full max-h-full overflow-y-auto md:overflow-visible",
         navOpened ? "border-b" : "hidden md:block",
         !isDragging && "transition-[width] duration-200 ease-linear",
         className
@@ -174,15 +173,15 @@ export default function Sidebar({ className }: SidebarProps) {
           } w-full bg-black md:hidden`}
       />
 
-      <div className={cn('flex h-full flex-col', navOpened && 'h-full')}>
+      <div className={cn('flex h-full min-h-0 flex-col', navOpened && 'h-full')}>
         {/* Navigation links */}
         {areLinksLoading ?
           <NavSkeleton id='sidebar-menu' className='hidden h-full flex-1 md:flex' />
           : <Nav
             id='sidebar-menu'
             className={cn(
-              'h-full flex-1 overflow-hidden z-40',
-              navOpened ? 'max-h-screen' : 'max-h-0 py-0 md:max-h-screen md:py-2'
+              'h-full min-h-0 flex-1 overflow-hidden z-40',
+              navOpened ? 'max-h-full' : 'max-h-0 py-0 md:max-h-screen md:py-2'
             )}
             closeNav={() => setNavOpened(!navOpened)}
             isCollapsed={isCollapsed}
