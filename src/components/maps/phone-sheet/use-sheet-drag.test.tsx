@@ -91,6 +91,32 @@ describe('header drag', () => {
     expect(sheet.style.height).toBe('55%')
   })
 
+  it('minimizes on a slow pull down, skipping half', () => {
+    const onRelease = vi.fn()
+    const { container } = render(<Harness detent={FULL} onRelease={onRelease} />)
+    setHeight(get(container, 'sheet'), 920)
+    pointer(get(container, 'grabber'), 'pointerdown', 100)
+    for (const y of [120, 150, 180, 210, 240, 250]) {
+      tick(200)
+      pointer(window, 'pointermove', y)
+    }
+    pointer(window, 'pointerup', 250)
+    expect(onRelease).toHaveBeenCalledWith(PEEK)
+  })
+
+  it('settles an upward drag on the nearest height', () => {
+    const onRelease = vi.fn()
+    const { container } = render(<Harness detent={HALF} onRelease={onRelease} />)
+    setHeight(get(container, 'sheet'), 550)
+    pointer(get(container, 'grabber'), 'pointerdown', 450)
+    for (const y of [420, 380, 340, 300, 250, 200]) {
+      tick(200)
+      pointer(window, 'pointermove', y)
+    }
+    pointer(window, 'pointerup', 200)
+    expect(onRelease).toHaveBeenCalledWith(FULL)
+  })
+
   it('drops a header gesture in progress when the sheet unmounts', () => {
     const onRelease = vi.fn()
     const { container, unmount } = render(<Harness detent={PEEK} onRelease={onRelease} />)
@@ -199,6 +225,41 @@ describe('content drag', () => {
     const moves = swipe(get(container, 'text'), 300, 800)
     expect(onRelease).toHaveBeenCalledWith(PEEK)
     expect(moves.at(-1)?.defaultPrevented).toBe(true)
+  })
+
+  it('minimizes a pull down from the top of the content at full', () => {
+    const { container, onRelease } = setup(FULL)
+    swipe(get(container, 'text'), 300, 450)
+    expect(onRelease).toHaveBeenCalledWith(PEEK)
+  })
+
+  it('claims a downward first move at the top before the slop, without starting a drag', () => {
+    const { container, onRelease } = setup(FULL)
+    const text = get(container, 'text')
+    touch(text, 'touchstart', [{ x: 100, y: 300 }])
+    tick(100)
+    const move = touch(text, 'touchmove', [{ x: 100, y: 304 }])
+    expect(move.defaultPrevented).toBe(true)
+    touch(text, 'touchend', [])
+    expect(onRelease).not.toHaveBeenCalled()
+    expect(get(container, 'sheet').style.height).toBe('')
+  })
+
+  it('leaves a downward first move alone when the content is scrolled down', () => {
+    const { container } = setup(FULL)
+    get(container, 'content').scrollTop = 40
+    const text = get(container, 'text')
+    touch(text, 'touchstart', [{ x: 100, y: 300 }])
+    tick(100)
+    expect(touch(text, 'touchmove', [{ x: 100, y: 304 }]).defaultPrevented).toBe(false)
+  })
+
+  it('leaves a sideways first move alone', () => {
+    const { container } = setup(FULL)
+    const text = get(container, 'text')
+    touch(text, 'touchstart', [{ x: 100, y: 300 }])
+    tick(100)
+    expect(touch(text, 'touchmove', [{ x: 104, y: 301 }]).defaultPrevented).toBe(false)
   })
 
   it('scrolls instead when the content is scrolled down', () => {

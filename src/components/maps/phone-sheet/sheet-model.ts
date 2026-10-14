@@ -30,6 +30,11 @@ export function releaseDetent(frac: number, speed: number): Detent {
   return nearestDetent(frac)
 }
 
+// A pull down minimizes the sheet, as the fleet-fuel drawer does; other releases keep the height rules.
+export function settleDetent(frac: number, speed: number, pulledDown: boolean): Detent {
+  return pulledDown ? PEEK : releaseDetent(frac, speed)
+}
+
 // Whether a swipe on the content moves the sheet instead of scrolling it (dy + is down): down only
 // from the top, up only while the sheet can still grow, which is how iOS sheets behave.
 export function contentTakesDrag(dx: number, dy: number, atTop: boolean, detent: Detent): boolean {

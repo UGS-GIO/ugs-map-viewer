@@ -90,9 +90,16 @@ Moving the sheet:
   able to grow, so a swipe up at half expands to full before the content scrolls (the iOS
   default). It never takes a drag that starts on a text field, uses two fingers, lands within
   100ms of the content scrolling (a fling still in motion), or arrives as a non-cancelable move.
-- On release, a flick faster than 0.8 sheet-heights per second goes one height further in its
-  direction. Otherwise the sheet settles on the nearest height, and ties go to the lower one.
-  Speed is measured from the press, so the slop distance never reads as a flick.
+- A pull down minimizes. A drag from the header or the content that ends more than 8px below
+  where it started settles on the peek, skipping half, at any speed.
+- Other releases keep the height rules: a flick faster than 0.8 sheet-heights per second goes one
+  height further in its direction, otherwise the sheet settles on the nearest height, and ties go
+  to the lower one. Speed is measured from the press, so the slop distance never reads as a flick.
+- A scrolled list scrolls first: while the content is scrolled down, a pull down scrolls it. Once
+  it is at its top, a pull down moves the sheet.
+- At the top of the content, a downward pull is claimed from its first move (`preventDefault`,
+  before the 8px slop), so iOS's rubber-band overscroll can't start first. Upward, sideways and
+  scrolled-content moves are left alone.
 - The click that a drag ends with is ignored, checked by a 300ms timestamp because a touch drag
   fires no click. A keyboard click (`detail === 0`) always counts.
 - The handle is a `<button>`. A tap steps peek → half → full → peek, and the up and down arrow

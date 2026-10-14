@@ -4,12 +4,14 @@
 // viewer; the gesture guards from ugs-fleet-fuel-finder's drawer.
 import type { MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, RefObject } from 'react'
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
-import { clampSize, contentTakesDrag, DETENTS, heightPct, releaseDetent, type Detent } from './sheet-model'
+import { clampSize, contentTakesDrag, DETENTS, heightPct, settleDetent, type Detent } from './sheet-model'
 
 // A header press that moves less than this is a tap.
 const TAP_SLOP_PX = 4
 // The content claims a touch only past this: below where iOS starts its own scroll, above a thumb's drift.
 const CONTENT_SLOP_PX = 8
+// A release more than this far below the press settles on the peek.
+const PULL_DOWN_PX = CONTENT_SLOP_PX
 // A touch this soon after the content scrolled lands on a fling still in motion.
 const SCROLL_SETTLE_MS = 100
 // A click this soon after a drag is the drag's own release. A timestamp, because a touch drag fires no click.
@@ -82,7 +84,7 @@ export function useSheetDrag(
     drag.current = null
     if (!d) return
     dragEndedAt.current = performance.now()
-    const next = releaseDetent(heightOf(d, d.y) / d.height, d.speed)
+    const next = settleDetent(heightOf(d, d.y) / d.height, d.speed, d.y - d.y0 > PULL_DOWN_PX)
     settle(next)
     onRelease(next)
   }
@@ -166,8 +168,10 @@ export function useSheetDrag(
       const x = e.touches[0]?.clientX ?? x0
       const y = e.touches[0]?.clientY ?? y0
       if (state === 'pending') {
-        if (Math.hypot(x - x0, y - y0) < CONTENT_SLOP_PX) return
         const atTop = !scrolledDown(elementOf(e.target), el)
+        // Claim a downward pull at the top at once, so iOS's rubber-band overscroll can't start first.
+        if (e.cancelable && atTop && y - y0 > 0 && y - y0 >= Math.abs(x - x0)) e.preventDefault()
+        if (Math.hypot(x - x0, y - y0) < CONTENT_SLOP_PX) return
         if (!e.cancelable || !contentTakesDrag(x - x0, y - y0, atTop, latest.current.detent)) {
           state = 'off'
           return

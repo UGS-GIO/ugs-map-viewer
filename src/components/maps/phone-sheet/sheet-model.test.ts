@@ -15,6 +15,7 @@ import {
   PEEK,
   raise,
   releaseDetent,
+  settleDetent,
   sheetFromUrl,
   sheetParam,
   tapTab,
@@ -59,6 +60,20 @@ describe('releaseDetent', () => {
   it('stops at the ends', () => {
     expect(releaseDetent(DETENTS[2], 2)).toBe(FULL)
     expect(releaseDetent(DETENTS[0], -2)).toBe(PEEK)
+  })
+})
+
+describe('settleDetent', () => {
+  it('goes to the peek after a pull down, from any height and speed', () => {
+    for (const frac of [0.06, 0.3, 0.55, 0.9]) {
+      for (const speed of [-2, 0, 2]) expect(settleDetent(frac, speed, true)).toBe(PEEK)
+    }
+  })
+
+  it('keeps the height rules otherwise, including an upward flick', () => {
+    expect(settleDetent(0.5, 0.2, false)).toBe(HALF)
+    expect(settleDetent(0.6, 2, false)).toBe(FULL)
+    expect(settleDetent(0.1, 2, false)).toBe(releaseDetent(0.1, 2))
   })
 })
 
