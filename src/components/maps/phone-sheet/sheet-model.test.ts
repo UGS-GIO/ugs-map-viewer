@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   activeTabOf,
+  DETENTS,
   FULL,
   HALF,
   MORE_TAB,
@@ -23,7 +24,7 @@ describe('raise', () => {
 
 describe('the sheet params', () => {
   const all: SheetState[] = (['cards', 'table', null] as const).flatMap((results) =>
-    [PEEK, HALF, FULL].map((detent) => ({ results, detent })),
+    DETENTS.map((detent) => ({ results, detent })),
   )
 
   it('round-trips every state', () => {

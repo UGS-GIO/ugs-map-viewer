@@ -4,7 +4,7 @@ import { Toggle } from '@base-ui/react/toggle'
 import { ToggleGroup } from '@base-ui/react/toggle-group'
 import { ChevronLeft, Ellipsis, Info, Layers, List, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { PEEK, type Detent, type PhoneTab } from './sheet-model'
+import { DETENTS, FULL, HALF, PEEK, type Detent, type PhoneTab } from './sheet-model'
 
 const TABS: { id: PhoneTab; label: string; Icon: LucideIcon }[] = [
   { id: 'layers', label: 'Layers', Icon: Layers },
@@ -13,19 +13,19 @@ const TABS: { id: PhoneTab; label: string; Icon: LucideIcon }[] = [
   { id: 'more', label: 'More', Icon: Ellipsis },
 ]
 
-// Indexed by Detent. The peek is the header's height; the others are fractions of the map area.
-const SNAP_POINTS = ['4.5rem', 0.55, 0.92]
-const detentOf = (p: Drawer.Root.SnapPoint | null) => {
-  const i = SNAP_POINTS.indexOf(p ?? '')
-  return i === 1 || i === 2 ? i : PEEK
-}
+// The peek is the header's height; the others are fractions of the map area. index.css keeps the
+// map's bottom controls above these.
+const SNAP: Record<Detent, Drawer.Root.SnapPoint> = { peek: '4.5rem', half: 0.55, full: 0.92 }
+const SNAP_POINTS = DETENTS.map((d) => SNAP[d])
+// A null snap point (a cancelled swipe-off) is the peek.
+const detentOf = (p: Drawer.Root.SnapPoint | null) => DETENTS.find((d) => SNAP[d] === p) ?? PEEK
 
-const NEXT: Record<Detent, Detent> = { 0: 1, 1: 2, 2: 0 }
-const UP: Record<Detent, Detent> = { 0: 1, 1: 2, 2: 2 }
-const DOWN: Record<Detent, Detent> = { 0: 0, 1: 0, 2: 1 }
+const NEXT: Record<Detent, Detent> = { peek: HALF, half: FULL, full: PEEK }
+const UP: Record<Detent, Detent> = { peek: HALF, half: FULL, full: FULL }
+const DOWN: Record<Detent, Detent> = { peek: PEEK, half: PEEK, full: HALF }
 
 // The grabber says what a tap does next; with the arrow keys it is the non-drag path WCAG 2.5.7 asks for.
-const GRABBER_LABEL = ['Expand panel', 'Expand panel to full height', 'Collapse panel']
+const GRABBER_LABEL: Record<Detent, string> = { peek: 'Expand panel', half: 'Expand panel to full height', full: 'Collapse panel' }
 
 // No tap highlight, no long-press callout: the native-app feel iOS users expect.
 const TOUCH_CHROME = 'select-none [-webkit-tap-highlight-color:transparent] [-webkit-touch-callout:none]'
@@ -72,7 +72,7 @@ export function PhoneSheet({ container, detent, activeTab, panelKey, title, summ
         modal={false}
         disablePointerDismissal
         snapPoints={SNAP_POINTS}
-        snapPoint={SNAP_POINTS[detent]}
+        snapPoint={SNAP[detent]}
         snapToSequentialPoints
         // The sheet never closes: a swipe past the peek or Escape drops it to the peek.
         onSnapPointChange={(p, details) => {

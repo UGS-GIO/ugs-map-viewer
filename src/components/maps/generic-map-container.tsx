@@ -19,9 +19,6 @@ import { PopupContentWithPagination } from '@/components/maps/popups/popup-conte
 import { PhoneSheetHost } from './phone-sheet/phone-sheet-host'
 import { ResultsViewToggle } from './phone-sheet/results-view-toggle'
 import { usePhoneSheet } from './phone-sheet/use-phone-sheet'
-
-// Lets index.css keep the map's bottom controls just above the phone sheet.
-const DETENT_NAME = ['peek', 'half', 'full'] as const
 import { cn } from '@/lib/utils'
 import { PROD_GEOSERVER_URL, POPUP_TITLES } from '@/lib/constants'
 import { useMap } from '@/hooks/use-map'
@@ -310,11 +307,17 @@ export default function GenericMapContainer({
   // Phones select straight from the map, whatever a desktop link's `view` still says.
   const selectionView: ViewMode = isMobile ? 'map' : viewMode
   const phoneSheet = usePhoneSheet()
-  const { raiseResults, closeResults, showResults } = phoneSheet
+  const { raiseResults, showResults } = phoneSheet
   const rawLayersConfig = useGetLayerConfigsData(layerConfigKey)
   const { selectedLayerTitles, groupVisibility } = useLayerUrl()
   const layersConfig = rawLayersConfig || []
-  const popupSheetRef = useRef<PopupSheetRef | null>(null)
+  const popupSheetRef = useRef<PopupSheetRef>(null)
+  // A selection raises the desktop popup panel, or on phones the sheet's Results, keeping the
+  // user's Cards or Table choice.
+  const openResults = useCallback(() => {
+    if (isMobile) raiseResults('cards')
+    else popupSheetRef.current?.open()
+  }, [isMobile, raiseResults])
   const sheetTriggerRef = useRef<HTMLButtonElement>(null)
 
   // Currently-displayed titles: leaf is checked AND every enclosing group toggle is on.
@@ -375,7 +378,7 @@ export default function GenericMapContainer({
     setSelectedFeatureRefs,
     setClickBufferBounds,
     setFeatureBbox,
-    popupSheetRef,
+    openResults,
     onHighlightChange: handleHighlightChange,
   })
 
@@ -430,16 +433,7 @@ export default function GenericMapContainer({
     mapInstance.addControl(geolocateControl, isMobile ? 'bottom-right' : 'top-left')
     controls.push(geolocateControl)
 
-    if (isMobile) {
-      // OSM's attribution guidelines allow collapsing it to the ⓘ after five seconds.
-      const collapse = setTimeout(() => {
-        mapInstance.getContainer().querySelector('.maplibregl-compact-show')?.classList.remove('maplibregl-compact-show')
-      }, 5000)
-      return () => {
-        clearTimeout(collapse)
-        removeAll()
-      }
-    }
+    if (isMobile) return removeAll
 
     // Dual scale control (bottom-left)
     const scaleControl = new DualScaleControl({ maxWidth: 150 })
@@ -618,16 +612,16 @@ export default function GenericMapContainer({
     if (!awaitingRasterOpenRef.current || isLoadingRaster) return
     awaitingRasterOpenRef.current = false
     if (hasResults && selectionView === 'map') {
-      requestAnimationFrame(() => popupSheetRef.current?.open())
+      requestAnimationFrame(openResults)
     }
-  }, [isLoadingRaster, hasResults, selectionView])
+  }, [isLoadingRaster, hasResults, selectionView, openResults])
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode)
     if (mode === 'map' && hasResults) {
-      requestAnimationFrame(() => popupSheetRef.current?.open())
+      requestAnimationFrame(openResults)
     }
-  }, [setViewMode, hasResults])
+  }, [setViewMode, hasResults, openResults])
 
   const handleCloseTable = useCallback(() => {
     handleClearAllSelections()
@@ -643,19 +637,6 @@ export default function GenericMapContainer({
   const handleSheetOpenChange = useCallback((open: boolean) => {
     setPanelState(prev => ({ ...prev, isSheetOpen: open }))
   }, [])
-
-  // On phones the results live in the sheet: the open() that raises the desktop popup raises
-  // Results instead, keeping the user's Cards or Table choice. Area tools open it as a table.
-  useEffect(() => {
-    if (!isMobile) return
-    const handle: PopupSheetRef = { open: () => raiseResults('cards'), close: closeResults }
-    popupSheetRef.current = handle
-    // The desktop PopupSheet attaches its handle in a layout effect, before this cleanup runs on
-    // the way back to desktop; only clear the ref if it is still the phone's.
-    return () => {
-      if (popupSheetRef.current === handle) popupSheetRef.current = null
-    }
-  }, [isMobile, raiseResults, closeResults])
 
   const shouldShrinkMap = !isMobile && viewMode === 'map' && panelState.isSheetOpen
   // Phones and desktop share this tree down to the map, so crossing the phone query never remounts it.
@@ -703,6 +684,15 @@ export default function GenericMapContainer({
     />
   )
 
+  // The results table, as both the desktop table panel and the phone sheet's Table view show it.
+  const tableProps = {
+    layerContent: popupContent,
+    selectedFeatureRefs,
+    onSelectedFeaturesChange: setSelectedFeatureRefs,
+    onHighlightChange: handleHighlightChange,
+    disableExport,
+  }
+
   const resultsView = phoneSheet.state.results ?? 'cards'
   const resultsCount = popupContent.reduce((n, layer) => n + (layer.features ? layer.features.length : 1), 0)
 
@@ -726,13 +716,7 @@ export default function GenericMapContainer({
                 />
               ) : (
                 <div className="min-h-[18rem] flex-1">
-                  <QueryResultsTable
-                    layerContent={popupContent}
-                    selectedFeatureRefs={selectedFeatureRefs}
-                    onSelectedFeaturesChange={setSelectedFeatureRefs}
-                    onHighlightChange={handleHighlightChange}
-                    disableExport={disableExport}
-                  />
+                  <QueryResultsTable {...tableProps} />
                 </div>
               )}
             </div>
@@ -760,7 +744,7 @@ export default function GenericMapContainer({
         {/* Map section */}
         <div
           data-tour={isMobile ? 'phone-map' : undefined}
-          data-sheet={isMobile ? DETENT_NAME[phoneSheet.state.detent] : undefined}
+          data-sheet={isMobile ? phoneSheet.state.detent : undefined}
           className={cn('relative h-full overflow-hidden transition-[width] duration-200 ease-linear', isMobile && 'phone-map')}
           style={{ width: shouldShrinkMap ? `calc(100% - ${panelState.sheetWidth}px)` : '100%' }}
         >
@@ -837,14 +821,10 @@ export default function GenericMapContainer({
       >
         {(viewMode === 'split' || viewMode === 'table') && (
           <QueryResultsTable
-            layerContent={popupContent}
+            {...tableProps}
             onClose={handleCloseTable}
             viewMode={viewMode}
             onViewModeChange={handleViewModeChange}
-            selectedFeatureRefs={selectedFeatureRefs}
-            onSelectedFeaturesChange={setSelectedFeatureRefs}
-            onHighlightChange={handleHighlightChange}
-            disableExport={disableExport}
           />
         )}
       </div>}

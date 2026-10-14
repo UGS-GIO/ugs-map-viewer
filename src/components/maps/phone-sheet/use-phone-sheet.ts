@@ -5,7 +5,6 @@ import {
   applyStep,
   FULL,
   openPanelStep,
-  PANEL_PEEK,
   PEEK,
   raise,
   sheetFromUrl,
@@ -45,7 +44,6 @@ export function usePhoneSheetActions() {
     raiseResults: (fallback: ResultsView) => go((cur) => ({ sheet: { results: cur.results ?? fallback, detent: raise(cur.detent) } })),
     setResultsView: (as: ResultsView) => go((cur) => ({ sheet: { ...cur, results: as } })),
     peek: () => go((cur) => ({ sheet: { ...cur, detent: PEEK } })),
-    closeResults: () => go(() => ({ sheet: PANEL_PEEK })),
   }), [go, openDetail])
 }
 

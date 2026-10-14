@@ -1,12 +1,14 @@
 // The phone sheet's pure logic: which tab is showing, and the `sheet` and `detail` URL params.
 // Ported from the ugs-warehouse viewer's map-model so the UGS viewers agree.
 
-export type Detent = 0 | 1 | 2
-export const PEEK: Detent = 0
-export const HALF: Detent = 1
-export const FULL: Detent = 2
+// The sheet's heights, named as the URL's `sheet` param names them (absent is the peek).
+export const PEEK = 'peek'
+export const HALF = 'half'
+export const FULL = 'full'
+export const DETENTS = [PEEK, HALF, FULL] as const
+export type Detent = (typeof DETENTS)[number]
 
-export const raise = (d: Detent): Detent => (d < HALF ? HALF : d)
+export const raise = (d: Detent): Detent => (d === PEEK ? HALF : d)
 
 export type ResultsView = 'cards' | 'table'
 export type SheetState = { results: ResultsView | null; detent: Detent }
@@ -14,16 +16,14 @@ export const PANEL_PEEK: SheetState = { results: null, detent: PEEK }
 
 // The URL's `sheet` (absent at the peek) and `results` (absent while a panel shows); _map.tsx
 // validates both against these lists.
-export const SHEET_PARAMS = ['half', 'full'] as const
+export const SHEET_PARAMS = [HALF, FULL] as const
 export const RESULTS_PARAMS = ['cards', 'table'] as const
-const SHEET_AT = [undefined, 'half', 'full'] as const
-const DETENT_OF = { half: HALF, full: FULL } as const
 
 type SheetSearch = { sheet?: (typeof SHEET_PARAMS)[number]; results?: ResultsView; view?: 'map' | 'split' | 'table' }
 
 // A desktop link's split or table view opens as a results table on a phone.
 export function sheetFromUrl({ sheet, results, view }: SheetSearch): SheetState {
-  if (sheet || results) return { results: results ?? null, detent: sheet ? DETENT_OF[sheet] : PEEK }
+  if (sheet || results) return { results: results ?? null, detent: sheet ?? PEEK }
   if (view === 'split') return { results: 'table', detent: HALF }
   if (view === 'table') return { results: 'table', detent: FULL }
   return PANEL_PEEK
@@ -40,7 +40,7 @@ export const INFO_DETAIL_TITLE: Record<InfoDetail, string> = {
 // Clearing `view` keeps a desktop link's split or table view from overriding the sheet afterwards;
 // a new tab drops the Info detail that belonged to the old one.
 export function writeSheet<T extends object>(prev: T, next: SheetState, tab?: string) {
-  const sheet = { ...prev, sheet: SHEET_AT[next.detent], results: next.results ?? undefined, view: undefined }
+  const sheet = { ...prev, sheet: next.detent === PEEK ? undefined : next.detent, results: next.results ?? undefined, view: undefined }
   return tab === undefined ? sheet : { ...sheet, tab, detail: undefined }
 }
 
