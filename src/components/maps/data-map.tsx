@@ -34,6 +34,10 @@ import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
 import { toast } from 'sonner'
 
+// True once any map has mounted. A later mount (the layout switching between phone and desktop)
+// resumes from the URL's centre and zoom instead of refitting the selection's bounds.
+let hasMountedMap = false
+
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps } from './types'
 
@@ -549,7 +553,7 @@ export default function DataMap({
     fitBoundsOptions?: { padding: number; maxZoom?: number }
   } | null>(null)
   if (!initialViewRef.current) {
-    const bbox = featureBbox || clickBufferBounds
+    const bbox = hasMountedMap ? null : featureBbox || clickBufferBounds
     if (bbox) {
       initialViewRef.current = {
         bounds: [bbox.sw, bbox.ne],
@@ -560,6 +564,9 @@ export default function DataMap({
     }
   }
   const initialView = initialViewRef.current
+  useEffect(() => {
+    hasMountedMap = true
+  }, [])
 
   // Build basemap style from URL param or default
   const currentBasemap = useMemo(

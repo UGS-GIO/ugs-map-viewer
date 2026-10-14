@@ -17,7 +17,8 @@ interface MapShellProps {
 const MapShell = ({ search, actions, children }: MapShellProps) => {
     const { isCollapsed, sidebarWidthPx } = useSidebar()
     const isMobile = useIsMobile()
-    // Mobile puts the sidebar over the map instead of beside it.
+    // Phones have no sidebar. Their margin must drop to 0 without animating: a map that mounts
+    // while the margin is still easing out fits its saved bounds into a sliver of the screen.
     const sidebarWidth = isMobile ? 0 : isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : sidebarWidthPx
 
     // The shell is fixed chrome and must never scroll: overflow-clip keeps it non-scrollable even
@@ -42,7 +43,7 @@ const MapShell = ({ search, actions, children }: MapShellProps) => {
                     id="content"
                     tabIndex={-1}
                     aria-label="Map"
-                    className="isolate h-full min-w-0 overflow-hidden transition-[margin] duration-200 ease-linear"
+                    className={`isolate h-full min-w-0 overflow-hidden ${isMobile ? '' : 'transition-[margin] duration-200 ease-linear'}`}
                     style={{ marginLeft: `${sidebarWidth}px` }}
                 >
                     {children}
