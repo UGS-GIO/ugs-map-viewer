@@ -32,4 +32,4 @@ Change the sheet only through `usePhoneSheetActions()` in `use-phone-sheet.ts`.
 ## Not covered
 
 Real iOS Safari and Android Chrome need a device pass on the preview; the Playwright checks are
-Chromium only. Search, geolocate and the scale bar are still desktop-only.
+Chromium only. Search and the scale bar are still desktop-only.
