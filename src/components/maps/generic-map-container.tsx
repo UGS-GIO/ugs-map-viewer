@@ -363,7 +363,7 @@ export default function GenericMapContainer({
   const tapCenter = useRef<{ lng: number; lat: number } | null>(null)
   // A selection raises the desktop popup panel, or on phones the sheet's Results, keeping the
   // user's Cards or Table choice. If the half sheet would cover the tapped spot, the map pans it
-  // just above the sheet. It never zooms, so a big polygon tapped up close keeps its zoom.
+  // to the middle of the map left above the sheet. It never zooms, so a big polygon keeps its zoom.
   const openResults = useCallback(() => {
     if (!isMobile) return popupSheetRef.current?.open()
     const detent = raise(phoneSheet.state.detent)
@@ -371,9 +371,9 @@ export default function GenericMapContainer({
     const area = mapAreaRef.current
     const tap = tapCenter.current
     if (!mapInstance || !area || !tap || detent !== HALF) return
-    const visibleBottom = area.clientHeight * (1 - SHEET_FRACTION.half) - TAP_MARGIN_PX
+    const visibleHeight = area.clientHeight * (1 - SHEET_FRACTION.half)
     const { y } = mapInstance.project([tap.lng, tap.lat])
-    if (y > visibleBottom) mapInstance.panBy([0, y - visibleBottom])
+    if (y > visibleHeight - TAP_MARGIN_PX) mapInstance.panBy([0, y - visibleHeight / 2])
   }, [isMobile, raiseResults, phoneSheet.state.detent, mapInstance])
 
   // Handle map ready callback
