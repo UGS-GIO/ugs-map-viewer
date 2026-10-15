@@ -81,6 +81,7 @@ export const POPUP_TITLES: Record<string, string> = {
     wetlandplants: 'Wetland Plants',
     geophysics: 'Geophysical Features',
     carbonstorage: 'CCS Information',
+    flux: 'Flux Stations',
 }
 
 export const getLayerFetchConfig = (page: string | null): LayerFetchConfig[] | null => {
