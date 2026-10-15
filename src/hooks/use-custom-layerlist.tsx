@@ -13,12 +13,11 @@ import { CogLegend } from '@/components/maps/cog-legend';
 import { useLayerExtent, UseLayerExtentOptions } from '@/hooks/use-layer-extent';
 import { useMapZoom, getZoomHint } from '@/hooks/use-map-zoom';
 import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions';
-import { useSidebar } from '@/hooks/use-sidebar';
+import { usePhoneSheetActions } from '@/components/maps/phone-sheet/use-phone-sheet';
 import LayerControls from '@/components/maps/layer-controls';
 import { WfsVectorLegend } from '@/components/maps/wfs-vector-legend';
 import { StacRenderLegend } from '@/components/maps/stac-render-legend';
 import { ZoomHintPill } from '@/components/maps/zoom-hint-pill';
-import { useIsMobile } from './use-mobile';
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from '@/lib/constants';
 import { useLayerUrl } from '@/context/layer-url-provider';
 
@@ -80,9 +79,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
     // Which variant a `variantSelector` group is focused on when none is selected
     // yet (once one is selected, that drives it). null → fall back to the first.
     const [variantActivePick, setVariantActivePick] = useState<string | null>(null);
-    const { setIsCollapsed, setNavOpened } = useSidebar();
+    const { peek } = usePhoneSheetActions();
     const { data: layerDescriptions } = useFetchLayerDescriptions();
-    const isMobile = useIsMobile();
     const [isUserExpanded, setIsUserExpanded] = useState(() => {
         if (layerConfig.type === 'group') {
             // If it is, expand it ONLY if any of its children are selected.
@@ -232,10 +230,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                     [[extent[0], extent[1]], [extent[2], extent[3]]],
                     { padding: 50, animate: true }
                 );
-                if (isMobile) {
-                    setIsCollapsed(true);
-                    setNavOpened(false);
-                }
+                // Show the zoom: on phones the sheet drops to its peek.
+                peek();
             }
         } catch (error) {
             console.error("Error in handleZoomToLayer:", error);

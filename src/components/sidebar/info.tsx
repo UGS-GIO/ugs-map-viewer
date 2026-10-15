@@ -1,53 +1,40 @@
-import { useState, useRef } from 'react';
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionHeader, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { ExternalLink, Layers as LayersIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Spinner } from '../ui/loading-spinner';
 import Layers from '@/components/sidebar/layers';
-import { BackToMenuButton } from '../ui/back-to-menu-button';
 import { useSidebar } from '@/hooks/use-sidebar';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from '@/components/ui/sheet';
 import { useGetPageInfo } from '@/hooks/use-get-page-info';
 import { DatasetDownloads } from '@/components/sidebar/dataset-downloads';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { usePhoneSheet } from '@/components/maps/phone-sheet/use-phone-sheet';
+import { INFO_DETAIL_TITLE } from '@/components/maps/phone-sheet/sheet-model';
 
 function Info() {
-  type ModalType = 'references' | 'disclaimer' | 'acknowledgments' | '';
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalType, setModalType] = useState<ModalType | ''>('');
   const { setCurrentContent } = useSidebar();
-  const contentRef = useRef<HTMLDivElement>(null);
   // Driven by the accordions: a handler on the heading also fired on its padding, leaving
   // the summary out of step with the section it summarises.
   const [openDetails, setOpenDetails] = useState<string[]>(['map-details-accordion-item-1']);
   const [openSources, setOpenSources] = useState<string[]>([]);
   const isMapDetailsExpanded = openDetails.includes('map-details-accordion-item-1');
   const isDataSourcesExpanded = openSources.includes('data-sources-accordion-item-1');
-  const drawerTriggerRef = useRef<HTMLButtonElement>(null);
   const { data: pageInfo, isLoading: isInfoLoading } = useGetPageInfo();
+  const isMobile = useIsMobile();
 
-  const handleOpenModal = (type: ModalType) => {
-    setModalType(type);
-    setModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setModalOpen(false);
-    setModalType('');
-  };
-
-  const handleOpenDrawer = (type: ModalType) => {
-    setModalType(type);
-    if (drawerTriggerRef.current) {
-      drawerTriggerRef.current.click();
-    }
-  };
+  // The detail lives in the URL: phones show it in the sheet, desktop in a dialog.
+  const { detail, openDetail } = usePhoneSheet();
+  const detailText = detail && {
+    disclaimer: pageInfo?.dataDisclaimer,
+    references: pageInfo?.references,
+    acknowledgments: pageInfo?.acknowledgments,
+  }[detail];
 
   // Show loading spinner while page info is loading
   if (isInfoLoading) {
     return (
       <div className="flex flex-col h-full">
-        <BackToMenuButton />
         <div className="flex-1 flex items-center justify-center">
           <Spinner />
         </div>
@@ -55,10 +42,14 @@ function Info() {
     );
   }
 
+  // On phones a detail opens in the sheet itself; the sheet's header shows its title and "‹ Info".
+  if (isMobile && detail) {
+    return <div className="text-sm text-muted-foreground">{detailText}</div>;
+  }
+
   return (
     <div className="flex flex-col h-full">
-      <BackToMenuButton />
-      <div className="ml-2 overflow-y-auto flex-grow" ref={contentRef}>
+      <div className="ml-2 overflow-y-auto flex-grow">
         {/* Map Details Accordion */}
         <div className="mr-2" key="map-details-accordion">
           <Accordion type="multiple" value={openDetails} onValueChange={setOpenDetails}>
@@ -112,12 +103,11 @@ function Info() {
           )}
         </div>
 
-        {/* Desktop Modal Buttons */}
-        <div className="flex flex-wrap justify-center mx-2 hidden md:flex">
-          <Button variant={'link'} onClick={() => handleOpenModal('references')}>
+        <div className="flex flex-wrap justify-center mx-2">
+          <Button variant={'link'} onClick={() => openDetail('references')}>
             References
           </Button>
-          <Button variant={'link'} onClick={() => handleOpenModal('acknowledgments')}>
+          <Button variant={'link'} onClick={() => openDetail('acknowledgments')}>
             Acknowledgments
           </Button>
           <Button variant={'link'} onClick={() => window.open('https://geology.utah.gov/about-us/contact-webmaster/', '_blank')}>
@@ -125,97 +115,15 @@ function Info() {
           </Button>
         </div>
 
-        {/* Mobile Modal Buttons */}
-        <div className="flex flex-wrap justify-center mx-2 md:hidden">
-          <Button variant={'link'} onClick={() => handleOpenDrawer('references')}>
-            References
-          </Button>
-          <Button variant={'link'} onClick={() => handleOpenDrawer('acknowledgments')}>
-            Acknowledgments
-          </Button>
-          <Button variant={'link'} onClick={() => window.open('https://geology.utah.gov/about-us/contact-webmaster/', '_blank')}>
-            Contact Webmaster&nbsp;<ExternalLink size={16} />
-          </Button>
-        </div>
-
-        {/* Sheet for mobile */}
-        <Sheet>
-          <SheetTrigger asChild>
-            <button ref={drawerTriggerRef} className="hidden">
-              Open Dialog
-            </button>
-          </SheetTrigger>
-          <SheetContent side="bottom" className="h-[95vh]">
-            <SheetHeader>
-              {modalType === 'disclaimer' && <SheetTitle>Data Disclaimer</SheetTitle>}
-              {modalType === 'references' && <SheetTitle>References</SheetTitle>}
-              {modalType === 'acknowledgments' && <SheetTitle>Acknowledgments</SheetTitle>}
-            </SheetHeader>
-            <div className="overflow-y-auto p-4 h-[calc(100%-4rem)]">
-              {modalType === 'disclaimer' && (
-                <SheetDescription asChild>
-                  <div>
-                    {pageInfo?.dataDisclaimer}
-                  </div>
-                </SheetDescription>
-              )}
-              {modalType === 'references' && (
-                <SheetDescription asChild>
-                  <div>
-                    {pageInfo?.references}
-                  </div>
-                </SheetDescription>
-              )}
-              {modalType === 'acknowledgments' && (
-                <SheetDescription asChild>
-                  <div>
-                    {pageInfo?.acknowledgments}
-                  </div>
-                </SheetDescription>
-              )}
-            </div>
-          </SheetContent>
-        </Sheet>
-
-        {/* Dialog for desktop */}
-        <Dialog open={modalOpen} onOpenChange={handleCloseModal}>
-          <DialogTrigger asChild>
-            <div className="hidden"></div>
-          </DialogTrigger>
+        <Dialog open={!isMobile && detail !== null} onOpenChange={(open) => { if (!open) openDetail(null) }}>
           <DialogContent>
-            {modalType === 'disclaimer' && (
+            {detail && (
               <>
                 <DialogHeader>
-                  <DialogTitle>Data Disclaimer</DialogTitle>
+                  <DialogTitle>{INFO_DETAIL_TITLE[detail]}</DialogTitle>
                 </DialogHeader>
                 <DialogDescription asChild>
-                  <div>
-                    {pageInfo?.dataDisclaimer}
-                  </div>
-                </DialogDescription>
-              </>
-            )}
-            {modalType === 'references' && (
-              <>
-                <DialogHeader>
-                  <DialogTitle>References</DialogTitle>
-                </DialogHeader>
-                <DialogDescription asChild>
-                  <div>
-                    {pageInfo?.references}
-                  </div>
-                </DialogDescription>
-              </>
-            )}
-            {modalType === 'acknowledgments' && (
-              <>
-                <DialogHeader>
-                  <DialogTitle>Acknowledgments</DialogTitle>
-                </DialogHeader>
-                <DialogDescription asChild>
-                  <div>
-                    {pageInfo?.acknowledgments}
-                  </div>
+                  <div>{detailText}</div>
                 </DialogDescription>
               </>
             )}
@@ -237,16 +145,9 @@ function Info() {
             Start Exploring
           </Button>
           <Button
-            className='text-foreground hidden md:inline-flex'
+            className='text-foreground'
             variant='link'
-            onClick={() => handleOpenModal('disclaimer')}
-          >
-            Open Data Disclaimer
-          </Button>
-          <Button
-            className='text-foreground md:hidden'
-            variant='link'
-            onClick={() => handleOpenDrawer('disclaimer')}
+            onClick={() => openDetail('disclaimer')}
           >
             Open Data Disclaimer
           </Button>

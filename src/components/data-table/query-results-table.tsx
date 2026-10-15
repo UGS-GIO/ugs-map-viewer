@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
     DropdownMenu,
     DropdownMenuTrigger,
@@ -307,22 +308,22 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             {/* Header row 1: Layer selector + close */}
             <div className="flex items-center justify-between gap-2 py-1.5 px-2 md:px-4 border-b shrink-0 bg-background min-w-0 w-full">
                 {layersWithData.length > 1 ? (
-                    <select
-                        aria-label="Choose which layer's results to show"
-                        value={selectedLayerIndex}
-                        onChange={(e) => handleLayerChange(Number(e.target.value))}
-                        className="h-7 px-2 rounded-md border border-input bg-background text-sm font-medium truncate flex-1 min-w-0"
-                    >
-                        {layersWithData.map((layer, index) => {
-                            const title = layer.layerTitle || layer.groupLayerTitle;
-                            const count = layer.features?.length || 0;
-                            return (
-                                <option key={title} value={index}>
-                                    {title} ({count})
-                                </option>
-                            );
-                        })}
-                    </select>
+                    <Select value={String(selectedLayerIndex)} onValueChange={(v) => handleLayerChange(Number(v))}>
+                        <SelectTrigger aria-label="Choose which layer's results to show" className="h-7 flex-1 min-w-0 text-sm font-medium">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {layersWithData.map((layer, index) => {
+                                const title = layer.layerTitle || layer.groupLayerTitle;
+                                const count = layer.features?.length || 0;
+                                return (
+                                    <SelectItem key={title} value={String(index)}>
+                                        {title} ({count})
+                                    </SelectItem>
+                                );
+                            })}
+                        </SelectContent>
+                    </Select>
                 ) : (
                     <span className="text-sm font-medium truncate min-w-0 flex-1">
                         {selectedLayer?.layerTitle || selectedLayer?.groupLayerTitle} ({rowData.length})
@@ -397,19 +398,19 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                     </div>
                 ) : (
                     <>
-                        <select
-                            aria-label="Column to search"
-                            value={filter.column}
-                            onChange={(e) => setFilter({ column: e.target.value, value: '' })}
-                            className="h-7 px-2 rounded-md border border-input bg-background text-sm shrink-0 max-w-[130px] truncate"
-                        >
-                            <option value="all">All</option>
-                            {columnConfigs.map((config) => (
-                                <option key={config.id} value={config.id}>
-                                    {config.label}
-                                </option>
-                            ))}
-                        </select>
+                        <Select value={filter.column} onValueChange={(column) => setFilter({ column, value: '' })}>
+                            <SelectTrigger aria-label="Column to search" className="h-7 w-auto max-w-[130px] shrink-0 text-sm">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All</SelectItem>
+                                {columnConfigs.map((config) => (
+                                    <SelectItem key={config.id} value={config.id}>
+                                        {config.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <Input
                             aria-label="Search within the selected column"
                             placeholder="Search..."

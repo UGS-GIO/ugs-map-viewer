@@ -1,4 +1,3 @@
-import { BackToMenuButton } from '@/components/ui/back-to-menu-button'
 import { useCustomLayerList } from '@/hooks/use-custom-layerlist'
 import { useGetLayerConfigs } from '@/hooks/use-get-layer-configs'
 import {
@@ -33,7 +32,6 @@ function SubsurfaceLayers({
 
   return (
     <>
-      <BackToMenuButton />
       <div
         key='layer-list'
         className='max-h-[calc(100vh)] overflow-y-visible'
