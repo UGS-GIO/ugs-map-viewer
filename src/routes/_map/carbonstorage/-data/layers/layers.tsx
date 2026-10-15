@@ -13,6 +13,7 @@ const georegionsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: georegionsWMSTitle,
+    sectionHeading: 'Statewide',
     visible: true,
     opacity: 0.3,
     crs: 'EPSG:3857',
@@ -107,6 +108,7 @@ const sco2GridSummaryWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: sco2GridSummaryWMSTitle,
+    sectionHeading: 'Statewide',
     visible: false,
     opacity: 0.75,
     crs: 'EPSG:4326',
@@ -708,6 +710,7 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: ccusProjectsWMSTitle,
+    sectionHeading: 'Regional',
     visible: true,
     crs: 'EPSG:3857',
     downloadParquetUrl: parquetUrl("ccus_projects"),
@@ -1312,6 +1315,7 @@ export const natCarbLocationsConfig: PMTilesLayerProps = {
     pmtilesUrl: '',
     sourceLayer: natCarbLocationsLayerName,
     title: natCarbLocationsTitle,
+    sectionHeading: 'Statewide',
     visible: false,
     opacity: 1,
     sourceAgency: 'Utah Geological Survey',
@@ -1368,11 +1372,9 @@ const ccsResourcesConfig: LayerProps = {
     layers: [
         sco2GridSummaryWMSConfig,
         georegionsWMSConfig,
-        co2SourcesWFSConfig,
-        sitlaReportsWMSConfig,
-        ccsExclusionAreasWMSConfig,
-        ccusProjectsWMSConfig,
         natCarbLocationsConfig,
+        ccusProjectsWMSConfig,
+        sitlaReportsWMSConfig,
     ]
 }
 
@@ -1381,6 +1383,8 @@ const infrastructureAndLandUseConfig: LayerProps = {
     title: 'Infrastructure and Land Use',
     visible: false,
     layers: [
+        co2SourcesWFSConfig,
+        ccsExclusionAreasWMSConfig,
         powerplantsConfig,
         pipelinesWMSConfig,
         riversWMSConfig,
