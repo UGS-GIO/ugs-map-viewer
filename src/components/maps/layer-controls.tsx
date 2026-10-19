@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { LegendAccordion } from '@/components/maps/legend-accordion';
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Toggle } from '@/components/ui/toggle';
 import { LayerDescriptionAccordion } from '@/components/maps/layer-description-accordion';
 import { useQuery } from '@tanstack/react-query';
@@ -36,6 +36,27 @@ interface LayerControlsProps {
     filtersContent?: React.ReactNode;
     /** Optional layer-scoped stats / charts UI. When provided, adds a Stats toggle to the button row and a collapsible panel below. */
     statsContent?: React.ReactNode;
+    /** Optional SLD style name forwarded to the legend so it matches the styled map tiles. */
+    styleName?: string;
+    /** Start the Filters panel expanded. Used by variantSelector surfaces, whose stats live in the Filters slot and would otherwise re-collapse on every surface switch (the active child remounts). */
+    defaultFiltersOpen?: boolean;
+}
+
+// Animates to content's real height via a CSS grid-rows trick (0fr <-> 1fr) instead of a
+// guessed max-height cap, so the collapse/expand transition never clips taller content.
+// Deliberately NOT ResizeObserver-measured: content here can include a Recharts
+// ResponsiveContainer, which runs its own internal ResizeObserver on the same node — a JS
+// height-measurement + animated-state loop on top of that fed back into itself every transition
+// frame and froze the map (see #500). Pure CSS has no measurement step, so there's nothing to loop.
+function AutoHeightCollapse({ open, children }: { open: boolean; children: React.ReactNode }) {
+    return (
+        <div
+            className="grid transition-[grid-template-rows] duration-200 ease-out"
+            style={{ gridTemplateRows: open ? '1fr' : '0fr' }}
+        >
+            <div className="overflow-hidden">{children}</div>
+        </div>
+    );
 }
 
 const LayerControls: React.FC<LayerControlsProps> = ({
@@ -57,19 +78,30 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     disableExport = false,
     filtersContent,
     statsContent,
+    styleName,
+    defaultFiltersOpen = false,
 }) => {
     // Info + Legend remain a single-select pair (mutually exclusive — they both
     // describe the layer and stacking them is redundant). Filters + Stats each
     // get their own independent open state so reviewers can keep both visible
     // alongside Info or Legend if they want.
+    const opacityId = useId(); // a layer title has spaces; an id may not
+
     const [prevOpenLegend, setPrevOpenLegend] = useState(openLegend);
     const [activeTab, setActiveTab] = useState<'info' | 'legend' | null>(openLegend ? 'legend' : null);
-    const [filtersOpen, setFiltersOpen] = useState(false);
+    const [prevHasFiltersContent, setPrevHasFiltersContent] = useState(Boolean(filtersContent));
+    const [filtersOpen, setFiltersOpen] = useState(defaultFiltersOpen || Boolean(filtersContent));
     const [statsOpen, setStatsOpen] = useState(false);
 
     if (openLegend !== prevOpenLegend) {
         setPrevOpenLegend(openLegend);
         if (openLegend) setActiveTab('legend');
+    }
+
+    const hasFiltersContent = Boolean(filtersContent);
+    if (hasFiltersContent !== prevHasFiltersContent) {
+        setPrevHasFiltersContent(hasFiltersContent);
+        if (hasFiltersContent) setFiltersOpen(true);
     }
 
     const [dragValue, setDragValue] = useState<number | null>(null);
@@ -107,12 +139,14 @@ const LayerControls: React.FC<LayerControlsProps> = ({
             <div className="flex flex-col gap-y-4 mx-8">
                 <div className="flex flex-col justify-between items-center w-full gap-y-4">
                     <div className="flex flex-row items-center justify-around gap-x-2 w-full mx-auto" data-tour="layer-opacity">
-                        <Label htmlFor={`${title}-opacity`} className={layerOpacity === null ? 'text-muted-foreground' : ''}>
+                        <Label htmlFor={opacityId} className={layerOpacity === null ? 'text-muted-foreground' : ''}>
                             Opacity
                         </Label>
                         {layerOpacity !== null ? (
                             <Slider
+                                id={opacityId}
                                 className="flex-grow"
+                                aria-label={`${title} opacity`}
                                 value={[dragValue ?? layerOpacity * 100]}
                                 onValueChange={(e) => {
                                     setDragValue(e[0]);
@@ -125,7 +159,9 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                             />
                         ) : (
                             <Slider
+                                id={opacityId}
                                 className="flex-grow opacity-50"
+                                aria-label={`${title} opacity`}
                                 value={[lastOpacityRef.current * 100]}
                                 disabled
                             />
@@ -212,24 +248,21 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     bivariateLegend={bivariateLegend}
                     arcgisUrl={arcgisUrl}
                     legendUnit={legendUnit}
+                    styleName={styleName}
                 />
                 {filtersContent && (
-                    <div
-                        className={`overflow-hidden transition-[max-height] duration-200 ease-out ${filtersOpen ? 'max-h-[1000px]' : 'max-h-0'}`}
-                    >
-                        <div className="mt-1 mb-2 mx-1 px-1.5 pt-2 border-t border-border/60">
+                    <AutoHeightCollapse open={filtersOpen}>
+                        <div className="mt-2 mb-2 rounded border border-border bg-muted/40 p-1">
                             {filtersContent}
                         </div>
-                    </div>
+                    </AutoHeightCollapse>
                 )}
                 {statsContent && (
-                    <div
-                        className={`overflow-hidden transition-[max-height] duration-200 ease-out ${statsOpen ? 'max-h-[2000px]' : 'max-h-0'}`}
-                    >
-                        <div className="mt-1 mb-2 mx-1 px-1.5 pt-2 border-t border-border/60">
+                    <AutoHeightCollapse open={statsOpen}>
+                        <div className="mt-2 mb-2 rounded border border-border bg-muted/40 p-1">
                             {statsOpen && statsContent}
                         </div>
-                    </div>
+                    </AutoHeightCollapse>
                 )}
             </div>
         </div>

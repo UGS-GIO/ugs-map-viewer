@@ -22,9 +22,12 @@ function formatName(name: string): string {
 
 export function getDisplayValue(properties: GeoJsonProperties, source: SearchSourceConfig): string {
     const primary = String(properties?.[source.displayField] ?? '');
-    if (source.type === 'postgREST' && source.secondaryDisplayField) {
+    if ((source.type === 'postgREST' || source.type === 'parquet') && source.secondaryDisplayField) {
         const secondary = String(properties?.[source.secondaryDisplayField] ?? '');
-        if (secondary) return `${primary} — ${secondary}`;
+        if (secondary) {
+            const secondaryText = source.secondaryDisplayField === 'section' ? `Sec ${secondary}` : secondary;
+            return `${primary} — ${secondaryText}`;
+        }
     }
     return primary;
 }
@@ -40,7 +43,7 @@ export function appendFunctionParams(params: URLSearchParams, source: PostgRESTC
 export function resultHasData(result: QueryResultWrapper): boolean {
     if (!result.data) return false;
     if (result.type === 'masquerade') return Array.isArray(result.data) && result.data.length > 0;
-    if (result.type === 'postgREST') return 'features' in result.data && result.data.features.length > 0;
+    if (result.type === 'postgREST' || result.type === 'parquet') return 'features' in result.data && result.data.features.length > 0;
     return false;
 }
 
@@ -71,8 +74,10 @@ export function getSourceDisplayName(sourceConfig: SearchSourceConfig): string {
         } else {
             name = sourceConfig.url.split('/').pop() || '';
         }
+    } else if (sourceConfig.type === 'parquet') {
+        name = sourceConfig.parquetUrl.split('/').pop()?.replace(/\.parquet$/, '') || '';
     } else if (sourceConfig.type === 'masquerade') {
         name = "Address Search: e.g. 123 Main St";
     }
-    return formatName(name || sourceConfig.url.split('/').pop() || 'Unknown Source');
+    return formatName(name || sourceConfig.url?.split('/').pop() || 'Unknown Source');
 }

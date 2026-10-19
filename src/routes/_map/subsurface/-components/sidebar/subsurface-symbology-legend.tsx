@@ -1,8 +1,8 @@
 import type { LayerProps } from '@/lib/types/mapping-types'
 import { isPMTilesLayer } from '@/lib/map/layer-utils'
 import { SymbologyLegend } from '@/components/sidebar/filter/symbology-legend'
-import { ucrcWellsWMSTitle } from '../../-data/layers/layers'
-import { ucrcFilterSchema } from '../../-data/layers/ucrc-schema'
+import { ucrcWellsWMSTitle } from '@/routes/_map/-shared/layers/ucrc-wells'
+import { ucrcFilterSchema } from '@/routes/_map/-shared/layers/ucrc-schema'
 
 /**
  * Subsurface's `layerLegendRender` wiring. The legend engine

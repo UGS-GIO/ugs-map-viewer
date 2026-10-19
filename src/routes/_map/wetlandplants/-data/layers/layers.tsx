@@ -1,22 +1,15 @@
+import { linkIfUrl } from "@/components/ui/link";
+import { parquetUrl } from "@/lib/constants";
 import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 
-// Wetland Survey Sites — STAC-driven: pmtilesUrl, sourceLayer, renders and parquet come from
-// the warehouse item `wetlands_plants_site`. ALL-5623.
+// Wetland Survey Sites — from warehouse item `wetlands_plants_site`.
 //
-// NOT VISIBLE YET (ALL-5625): wetlands_plants_site has no `ugs:renders` in STAC yet, and a
-// PMTiles layer with zero renders + no styleUrl never gets a style fragment — data-map.tsx
-// only renders layers with one loaded (see the pmtilesFragments.get(layer.title) gate), so
-// this layer is silently dropped from the map today. No error, it just doesn't draw. This is
-// wired up correctly and will appear once a render ships (ugs-styles → STAC ugs:renders),
-// not a bug here. Per ALL-3726: yellow for exact locations, red for confidential/approximate.
+// Symbology: yellow for exact locations, red for confidential/approximate.
+// Confidential coordinates are jittered on the backend upstream before ingest.
 //
-// PRIVACY: sites with privacystatus === 'Confidential' are geocoded to their true, exact
-// location in the warehouse today (dataELT passes `geom` through untouched — see the
-// wetlands_plants_site lineage). The old app's About text promises these show at "a randomly
-// assigned" nearby location instead, which isn't implemented anywhere upstream. Until a
-// dataELT fix adds a real offset before PMTiles are built, this layer is filtered client-side
-// (see wetlandplants/-index.tsx `vectorLayerFilters`) to exclude Confidential features rather
-// than render their real coordinates. Do not remove that filter without a warehouse fix.
+// RELATED TABLES:
+// - Plant Species: STAC-backed (`wetlands_plants_species`) joined on `surveyeventid`.
+// - Project Information: Parquet-backed (`wetlands_plants_projects`) joined on `project` -> `projectcode`.
 const wetlandSurveySitesLayerName = 'wetlands_plants_site';
 export const wetlandSurveySitesTitle = 'Wetland Survey Sites';
 const wetlandSurveySitesConfig: PMTilesLayerProps = {
@@ -31,7 +24,7 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
     sublayers: [
         {
             name: wetlandSurveySitesLayerName,
-            popupEnabled: false,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
                 'Site Code': { field: 'sitecode', type: 'string' },
@@ -55,52 +48,132 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
                 'Cover-Weighted Mean C': { field: 'cwmeanc', type: 'number', decimalPlaces: 1 },
                 'Relative Native Cover': { field: 'relnativecover', type: 'number', decimalPlaces: 1, unit: '%' },
             },
+            relatedTables: [
+                {
+                    // STAC-backed: url + surveyeventid join filled from the
+                    // wetlands_plants_species related asset's ugs:foreign_keys.
+                    fieldLabel: 'Plant Species',
+                    stacAsset: 'wetlands_plants_species',
+                    displayAs: 'table',
+                    displayFields: [
+                        { field: 'scientificname', label: 'Scientific Name' },
+                        { field: 'commonname', label: 'Common Name' },
+                        { field: 'family', label: 'Family' },
+                        {
+                            field: 'cover',
+                            label: 'Cover',
+                            format: 'number',
+                            transform: (v) => v ? `${v}%` : '—',
+                        },
+                        { field: 'nativity', label: 'Nativity' },
+                        { field: 'growthform', label: 'Growth Form' },
+                        { field: 'duration', label: 'Duration' },
+                        { field: 'cvalue', label: 'C-Value' },
+                        {
+                            field: 'noxious',
+                            label: 'Noxious',
+                            transform: (v) => (v === 'true' ? 'Yes' : 'No'),
+                        },
+                    ],
+                    sortBy: 'cover',
+                    sortDirection: 'desc',
+                },
+                {
+                    fieldLabel: 'Project Information',
+                    url: parquetUrl('wetlands_plants_projects'),
+                    fetchMode: 'parquet',
+                    targetField: 'project',
+                    matchingField: 'projectcode',
+                    displayAs: 'outline',
+                    displayFields: [
+                        { field: 'projectcode', label: 'Project Code' },
+                        { field: 'organization', label: 'Organization' },
+                        {
+                            field: 'contactinfo',
+                            label: 'Contact Info',
+                            transform: linkIfUrl(),
+                        },
+                        { field: 'projectgoal', label: 'Project Goal' },
+                        { field: 'methodname', label: 'Method Name' },
+                        { field: 'assessmentareadescription', label: 'Assessment Area Description' },
+                        { field: 'vegetationmethod', label: 'Vegetation Method' },
+                        { field: 'vegetationcalculation', label: 'Vegetation Calculation' },
+                        {
+                            field: 'reportlink',
+                            label: 'Report Link',
+                            transform: linkIfUrl('View Report'),
+                        },
+                    ],
+                    sortBy: 'projectcode',
+                    sortDirection: 'asc',
+                },
+            ],
         },
     ],
 };
 
-// Wetland Dashboard Site Attributes — STAC-driven from warehouse item
-// `wetlands_wetdash_siteattributes`. NOTE: despite the name suggesting it's a child/related
-// table of Wetland Survey Sites, the two datasets do NOT share a join key today — sitecode
-// (e.g. "CB-038") on plants_site has no overlap with siteid (e.g. "5971926_ip2_ref2015") on
-// this table, row counts differ (654 vs 1563), and neither STAC item carries
-// `ugs:foreign_keys`. Shipping it as its own independent layer instead of a related-table
-// popup until the relationship (if any) is confirmed with Nate and the warehouse publishes
-// the join metadata.
-const wetlandDashboardSitesLayerName = 'wetlands_wetdash_siteattributes';
-export const wetlandDashboardSitesTitle = 'Wetland Dashboard Sites';
-const wetlandDashboardSitesConfig: PMTilesLayerProps = {
+// Watershed (HUC8) Boundaries — from warehouse item `wetlands_plants_huc8` (columns are
+// `name`/`huc8`, not `huc_name` like the old wetdash table). Off by default, same pattern as
+// EcoRegional Groups — including no `ugs:renders` yet, so invisible until a style ships.
+const huc8LayerName = 'wetlands_plants_huc8';
+export const huc8Title = 'Watershed (HUC8) Boundaries';
+const huc8Config: PMTilesLayerProps = {
     type: 'pmtiles',
-    stacItemId: wetlandDashboardSitesLayerName,
+    stacItemId: huc8LayerName,
     pmtilesUrl: '',
-    sourceLayer: wetlandDashboardSitesLayerName,
-    title: wetlandDashboardSitesTitle,
-    subtitle: 'Wetland dashboard site attributes',
+    sourceLayer: huc8LayerName,
+    title: huc8Title,
     visible: false,
     sourceAgency: 'Utah Geological Survey',
-    opacity: 1,
+    opacity: 0.5,
     sublayers: [
         {
-            name: wetlandDashboardSitesLayerName,
-            popupEnabled: false,
+            name: huc8LayerName,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
-                'Name': { field: 'name', type: 'string' },
-                'Site ID': { field: 'siteid', type: 'string' },
-                'Ecoregion': { field: 'ecoregion', type: 'string' },
-                'Watershed (HUC8)': { field: 'huc_name', type: 'string' },
-                'System Class': { field: 'sysclass', type: 'string' },
-                'Wetland Type': { field: 'wet_type', type: 'string' },
-                'Project': { field: 'project', type: 'string' },
-                'Date': { field: 'date', type: 'date' },
+                'Watershed Name': { field: 'name', type: 'string' },
+                'HUC8 Code': { field: 'huc8', type: 'string' },
             },
         },
     ],
 };
 
-// Land Ownership (SITLA) — ALL-5630. Not yet in the warehouse; copied source/naming from the
-// same layer already used in geophysics (src/routes/_map/geophysics/-data/layers/layers.tsx)
-// per the ticket's own instruction to reuse it rather than re-source it.
+// EcoRegional Groups — from warehouse item `wetlands_plants_ecoregion`. Level III (+ EPA
+// region / state) ecoregion polygons classifying Wetland Survey Sites into wetland classes
+// ("Central Basin and Range", "Wasatch and Uinta Mountains", etc.). Same gotcha as Wetland
+// Survey Sites: no `ugs:renders` yet, so invisible until a style ships.
+const ecoregionLayerName = 'wetlands_plants_ecoregion';
+export const ecoregionTitle = 'EcoRegional Groups';
+const ecoregionConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: ecoregionLayerName,
+    pmtilesUrl: '',
+    sourceLayer: ecoregionLayerName,
+    title: ecoregionTitle,
+    visible: false,
+    sourceAgency: 'Utah Geological Survey',
+    opacity: 0.5,
+    sublayers: [
+        {
+            name: ecoregionLayerName,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Ecoregional Group': { field: 'ecoregionalgroup', type: 'string' },
+                'Level III Ecoregion': { field: 'us_l3name', type: 'string' },
+                'Level III Code': { field: 'us_l3code', type: 'string' },
+                'Level II Ecoregion': { field: 'na_l2name', type: 'string' },
+                'Level I Ecoregion': { field: 'na_l1name', type: 'string' },
+                'EPA Region': { field: 'epa_region', type: 'number' },
+                'State': { field: 'state_name', type: 'string' },
+            },
+        },
+    ],
+};
+
+// Land Ownership (SITLA) — not yet in the warehouse; reuses the same layer already configured
+// in geophysics (src/routes/_map/geophysics/-data/layers/layers.tsx).
 const landOwnershipConfig: ArcGISMapServerLayerProps = {
     type: 'map-image',
     url: 'https://gis.trustlands.utah.gov/mapping/rest/services/Land_Ownership_WM/MapServer',
@@ -111,7 +184,8 @@ const landOwnershipConfig: ArcGISMapServerLayerProps = {
 
 const layersConfig: LayerProps[] = [
     wetlandSurveySitesConfig,
-    wetlandDashboardSitesConfig,
+    huc8Config,
+    ecoregionConfig,
     landOwnershipConfig,
 ];
 

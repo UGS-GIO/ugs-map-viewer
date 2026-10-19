@@ -14,6 +14,9 @@ import {
 import { PopupImageGallery, type GalleryImage } from '@/components/maps/popups/popup-image-gallery';
 import { relatedRowToGalleryImage } from '@/lib/gallery-utils';
 import { sanitizeFilename } from '@/lib/download-utils';
+import { DocumentsPanel } from '@/components/maps/popups/documents-panel';
+import { OutlineCard } from '@/components/maps/popups/outline-card';
+import { listedDocumentRows } from '@/lib/documents/classify';
 
 interface ExpandedRelatedTableProps {
     relatedTable: RelatedTable;
@@ -40,7 +43,7 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
     const sectionHeader = collapsible ? (
         <button
             onClick={() => setIsOpen(o => !o)}
-            className="flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground hover:bg-muted/50 rounded px-1 -ml-1 transition-colors mb-2 w-full"
+            className="flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide hover:text-foreground hover:bg-muted/50 rounded-md px-1 -ml-1 transition-colors mb-2 w-full"
         >
             {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
             {relatedTable.fieldLabel}
@@ -86,6 +89,46 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
                 </TableCell>
             </TableRow>
         )
+    }
+
+    if (relatedTable.displayAs === 'documents') {
+        // Filter sidecar/junk before the header renders, so an all-junk well doesn't show a
+        // DOCUMENTS band over an empty panel (the generic rows.length gate above counts junk).
+        const documentRows = listedDocumentRows(rows as Record<string, unknown>[]);
+        if (documentRows.length === 0) return null;
+        return (
+            <TableRow className="bg-muted/30">
+                <TableCell colSpan={colSpan} className="px-3 py-2">
+                    {sectionHeader}
+                    {isOpen && <DocumentsPanel table={relatedTable} rows={documentRows} />}
+                </TableCell>
+            </TableRow>
+        );
+    }
+
+    if (relatedTable.displayAs === 'outline') {
+        return (
+            <TableRow className="bg-muted/30">
+                <TableCell colSpan={colSpan} className="px-4 py-3">
+                    {sectionHeader}
+                    {isOpen && (
+                        <div className="space-y-3 max-w-4xl">
+                            {rows.map((r, i) => (
+                                <OutlineCard
+                                    key={i}
+                                    recordIndex={i}
+                                    totalRecords={rows.length}
+                                    row={r}
+                                    allRows={rows}
+                                    displayFields={relatedTable.displayFields}
+                                    className="bg-background/90"
+                                />
+                            ))}
+                        </div>
+                    )}
+                </TableCell>
+            </TableRow>
+        );
     }
 
     // Table display

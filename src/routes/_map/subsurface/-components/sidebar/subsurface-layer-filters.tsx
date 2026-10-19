@@ -1,38 +1,59 @@
+import { useMemo } from 'react'
 import { LayerFilterPanel, useLayerFilter } from '@/components/sidebar/filter/layer-filter-panel'
+import { useActiveSymbologyField } from '@/components/sidebar/filter/symbology-legend'
 import { Label } from '@/components/ui/label'
 import { type FilterSchema } from '@/lib/filter/types'
-import { ucrcWellsWMSTitle } from '../../-data/layers/layers'
-import { ucrcFilterSchema } from '../../-data/layers/ucrc-schema'
+import { isPMTilesLayer } from '@/lib/map/layer-utils'
+import { type LayerProps, type PMTilesLayerProps } from '@/lib/types/mapping-types'
+import { ucrcWellsWMSTitle, ucrcWellsConfig } from '@/routes/_map/-shared/layers/ucrc-wells'
+import { ucrcFilterSchema } from '@/routes/_map/-shared/layers/ucrc-schema'
 
 /**
  * Per-layer filter config for the subsurface layer list (`layerExtrasRender`).
- * Symbology fields (purpose, box type) now live in the interactive **legend**
- * (see subsurface-symbology-legend), so they're hidden here — but kept in the
- * full schema so the shared CQL round-trips and the legend + filters don't
- * clobber each other's clauses.
+ * Whichever symbology field is currently active in the interactive legend is hidden
+ * from the Filters panel; the inactive symbology field(s) render as regular dropdown
+ * filters alongside the rest of the schema.
  */
 interface SubsurfaceFilterConfig {
     schema: FilterSchema
-    /** Fields surfaced in the legend instead of the Filters panel. */
+    layer?: PMTilesLayerProps
     hideFields?: string[]
 }
 
 export const SUBSURFACE_FILTER_SCHEMAS: Record<string, SubsurfaceFilterConfig> = {
-    [ucrcWellsWMSTitle]: { schema: ucrcFilterSchema, hideFields: ['purpose', 'box_type_codes'] },
+    [ucrcWellsWMSTitle]: { schema: ucrcFilterSchema, layer: ucrcWellsConfig },
 }
 
-export function renderSubsurfaceLayerFilters(layerTitle: string): React.ReactNode {
+export function renderSubsurfaceLayerFilters(layerTitle: string, layer?: LayerProps): React.ReactNode {
     const cfg = SUBSURFACE_FILTER_SCHEMAS[layerTitle]
     if (!cfg) return null
     return (
         <div className="flex flex-col gap-3 px-2 py-1">
-            <SchemaFilters schema={cfg.schema} hideFields={cfg.hideFields} />
+            <SchemaFilters
+                schema={cfg.schema}
+                layer={layer && isPMTilesLayer(layer) ? layer : cfg.layer}
+                defaultHideFields={cfg.hideFields}
+            />
         </div>
     )
 }
 
-function SchemaFilters({ schema, hideFields }: SubsurfaceFilterConfig) {
+function SchemaFilters({
+    schema,
+    layer,
+    defaultHideFields,
+}: {
+    schema: FilterSchema
+    layer?: PMTilesLayerProps
+    defaultHideFields?: string[]
+}) {
     const filter = useLayerFilter(schema)
+    const activeSymbologyField = useActiveSymbologyField(layer)
+    const hideFields = useMemo(() => {
+        if (!activeSymbologyField) return defaultHideFields
+        return [activeSymbologyField]
+    }, [activeSymbologyField, defaultHideFields])
+
     return (
         <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">

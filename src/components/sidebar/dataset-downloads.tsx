@@ -89,7 +89,7 @@ export function DatasetDownloads() {
     return (
         <div className="mx-2 mb-4 space-y-3">
             <div>
-                <h4 className="text-sm font-semibold">Download Datasets</h4>
+                <h3 className="text-sm font-semibold">Download Datasets</h3>
             </div>
             <ul className="grid grid-cols-[1fr_auto] items-start gap-x-2 gap-y-3">
                 {sorted.map(dataset => (

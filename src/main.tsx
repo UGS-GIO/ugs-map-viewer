@@ -1,3 +1,4 @@
+import '@fontsource-variable/source-sans-3'
 import '@/index.css'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { StrictMode } from 'react'
@@ -12,6 +13,12 @@ import { setupCOGProtocol } from '@/lib/map/cog/setup'
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
+
+const storedTheme = localStorage.getItem('vite-ui-theme') ?? 'dark'
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+document.documentElement.classList.add(
+  storedTheme === 'system' ? (prefersDark ? 'dark' : 'light') : storedTheme
+)
 
 // Initialize PMTiles protocol (runs once at app start)
 setupPMTilesProtocol()

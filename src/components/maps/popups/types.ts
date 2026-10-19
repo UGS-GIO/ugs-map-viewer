@@ -11,6 +11,7 @@ import type {
     ColorCodingMode,
     ImageFieldConfig,
     PopupFieldsTableConfig,
+    PopupFooterLink,
 } from '@/lib/types/mapping-types'
 
 /**
@@ -47,6 +48,7 @@ export interface LayerContentProps {
     wfsUrl?: string
     typeName?: string
     maxZoomLevel?: number
+    popupFooterLink?: PopupFooterLink
 }
 
 /**

@@ -35,14 +35,12 @@ export function ViewModeControl({
   return container
     ? createPortal(
         <div
-          className="flex rounded bg-background shadow-[0_0_0_2px_rgba(0,0,0,0.1)] dark:shadow-[0_0_0_2px_hsl(var(--border))]"
+          className="map-control-panel flex"
           data-tour="view-mode"
         >
-          {modes.map(({ value, label, Icon }, i) => {
+          {modes.map(({ value, label, Icon }) => {
             const isDisabled = !hasResults && value !== 'map'
             const title = isDisabled ? 'Select features on the map first' : label
-            const isFirst = i === 0
-            const isLast = i === modes.length - 1
 
             return (
               <ControlButton
@@ -52,11 +50,7 @@ export function ViewModeControl({
                 onClick={() => onModeChange(value)}
                 active={mode === value}
                 disabled={isDisabled}
-                className={cn(
-                  isFirst && 'rounded-l',
-                  isLast && 'rounded-r',
-                  value === 'split' && '[&>svg]:rotate-90',
-                )}
+                className={cn(value === 'split' && '[&>svg]:rotate-90')}
               />
             )
           })}

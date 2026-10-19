@@ -21,10 +21,10 @@ const acknowledgments = (
             This web application is a digital library representing the geological materials housed at the Utah Core Research Center (UCRC) in Salt Lake City, Utah. Starting in 2025, UCRC curators began a comprehensive inventory and data cleaning project and database restructuring. In addition, the web application was upgraded to support more functionality for users and offer more modern data export options. The inventory of the UCRC is continuously updated as materials are donated, analyses and reports are conducted, and boxes of core are photographed.
         </p>
         <p className="pl-4">
-            <b>Inventory Management and Data Curation: </b>Ammon McDonald <Link to="ammonmcdonald@utah.gov">(ammonmcdonald@utah.gov)</Link>,  Madeline Griem, <Link to="mgriem@utah.gov">(mgriem@utah.gov)</Link>
+            <b>Inventory Management and Data Curation: </b>Ammon McDonald <Link to="mailto:ammonmcdonald@utah.gov">(ammonmcdonald@utah.gov)</Link>,  Madeline Griem, <Link to="mailto:mgriem@utah.gov">(mgriem@utah.gov)</Link>
         </p>
         <p className="pl-4">
-           <b>Energy & Minerals Program Manager: </b>Michael Vanden Berg <Link to="michaelvandenberg@utah.gov">(michaelvandenberg@utah.gov)</Link>
+           <b>Energy & Minerals Program Manager: </b>Michael Vanden Berg <Link to="mailto:michaelvandenberg@utah.gov">(michaelvandenberg@utah.gov)</Link>
         </p>
         <p className="pl-4">
             <b>Database Infrastructure and Application Development: </b>Marshall Robinson, Lance Weaver, Clinton Lunn, Nathan Payne 
