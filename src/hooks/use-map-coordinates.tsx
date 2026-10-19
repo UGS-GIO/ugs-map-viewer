@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useMapInstance } from '@/context/map-instance-context';
 import { convertDDToDMS } from '@/lib/map/conversion-utils';
-import type maplibregl from 'maplibre-gl';
+import type * as maplibregl from 'maplibre-gl';
 
 const COORD_PRECISION = 3;
 

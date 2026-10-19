@@ -1,4 +1,4 @@
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 
 const FEET_PER_METER = 3.28084;
 const FEET_PER_MILE = 5280;

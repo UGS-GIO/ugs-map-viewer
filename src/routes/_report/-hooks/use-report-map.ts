@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState } from 'react';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import { getBasemapUrl } from '@/lib/basemaps';
 
 interface UseReportMapOptions {

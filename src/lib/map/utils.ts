@@ -99,7 +99,7 @@ class MapLibreLayerProxy {
         return layer?.type || 'raster';
     }
 
-    private getOpacityProperty(): string {
+    private getOpacityProperty(): 'fill-opacity' | 'line-opacity' | 'circle-opacity' | 'icon-opacity' | 'raster-opacity' {
         switch (this._layerType) {
             case 'fill':
                 return 'fill-opacity';

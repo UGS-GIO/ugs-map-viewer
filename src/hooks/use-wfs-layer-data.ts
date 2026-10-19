@@ -4,7 +4,7 @@ import type { FeatureCollection, Geometry } from 'geojson'
 import type { WFSLayerProps } from '@/lib/types/mapping-types'
 import { queryKeys } from '@/lib/query-keys'
 import { fetchWfsFeatures } from '@/lib/map/wfs-service'
-import type maplibregl from 'maplibre-gl'
+import type * as maplibregl from 'maplibre-gl'
 
 /** Feature returned from client-side WFS layer queries */
 export interface WfsLayerFeature {

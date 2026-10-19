@@ -1,6 +1,8 @@
 import '@fontsource-variable/source-sans-3'
 import '@/index.css'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import { setWorkerUrl } from 'maplibre-gl'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { Toaster } from "@/components/ui/sonner"
@@ -21,6 +23,8 @@ document.documentElement.classList.add(
 )
 
 // Initialize PMTiles protocol (runs once at app start)
+// MapLibre 6 can't find its worker from inside a bundle
+setWorkerUrl(maplibreWorkerUrl)
 setupPMTilesProtocol()
 setupCOGProtocol()
 

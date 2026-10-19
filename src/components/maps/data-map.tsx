@@ -18,7 +18,7 @@ import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWF
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
 import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
-import type maplibregl from 'maplibre-gl'
+import type * as maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 
 import { useCogRange } from '@/hooks/use-cog-metadata'

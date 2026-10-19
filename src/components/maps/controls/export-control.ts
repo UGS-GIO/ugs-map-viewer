@@ -3,7 +3,7 @@
  * Based on @watergis/maplibre-gl-export (MIT License - Jin IGARASHI, 2020)
  * Adapted for UGS styling and theme integration
  */
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
 import { Printer, X } from 'lucide-react';

@@ -14,7 +14,7 @@
 import { useEffect } from 'react'
 import { useQueries } from '@tanstack/react-query'
 import { Source, Layer, useMap, type LayerProps } from 'react-map-gl/maplibre'
-import type maplibregl from 'maplibre-gl'
+import type * as maplibregl from 'maplibre-gl'
 import type { PMTilesLayerProps, PMTilesRender } from '@/lib/types/mapping-types'
 import { buildFragmentLayerSpec } from '@/lib/map/layer-utils'
 import type { WfsLayerFeature } from '@/hooks/use-wfs-layer-data'

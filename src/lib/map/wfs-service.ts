@@ -1,3 +1,4 @@
+import type * as maplibregl from 'maplibre-gl';
 /**
  * Unified WFS query service
  * All spatial queries use CQL INTERSECTS for accurate geometry matching
