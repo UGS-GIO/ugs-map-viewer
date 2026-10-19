@@ -518,19 +518,32 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
             zoomToBboxes={zoomToBboxes}
         />
     )
+    const scope = basinFilterActive
+        ? (selectedBasins.size === 1 ? [...selectedBasins][0] : `${selectedBasins.size} basins`)
+        : 'Statewide'
+    const periodLabel = yearAxisLabel.toLowerCase()
+    const stackedScopeText = !basinFilterActive
+        ? `Area of each displacement range across all basins, by ${periodLabel}. Select one or more basins above to narrow it.`
+        : selectedBasins.size === 1
+            ? `Area of each displacement range in ${[...selectedBasins][0]}, by ${periodLabel}. Select more basins above to add them.`
+            : `Area of each displacement range in the ${selectedBasins.size} selected basins added together, by ${periodLabel}.`
     // Stacked "Vertical Displacement by {year}" chart + legend, built once so it can
     // render both in the sidebar's Advanced disclosure and in the wide analysis pop-out.
     const stackedChartNode = (
         <div>
             <div className="flex items-center justify-between mb-1">
-                <h4 id={stackedHeadingId} className="text-xs font-medium">Vertical Displacement by {yearAxisLabel}</h4>
+                <h4 id={stackedHeadingId} className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Vertical Displacement by {yearAxisLabel} · <span title={basinFilterActive ? [...selectedBasins].join(', ') : undefined}>{scope}</span>
+                </h4>
                 {yearOverride !== null && (
                     <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setYearOverride(typeValue, null)}>
                         Reset to latest
                     </Button>
                 )}
             </div>
-            <p className="text-xs text-muted-foreground mb-1">Bars above zero = uplift, below zero = subsidence. Stacked by displacement range (in); colors match the map. Hover a column to read its per-range areas in the legend below; click to filter to that year — the shaded column is the active {yearAxisLabel.toLowerCase()}.</p>
+            <p className="text-xs text-muted-foreground mb-1">
+                {stackedScopeText} Bars above zero are uplift and bars below zero are subsidence; colors match the map. Hover a column to read its areas in the legend below, or click one to show that {periodLabel} (shaded).
+            </p>
             <div
                 role="figure"
                 aria-labelledby={stackedHeadingId}
@@ -587,9 +600,6 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
         </div>
     )
 
-    const scope = basinFilterActive
-        ? (selectedBasins.size === 1 ? [...selectedBasins][0] : `${selectedBasins.size} basins`)
-        : 'Statewide'
     const scopeSummary = `${scope} · ${typeValue}${period ? ` · ${period.from}–${period.to}` : ''}`
 
     // Wide pop-out body: same KPIs + ranking + detail charts as the sidebar, laid
@@ -634,9 +644,9 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     if (isLoading) summaryLine = 'Loading…'
     else if (distinctBasins === 0) summaryLine = 'No measured subsidence in the current filters.'
     else if (typeValue === 'Cumulative')
-        summaryLine = `Since ${period?.from ?? '—'}, land in ${whereText} has subsided up to ${fmt1(maxDisplacement)} in — about ${fmt1(totalAreaSqMi)} mi² is subsiding now.`
+        summaryLine = `Since ${period?.from ?? '—'}, land in ${whereText} has subsided up to ${fmt1(maxDisplacement)} in, and about ${fmt1(totalAreaSqMi)} mi² is subsiding now.`
     else
-        summaryLine = `In ${year ?? '—'}, land in ${whereText} subsided up to ${fmt1(maxDisplacement)} in — about ${fmt1(totalAreaSqMi)} mi² subsided.`
+        summaryLine = `In ${year ?? '—'}, land in ${whereText} subsided up to ${fmt1(maxDisplacement)} in, and about ${fmt1(totalAreaSqMi)} mi² subsided.`
 
     return (
         <div className="mb-3 flex flex-col gap-3 px-2 py-1">

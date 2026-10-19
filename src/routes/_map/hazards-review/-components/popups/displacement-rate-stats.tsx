@@ -201,7 +201,7 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
     let summaryLine: string
     if (isLoading) summaryLine = 'Loading…'
     else if (distinctBasins === 0) summaryLine = 'No basins above the rate deadband in the current filters.'
-    else summaryLine = `Land in ${whereText} is subsiding at up to ${fmt2(maxRate)} in/year — about ${fmt1(totalAreaSqMi)} mi² is subsiding now.`
+    else summaryLine = `Land in ${whereText} is subsiding at up to ${fmt2(maxRate)} in/year, and about ${fmt1(totalAreaSqMi)} mi² is subsiding now.`
 
     return (
         <div className="mb-3 flex flex-col gap-3 px-2 py-1">
