@@ -1,4 +1,5 @@
 import type { DriveStep } from 'driver.js';
+import { isPhoneViewport } from '@/hooks/use-mobile';
 
 // =============================================================================
 // Navigation Helper
@@ -168,6 +169,65 @@ export const baseMapSteps: DriveStep[] = [
 ];
 
 // =============================================================================
+// Phone Tour Steps
+// =============================================================================
+// Phones have no sidebar: the tour walks the sheet and its tab bar instead.
+
+// The desktop intro and outro, reworded for touch. The outro skips desktop's jump to the Home tab.
+const desktopIntro = baseMapSteps[0];
+const desktopOutro = baseMapSteps[baseMapSteps.length - 1];
+
+export const phoneSteps: DriveStep[] = [
+  { popover: { ...desktopIntro.popover, description: 'This quick tour shows the main features. Tap outside it to leave at any time.' } },
+  {
+    element: '[data-tour="phone-tabs"]',
+    popover: {
+      title: 'Tabs',
+      description: 'Layers, Results, Info and More each open in the panel above. Tap the open tab again to see the whole map.',
+      side: 'top',
+      align: 'center',
+    },
+  },
+  {
+    element: '[data-tour="phone-sheet-header"]',
+    popover: {
+      title: 'The panel',
+      description: 'Drag the panel up or down, or tap its top edge, to see more of it or more of the map.',
+      side: 'top',
+      align: 'center',
+    },
+  },
+  {
+    element: '[data-tour="phone-map"]',
+    popover: {
+      title: 'Tap the map',
+      description: 'Tap anywhere on the map to see what is there. The details open in Results.',
+      side: 'bottom',
+      align: 'center',
+    },
+  },
+  {
+    element: '[data-tour="phone-tab-layers"]',
+    popover: {
+      title: 'Layers',
+      description: 'Turn map layers on and off.',
+      side: 'top',
+      align: 'start',
+    },
+  },
+  {
+    element: '[data-tour="phone-tab-more"]',
+    popover: {
+      title: 'More',
+      description: 'Map settings, links, the light or dark theme, and this tour.',
+      side: 'top',
+      align: 'end',
+    },
+  },
+  { popover: { ...desktopOutro.popover, description: 'You can take this tour again from More. Happy exploring!' } },
+];
+
+// =============================================================================
 // Feature-Specific Tour Steps
 // =============================================================================
 // Add steps for features that only exist on certain routes
@@ -206,6 +266,15 @@ export const hazardsSteps: DriveStep[] = [
 
 export type TourRoute = 'hazards' | 'ccs' | 'geologic' | 'groundwater' | 'energy' | 'wetlands';
 
+// Each map route's tour, matching the route prop its TourAutoStart passes.
+export const TOUR_ROUTE_BY_PAGE: Partial<Record<string, TourRoute>> = {
+  hazards: 'hazards',
+  'hazards-review': 'hazards',
+  carbonstorage: 'ccs',
+  subsurface: 'ccs',
+  wetlands: 'wetlands',
+};
+
 const routeSteps: Record<TourRoute, DriveStep[]> = {
   hazards: hazardsSteps,
   ccs: ccsSteps,
@@ -220,10 +289,11 @@ const routeSteps: Record<TourRoute, DriveStep[]> = {
 // =============================================================================
 
 export function getTourSteps(route?: TourRoute): DriveStep[] {
-  const steps = [...baseMapSteps];
+  const phone = isPhoneViewport();
+  const steps = phone ? [...phoneSteps] : [...baseMapSteps];
 
-  // Insert route-specific steps before the final "Tour Complete" step
-  if (route && routeSteps[route] && routeSteps[route].length > 0) {
+  // Route-specific steps point at sidebar panels, which phones don't have.
+  if (!phone && route && routeSteps[route] && routeSteps[route].length > 0) {
     const finalStep = steps.pop(); // Remove "Tour Complete" step
     steps.push(...routeSteps[route]);
     if (finalStep) steps.push(finalStep); // Add it back at the end

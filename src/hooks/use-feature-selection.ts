@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react'
 import type { ClickedFeature, HighlightFeature } from '@/components/maps/types'
-import type { PopupSheetRef } from '@/components/maps/popups/popup-sheet'
 import type { ViewMode } from '@/hooks/use-map-url-sync'
 
 interface FeatureRef {
@@ -14,7 +13,8 @@ interface UseFeatureSelectionOptions {
   setSelectedFeatureRefs: (refs: FeatureRef[]) => void
   setClickBufferBounds: (bounds: { sw: [number, number]; ne: [number, number] } | null) => void
   setFeatureBbox: (bbox: { sw: [number, number]; ne: [number, number] } | null) => void
-  popupSheetRef: React.RefObject<PopupSheetRef | null>
+  /** Shows the results: the desktop popup panel, or the phone sheet's Results. */
+  openResults: () => void
   onHighlightChange?: (features: HighlightFeature[]) => void
 }
 
@@ -45,7 +45,7 @@ export function useFeatureSelection({
   setSelectedFeatureRefs,
   setClickBufferBounds,
   setFeatureBbox,
-  popupSheetRef,
+  openResults,
   onHighlightChange,
 }: UseFeatureSelectionOptions) {
   // Note: _selectedFeatureRefs available for future URL restoration highlighting if needed
@@ -122,9 +122,9 @@ export function useFeatureSelection({
     })
 
     if (features.length > 0 && viewMode === 'map') {
-      requestAnimationFrame(() => popupSheetRef.current?.open())
+      requestAnimationFrame(() => openResults())
     }
-  }, [viewMode, popupSheetRef, onHighlightChange])
+  }, [viewMode, openResults, onHighlightChange])
 
   // Clear all selections
   const clearAllSelections = useCallback(() => {

@@ -48,7 +48,7 @@ export default function Map() {
     <MapContext.Provider value={contextValue}>
     <DisplacementFilterProvider>
     <DisplacementAnalysisProvider>
-      {/* The welcome dialog's overlay would cover the tour's highlight cutout. */}
+      {/* The tour waits for the welcome dialog to close. */}
       {!showWelcomeDialog && <TourAutoStart route="hazards" />}
       <>
         <AlertDialog open={showWelcomeDialog} onOpenChange={setShowWelcomeDialog}>

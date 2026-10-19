@@ -1,7 +1,6 @@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BackToMenuButton } from '@/components/ui/back-to-menu-button';
 import { useMapCoordinates } from '@/hooks/use-map-coordinates';
 
 // ─── Coord format toggle ─────────────────────────────────────────────────
@@ -37,7 +36,6 @@ function MapConfigurations() {
 
     return (
         <>
-            <BackToMenuButton />
             <div className='space-y-2'>
                 <div className="mb-4">
                     <h2 className="text-lg font-medium mb-2">Map Configurations</h2>
