@@ -14,7 +14,7 @@ import {
 import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
-import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds } from '@/lib/map/layer-utils'
+import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds, isWithinZoomRange } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
 import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
@@ -459,8 +459,11 @@ export default function DataMap({
     const wfsFeatures = queryWfsLayersAtPoint(map, point, tolerance, visibleWfsLayersRef.current)
     const pmtilesFeatures = queryPmtilesLayersAtPoint(map, point, tolerance, visiblePmtilesLayersRef.current)
     const vectorFeatures = [...pmtilesFeatures, ...wfsFeatures]
+    // A WMS layer outside its zoom range isn't drawn, so it isn't clickable either.
+    const zoom = map.getZoom()
+    const wmsLayersAtZoom = visibleWmsLayersRef.current.filter(l => isWithinZoomRange(l.visibleZoomRange, zoom))
 
-    if (visibleWmsLayersRef.current.length === 0) {
+    if (wmsLayersAtZoom.length === 0) {
       dispatchFeatures(vectorFeatures, additive, options)
       return
     }
@@ -468,7 +471,7 @@ export default function DataMap({
     clickQuery.mutate(
       {
         point,
-        visibleLayers: visibleWmsLayersRef.current,
+        visibleLayers: wmsLayersAtZoom,
         tolerance,
         mapInstance: map,
         wmsUrl,
@@ -490,7 +493,9 @@ export default function DataMap({
     if (!filter?.polygon) return
 
     const map = mapRef.current?.getMap()
-    const wmsLayers = visibleWmsLayersRef.current
+    const wmsLayers = map
+      ? visibleWmsLayersRef.current.filter(l => isWithinZoomRange(l.visibleZoomRange, map.getZoom()))
+      : visibleWmsLayersRef.current
     const wfsLayers = visibleWfsLayersRef.current
     const pmtilesLayers = visiblePmtilesLayersRef.current
 
@@ -663,14 +668,15 @@ export default function DataMap({
       ...queryWfsLayersInScreenBbox(map, screenBbox, visibleWfsLayers),
     ]
 
-    if (visibleWmsLayers.length === 0) {
+    const wmsLayersAtZoom = visibleWmsLayers.filter(l => isWithinZoomRange(l.visibleZoomRange, map.getZoom()))
+    if (wmsLayersAtZoom.length === 0) {
       dispatchFeatures(vectorFeatures, isAdditiveMode)
       return
     }
 
     boxSelectQuery.mutate(
       {
-        visibleLayers: visibleWmsLayers,
+        visibleLayers: wmsLayersAtZoom,
         mapInstance: map,
         containerRect,
         boxSize: BOX_SELECT_SIZE,

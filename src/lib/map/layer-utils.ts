@@ -234,6 +234,12 @@ export function zoomRangeToBounds(
     : {}
 }
 
+/** Whether a layer with this `visibleZoomRange` draws at `zoom` (MapLibre: minzoom inclusive, maxzoom exclusive). */
+export function isWithinZoomRange(visibleZoomRange: [number, number] | undefined, zoom: number): boolean {
+  if (!visibleZoomRange) return true
+  return zoom >= visibleZoomRange[0] && zoom < visibleZoomRange[1]
+}
+
 /** The fields the viewer injects when turning a style fragment into a layer. */
 export interface FragmentLayerInjection {
   layerId: string

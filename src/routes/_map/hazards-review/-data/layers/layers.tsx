@@ -1,4 +1,5 @@
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE, PROD_POSTGREST_URL, GEN_GIS_WORKSPACE } from "@/lib/constants";
+import { zoomForScale } from "@/lib/map/map-scale";
 import { FieldConfig, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { capitalizeFirst } from "@/lib/field-formatting";
 import {
@@ -1059,17 +1060,22 @@ function displacementVariantLabel(typeValue: DisplacementType): string {
 function displacementVariantDescription(typeValue: DisplacementType): string {
     switch (typeValue) {
         case 'Yearly':
-            return 'Subsidence during the selected year only — years stand alone and don’t add up to the cumulative total.';
+            return 'Subsidence during the selected year only. Years stand alone and don’t add up to the cumulative total.';
         case 'Vertical Displacement Rate':
-            return 'How fast the ground moved vertically, in inches per year — a speed, not a total.';
+            return 'How fast the ground moved vertically, in inches per year: a speed, not a total.';
         default: // Cumulative
-            return 'Total subsidence since monitoring began — the map shows the running total through the selected year.';
+            return 'Total subsidence since monitoring began. The map shows the running total through the selected year.';
     }
 }
+
+// Contours are not meaningful at scales larger than 1:62,000, so the layer stops
+// drawing past that zoom and the layer list offers "Zoom out to see".
+const INSAR_MAX_ZOOM = zoomForScale(62_000);
 
 // `visible` seeds the default map selection (getDefaultSelected). Inside the
 // variant group only ONE surface should default on, so callers opt a single
 // surface in and leave the rest off.
+
 function makeDisplacementContoursConfig(title: DisplacementLayerTitle, visible = false): WMSLayerProps {
     const { type: typeValue, styleName } = DISPLACEMENT_LAYERS[title];
     return {
@@ -1082,6 +1088,7 @@ function makeDisplacementContoursConfig(title: DisplacementLayerTitle, visible =
         styleName,
         legendUnit: getUnitsLabelForType(typeValue),
         customLayerParameters: { cql_filter: `type='${typeValue}'` },
+        visibleZoomRange: [0, INSAR_MAX_ZOOM],
         sublayers: [
             {
                 name: DISPLACEMENT_CONTOURS_LAYER,

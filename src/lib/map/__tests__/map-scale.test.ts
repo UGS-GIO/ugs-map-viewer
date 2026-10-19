@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { scaleDenominator } from '../map-scale'
+import { scaleDenominator, zoomForScale } from '../map-scale'
 
 // Web Mercator ground resolution for MapLibre's 512px tiles.
 const metersPerPixel = (zoom: number, lat: number) =>
@@ -19,5 +19,16 @@ describe('scaleDenominator', () => {
     const z12 = scaleDenominator(metersPerPixel(12, 40))
     const z13 = scaleDenominator(metersPerPixel(13, 40))
     expect(z12 / z13).toBeCloseTo(2, 6)
+  })
+})
+
+describe('zoomForScale', () => {
+  it('inverts scaleDenominator', () => {
+    const z = zoomForScale(scaleDenominator(metersPerPixel(10, 39.5)), 39.5)
+    expect(z).toBeCloseTo(10, 6)
+  })
+
+  it('puts 1:62,000 just under zoom 12 in central Utah', () => {
+    expect(zoomForScale(62_000)).toBeCloseTo(11.85, 2)
   })
 })

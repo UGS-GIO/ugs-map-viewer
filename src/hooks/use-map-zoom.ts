@@ -3,14 +3,14 @@ import { useMap } from "@/hooks/use-map";
 
 export type ZoomHintDirection = "in" | "out";
 
-/** Returns "in" if zoom below range, "out" if above, null if in range or inputs missing. */
+/** Returns "in" if zoom below range, "out" if at or above maxzoom (exclusive, as in MapLibre), null if in range or inputs missing. */
 export const getZoomHint = (
     zoom: number | null,
     range: [number, number] | null | undefined,
 ): ZoomHintDirection | null => {
     if (zoom === null || !range) return null;
     if (zoom < range[0]) return "in";
-    if (zoom > range[1]) return "out";
+    if (zoom >= range[1]) return "out";
     return null;
 };
 

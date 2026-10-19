@@ -183,7 +183,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
     const handleZoomToVisibleRange = () => {
         if (!map || !visibleZoomRange) return;
         const [minZ, maxZ] = visibleZoomRange;
-        const target = currentZoom !== null && currentZoom > maxZ ? maxZ : minZ;
+        // maxzoom is exclusive, so land just inside it.
+        const target = currentZoom !== null && currentZoom >= maxZ ? maxZ - 0.01 : minZ;
         map.flyTo({ zoom: target });
     };
 

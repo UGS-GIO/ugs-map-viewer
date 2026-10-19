@@ -13,6 +13,7 @@ import {
   flattenDataLayers,
   flattenDataLayersWithAncestors,
   resolveLeafVisibility,
+  isWithinZoomRange,
   findAncestorGroupTitles,
   buildFragmentLayerSpec,
   zoomRangeToBounds,
@@ -341,5 +342,18 @@ describe('buildFragmentLayerSpec', () => {
     )
     expect(spec.minzoom).toBe(13)
     expect(spec.maxzoom).toBe(20)
+  })
+})
+
+describe('isWithinZoomRange', () => {
+  it('draws everywhere when no range is set', () => {
+    expect(isWithinZoomRange(undefined, 3)).toBe(true)
+  })
+
+  it('treats minzoom as inclusive and maxzoom as exclusive, like MapLibre', () => {
+    expect(isWithinZoomRange([0, 11.85], 11.84)).toBe(true)
+    expect(isWithinZoomRange([0, 11.85], 11.85)).toBe(false)
+    expect(isWithinZoomRange([11, 22], 11)).toBe(true)
+    expect(isWithinZoomRange([11, 22], 10.9)).toBe(false)
   })
 })

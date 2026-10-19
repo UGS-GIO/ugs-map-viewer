@@ -9,12 +9,14 @@ interface ZoomHintPillProps {
     onClick: () => void;
 }
 
+const oneDecimal = (zoom: number, round: (n: number) => number) => Number((round(zoom * 10) / 10).toFixed(1));
+
 export const ZoomHintPill = ({ direction, range, onClick }: ZoomHintPillProps) => {
     const Icon = direction === "in" ? ZoomIn : ZoomOut;
     const tooltip =
         direction === "in"
-            ? `Visible at zoom ≥ ${Math.round(range[0])} — click to zoom in`
-            : `Visible at zoom ≤ ${Math.round(range[1])} — click to zoom out`;
+            ? `Visible at zoom ${oneDecimal(range[0], Math.ceil)} and closer. Click to zoom in.`
+            : `Visible at zoom ${oneDecimal(range[1], Math.floor)} and farther out. Click to zoom out.`;
 
     return (
         <TooltipProvider delayDuration={300}>
