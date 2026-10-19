@@ -1,14 +1,16 @@
-import { useMemo } from 'react'
-import { XIcon } from 'lucide-react'
+import { useMemo, useState, useId } from 'react'
+import { XIcon, ChevronDown, ChevronRight } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
+import { HatchSwatch } from './displacement-chart-hover'
 import {
     DATA_QUAL_DESCRIPTIONS,
     DEFAULT_EXCLUDED_DATA_QUALS,
+    LOW_DATA_QUALS,
     DISPLACEMENT_LAYER_TYPES,
     getStyleNameForType,
     isChartedType,
@@ -16,6 +18,8 @@ import {
     type ChartedType,
     type DisplacementType,
 } from './displacement-layers'
+import { useDisplacementBasinsForType, useDisplacementBasinYearIndexForType, useDisplacementDataQualsForType, useDisplacementSldBins, useDisplacementValueMagnitudesForType, useDisplacementYearsForType } from './use-displacement-queries'
+import { getPopulatedBinBoundaries } from './displacement-thresholds'
 
 // Compare a live exclusion set against the high/medium default so "dirty" means
 // "the reviewer changed data-quality from the default", not "anything excluded".
@@ -23,8 +27,6 @@ function isDefaultDataQuals(excluded: ReadonlySet<string>): boolean {
     return excluded.size === DEFAULT_EXCLUDED_DATA_QUALS.length
         && DEFAULT_EXCLUDED_DATA_QUALS.every(q => excluded.has(q))
 }
-import { useDisplacementBasinsForType, useDisplacementBasinYearIndexForType, useDisplacementDataQualsForType, useDisplacementSldBins, useDisplacementYearsForType } from './use-displacement-queries'
-import { type SldBin } from './displacement-sld-legend'
 
 // Label the year dropdown by type semantics: 'Water Year' for Yearly,
 // 'Period End Year' for Cumulative + Vertical Displacement Rate.
@@ -39,7 +41,7 @@ export function renderDisplacementLayerFilters(layerTitle: string): React.ReactN
 }
 
 function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }) {
-    const { yearOverridesByType, thresholdsIn, basinsByType, excludedDataQualsByType, setYearOverride, setThreshold, addBasin, removeBasin, clearBasins, toggleDataQual, clearDataQuals } = useDisplacementFilters()
+    const { yearOverridesByType, thresholdsIn, basinsByType, excludedDataQualsByType, setYearOverride, setThreshold, addBasin, removeBasin, clearBasins, toggleDataQual, setDataQualsVisible, clearDataQuals } = useDisplacementFilters()
     const yearOverride = yearOverridesByType[typeValue]
     const effective = useEffectiveThresholdsIn()
 
@@ -63,6 +65,17 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
     )
     const excludedQuals = excludedDataQualsByType[typeValue]
     const dataQualsDirty = !isDefaultDataQuals(excludedQuals)
+    // Split tiers for the UI: high/medium stay individual toggles; low + very-low
+    // collapse into one "unconfirmed low quality" toggle (their confirmed members
+    // always show, hatched — the CQL override handles that regardless of this).
+    const highTierQuals = useMemo(() => dataQuals.filter(q => !(LOW_DATA_QUALS as readonly string[]).includes(q)), [dataQuals])
+    const hasLowQuals = useMemo(() => dataQuals.some(q => (LOW_DATA_QUALS as readonly string[]).includes(q)), [dataQuals])
+    // One toggle drives both low tiers together, but a hand-edited URL can exclude
+    // just one. Reflect that honestly: all-visible = checked, all-hidden = unchecked,
+    // a split = indeterminate (clicking then re-syncs both).
+    const unconfirmedLowExcluded = (LOW_DATA_QUALS as readonly string[]).filter(q => excludedQuals.has(q)).length
+    const unconfirmedLowVisible = unconfirmedLowExcluded === 0
+    const unconfirmedLowIndeterminate = unconfirmedLowExcluded > 0 && unconfirmedLowExcluded < LOW_DATA_QUALS.length
 
     // Year dropdown always reflects the effective year (override or latest).
     // Empty string is a transient state only while features are still loading.
@@ -86,6 +99,14 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
     const basinsWithDataForEffectiveYear = hasYear ? (basinsByYear[displayYear] ?? new Set<string>()) : null
     const rawThreshold = isCharted ? thresholdsIn[typeValue] : null
     const isDirty = yearOverride !== null || rawThreshold !== null || selectedBasins.size > 0 || dataQualsDirty
+
+    // Data quality + threshold are power-user controls — tuck them under a
+    // collapsed "Refine" disclosure so basin + year lead. A "· modified" hint
+    // keeps active refinements visible while collapsed. Matches the button +
+    // chevron disclosure used elsewhere (CollapsibleSection, popup-content-display).
+    const [refineOpen, setRefineOpen] = useState(false)
+    const refineId = useId()
+    const refineDirty = dataQualsDirty || (isCharted && rawThreshold !== null)
 
     function resetLocal() {
         if (yearOverride !== null) setYearOverride(typeValue, null)
@@ -141,7 +162,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                     onValueChange={(loc) => loc && addBasin(typeValue, loc)}
                     disabled={availableBasins.length === 0}
                 >
-                    <SelectTrigger className="h-8">
+                    <SelectTrigger className="h-8" aria-label="Add a basin to the filter">
                         <SelectValue placeholder={availableBasins.length === 0 ? 'All basins selected' : 'Add a basin…'} />
                     </SelectTrigger>
                     <SelectContent>
@@ -177,7 +198,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                         )}
                     </div>
                     <Select value={displayYear} onValueChange={(y) => setYearOverride(typeValue, y)}>
-                        <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="h-8" aria-label={yearLabelFor(typeValue)}><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {years.map(y => (
                                 <SelectItem
@@ -199,76 +220,100 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                 </div>
             )}
 
-            {dataQuals.length > 0 && (
+            {(dataQuals.length > 0 || isCharted) && (
                 <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between">
-                        <Label className="text-xs">
-                            Data quality
-                            {dataQuals.some(q => excludedQuals.has(q)) && (
-                                <span className="ml-1 text-muted-foreground">· {dataQuals.filter(q => !excludedQuals.has(q)).length}/{dataQuals.length}</span>
-                            )}
-                        </Label>
-                        {dataQualsDirty && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-xs"
-                                onClick={() => clearDataQuals(typeValue)}
-                            >
-                                Reset
-                            </Button>
-                        )}
-                    </div>
-                    <div className="flex flex-col gap-1">
-                        {dataQuals.map(q => {
-                            const checked = !excludedQuals.has(q)
-                            return (
-                                <label key={q} className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
-                                    <Checkbox
-                                        checked={checked}
-                                        onCheckedChange={() => toggleDataQual(typeValue, q)}
-                                        aria-label={`Toggle ${q} data quality`}
-                                        className="mt-0.5"
-                                    />
-                                    <span className="flex flex-col leading-tight">
-                                        <span className="capitalize">{q}</span>
-                                        {DATA_QUAL_DESCRIPTIONS[q] && (
-                                            <span className="text-[10px] text-muted-foreground">{DATA_QUAL_DESCRIPTIONS[q]}</span>
+                    <button
+                        type="button"
+                        onClick={() => setRefineOpen(o => !o)}
+                        aria-expanded={refineOpen}
+                        aria-controls={refineId}
+                        className="flex items-center gap-1 self-start rounded px-1 -ml-1 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                        {refineOpen
+                            ? <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+                            : <ChevronRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />}
+                        <span>Refine · data quality{isCharted ? ', threshold' : ''}</span>
+                        {refineDirty && <span className="ml-1 font-medium text-foreground">· modified</span>}
+                    </button>
+                    {refineOpen && (
+                        <div id={refineId} className="flex flex-col gap-2">
+                            {dataQuals.length > 0 && (
+                                <div className="flex flex-col gap-1">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-xs">Data quality</Label>
+                                        {dataQualsDirty && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-6 px-2 text-xs"
+                                                onClick={() => clearDataQuals(typeValue)}
+                                            >
+                                                Reset
+                                            </Button>
                                         )}
-                                    </span>
-                                </label>
-                            )
-                        })}
-                    </div>
-                </div>
-            )}
+                                    </div>
+                                    <div className="flex flex-col gap-1">
+                                        {/* High / medium — real show/hide toggles. */}
+                                        {highTierQuals.map(q => (
+                                            <label key={q} className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
+                                                <Checkbox
+                                                    checked={!excludedQuals.has(q)}
+                                                    onCheckedChange={() => toggleDataQual(typeValue, q)}
+                                                    aria-label={`Toggle ${q} data quality`}
+                                                    className="mt-0.5"
+                                                />
+                                                <span className="flex flex-col leading-tight">
+                                                    <span className="capitalize">{q}</span>
+                                                    {DATA_QUAL_DESCRIPTIONS[q] && (
+                                                        <span className="text-[10px] text-muted-foreground">{DATA_QUAL_DESCRIPTIONS[q]}</span>
+                                                    )}
+                                                </span>
+                                            </label>
+                                        ))}
+                                        {hasLowQuals && (
+                                            <>
+                                                {/* Confirmed low/very-low: always shown, hatched (the review rule) —
+                                                    informational, not a toggle. Swatch matches the map + legend. */}
+                                                <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                                                    <HatchSwatch className="mt-0.5 h-3.5 w-3.5" />
+                                                    <span className="flex flex-col leading-tight">
+                                                        <span className="text-foreground">Confirmed low quality</span>
+                                                        <span className="text-[10px]">Always shown, hatched</span>
+                                                    </span>
+                                                </div>
+                                                {/* Unconfirmed low + very-low: the noise. One toggle, off by default. */}
+                                                <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
+                                                    <Checkbox
+                                                        checked={unconfirmedLowIndeterminate ? 'indeterminate' : unconfirmedLowVisible}
+                                                        onCheckedChange={(v) => setDataQualsVisible(typeValue, LOW_DATA_QUALS, v === true)}
+                                                        aria-label="Toggle unconfirmed low-quality contours"
+                                                        className="mt-0.5"
+                                                    />
+                                                    <span className="flex flex-col leading-tight">
+                                                        <span>Unconfirmed low quality</span>
+                                                        <span className="text-[10px] text-muted-foreground">Lowest-confidence, not independently confirmed</span>
+                                                    </span>
+                                                </label>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
 
-            {isCharted && (
-                <ThresholdSelect
-                    typeValue={typeValue}
-                    currentThresholdIn={thresholdIn}
-                    onChange={(n) => setThreshold(typeValue, n)}
-                    onReset={() => setThreshold(typeValue, null)}
-                />
+                            {isCharted && (
+                                <ThresholdSelect
+                                    typeValue={typeValue}
+                                    currentThresholdIn={thresholdIn}
+                                    onChange={(n) => setThreshold(typeValue, n)}
+                                    onReset={() => setThreshold(typeValue, null)}
+                                />
+                            )}
+                        </div>
+                    )}
+                </div>
             )}
         </div>
     )
-}
-
-// Positive bin edges from the SLD response, deduped + sorted ascending. These
-// are the only meaningful threshold values (any |value_inches| between two edges
-// yields the same filtered set). The smallest edge is the SLD's "Zero" deadband
-// bound, so every option is >= the deadband by construction — the UI can't drop
-// the threshold below the uncertainty band.
-function getBinBoundaries(bins: SldBin[]): number[] {
-    const edges = new Set<number>()
-    for (const b of bins) {
-        if (b.isZero) continue
-        for (const v of [b.min, b.max]) {
-            if (Number.isFinite(v)) edges.add(Math.abs(v))
-        }
-    }
-    return Array.from(edges).filter(v => v > 0).sort((a, b) => a - b)
 }
 
 interface ThresholdSelectProps {
@@ -278,20 +323,28 @@ interface ThresholdSelectProps {
     onReset: () => void
 }
 
-// Threshold as a predefined dropdown of SLD bin edges. The first option is the
-// SLD default (the Zero-deadband bound); selecting it resets to default.
-// Selecting a larger edge tightens the filter on |value| (both signs) across the
-// map, chart, and stats. Below-default values aren't offered — the deadband is
-// measurement noise, so reviewers can only raise the bar, not lower it.
+// Threshold as a dropdown of the SLD bin edges the data actually fills (see
+// getPopulatedBinBoundaries — empty-band edges are dropped so no two options
+// filter to the same set). The first, smallest offered edge is the per-type
+// default (marked "· default") and is exactly what the effective threshold
+// resolves to when unset, so the map, chart, and dropdown all agree. Picking it
+// resets to that default; larger edges tighten the filter on |value| (both
+// signs). Below the default isn't offered — that band is the measurement-noise
+// deadband, which the chart and (at the default) the map both exclude.
 function ThresholdSelect({ typeValue, currentThresholdIn, onChange, onReset }: ThresholdSelectProps) {
     const styleName = getStyleNameForType(typeValue) ?? ''
     const { data: sldBins = [] } = useDisplacementSldBins(styleName)
-    const boundaries = useMemo(() => getBinBoundaries(sldBins), [sldBins])
+    const magnitudes = useDisplacementValueMagnitudesForType(typeValue)
+    const boundaries = useMemo(() => getPopulatedBinBoundaries(sldBins, magnitudes), [sldBins, magnitudes])
     if (boundaries.length === 0) return null
 
     const fmt = (n: number) => n.toFixed(1)
     const defaultThreshold = boundaries[0]
-    const selected = fmt(currentThresholdIn)
+    // currentThresholdIn (the effective threshold) defaults to this same floor,
+    // so normally it equals defaultThreshold. Clamp up only so a stale sub-floor
+    // override (e.g. an old URL) can't render blank against options that start at
+    // the floor.
+    const selected = fmt(Math.max(currentThresholdIn, defaultThreshold))
 
     return (
         <div className="flex flex-col gap-1 rounded border border-dashed border-border p-2">

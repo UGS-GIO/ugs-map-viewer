@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hasActiveChildren, getDefaultGroupVisibility } from '../layer-url-provider';
+import { hasActiveChildren, getDefaultGroupVisibility, enforceVariantExclusivity, computeExclusiveSelection } from '../layer-url-provider';
 import type { LayerProps, GroupLayerProps } from '@/lib/types/mapping-types';
 
 const wmsLayer = (title: string, visible = false): LayerProps => ({
@@ -17,6 +17,13 @@ const group = (
   type: 'group',
   title,
   visible,
+  layers,
+});
+
+const variantGroup = (title: string, layers: LayerProps[]): GroupLayerProps => ({
+  type: 'group',
+  title,
+  variantSelector: true,
   layers,
 });
 
@@ -89,5 +96,79 @@ describe('getDefaultGroupVisibility', () => {
     const layers = [wmsLayer('A', true)];
     const result = getDefaultGroupVisibility(layers, new Set());
     expect(result.size).toBe(0);
+  });
+});
+
+describe('enforceVariantExclusivity', () => {
+  it('leaves a single selected surface unchanged', () => {
+    const cfg = [variantGroup('Disp', [wmsLayer('Cumulative', true), wmsLayer('Yearly'), wmsLayer('Rate')])];
+    expect(enforceVariantExclusivity(cfg, ['Cumulative'])).toEqual(['Cumulative']);
+  });
+
+  it('keeps the config-default (visible) surface when several are selected', () => {
+    const cfg = [variantGroup('Disp', [wmsLayer('Cumulative', true), wmsLayer('Yearly'), wmsLayer('Rate')])];
+    expect(enforceVariantExclusivity(cfg, ['Yearly', 'Cumulative', 'Rate'])).toEqual(['Cumulative']);
+  });
+
+  it('keeps the first selected surface (child order) when none is config-default visible', () => {
+    const cfg = [variantGroup('Disp', [wmsLayer('Cumulative'), wmsLayer('Yearly'), wmsLayer('Rate')])];
+    expect(enforceVariantExclusivity(cfg, ['Rate', 'Yearly'])).toEqual(['Yearly']);
+  });
+
+  it('preserves selections outside the variant group', () => {
+    const cfg = [
+      variantGroup('Disp', [wmsLayer('Cumulative', true), wmsLayer('Yearly')]),
+      wmsLayer('Aquifer', true),
+    ];
+    expect([...enforceVariantExclusivity(cfg, ['Aquifer', 'Cumulative', 'Yearly'])].sort())
+      .toEqual(['Aquifer', 'Cumulative']);
+  });
+
+  it('does not dedupe a normal (non-variant) group', () => {
+    const cfg = [group('Normal', [wmsLayer('A', true), wmsLayer('B')])];
+    expect(enforceVariantExclusivity(cfg, ['A', 'B'])).toEqual(['A', 'B']);
+  });
+
+  it('returns the same array reference when nothing is dropped', () => {
+    const cfg = [variantGroup('Disp', [wmsLayer('Cumulative', true), wmsLayer('Yearly')])];
+    const sel = ['Cumulative'];
+    expect(enforceVariantExclusivity(cfg, sel)).toBe(sel);
+  });
+});
+
+describe('computeExclusiveSelection', () => {
+  it('selects the target, deselects siblings, and drops their filters', () => {
+    const res = computeExclusiveSelection(
+      { selected: ['Cumulative', 'Yearly'], filters: { Yearly: 'x=1', Other: 'y=2' }, visibility: {} },
+      'Rate', ['Cumulative', 'Yearly', 'Rate'], [],
+    );
+    expect(res).not.toBeNull();
+    expect(new Set(res!.selected)).toEqual(new Set(['Rate']));
+    expect(res!.filters).toEqual({ Other: 'y=2' });
+  });
+
+  it('reveals ancestor groups', () => {
+    const res = computeExclusiveSelection(
+      { selected: [], filters: {}, visibility: { 'Land Subsidence': false } },
+      'Cumulative', ['Cumulative', 'Yearly'], ['Land Subsidence', 'Displacement (InSAR)'],
+    );
+    expect(res!.visibility).toEqual({ 'Land Subsidence': true, 'Displacement (InSAR)': true });
+    expect(res!.selected).toContain('Cumulative');
+  });
+
+  it('preserves unrelated selections', () => {
+    const res = computeExclusiveSelection(
+      { selected: ['Aquifer', 'Cumulative'], filters: {}, visibility: {} },
+      'Yearly', ['Cumulative', 'Yearly'], [],
+    );
+    expect(new Set(res!.selected)).toEqual(new Set(['Aquifer', 'Yearly']));
+  });
+
+  it('returns null when the target is already the sole selection (idempotent no-op)', () => {
+    const res = computeExclusiveSelection(
+      { selected: ['Cumulative'], filters: {}, visibility: {} },
+      'Cumulative', ['Cumulative', 'Yearly', 'Rate'], [],
+    );
+    expect(res).toBeNull();
   });
 });

@@ -91,9 +91,18 @@ export interface ParquetByValuesOptions {
     matchingField: string;
     /** Values to match (the visible features' join keys). Deduped before querying. */
     values: string[];
-    sortBy?: string;
+    sortBy?: string | string[];
     sortDirection?: 'asc' | 'desc';
 }
+
+/** `ORDER BY` clause for one or more keys, or '' when unsorted. */
+const orderByClause = (sortBy: string | string[] | undefined, dir: 'asc' | 'desc' | undefined): string => {
+    const keys = sortBy == null ? [] : Array.isArray(sortBy) ? sortBy : [sortBy];
+    if (keys.length === 0) return '';
+    // Per key: ASC/DESC binds to one expression, not the whole list.
+    const sql = dir === 'desc' ? 'DESC' : 'ASC';
+    return ` ORDER BY ${keys.map(k => `${quoteIdent(k)} ${sql}`).join(', ')}`;
+};
 
 /**
  * Read a remote geoparquet, returning rows whose `matchingField` is in `values`.
@@ -108,9 +117,7 @@ export const queryParquetByValues = async (
 
     return withConnection(async (conn) => {
         const inList = unique.map(v => `'${escapeSql(String(v))}'`).join(',');
-        const order = sortBy
-            ? ` ORDER BY ${quoteIdent(sortBy)} ${sortDirection === 'desc' ? 'DESC' : 'ASC'}`
-            : '';
+        const order = orderByClause(sortBy, sortDirection);
         // Cast the join column to VARCHAR so string-quoted values match regardless of the
         // column's parquet type (e.g. uwi VARCHAR or box_pk INTEGER) — duckdb won't compare
         // INTEGER IN (VARCHAR…) without an explicit cast.
@@ -124,7 +131,7 @@ export const queryParquetByValues = async (
 export interface ParquetAllOptions {
     /** Remote .parquet URL (read over httpfs). */
     url: string;
-    sortBy?: string;
+    sortBy?: string | string[];
     sortDirection?: 'asc' | 'desc';
 }
 
@@ -137,14 +144,90 @@ export const queryParquetAll = async (
     { url, sortBy, sortDirection }: ParquetAllOptions,
 ): Promise<PostgRESTRow[]> => {
     return withConnection(async (conn) => {
-        const order = sortBy
-            ? ` ORDER BY ${quoteIdent(sortBy)} ${sortDirection === 'desc' ? 'DESC' : 'ASC'}`
-            : '';
+        const order = orderByClause(sortBy, sortDirection);
         const result = await conn.query(
             `SELECT * FROM read_parquet('${escapeSql(url)}')${order}`,
         );
         return result.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>));
     });
+};
+
+// ── Materialized attribute tables ────────────────────────────────────────────
+
+/**
+ * Remote parquet columns, pulled into DuckDB once per (url, columns) per session.
+ *
+ * Interactive paths — typeahead search, filter option lists, range sliders — re-run the
+ * same shape of query as the user types or clicks. Against a remote file each of those is
+ * an HTTP read of the relevant column chunks, so the cost is paid again on every
+ * keystroke or checkbox. The attribute columns are small next to the geometry, so one
+ * up-front read makes every later query local. Geometry stays remote and is fetched by id
+ * only when something actually needs it.
+ *
+ * Returns a SQL table expression for the FROM clause — the materialized table when it
+ * could be built, otherwise `read_parquet(...)` so callers keep working either way.
+ */
+const attributeTables = new Map<string, Promise<string>>();
+
+const attributeTableName = (key: string): string => {
+    const hash = [...key].reduce((h, c) => (Math.imul(h, 31) + c.charCodeAt(0)) | 0, 7);
+    return `attrs_${(hash >>> 0).toString(36)}`;
+};
+
+export const materializedAttributes = async (
+    { url, columns, expressions, geometryField = 'geom' }: {
+        url: string;
+        columns?: string[];
+        /**
+         * Extra projected columns as `alias -> SQL expression`, materialized alongside the
+         * plain ones so a search can filter and order on them like any other column. The
+         * expressions are caller-authored SQL (never user input) and are interpolated as
+         * written; the alias is quoted.
+         */
+        expressions?: Record<string, string>;
+        geometryField?: string;
+    },
+): Promise<string> => {
+    const remote = `read_parquet('${escapeSql(url)}')`;
+    const derived = Object.entries(expressions ?? {});
+    const key = `${url}::${columns?.join(',') ?? `*-${geometryField}`}::${derived.map(([a, e]) => `${a}=${e}`).join(',')}`;
+    const cached = attributeTables.get(key);
+    if (cached) return cached;
+
+    const building = (async () => {
+        const table = attributeTableName(key);
+        const base = columns?.length
+            ? columns.map(quoteIdent).join(', ')
+            // EXCLUDE errors if the column isn't there, so only exclude what the file has.
+            : await withConnection(async (conn) => {
+                const described = await conn.query(`DESCRIBE SELECT * FROM ${remote}`);
+                const names = described.toArray().map(r => String((r.toJSON() as Record<string, unknown>).column_name));
+                return names.includes(geometryField) ? `* EXCLUDE (${quoteIdent(geometryField)})` : '*';
+            });
+        const projection = derived.length
+            ? `${base}, ${derived.map(([alias, expr]) => `${expr} AS ${quoteIdent(alias)}`).join(', ')}`
+            : base;
+
+        await withConnection(async (conn) => {
+            await conn.query(`CREATE TABLE IF NOT EXISTS ${quoteIdent(table)} AS SELECT ${projection} FROM ${remote}`);
+        });
+        return quoteIdent(table);
+    })();
+
+    // A failed build shouldn't poison the session — drop it so the next call retries,
+    // and fall back to reading the file directly meanwhile.
+    building.catch(() => attributeTables.delete(key));
+    attributeTables.set(key, building);
+
+    try {
+        return await building;
+    } catch (err) {
+        // The raw file can't bind derived aliases, so falling back there turns a broken
+        // projection into a silent empty result. Surface it instead.
+        if (derived.length) throw err;
+        console.warn(`[materializedAttributes] falling back to ${remote}:`, err);
+        return remote;
+    }
 };
 
 /**
@@ -167,32 +250,44 @@ export const queryParquetDistinctValues = async (
     });
 };
 
-/** Value → row count for one column. `splitCommaDelimited` counts each comma-separated token. */
+/**
+ * Value → row counts for one column: `counts` under the current filter, `totals` without it.
+ * One pass — the predicates become a COUNT(*) FILTER, so a category the filter excludes keeps
+ * its row (count 0) instead of vanishing. `splitCommaDelimited` counts each comma-separated token.
+ */
 export const queryParquetFieldOptions = async (
     { url, field, predicates = [], splitCommaDelimited = false }:
         { url: string; field: string; predicates?: string[]; splitCommaDelimited?: boolean },
-): Promise<{ options: string[]; counts: Record<string, number> }> => {
+): Promise<{ options: string[]; counts: Record<string, number>; totals: Record<string, number> }> => {
     const col = quoteIdent(field);
-    const where = [`${col} IS NOT NULL`, `CAST(${col} AS VARCHAR) <> ''`, ...predicates].join(' AND ');
+    const where = `${col} IS NOT NULL AND CAST(${col} AS VARCHAR) <> ''`;
     const value = splitCommaDelimited
         ? `TRIM(UNNEST(string_split(CAST(${col} AS VARCHAR), ',')))`
         : `TRIM(CAST(${col} AS VARCHAR))`;
+    // A predicate over a NULL column yields NULL; that's "no match" here, not "unknown".
+    const keep = predicates.length
+        ? `COALESCE(${predicates.map(p => `(${p})`).join(' AND ')}, FALSE)`
+        : 'TRUE';
+
+    const from = await materializedAttributes({ url });
 
     return withConnection(async (conn) => {
         const result = await conn.query(`
-            SELECT v, COUNT(*) AS n FROM (
-                SELECT ${value} AS v FROM read_parquet('${escapeSql(url)}') WHERE ${where}
+            SELECT v, COUNT(*) FILTER (WHERE "keep") AS n, COUNT(*) AS t FROM (
+                SELECT ${value} AS v, ${keep} AS "keep" FROM ${from} WHERE ${where}
             ) WHERE v <> '' GROUP BY v ORDER BY n DESC, v ASC
         `);
         const options: string[] = [];
         const counts: Record<string, number> = {};
+        const totals: Record<string, number> = {};
         for (const row of result.toArray()) {
-            const { v, n } = row.toJSON() as { v: unknown; n: unknown };
+            const { v, n, t } = row.toJSON() as { v: unknown; n: unknown; t: unknown };
             if (v == null) continue;
             options.push(String(v));
             counts[String(v)] = Number(n);
+            totals[String(v)] = Number(t);
         }
-        return { options, counts };
+        return { options, counts, totals };
     });
 };
 
@@ -201,9 +296,10 @@ export const queryParquetFieldExtent = async (
     { url, field }: { url: string; field: string },
 ): Promise<{ min: number; max: number }> => {
     const col = quoteIdent(field);
+    const from = await materializedAttributes({ url });
     return withConnection(async (conn) => {
         const result = await conn.query(
-            `SELECT MIN(${col}) AS lo, MAX(${col}) AS hi FROM read_parquet('${escapeSql(url)}') WHERE ${col} IS NOT NULL`,
+            `SELECT MIN(${col}) AS lo, MAX(${col}) AS hi FROM ${from} WHERE ${col} IS NOT NULL`,
         );
         const { lo, hi } = (result.toArray()[0]?.toJSON() ?? {}) as { lo: unknown; hi: unknown };
         return { min: Number(lo ?? 0), max: Number(hi ?? 0) };

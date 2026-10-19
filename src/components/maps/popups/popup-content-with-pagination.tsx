@@ -294,7 +294,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                     >
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <SelectTrigger className="w-full">
+                                <SelectTrigger aria-label="Choose which layer's results to show" className="w-full">
                                     <SelectValue />
                                 </SelectTrigger>
                             </TooltipTrigger>
@@ -388,7 +388,11 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
     )
 }
 
-const PopupContentWithPagination = memo(PopupContentWithPaginationInner);
-PopupContentWithPagination.displayName = 'PopupContentWithPagination';
+const MemoContent = memo(PopupContentWithPaginationInner);
 
-export { PopupContentWithPagination };
+// A new set of layers remounts the content, so its pagination starts over.
+const contentKey = (layers: LayerContentProps[]) => layers.map((l) => `${l.groupLayerTitle}-${l.layerTitle}`).join('|');
+
+export function PopupContentWithPagination(props: PopupContentWithPaginationProps) {
+    return <MemoContent key={contentKey(props.layerContent)} {...props} />;
+}

@@ -1,13 +1,16 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useId, useMemo } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { LegendSwatchGrid } from '@/components/maps/legend-swatch-grid'
 import { useLayerFilter } from '@/hooks/use-layer-filter'
+import { useMap } from '@/hooks/use-map'
 import { useDistinctFieldOptions } from '@/hooks/use-distinct-field-options'
-import type { FilterSchema, FilterFieldKind } from '@/lib/filter/types'
+import { orderedCategories } from '@/lib/filter/legend-categories'
+import { cn } from '@/lib/utils'
+import { emptyFieldValue, type FilterSchema, type FilterFieldKind } from '@/lib/filter/types'
+import { toCql } from '@/lib/filter/generators'
 import type { PMTilesLayerProps, PMTilesRender, LegendEntry } from '@/lib/types/mapping-types'
 
 /**
@@ -28,6 +31,10 @@ import type { PMTilesLayerProps, PMTilesRender, LegendEntry } from '@/lib/types/
 // an empty multiSelect means "no filter = all", the opposite of an all-off legend.
 const NONE_SENTINEL = '__none__'
 
+// "1,124/4,716" while another field's filter (or an unchecked box) holds rows back, else "4,716".
+const countLabel = (shown: number, total: number) =>
+    shown === total ? total.toLocaleString() : `${shown.toLocaleString()}/${total.toLocaleString()}`
+
 // A colour group derived from a legend entry that carries `values` (grouped renders,
 // e.g. box types → Core/Cuttings/Other). `color` is the group's base hue (header); each
 // value carries its own shade of it.
@@ -42,7 +49,7 @@ const modesFromRenders = (renders: readonly PMTilesRender[]): Mode[] =>
         .map(r => ({ id: r.id, label: r.title ?? r.id, field: r.field ?? '', entries: r.legend ?? [] }))
 
 /** Generic symbology read/write on the route's `vector_symbology` search param. */
-function useVectorSymbology(layerTitle: string) {
+export function useVectorSymbology(layerTitle: string) {
     const navigate = useNavigate()
     const search = useSearch({ strict: false }) as { vector_symbology?: Record<string, string> }
     const value = search.vector_symbology?.[layerTitle] ?? ''
@@ -61,6 +68,22 @@ function useVectorSymbology(layerTitle: string) {
     return { value, setValue }
 }
 
+/** Returns the field name of the layer's currently active symbology mode. */
+export function useActiveSymbologyField(layer: PMTilesLayerProps | undefined): string | undefined {
+    const title = layer?.title ?? ''
+    const { value: active } = useVectorSymbology(title)
+    const modes = useMemo(() => modesFromRenders(layer?.renders ?? []), [layer?.renders])
+    if (!layer) return undefined
+    const mode = modes.find(m => m.id === active)
+        ?? modes.find(m => m.id === layer.defaultRenderId)
+        ?? modes[0]
+    if (mode?.field) return mode.field
+    const targetId = active || layer.defaultRenderId
+    if (targetId === 'by-boxtype') return 'box_type_codes'
+    if (targetId === 'by-purpose') return 'purpose'
+    return undefined
+}
+
 interface SymbologyLegendProps {
     layer: PMTilesLayerProps
     schema: FilterSchema
@@ -68,22 +91,55 @@ interface SymbologyLegendProps {
 
 /** Interactive symbology legend (render dropdown + category filter grid), derived from STAC. */
 export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
-    const { value: active, setValue: setActive } = useVectorSymbology(layer.title ?? '')
+    const { value: active } = useVectorSymbology(layer.title ?? '')
+    const symbologyLabelId = useId()
+    const symbologyTriggerId = useId()
+    const navigate = useNavigate()
+    const { onLayerTurnedOff } = useMap()
+    const mgr = useLayerFilter(schema)
     const modes = useMemo(() => modesFromRenders(layer.renders ?? []), [layer.renders])
     // Empty param → the layer's default render. Selecting a render writes its real id.
     const mode = modes.find(m => m.id === active)
         ?? modes.find(m => m.id === layer.defaultRenderId)
         ?? modes[0]
     const field = mode ? schema.fields.find(f => f.field === mode.field) : undefined
+    const layerTitle = layer.title ?? ''
+
+    // Switching renders resets the outgoing field, so an all-off legend can't leave the map
+    // empty with nothing on screen explaining why. One navigate: two in a tick clobber `prev`.
+    const switchMode = useCallback((next: string) => {
+        const cleared = field ? toCql(schema, { ...mgr.state, [field.field]: emptyFieldValue(field) }) : ''
+        navigate({
+            to: '.',
+            search: (prev: Record<string, unknown>) => {
+                const symbology = { ...(prev.vector_symbology as Record<string, string> | undefined), [layerTitle]: next }
+                const prevFilters = prev.filters
+                const filters = prevFilters && typeof prevFilters === 'object' && !Array.isArray(prevFilters)
+                    ? { ...(prevFilters as Record<string, string>) }
+                    : {}
+                if (cleared) filters[schema.recordKey] = cleared
+                else delete filters[schema.recordKey]
+                return {
+                    ...prev,
+                    vector_symbology: symbology,
+                    filters: Object.keys(filters).length > 0 ? filters : undefined,
+                }
+            },
+            replace: true,
+        })
+        onLayerTurnedOff(schema.recordKey)
+    }, [field, schema, mgr.state, navigate, layerTitle, onLayerTurnedOff])
+
     if (!mode || !field) return null
 
     return (
         <div className="flex flex-col gap-2 px-1 py-1">
             {modes.length > 1 && (
                 <div className="flex flex-col gap-1">
-                    <Label className="text-xs font-medium">Symbolize by</Label>
-                    <Select value={mode.id} onValueChange={setActive}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <Label id={symbologyLabelId} className="text-xs font-medium">Symbolize by</Label>
+                    <Select value={mode.id} onValueChange={switchMode}>
+                        {/* A `combobox` takes no name from its contents. */}
+                        <SelectTrigger id={symbologyTriggerId} aria-labelledby={`${symbologyLabelId} ${symbologyTriggerId}`} className="h-8 text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
                             {modes.map(m => (
                                 <SelectItem key={m.id} value={m.id} className="text-xs">{m.label}</SelectItem>
@@ -97,16 +153,17 @@ export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
     )
 }
 
-function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; field: FilterFieldKind; entries: readonly LegendEntry[] }) {
+function CategoryLegendGrid(
+    { schema, field, entries }:
+        { schema: FilterSchema; field: FilterFieldKind; entries: readonly LegendEntry[] },
+) {
     const mgr = useLayerFilter(schema)
     const isContains = field.kind === 'containsAny'
-    const { data, isLoading } = useDistinctFieldOptions({ schema, state: mgr.state, field, splitCommaDelimited: isContains })
+    const { data, isLoading, isPlaceholderData } = useDistinctFieldOptions({ schema, state: mgr.state, field, splitCommaDelimited: isContains })
+    // `counts` match the current filter, `totals` ignore it — one query returns both.
     const counts = data?.counts ?? {}
-    // All distinct values, ordered by feature count (desc), alpha tiebreak.
-    const options = useMemo(() => {
-        const c = data?.counts ?? {}
-        return [...(data?.options ?? [])].sort((a, b) => (c[b] ?? 0) - (c[a] ?? 0) || a.localeCompare(b))
-    }, [data])
+    const totals = data?.totals ?? {}
+    const options = useMemo(() => orderedCategories(data?.totals, data?.counts), [data])
 
     // Colour per value, derived from the render's legend. Flat renders: entry label == value.
     // Grouped renders: each group's `values` carry per-item shades. `stroke` is a flat-render
@@ -155,23 +212,46 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
         emit(next)
     }
 
-    if (isLoading) return <p className="text-xs text-muted-foreground px-1">Loading…</p>
+    // keepPreviousData can leave the previous field's rows on screen after a symbology switch.
+    if (isLoading || isPlaceholderData) return <p className="text-xs text-muted-foreground px-1">Loading…</p>
     if (options.length === 0) return null
 
     // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens.
     const renderRows = (items: string[], showSwatch = true) => (
-        <LegendSwatchGrid
-            items={items.map(value => ({
-                key: value,
-                label: displayLabel(value),
-                color: colorFor(value),
-                stroke: stroke.get(value),
-                count: counts[value],
-            }))}
-            showSwatch={showSwatch}
-            isChecked={(value) => onSet.has(value)}
-            onToggle={toggle}
-        />
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-1.5">
+            {items.map(value => {
+                const count = counts[value] ?? 0
+                const isZero = count === 0
+                const isChecked = onSet.has(value) && !isZero
+                return (
+                    <label
+                        key={value}
+                        className={cn(
+                            "flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer",
+                            isZero && "opacity-40 cursor-not-allowed",
+                        )}
+                    >
+                        <Checkbox
+                            className="mt-0.5 shrink-0"
+                            checked={isChecked}
+                            disabled={isZero}
+                            onCheckedChange={() => !isZero && toggle(value)}
+                            aria-label={`Toggle ${displayLabel(value)}`}
+                        />
+                        {showSwatch && (
+                            <span
+                                className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
+                                style={{ backgroundColor: colorFor(value), borderColor: stroke.get(value) ?? 'rgba(0,0,0,0.3)' }}
+                            />
+                        )}
+                        <span className="min-w-0 break-words leading-tight">
+                            {displayLabel(value)}
+                            <span className="ml-1 text-muted-foreground">({countLabel(count, totals[value] ?? 0)})</span>
+                        </span>
+                    </label>
+                )
+            })}
+        </div>
     )
 
     const controls = (
@@ -210,32 +290,43 @@ function CategoryLegendGrid({ schema, field, entries }: { schema: FilterSchema; 
                 {groups.map(g => {
                     const items = membersOf(g)
                     if (items.length === 0) return null
-                    const total = items.reduce((sum, v) => sum + (counts[v] ?? 0), 0)
+                    const total = items.reduce((sum, v) => sum + (totals[v] ?? 0), 0)
                     const shown = items.reduce((sum, v) => sum + (onSet.has(v) ? counts[v] ?? 0 : 0), 0)
-                    const onCount = items.filter(i => onSet.has(i)).length
-                    const groupChecked: boolean | 'indeterminate' = onCount === items.length ? true : onCount === 0 ? false : 'indeterminate'
+                    const activeItems = items.filter(v => (counts[v] ?? 0) > 0)
+                    const onCount = activeItems.filter(i => onSet.has(i)).length
+                    const groupChecked: boolean | 'indeterminate' =
+                        activeItems.length === 0 || onCount === 0
+                            ? false
+                            : onCount === activeItems.length
+                                ? true
+                                : 'indeterminate'
+                    const groupDisabled = activeItems.length === 0
                     const shadesMatchGroup = items.every(v => colorFor(v) === g.color)
                     const toggleGroup = () => {
                         const next = new Set(onSet)
-                        if (onCount === items.length) items.forEach(i => next.delete(i))
-                        else items.forEach(i => next.add(i))
+                        if (onCount === activeItems.length) activeItems.forEach(i => next.delete(i))
+                        else activeItems.forEach(i => next.add(i))
                         emit(next)
                     }
                     return (
-                        <div key={g.key} className="flex flex-col gap-1">
-                            <label className="flex items-center gap-1.5 border-t border-border pt-1.5 mt-0.5 cursor-pointer">
-                                <Checkbox className="shrink-0" checked={groupChecked} onCheckedChange={toggleGroup} aria-label={`Toggle ${g.label} group`} />
+                        <div key={g.key} className={cn("flex flex-col gap-1", groupDisabled && "opacity-40")}>
+                            <label className={cn("flex items-center gap-1.5 border-t border-border pt-1.5 mt-0.5 cursor-pointer", groupDisabled && "cursor-not-allowed")}>
+                                <Checkbox
+                                    className="shrink-0"
+                                    checked={groupChecked}
+                                    disabled={groupDisabled}
+                                    onCheckedChange={() => !groupDisabled && toggleGroup()}
+                                    aria-label={`Toggle ${g.label} group`}
+                                />
                                 <span className="inline-block w-3 h-3 rounded-full shrink-0 border" style={{ backgroundColor: g.color, borderColor: 'rgba(0,0,0,0.3)' }} />
-                                <Label className="text-xs font-semibold cursor-pointer">
+                                <Label className={cn("text-xs font-semibold cursor-pointer", groupDisabled && "cursor-not-allowed")}>
                                     {g.label}
-                                    {total > 0 && (
-                                        <span className="ml-1 font-normal text-muted-foreground">
-                                            ({shown === total ? total.toLocaleString() : `${shown.toLocaleString()}/${total.toLocaleString()}`})
-                                        </span>
-                                    )}
+                                    <span className="ml-1 font-normal text-muted-foreground">
+                                        ({countLabel(shown, total)})
+                                    </span>
                                 </Label>
                             </label>
-                            <div className="pl-4">{renderRows(items, !shadesMatchGroup)}</div>
+                            {items.length > 1 && <div className="pl-4">{renderRows(items, !shadesMatchGroup)}</div>}
                         </div>
                     )
                 })}

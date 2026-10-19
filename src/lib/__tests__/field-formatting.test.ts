@@ -6,6 +6,9 @@ import {
   formatWithDecimalPlaces,
   getNumberFieldTransform,
   formatFieldValue,
+  formatDate,
+  capitalizeFirst,
+  isMissingNumber,
 } from '../field-formatting';
 import type {
   NumberPopupFieldConfig,
@@ -68,6 +71,44 @@ describe('formatFieldValue', () => {
     expect(formatFieldValue(undefined, 42)).toBe('42');
   });
 
+  it('leaves a missing number blank instead of rendering 0', () => {
+    const config: NumberPopupFieldConfig = { type: 'number', field: 'td_ft' };
+    expect(formatFieldValue(config, null)).toBe('');
+    expect(formatFieldValue(config, undefined)).toBe('');
+    expect(formatFieldValue(config, '')).toBe('');
+    expect(formatFieldValue(config, 'not a number')).toBe('');
+    expect(formatFieldValue(config, '   ')).toBe('');
+  });
+
+  it('still renders a real zero', () => {
+    const config: NumberPopupFieldConfig = { type: 'number', field: 'td_ft' };
+    expect(formatFieldValue(config, 0)).toBe('0');
+    expect(formatFieldValue(config, '0')).toBe('0');
+  });
+
+  it('hands a transform null rather than coercing it to 0', () => {
+    const seen: (number | null)[] = [];
+    const config: NumberPopupFieldConfig = {
+      type: 'number',
+      field: 'td_ft',
+      transform: (v) => { seen.push(v); return v == null ? 'n/a' : String(v); },
+    };
+    expect(formatFieldValue(config, null)).toBe('n/a');
+    expect(formatFieldValue(config, undefined)).toBe('n/a');
+    expect(formatFieldValue(config, 42)).toBe('42');
+    expect(seen).toEqual([null, null, 42]);
+  });
+
+  it('hands a transform null for unparseable input rather than NaN', () => {
+    const config: NumberPopupFieldConfig = {
+      type: 'number',
+      field: 'td_ft',
+      transform: (v) => (v == null ? 'n/a' : String(v)),
+    };
+    expect(formatFieldValue(config, 'N/A')).toBe('n/a');
+    expect(formatFieldValue(config, '  ')).toBe('n/a');
+  });
+
   it('handles scientific notation strings and numbers in string fields', () => {
     const config: StringPopupFieldConfig = { type: 'string', field: 'api_number' };
     expect(formatFieldValue(config, '4.304735231e+13')).toBe('43047352310000');
@@ -114,5 +155,62 @@ describe('formatFieldValue', () => {
 
     const noTransform: CustomPopupFieldConfig = { type: 'custom', field: 'computed' };
     expect(formatFieldValue(noTransform, 'ignored')).toBe('');
+  });
+});
+
+// ── formatDate: monthYear ────────────────────────────────────────────────
+
+describe('formatDate monthYear', () => {
+  it('formats an ISO datetime as MM-YYYY', () => {
+    expect(formatDate('2017-10-20T00:00:00Z', 'monthYear')).toBe('10-2017');
+  });
+
+  it('reads UTC so a UTC-midnight first-of-month stays in that month', () => {
+    // 2023-10-01T00:00:00Z is 2023-09-30 in local time west of UTC (e.g. Denver);
+    // it must still render as 10-2023, not 09-2023.
+    expect(formatDate('2023-10-01T00:00:00Z', 'monthYear')).toBe('10-2023');
+  });
+
+  it('zero-pads single-digit months', () => {
+    expect(formatDate('2024-01-15T00:00:00Z', 'monthYear')).toBe('01-2024');
+  });
+
+  it('returns empty for null/empty and echoes unparseable input', () => {
+    expect(formatDate(null, 'monthYear')).toBe('');
+    expect(formatDate('', 'monthYear')).toBe('');
+    expect(formatDate('not-a-date', 'monthYear')).toBe('not-a-date');
+  });
+});
+
+// ── capitalizeFirst ──────────────────────────────────────────────────────
+
+describe('capitalizeFirst', () => {
+  it('capitalizes only the first character', () => {
+    expect(capitalizeFirst('high')).toBe('High');
+    expect(capitalizeFirst('medium')).toBe('Medium');
+    expect(capitalizeFirst('very low')).toBe('Very low');
+  });
+
+  it('leaves already-capitalized input unchanged', () => {
+    expect(capitalizeFirst('Medium')).toBe('Medium');
+  });
+
+  it('passes through empty and null', () => {
+    expect(capitalizeFirst('')).toBe('');
+    expect(capitalizeFirst(null)).toBe(null);
+  });
+});
+
+describe('isMissingNumber', () => {
+  it('treats nullish, blank and unparseable values as missing', () => {
+    for (const v of [null, undefined, '', '   ', 'N/A', NaN]) {
+      expect(isMissingNumber(v)).toBe(true);
+    }
+  });
+
+  it('treats a real zero as present', () => {
+    for (const v of [0, '0', '0.0', -1, '1,234'.replace(',', '')]) {
+      expect(isMissingNumber(v)).toBe(false);
+    }
   });
 });

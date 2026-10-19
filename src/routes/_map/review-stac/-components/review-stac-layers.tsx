@@ -1,4 +1,3 @@
-import { BackToMenuButton } from '@/components/ui/back-to-menu-button'
 import { useCustomLayerList } from '@/hooks/use-custom-layerlist'
 import { useGetLayerConfigs } from '@/hooks/use-get-layer-configs'
 import type { LayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
@@ -48,12 +47,9 @@ export function ReviewStacLayers() {
   }
 
   return (
-    <>
-      <BackToMenuButton />
-      <div className="max-h-[calc(100vh)] overflow-y-visible" data-tour="layer-panel">
-        {layerList}
-      </div>
-    </>
+    <div className="max-h-[calc(100vh)] overflow-y-visible" data-tour="layer-panel">
+      {layerList}
+    </div>
   )
 }
 

@@ -43,6 +43,15 @@ interface BaseFieldConfig {
     description?: string;
     /** Whether this field is sortable in the table. Defaults to true for string/number/date, false for custom. */
     sortable?: boolean;
+    /**
+     * Property to order this column by, compared numerically. Lets a `custom`
+     * column — whose cell is a transform-rendered string with no inherently
+     * sortable value — sort by a real numeric field (e.g. a formatted range that
+     * sorts by `value_inches_min`). Setting it opts the column into sorting.
+     * Intended for `custom` columns only: on a non-custom column the cell renders
+     * from the accessor, so repointing it here would also change what's displayed.
+     */
+    sortField?: string;
 }
 
 // String-specific field configuration
@@ -62,7 +71,7 @@ export interface NumberPopupFieldConfig extends BaseFieldConfig {
 // Date-specific field configuration
 export interface DatePopupFieldConfig extends BaseFieldConfig {
     type: 'date';
-    format?: 'iso' | 'short' | 'long';
+    format?: 'iso' | 'short' | 'long' | 'monthYear';
 }
 
 // Custom-specific field configuration
@@ -104,14 +113,24 @@ export type ExtendedSublayerProperties = {
 
 
 
+/** Link rendered at the bottom of a feature popup; `getHref` builds it per-feature (null = none). */
+export interface PopupFooterLink {
+    label: string;
+    getHref: (properties: Record<string, unknown> | null) => string | null;
+}
+
 interface BaseLayerProps {
     type: 'feature' | 'tile' | 'map-image' | 'geojson' | 'imagery' | 'wms' | 'group' | 'pmtiles' | 'cog' | 'wfs';
     title: string;
+    /** Secondary line rendered under the title in the layer list and the Data Sources list — use it for sourcing ("Source: Utah Division of Oil, Gas & Mining") instead of packing it into `title`, which is also the layer's URL-state key. */
+    subtitle?: string;
     url?: string;
     visible?: boolean;
     options?: any;
     opacity?: number;
     maxZoomLevel?: number;
+    /** Optional per-feature link at the bottom of this layer's popups (set per-route). */
+    popupFooterLink?: PopupFooterLink;
     customLegend?: React.ReactNode;
     /** Structured bivariate legend config — works in both sidebar and print export */
     bivariateLegend?: { xLabel: string; yLabel: string };
@@ -123,6 +142,10 @@ interface BaseLayerProps {
     sourceUrl?: string;
     /** Zoom range [min, max] where this layer renders. Out-of-range → UI shows "Zoom in to see" hint. Auto-resolved from WMS GetCapabilities or PMTiles header if omitted. */
     visibleZoomRange?: [number, number];
+    /** Short label for this layer when it's a child of a `variantSelector` group (the segmented-switch caption, e.g. "Cumulative"). Falls back to `title` if unset. */
+    variantLabel?: string;
+    /** One-line plain-language description of this variant, shown under the surface switch to explain what it means and how it relates to the map. */
+    variantDescription?: string;
 }
 
 export interface WMSLayerProps extends BaseLayerProps {
@@ -333,6 +356,15 @@ export interface WFSLayerProps extends BaseLayerProps {
 export interface GroupLayerProps extends BaseLayerProps {
     type: 'group';
     layers?: LayerProps[];
+    /**
+     * Render this group as a single entry with a segmented "surface" switch that
+     * keeps exactly ONE child selected at a time (mutually-exclusive variants of
+     * the same dataset), instead of the default multi-select child list. The
+     * children supply the switch options (via `variantLabel`); the active child's
+     * own controls/legend/filters render below the switch. Opt-in — groups
+     * without this flag render unchanged.
+     */
+    variantSelector?: boolean;
 }
 
 
@@ -410,10 +442,11 @@ export interface RelatedTable {
     headers?: Record<string, string>;
     displayFields?: DisplayField[];
     logicalOperator?: string;
-    sortBy?: string;
+    /** Sort key, or keys in precedence order. */
+    sortBy?: string | string[];
     sortDirection?: 'asc' | 'desc';
-    /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers, 'gallery' renders a photo gallery */
-    displayAs?: 'list' | 'table' | 'gallery';
+    /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers, 'gallery' renders a photo gallery, 'accordion' renders one collapsible item per row, 'documents' groups files by type with per-row open/download, search, and pagination, 'outline' renders stacked key-value outline cards per record */
+    displayAs?: 'list' | 'table' | 'gallery' | 'accordion' | 'documents' | 'outline';
     /** Render in a collapsible accordion. Defaults to true when `fieldLabel` is set, else inline. */
     collapsible?: boolean;
     /** Required when displayAs is 'gallery'. Field name containing the full-size image URL */
@@ -426,10 +459,15 @@ export interface RelatedTable {
     galleryLabelField?: string;
     /** Optional base URL prepended to gallery URL field values */
     galleryBaseUrl?: string;
+    /** Optional base URL prepended to a row's `storage_path` (displayAs 'accordion') to build its open/download link */
+    itemBaseUrl?: string;
     /** Optional metadata fields to display alongside the image in the lightbox */
     galleryMetadataFields?: { field: string; label: string }[];
     /** Fetch mode: 'postgrest' (default), 'wfs' for GeoServer WFS, or 'parquet' for STAC geoparquet via duckdb-wasm */
     fetchMode?: 'postgrest' | 'wfs' | 'parquet';
+    /** Join this table's `displayFields` into the download itself — one row per related row —
+     *  instead of shipping it as a separate CSV in the zip. Parquet-backed tables only. */
+    combineIntoExport?: boolean;
     /** WFS typeName (required when fetchMode is 'wfs'), e.g. 'emp:sco2_with_grid' */
     wfsTypeName?: string;
 }

@@ -16,6 +16,7 @@ import { useQueries } from '@tanstack/react-query'
 import { Source, Layer, useMap, type LayerProps } from 'react-map-gl/maplibre'
 import type maplibregl from 'maplibre-gl'
 import type { PMTilesLayerProps, PMTilesRender } from '@/lib/types/mapping-types'
+import { buildFragmentLayerSpec } from '@/lib/map/layer-utils'
 import type { WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
 
 interface StyleFragmentLayer {
@@ -25,6 +26,11 @@ interface StyleFragmentLayer {
     paint?: Record<string, unknown>
     'source-layer'?: string
     filter?: unknown
+    /** Zoom gate authored in ugs-styles (PLSS draws only when zoomed in). */
+    minzoom?: number
+    maxzoom?: number
+    /** Anything else the fragment authors is carried through untouched. */
+    [key: string]: unknown
 }
 interface StyleFragment { layers?: StyleFragmentLayer[] }
 
@@ -209,6 +215,88 @@ function withOpacity(paint: Record<string, unknown> | undefined, type: string, o
     return out
 }
 
+/**
+ * Build the MapLibre layer specs for one PMTiles layer's active style fragment.
+ *
+ * Every fragment property survives — notably the `minzoom`/`maxzoom` ugs-styles
+ * authors (PLSS sections are gated to ~z11); only viewer-owned fields are
+ * overridden. A config `visibleZoomRange` wins over the fragment's own zoom.
+ * Kept separate from the JSX so the mapping is unit-testable. [ALL-5727]
+ */
+export function buildPmtilesLayerSpecs({
+    layer, fragment, layerFilter, hidden, opacity,
+}: {
+    layer: PMTilesLayerProps
+    fragment: StyleFragment
+    layerFilter?: maplibregl.FilterSpecification
+    hidden?: boolean
+    opacity?: number
+}): LayerProps[] {
+    const sourceId = getPmtilesSourceId(layer)
+    const primaryId = getPmtilesLayerId(layer)
+    const styleLayers = (fragment.layers ?? []).filter(
+        l => l['source-layer'] == null || l['source-layer'] === layer.sourceLayer,
+    )
+
+    return styleLayers.map((l, i) => {
+        const fragmentFilter = l.filter as maplibregl.FilterSpecification | undefined
+        const filters = [fragmentFilter, layerFilter].filter(Boolean) as maplibregl.FilterSpecification[]
+        const filter = filters.length === 2 ? (['all', ...filters] as unknown as maplibregl.FilterSpecification) : filters[0]
+        return buildFragmentLayerSpec(l, {
+            layerId: i === 0 ? primaryId : `${primaryId}-${i}`,
+            sourceId,
+            sourceLayer: layer.sourceLayer,
+            visible: !hidden,
+            paint: withOpacity(l.paint, l.type, opacity ?? layer.opacity),
+            filter,
+            metadata: { title: layer.title, pmtilesLayer: true, pmtilesSourceId: sourceId },
+            visibleZoomRange: layer.visibleZoomRange,
+        }) as unknown as LayerProps
+    })
+}
+
+const FALLBACKS: Array<{ suffix: string; type: 'fill' | 'line' | 'circle'; paint: Record<string, unknown> }> = [
+    { suffix: 'fill', type: 'fill', paint: { 'fill-color': '#9ca3af', 'fill-opacity': 0.25 } },
+    { suffix: 'line', type: 'line', paint: { 'line-color': '#9ca3af', 'line-width': 1 } },
+    { suffix: 'circle', type: 'circle', paint: { 'circle-color': '#9ca3af', 'circle-radius': 3, 'circle-opacity': 0.6 } },
+]
+
+/**
+ * Features matching NO style rule draw nothing (the styles are per-rule, no catch-all). Render a
+ * neutral fallback for them so data that fell through symbology is still visible. Filter = none of the
+ * rule filters; if any rule is unfiltered (a real catch-all), everything is classified → skip. The
+ * fallback and the styled layers are mutually exclusive by construction, so z-order never matters.
+ */
+export function buildPmtilesUnclassifiedSpecs({
+    layer, fragment, layerFilter, hidden,
+}: {
+    layer: PMTilesLayerProps
+    fragment: StyleFragment
+    layerFilter?: maplibregl.FilterSpecification
+    hidden?: boolean
+}): LayerProps[] {
+    const sourceId = getPmtilesSourceId(layer)
+    const primaryId = getPmtilesLayerId(layer)
+    const styleLayers = (fragment.layers ?? []).filter(
+        l => l['source-layer'] == null || l['source-layer'] === layer.sourceLayer,
+    )
+    const ruleFilters = styleLayers.map(l => l.filter).filter(Boolean) as maplibregl.FilterSpecification[]
+    const hasCatchAll = styleLayers.some(l => !l.filter)
+    if (hasCatchAll || ruleFilters.length === 0) return []
+    const unclassified = ['!', ['any', ...ruleFilters]] as unknown as maplibregl.FilterSpecification
+    const filter = layerFilter ? (['all', unclassified, layerFilter] as unknown as maplibregl.FilterSpecification) : unclassified
+    return FALLBACKS.map(fb => ({
+        id: `${primaryId}-unclassified-${fb.suffix}`,
+        type: fb.type,
+        source: sourceId,
+        'source-layer': layer.sourceLayer,
+        layout: { visibility: hidden ? 'none' : 'visible' },
+        paint: fb.paint,
+        filter,
+        metadata: { title: layer.title, pmtilesLayer: true, pmtilesSourceId: sourceId, unclassified: true },
+    }) as LayerProps)
+}
+
 export function PMTilesLayerSource({
     layer, fragment, activeSymbology, beforeId, layerFilter, hidden, opacity,
 }: {
@@ -237,60 +325,16 @@ export function PMTilesLayerSource({
         )
     }, [render, mapRef, layer.title])
 
-    const styleLayers = (fragment.layers ?? []).filter(l => l['source-layer'] == null || l['source-layer'] === layer.sourceLayer)
-    const primaryId = getPmtilesLayerId(layer)
-
-    // Features matching NO style rule draw nothing (the styles are per-rule, no catch-all). Render a
-    // neutral fallback for them so data that fell through symbology is still visible. Filter = none of the
-    // rule filters; if any rule is unfiltered (a real catch-all), everything is classified → skip. The
-    // fallback and the styled layers are mutually exclusive by construction, so z-order never matters.
-    const ruleFilters = styleLayers.map(l => l.filter).filter(Boolean) as maplibregl.FilterSpecification[]
-    const hasCatchAll = styleLayers.some(l => !l.filter)
-    const unclassified: maplibregl.FilterSpecification | null =
-        !hasCatchAll && ruleFilters.length
-            ? (['!', ['any', ...ruleFilters]] as unknown as maplibregl.FilterSpecification)
-            : null
-    const fallbackFilter = (() => {
-        const fs = [unclassified, layerFilter].filter(Boolean) as maplibregl.FilterSpecification[]
-        return fs.length === 2 ? (['all', ...fs] as unknown as maplibregl.FilterSpecification) : fs[0]
-    })()
-    const FALLBACKS: Array<{ suffix: string; type: 'fill' | 'line' | 'circle'; paint: Record<string, unknown> }> = [
-        { suffix: 'fill', type: 'fill', paint: { 'fill-color': '#9ca3af', 'fill-opacity': 0.25 } },
-        { suffix: 'line', type: 'line', paint: { 'line-color': '#9ca3af', 'line-width': 1 } },
-        { suffix: 'circle', type: 'circle', paint: { 'circle-color': '#9ca3af', 'circle-radius': 3, 'circle-opacity': 0.6 } },
+    const specs = [
+        ...buildPmtilesLayerSpecs({ layer, fragment, layerFilter, hidden, opacity }),
+        ...buildPmtilesUnclassifiedSpecs({ layer, fragment, layerFilter, hidden }),
     ]
 
     return (
         <Source id={sourceId} type="vector" url={url}>
-            {styleLayers.map((l, i) => {
-                const fragmentFilter = l.filter as maplibregl.FilterSpecification | undefined
-                const filters = [fragmentFilter, layerFilter].filter(Boolean) as maplibregl.FilterSpecification[]
-                const filter = filters.length === 2 ? (['all', ...filters] as unknown as maplibregl.FilterSpecification) : filters[0]
-                const spec = {
-                    id: i === 0 ? primaryId : `${primaryId}-${i}`,
-                    type: l.type,
-                    source: sourceId,
-                    'source-layer': l['source-layer'] ?? layer.sourceLayer,
-                    layout: { ...(l.layout ?? {}), visibility: hidden ? 'none' : 'visible' },
-                    paint: withOpacity(l.paint, l.type, opacity ?? layer.opacity),
-                    ...(filter ? { filter } : {}),
-                    metadata: { title: layer.title, pmtilesLayer: true, pmtilesSourceId: sourceId },
-                } as LayerProps
-                return <Layer key={spec.id} beforeId={beforeId} {...spec} />
-            })}
-            {unclassified && FALLBACKS.map(fb => {
-                const spec = {
-                    id: `${primaryId}-unclassified-${fb.suffix}`,
-                    type: fb.type,
-                    source: sourceId,
-                    'source-layer': layer.sourceLayer,
-                    layout: { visibility: hidden ? 'none' : 'visible' },
-                    paint: fb.paint,
-                    ...(fallbackFilter ? { filter: fallbackFilter } : {}),
-                    metadata: { title: layer.title, pmtilesLayer: true, pmtilesSourceId: sourceId, unclassified: true },
-                } as LayerProps
-                return <Layer key={spec.id} beforeId={beforeId} {...spec} />
-            })}
+            {specs.map(spec => (
+                <Layer key={spec.id} beforeId={beforeId} {...spec} />
+            ))}
         </Source>
     )
 }

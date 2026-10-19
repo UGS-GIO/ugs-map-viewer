@@ -62,9 +62,23 @@ export const formatDate = (value: unknown, format: DatePopupFieldConfig['format'
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     case 'long':
       return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    case 'monthYear':
+      // MM-YYYY, read in UTC. The InSAR period dates arrive as UTC-midnight
+      // instants (e.g. 2023-10-01T00:00:00Z); using local time would slip a
+      // first-of-month reading back into the prior month west of UTC.
+      return `${String(date.getUTCMonth() + 1).padStart(2, '0')}-${date.getUTCFullYear()}`
     default:
       return date.toISOString().slice(0, 10)
   }
+}
+
+/**
+ * Capitalize only the first character of a string, leaving the rest as-is
+ * (so "very low" -> "Very low", not "Very Low"). Passes through empty/null.
+ */
+export const capitalizeFirst = (value: string | null): string | null => {
+  if (value === null || value === '') return value
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
 /**
@@ -90,6 +104,15 @@ export const formatStringValue = (value: unknown): string => {
 }
 
 /**
+ * A value that isn't a usable number. `Number(null)`, `Number('')` and `Number('  ')` are all
+ * 0, so these have to be caught before coercing.
+ */
+export const isMissingNumber = (value: unknown): boolean =>
+  value == null
+  || (typeof value === 'string' && value.trim() === '')
+  || Number.isNaN(Number(value))
+
+/**
  * Format a field value based on its config
  * Works for string, number, date, and custom field types
  */
@@ -109,13 +132,14 @@ export const formatFieldValue = (
 
   // Handle number fields
   if (isNumberField(fieldConfig)) {
-    const numberForTransform = rawValue === null ? null : Number(rawValue)
-    const numberForDefault = Number(rawValue ?? 0)
+    const numberValue = isMissingNumber(rawValue) ? null : Number(rawValue)
 
     if (fieldConfig.transform) {
-      return fieldConfig.transform(numberForTransform) ?? ''
+      return fieldConfig.transform(numberValue) ?? ''
     }
-    return getNumberFieldTransform(fieldConfig)(numberForDefault)
+    // A missing number is blank, not 0 — `shouldDisplayValue` then drops the row.
+    if (numberValue === null) return ''
+    return getNumberFieldTransform(fieldConfig)(numberValue)
   }
 
   // Handle date fields

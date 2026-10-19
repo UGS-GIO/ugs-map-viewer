@@ -124,7 +124,7 @@ export async function fetchDisplacementFromParquet(parquetUrl: string): Promise<
     const res = await conn.query(
       `SELECT location, type, year,
               CAST(start_date AS VARCHAR) AS start_date, CAST(end_date AS VARCHAR) AS end_date,
-              value_inches, pct_valid, data_qual,
+              value_inches, data_qual,
               bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax
        FROM read_parquet('${escapeSql(parquetUrl)}')`,
     );
@@ -142,8 +142,9 @@ export async function fetchDisplacementFromParquet(parquetUrl: string): Promise<
       year: r.year != null ? Number(r.year) : null,
       start_date: r.start_date != null ? String(r.start_date) : null,
       end_date: r.end_date != null ? String(r.end_date) : null,
-      value_inches: r.value_inches != null ? Number(r.value_inches) : 0,
-      pct_valid: r.pct_valid != null ? Number(r.pct_valid) : null,
+      // Review parquet carries a single value per contour; the published layer's range edges collapse to it.
+      value_inches_min: r.value_inches != null ? Number(r.value_inches) : 0,
+      value_inches_max: r.value_inches != null ? Number(r.value_inches) : 0,
       data_qual: r.data_qual != null ? String(r.data_qual) : null,
     };
     return { type: 'Feature', geometry, properties };

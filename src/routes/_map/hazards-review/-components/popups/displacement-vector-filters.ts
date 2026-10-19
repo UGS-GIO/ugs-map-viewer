@@ -18,7 +18,7 @@ import { useDisplacementLatestYearByType } from './use-displacement-queries'
 export function useDisplacementVectorFilters(): Record<string, FilterSpecification> {
     const { yearOverridesByType, basinsByType, excludedDataQualsByType } = useDisplacementFilters()
     const effective = useEffectiveThresholdsIn()
-    const latestByType = useDisplacementLatestYearByType()
+    const { byType: latestByType } = useDisplacementLatestYearByType()
     return useMemo(() => {
         const out: Record<string, FilterSpecification> = {}
         for (const [title, typeValue] of Object.entries(DISPLACEMENT_LAYER_TYPES) as [DisplacementLayerTitle, DisplacementType][]) {

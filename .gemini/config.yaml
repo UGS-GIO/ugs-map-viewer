@@ -1,0 +1,32 @@
+# Gemini Code Assist review config for UGS-GIO.
+# Ports the org's hardened reviewer behavior; the full review directives + this repo's
+# rubric live in .gemini/styleguide.md.
+have_fun: false
+code_review:
+  disable: false
+  # LOW so well-reasoned lower-confidence concerns still surface (we want a demanding
+  # reviewer, not one that only speaks up on near-certain critical issues).
+  comment_severity_threshold: LOW
+  max_review_comments: -1
+  pull_request_opened:
+    help: false
+    summary: false
+    code_review: true
+    # Skip drafts (mirrors the run-gemini-cli gate — don't review WIP).
+    include_drafts: false
+ignore_patterns:
+  - "**/*.lock"
+  - "**/package-lock.json"
+  - "**/pnpm-lock.yaml"
+  - "**/yarn.lock"
+  - "**/poetry.lock"
+  - "**/uv.lock"
+  - "**/node_modules/**"
+  - "**/vendor/**"
+  - "**/third_party/**"
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/*.min.js"
+  - "**/*.min.css"
+  - "**/*.map"
+  - "**/__snapshots__/**"

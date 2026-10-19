@@ -263,74 +263,6 @@ const oilGasFieldsConfig: PMTilesLayerProps = {
     ],
 };
 
-// Cores and Cuttings
-const coresLayerName = 'cores';
-const coresTitle = 'Cores and Cuttings';
-const coresConfig: PMTilesLayerProps = {
-    type: 'pmtiles',
-    pmtilesUrl: CARBONSTORAGE_PMTILES_URL,
-    styleUrl: CARBONSTORAGE_STYLE_URL,
-    sourceLayer: coresLayerName,
-    title: coresTitle,
-    visible: false,
-    opacity: 1,
-    sublayers: [
-        {
-            name: coresLayerName,
-            queryable: true,
-            popupFields: {
-                'API': { field: 'apishort', type: 'string' },
-                'UWI': { field: 'uwi', type: 'string' },
-                'Well Name': { field: 'well_name', type: 'string' },
-                'Sample Types': {
-                    field: 'all_types', type: 'string', transform: (value: string | null) => {
-                        if (value) return toTitleCase(value.replace(/,/g, ', '));
-                        return 'No Data';
-                    }
-                },
-                'Purpose': { field: 'purpose_description', type: 'string' },
-                'Operator': { field: 'operator', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
-                'Depth': {
-                    field: 'depth_display',
-                    type: 'custom',
-                    transform: (props: GeoJsonProperties | null | undefined) => {
-                        const top = props?.['top_ft'];
-                        const bottom = props?.['bottom_ft'];
-                        if (top == null || bottom == null) return 'Depth N/A';
-                        return `${addThousandsSeparator(top)} - ${addThousandsSeparator(bottom)} ft`;
-                    }
-                },
-                'Formation at TD': { field: 'form_td', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
-                'Cored Formations': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: (props: GeoJsonProperties | null | undefined) => {
-                        const formation = props?.['formation'] || '';
-                        const coredFormation = props?.['cored_formation'] || '';
-                        if (formation && coredFormation) return `${formation}, ${coredFormation}`;
-                        if (formation) return formation;
-                        if (coredFormation) return coredFormation;
-                        return '';
-                    }
-                },
-                '': {
-                    field: 'inventory_link',
-                    type: 'custom',
-                    transform: (() => 'Utah Core Research Center Inventory')
-                },
-            },
-            linkFields: {
-                'inventory_link': {
-                    transform: (value: string | null) => [{
-                        label: `${value}`,
-                        href: 'https://geology.utah.gov/apps/subsurface/'
-                    }]
-                }
-            }
-        }
-    ],
-};
-
 // Wells Database
 export const wellWithTopsLayerName = 'wellswithtops_hascore';
 export const wellWithTopsTitle = 'Wells Database';
@@ -709,7 +641,6 @@ const subsurfaceDataConfig: LayerProps = {
     visible: false,
     layers: [
         wellWithTopsConfig,
-        coresConfig,
         oilGasFieldsConfig
     ]
 };

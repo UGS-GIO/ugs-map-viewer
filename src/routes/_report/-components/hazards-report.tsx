@@ -29,6 +29,7 @@ import { ReportGroupSection } from '@/routes/_report/-components/content/report-
 import { ReportResources } from '@/routes/_report/-components/content/report-resources'
 import '@/routes/_report/-components/shared/print-styles.css'
 import heroImage from '@/assets/geologic-hazards-banner-alstrom-point-1920px.webp'
+import { UgsLogo } from '@/components/ugs-logo'
 import { Banner, BannerIcon, BannerTitle } from '@/components/ui/banner'
 import { toast } from "sonner"
 import { ReportHeader } from './layouts/report-header'
@@ -235,7 +236,7 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center h-screen">
+            <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
                     <p className="text-muted-foreground">Loading report data...</p>
@@ -254,7 +255,7 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                             image={
                                 <Image
                                     src={heroImage}
-                                    alt="Hero"
+                                    alt=""
                                     className="w-full h-48 object-cover"
                                     loading="eager"
                                 />
@@ -317,11 +318,7 @@ export function HazardsReport({ polygon, testAllHazards = false }: HazardsReport
                                 <h1 className="font-bold">Geological Hazards Mapping and Data Custom Report</h1>
                                 <p className="text-sm text-foreground/80">Utah Geological Survey</p>
                             </div>
-                            <img
-                                src='/logo_main.png'
-                                alt='Utah Geological Survey Logo'
-                                className="print-logo-header w-auto"
-                            />
+                            <UgsLogo variant='mark' className="print-logo-header w-auto" />
                         </div>
                         <p className="text-foreground/80 mt-2">
                             Report Generated on: {new Date().toLocaleString()}

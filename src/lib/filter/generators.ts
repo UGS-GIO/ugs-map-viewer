@@ -21,6 +21,8 @@ const cqlOrClause = (field: string, values: string[]): string | null => {
     return parts.length === 1 ? parts[0] : `(${parts.join(' OR ')})`;
 };
 
+// Still substring, like the PostgREST branch. Only URL persistence today; fix before any
+// containsAny field reaches a GeoServer cql_filter.
 const cqlLikeAnyClause = (field: string, values: string[]): string | null => {
     if (values.length === 0) return null;
     const parts = values.map(v => `${field} LIKE '%${escapeCqlLiteral(v)}%'`);
@@ -70,10 +72,12 @@ type Expr = unknown[];
 const inAnyOf = (field: string, values: string[]): Expr | null =>
     values.length === 0 ? null : ['in', ['get', field], ['literal', values]];
 
+// Delimiter-wrapped so a token can't match inside a longer one. No trim — maplibre can't.
 const containsAny = (field: string, values: string[]): Expr | null => {
     if (values.length === 0) return null;
+    const delimited: Expr = ['concat', ',', ['coalesce', ['get', field], ''], ','];
     const clauses: Expr[] = values.map(v =>
-        ['>=', ['index-of', v, ['coalesce', ['get', field], '']], 0],
+        ['>=', ['index-of', `,${v},`, delimited], 0],
     );
     return clauses.length === 1 ? clauses[0] : ['any', ...clauses];
 };
@@ -82,8 +86,16 @@ const fieldToMaplibre = (field: FilterFieldKind, state: FilterState): Expr | nul
     const v = state[field.field];
     if (!v) return null;
     switch (field.kind) {
-        case 'multiSelect':
-            return v.kind === 'multiSelect' ? inAnyOf(field.field, v.values) : null;
+        case 'multiSelect': {
+            if (v.kind !== 'multiSelect') return null;
+            if (field.relatedAsset) return null;
+            const primary = inAnyOf(field.field, v.values);
+            if (field.alternateField) {
+                const secondary = inAnyOf(field.alternateField, v.values);
+                return primary && secondary ? ['any', primary, secondary] : primary;
+            }
+            return primary;
+        }
         case 'containsAny':
             return v.kind === 'containsAny' ? containsAny(field.field, v.values) : null;
         case 'range': {
@@ -145,10 +157,17 @@ const fieldToPostgrestParts = (field: FilterFieldKind, state: FilterState): stri
     const v = state[field.field];
     if (!v) return [];
     switch (field.kind) {
-        case 'multiSelect':
-            if (v.kind !== 'multiSelect' || v.values.length === 0) return [];
-            return [`${field.field}=in.(${v.values.map(encodeInValue).join(',')})`];
+        case 'multiSelect': {
+            if (v.kind !== 'multiSelect' || v.values.length === 0 || field.relatedAsset) return [];
+            const inList = v.values.map(encodeInValue).join(',');
+            if (field.alternateField) {
+                return [`or=(${field.field}.in.(${inList}),${field.alternateField}.in.(${inList}))`];
+            }
+            return [`${field.field}=in.(${inList})`];
+        }
         case 'containsAny': {
+            // Still substring: PostgREST can't concat delimiters onto the column. Dormant —
+            // the only containsAny field takes the parquet branch. Fix before adding another.
             if (v.kind !== 'containsAny' || v.values.length === 0) return [];
             const clauses = v.values.map(val => `${field.field}.ilike.*${encodeLikeValue(val)}*`);
             return clauses.length === 1
@@ -196,13 +215,21 @@ const fieldToSqlParts = (field: FilterFieldKind, state: FilterState): string[] =
     if (!v) return [];
     const col = sqlIdent(field.field);
     switch (field.kind) {
-        case 'multiSelect':
-            if (v.kind !== 'multiSelect' || v.values.length === 0) return [];
-            return [`CAST(${col} AS VARCHAR) IN (${v.values.map(sqlLiteral).join(',')})`];
+        case 'multiSelect': {
+            if (v.kind !== 'multiSelect' || v.values.length === 0 || field.relatedAsset) return [];
+            const inList = v.values.map(sqlLiteral).join(',');
+            const primary = `CAST(${col} AS VARCHAR) IN (${inList})`;
+            if (field.alternateField) {
+                const altCol = sqlIdent(field.alternateField);
+                return [`(${primary} OR CAST(${altCol} AS VARCHAR) IN (${inList}))`];
+            }
+            return [primary];
+        }
         case 'containsAny': {
-            // Comma-delimited cells: match the same way the option list splits them.
+            // Split-and-compare, not LIKE: `%`/`_` in a value would act as wildcards.
             if (v.kind !== 'containsAny' || v.values.length === 0) return [];
-            const clauses = v.values.map(val => `${col} ILIKE ${sqlLiteral(`%${val}%`)}`);
+            const tokens = `list_transform(string_split(CAST(${col} AS VARCHAR), ','), x -> trim(x))`;
+            const clauses = v.values.map(val => `list_contains(${tokens}, ${sqlLiteral(val)})`);
             return [`(${clauses.join(' OR ')})`];
         }
         case 'range': {
@@ -214,8 +241,7 @@ const fieldToSqlParts = (field: FilterFieldKind, state: FilterState): string[] =
         }
         case 'boolean': {
             if (v.kind !== 'boolean' || v.value === 'all') return [];
-            const lit = v.value === 'yes' ? field.trueValue ?? 'True' : field.falseValue ?? 'False';
-            return [`CAST(${col} AS VARCHAR) = ${sqlLiteral(lit)}`];
+            return [`CAST(${col} AS BOOLEAN) = ${v.value === 'yes' ? 'TRUE' : 'FALSE'}`];
         }
     }
 };

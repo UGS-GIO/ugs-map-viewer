@@ -1,15 +1,17 @@
 import { createContext, useContext, useCallback, useMemo, type ReactNode } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
+import { z } from 'zod'
 import {
     DISPLACEMENT_LAYER_TYPES,
     CHARTED_TYPES,
     DEFAULT_EXCLUDED_DATA_QUALS,
+    LOW_DATA_QUALS,
     isChartedType,
     type ChartedType,
     type DisplacementLayerTitle,
     type DisplacementType,
 } from './displacement-layers'
-import { useDisplacementLatestYearByType, useDisplacementSldZeroBound } from './use-displacement-queries'
+import { useDisplacementDefaultThresholdForType, useDisplacementLatestYearByType, useDisplacementSldZeroBound } from './use-displacement-queries'
 
 // Re-export the type predicates + token sets so existing call sites keep
 // importing from this module — the canonical definitions now live in
@@ -55,6 +57,9 @@ interface DisplacementFilterState {
     removeBasin: (type: DisplacementType, location: string) => void
     clearBasins: (type: DisplacementType) => void
     toggleDataQual: (type: DisplacementType, qual: string) => void
+    /** Show/hide several data_qual categories at once (e.g. low + very-low as one
+     * "unconfirmed low quality" toggle). */
+    setDataQualsVisible: (type: DisplacementType, quals: readonly string[], visible: boolean) => void
     clearDataQuals: (type: DisplacementType) => void
 }
 
@@ -67,12 +72,15 @@ const DisplacementFilterContext = createContext<DisplacementFilterState | null>(
 // per-type `excludedQuals` entry means the high/medium default applies.
 const DISPLACEMENT_FILTER_KEY = 'Displacement Contours'
 
-interface DisplacementSearch {
-    years?: Record<string, string>
-    thresholds?: Record<string, number>
-    basins?: Record<string, string[]>
-    excludedQuals?: Record<string, string[]>
-}
+// Validated on read so a hand-edited entry can't throw (new Set(5)) or reach the cql as year=NaN.
+const displacementSearchSchema = z.object({
+    years: z.record(z.string(), z.string().regex(/^\d{4}$/)).optional(),
+    thresholds: z.record(z.string(), z.number().finite()).optional(),
+    basins: z.record(z.string(), z.array(z.string())).optional(),
+    excludedQuals: z.record(z.string(), z.array(z.string())).optional(),
+})
+
+type DisplacementSearch = z.infer<typeof displacementSearchSchema>
 
 const DEFAULT_EXCLUDED_SET = new Set<string>(DEFAULT_EXCLUDED_DATA_QUALS)
 const isDefaultQuals = (arr: readonly string[]): boolean =>
@@ -102,14 +110,16 @@ function pruneDisplacement(d: DisplacementSearch): DisplacementSearch | undefine
 // Parse the JSON-encoded displacement entry out of the `filters` record. Returns
 // undefined for a missing/blank/corrupt value so the provider falls back to
 // defaults instead of throwing on a hand-edited URL.
-function parseDisplacement(raw: string | undefined): DisplacementSearch | undefined {
+export function parseDisplacement(raw: string | undefined): DisplacementSearch | undefined {
     if (!raw) return undefined
     try {
-        const o = JSON.parse(raw)
-        return o && typeof o === 'object' && !Array.isArray(o) ? (o as DisplacementSearch) : undefined
-    } catch {
-        return undefined
+        const parsed = displacementSearchSchema.safeParse(JSON.parse(raw))
+        if (parsed.success) return parsed.data
+        console.warn('[displacement-filters] Ignoring invalid URL filter state:', parsed.error.issues)
+    } catch (err) {
+        console.warn('[displacement-filters] Ignoring unparseable URL filter state:', err)
     }
+    return undefined
 }
 
 export function DisplacementFilterProvider({ children }: { children: ReactNode }) {
@@ -199,6 +209,24 @@ export function DisplacementFilterProvider({ children }: { children: ReactNode }
         })
     }, [update])
 
+    // Show/hide a group of categories together (the low + very-low pair behind
+    // the single "unconfirmed low quality" toggle). visible=true un-excludes them,
+    // false excludes them; prunes back to the default key when they land there.
+    const setDataQualsVisible = useCallback((type: DisplacementType, quals: readonly string[], visible: boolean) => {
+        update(cur => {
+            const set = new Set(readExcluded(cur, type))
+            for (const q of quals) {
+                if (visible) set.delete(q)
+                else set.add(q)
+            }
+            const arr = [...set]
+            const excludedQuals = { ...cur.excludedQuals }
+            if (isDefaultQuals(arr)) delete excludedQuals[type]
+            else excludedQuals[type] = arr
+            return { ...cur, excludedQuals }
+        })
+    }, [update])
+
     // "Reset" returns to the high/medium default = drop the per-type key.
     const clearDataQuals = useCallback((type: DisplacementType) => {
         update(cur => {
@@ -238,7 +266,7 @@ export function DisplacementFilterProvider({ children }: { children: ReactNode }
     }, [update])
 
     return (
-        <DisplacementFilterContext.Provider value={{ yearOverridesByType, thresholdsIn, basinsByType, excludedDataQualsByType, setYearOverride, setThreshold, addBasin, removeBasin, clearBasins, toggleDataQual, clearDataQuals }}>
+        <DisplacementFilterContext.Provider value={{ yearOverridesByType, thresholdsIn, basinsByType, excludedDataQualsByType, setYearOverride, setThreshold, addBasin, removeBasin, clearBasins, toggleDataQual, setDataQualsVisible, clearDataQuals }}>
             {children}
         </DisplacementFilterContext.Provider>
     )
@@ -257,24 +285,28 @@ export function useDisplacementFilters(): DisplacementFilterState {
  */
 export function useEffectiveYear(type: DisplacementType): string | null {
     const { yearOverridesByType } = useDisplacementFilters()
-    const latestByType = useDisplacementLatestYearByType()
-    return yearOverridesByType[type] ?? latestByType[type] ?? null
+    const { byType } = useDisplacementLatestYearByType()
+    return yearOverridesByType[type] ?? byType[type] ?? null
 }
 
 /**
  * Resolve the effective threshold per charted type: the reviewer's override if
- * set, else the SLD's "Zero" deadband, else FALLBACK_THRESHOLD_IN while the SLD
- * loads. This single value drives the map cql, the stacked bar, AND the KPIs —
- * one honest knob, no visual-vs-audit split.
+ * set, else the per-type default — the smallest data-populated SLD edge, so the
+ * map, chart and dropdown agree and the map hides the deadband by default like
+ * the chart — else the SLD's "Zero" deadband, else FALLBACK_THRESHOLD_IN while
+ * things load. This single value drives the map cql, the stacked bar, AND the
+ * KPIs — one honest knob, no visual-vs-audit split.
  */
 export function useEffectiveThresholdsIn(): Record<ChartedType, number> {
     const { thresholdsIn } = useDisplacementFilters()
+    const cumulativeFloor = useDisplacementDefaultThresholdForType('Cumulative')
+    const yearlyFloor = useDisplacementDefaultThresholdForType('Yearly')
     const cumulativeSld = useDisplacementSldZeroBound('Cumulative')
     const yearlySld = useDisplacementSldZeroBound('Yearly')
     return useMemo(() => ({
-        'Cumulative': thresholdsIn['Cumulative'] ?? cumulativeSld ?? FALLBACK_THRESHOLD_IN['Cumulative'],
-        'Yearly': thresholdsIn['Yearly'] ?? yearlySld ?? FALLBACK_THRESHOLD_IN['Yearly'],
-    }), [thresholdsIn, cumulativeSld, yearlySld])
+        'Cumulative': thresholdsIn['Cumulative'] ?? cumulativeFloor ?? cumulativeSld ?? FALLBACK_THRESHOLD_IN['Cumulative'],
+        'Yearly': thresholdsIn['Yearly'] ?? yearlyFloor ?? yearlySld ?? FALLBACK_THRESHOLD_IN['Yearly'],
+    }), [thresholdsIn, cumulativeFloor, yearlyFloor, cumulativeSld, yearlySld])
 }
 
 /**
@@ -292,8 +324,11 @@ function quoteCqlLiteral(value: string): string {
 export function useDisplacementLayerFilters(): Record<string, string> {
     const { yearOverridesByType, basinsByType, excludedDataQualsByType } = useDisplacementFilters()
     const effective = useEffectiveThresholdsIn()
-    const latestByType = useDisplacementLatestYearByType()
+    const cumulativeSld = useDisplacementSldZeroBound('Cumulative')
+    const yearlySld = useDisplacementSldZeroBound('Yearly')
+    const { byType: latestByType, isPending: latestYearPending } = useDisplacementLatestYearByType()
     return useMemo(() => {
+        const zeroBoundByType: Record<ChartedType, number | null> = { 'Cumulative': cumulativeSld, 'Yearly': yearlySld }
         const out: Record<DisplacementLayerTitle, string> = {} as Record<DisplacementLayerTitle, string>
         for (const [title, typeValue] of Object.entries(DISPLACEMENT_LAYER_TYPES) as [DisplacementLayerTitle, DisplacementType][]) {
             const clauses: string[] = []
@@ -302,11 +337,27 @@ export function useDisplacementLayerFilters(): Record<string, string> {
                 // `year` is an int column holding the window's closing year, so an
                 // unquoted equality works for every type.
                 clauses.push(`year=${Number(effectiveYear)}`)
+            } else if (latestYearPending) {
+                // Still resolving: gate to a no-match clause so the layer stays blank
+                // rather than painting every year-window stacked (the first-load
+                // "overlap flash"); the real year replaces this once it lands. Only
+                // while pending — a persistent lookup failure falls through with no
+                // year clause (visible all-years) instead of a silent permanent blank.
+                out[title] = 'year = -1'
+                continue
             }
             if (isChartedType(typeValue)) {
                 const thresholdIn = effective[typeValue]
                 if (thresholdIn > 0) {
-                    clauses.push(`(value_inches >= ${thresholdIn} OR value_inches <= ${-thresholdIn})`)
+                    clauses.push(`(value_inches_min >= ${thresholdIn} OR value_inches_min <= ${-thresholdIn})`)
+                }
+                // Exclude the SLD "within uncertainty" deadband so the map matches
+                // the chart (which never plots deadband features) — including during
+                // the load window before the data-driven default tightens past the
+                // bound, otherwise the ±deadband contours flash in and back out.
+                const zeroBound = zeroBoundByType[typeValue]
+                if (zeroBound != null && zeroBound > 0) {
+                    clauses.push(`(value_inches_min > ${zeroBound} OR value_inches_min < ${-zeroBound})`)
                 }
             }
             const basins = basinsByType[typeValue]
@@ -316,14 +367,22 @@ export function useDisplacementLayerFilters(): Record<string, string> {
             }
             // Data-quality: exclude unchecked categories. Empty exclusion set =
             // no clause (all qualities shown). NOT IN keeps unknown future
-            // categories visible by default.
+            // categories visible by default. Exception (Tara's rule): a low/very-low
+            // contour that is independently confirmed is ALWAYS shown — the SLD
+            // hatches it — even when its quality is excluded; only the UNCONFIRMED
+            // low/very-low are dropped. Scoped to low/very-low so excluding
+            // high/medium still hides their confirmed members.
             const excludedQuals = excludedDataQualsByType[typeValue]
             if (excludedQuals && excludedQuals.size > 0) {
                 const list = Array.from(excludedQuals).map(quoteCqlLiteral).join(', ')
-                clauses.push(`data_qual NOT IN (${list})`)
+                // Build the confirmed-low override list from LOW_DATA_QUALS (single
+                // source of truth) rather than a hardcoded literal, so it stays in
+                // sync with the tiers the filter UI + SLD hatch key on.
+                const lowList = LOW_DATA_QUALS.map(quoteCqlLiteral).join(', ')
+                clauses.push(`(data_qual NOT IN (${list}) OR (independent_confirmation = true AND data_qual IN (${lowList})))`)
             }
             if (clauses.length > 0) out[title] = clauses.join(' AND ')
         }
         return out
-    }, [yearOverridesByType, latestByType, effective, basinsByType, excludedDataQualsByType])
+    }, [yearOverridesByType, latestByType, latestYearPending, effective, cumulativeSld, yearlySld, basinsByType, excludedDataQualsByType])
 }
