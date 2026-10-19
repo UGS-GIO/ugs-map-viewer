@@ -88,7 +88,8 @@ export class DualScaleControl implements maplibregl.IControl {
         // viewport rather than deriving it from zoom, which requires assuming a tile
         // size (MapLibre uses 512px, not the more commonly quoted 256px) and ignores
         // pitch and bearing.
-        return metersPerPixelAtCenter(this.map!, this.maxWidth);
+        if (!this.map) return 0;
+        return metersPerPixelAtCenter(this.map, this.maxWidth);
     }
 
     private getRoundScale(minDistance: number, maxDistance: number, unit: 'metric' | 'imperial'): { distance: number; label: string } {

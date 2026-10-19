@@ -148,6 +148,6 @@ export function maxReadingWithBasin(features: DisplacementFeature[]): { max: num
             basins.add(loc)
         }
     }
-    const where = basins.size === 1 ? [...basins][0] : basins.size > 1 ? `${basins.size} basins` : undefined
+    const where = basins.size === 1 ? basins.values().next().value : basins.size > 1 ? `${basins.size} basins` : undefined
     return { max, where }
 }
