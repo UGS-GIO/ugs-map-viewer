@@ -2,7 +2,16 @@ import { useMemo } from "react";
 import { useQuery, UseQueryResult } from "@tanstack/react-query";
 import { LayerProps } from "@/lib/types/mapping-types";
 import { resolveStacLayerTree } from "@/lib/map/stac/stac-layer";
+import { fetchReviewCatalogGroup } from "@/lib/map/stac/review-catalog-group";
 import { useGetCurrentPage } from "./use-get-current-page";
+
+// The /review-stac page's layers ARE the review STAC catalog (auto-discovered), not a static per-page
+// config. Same-origin behind IAP. Empty outside IAP (fetch fails) so the page just shows no layers.
+const REVIEW_STAC_PAGE = 'review-stac';
+const loadReviewStacLayers = async (): Promise<LayerProps[]> => {
+    const group = await fetchReviewCatalogGroup();
+    return group ? [group] : [];
+};
 
 export interface LayerOrderConfig {
     layerName: string;
@@ -138,6 +147,10 @@ const useGetLayerConfigs = (pageName?: string, layerOrderConfigs?: LayerOrderCon
     const query = useQuery({
         queryKey,
         queryFn: async (): Promise<LayerProps[] | null> => {
+            // /review-stac: layers come from the review STAC catalog, not a static page config.
+            if (pageName === REVIEW_STAC_PAGE || currentPage === REVIEW_STAC_PAGE) {
+                return loadReviewStacLayers();
+            }
             if (pageName) {
                 // Single config workflow
                 if (!currentPage) {

@@ -8,6 +8,38 @@ on:
       - develop
 
 jobs:
+  # Deploy the review app (same codebase, --mode review) to the live review/app/ subtree in the private
+  # review bucket, served behind review-serving's IAP. Develop only for now. Bucket upload, not a Cloud
+  # Run deploy — review-serving serves it. Parallel + separate checkout so it never clobbers the Firebase build.
+  deploy_review_app:
+    if: github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # WIF: mint the GitHub OIDC token to impersonate the deploy SA (keyless)
+    concurrency:
+      group: review-app-deploy
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build -- --mode review
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/328621131372/locations/global/workloadIdentityPools/github-actions/providers/github-actions-provider
+          service_account: review-app-deploy@ut-dnr-ugs-maps-prod.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy review app to bucket
+        run: |
+          gcloud storage rsync dist gs://ut-dnr-ugs-maps-prod-review/review/app \
+            --recursive --delete-unmatched-destination-objects --project ut-dnr-ugs-maps-prod
+          gcloud storage objects update gs://ut-dnr-ugs-maps-prod-review/review/app/index.html \
+            --cache-control="no-cache,max-age=0" --project ut-dnr-ugs-maps-prod
+
   build_deploy_release:
     # Permissions needed for semantic-release to push tags/releases
     permissions:

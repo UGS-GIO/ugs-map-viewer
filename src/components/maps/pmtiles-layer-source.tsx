@@ -255,6 +255,48 @@ export function buildPmtilesLayerSpecs({
     })
 }
 
+const FALLBACKS: Array<{ suffix: string; type: 'fill' | 'line' | 'circle'; paint: Record<string, unknown> }> = [
+    { suffix: 'fill', type: 'fill', paint: { 'fill-color': '#9ca3af', 'fill-opacity': 0.25 } },
+    { suffix: 'line', type: 'line', paint: { 'line-color': '#9ca3af', 'line-width': 1 } },
+    { suffix: 'circle', type: 'circle', paint: { 'circle-color': '#9ca3af', 'circle-radius': 3, 'circle-opacity': 0.6 } },
+]
+
+/**
+ * Features matching NO style rule draw nothing (the styles are per-rule, no catch-all). Render a
+ * neutral fallback for them so data that fell through symbology is still visible. Filter = none of the
+ * rule filters; if any rule is unfiltered (a real catch-all), everything is classified → skip. The
+ * fallback and the styled layers are mutually exclusive by construction, so z-order never matters.
+ */
+export function buildPmtilesUnclassifiedSpecs({
+    layer, fragment, layerFilter, hidden,
+}: {
+    layer: PMTilesLayerProps
+    fragment: StyleFragment
+    layerFilter?: maplibregl.FilterSpecification
+    hidden?: boolean
+}): LayerProps[] {
+    const sourceId = getPmtilesSourceId(layer)
+    const primaryId = getPmtilesLayerId(layer)
+    const styleLayers = (fragment.layers ?? []).filter(
+        l => l['source-layer'] == null || l['source-layer'] === layer.sourceLayer,
+    )
+    const ruleFilters = styleLayers.map(l => l.filter).filter(Boolean) as maplibregl.FilterSpecification[]
+    const hasCatchAll = styleLayers.some(l => !l.filter)
+    if (hasCatchAll || ruleFilters.length === 0) return []
+    const unclassified = ['!', ['any', ...ruleFilters]] as unknown as maplibregl.FilterSpecification
+    const filter = layerFilter ? (['all', unclassified, layerFilter] as unknown as maplibregl.FilterSpecification) : unclassified
+    return FALLBACKS.map(fb => ({
+        id: `${primaryId}-unclassified-${fb.suffix}`,
+        type: fb.type,
+        source: sourceId,
+        'source-layer': layer.sourceLayer,
+        layout: { visibility: hidden ? 'none' : 'visible' },
+        paint: fb.paint,
+        filter,
+        metadata: { title: layer.title, pmtilesLayer: true, pmtilesSourceId: sourceId, unclassified: true },
+    }) as LayerProps)
+}
+
 export function PMTilesLayerSource({
     layer, fragment, activeSymbology, beforeId, layerFilter, hidden, opacity,
 }: {
@@ -283,7 +325,10 @@ export function PMTilesLayerSource({
         )
     }, [render, mapRef, layer.title])
 
-    const specs = buildPmtilesLayerSpecs({ layer, fragment, layerFilter, hidden, opacity })
+    const specs = [
+        ...buildPmtilesLayerSpecs({ layer, fragment, layerFilter, hidden, opacity }),
+        ...buildPmtilesUnclassifiedSpecs({ layer, fragment, layerFilter, hidden }),
+    ]
 
     return (
         <Source id={sourceId} type="vector" url={url}>

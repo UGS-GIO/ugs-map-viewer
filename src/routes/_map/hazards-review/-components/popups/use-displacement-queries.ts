@@ -7,6 +7,7 @@ import { queryKeys } from '@/lib/query-keys'
 import { fetchWfsFeatures } from '@/lib/map/wfs-service'
 import { DATA_QUAL_ORDER, DISPLACEMENT_TYPE_NAME, getStyleNameForType, type ChartedType, type DisplacementType } from './displacement-layers'
 import { fetchDisplacementSldBins, getZeroBound, type SldBin } from './displacement-sld-legend'
+import { useDisplacementSource, sourceKey, fetchDisplacementFromParquet, fetchGlStyleBins, type DisplacementDataSource } from './displacement-data-source'
 
 export interface DisplacementProps {
     location: string
@@ -53,9 +54,11 @@ async function fetchAllDisplacement(): Promise<DisplacementFeature[]> {
 // needs displacement features goes through this — TanStack dedupes the network
 // hit across subscribers and lets `queryClient.prefetchQuery(...)` warm the
 // cache without coupling to a component.
-export const displacementFeaturesQueryOptions = () => queryOptions({
-    queryKey: queryKeys.hazards.displacementFeatures(),
-    queryFn: fetchAllDisplacement,
+export const displacementFeaturesQueryOptions = (source: DisplacementDataSource = { kind: 'wfs' }) => queryOptions({
+    queryKey: [...queryKeys.hazards.displacementFeatures(), sourceKey(source)],
+    queryFn: () => (source.kind === 'parquet' ? fetchDisplacementFromParquet(source.parquetUrl) : fetchAllDisplacement()),
+    // Parquet source: don't fire until the (async) signed URL resolves, or duckdb gets read_parquet('').
+    enabled: source.kind === 'parquet' ? !!source.parquetUrl : true,
     // 20k feature pull is expensive; treat as session-stable. gcTime keeps it
     // around long enough that a user toggling layers off+on doesn't refetch.
     staleTime: 10 * 60 * 1000,
@@ -101,32 +104,39 @@ export const displacementLatestYearsQueryOptions = () => queryOptions({
     refetchOnWindowFocus: false,
 })
 
-export const displacementSldBinsQueryOptions = (styleName: string) => queryOptions({
-    queryKey: queryKeys.hazards.displacementSldBins(styleName),
-    queryFn: () => fetchDisplacementSldBins(styleName),
+export const displacementSldBinsQueryOptions = (styleName: string, source: DisplacementDataSource = { kind: 'wfs' }) => queryOptions({
+    queryKey: [...queryKeys.hazards.displacementSldBins(styleName), sourceKey(source)],
+    // Review (parquet) source must NOT touch GeoServer SLD: bins (chart breaks + colors) are parsed from
+    // the review GL style instead, so they match exactly what the map draws. WFS keeps the SLD fetch.
+    queryFn: () =>
+        source.kind === 'parquet'
+            ? fetchGlStyleBins(source.glStyleUrlByStyle?.[styleName])
+            : fetchDisplacementSldBins(styleName),
     staleTime: 60 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
     refetchOnWindowFocus: false,
-    enabled: !!styleName,
+    // Parquet: wait for the catalog-resolved style URL, else we'd cache an empty bin set (blank charts).
+    enabled: source.kind === 'parquet' ? !!source.glStyleUrlByStyle?.[styleName] : !!styleName,
 })
 
 export function useDisplacementFeatures() {
-    return useQuery(displacementFeaturesQueryOptions())
+    return useQuery(displacementFeaturesQueryOptions(useDisplacementSource()))
 }
 
 // Per-type slicing pushed through `select` so React Query memoizes the filtered
 // array by callback identity — components reading only one type don't re-render
 // when an unrelated type's features change shape.
 export function useDisplacementFeaturesByType(type: DisplacementType) {
+    const source = useDisplacementSource()
     const select = useCallback(
         (features: DisplacementFeature[]) => features.filter(f => f.properties.type === type),
         [type],
     )
-    return useQuery({ ...displacementFeaturesQueryOptions(), select })
+    return useQuery({ ...displacementFeaturesQueryOptions(source), select })
 }
 
 export function useDisplacementSldBins(styleName: string) {
-    return useQuery(displacementSldBinsQueryOptions(styleName))
+    return useQuery(displacementSldBinsQueryOptions(styleName, useDisplacementSource()))
 }
 
 // Resolve the SLD "Zero" deadband for a charted type. Returns null when bins
@@ -138,7 +148,7 @@ export function useDisplacementSldZeroBound(type: ChartedType): number | null {
         [],
     )
     const { data = null } = useQuery({
-        ...displacementSldBinsQueryOptions(styleName),
+        ...displacementSldBinsQueryOptions(styleName, useDisplacementSource()),
         select,
     })
     return data
@@ -162,7 +172,7 @@ function useDistinctByType(
         }
         return Array.from(set).sort(sort)
     }, [type, extract, sort])
-    const { data = [] } = useQuery({ ...displacementFeaturesQueryOptions(), select })
+    const { data = [] } = useQuery({ ...displacementFeaturesQueryOptions(useDisplacementSource()), select })
     return data
 }
 
@@ -216,7 +226,7 @@ export function useDisplacementBasinYearIndexForType(type: DisplacementType): Di
         }
         return { yearsByBasin, basinsByYear }
     }, [type])
-    const { data = EMPTY_INDEX } = useQuery({ ...displacementFeaturesQueryOptions(), select })
+    const { data = EMPTY_INDEX } = useQuery({ ...displacementFeaturesQueryOptions(useDisplacementSource()), select })
     return data
 }
 
@@ -239,7 +249,7 @@ export function useDisplacementValueMagnitudesForType(type: DisplacementType): n
         }
         return Array.from(set).sort((a, b) => a - b)
     }, [type])
-    const { data = [] } = useQuery({ ...displacementFeaturesQueryOptions(), select })
+    const { data = [] } = useQuery({ ...displacementFeaturesQueryOptions(useDisplacementSource()), select })
     return data
 }
 
@@ -302,7 +312,7 @@ export function useDisplacementHasQualityFields(): DisplacementQualityCaps {
         }
         return { dataQual }
     }, [])
-    const { data } = useQuery({ ...displacementFeaturesQueryOptions(), select })
+    const { data } = useQuery({ ...displacementFeaturesQueryOptions(useDisplacementSource()), select })
     return data ?? { dataQual: false }
 }
 
@@ -340,11 +350,18 @@ const NO_LATEST_YEARS: Readonly<Record<DisplacementType, string | null>> = {
 // Latest year per type, from the cheap dedicated lookup (not the 20k-feature bulk
 // pull) so the map's year clause resolves fast and doesn't wait on chart data.
 export function useDisplacementLatestYearByType(): { byType: Readonly<Record<DisplacementType, string | null>>; isPending: boolean } {
-    const cheap = useQuery(displacementLatestYearsQueryOptions())
+    const source = useDisplacementSource()
+    // The cheap lookup is a GeoServer WFS call; the review (parquet) source has no GeoServer, so it reads the bulk pull.
+    const isParquet = source.kind === 'parquet'
+    const cheap = useQuery({ ...displacementLatestYearsQueryOptions(), enabled: !isParquet })
     // Fallback source only if the cheap lookup errors — `enabled` keeps the 20k
     // bulk pull off the happy path.
-    const bulk = useQuery({ ...displacementFeaturesQueryOptions(), select: selectLatestYearsFromFeatures, enabled: cheap.isError })
+    const bulk = useQuery({
+        ...displacementFeaturesQueryOptions(source),
+        select: selectLatestYearsFromFeatures,
+        enabled: isParquet ? !!source.parquetUrl : cheap.isError,
+    })
     const byType = cheap.data ?? bulk.data ?? NO_LATEST_YEARS
-    const isPending = isLatestYearLookupPending(cheap, bulk)
+    const isPending = isParquet ? !bulk.data && !bulk.isError : isLatestYearLookupPending(cheap, bulk)
     return { byType, isPending }
 }
