@@ -88,6 +88,9 @@ export function getBasemapUrl(id: string): string {
   return style.url;
 }
 
+// Underlay alone below this zoom, Utah tiles alone at or above it.
+const UNDERLAY_SWAP_ZOOM = 8;
+
 const isRasterUrl = (url: string) => url.includes('{z}') && url.includes('{x}') && url.includes('{y}');
 
 function rasterSource(url: string): RasterSourceSpecification {
@@ -118,8 +121,12 @@ export function buildBasemapStyle(style: BasemapStyle): string | StyleSpecificat
       'raster-tiles': rasterSource(style.url),
     },
     layers: [
-      ...(underlayUrl ? [{ id: 'underlay-layer', type: 'raster' as const, source: 'underlay-tiles' }] : []),
-      { id: 'raster-layer', type: 'raster', source: 'raster-tiles' },
+      ...(underlayUrl
+        ? [
+            { id: 'underlay-layer', type: 'raster' as const, source: 'underlay-tiles', maxzoom: UNDERLAY_SWAP_ZOOM },
+            { id: 'raster-layer', type: 'raster' as const, source: 'raster-tiles', minzoom: UNDERLAY_SWAP_ZOOM },
+          ]
+        : [{ id: 'raster-layer', type: 'raster' as const, source: 'raster-tiles' }]),
     ],
   };
 }

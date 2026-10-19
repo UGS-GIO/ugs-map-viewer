@@ -75,6 +75,13 @@ describe('buildBasemapStyle', () => {
         expect(layerIds('hybrid')).toEqual(['underlay-layer', 'raster-layer'])
     })
 
+    it('swaps underlay for the Utah raster at one zoom so only one draws', () => {
+        const style = buildBasemapStyle(byId('utah-satellite'))
+        if (typeof style === 'string') throw new Error('expected raster style')
+        const [underlay, raster] = style.layers
+        expect(underlay.maxzoom).toBe(raster.minzoom)
+    })
+
     it('adds no underlay to rasters that are opaque outside Utah', () => {
         expect(layerIds('lite')).toEqual(['raster-layer'])
         expect(layerIds('terrain')).toEqual(['raster-layer'])
