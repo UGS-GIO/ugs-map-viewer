@@ -29,6 +29,7 @@ const numericFormatters: Record<string, (n: number) => string> = {
   number: (n) => n.toLocaleString('en-US'),
   currency: (n) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
   percent: (n) => n.toLocaleString('en-US', { style: 'percent', minimumFractionDigits: 1 }),
+  oneDecimal: (n) => n.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }),
 };
 
 /** Round to N significant figures and stringify without scientific notation (1234 → "1,230", 12.34 → "12.3"). */
@@ -69,3 +70,7 @@ export function isSafeHref(href: string): boolean {
     return false;
   }
 }
+
+/** True if `v` is a string and a valid absolute URL with http: or https: protocol. */
+export const isHttpUrl = (v: unknown): v is string =>
+  typeof v === 'string' && URL.canParse(v.trim()) && ['http:', 'https:'].includes(new URL(v.trim()).protocol);

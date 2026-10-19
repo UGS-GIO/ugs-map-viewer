@@ -19,7 +19,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BackToMenuButton } from '@/components/ui/back-to-menu-button';
 import { useMap } from '@/hooks/use-map';
 import { wellWithTopsWMSTitle } from '../../../-data/layers/layers';
 import { Badge } from '@/components/ui/badge';
@@ -283,7 +282,6 @@ const MapConfigurations = () => {
 
     return (
         <>
-            <BackToMenuButton />
             <div className='space-y-4 p-4 max-h-full overflow-y-auto'>
                 <div className="mb-4">
                     <h2 className="text-lg font-medium">Map Configurations</h2>

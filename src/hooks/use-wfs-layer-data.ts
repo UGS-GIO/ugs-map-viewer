@@ -3,6 +3,7 @@ import { useQueries } from '@tanstack/react-query'
 import type { FeatureCollection, Geometry } from 'geojson'
 import type { WFSLayerProps } from '@/lib/types/mapping-types'
 import { queryKeys } from '@/lib/query-keys'
+import { fetchWfsFeatures } from '@/lib/map/wfs-service'
 import type maplibregl from 'maplibre-gl'
 
 /** Feature returned from client-side WFS layer queries */
@@ -13,25 +14,8 @@ export interface WfsLayerFeature {
   layerTitle: string
 }
 
-/**
- * Fetch GeoJSON data from a WFS GetFeature request
- */
-async function fetchWfsGeoJson(layer: WFSLayerProps): Promise<FeatureCollection<Geometry>> {
-  const params = new URLSearchParams({
-    service: 'WFS',
-    version: '2.0.0',
-    request: 'GetFeature',
-    typeNames: layer.typeName,
-    outputFormat: 'application/json',
-    srsName: layer.crs || 'EPSG:4326',
-  })
-  const url = `${layer.wfsUrl}?${params.toString()}`
-
-  const response = await fetch(url)
-  if (!response.ok) {
-    throw new Error(`WFS request failed: ${response.status} ${response.statusText}`)
-  }
-  return response.json()
+function fetchWfsGeoJson(layer: WFSLayerProps): Promise<FeatureCollection<Geometry>> {
+  return fetchWfsFeatures(layer.wfsUrl, layer.typeName, { crs: layer.crs })
 }
 
 /**

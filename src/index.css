@@ -33,6 +33,7 @@
     --link: 215 49% 50%; /* UDS blue #4277be: 4.6:1 on white (WCAG AA accessible) */
     --radius: 0.375rem; /* rounded-md lands on 4px, matching the cards */
     --header-height: 3.5rem;
+    --chart-1: 32 71% 23%;
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 0 0% 20%;
     --sidebar-primary: 215 49% 50%;
@@ -69,6 +70,7 @@
     --input: 0 0% 28%;
     --ring: 20 73% 59%;
     --link: 20 73% 59%; /* Creamsicle orange #e37d49: 5.75:1 on dark */
+    --chart-1: 20 73% 59%;
     color-scheme: dark; /* changing the scrollbar color */
     --sidebar-background: 0 0% 14%;
     --sidebar-foreground: 0 0% 96%;
@@ -304,4 +306,46 @@ body > #root {
     var(--legend-canvas) 0% 50%
   );
   background-size: 8px 8px;
+}
+
+/* Phones (matches PHONE_QUERY in hooks/use-mobile.tsx). */
+@media (max-width: 767px), (pointer: coarse) and (max-height: 500px) {
+  /* Text fields at 16px, below which iOS zooms the page when one takes focus. Global, so popovers
+     rendered outside the sheet are covered too. !important because utility classes (text-sm,
+     md:text-sm) would otherwise win and iOS would zoom on focus. */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+  /* The map's loading spinner shows in the part of the map the sheet leaves visible. */
+  .phone-map [data-loading-overlay] {
+    align-items: flex-start;
+    padding-top: 10vh;
+  }
+  /* No pull-to-refresh or rubber-banding when a swipe lands on the app bar or tab bar. */
+  html,
+  body {
+    overscroll-behavior: none;
+  }
+  /* MapLibre's bottom controls (locate-me, attribution) ride just above the sheet, and hide
+     behind it at full height. Heights match SNAP_POINTS in phone-sheet.tsx. */
+  .phone-map .maplibregl-ctrl-bottom-left,
+  .phone-map .maplibregl-ctrl-bottom-right {
+    bottom: 4.5rem;
+    transition: bottom 300ms ease-out, opacity 300ms ease-out;
+  }
+  .phone-map[data-sheet="half"] .maplibregl-ctrl-bottom-left,
+  .phone-map[data-sheet="half"] .maplibregl-ctrl-bottom-right {
+    bottom: 55%;
+  }
+  .phone-map[data-sheet="full"] .maplibregl-ctrl-bottom-left,
+  .phone-map[data-sheet="full"] .maplibregl-ctrl-bottom-right {
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* Preview builds render the router devtools toggle bottom-left, over the Layers tab. */
+  button[aria-label="Open TanStack Router Devtools"] {
+    display: none;
+  }
 }

@@ -62,9 +62,23 @@ export const formatDate = (value: unknown, format: DatePopupFieldConfig['format'
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     case 'long':
       return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    case 'monthYear':
+      // MM-YYYY, read in UTC. The InSAR period dates arrive as UTC-midnight
+      // instants (e.g. 2023-10-01T00:00:00Z); using local time would slip a
+      // first-of-month reading back into the prior month west of UTC.
+      return `${String(date.getUTCMonth() + 1).padStart(2, '0')}-${date.getUTCFullYear()}`
     default:
       return date.toISOString().slice(0, 10)
   }
+}
+
+/**
+ * Capitalize only the first character of a string, leaving the rest as-is
+ * (so "very low" -> "Very low", not "Very Low"). Passes through empty/null.
+ */
+export const capitalizeFirst = (value: string | null): string | null => {
+  if (value === null || value === '') return value
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }
 
 /**

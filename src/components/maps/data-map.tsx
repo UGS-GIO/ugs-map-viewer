@@ -1,7 +1,8 @@
 import { useRef, useMemo, useCallback, useState, useEffect } from 'react'
 import { useWfsLayerData, getWfsSourceId, queryWfsLayersInScreenBbox, queryWfsLayersAtPoint, type WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
-import Map, { NavigationControl, Source, Layer, Marker, MapLayerMouseEvent } from 'react-map-gl/maplibre'
+import Map, { AttributionControl, NavigationControl, Source, Layer, Marker, MapLayerMouseEvent } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
+import { useIsMobile } from '@/hooks/use-mobile'
 import 'maplibre-gl/dist/maplibre-gl.css'
 
 import {
@@ -278,6 +279,7 @@ export default function DataMap({
   hasResults = false,
 }: DataMapProps) {
   const mapRef = useRef<MapRef>(null)
+  const isMobile = useIsMobile()
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Track current zoom via ref (avoids full DataMap re-render on every moveend)
@@ -740,9 +742,12 @@ export default function DataMap({
         onClick={boxSelectMode ? undefined : handleMapClick}
         cursor={activeDrawShape !== 'off' ? 'crosshair' : boxSelectMode ? 'move' : onFeatureClick ? (isAdditiveMode ? 'copy' : 'pointer') : 'grab'}
         boxZoom={false}
+        attributionControl={false}
         onLoad={handleLoad}
       >
         <NavigationControl position="top-left" />
+        {/* Phones keep bottom-right for locate-me, in thumb reach, as Google Maps does. */}
+        <AttributionControl compact={isMobile || undefined} position={isMobile ? 'bottom-left' : 'bottom-right'} />
 
         {/* View mode control - rendered before MapToolsControl so it stacks above */}
         {viewMode && onViewModeChange && (
@@ -779,7 +784,7 @@ export default function DataMap({
           const beforeId = i > 0 ? getLayerId(renderableEntries[i - 1].layer) : undefined
           if (isWMSLayer(layer)) {
             const cqlFilter = layerFilters[layer.title]
-            const styleName = layerStyles[layer.title]
+            const styleName = layerStyles[layer.title] ?? layer.styleName
             return (
               <WmsLayerSource
                 key={`${layer.title}-${cqlFilter ?? ''}-${styleName ?? ''}`}

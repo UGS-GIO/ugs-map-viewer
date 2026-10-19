@@ -33,7 +33,7 @@ interface LoadingOverlayProps {
  */
 export function LoadingOverlay({ className, size = 'md', backdrop = true }: LoadingOverlayProps) {
     return (
-        <div className={cn(
+        <div data-loading-overlay className={cn(
             'absolute inset-0 flex items-center justify-center z-10',
             backdrop && 'bg-background/50',
             className
