@@ -1,9 +1,10 @@
 import { useMemo, useState, useId } from 'react'
-import { XIcon, ChevronDown, ChevronRight } from 'lucide-react'
+import { XIcon, ChevronDown, ChevronRight, Info } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import { HatchSwatch } from './displacement-chart-hover'
@@ -33,6 +34,33 @@ function isDefaultDataQuals(excluded: ReadonlySet<string>): boolean {
 // 'Period End Year' for Cumulative + Vertical Displacement Rate.
 function yearLabelFor(type: DisplacementType): string {
     return type === 'Yearly' ? 'Water Year' : 'Period End Year'
+}
+
+// Tap/click (not hover) so it works on touch; Radix handles focus, Escape and outside taps.
+function TemporalCoherenceInfo() {
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground"
+                    aria-label="What is temporal coherence?"
+                >
+                    <Info className="h-3.5 w-3.5" aria-hidden="true" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" className="w-72 max-w-[calc(100vw-2rem)] p-3 text-xs leading-relaxed">
+                <p className="mb-1 font-semibold">Temporal coherence</p>
+                <p>
+                    Temporal coherence ranges from 0 to 1 and reflects measurement reliability; values close to 1 are
+                    more reliable. Temporal coherence drops if the ground surface changes between satellite passes due
+                    to seasonal snow, farming, vegetation changes, construction, wildfires, and soil moisture change,
+                    among other processes.
+                </p>
+            </PopoverContent>
+        </Popover>
+    )
 }
 
 export function renderDisplacementLayerFilters(layerTitle: string): React.ReactNode {
@@ -240,7 +268,10 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                             {dataQuals.length > 0 && (
                                 <div className="flex flex-col gap-1">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-xs">Data quality</Label>
+                                        <div className="flex items-center gap-0.5">
+                                            <Label className="text-xs">Data quality</Label>
+                                            <TemporalCoherenceInfo />
+                                        </div>
                                         {dataQualsDirty && (
                                             <Button
                                                 variant="ghost"
