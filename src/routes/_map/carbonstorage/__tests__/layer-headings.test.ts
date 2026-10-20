@@ -1,30 +1,27 @@
 import { describe, it, expect } from 'vitest'
-import type { LayerProps, GroupLayerProps } from '@/lib/types/mapping-types'
+import type { GroupLayerProps } from '@/lib/types/mapping-types'
+import { isGroupLayer } from '@/lib/map/layer-utils'
 import layersConfig from '../-data/layers/layers'
-
-function isGroupLayer(layer: LayerProps): layer is GroupLayerProps {
-  return layer.type === 'group'
-}
 
 describe('Carbon Storage layer headings and reorganization (ALL-6187)', () => {
   const ccsGroup = layersConfig.find(
-    (l) => isGroupLayer(l) && l.title === 'Carbon Storage Resources'
-  ) as GroupLayerProps | undefined
+    (l): l is GroupLayerProps => isGroupLayer(l) && l.title === 'Carbon Storage Resources'
+  )
 
   const infraGroup = layersConfig.find(
-    (l) => isGroupLayer(l) && l.title === 'Infrastructure and Land Use'
-  ) as GroupLayerProps | undefined
+    (l): l is GroupLayerProps => isGroupLayer(l) && l.title === 'Infrastructure and Land Use'
+  )
 
   it('contains Carbon Storage Resources and Infrastructure groups', () => {
     expect(ccsGroup).toBeDefined()
     expect(infraGroup).toBeDefined()
   })
 
-  it('groups Carbon Storage Resources under Statewide and Regional section headings', () => {
+  it('groups Carbon Storage Resources under Statewide, Regional, and Site-Specific section headings', () => {
     const ccsLayers = ccsGroup?.layers ?? []
-    expect(ccsLayers).toHaveLength(5)
+    expect(ccsLayers).toHaveLength(6)
 
-    // Statewide section (first 3 layers)
+    // Statewide section (first 4 layers, SITLA at bottom)
     expect(ccsLayers[0].title).toBe('Statewide Storage Resource Estimates')
     expect(ccsLayers[0].sectionHeading).toBe('Statewide')
 
@@ -34,18 +31,21 @@ describe('Carbon Storage layer headings and reorganization (ALL-6187)', () => {
     expect(ccsLayers[2].title).toBe('NATCARB Atlas (2015)')
     expect(ccsLayers[2].sectionHeading).toBe('Statewide')
 
-    // Regional section
-    expect(ccsLayers[3].title).toBe('CCUS Projects')
-    expect(ccsLayers[3].sectionHeading).toBe('Regional')
+    expect(ccsLayers[3].title).toBe('CO₂ Storage Potential on SITLA Blocks')
+    expect(ccsLayers[3].sectionHeading).toBe('Statewide')
 
-    // Remaining layer with no section heading
-    expect(ccsLayers[4].title).toBe('CO₂ Storage Potential on SITLA Blocks')
-    expect(ccsLayers[4].sectionHeading).toBeUndefined()
+    // Regional section
+    expect(ccsLayers[4].title).toBe('Past and Ongoing Projects - Regional')
+    expect(ccsLayers[4].sectionHeading).toBe('Regional')
+
+    // Site-Specific section
+    expect(ccsLayers[5].title).toBe('Past and Ongoing Projects - Site-Specific')
+    expect(ccsLayers[5].sectionHeading).toBe('Site-Specific')
   })
 
   it('moves CO2 sources and CCS exclusion areas to Infrastructure as top sublayers', () => {
     const infraLayers = infraGroup?.layers ?? []
-    expect(infraLayers.length).toBeGreaterThanOrEqual(2)
+    expect(infraLayers.length).toBeGreaterThanOrEqual(3)
 
     // Top sublayer
     expect(infraLayers[0].title).toBe('CO₂ Sources')

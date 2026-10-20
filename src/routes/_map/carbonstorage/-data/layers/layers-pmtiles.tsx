@@ -185,6 +185,7 @@ const sitlaReportsConfig: PMTilesLayerProps = {
     styleUrl: CARBONSTORAGE_STYLE_URL,
     sourceLayer: sitlaReportsLayerName,
     title: sitlaReportsTitle,
+    sectionHeading: 'Statewide',
     visible: false,
     opacity: 0.75,
     sublayers: [

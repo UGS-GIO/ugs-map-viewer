@@ -67,6 +67,29 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
     );
 }
 
+const isNewSection = (current?: LayerProps, previous?: LayerProps): boolean =>
+    Boolean(current?.sectionHeading && current.sectionHeading !== previous?.sectionHeading);
+
+const SectionHeading = ({
+    heading,
+    isTopLevel = false,
+}: {
+    heading: string;
+    isTopLevel?: boolean;
+}) => {
+    const HeadingTag = isTopLevel ? 'h2' : 'h3';
+    return (
+        <div
+            className={`${isTopLevel ? 'mr-2 mt-4' : 'ml-4 mr-2 mt-3'} mb-1 px-2 border-b border-border/50 pb-1`}
+            data-section-heading={heading}
+        >
+            <HeadingTag className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {heading}
+            </HeadingTag>
+        </div>
+    );
+};
+
 const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFilters, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender, embedded }: LayerAccordionItemProps) => {
     const {
         isSelected,
@@ -449,21 +472,11 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                             </div>
                             {childLayers.map((child, index) => {
                                 const prevChild = index > 0 ? childLayers[index - 1] : undefined;
-                                const isNewSection = Boolean(
-                                    child.sectionHeading && child.sectionHeading !== prevChild?.sectionHeading
-                                );
 
                                 return (
                                     <Fragment key={child.title || index}>
-                                        {isNewSection && (
-                                            <div
-                                                className="ml-4 mr-2 mt-3 mb-1 px-2 border-b border-border/50 pb-1"
-                                                data-section-heading={child.sectionHeading}
-                                            >
-                                                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                                    {child.sectionHeading}
-                                                </h4>
-                                            </div>
+                                        {isNewSection(child, prevChild) && (
+                                            <SectionHeading heading={child.sectionHeading!} isTopLevel={false} />
                                         )}
                                         <div className="ml-4">
                                             <LayerAccordionItem
@@ -610,21 +623,11 @@ export const useCustomLayerList = ({ config, disableExport, hasLayerFilters, gro
         if (!config) return [];
         return [...config].map((layer, index) => {
             const prevLayer = index > 0 ? config[index - 1] : undefined;
-            const isNewSection = Boolean(
-                layer.sectionHeading && layer.sectionHeading !== prevLayer?.sectionHeading
-            );
 
             return (
                 <Fragment key={layer.title || index}>
-                    {isNewSection && (
-                        <div
-                            className="mr-2 mt-4 mb-1 px-2 border-b border-border/50 pb-1"
-                            data-section-heading={layer.sectionHeading}
-                        >
-                            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                {layer.sectionHeading}
-                            </h3>
-                        </div>
+                    {isNewSection(layer, prevLayer) && (
+                        <SectionHeading heading={layer.sectionHeading!} isTopLevel={true} />
                     )}
                     <LayerAccordionItem
                         layerConfig={layer}
