@@ -64,15 +64,15 @@ export const BASEMAP_STYLES: BasemapStyle[] = [
   // Dropdown basemaps (long) - Utah-specific UGRC maps
   {
     id: 'hybrid',
-    title: 'Utah Hybrid',
+    title: 'Hybrid',
     underlay: 'sentinel',
     url: `${UGRC_BASE_URL}/tiles/hybrid_basemap/{z}/{x}/{y}`,
     attribution: UGRC_ATTRIBUTION,
     type: 'long',
   },
   {
-    id: 'utah-satellite',
-    title: 'Utah Satellite',
+    id: 'satellite',
+    title: 'Satellite',
     underlay: 'sentinel',
     url: `${UGRC_BASE_URL}/tiles/utah/{z}/{x}/{y}`,
     attribution: UGRC_ATTRIBUTION,
@@ -150,8 +150,8 @@ const STANDARD_SHORT = ['liberty', 'sentinel', 'lite', 'terrain'];
 
 /** Hazards reads landforms off UGRC's current statewide imagery; Sentinel-2's 2020 mosaic is too coarse for it. */
 const HAZARDS_BASEMAPS: AppBasemapConfig = {
-  default: 'utah-satellite',
-  short: ['liberty', 'utah-satellite', 'lite', 'terrain'],
+  default: 'satellite',
+  short: ['liberty', 'satellite', 'lite', 'terrain'],
   hide: ['sentinel'],
 };
 
