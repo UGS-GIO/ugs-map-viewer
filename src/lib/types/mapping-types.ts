@@ -1,4 +1,5 @@
 import { FeatureCollection, GeoJsonProperties } from "geojson"
+import type { FilterSpecification } from "maplibre-gl"
 
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -249,6 +250,11 @@ export interface PMTilesLayerProps extends BaseLayerProps {
     defaultRenderId?: string;
     /** Source layer name within the PMTiles file */
     sourceLayer: string;
+    /**
+     * Static feature filter ANDed onto every render, so one PMTiles source can back
+     * several layers. Lives on the config, not the style, so STAC renders can't drop it.
+     */
+    featureFilter?: FilterSpecification;
     /** Optional sublayer config for popups/queries */
     sublayers?: ExtendedSublayerProperties[];
 }

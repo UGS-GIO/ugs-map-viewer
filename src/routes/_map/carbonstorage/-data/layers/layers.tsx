@@ -717,7 +717,6 @@ const pastProjectsRegionalStyle = `data:application/json;charset=utf-8,${encodeU
             id: 'enmin_ccs_pastprojects_regional-fill',
             type: 'fill',
             'source-layer': 'enmin_ccs_pastprojects',
-            filter: ['==', 'projectscale', 'Regional'],
             paint: {
                 'fill-color': '#a80000',
                 'fill-opacity': 0.1,
@@ -727,7 +726,6 @@ const pastProjectsRegionalStyle = `data:application/json;charset=utf-8,${encodeU
             id: 'enmin_ccs_pastprojects_regional-line',
             type: 'line',
             'source-layer': 'enmin_ccs_pastprojects',
-            filter: ['==', 'projectscale', 'Regional'],
             paint: {
                 'line-color': '#a80000',
                 'line-width': 2.5,
@@ -742,7 +740,6 @@ const pastProjectsSiteSpecificStyle = `data:application/json;charset=utf-8,${enc
             id: 'enmin_ccs_pastprojects_sitespecific-fill',
             type: 'fill',
             'source-layer': 'enmin_ccs_pastprojects',
-            filter: ['any', ['==', 'projectscale', 'Site Specific'], ['==', 'projectscale', 'SiteSpecific']],
             paint: {
                 'fill-color': '#a80000',
                 'fill-opacity': 0.15,
@@ -752,7 +749,6 @@ const pastProjectsSiteSpecificStyle = `data:application/json;charset=utf-8,${enc
             id: 'enmin_ccs_pastprojects_sitespecific-line',
             type: 'line',
             'source-layer': 'enmin_ccs_pastprojects',
-            filter: ['any', ['==', 'projectscale', 'Site Specific'], ['==', 'projectscale', 'SiteSpecific']],
             paint: {
                 'line-color': '#a80000',
                 'line-width': 2.5,
@@ -768,6 +764,7 @@ export const pastProjectsRegionalConfig: PMTilesLayerProps = {
     sourceLayer: pastProjectsLayerName,
     title: pastProjectsRegionalTitle,
     sectionHeading: 'Regional',
+    featureFilter: ['==', ['get', 'projectscale'], 'Regional'],
     visible: true,
     opacity: 1,
     downloadParquetUrl: parquetUrl('enmin_ccs_pastprojects'),
@@ -820,6 +817,7 @@ export const pastProjectsSiteSpecificConfig: PMTilesLayerProps = {
     sourceLayer: pastProjectsLayerName,
     title: pastProjectsSiteSpecificTitle,
     sectionHeading: 'Site-Specific',
+    featureFilter: ['in', ['get', 'projectscale'], ['literal', ['Site Specific', 'SiteSpecific']]],
     visible: true,
     opacity: 1,
     downloadParquetUrl: parquetUrl('enmin_ccs_pastprojects'),
