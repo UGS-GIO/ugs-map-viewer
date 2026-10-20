@@ -705,163 +705,105 @@ const ccsExclusionAreasWMSConfig: WMSLayerProps = {
 };
 
 
-// Past and Ongoing Projects (Regional and Site-Specific) — STAC-driven PMTiles:
-// item `enmin_ccs_pastprojects`.
+// Past and Ongoing Projects — STAC-driven PMTiles item `enmin_ccs_pastprojects`,
+// one layer per `projectscale` value.
 const pastProjectsLayerName = 'enmin_ccs_pastprojects';
+export const pastProjectsStatewideTitle = 'Past and Ongoing Projects - Statewide';
 export const pastProjectsRegionalTitle = 'Past and Ongoing Projects - Regional';
 export const pastProjectsSiteSpecificTitle = 'Past and Ongoing Projects - Site-Specific';
 
-const pastProjectsRegionalStyle = `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify({
-    layers: [
-        {
-            id: 'enmin_ccs_pastprojects_regional-fill',
-            type: 'fill',
-            'source-layer': 'enmin_ccs_pastprojects',
-            paint: {
-                'fill-color': '#a80000',
-                'fill-opacity': 0.1,
-            },
-        },
-        {
-            id: 'enmin_ccs_pastprojects_regional-line',
-            type: 'line',
-            'source-layer': 'enmin_ccs_pastprojects',
-            paint: {
-                'line-color': '#a80000',
-                'line-width': 2.5,
-            },
-        },
-    ],
-}))}`;
-
-const pastProjectsSiteSpecificStyle = `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify({
-    layers: [
-        {
-            id: 'enmin_ccs_pastprojects_sitespecific-fill',
-            type: 'fill',
-            'source-layer': 'enmin_ccs_pastprojects',
-            paint: {
-                'fill-color': '#a80000',
-                'fill-opacity': 0.15,
-            },
-        },
-        {
-            id: 'enmin_ccs_pastprojects_sitespecific-line',
-            type: 'line',
-            'source-layer': 'enmin_ccs_pastprojects',
-            paint: {
-                'line-color': '#a80000',
-                'line-width': 2.5,
-            },
-        },
-    ],
-}))}`;
-
-export const pastProjectsRegionalConfig: PMTilesLayerProps = {
+const pastProjectsConfig = ({ title, sectionHeading, projectScale, fillOpacity, visible }: {
+    title: string;
+    sectionHeading: string;
+    projectScale: string;
+    fillOpacity: number;
+    visible: boolean;
+}): PMTilesLayerProps => ({
     type: 'pmtiles',
     stacItemId: pastProjectsLayerName,
     pmtilesUrl: '',
     sourceLayer: pastProjectsLayerName,
+    title,
+    sectionHeading,
+    featureFilter: ['==', ['get', 'projectscale'], projectScale],
+    visible,
+    opacity: 1,
+    downloadParquetUrl: parquetUrl(pastProjectsLayerName),
+    sourceAgency: 'Utah Geological Survey',
+    renders: [
+        {
+            id: 'default',
+            title,
+            styleUrl: `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify({
+                layers: [
+                    {
+                        id: `${pastProjectsLayerName}-fill`,
+                        type: 'fill',
+                        'source-layer': pastProjectsLayerName,
+                        paint: { 'fill-color': '#a80000', 'fill-opacity': fillOpacity },
+                    },
+                    {
+                        id: `${pastProjectsLayerName}-line`,
+                        type: 'line',
+                        'source-layer': pastProjectsLayerName,
+                        paint: { 'line-color': '#a80000', 'line-width': 2.5 },
+                    },
+                ],
+            }))}`,
+            legend: [{ label: title, color: `rgba(168, 0, 0, ${fillOpacity})`, stroke: '#a80000' }],
+        },
+    ],
+    sublayers: [
+        {
+            name: pastProjectsLayerName,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Project Name': { field: 'generalregionname', type: 'string' },
+                'Project Summary': { field: 'projectsummary', type: 'string' },
+                'Timeline': { field: 'timeline', type: 'string' },
+                'Reservoir Investigated': { field: 'reservoirinvestigated', type: 'string' },
+                '': { field: 'link', type: 'string', transform: (value: string | null) => value },
+            },
+            linkFields: {
+                'link': {
+                    transform: (value: string) => {
+                        const trimmed = value?.trim();
+                        if (!trimmed || trimmed.toLowerCase() === 'coming soon' || !trimmed.startsWith('http')) {
+                            return [{ label: trimmed || 'Not available', href: '' }];
+                        }
+                        return [{ label: 'More Information', href: trimmed }];
+                    }
+                }
+            }
+        }
+    ],
+});
+
+// Statewide footprints cover all of Utah, so off by default and fainter.
+export const pastProjectsStatewideConfig = pastProjectsConfig({
+    title: pastProjectsStatewideTitle,
+    sectionHeading: 'Statewide',
+    projectScale: 'Statewide',
+    fillOpacity: 0.05,
+    visible: false,
+});
+
+export const pastProjectsRegionalConfig = pastProjectsConfig({
     title: pastProjectsRegionalTitle,
     sectionHeading: 'Regional',
-    featureFilter: ['==', ['get', 'projectscale'], 'Regional'],
+    projectScale: 'Regional',
+    fillOpacity: 0.1,
     visible: true,
-    opacity: 1,
-    downloadParquetUrl: parquetUrl('enmin_ccs_pastprojects'),
-    sourceAgency: 'Utah Geological Survey',
-    renders: [
-        {
-            id: 'default',
-            title: pastProjectsRegionalTitle,
-            styleUrl: pastProjectsRegionalStyle,
-            legend: [
-                {
-                    label: 'Past and Ongoing Projects - Regional',
-                    color: 'rgba(168, 0, 0, 0.1)',
-                    stroke: '#a80000',
-                },
-            ],
-        },
-    ],
-    sublayers: [
-        {
-            name: pastProjectsLayerName,
-            popupEnabled: true,
-            queryable: true,
-            popupFields: {
-                'Project Name': { field: 'generalregionname', type: 'string' },
-                'Project Summary': { field: 'projectsummary', type: 'string' },
-                'Timeline': { field: 'timeline', type: 'string' },
-                'Reservoir Investigated': { field: 'reservoirinvestigated', type: 'string' },
-                '': { field: 'link', type: 'string', transform: (value: string | null) => value },
-            },
-            linkFields: {
-                'link': {
-                    transform: (value: string) => {
-                        const trimmed = value?.trim();
-                        if (!trimmed || trimmed.toLowerCase() === 'coming soon' || !trimmed.startsWith('http')) {
-                            return [{ label: trimmed || 'Not available', href: '' }];
-                        }
-                        return [{ label: 'More Information', href: trimmed }];
-                    }
-                }
-            }
-        }
-    ],
-};
+});
 
-export const pastProjectsSiteSpecificConfig: PMTilesLayerProps = {
-    type: 'pmtiles',
-    stacItemId: pastProjectsLayerName,
-    pmtilesUrl: '',
-    sourceLayer: pastProjectsLayerName,
+export const pastProjectsSiteSpecificConfig = pastProjectsConfig({
     title: pastProjectsSiteSpecificTitle,
     sectionHeading: 'Site-Specific',
-    featureFilter: ['in', ['get', 'projectscale'], ['literal', ['Site Specific', 'SiteSpecific']]],
+    projectScale: 'Site Specific',
+    fillOpacity: 0.15,
     visible: true,
-    opacity: 1,
-    downloadParquetUrl: parquetUrl('enmin_ccs_pastprojects'),
-    sourceAgency: 'Utah Geological Survey',
-    renders: [
-        {
-            id: 'default',
-            title: pastProjectsSiteSpecificTitle,
-            styleUrl: pastProjectsSiteSpecificStyle,
-            legend: [
-                {
-                    label: 'Past and Ongoing Projects - Site-Specific',
-                    color: 'rgba(168, 0, 0, 0.15)',
-                    stroke: '#a80000',
-                },
-            ],
-        },
-    ],
-    sublayers: [
-        {
-            name: pastProjectsLayerName,
-            popupEnabled: true,
-            queryable: true,
-            popupFields: {
-                'Project Name': { field: 'generalregionname', type: 'string' },
-                'Project Summary': { field: 'projectsummary', type: 'string' },
-                'Timeline': { field: 'timeline', type: 'string' },
-                'Reservoir Investigated': { field: 'reservoirinvestigated', type: 'string' },
-                '': { field: 'link', type: 'string', transform: (value: string | null) => value },
-            },
-            linkFields: {
-                'link': {
-                    transform: (value: string) => {
-                        const trimmed = value?.trim();
-                        if (!trimmed || trimmed.toLowerCase() === 'coming soon' || !trimmed.startsWith('http')) {
-                            return [{ label: trimmed || 'Not available', href: '' }];
-                        }
-                        return [{ label: 'More Information', href: trimmed }];
-                    }
-                }
-            }
-        }
-    ],
-};
+});
 
 // STAC-driven: pmtilesUrl, sourceLayer, renders (colour by `primsource`, radius by `total_mw`)
 // and parquet come from the warehouse item `enmin_powerplants`. Symbology lives in ugs-styles.
@@ -1496,6 +1438,7 @@ const ccsResourcesConfig: LayerProps = {
         georegionsWMSConfig,
         natCarbLocationsConfig,
         sitlaReportsWMSConfig,
+        pastProjectsStatewideConfig,
         pastProjectsRegionalConfig,
         pastProjectsSiteSpecificConfig,
     ]
