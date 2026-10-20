@@ -85,22 +85,6 @@ function useLayerZoomHint(layer: LayerProps, active: boolean) {
     return { range, hint, maxScale, zoomToRange };
 }
 
-/**
- * Holds the "Zoom in/out to see" pill under a selected layer's title. The slot
- * keeps its height whether or not the pill shows, so nothing below it shifts.
- */
-function ZoomHintSlot({ layer }: { layer: LayerProps }) {
-    const { range, hint, maxScale, zoomToRange } = useLayerZoomHint(layer, true);
-    if (!range) return null;
-    return (
-        <div className="px-2 pb-2 -mt-1">
-            <div className="flex h-6 items-center">
-                {hint && <ZoomHintPill direction={hint} range={range} maxScale={maxScale} onClick={zoomToRange} />}
-            </div>
-        </div>
-    );
-}
-
 const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFilters, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender, embedded }: LayerAccordionItemProps) => {
     const {
         isSelected,
@@ -211,7 +195,18 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
         return [];
     }, [layerConfig]);
 
-    const { hint: zoomHint } = useLayerZoomHint(layerConfig, isSelected);
+    // A variant group's hint follows whichever variant is on the map.
+    const zoomHintLayer = layerConfig.type === 'group' && 'layers' in layerConfig && layerConfig.variantSelector
+        ? (layerConfig.layers ?? []).find(v => v.title && selectedLayerTitles.has(v.title)) ?? null
+        : isSelected ? layerConfig : null;
+    const { range: zoomRange, hint: zoomHint, maxScale: zoomMaxScale, zoomToRange } = useLayerZoomHint(zoomHintLayer ?? layerConfig, zoomHintLayer !== null);
+    // Overlaid just left of the chevron, with the title padded clear of it, so
+    // showing it never moves the chevron or changes the row height.
+    const zoomHintButton = zoomHint && zoomRange && (
+        <div className="absolute right-8 top-1/2 -translate-y-1/2">
+            <ZoomHintPill direction={zoomHint} range={zoomRange} maxScale={zoomMaxScale} layerTitle={layerConfig.title} onClick={zoomToRange} />
+        </div>
+    );
 
     const handleOpacityChange = useCallback((value: number) => {
         // Continuously updates, so don't update url with this
@@ -322,7 +317,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                     onValueChange={(val) => setIsUserExpanded(val === 'item-1')}
                 >
                     <AccordionItem value="item-1">
-                        <div className="flex items-center justify-between">
+                        <div className="relative flex items-center justify-between">
                             {isTopLevel ? (
                                 <Switch
                                     checked={isOn}
@@ -340,7 +335,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                             )}
                             <AccordionHeader level={headingLevel} className="flex-1">
                                 <AccordionTrigger>
-                                    <div className="text-left">
+                                    <div className={`text-left ${zoomHint ? 'pr-8' : ''}`}>
                                         <span className="block text-md font-medium">{layerConfig.title}</span>
                                         {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
                                             <p className="text-xs font-normal text-muted-foreground">
@@ -350,8 +345,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                                     </div>
                                 </AccordionTrigger>
                             </AccordionHeader>
+                            {zoomHintButton}
                         </div>
-                        {selectedVariant && <ZoomHintSlot layer={selectedVariant} />}
                         <AccordionContent>
                             {variants.length > 1 && (
                                 <div className="mx-8 mb-1 mt-2">
@@ -542,7 +537,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                 onValueChange={(val) => setIsUserExpanded(val === 'item-1')}
             >
                 <AccordionItem value="item-1">
-                    <div className="flex items-center justify-between">
+                    <div className="relative flex items-center justify-between">
                         {isTopLevel ? (
                             <Switch
                                 checked={isSelected}
@@ -564,7 +559,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                         )}
                         <AccordionHeader level={headingLevel} className="flex-1">
                             <AccordionTrigger>
-                            <div className="text-left">
+                            <div className={`text-left ${zoomHint ? 'pr-8' : ''}`}>
                                 <span
                                     className={`block text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}
                                 >
@@ -578,8 +573,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                             </div>
                         </AccordionTrigger>
                         </AccordionHeader>
+                        {zoomHintButton}
                     </div>
-                    {isSelected && <ZoomHintSlot layer={layerConfig} />}
                     <AccordionContent>
                         {layerControls}
                     </AccordionContent>

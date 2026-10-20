@@ -8,12 +8,14 @@ interface ZoomHintPillProps {
     range: [number, number];
     /** When set, the zoom-out hint names this 1:X scale instead of a zoom level. */
     maxScale?: number;
+    /** Layer title, for the button's accessible name. */
+    layerTitle?: string;
     onClick: () => void;
 }
 
 const oneDecimal = (zoom: number, round: (n: number) => number) => Number((round(zoom * 10) / 10).toFixed(1));
 
-export const ZoomHintPill = ({ direction, range, maxScale, onClick }: ZoomHintPillProps) => {
+export const ZoomHintPill = ({ direction, range, maxScale, layerTitle, onClick }: ZoomHintPillProps) => {
     const Icon = direction === "in" ? ZoomIn : ZoomOut;
     const tooltip =
         direction === "in"
@@ -27,17 +29,17 @@ export const ZoomHintPill = ({ direction, range, maxScale, onClick }: ZoomHintPi
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full h-auto py-0.5 px-2 text-xs text-muted-foreground"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 shrink-0 text-muted-foreground"
+                        aria-label={`Zoom ${direction} to see ${layerTitle ?? "this layer"}`}
                         onClick={(e) => {
                             e.stopPropagation();
                             onClick();
                         }}
                         onPointerDown={(e) => e.stopPropagation()}
                     >
-                        <Icon className="h-3 w-3" />
-                        <span>Zoom {direction} to see</span>
+                        <Icon className="h-4 w-4" />
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent>{tooltip}</TooltipContent>
