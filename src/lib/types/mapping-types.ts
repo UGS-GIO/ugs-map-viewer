@@ -157,6 +157,8 @@ export interface WMSLayerProps extends BaseLayerProps {
     legendUnit?: string;
     /** GeoServer SLD style name. When set, both map tiles and the layer-list legend request this style instead of the layer's default. */
     styleName?: string;
+    /** Most zoomed-in ratio scale (the X in 1:X) the layer draws at, measured at the view center like the footer readout. Caps `visibleZoomRange`. */
+    maxScale?: number;
 }
 
 export interface ArcGISMapServerLayerProps extends BaseLayerProps {

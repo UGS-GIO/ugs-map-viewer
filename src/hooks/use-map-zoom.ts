@@ -14,6 +14,24 @@ export const getZoomHint = (
     return null;
 };
 
+/** Returns the view center's latitude, updated when the map stops moving. */
+export const useMapLatitude = (): number | null => {
+    const { map } = useMap();
+    const [latitude, setLatitude] = useState<number | null>(map ? map.getCenter().lat : null);
+
+    useEffect(() => {
+        if (!map) return;
+        setLatitude(map.getCenter().lat);
+        const update = () => setLatitude(map.getCenter().lat);
+        map.on("moveend", update);
+        return () => {
+            map.off("moveend", update);
+        };
+    }, [map]);
+
+    return latitude;
+};
+
 /** Returns the current map zoom and re-renders on zoom change. */
 export const useMapZoom = (): number | null => {
     const { map } = useMap();

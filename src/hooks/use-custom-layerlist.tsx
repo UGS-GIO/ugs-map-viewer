@@ -8,10 +8,10 @@ import { useLayerItemState } from '@/hooks/use-layer-item-state';
 import { LayerProps } from '@/lib/types/mapping-types';
 import { useMap } from '@/hooks/use-map';
 import { findLayerByTitle } from '@/lib/map/utils';
-import { isWMSLayer, isWFSLayer, isPMTilesLayer, isArcGISMapServerLayer, isCOGLayer } from '@/lib/map/layer-utils';
+import { isWMSLayer, isWFSLayer, isPMTilesLayer, isArcGISMapServerLayer, isCOGLayer, effectiveZoomRange } from '@/lib/map/layer-utils';
 import { CogLegend } from '@/components/maps/cog-legend';
 import { useLayerExtent, UseLayerExtentOptions } from '@/hooks/use-layer-extent';
-import { useMapZoom, getZoomHint } from '@/hooks/use-map-zoom';
+import { useMapZoom, useMapLatitude, getZoomHint } from '@/hooks/use-map-zoom';
 import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions';
 import { usePhoneSheetActions } from '@/components/maps/phone-sheet/use-phone-sheet';
 import LayerControls from '@/components/maps/layer-controls';
@@ -62,6 +62,41 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
                     {content}
                 </CollapsibleContent>
             </Collapsible>
+        </div>
+    );
+}
+
+/** Zoom hint for a selected layer that only draws in part of the zoom range, and a jump into that range. */
+function useLayerZoomHint(layer: LayerProps, active: boolean) {
+    const { map } = useMap();
+    const currentZoom = useMapZoom();
+    const viewLatitude = useMapLatitude();
+    const range = (viewLatitude === null ? layer.visibleZoomRange : effectiveZoomRange(layer, viewLatitude)) ?? null;
+    const hint = active ? getZoomHint(currentZoom, range) : null;
+    // Name the 1:X scale only when it, not a lower configured maxzoom, is the limit.
+    const configuredMax = layer.visibleZoomRange?.[1] ?? Infinity;
+    const maxScale = isWMSLayer(layer) && range && range[1] < configuredMax ? layer.maxScale : undefined;
+    const zoomToRange = () => {
+        if (!map || !range) return;
+        const [minZ, maxZ] = range;
+        // maxzoom is exclusive, so land just inside it.
+        map.flyTo({ zoom: currentZoom !== null && currentZoom >= maxZ ? maxZ - 0.01 : minZ });
+    };
+    return { range, hint, maxScale, zoomToRange };
+}
+
+/**
+ * Holds the "Zoom in/out to see" pill under a selected layer's title. The slot
+ * keeps its height whether or not the pill shows, so nothing below it shifts.
+ */
+function ZoomHintSlot({ layer }: { layer: LayerProps }) {
+    const { range, hint, maxScale, zoomToRange } = useLayerZoomHint(layer, true);
+    if (!range) return null;
+    return (
+        <div className="px-2 pb-2 -mt-1">
+            <div className="flex h-6 items-center">
+                {hint && <ZoomHintPill direction={hint} range={range} maxScale={maxScale} onClick={zoomToRange} />}
+            </div>
         </div>
     );
 }
@@ -176,17 +211,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
         return [];
     }, [layerConfig]);
 
-    const currentZoom = useMapZoom();
-    const visibleZoomRange = layerConfig.visibleZoomRange ?? null;
-    const zoomHint = isSelected ? getZoomHint(currentZoom, visibleZoomRange) : null;
-
-    const handleZoomToVisibleRange = () => {
-        if (!map || !visibleZoomRange) return;
-        const [minZ, maxZ] = visibleZoomRange;
-        // maxzoom is exclusive, so land just inside it.
-        const target = currentZoom !== null && currentZoom >= maxZ ? maxZ - 0.01 : minZ;
-        map.flyTo({ zoom: target });
-    };
+    const { hint: zoomHint } = useLayerZoomHint(layerConfig, isSelected);
 
     const handleOpacityChange = useCallback((value: number) => {
         // Continuously updates, so don't update url with this
@@ -326,6 +351,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                                 </AccordionTrigger>
                             </AccordionHeader>
                         </div>
+                        {selectedVariant && <ZoomHintSlot layer={selectedVariant} />}
                         <AccordionContent>
                             {variants.length > 1 && (
                                 <div className="mx-8 mb-1 mt-2">
@@ -502,19 +528,9 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
     );
 
     // Embedded (active child of a variantSelector group): the group already owns
-    // the header/switch/title, so render only the controls (plus the zoom hint,
-    // for any future variant child that declares a visibleZoomRange).
+    // the header, zoom hint and switch, so render only the controls.
     if (embedded) {
-        return (
-            <div className="mt-1">
-                {zoomHint && visibleZoomRange && (
-                    <div className="px-2 pb-2">
-                        <ZoomHintPill direction={zoomHint} range={visibleZoomRange} onClick={handleZoomToVisibleRange} />
-                    </div>
-                )}
-                {layerControls}
-            </div>
-        );
+        return <div className="mt-1">{layerControls}</div>;
     }
 
     return (
@@ -563,15 +579,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                         </AccordionTrigger>
                         </AccordionHeader>
                     </div>
-                    {zoomHint && visibleZoomRange && (
-                        <div className="px-2 pb-2 -mt-1">
-                            <ZoomHintPill
-                                direction={zoomHint}
-                                range={visibleZoomRange}
-                                onClick={handleZoomToVisibleRange}
-                            />
-                        </div>
-                    )}
+                    {isSelected && <ZoomHintSlot layer={layerConfig} />}
                     <AccordionContent>
                         {layerControls}
                     </AccordionContent>

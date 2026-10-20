@@ -3,13 +3,12 @@ import type maplibregl from 'maplibre-gl'
 // CSS reference pixel: 1/96 inch (0.2645833 mm).
 const METERS_PER_CSS_PIXEL = 0.0254 / 96
 
-// Web Mercator ground resolution at zoom 0 for MapLibre's 512px tiles, at the equator.
-const METERS_PER_PIXEL_Z0 = 40_075_016.686 / 512
-// Center of Utah, for converting a map scale to a zoom level statewide.
-export const UTAH_CENTER_LATITUDE = 39.5
-
+// Ground resolution at zoom 0 for MapLibre's 512px tiles at the equator, on the
+// sphere MapLibre measures distance with (`LngLat.distanceTo`, mean radius
+// 6,371,008.8 m), so a scale converted here matches the footer readout.
+const METERS_PER_PIXEL_Z0 = (2 * Math.PI * 6_371_008.8) / 512
 /** Zoom level at which the map shows the ratio scale 1:`denominator` at `latitude`. */
-export function zoomForScale(denominator: number, latitude = UTAH_CENTER_LATITUDE): number {
+export function zoomForScale(denominator: number, latitude: number): number {
   const metersPerPixel = denominator * METERS_PER_CSS_PIXEL
   return Math.log2((METERS_PER_PIXEL_Z0 * Math.cos((latitude * Math.PI) / 180)) / metersPerPixel)
 }

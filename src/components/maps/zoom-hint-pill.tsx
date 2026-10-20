@@ -6,17 +6,21 @@ import type { ZoomHintDirection } from "@/hooks/use-map-zoom";
 interface ZoomHintPillProps {
     direction: ZoomHintDirection;
     range: [number, number];
+    /** When set, the zoom-out hint names this 1:X scale instead of a zoom level. */
+    maxScale?: number;
     onClick: () => void;
 }
 
 const oneDecimal = (zoom: number, round: (n: number) => number) => Number((round(zoom * 10) / 10).toFixed(1));
 
-export const ZoomHintPill = ({ direction, range, onClick }: ZoomHintPillProps) => {
+export const ZoomHintPill = ({ direction, range, maxScale, onClick }: ZoomHintPillProps) => {
     const Icon = direction === "in" ? ZoomIn : ZoomOut;
     const tooltip =
         direction === "in"
             ? `Visible at zoom ${oneDecimal(range[0], Math.ceil)} and closer. Click to zoom in.`
-            : `Visible at zoom ${oneDecimal(range[1], Math.floor)} and farther out. Click to zoom out.`;
+            : maxScale
+              ? `Visible at 1:${maxScale.toLocaleString("en-US")} and farther out. Click to zoom out.`
+              : `Visible at zoom ${oneDecimal(range[1], Math.floor)} and farther out. Click to zoom out.`;
 
     return (
         <TooltipProvider delayDuration={300}>

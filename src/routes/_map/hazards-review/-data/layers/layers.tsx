@@ -1,5 +1,4 @@
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE, PROD_POSTGREST_URL, GEN_GIS_WORKSPACE } from "@/lib/constants";
-import { zoomForScale } from "@/lib/map/map-scale";
 import { FieldConfig, LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { capitalizeFirst } from "@/lib/field-formatting";
 import {
@@ -1068,10 +1067,6 @@ function displacementVariantDescription(typeValue: DisplacementType): string {
     }
 }
 
-// Contours are not meaningful at scales larger than 1:62,000, so the layer stops
-// drawing past that zoom and the layer list offers "Zoom out to see".
-const INSAR_MAX_ZOOM = zoomForScale(62_000);
-
 // `visible` seeds the default map selection (getDefaultSelected). Inside the
 // variant group only ONE surface should default on, so callers opt a single
 // surface in and leave the rest off.
@@ -1088,7 +1083,8 @@ function makeDisplacementContoursConfig(title: DisplacementLayerTitle, visible =
         styleName,
         legendUnit: getUnitsLabelForType(typeValue),
         customLayerParameters: { cql_filter: `type='${typeValue}'` },
-        visibleZoomRange: [0, INSAR_MAX_ZOOM],
+        // Contours are not meaningful at scales larger than 1:62,500.
+        maxScale: 62_500,
         sublayers: [
             {
                 name: DISPLACEMENT_CONTOURS_LAYER,

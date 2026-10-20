@@ -14,7 +14,7 @@ import {
 import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
-import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds, isWithinZoomRange } from '@/lib/map/layer-utils'
+import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds, isWithinZoomRange, effectiveZoomRange } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
 import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
@@ -68,13 +68,21 @@ function CogLayerSource({ layer, beforeId, hidden, opacity }: { layer: COGLayerP
   )
 }
 
+/** WMS layers that MapLibre draws at the map's current zoom and center. */
+function wmsLayersDrawnInView(map: maplibregl.Map, layers: WMSLayerProps[]): WMSLayerProps[] {
+  const zoom = map.getZoom()
+  const latitude = map.getCenter().lat
+  return layers.filter(l => isWithinZoomRange(effectiveZoomRange(l, latitude), zoom))
+}
+
 function WmsLayerSource({
-  layer, wmsUrl, cqlFilter, styleName, beforeId, hidden, opacity,
+  layer, wmsUrl, cqlFilter, styleName, zoomRange, beforeId, hidden, opacity,
 }: {
   layer: WMSLayerProps
   wmsUrl: string
   cqlFilter: string | undefined
   styleName: string | undefined
+  zoomRange: [number, number] | undefined
   beforeId: string | undefined
   hidden?: boolean
   opacity?: number
@@ -82,7 +90,7 @@ function WmsLayerSource({
   const layerName = getWmsLayerName(layer)
   const layerWmsUrl = layer.url || wmsUrl
   const tileUrl = buildWmsTileUrl(layerWmsUrl, layerName, cqlFilter, layer.customLayerParameters, styleName)
-  // A config `visibleZoomRange` gates the raster the same way it gates PMTiles,
+  // The zoom range gates the raster the same way `visibleZoomRange` gates PMTiles,
   // so Township & Range (WMS) comes in at the zoom its Sections sibling does.
   return (
     <Source id={`wms-${layer.title}`} type="raster" tiles={[tileUrl]} tileSize={512}>
@@ -90,7 +98,7 @@ function WmsLayerSource({
         id={`wms-layer-${layer.title}`}
         beforeId={beforeId}
         type="raster"
-        {...zoomRangeToBounds(layer.visibleZoomRange)}
+        {...zoomRangeToBounds(zoomRange)}
         layout={{ visibility: hidden ? 'none' : 'visible' }}
         paint={{ 'raster-opacity': opacity ?? layer.opacity ?? 0.8 }}
         metadata={{ title: layer.title, 'wms-url': layerWmsUrl, 'wms-layer': layerName }}
@@ -290,6 +298,8 @@ export default function DataMap({
 
   // Context menu state
   const [contextMenuCoords, setContextMenuCoords] = useState<ContextMenuCoords | null>(null)
+  // Scale-capped layers (`maxScale`) need the center latitude to place their maxzoom.
+  const [viewLatitude, setViewLatitude] = useState(center[1])
   const [contextMenuOpen, setContextMenuOpen] = useState(false)
 
   // isBoxSelectZoomValid is tracked as state above (only re-renders when threshold is crossed)
@@ -397,6 +407,17 @@ export default function DataMap({
   // Refs for stable access to layers in callbacks (prevents TerraDraw reinit)
   const visibleWmsLayersRef = useRef(visibleWmsLayers)
   visibleWmsLayersRef.current = visibleWmsLayers
+
+  // Only scale-capped layers depend on latitude, so skip the re-render otherwise.
+  // Rounded to 0.001 degrees, well under one unit of the footer's 1:X readout.
+  const syncViewLatitude = useCallback(() => {
+    const map = mapRef.current?.getMap()
+    if (!map || !visibleWmsLayersRef.current.some(l => l.maxScale !== undefined)) return
+    setViewLatitude(Math.round(map.getCenter().lat * 1000) / 1000)
+  }, [])
+  useEffect(() => {
+    if (styleLoaded) syncViewLatitude()
+  }, [styleLoaded, visibleWmsLayers, syncViewLatitude])
   const visibleWfsLayersRef = useRef(visibleWfsLayers)
   visibleWfsLayersRef.current = visibleWfsLayers
   const visiblePmtilesLayersRef = useRef(visiblePmtilesLayers)
@@ -460,8 +481,7 @@ export default function DataMap({
     const pmtilesFeatures = queryPmtilesLayersAtPoint(map, point, tolerance, visiblePmtilesLayersRef.current)
     const vectorFeatures = [...pmtilesFeatures, ...wfsFeatures]
     // A WMS layer outside its zoom range isn't drawn, so it isn't clickable either.
-    const zoom = map.getZoom()
-    const wmsLayersAtZoom = visibleWmsLayersRef.current.filter(l => isWithinZoomRange(l.visibleZoomRange, zoom))
+    const wmsLayersAtZoom = wmsLayersDrawnInView(map, visibleWmsLayersRef.current)
 
     if (wmsLayersAtZoom.length === 0) {
       dispatchFeatures(vectorFeatures, additive, options)
@@ -494,7 +514,7 @@ export default function DataMap({
 
     const map = mapRef.current?.getMap()
     const wmsLayers = map
-      ? visibleWmsLayersRef.current.filter(l => isWithinZoomRange(l.visibleZoomRange, map.getZoom()))
+      ? wmsLayersDrawnInView(map, visibleWmsLayersRef.current)
       : visibleWmsLayersRef.current
     const wfsLayers = visibleWfsLayersRef.current
     const pmtilesLayers = visiblePmtilesLayersRef.current
@@ -635,10 +655,11 @@ export default function DataMap({
     const mapZoom = map.getZoom()
 
     currentZoomRef.current = mapZoom
+    syncViewLatitude()
     // Only trigger re-render when the box-select validity threshold is crossed
     setIsBoxSelectZoomValid(mapZoom >= BOX_SELECT_MIN_ZOOM)
     onMoveEnd?.(mapCenter.lat, mapCenter.lng, mapZoom)
-  }, [onMoveEnd])
+  }, [onMoveEnd, syncViewLatitude])
 
   // Handle box select confirmation - calculate geographic bbox, store it, and trigger query
   const handleBoxSelectConfirm = useCallback(() => {
@@ -668,7 +689,7 @@ export default function DataMap({
       ...queryWfsLayersInScreenBbox(map, screenBbox, visibleWfsLayers),
     ]
 
-    const wmsLayersAtZoom = visibleWmsLayers.filter(l => isWithinZoomRange(l.visibleZoomRange, map.getZoom()))
+    const wmsLayersAtZoom = wmsLayersDrawnInView(map, visibleWmsLayers)
     if (wmsLayersAtZoom.length === 0) {
       dispatchFeatures(vectorFeatures, isAdditiveMode)
       return
@@ -825,6 +846,7 @@ export default function DataMap({
                 wmsUrl={wmsUrl}
                 cqlFilter={cqlFilter}
                 styleName={styleName}
+                zoomRange={effectiveZoomRange(layer, viewLatitude)}
                 beforeId={beforeId}
                 hidden={hidden}
                 opacity={opacity}

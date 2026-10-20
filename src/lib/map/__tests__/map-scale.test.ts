@@ -23,12 +23,23 @@ describe('scaleDenominator', () => {
 })
 
 describe('zoomForScale', () => {
-  it('inverts scaleDenominator', () => {
-    const z = zoomForScale(scaleDenominator(metersPerPixel(10, 39.5)), 39.5)
-    expect(z).toBeCloseTo(10, 6)
+  // What the footer reads: haversine distance (MapLibre's mean radius) across
+  // 100 px at the view center, divided by 100.
+  const readoutMetersPerPixel = (zoom: number, lat: number) => {
+    const phi = (lat * Math.PI) / 180
+    const dLambda = ((100 * 360) / (512 * 2 ** zoom)) * (Math.PI / 180)
+    const cosAngle = Math.sin(phi) ** 2 + Math.cos(phi) ** 2 * Math.cos(dLambda)
+    return (6_371_008.8 * Math.acos(Math.min(cosAngle, 1))) / 100
+  }
+
+  it('lands on the zoom where the footer reads the same scale', () => {
+    for (const lat of [37, 39.5, 42]) {
+      const z = zoomForScale(scaleDenominator(readoutMetersPerPixel(11.8, lat)), lat)
+      expect(z).toBeCloseTo(11.8, 4)
+    }
   })
 
-  it('puts 1:62,000 just under zoom 12 in central Utah', () => {
-    expect(zoomForScale(62_000)).toBeCloseTo(11.85, 2)
+  it('puts 1:62,500 just under zoom 12 in central Utah', () => {
+    expect(zoomForScale(62_500, 39.5)).toBeCloseTo(11.83, 2)
   })
 })
