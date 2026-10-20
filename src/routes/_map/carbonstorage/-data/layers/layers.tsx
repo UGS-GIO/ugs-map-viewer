@@ -705,10 +705,9 @@ const ccsExclusionAreasWMSConfig: WMSLayerProps = {
 };
 
 
-// Past and Ongoing Projects — STAC-driven PMTiles item `enmin_ccs_pastprojects`,
-// one layer per `projectscale` value.
+// Past and Ongoing Projects — STAC-driven PMTiles item `enmin_ccs_pastprojects`, one layer
+// per `projectscale`. Statewide rows are skipped: those projects already have their own layers.
 const pastProjectsLayerName = 'enmin_ccs_pastprojects';
-export const pastProjectsStatewideTitle = 'Past and Ongoing Projects - Statewide';
 export const pastProjectsRegionalTitle = 'Past and Ongoing Projects - Regional';
 export const pastProjectsSiteSpecificTitle = 'Past and Ongoing Projects - Site-Specific';
 
@@ -778,15 +777,6 @@ const pastProjectsConfig = ({ title, sectionHeading, projectScale, fillOpacity, 
             }
         }
     ],
-});
-
-// Statewide footprints cover all of Utah, so off by default and fainter.
-export const pastProjectsStatewideConfig = pastProjectsConfig({
-    title: pastProjectsStatewideTitle,
-    sectionHeading: 'Statewide',
-    projectScale: 'Statewide',
-    fillOpacity: 0.05,
-    visible: false,
 });
 
 export const pastProjectsRegionalConfig = pastProjectsConfig({
@@ -1438,7 +1428,6 @@ const ccsResourcesConfig: LayerProps = {
         georegionsWMSConfig,
         natCarbLocationsConfig,
         sitlaReportsWMSConfig,
-        pastProjectsStatewideConfig,
         pastProjectsRegionalConfig,
         pastProjectsSiteSpecificConfig,
     ]

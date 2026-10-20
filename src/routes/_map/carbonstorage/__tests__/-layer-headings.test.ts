@@ -19,9 +19,9 @@ describe('Carbon Storage layer headings and reorganization (ALL-6187)', () => {
 
   it('groups Carbon Storage Resources under Statewide, Regional, and Site-Specific section headings', () => {
     const ccsLayers = ccsGroup?.layers ?? []
-    expect(ccsLayers).toHaveLength(7)
+    expect(ccsLayers).toHaveLength(6)
 
-    // Statewide section (first 5 layers, past projects at bottom)
+    // Statewide section (first 4 layers, SITLA at bottom)
     expect(ccsLayers[0].title).toBe('Statewide Storage Resource Estimates')
     expect(ccsLayers[0].sectionHeading).toBe('Statewide')
 
@@ -34,16 +34,13 @@ describe('Carbon Storage layer headings and reorganization (ALL-6187)', () => {
     expect(ccsLayers[3].title).toBe('CO₂ Storage Potential on SITLA Blocks')
     expect(ccsLayers[3].sectionHeading).toBe('Statewide')
 
-    expect(ccsLayers[4].title).toBe('Past and Ongoing Projects - Statewide')
-    expect(ccsLayers[4].sectionHeading).toBe('Statewide')
-
     // Regional section
-    expect(ccsLayers[5].title).toBe('Past and Ongoing Projects - Regional')
-    expect(ccsLayers[5].sectionHeading).toBe('Regional')
+    expect(ccsLayers[4].title).toBe('Past and Ongoing Projects - Regional')
+    expect(ccsLayers[4].sectionHeading).toBe('Regional')
 
     // Site-Specific section
-    expect(ccsLayers[6].title).toBe('Past and Ongoing Projects - Site-Specific')
-    expect(ccsLayers[6].sectionHeading).toBe('Site-Specific')
+    expect(ccsLayers[5].title).toBe('Past and Ongoing Projects - Site-Specific')
+    expect(ccsLayers[5].sectionHeading).toBe('Site-Specific')
   })
 
   it('moves CO2 sources and CCS exclusion areas to Infrastructure as top sublayers', () => {
