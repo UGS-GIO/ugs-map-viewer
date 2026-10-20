@@ -147,11 +147,7 @@ interface BaseLayerProps {
     variantLabel?: string;
     /** One-line plain-language description of this variant, shown under the surface switch to explain what it means and how it relates to the map. */
     variantDescription?: string;
-    /**
-     * Optional section heading displayed above this layer in a layer list.
-     * When consecutive child layers share the same sectionHeading, the heading is rendered
-     * only once above the first layer in the section.
-     */
+    /** Heading shown above this layer in the layer list; consecutive layers sharing it show it once. */
     sectionHeading?: string;
 }
 
@@ -250,10 +246,7 @@ export interface PMTilesLayerProps extends BaseLayerProps {
     defaultRenderId?: string;
     /** Source layer name within the PMTiles file */
     sourceLayer: string;
-    /**
-     * Static feature filter ANDed onto every render, so one PMTiles source can back
-     * several layers. Lives on the config, not the style, so STAC renders can't drop it.
-     */
+    /** Filter ANDed onto every render; kept off the style so STAC renders can't drop it. */
     featureFilter?: FilterSpecification;
     /** Optional sublayer config for popups/queries */
     sublayers?: ExtendedSublayerProperties[];

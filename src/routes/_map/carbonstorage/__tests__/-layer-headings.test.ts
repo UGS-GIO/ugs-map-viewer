@@ -47,15 +47,12 @@ describe('Carbon Storage layer headings and reorganization (ALL-6187)', () => {
     const infraLayers = infraGroup?.layers ?? []
     expect(infraLayers.length).toBeGreaterThanOrEqual(3)
 
-    // Top sublayer
     expect(infraLayers[0].title).toBe('CO₂ Sources')
     expect(infraLayers[0].sectionHeading).toBeUndefined()
 
-    // Second sublayer
     expect(infraLayers[1].title).toBe('CCS Exclusion Areas')
     expect(infraLayers[1].sectionHeading).toBeUndefined()
 
-    // Followed by Power Plants
     expect(infraLayers[2].title).toBe('Power Plants')
   })
 })
