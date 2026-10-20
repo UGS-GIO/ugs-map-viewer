@@ -344,7 +344,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                             )}
                             <AccordionHeader level={headingLevel} className="flex-1">
                                 <AccordionTrigger>
-                                    <div className={`text-left ${reserveZoomHint ? 'pr-28' : ''}`}>
+                                    <div className={`text-left ${reserveZoomHint ? 'pr-12 md:pr-28' : ''}`}>
                                         <span className={`block text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}>{layerConfig.title}</span>
                                         {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
                                             <p className="text-xs font-normal text-muted-foreground">
@@ -568,7 +568,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                         )}
                         <AccordionHeader level={headingLevel} className="flex-1">
                             <AccordionTrigger>
-                            <div className={`text-left ${reserveZoomHint ? 'pr-28' : ''}`}>
+                            <div className={`text-left ${reserveZoomHint ? 'pr-12 md:pr-28' : ''}`}>
                                 <span
                                     className={`block text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}
                                 >

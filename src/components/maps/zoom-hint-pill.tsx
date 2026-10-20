@@ -33,7 +33,7 @@ export const ZoomHintPill = ({ direction, range, maxScale, layerTitle, onClick }
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 shrink-0 gap-1 rounded-full border-primary px-2.5 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary"
+                        className="h-8 w-8 shrink-0 gap-1 rounded-full border-primary px-0 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary md:w-auto md:px-2.5"
                         aria-label={`Zoom ${direction} to see ${layerTitle ?? "this layer"}`}
                         aria-describedby={detailId}
                         onClick={(e) => {
@@ -42,8 +42,9 @@ export const ZoomHintPill = ({ direction, range, maxScale, layerTitle, onClick }
                         }}
                         onPointerDown={(e) => e.stopPropagation()}
                     >
-                        <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                        Zoom {direction}
+                        <Icon className="h-4 w-4 md:h-3.5 md:w-3.5" aria-hidden="true" />
+                        {/* Icon only at phone widths, so long titles keep their room. */}
+                        <span className="hidden md:inline">Zoom {direction}</span>
                         <span id={detailId} className="sr-only">{detail}</span>
                     </Button>
                 </TooltipTrigger>
