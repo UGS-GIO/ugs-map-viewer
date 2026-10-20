@@ -67,8 +67,8 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
     );
 }
 
-const isNewSection = (current?: LayerProps, previous?: LayerProps): boolean =>
-    Boolean(current?.sectionHeading && current.sectionHeading !== previous?.sectionHeading);
+const newSectionHeading = (current: LayerProps, previous?: LayerProps): string | undefined =>
+    current.sectionHeading !== previous?.sectionHeading ? current.sectionHeading : undefined;
 
 const SectionHeading = ({
     heading,
@@ -471,13 +471,11 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                                 <label htmlFor={selectAllId} className="text-sm font-medium italic">Select All</label>
                             </div>
                             {childLayers.map((child, index) => {
-                                const prevChild = index > 0 ? childLayers[index - 1] : undefined;
+                                const heading = newSectionHeading(child, index > 0 ? childLayers[index - 1] : undefined);
 
                                 return (
                                     <Fragment key={child.title || index}>
-                                        {isNewSection(child, prevChild) && (
-                                            <SectionHeading heading={child.sectionHeading!} isTopLevel={false} />
-                                        )}
+                                        {heading && <SectionHeading heading={heading} isTopLevel={false} />}
                                         <div className="ml-4">
                                             <LayerAccordionItem
                                                 disableExport={disableExport}
@@ -622,13 +620,11 @@ export const useCustomLayerList = ({ config, disableExport, hasLayerFilters, gro
     const layerList = useMemo(() => {
         if (!config) return [];
         return [...config].map((layer, index) => {
-            const prevLayer = index > 0 ? config[index - 1] : undefined;
+            const heading = newSectionHeading(layer, index > 0 ? config[index - 1] : undefined);
 
             return (
                 <Fragment key={layer.title || index}>
-                    {isNewSection(layer, prevLayer) && (
-                        <SectionHeading heading={layer.sectionHeading!} isTopLevel={true} />
-                    )}
+                    {heading && <SectionHeading heading={heading} isTopLevel={true} />}
                     <LayerAccordionItem
                         layerConfig={layer}
                         isTopLevel={true}
