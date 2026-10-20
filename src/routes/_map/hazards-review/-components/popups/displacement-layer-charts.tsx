@@ -524,11 +524,6 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
         ? (selectedBasins.size === 1 ? [...selectedBasins][0] : `${selectedBasins.size} basins`)
         : 'Statewide'
     const periodLabel = yearAxisLabel.toLowerCase()
-    const stackedScopeText = !basinFilterActive
-        ? `Area of each displacement range across all basins, by ${periodLabel}. Select one or more basins above to narrow it.`
-        : selectedBasins.size === 1
-            ? `Area of each displacement range in ${[...selectedBasins][0]}, by ${periodLabel}. Select more basins above to add them.`
-            : `Area of each displacement range in the ${selectedBasins.size} selected basins added together, by ${periodLabel}.`
     // Stacked "Vertical Displacement by {year}" chart + legend, built once so it can
     // render both in the sidebar's Advanced disclosure and in the wide analysis pop-out.
     const stackedChartNode = (
@@ -546,7 +541,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                 )}
             </div>
             <p className="text-xs text-muted-foreground mb-1">
-                {stackedScopeText} Bars above zero are uplift and bars below zero are subsidence; colors match the map. Hover a column to read its areas in the legend below, or click one to show that {periodLabel} (shaded).
+                Bars above zero = area of uplift, below zero = area of subsidence. Stacked by displacement range (in); colors match the map. Hover over a column to read the total area for each displacement range in the legend below; the area sums over {basinFilterActive ? 'all selected basins' : 'all basins'}. Click to filter to that year; the shaded column is the active {periodLabel}.
             </p>
             <div
                 role="figure"
