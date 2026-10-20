@@ -200,12 +200,21 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
         ? (layerConfig.layers ?? []).find(v => v.title && selectedLayerTitles.has(v.title)) ?? null
         : isSelected ? layerConfig : null;
     const { range: zoomRange, hint: zoomHint, maxScale: zoomMaxScale, zoomToRange } = useLayerZoomHint(zoomHintLayer ?? layerConfig, zoomHintLayer !== null);
-    // Overlaid just left of the chevron, with the title padded clear of it, so
-    // showing it never moves the chevron or changes the row height.
-    const zoomHintButton = zoomHint && zoomRange && (
-        <div className="absolute right-8 top-1/2 -translate-y-1/2">
-            <ZoomHintPill direction={zoomHint} range={zoomRange} maxScale={zoomMaxScale} layerTitle={layerConfig.title} onClick={zoomToRange} />
-        </div>
+    // Overlaid just left of the chevron. While a range-limited layer is on, its
+    // title keeps room for the chip and a live region is mounted, so the chip
+    // appearing never moves the row and screen readers hear it.
+    const reserveZoomHint = zoomHintLayer !== null && zoomRange !== null;
+    const zoomHintButton = reserveZoomHint && (
+        <>
+            {zoomHint && (
+                <div className="absolute right-8 top-1/2 -translate-y-1/2">
+                    <ZoomHintPill direction={zoomHint} range={zoomRange} maxScale={zoomMaxScale} layerTitle={layerConfig.title} onClick={zoomToRange} />
+                </div>
+            )}
+            <span className="sr-only" aria-live="polite">
+                {zoomHint ? `${layerConfig.title ?? 'This layer'} is hidden at this zoom. Zoom ${zoomHint} to see it.` : ''}
+            </span>
+        </>
     );
 
     const handleOpacityChange = useCallback((value: number) => {
@@ -335,8 +344,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                             )}
                             <AccordionHeader level={headingLevel} className="flex-1">
                                 <AccordionTrigger>
-                                    <div className={`text-left ${zoomHint ? 'pr-8' : ''}`}>
-                                        <span className="block text-md font-medium">{layerConfig.title}</span>
+                                    <div className={`text-left ${reserveZoomHint ? 'pr-28' : ''}`}>
+                                        <span className={`block text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}>{layerConfig.title}</span>
                                         {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
                                             <p className="text-xs font-normal text-muted-foreground">
                                                 {layerConfig.subtitle ?? layerConfig.sourceAgency}
@@ -559,7 +568,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                         )}
                         <AccordionHeader level={headingLevel} className="flex-1">
                             <AccordionTrigger>
-                            <div className={`text-left ${zoomHint ? 'pr-8' : ''}`}>
+                            <div className={`text-left ${reserveZoomHint ? 'pr-28' : ''}`}>
                                 <span
                                     className={`block text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}
                                 >
