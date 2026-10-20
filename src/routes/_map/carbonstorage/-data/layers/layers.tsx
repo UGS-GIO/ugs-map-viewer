@@ -711,15 +711,17 @@ const pastProjectsLayerName = 'enmin_ccs_pastprojects';
 export const pastProjectsRegionalTitle = 'Past and Ongoing Projects - Regional';
 export const pastProjectsSiteSpecificTitle = 'Past and Ongoing Projects - Site-Specific';
 
-const pastProjectsConfig = ({ title, sectionHeading, projectScale, fillOpacity, visible }: {
+const pastProjectsConfig = ({ title, sectionHeading, projectScale, defaultRenderId, fillOpacity, visible }: {
     title: string;
     sectionHeading: string;
     projectScale: string;
+    defaultRenderId?: string;
     fillOpacity: number;
     visible: boolean;
 }): PMTilesLayerProps => ({
     type: 'pmtiles',
     stacItemId: pastProjectsLayerName,
+    defaultRenderId,
     pmtilesUrl: '',
     sourceLayer: pastProjectsLayerName,
     title,
@@ -783,6 +785,7 @@ export const pastProjectsRegionalConfig = pastProjectsConfig({
     title: pastProjectsRegionalTitle,
     sectionHeading: 'Regional',
     projectScale: 'Regional',
+    defaultRenderId: 'regional',
     fillOpacity: 0.1,
     visible: true,
 });
@@ -791,6 +794,7 @@ export const pastProjectsSiteSpecificConfig = pastProjectsConfig({
     title: pastProjectsSiteSpecificTitle,
     sectionHeading: 'Site-Specific',
     projectScale: 'Site Specific',
+    defaultRenderId: 'site-specific',
     fillOpacity: 0.15,
     visible: true,
 });
