@@ -437,6 +437,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     const [advancedOpen, setAdvancedOpen] = useState(false)
     const advancedId = useId()
     const stackedHeadingId = useId()
+    const stackedScopeId = useId()
 
     // Independent of hover, so the range readout survives pointer movement.
     const rangeRows = useMemo(
@@ -533,9 +534,11 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
     const stackedChartNode = (
         <div>
             <div className="flex items-center justify-between mb-1">
-                <h4 id={stackedHeadingId} className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Vertical Displacement by {yearAxisLabel} · {basinFilterActive ? <BasinScopeLabel basins={selectedBasins} /> : 'Statewide'}
-                </h4>
+                <div className="flex min-w-0 flex-wrap items-baseline gap-x-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <h4 id={stackedHeadingId}>Vertical Displacement by {yearAxisLabel}</h4>
+                    <span aria-hidden="true">·</span>
+                    <span id={stackedScopeId}>{basinFilterActive ? <BasinScopeLabel basins={selectedBasins} /> : 'Statewide'}</span>
+                </div>
                 {yearOverride !== null && (
                     <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setYearOverride(typeValue, null)}>
                         Reset to latest
@@ -547,7 +550,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
             </p>
             <div
                 role="figure"
-                aria-labelledby={stackedHeadingId}
+                aria-labelledby={`${stackedHeadingId} ${stackedScopeId}`}
                 className="w-full [&_.recharts-surface]:outline-none [&_.recharts-surface:focus]:outline-none [&_.recharts-surface:focus-visible]:outline-none"
                 style={{ height: CHART_HEIGHT_PX }}
             >
@@ -1086,7 +1089,7 @@ function ChartLegendGroup({ label, bins, valueFor, secondaryValueFor }: { label:
  * screens and from the keyboard.
  */
 export function BasinScopeLabel({ basins, className }: { basins: ReadonlySet<string>; className?: string }) {
-    const names = [...basins]
+    const names = [...basins].sort((a, b) => a.localeCompare(b))
     if (names.length === 1) return <span className={`break-words ${className ?? ''}`}>{names[0]}</span>
     return (
         <Popover>
