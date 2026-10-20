@@ -82,6 +82,13 @@ describe('buildBasemapStyle', () => {
         expect(underlay.maxzoom).toBe(raster.minzoom)
     })
 
+    it('credits each raster source from its basemap config', () => {
+        const style = buildBasemapStyle(byId('utah-satellite'))
+        if (typeof style === 'string') throw new Error('expected raster style')
+        expect(style.sources['underlay-tiles']).toMatchObject({ attribution: byId('sentinel').attribution })
+        expect(style.sources['raster-tiles']).toMatchObject({ attribution: byId('utah-satellite').attribution })
+    })
+
     it('adds no underlay to rasters that are opaque outside Utah', () => {
         expect(layerIds('lite')).toEqual(['raster-layer'])
         expect(layerIds('terrain')).toEqual(['raster-layer'])
