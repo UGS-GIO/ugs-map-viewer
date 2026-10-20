@@ -12,7 +12,7 @@ import {
 import { getShortUnitForType, getStyleNameForType } from './displacement-layers'
 import { passesDataQuality } from './displacement-quality'
 import { maxReadingWithBasin } from './displacement-analytics'
-import { BasinList, KPI, combinedBbox, findBin, useZoomToBboxes } from './displacement-layer-charts'
+import { BasinList, BasinScopeLabel, KPI, combinedBbox, findBin, useZoomToBboxes } from './displacement-layer-charts'
 import { DisplacementAnalysisLayout } from './displacement-analysis-layout'
 import { renderDisplacementLayerFilters } from './displacement-layer-filters'
 
@@ -213,9 +213,7 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
                 <div ref={scopeLabelRef} tabIndex={-1} className="flex min-w-0 items-center gap-1.5 text-xs focus:outline-none" aria-live="polite">
                     <MapPin className={`h-3 w-3 shrink-0 ${basinFilterActive ? 'text-foreground' : 'text-muted-foreground'}`} aria-hidden="true" />
                     {basinFilterActive ? (
-                        <span className="truncate font-medium text-foreground" title={[...selectedBasins].join(', ')}>
-                            {selectedBasins.size === 1 ? [...selectedBasins][0] : `${selectedBasins.size} basins`}
-                        </span>
+                        <BasinScopeLabel basins={selectedBasins} className="font-medium text-foreground" />
                     ) : (
                         <span className="text-muted-foreground">Statewide</span>
                     )}

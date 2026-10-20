@@ -3,6 +3,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
 import area from '@turf/area'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Skeleton } from '@/components/ui/skeleton'
 import { LegendSwatchGrid, type LegendSwatchItem } from '@/components/maps/legend-swatch-grid'
 import { BarChart, Bar, LineChart, Line, Rectangle, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine, Label as RechartsLabel, type BarShapeProps, type XAxisTickContentProps } from 'recharts'
@@ -533,7 +534,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
         <div>
             <div className="flex items-center justify-between mb-1">
                 <h4 id={stackedHeadingId} className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Vertical Displacement by {yearAxisLabel} · <span title={basinFilterActive ? [...selectedBasins].join(', ') : undefined}>{scope}</span>
+                    Vertical Displacement by {yearAxisLabel} · {basinFilterActive ? <BasinScopeLabel basins={selectedBasins} /> : 'Statewide'}
                 </h4>
                 {yearOverride !== null && (
                     <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setYearOverride(typeValue, null)}>
@@ -657,9 +658,7 @@ export function DisplacementLayerCharts({ typeValue, layerTitle, mode = 'panel' 
                 <div ref={scopeLabelRef} tabIndex={-1} className="flex min-w-0 items-center gap-1.5 text-xs focus:outline-none" aria-live="polite">
                     <MapPin className={`h-3 w-3 shrink-0 ${basinFilterActive ? 'text-foreground' : 'text-muted-foreground'}`} aria-hidden="true" />
                     {basinFilterActive ? (
-                        <span className="truncate font-medium text-foreground" title={[...selectedBasins].join(', ')}>
-                            {selectedBasins.size === 1 ? [...selectedBasins][0] : `${selectedBasins.size} basins`}
-                        </span>
+                        <BasinScopeLabel basins={selectedBasins} className="font-medium text-foreground" />
                     ) : (
                         <span className="text-muted-foreground">Statewide</span>
                     )}
@@ -1078,6 +1077,33 @@ function ChartLegendGroup({ label, bins, valueFor, secondaryValueFor }: { label:
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
             <LegendSwatchGrid items={items} columns="single" />
         </div>
+    )
+}
+
+/**
+ * A single basin's name, or "N basins" as a button that opens the list of
+ * names. Tap or click rather than hover, so the names are readable on touch
+ * screens and from the keyboard.
+ */
+export function BasinScopeLabel({ basins, className }: { basins: ReadonlySet<string>; className?: string }) {
+    const names = [...basins]
+    if (names.length === 1) return <span className={`break-words ${className ?? ''}`}>{names[0]}</span>
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <button
+                    type="button"
+                    className={`-my-1.5 rounded-sm py-1.5 underline decoration-dotted underline-offset-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${className ?? ''}`}
+                >
+                    {names.length} basins
+                </button>
+            </PopoverTrigger>
+            <PopoverContent side="bottom" align="start" className="w-64 max-w-[calc(100vw-2rem)] p-3 text-xs">
+                <ul className="space-y-1">
+                    {names.map(name => <li key={name}>{name}</li>)}
+                </ul>
+            </PopoverContent>
+        </Popover>
     )
 }
 
