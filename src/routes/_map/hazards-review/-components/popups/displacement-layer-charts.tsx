@@ -1073,7 +1073,7 @@ function ChartLegendGroup({ label, bins, valueFor, secondaryValueFor }: { label:
     return (
         <div className="flex flex-col gap-1 min-w-0">
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-            <LegendSwatchGrid items={items} columns="single" />
+            <LegendSwatchGrid items={items} columns="single" shape="fill" />
         </div>
     )
 }

@@ -1,4 +1,5 @@
 import { Checkbox } from '@/components/ui/checkbox'
+import type { SwatchShape } from '@/lib/legend/swatch-shape'
 
 export interface LegendSwatchItem {
     key: string
@@ -38,15 +39,32 @@ interface LegendSwatchGridProps {
      * already shares the coloured group header's shade.
      */
     showSwatch?: boolean
+    /** Geometry the swatch stands for: polygons draw as rectangles, lines as a stroke, points as dots. */
+    shape?: SwatchShape
 }
 
 /**
- * Shared grid-of-swatches legend body: circular swatch + label rows.
+ * One legend swatch, sized like the WMS legend's symbols. Painted over the paper tone the map
+ * shows, so a transparent or part-transparent colour reads as see-through rather than as the panel.
+ */
+function LegendSwatch({ shape, color, stroke }: { shape: SwatchShape; color: string; stroke?: string }) {
+    const paint = { backgroundImage: `linear-gradient(${color}, ${color})`, borderColor: stroke ?? 'rgba(0,0,0,0.3)' }
+    return (
+        <span className="mt-0.5 flex h-3.5 shrink-0 items-center justify-center" aria-hidden>
+            {shape === 'line' && <span className="h-[3px] w-7 rounded-full" style={{ backgroundColor: color }} />}
+            {shape === 'circle' && <span className="legend-swatch h-3 w-3 rounded-full border" style={paint} />}
+            {shape === 'fill' && <span className="legend-swatch h-3.5 w-7 rounded-[2px] border" style={paint} />}
+        </span>
+    )
+}
+
+/**
+ * Shared grid-of-swatches legend body: swatch + label rows.
  * Extracted from the UCRC interactive symbology legend so other legends
  * (e.g. the displacement layers' static Uplift/Subsidence split) can reuse the
  * same visual style without carrying the checkbox/filter wiring.
  */
-export function LegendSwatchGrid({ items, isChecked, onToggle, columns = 'auto', showSwatch = true }: LegendSwatchGridProps) {
+export function LegendSwatchGrid({ items, isChecked, onToggle, columns = 'auto', showSwatch = true, shape = 'circle' }: LegendSwatchGridProps) {
     if (items.length === 0) return null
     const interactive = !!onToggle
     const containerClassName = columns === 'single'
@@ -56,13 +74,7 @@ export function LegendSwatchGrid({ items, isChecked, onToggle, columns = 'auto',
     return (
         <div className={containerClassName}>
             {items.map(item => {
-                const swatch = showSwatch && (
-                    <span
-                        className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
-                        style={{ backgroundColor: item.color, borderColor: item.stroke ?? 'rgba(0,0,0,0.3)' }}
-                        aria-hidden
-                    />
-                )
+                const swatch = showSwatch && <LegendSwatch shape={shape} color={item.color} stroke={item.stroke} />
                 const label = (
                     <span className="min-w-0 break-words leading-tight">
                         {item.label}
