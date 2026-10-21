@@ -711,12 +711,11 @@ const pastProjectsLayerName = 'enmin_ccs_pastprojects';
 export const pastProjectsRegionalTitle = 'Past and Ongoing Projects - Regional';
 export const pastProjectsSiteSpecificTitle = 'Past and Ongoing Projects - Site-Specific';
 
-const pastProjectsConfig = ({ title, sectionHeading, projectScale, defaultRenderId, fillOpacity, visible }: {
+const pastProjectsConfig = ({ title, sectionHeading, projectScale, defaultRenderId, visible }: {
     title: string;
     sectionHeading: string;
     projectScale: string;
-    defaultRenderId?: string;
-    fillOpacity: number;
+    defaultRenderId: string;
     visible: boolean;
 }): PMTilesLayerProps => ({
     type: 'pmtiles',
@@ -731,29 +730,6 @@ const pastProjectsConfig = ({ title, sectionHeading, projectScale, defaultRender
     opacity: 1,
     downloadParquetUrl: parquetUrl(pastProjectsLayerName),
     sourceAgency: 'Utah Geological Survey',
-    renders: [
-        {
-            id: 'default',
-            title,
-            styleUrl: `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify({
-                layers: [
-                    {
-                        id: `${pastProjectsLayerName}-fill`,
-                        type: 'fill',
-                        'source-layer': pastProjectsLayerName,
-                        paint: { 'fill-color': '#a80000', 'fill-opacity': fillOpacity },
-                    },
-                    {
-                        id: `${pastProjectsLayerName}-line`,
-                        type: 'line',
-                        'source-layer': pastProjectsLayerName,
-                        paint: { 'line-color': '#a80000', 'line-width': 2.5 },
-                    },
-                ],
-            }))}`,
-            legend: [{ label: title, color: `rgba(168, 0, 0, ${fillOpacity})`, stroke: '#a80000' }],
-        },
-    ],
     sublayers: [
         {
             name: pastProjectsLayerName,
@@ -786,7 +762,6 @@ export const pastProjectsRegionalConfig = pastProjectsConfig({
     sectionHeading: 'Regional',
     projectScale: 'Regional',
     defaultRenderId: 'regional',
-    fillOpacity: 0.1,
     visible: true,
 });
 
@@ -795,7 +770,6 @@ export const pastProjectsSiteSpecificConfig = pastProjectsConfig({
     sectionHeading: 'Site-Specific',
     projectScale: 'Site Specific',
     defaultRenderId: 'site-specific',
-    fillOpacity: 0.15,
     visible: true,
 });
 
