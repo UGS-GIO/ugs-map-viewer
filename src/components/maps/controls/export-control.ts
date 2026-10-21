@@ -644,6 +644,16 @@ export class MapExporter {
             // Replace currentColor with a visible color
             processedSvg = processedSvg.replace(/currentColor/g, '#333333');
 
+            // The swatch canvas classes are styled by the page's CSS, which an SVG drawn as an
+            // image doesn't see, so the transparency checker would paint black. Inline them.
+            const css = getComputedStyle(document.documentElement);
+            const token = (name: string) => css.getPropertyValue(name).trim();
+            const canvasStyle = `<style>.legend-canvas-base{fill:${token('--legend-canvas')}}`
+                + `.legend-canvas-alt{fill:${token('--legend-canvas-alt')}}`
+                + `.legend-canvas{stroke:hsl(${token('--border')});stroke-width:1}`
+                + `.legend-ink{stroke:#333333}</style>`;
+            processedSvg = processedSvg.replace(/<svg[^>]*>/, (open) => open + canvasStyle);
+
             // Convert 8-digit hex colors (#RRGGBBAA) to rgba() format for better compatibility
             processedSvg = processedSvg.replace(/#([0-9A-Fa-f]{8})\b/g, (_match, hex) => {
                 const r = parseInt(hex.slice(0, 2), 16);
