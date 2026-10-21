@@ -1,4 +1,5 @@
 import { FeatureCollection, GeoJsonProperties } from "geojson"
+import type { FilterSpecification } from "maplibre-gl"
 
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -146,6 +147,8 @@ interface BaseLayerProps {
     variantLabel?: string;
     /** One-line plain-language description of this variant, shown under the surface switch to explain what it means and how it relates to the map. */
     variantDescription?: string;
+    /** Heading shown above this layer in the layer list; consecutive layers sharing it show it once. */
+    sectionHeading?: string;
 }
 
 export interface WMSLayerProps extends BaseLayerProps {
@@ -243,6 +246,8 @@ export interface PMTilesLayerProps extends BaseLayerProps {
     defaultRenderId?: string;
     /** Source layer name within the PMTiles file */
     sourceLayer: string;
+    /** Filter ANDed onto every render; kept off the style so STAC renders can't drop it. */
+    featureFilter?: FilterSpecification;
     /** Optional sublayer config for popups/queries */
     sublayers?: ExtendedSublayerProperties[];
 }
