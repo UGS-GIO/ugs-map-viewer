@@ -36,7 +36,7 @@ function LegendGroup({ label, bins, unit }: { label: string; bins: SldBin[]; uni
     return (
         <div className="flex flex-col gap-1 min-w-0">
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-            <LegendSwatchGrid items={toSwatchItems(bins, b => magnitudeLabel(b, unit))} columns="single" />
+            <LegendSwatchGrid items={toSwatchItems(bins, b => magnitudeLabel(b, unit))} columns="single" shape="fill" />
         </div>
     )
 }

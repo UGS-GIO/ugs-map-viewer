@@ -3,6 +3,7 @@ import { BivariateLegend } from '@/components/maps/bivariate-legend';
 import useLegendPreview, { type PreviewItem } from '@/hooks/use-legend-preview';
 import { useArcGisLegend } from '@/hooks/use-arcgis-legend';
 import { mountDomNode } from '@/lib/legend/mount-dom-node';
+import { LEGEND_ROW_CLASS, LEGEND_SWATCH_SLOT_CLASS } from '@/lib/legend/legend-layout';
 
 interface LegendAccordionProps {
     url: string;
@@ -26,9 +27,9 @@ function LegendItem({ item }: { item: PreviewItem }) {
     }
 
     return (
-        <div className="flex items-center space-x-2 py-1">
+        <div className={LEGEND_ROW_CLASS}>
             <span
-                className="flex items-center justify-center w-8 min-w-8"
+                className={LEGEND_SWATCH_SLOT_CLASS}
                 aria-hidden
                 ref={mountDomNode(html)}
             />
@@ -64,18 +65,20 @@ const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend
                     {arcgisLoading && <div>Loading legend...</div>}
                     {arcgisError && <div>Error loading legend: {arcgisError.message}</div>}
                     {arcgisLegendItems?.map((item, index) => (
-                        <div key={index} className="flex items-center space-x-2 py-1">
+                        <div key={index} className={LEGEND_ROW_CLASS}>
                             {/* Server-rendered swatches are transparent wherever the symbol has no
                                 fill (a border-only class like "Private" is all transparency), so they
                                 get the same map-toned backing as the SVG symbols. */}
-                            <img
-                                src={`data:${item.contentType};base64,${item.imageData}`}
-                                width={item.width}
-                                height={item.height}
-                                alt=""
-                                className="legend-swatch min-w-5 rounded-[2px]"
-                            />
-                            <span className="text-sm">{item.label}</span>
+                            <span className={LEGEND_SWATCH_SLOT_CLASS}>
+                                <img
+                                    src={`data:${item.contentType};base64,${item.imageData}`}
+                                    width={item.width}
+                                    height={item.height}
+                                    alt=""
+                                    className="legend-swatch min-w-5 rounded-[2px]"
+                                />
+                            </span>
+                            <span>{item.label}</span>
                         </div>
                     ))}
                 </>

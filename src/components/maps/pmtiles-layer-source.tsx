@@ -12,7 +12,7 @@
  * restyle). Sprites for icon renders are loaded on demand.
  */
 import { useEffect } from 'react'
-import { useQueries } from '@tanstack/react-query'
+import { queryOptions, useQueries } from '@tanstack/react-query'
 import { Source, Layer, useMap, type LayerProps } from 'react-map-gl/maplibre'
 import type * as maplibregl from 'maplibre-gl'
 import type { PMTilesLayerProps, PMTilesRender } from '@/lib/types/mapping-types'
@@ -62,6 +62,19 @@ export function activeRenderOf(layer: PMTilesLayerProps, activeSymbology?: strin
     return renders.find(r => r.id === id) ?? renders[0]
 }
 
+/** A render's style fragment. Shared so the legend reads the same cached fragment the map draws. */
+export const styleFragmentQueryOptions = (styleUrl: string | undefined) => queryOptions({
+    queryKey: ['pmtiles-style-fragment', styleUrl ?? ''],
+    queryFn: async (): Promise<StyleFragment> => {
+        if (!styleUrl) throw new Error('PMTiles render has no styleUrl')
+        const res = await fetch(styleUrl)
+        if (!res.ok) throw new Error(`PMTiles style fetch failed: ${res.status}`)
+        return res.json()
+    },
+    enabled: !!styleUrl,
+    staleTime: Infinity,
+})
+
 /**
  * Fetch the active render's style fragment for each mounted PMTiles layer.
  * Mirrors `useWfsLayerData`: the parent gates mounting on readiness so a layer's
@@ -75,16 +88,7 @@ export function usePMTilesStyleFragments(
     const queries = useQueries({
         queries: layers.map(layer => {
             const render = activeRenderOf(layer, vectorLayerSymbology[layer.title || ''])
-            return {
-                queryKey: ['pmtiles-style-fragment', render?.styleUrl ?? ''],
-                queryFn: async (): Promise<StyleFragment> => {
-                    const res = await fetch(render!.styleUrl)
-                    if (!res.ok) throw new Error(`PMTiles style fetch failed: ${res.status}`)
-                    return res.json()
-                },
-                enabled: !!render?.styleUrl,
-                staleTime: Infinity,
-            }
+            return styleFragmentQueryOptions(render?.styleUrl)
         }),
     })
     const out = new Map<string, StyleFragment>()

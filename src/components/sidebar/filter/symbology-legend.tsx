@@ -1,6 +1,8 @@
 import { useCallback, useId, useMemo } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Checkbox } from '@/components/ui/checkbox'
+import { LegendSwatch, LegendSwatchGrid } from '@/components/maps/legend-swatch-grid'
+import { LEGEND_ROW_CLASS } from '@/lib/legend/legend-layout'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -216,42 +218,20 @@ function CategoryLegendGrid(
     if (isLoading || isPlaceholderData) return <p className="text-xs text-muted-foreground px-1">Loading…</p>
     if (options.length === 0) return null
 
-    // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens.
     const renderRows = (items: string[], showSwatch = true) => (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-1.5">
-            {items.map(value => {
-                const count = counts[value] ?? 0
-                const isZero = count === 0
-                const isChecked = onSet.has(value) && !isZero
-                return (
-                    <label
-                        key={value}
-                        className={cn(
-                            "flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer",
-                            isZero && "opacity-40 cursor-not-allowed",
-                        )}
-                    >
-                        <Checkbox
-                            className="mt-0.5 shrink-0"
-                            checked={isChecked}
-                            disabled={isZero}
-                            onCheckedChange={() => !isZero && toggle(value)}
-                            aria-label={`Toggle ${displayLabel(value)}`}
-                        />
-                        {showSwatch && (
-                            <span
-                                className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
-                                style={{ backgroundColor: colorFor(value), borderColor: stroke.get(value) ?? 'rgba(0,0,0,0.3)' }}
-                            />
-                        )}
-                        <span className="min-w-0 break-words leading-tight">
-                            {displayLabel(value)}
-                            <span className="ml-1 text-muted-foreground">({countLabel(count, totals[value] ?? 0)})</span>
-                        </span>
-                    </label>
-                )
-            })}
-        </div>
+        <LegendSwatchGrid
+            showSwatch={showSwatch}
+            isChecked={value => onSet.has(value) && (counts[value] ?? 0) > 0}
+            onToggle={toggle}
+            items={items.map(value => ({
+                key: value,
+                label: displayLabel(value),
+                color: colorFor(value),
+                stroke: stroke.get(value),
+                count: countLabel(counts[value] ?? 0, totals[value] ?? 0),
+                disabled: (counts[value] ?? 0) === 0,
+            }))}
+        />
     )
 
     const controls = (
@@ -310,7 +290,7 @@ function CategoryLegendGrid(
                     }
                     return (
                         <div key={g.key} className={cn("flex flex-col gap-1", groupDisabled && "opacity-40")}>
-                            <label className={cn("flex items-center gap-1.5 border-t border-border pt-1.5 mt-0.5 cursor-pointer", groupDisabled && "cursor-not-allowed")}>
+                            <label className={cn(LEGEND_ROW_CLASS, "border-t border-border pt-1.5 mt-0.5 cursor-pointer", groupDisabled && "cursor-not-allowed")}>
                                 <Checkbox
                                     className="shrink-0"
                                     checked={groupChecked}
@@ -318,8 +298,8 @@ function CategoryLegendGrid(
                                     onCheckedChange={() => !groupDisabled && toggleGroup()}
                                     aria-label={`Toggle ${g.label} group`}
                                 />
-                                <span className="inline-block w-3 h-3 rounded-full shrink-0 border" style={{ backgroundColor: g.color, borderColor: 'rgba(0,0,0,0.3)' }} />
-                                <Label className={cn("text-xs font-semibold cursor-pointer", groupDisabled && "cursor-not-allowed")}>
+                                <LegendSwatch color={g.color} />
+                                <Label className={cn("text-sm font-semibold cursor-pointer", groupDisabled && "cursor-not-allowed")}>
                                     {g.label}
                                     <span className="ml-1 font-normal text-muted-foreground">
                                         ({countLabel(shown, total)})
