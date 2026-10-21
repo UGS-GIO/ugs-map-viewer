@@ -12,6 +12,7 @@ import { isWMSLayer, isWFSLayer, isPMTilesLayer, isArcGISMapServerLayer, isCOGLa
 import { CogLegend } from '@/components/maps/cog-legend';
 import { useLayerExtent, UseLayerExtentOptions } from '@/hooks/use-layer-extent';
 import { useMapZoom, useMapLatitude, getZoomHint } from '@/hooks/use-map-zoom';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions';
 import { usePhoneSheetActions } from '@/components/maps/phone-sheet/use-phone-sheet';
 import LayerControls from '@/components/maps/layer-controls';
@@ -217,13 +218,15 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
         </>
     );
     // Phones get no tooltip, so there the hidden-at-this-zoom note stands in for the source line.
+    const isMobile = useIsMobile();
     const source = layerConfig.subtitle ?? layerConfig.sourceAgency;
-    const layerSubtitle = (source || zoomHint) && (
-        <p className="text-xs font-normal text-muted-foreground">
-            {zoomHint && <span className="text-primary md:hidden">Hidden at this zoom</span>}
-            {source && <span className={zoomHint ? 'hidden md:inline' : undefined}>{source}</span>}
+    const showZoomNote = isMobile && Boolean(zoomHint);
+    const layerSubtitle = (showZoomNote || source) && (
+        <p className={`text-xs font-normal ${showZoomNote ? 'text-primary' : 'text-muted-foreground'}`}>
+            {showZoomNote ? 'Hidden at this zoom' : source}
         </p>
     );
+    const zoomHintPadding = reserveZoomHint ? (isMobile ? 'pr-12' : 'pr-28') : '';
 
     const handleOpacityChange = useCallback((value: number) => {
         // Continuously updates, so don't update url with this
@@ -352,7 +355,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                             )}
                             <AccordionHeader level={headingLevel} className="flex-1">
                                 <AccordionTrigger>
-                                    <div className={`text-left ${reserveZoomHint ? 'pr-12 md:pr-28' : ''}`}>
+                                    <div className={`text-left ${zoomHintPadding}`}>
                                         <span className={`block text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}>{layerConfig.title}</span>
                                         {layerSubtitle}
                                     </div>
@@ -572,7 +575,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                         )}
                         <AccordionHeader level={headingLevel} className="flex-1">
                             <AccordionTrigger>
-                            <div className={`text-left ${reserveZoomHint ? 'pr-12 md:pr-28' : ''}`}>
+                            <div className={`text-left ${zoomHintPadding}`}>
                                 <span
                                     className={`block text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}
                                 >

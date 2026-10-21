@@ -1,6 +1,8 @@
 import { useId } from "react";
 import { ZoomIn, ZoomOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ZoomHintDirection } from "@/hooks/use-map-zoom";
 
@@ -19,6 +21,7 @@ const oneDecimal = (zoom: number, round: (n: number) => number) => Number((round
 export const ZoomHintPill = ({ direction, range, maxScale, layerTitle, onClick }: ZoomHintPillProps) => {
     const Icon = direction === "in" ? ZoomIn : ZoomOut;
     const detailId = useId();
+    const isMobile = useIsMobile();
     const detail =
         direction === "in"
             ? `Visible at zoom ${oneDecimal(range[0], Math.ceil)} and closer.`
@@ -33,7 +36,10 @@ export const ZoomHintPill = ({ direction, range, maxScale, layerTitle, onClick }
                     <Button
                         variant="outline"
                         size="sm"
-                        className="h-8 w-8 shrink-0 gap-1 rounded-full border-primary px-0 text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary md:w-auto md:px-2.5"
+                        className={cn(
+                            "h-8 shrink-0 gap-1 rounded-full border-primary text-xs font-medium text-primary hover:bg-primary/10 hover:text-primary",
+                            isMobile ? "w-8 px-0" : "w-auto px-2.5",
+                        )}
                         aria-label={`Zoom ${direction} to see ${layerTitle ?? "this layer"}`}
                         aria-describedby={detailId}
                         onClick={(e) => {
@@ -42,9 +48,9 @@ export const ZoomHintPill = ({ direction, range, maxScale, layerTitle, onClick }
                         }}
                         onPointerDown={(e) => e.stopPropagation()}
                     >
-                        <Icon className="h-4 w-4 md:h-3.5 md:w-3.5" aria-hidden="true" />
-                        {/* Icon only at phone widths, so long titles keep their room. */}
-                        <span className="hidden md:inline">Zoom {direction}</span>
+                        <Icon className={isMobile ? "h-4 w-4" : "h-3.5 w-3.5"} aria-hidden="true" />
+                        {/* Icon only in the phone layout, so long titles keep their room. */}
+                        {!isMobile && <span>Zoom {direction}</span>}
                         <span id={detailId} className="sr-only">{detail}</span>
                     </Button>
                 </TooltipTrigger>
