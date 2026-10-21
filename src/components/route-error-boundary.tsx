@@ -3,7 +3,7 @@ import { AlertCircle, Home, RotateCcw } from 'lucide-react';
 import { ErrorPage } from '@/components/error-page';
 
 interface RouteErrorBoundaryProps {
-    error: Error;
+    error: unknown;
 }
 
 /**
