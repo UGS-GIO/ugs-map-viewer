@@ -240,8 +240,8 @@ export function buildPmtilesLayerSpecs({
 
     return styleLayers.map((l, i) => {
         const fragmentFilter = l.filter as maplibregl.FilterSpecification | undefined
-        const filters = [fragmentFilter, layerFilter].filter(Boolean) as maplibregl.FilterSpecification[]
-        const filter = filters.length === 2 ? (['all', ...filters] as unknown as maplibregl.FilterSpecification) : filters[0]
+        const filters = [fragmentFilter, layer.featureFilter, layerFilter].filter(Boolean) as maplibregl.FilterSpecification[]
+        const filter = filters.length > 1 ? (['all', ...filters] as unknown as maplibregl.FilterSpecification) : filters[0]
         return buildFragmentLayerSpec(l, {
             layerId: i === 0 ? primaryId : `${primaryId}-${i}`,
             sourceId,

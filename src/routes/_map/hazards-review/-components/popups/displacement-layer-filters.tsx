@@ -1,9 +1,10 @@
 import { useMemo, useState, useId } from 'react'
-import { XIcon, ChevronDown, ChevronRight } from 'lucide-react'
+import { XIcon, ChevronDown, ChevronRight, Info } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { useDisplacementFilters, useEffectiveThresholdsIn, useEffectiveYear } from './displacement-filter-context'
 import { HatchSwatch } from './displacement-chart-hover'
@@ -20,6 +21,7 @@ import {
 } from './displacement-layers'
 import { useDisplacementBasinsForType, useDisplacementBasinYearIndexForType, useDisplacementDataQualsForType, useDisplacementSldBins, useDisplacementValueMagnitudesForType, useDisplacementYearsForType } from './use-displacement-queries'
 import { getPopulatedBinBoundaries } from './displacement-thresholds'
+import { CONFIRMED_LOW_KEY } from './displacement-quality'
 
 // Compare a live exclusion set against the high/medium default so "dirty" means
 // "the reviewer changed data-quality from the default", not "anything excluded".
@@ -32,6 +34,33 @@ function isDefaultDataQuals(excluded: ReadonlySet<string>): boolean {
 // 'Period End Year' for Cumulative + Vertical Displacement Rate.
 function yearLabelFor(type: DisplacementType): string {
     return type === 'Yearly' ? 'Water Year' : 'Period End Year'
+}
+
+// Tap/click (not hover) so it works on touch; Radix handles focus, Escape and outside taps.
+function TemporalCoherenceInfo() {
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground"
+                    aria-label="What is temporal coherence?"
+                >
+                    <Info className="h-3.5 w-3.5" aria-hidden="true" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent side="top" align="start" className="w-72 max-w-[calc(100vw-2rem)] p-3 text-xs leading-relaxed">
+                <p className="mb-1 font-semibold">Temporal coherence</p>
+                <p>
+                    Temporal coherence ranges from 0 to 1 and reflects measurement reliability; values close to 1 are
+                    more reliable. Temporal coherence drops if the ground surface changes between satellite passes due
+                    to seasonal snow, farming, vegetation changes, construction, wildfires, and soil moisture change,
+                    among other processes.
+                </p>
+            </PopoverContent>
+        </Popover>
+    )
 }
 
 export function renderDisplacementLayerFilters(layerTitle: string): React.ReactNode {
@@ -48,7 +77,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
     const isCharted = isChartedType(typeValue)
 
     // Year options + basin options both derived inside TanStack `select` so the
-    // raw 20k-feature array doesn't reach this component. hasYear flips on once
+    // raw full-layer array doesn't reach this component. hasYear flips on once
     // any years exist for this type so the dropdown stays hidden if nothing to
     // pick.
     const years = useDisplacementYearsForType(typeValue)
@@ -66,8 +95,7 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
     const excludedQuals = excludedDataQualsByType[typeValue]
     const dataQualsDirty = !isDefaultDataQuals(excludedQuals)
     // Split tiers for the UI: high/medium stay individual toggles; low + very-low
-    // collapse into one "unconfirmed low quality" toggle (their confirmed members
-    // always show, hatched — the CQL override handles that regardless of this).
+    // show as two rows, confirmed (hatched) and unconfirmed, each its own toggle.
     const highTierQuals = useMemo(() => dataQuals.filter(q => !(LOW_DATA_QUALS as readonly string[]).includes(q)), [dataQuals])
     const hasLowQuals = useMemo(() => dataQuals.some(q => (LOW_DATA_QUALS as readonly string[]).includes(q)), [dataQuals])
     // One toggle drives both low tiers together, but a hand-edited URL can exclude
@@ -240,7 +268,10 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                             {dataQuals.length > 0 && (
                                 <div className="flex flex-col gap-1">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-xs">Data quality</Label>
+                                        <div className="flex items-center gap-0.5">
+                                            <Label className="text-xs">Data quality</Label>
+                                            <TemporalCoherenceInfo />
+                                        </div>
                                         {dataQualsDirty && (
                                             <Button
                                                 variant="ghost"
@@ -272,26 +303,33 @@ function DisplacementLayerFilters({ typeValue }: { typeValue: DisplacementType }
                                         ))}
                                         {hasLowQuals && (
                                             <>
-                                                {/* Confirmed low/very-low: always shown, hatched (the review rule) —
-                                                    informational, not a toggle. Swatch matches the map + legend. */}
-                                                <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                                                    <HatchSwatch className="mt-0.5 h-3.5 w-3.5" />
+                                                {/* Confirmed low/very-low: drawn hatched, on by default. Swatch matches the map + legend. */}
+                                                <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
+                                                    <Checkbox
+                                                        checked={!excludedQuals.has(CONFIRMED_LOW_KEY)}
+                                                        onCheckedChange={() => toggleDataQual(typeValue, CONFIRMED_LOW_KEY)}
+                                                        aria-label="Toggle low-quality contours with independent observations"
+                                                        className="mt-0.5"
+                                                    />
                                                     <span className="flex flex-col leading-tight">
-                                                        <span className="text-foreground">Confirmed low quality</span>
-                                                        <span className="text-[10px]">Always shown, hatched</span>
+                                                        <span className="flex items-center gap-1.5">
+                                                            Low quality, independent observations
+                                                            <HatchSwatch className="h-3 w-3" />
+                                                        </span>
+                                                        <span className="text-[10px] text-muted-foreground">{DATA_QUAL_DESCRIPTIONS['low']}, hatched on the map</span>
                                                     </span>
-                                                </div>
+                                                </label>
                                                 {/* Unconfirmed low + very-low: the noise. One toggle, off by default. */}
                                                 <label className="flex items-start gap-2 text-xs text-foreground cursor-pointer">
                                                     <Checkbox
                                                         checked={unconfirmedLowIndeterminate ? 'indeterminate' : unconfirmedLowVisible}
                                                         onCheckedChange={(v) => setDataQualsVisible(typeValue, LOW_DATA_QUALS, v === true)}
-                                                        aria-label="Toggle unconfirmed low-quality contours"
+                                                        aria-label="Toggle low-quality contours without independent observations"
                                                         className="mt-0.5"
                                                     />
                                                     <span className="flex flex-col leading-tight">
-                                                        <span>Unconfirmed low quality</span>
-                                                        <span className="text-[10px] text-muted-foreground">Lowest-confidence, not independently confirmed</span>
+                                                        <span>Low quality</span>
+                                                        <span className="text-[10px] text-muted-foreground">{DATA_QUAL_DESCRIPTIONS['low']}, not independently confirmed</span>
                                                     </span>
                                                 </label>
                                             </>
