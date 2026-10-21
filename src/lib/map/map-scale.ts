@@ -1,4 +1,4 @@
-import type maplibregl from 'maplibre-gl'
+import type * as maplibregl from 'maplibre-gl'
 
 // CSS reference pixel: 1/96 inch (0.2645833 mm).
 const METERS_PER_CSS_PIXEL = 0.0254 / 96

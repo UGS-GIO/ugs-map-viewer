@@ -1,5 +1,5 @@
 import type { Geometry, Polygon } from 'geojson'
-import type maplibregl from 'maplibre-gl'
+import type * as maplibregl from 'maplibre-gl'
 import type { LayerProps } from '@/lib/types/mapping-types'
 import type { WfsFeature } from '@/lib/map/wfs-service'
 

@@ -1,3 +1,4 @@
+import type * as maplibregl from 'maplibre-gl';
 import { useRef, useEffect } from 'react'
 import { TerraDraw, TerraDrawRectangleMode, TerraDrawPolygonMode } from 'terra-draw'
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter'

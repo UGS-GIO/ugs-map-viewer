@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useMemo } from 'react'
-import type maplibregl from 'maplibre-gl'
+import type * as maplibregl from 'maplibre-gl'
 import type { MapContextProps, DrawMode } from '@/context/map-context'
 import type { ClickedFeature } from '@/components/maps/types'
 import type { Polygon } from 'geojson'

@@ -3,7 +3,7 @@
  * Based on @watergis/maplibre-gl-export (MIT License - Jin IGARASHI, 2020)
  * Adapted for UGS styling and theme integration
  */
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 
 export type PageSize = 'A4' | 'A3' | 'Letter' | 'Tabloid';
 export type PageOrientation = 'landscape' | 'portrait';

@@ -6,7 +6,7 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import maplibregl from 'maplibre-gl'
+import * as maplibregl from 'maplibre-gl'
 import DataMap, { HighlightFeature, DrawMode, SpatialFilter } from '@/components/maps/data-map'
 import { PopupSheet, PopupSheetRef } from '@/components/maps/popups/popup-sheet'
 import type { LayerContentProps, ExtendedFeature } from '@/components/maps/popups/types'

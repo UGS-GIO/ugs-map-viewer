@@ -20,7 +20,8 @@ export function HighlightLayers({ features }: HighlightLayersProps) {
       type: 'Feature',
       id: f.id,
       geometry: f.geometry,
-      properties: f.properties || {},
+      // Spread: MapLibre 6 can't send null-prototype objects (from PMTiles features) to its worker
+      properties: { ...f.properties },
     })),
   }), [features])
 
