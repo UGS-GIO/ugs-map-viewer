@@ -882,7 +882,7 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
     title: geothermalWellsJoinsTitle,
     visible: false,
     downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_wellfeatures"),
-    sourceAgency: 'Utah Geological Survey',
+    sourceAgency: 'INGENIOUS Project, 2022',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsJoinsName}`,
@@ -941,7 +941,7 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
     title: geothermalSpringsJoinsTitle,
     visible: false,
     downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_springfeatures"),
-    sourceAgency: 'Utah Geological Survey',
+    sourceAgency: 'INGENIOUS Project, 2022',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalSpringsJoinsName}`,
