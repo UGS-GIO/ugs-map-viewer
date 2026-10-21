@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionHeader } from '@/components/ui/accordion';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight, SlidersHorizontal } from 'lucide-react';
@@ -85,6 +85,29 @@ function useLayerZoomHint(layer: LayerProps, active: boolean) {
     };
     return { range, hint, maxScale, zoomToRange };
 }
+
+const newSectionHeading = (current: LayerProps, previous?: LayerProps): string | undefined =>
+    current.sectionHeading !== previous?.sectionHeading ? current.sectionHeading : undefined;
+
+const SectionHeading = ({
+    heading,
+    isTopLevel = false,
+}: {
+    heading: string;
+    isTopLevel?: boolean;
+}) => {
+    const HeadingTag = isTopLevel ? 'h2' : 'h3';
+    return (
+        <div
+            className={`${isTopLevel ? 'mr-2 mt-4' : 'ml-4 mr-2 mt-3'} mb-1 px-2 border-b border-border/50 pb-1`}
+            data-section-heading={heading}
+        >
+            <HeadingTag className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {heading}
+            </HeadingTag>
+        </div>
+    );
+};
 
 const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFilters, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender, embedded }: LayerAccordionItemProps) => {
     const {
@@ -481,19 +504,26 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                                 />
                                 <label htmlFor={selectAllId} className="text-sm font-medium italic">Select All</label>
                             </div>
-                            {childLayers.map((child) => (
-                                <div className="ml-4" key={child.title}>
-                                    <LayerAccordionItem
-                                        disableExport={disableExport}
-                                        layerConfig={child}
-                                        isTopLevel={false}
-                                        groupExtrasRender={groupExtrasRender}
-                                        layerExtrasRender={layerExtrasRender}
-                                        layerStatsRender={layerStatsRender}
-                                        layerLegendRender={layerLegendRender}
-                                    />
-                                </div>
-                            ))}
+                            {childLayers.map((child, index) => {
+                                const heading = newSectionHeading(child, index > 0 ? childLayers[index - 1] : undefined);
+
+                                return (
+                                    <Fragment key={child.title || index}>
+                                        {heading && <SectionHeading heading={heading} isTopLevel={false} />}
+                                        <div className="ml-4">
+                                            <LayerAccordionItem
+                                                disableExport={disableExport}
+                                                layerConfig={child}
+                                                isTopLevel={false}
+                                                groupExtrasRender={groupExtrasRender}
+                                                layerExtrasRender={layerExtrasRender}
+                                                layerStatsRender={layerStatsRender}
+                                                layerLegendRender={layerLegendRender}
+                                            />
+                                        </div>
+                                    </Fragment>
+                                );
+                            })}
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
@@ -601,20 +631,24 @@ export const useCustomLayerList = ({ config, disableExport, hasLayerFilters, gro
 
     const layerList = useMemo(() => {
         if (!config) return [];
-        return [...config].map(layer => {
+        return [...config].map((layer, index) => {
+            const heading = newSectionHeading(layer, index > 0 ? config[index - 1] : undefined);
+
             return (
-                <LayerAccordionItem
-                    key={layer.title}
-                    layerConfig={layer}
-                    isTopLevel={true}
-                    disableExport={disableExport}
-                    hasLayerFilters={hasLayerFilters}
-                    groupExtrasRender={groupExtrasRender}
-                    layerExtrasRender={layerExtrasRender}
-                    layerStatsRender={layerStatsRender}
-                    layerLegendRender={layerLegendRender}
-                />
-            )
+                <Fragment key={layer.title || index}>
+                    {heading && <SectionHeading heading={heading} isTopLevel={true} />}
+                    <LayerAccordionItem
+                        layerConfig={layer}
+                        isTopLevel={true}
+                        disableExport={disableExport}
+                        hasLayerFilters={hasLayerFilters}
+                        groupExtrasRender={groupExtrasRender}
+                        layerExtrasRender={layerExtrasRender}
+                        layerStatsRender={layerStatsRender}
+                        layerLegendRender={layerLegendRender}
+                    />
+                </Fragment>
+            );
         });
     }, [config, disableExport, hasLayerFilters, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender]);
 

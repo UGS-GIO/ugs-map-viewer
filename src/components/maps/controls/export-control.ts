@@ -1,12 +1,9 @@
 /**
- * Custom Map Export Control
+ * Map export: renders the view, north arrow, scale bar and legend to an image or PDF.
  * Based on @watergis/maplibre-gl-export (MIT License - Jin IGARASHI, 2020)
  * Adapted for UGS styling and theme integration
  */
 import maplibregl from 'maplibre-gl';
-import { renderToStaticMarkup } from 'react-dom/server';
-import { createElement } from 'react';
-import { Printer, X } from 'lucide-react';
 
 export type PageSize = 'A4' | 'A3' | 'Letter' | 'Tabloid';
 export type PageOrientation = 'landscape' | 'portrait';
@@ -46,17 +43,6 @@ export interface MapBounds {
 
 export type LegendMode = 'none' | 'on-map' | 'separate';
 
-export interface ExportControlOptions {
-    pageSize?: PageSize;
-    pageOrientation?: PageOrientation;
-    format?: ExportFormat;
-    dpi?: DPI;
-    filename?: string;
-    scaleUnit?: ScaleUnit;
-    /** Callback to get legend data for visible layers (receives map bounds for filtering) */
-    getLegendData?: (bounds: MapBounds) => Promise<LegendItem[]>;
-}
-
 interface PageDimensions {
     width: number;
     height: number;
@@ -69,261 +55,74 @@ const PAGE_SIZES: Record<PageSize, PageDimensions> = {
     Tabloid: { width: 279.4, height: 431.8 },
 };
 
-/**
- * Export Control - generates map images/PDFs
- * Implements the MapLibre GL JS IControl interface
- */
-export class ExportControl implements maplibregl.IControl {
+export interface ExportSettings {
+    pageSize: PageSize;
+    pageOrientation: PageOrientation;
+    format: ExportFormat;
+    dpi: DPI;
+    scaleUnit: ScaleUnit;
+    legendMode: LegendMode;
+}
+
+export const DEFAULT_EXPORT_SETTINGS: ExportSettings = {
+    pageSize: 'A4',
+    pageOrientation: 'landscape',
+    format: 'png',
+    dpi: 300,
+    scaleUnit: 'imperial',
+    legendMode: 'on-map',
+};
+
+/** Legend entries for the layers drawn within `bounds`. */
+export type GetLegendData = (bounds: MapBounds) => Promise<LegendItem[]>;
+
+/** Renders the current map view to a PNG, JPEG or PDF download. */
+export class MapExporter {
     private map?: maplibregl.Map;
-    private container?: HTMLElement;
-    private toggleButton?: HTMLButtonElement;
-    private panel?: HTMLElement;
-    private isOpen = false;
 
-    // Current settings
-    private pageSize: PageSize;
-    private pageOrientation: PageOrientation;
-    private format: ExportFormat;
-    private dpi: DPI;
-    private filename: string;
-    private scaleUnit: ScaleUnit;
-    private legendMode: LegendMode;
-    private getLegendData?: (bounds: MapBounds) => Promise<LegendItem[]>;
+    constructor(
+        private readonly settings: ExportSettings = DEFAULT_EXPORT_SETTINGS,
+        private readonly filename = 'ugs-map',
+        private readonly getLegendData?: GetLegendData,
+    ) {}
 
-    constructor(options: ExportControlOptions = {}) {
-        this.pageSize = options.pageSize ?? 'A4';
-        this.pageOrientation = options.pageOrientation ?? 'landscape';
-        this.format = options.format ?? 'png';
-        this.dpi = options.dpi ?? 300;
-        this.filename = options.filename ?? 'map-export';
-        this.scaleUnit = options.scaleUnit ?? 'imperial';
-        this.legendMode = 'on-map';
-        this.getLegendData = options.getLegendData;
-    }
-
-    onAdd(map: maplibregl.Map): HTMLElement {
+    async run(map: maplibregl.Map): Promise<void> {
         this.map = map;
 
-        this.container = document.createElement('div');
-        this.container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+        // Calculate dimensions based on page size and DPI
+        const pageDims = PAGE_SIZES[this.settings.pageSize];
+        const width = this.settings.pageOrientation === 'landscape' ? pageDims.height : pageDims.width;
+        const height = this.settings.pageOrientation === 'landscape' ? pageDims.width : pageDims.height;
 
-        // Toggle button
-        this.toggleButton = this.createToggleButton();
-        this.toggleButton.addEventListener('click', () => this.toggle());
+        // Convert mm to pixels at specified DPI
+        const pixelWidth = Math.round((width / 25.4) * this.settings.dpi);
+        const pixelHeight = Math.round((height / 25.4) * this.settings.dpi);
 
-        this.container.appendChild(this.toggleButton);
+        const canvas = await this.generateCanvas(pixelWidth, pixelHeight);
 
-        // Click outside to close
-        document.addEventListener('click', this.handleOutsideClick);
-
-        return this.container;
-    }
-
-    onRemove(): void {
-        document.removeEventListener('click', this.handleOutsideClick);
-        this.closePanel();
-        this.container?.parentNode?.removeChild(this.container);
-        this.map = undefined;
-    }
-
-    private handleOutsideClick = (e: MouseEvent) => {
-        if (this.isOpen && this.container && !this.container.contains(e.target as Node)) {
-            this.closePanel();
-        }
-    };
-
-    private createToggleButton(): HTMLButtonElement {
-        const button = document.createElement('button');
-        button.className = 'maplibregl-ctrl-icon';
-        button.type = 'button';
-        button.title = 'Export map';
-        button.setAttribute('aria-label', 'Export map');
-        button.setAttribute('data-tour', 'print-map');
-
-        const iconElement = createElement(Printer, { size: 20, strokeWidth: 2 });
-        button.innerHTML = renderToStaticMarkup(iconElement);
-
-        return button;
-    }
-
-    private toggle(): void {
-        if (this.isOpen) {
-            this.closePanel();
+        if (this.settings.format === 'pdf') {
+            await this.exportAsPdf(canvas, width, height);
         } else {
-            this.openPanel();
-        }
-    }
-
-    private openPanel(): void {
-        if (this.isOpen || !this.container) return;
-
-        this.panel = document.createElement('div');
-        this.panel.className = 'absolute top-full left-0 mt-1 min-w-[200px] bg-popover border border-border rounded-md shadow-md p-2 z-10 overflow-hidden';
-
-        // Header with close button
-        const header = document.createElement('div');
-        header.className = 'flex justify-between items-center pb-1 mb-1.5 border-b border-border';
-
-        const title = document.createElement('span');
-        title.textContent = 'Export Map';
-        title.className = 'text-xs font-medium text-foreground leading-none';
-
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.className = 'size-4 bg-transparent border-none cursor-pointer p-0 flex items-center justify-center text-muted-foreground hover:text-foreground';
-        closeBtn.innerHTML = renderToStaticMarkup(createElement(X, { size: 14 }));
-        closeBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            this.closePanel();
-        });
-
-        header.appendChild(title);
-        header.appendChild(closeBtn);
-        this.panel.appendChild(header);
-
-        // Options
-        this.panel.appendChild(this.createSelect('Size', 'pageSize', ['A4', 'A3', 'Letter', 'Tabloid'], this.pageSize));
-        this.panel.appendChild(this.createSelect('Orientation', 'pageOrientation', ['landscape', 'portrait'], this.pageOrientation));
-        this.panel.appendChild(this.createSelect('Format', 'format', ['png', 'jpeg', 'pdf'], this.format));
-        this.panel.appendChild(this.createSelect('Quality', 'dpi', ['96', '150', '200', '300'], String(this.dpi)));
-        this.panel.appendChild(this.createSelect('Scale', 'scaleUnit', ['imperial', 'metric'], this.scaleUnit, { imperial: 'mi/ft', metric: 'km/m' }));
-
-        // Legend mode select (only show if getLegendData is available)
-        if (this.getLegendData) {
-            this.panel.appendChild(this.createSelect('Legend', 'legendMode', ['on-map', 'separate', 'none'], this.legendMode, {
-                'on-map': 'On Map',
-                'separate': 'Separate',
-                'none': 'None'
-            }));
+            this.exportAsImage(canvas);
         }
 
-        // Export button - using inline styles since Tailwind purges dynamic classes
-        const exportBtn = document.createElement('button');
-        exportBtn.type = 'button';
-        exportBtn.id = 'export-map-btn';
-        exportBtn.textContent = 'Export';
-        exportBtn.style.cssText = `
-            width: 100%;
-            margin-top: 8px;
-            padding: 6px 16px;
-            background-color: hsl(var(--primary));
-            color: hsl(var(--primary-foreground));
-            border: none;
-            border-radius: 4px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            text-align: center;
-            line-height: 1.4;
-            display: block;
-        `;
-        exportBtn.addEventListener('mouseenter', () => exportBtn.style.opacity = '0.9');
-        exportBtn.addEventListener('mouseleave', () => exportBtn.style.opacity = '1');
-        exportBtn.addEventListener('click', () => this.exportMap());
-        this.panel.appendChild(exportBtn);
-
-        this.container.appendChild(this.panel);
-        this.isOpen = true;
-    }
-
-    private closePanel(): void {
-        if (!this.isOpen) return;
-
-        this.panel?.remove();
-        this.panel = undefined;
-        this.isOpen = false;
-    }
-
-    private createSelect(
-        label: string,
-        key: string,
-        options: string[],
-        currentValue: string,
-        labelMap?: Record<string, string>
-    ): HTMLElement {
-        const row = document.createElement('div');
-        row.className = 'flex justify-between items-center mb-1.5';
-
-        const labelEl = document.createElement('label');
-        labelEl.textContent = label;
-        labelEl.className = 'text-xs text-foreground';
-
-        const select = document.createElement('select');
-        select.className = 'py-0.5 px-1.5 text-xs border border-input rounded bg-background text-foreground cursor-pointer';
-
-        options.forEach(opt => {
-            const option = document.createElement('option');
-            option.value = opt;
-            // Use custom label if provided, otherwise capitalize first letter
-            option.textContent = labelMap?.[opt] ?? (opt.charAt(0).toUpperCase() + opt.slice(1));
-            if (opt === currentValue) option.selected = true;
-            select.appendChild(option);
-        });
-
-        select.addEventListener('change', () => {
-            (this as any)[key] = key === 'dpi' ? parseInt(select.value) : select.value;
-        });
-
-        row.appendChild(labelEl);
-        row.appendChild(select);
-        return row;
-    }
-
-    private async exportMap(): Promise<void> {
-        if (!this.map) return;
-
-        const exportBtn = this.panel?.querySelector('#export-map-btn') as HTMLButtonElement;
-        if (exportBtn) {
-            exportBtn.textContent = 'Exporting...';
-            exportBtn.disabled = true;
-        }
-
-        try {
-            // Calculate dimensions based on page size and DPI
-            const pageDims = PAGE_SIZES[this.pageSize];
-            const width = this.pageOrientation === 'landscape' ? pageDims.height : pageDims.width;
-            const height = this.pageOrientation === 'landscape' ? pageDims.width : pageDims.height;
-
-            // Convert mm to pixels at specified DPI
-            const pixelWidth = Math.round((width / 25.4) * this.dpi);
-            const pixelHeight = Math.round((height / 25.4) * this.dpi);
-
-            // Use the map's renderToCanvas or generate from current view
-            const canvas = await this.generateCanvas(pixelWidth, pixelHeight);
-
-            if (this.format === 'pdf') {
-                await this.exportAsPdf(canvas, width, height);
-            } else {
-                this.exportAsImage(canvas);
+        // Export separate legend if mode is 'separate'
+        if (this.settings.legendMode === 'separate' && this.getLegendData) {
+            const mapBounds = map.getBounds();
+            const bounds: MapBounds = {
+                west: mapBounds.getWest(),
+                south: mapBounds.getSouth(),
+                east: mapBounds.getEast(),
+                north: mapBounds.getNorth(),
+                width: pixelWidth,
+                height: pixelHeight
+            };
+            const legendData = await this.getLegendData(bounds);
+            if (legendData.length > 0) {
+                const scale = this.settings.dpi / 96;
+                const legendCanvas = await this.generateLegendCanvas(legendData, scale);
+                this.exportAsImage(legendCanvas, `${this.filename}-legend`);
             }
-
-            // Export separate legend if mode is 'separate'
-            if (this.legendMode === 'separate' && this.getLegendData && this.map) {
-                const mapBounds = this.map.getBounds();
-                const bounds: MapBounds = {
-                    west: mapBounds.getWest(),
-                    south: mapBounds.getSouth(),
-                    east: mapBounds.getEast(),
-                    north: mapBounds.getNorth(),
-                    width: pixelWidth,
-                    height: pixelHeight
-                };
-                const legendData = await this.getLegendData(bounds);
-                if (legendData.length > 0) {
-                    const scale = this.dpi / 96;
-                    const legendCanvas = await this.generateLegendCanvas(legendData, scale);
-                    this.exportAsImage(legendCanvas, `${this.filename}-legend`);
-                }
-            }
-        } catch (error) {
-            console.error('Export failed:', error);
-            alert('Export failed. Please try again.');
-        } finally {
-            if (exportBtn) {
-                exportBtn.textContent = 'Export';
-                exportBtn.disabled = false;
-            }
-            this.closePanel();
         }
     }
 
@@ -362,26 +161,27 @@ export class ExportControl implements maplibregl.IControl {
             attributionControl: false,
         });
 
-        // Wait for map to fully render
-        await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('Map render timeout')), 30000);
-            exportMap.once('idle', () => {
-                clearTimeout(timeout);
-                resolve();
+        // A failed render or legend fetch still has to tear down the offscreen map.
+        try {
+            // Wait for map to fully render
+            await new Promise<void>((resolve, reject) => {
+                const timeout = setTimeout(() => reject(new Error('Map render timeout')), 30000);
+                exportMap.once('idle', () => {
+                    clearTimeout(timeout);
+                    resolve();
+                });
+                exportMap.once('error', (e) => {
+                    clearTimeout(timeout);
+                    reject(e);
+                });
             });
-            exportMap.once('error', (e) => {
-                clearTimeout(timeout);
-                reject(e);
-            });
-        });
 
-        // Get canvas
-        const canvas = exportMap.getCanvas();
+            // Get canvas
+            const canvas = exportMap.getCanvas();
 
-        // Fetch legend data if needed (with map bounds for content-dependent filtering)
-        let legendData: LegendItem[] = [];
-        if (this.legendMode !== 'none' && this.getLegendData) {
-            try {
+            // Fetch legend data if needed (with map bounds for content-dependent filtering)
+            let legendData: LegendItem[] = [];
+            if (this.settings.legendMode !== 'none' && this.getLegendData) {
                 const mapBounds = exportMap.getBounds();
                 const bounds: MapBounds = {
                     west: mapBounds.getWest(),
@@ -391,38 +191,36 @@ export class ExportControl implements maplibregl.IControl {
                     width,
                     height
                 };
+                // Fail the export rather than print a map whose legend silently went missing.
                 legendData = await this.getLegendData(bounds);
-            } catch (e) {
-                console.warn('Failed to fetch legend data:', e);
             }
-        }
 
-        // Create a copy of the canvas
-        const outputCanvas = document.createElement('canvas');
-        outputCanvas.width = canvas.width;
-        outputCanvas.height = canvas.height;
-        const ctx = outputCanvas.getContext('2d');
-        if (ctx) {
-            ctx.drawImage(canvas, 0, 0);
+            // Create a copy of the canvas
+            const outputCanvas = document.createElement('canvas');
+            outputCanvas.width = canvas.width;
+            outputCanvas.height = canvas.height;
+            const ctx = outputCanvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(canvas, 0, 0);
 
-            // Add overlays
-            const scale = this.dpi / 96; // Scale factor for high DPI
-            const bearing = exportMap.getBearing();
-            this.drawNorthArrow(ctx, outputCanvas.width, scale, bearing);
-            this.drawScaleBar(ctx, outputCanvas.width, outputCanvas.height, exportMap, scale, this.scaleUnit);
-            this.drawAttribution(ctx, outputCanvas.width, outputCanvas.height, scale);
+                // Add overlays
+                const scale = this.settings.dpi / 96; // Scale factor for high DPI
+                const bearing = exportMap.getBearing();
+                this.drawNorthArrow(ctx, outputCanvas.width, scale, bearing);
+                this.drawScaleBar(ctx, outputCanvas.width, outputCanvas.height, exportMap, scale, this.settings.scaleUnit);
+                this.drawAttribution(ctx, outputCanvas.width, outputCanvas.height, scale);
 
-            // Draw legend on map if mode is 'on-map'
-            if (this.legendMode === 'on-map' && legendData.length > 0) {
-                await this.drawLegend(ctx, outputCanvas.width, outputCanvas.height, scale, legendData);
+                // Draw legend on map if mode is 'on-map'
+                if (this.settings.legendMode === 'on-map' && legendData.length > 0) {
+                    await this.drawLegend(ctx, outputCanvas.width, outputCanvas.height, scale, legendData);
+                }
             }
+
+            return outputCanvas;
+        } finally {
+            exportMap.remove();
+            hiddenContainer.remove();
         }
-
-        // Cleanup
-        exportMap.remove();
-        hiddenContainer.remove();
-
-        return outputCanvas;
     }
 
     private drawNorthArrow(ctx: CanvasRenderingContext2D, canvasWidth: number, scale: number, bearing: number): void {
@@ -846,6 +644,16 @@ export class ExportControl implements maplibregl.IControl {
             // Replace currentColor with a visible color
             processedSvg = processedSvg.replace(/currentColor/g, '#333333');
 
+            // The swatch canvas classes are styled by the page's CSS, which an SVG drawn as an
+            // image doesn't see, so the transparency checker would paint black. Inline them.
+            const css = getComputedStyle(document.documentElement);
+            const token = (name: string) => css.getPropertyValue(name).trim();
+            const canvasStyle = `<style>.legend-canvas-base{fill:${token('--legend-canvas')}}`
+                + `.legend-canvas-alt{fill:${token('--legend-canvas-alt')}}`
+                + `.legend-canvas{stroke:hsl(${token('--border')});stroke-width:1}`
+                + `.legend-ink{stroke:#333333}</style>`;
+            processedSvg = processedSvg.replace(/<svg[^>]*>/, (open) => open + canvasStyle);
+
             // Convert 8-digit hex colors (#RRGGBBAA) to rgba() format for better compatibility
             processedSvg = processedSvg.replace(/#([0-9A-Fa-f]{8})\b/g, (_match, hex) => {
                 const r = parseInt(hex.slice(0, 2), 16);
@@ -946,8 +754,8 @@ export class ExportControl implements maplibregl.IControl {
     }
 
     private exportAsImage(canvas: HTMLCanvasElement, filename?: string): void {
-        const mimeType = this.format === 'jpeg' ? 'image/jpeg' : 'image/png';
-        const extension = this.format === 'jpeg' ? 'jpg' : 'png';
+        const mimeType = this.settings.format === 'jpeg' ? 'image/jpeg' : 'image/png';
+        const extension = this.settings.format === 'jpeg' ? 'jpg' : 'png';
         const name = filename ?? this.filename;
 
         canvas.toBlob((blob) => {
@@ -966,7 +774,7 @@ export class ExportControl implements maplibregl.IControl {
         const { jsPDF } = await import('jspdf');
 
         const pdf = new jsPDF({
-            orientation: this.pageOrientation,
+            orientation: this.settings.pageOrientation,
             unit: 'mm',
             format: [widthMm, heightMm],
         });

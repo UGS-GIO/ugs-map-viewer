@@ -12,15 +12,22 @@
  * - Cloudless satellite imagery
  */
 
+import type { StyleSpecification, RasterSourceSpecification } from 'maplibre-gl';
+
 // UGRC Discover quad-word for authenticated access
 const UGRC_QUAD_WORD = 'nebula-east-focus-virgo';
 const UGRC_BASE_URL = `https://discover.agrc.utah.gov/login/path/${UGRC_QUAD_WORD}`;
+const UGRC_ATTRIBUTION = '© <a href="https://gis.utah.gov">UGRC</a>';
 
 export interface BasemapStyle {
   id: string;
   title: string;
   url: string;
   type: 'short' | 'long'; // short = main nav, long = dropdown
+  /** Basemap id drawn beneath; only useful when this style's tiles are transparent outside Utah. */
+  underlay?: string;
+  /** Credit for raster tiles; vector styles carry their own. */
+  attribution?: string;
 }
 
 // All available basemap styles
@@ -36,32 +43,39 @@ export const BASEMAP_STYLES: BasemapStyle[] = [
     id: 'sentinel',
     title: 'Satellite',
     url: 'https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless-2020_3857/default/GoogleMapsCompatible/{z}/{y}/{x}.jpg',
+    attribution: '© Sentinel-2 by EOX',
     type: 'short',
   },
   {
     id: 'lite',
     title: 'Lite',
     url: `${UGRC_BASE_URL}/tiles/lite_basemap/{z}/{x}/{y}`,
+    attribution: UGRC_ATTRIBUTION,
     type: 'short',
   },
   {
     id: 'terrain',
     title: 'Terrain',
     url: `${UGRC_BASE_URL}/tiles/terrain_basemap/{z}/{x}/{y}`,
+    attribution: UGRC_ATTRIBUTION,
     type: 'short',
   },
 
   // Dropdown basemaps (long) - Utah-specific UGRC maps
   {
     id: 'hybrid',
-    title: 'Utah Hybrid',
+    title: 'Hybrid',
+    underlay: 'sentinel',
     url: `${UGRC_BASE_URL}/tiles/hybrid_basemap/{z}/{x}/{y}`,
+    attribution: UGRC_ATTRIBUTION,
     type: 'long',
   },
   {
-    id: 'utah-satellite',
-    title: 'Utah Satellite',
+    id: 'satellite',
+    title: 'Satellite',
+    underlay: 'sentinel',
     url: `${UGRC_BASE_URL}/tiles/utah/{z}/{x}/{y}`,
+    attribution: UGRC_ATTRIBUTION,
     type: 'long',
   },
   {
@@ -75,11 +89,53 @@ export const BASEMAP_STYLES: BasemapStyle[] = [
 // Default basemap
 export const DEFAULT_BASEMAP = BASEMAP_STYLES[0];
 
-/** Resolve a basemap's URL by id; throws (fail loud) if the id isn't in BASEMAP_STYLES. */
-export function getBasemapUrl(id: string): string {
+/** Resolve a basemap by id; throws (fail loud) if the id isn't in BASEMAP_STYLES. */
+function getBasemap(id: string): BasemapStyle {
   const style = BASEMAP_STYLES.find((b) => b.id === id);
   if (!style) throw new Error(`Unknown basemap id: ${id}`);
-  return style.url;
+  return style;
+}
+
+export function getBasemapUrl(id: string): string {
+  return getBasemap(id).url;
+}
+
+// Underlay alone below this zoom, Utah tiles alone at or above it.
+const UNDERLAY_SWAP_ZOOM = 8;
+
+const isRasterUrl = (url: string) => url.includes('{z}') && url.includes('{x}') && url.includes('{y}');
+
+function rasterSource({ url, attribution }: BasemapStyle): RasterSourceSpecification {
+  return { type: 'raster', tiles: [url], tileSize: 256, attribution };
+}
+
+/** MapLibre style for a basemap: a vector style URL as-is, or raster tiles (plus any underlay). */
+export function buildBasemapStyle(style: BasemapStyle): string | StyleSpecification {
+  if (!style.url) {
+    return {
+      version: 8,
+      sources: {},
+      layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#f0f0f0' } }],
+    };
+  }
+  if (!isRasterUrl(style.url)) return style.url;
+
+  const underlay = style.underlay ? getBasemap(style.underlay) : undefined;
+  return {
+    version: 8,
+    sources: {
+      ...(underlay && { 'underlay-tiles': rasterSource(underlay) }),
+      'raster-tiles': rasterSource(style),
+    },
+    layers: [
+      ...(underlay
+        ? [
+            { id: 'underlay-layer', type: 'raster' as const, source: 'underlay-tiles', maxzoom: UNDERLAY_SWAP_ZOOM },
+            { id: 'raster-layer', type: 'raster' as const, source: 'raster-tiles', minzoom: UNDERLAY_SWAP_ZOOM },
+          ]
+        : [{ id: 'raster-layer', type: 'raster' as const, source: 'raster-tiles' }]),
+    ],
+  };
 }
 
 export interface AppBasemapConfig {
@@ -94,8 +150,8 @@ const STANDARD_SHORT = ['liberty', 'sentinel', 'lite', 'terrain'];
 
 /** Hazards reads landforms off UGRC's current statewide imagery; Sentinel-2's 2020 mosaic is too coarse for it. */
 const HAZARDS_BASEMAPS: AppBasemapConfig = {
-  default: 'utah-satellite',
-  short: ['liberty', 'utah-satellite', 'lite', 'terrain'],
+  default: 'satellite',
+  short: ['liberty', 'satellite', 'lite', 'terrain'],
   hide: ['sentinel'],
 };
 
