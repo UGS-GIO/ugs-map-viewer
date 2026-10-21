@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useControl, useMap } from 'react-map-gl/maplibre'
 import { Popover } from '@base-ui/react/popover'
@@ -53,7 +53,7 @@ function SettingSelect<K extends keyof ExportSettings>({ label, setting, options
   settings: ExportSettings
   onChange: (next: ExportSettings) => void
 }) {
-  const id = `export-${setting}`
+  const id = useId()
   return (
     <div className='mb-1.5 flex items-center justify-between gap-3'>
       <label htmlFor={id} className='text-xs text-foreground'>{label}</label>

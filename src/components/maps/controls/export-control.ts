@@ -161,26 +161,27 @@ export class MapExporter {
             attributionControl: false,
         });
 
-        // Wait for map to fully render
-        await new Promise<void>((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('Map render timeout')), 30000);
-            exportMap.once('idle', () => {
-                clearTimeout(timeout);
-                resolve();
+        // A failed render or legend fetch still has to tear down the offscreen map.
+        try {
+            // Wait for map to fully render
+            await new Promise<void>((resolve, reject) => {
+                const timeout = setTimeout(() => reject(new Error('Map render timeout')), 30000);
+                exportMap.once('idle', () => {
+                    clearTimeout(timeout);
+                    resolve();
+                });
+                exportMap.once('error', (e) => {
+                    clearTimeout(timeout);
+                    reject(e);
+                });
             });
-            exportMap.once('error', (e) => {
-                clearTimeout(timeout);
-                reject(e);
-            });
-        });
 
-        // Get canvas
-        const canvas = exportMap.getCanvas();
+            // Get canvas
+            const canvas = exportMap.getCanvas();
 
-        // Fetch legend data if needed (with map bounds for content-dependent filtering)
-        let legendData: LegendItem[] = [];
-        if (this.settings.legendMode !== 'none' && this.getLegendData) {
-            try {
+            // Fetch legend data if needed (with map bounds for content-dependent filtering)
+            let legendData: LegendItem[] = [];
+            if (this.settings.legendMode !== 'none' && this.getLegendData) {
                 const mapBounds = exportMap.getBounds();
                 const bounds: MapBounds = {
                     west: mapBounds.getWest(),
@@ -190,38 +191,36 @@ export class MapExporter {
                     width,
                     height
                 };
+                // Fail the export rather than print a map whose legend silently went missing.
                 legendData = await this.getLegendData(bounds);
-            } catch (e) {
-                console.warn('Failed to fetch legend data:', e);
             }
-        }
 
-        // Create a copy of the canvas
-        const outputCanvas = document.createElement('canvas');
-        outputCanvas.width = canvas.width;
-        outputCanvas.height = canvas.height;
-        const ctx = outputCanvas.getContext('2d');
-        if (ctx) {
-            ctx.drawImage(canvas, 0, 0);
+            // Create a copy of the canvas
+            const outputCanvas = document.createElement('canvas');
+            outputCanvas.width = canvas.width;
+            outputCanvas.height = canvas.height;
+            const ctx = outputCanvas.getContext('2d');
+            if (ctx) {
+                ctx.drawImage(canvas, 0, 0);
 
-            // Add overlays
-            const scale = this.settings.dpi / 96; // Scale factor for high DPI
-            const bearing = exportMap.getBearing();
-            this.drawNorthArrow(ctx, outputCanvas.width, scale, bearing);
-            this.drawScaleBar(ctx, outputCanvas.width, outputCanvas.height, exportMap, scale, this.settings.scaleUnit);
-            this.drawAttribution(ctx, outputCanvas.width, outputCanvas.height, scale);
+                // Add overlays
+                const scale = this.settings.dpi / 96; // Scale factor for high DPI
+                const bearing = exportMap.getBearing();
+                this.drawNorthArrow(ctx, outputCanvas.width, scale, bearing);
+                this.drawScaleBar(ctx, outputCanvas.width, outputCanvas.height, exportMap, scale, this.settings.scaleUnit);
+                this.drawAttribution(ctx, outputCanvas.width, outputCanvas.height, scale);
 
-            // Draw legend on map if mode is 'on-map'
-            if (this.settings.legendMode === 'on-map' && legendData.length > 0) {
-                await this.drawLegend(ctx, outputCanvas.width, outputCanvas.height, scale, legendData);
+                // Draw legend on map if mode is 'on-map'
+                if (this.settings.legendMode === 'on-map' && legendData.length > 0) {
+                    await this.drawLegend(ctx, outputCanvas.width, outputCanvas.height, scale, legendData);
+                }
             }
+
+            return outputCanvas;
+        } finally {
+            exportMap.remove();
+            hiddenContainer.remove();
         }
-
-        // Cleanup
-        exportMap.remove();
-        hiddenContainer.remove();
-
-        return outputCanvas;
     }
 
     private drawNorthArrow(ctx: CanvasRenderingContext2D, canvasWidth: number, scale: number, bearing: number): void {
