@@ -141,15 +141,14 @@ export const DEFAULT_VISIBLE_DATA_QUALS = ['high', 'medium'] as const
 // quality" control in the filter UI since they behave identically here.
 export const LOW_DATA_QUALS = ['low', 'very low'] as const
 
-// What each data-quality category means: share of valid pixels behind the
-// measurement. Surfaced under each data-quality checkbox. Keyed by the same
+// What each data-quality category means: the average temporal coherence behind
+// the measurement. Surfaced under each data-quality checkbox. Keyed by the same
 // lowercase tokens as DATA_QUAL_ORDER; categories without an entry (e.g.
-// 'unknown') render no description.
+// 'unknown', or 'very low', which the UI groups with low) render no description.
 export const DATA_QUAL_DESCRIPTIONS: Record<string, string> = {
-    'high': '≥ 80% of pixels valid',
-    'medium': '60–79% of pixels valid',
-    'low': '40–59% of pixels valid',
-    'very low': '< 40% of pixels valid',
+    'high': '≥ 0.9 average temporal coherence',
+    'medium': 'Between 0.8 and 0.9 average temporal coherence',
+    'low': '< 0.8 average temporal coherence',
 }
 
 // Default exclusion set = every known category that isn't visible by default.

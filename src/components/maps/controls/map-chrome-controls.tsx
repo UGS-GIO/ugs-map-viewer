@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react'
 import { GeolocateControl, useControl } from 'react-map-gl/maplibre'
 import { HomeControl } from './home-control'
 import { DualScaleControl } from './dual-scale-control'
-import type { ExportControlOptions } from './export-control'
+import type { GetLegendData } from './export-control'
 
 const ExportMapControl = lazy(() => import('./export-map-control'))
 
@@ -21,7 +21,7 @@ function ScaleMapControl() {
  * them. Phones get home and locate-me only, with locate-me bottom-right in thumb reach above the
  * sheet and the user's dot shown, as map apps do.
  */
-export function MapChromeControls({ isMobile, getLegendData }: { isMobile: boolean } & Pick<ExportControlOptions, 'getLegendData'>) {
+export function MapChromeControls({ isMobile, getLegendData }: { isMobile: boolean; getLegendData?: GetLegendData }) {
   return (
     <>
       <HomeMapControl />

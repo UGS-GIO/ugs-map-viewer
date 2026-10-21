@@ -45,8 +45,6 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
     const styleName = getStyleNameForType(typeValue) ?? ''
     const { data: bins = [], isLoading } = useDisplacementSldBins(styleName)
 
-    // Deadband bound from the shared, hardened helper (returns null when the SLD
-    // has no parseable Zero rule) rather than re-deriving it inline.
     const zeroBound = useMemo(() => getZeroBound(bins), [bins])
     // Same split + ordering as the chart's SignedLegendGroup: closest-to-zero
     // bin first within each side, deepest/highest band last.
@@ -71,21 +69,18 @@ function DisplacementLegend({ typeValue }: { typeValue: DisplacementType }) {
                 <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vertical Displacement</span>
                 <span className="text-[11px] italic text-muted-foreground">{getUnitsLabelForType(typeValue)}</span>
             </div>
+            {/* One note for both directions; the map doesn't draw this band. */}
+            {zeroBound != null && (
+                <div className="text-xs text-muted-foreground">* 0–{zeroBound} {unit} within error</div>
+            )}
             <div className="grid grid-cols-2 gap-x-3 text-xs text-foreground">
                 <LegendGroup label="Uplift" bins={upliftBins} unit={unit} />
                 <LegendGroup label="Subsidence" bins={subsidenceBins} unit={unit} />
             </div>
-            {/* Map-reading footnotes on one compact, wrapping row: the hatch key
-                (135deg so the swatch leans the same way as the SLD's shape://slash)
-                + the within-error band. Keeps the legend short vertically. */}
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5">
-                    <HatchSwatch />
-                    Hatched = low quality, confirmed
-                </span>
-                {zeroBound != null && (
-                    <span>0–{zeroBound} {unit} within error</span>
-                )}
+            {/* Hatch key (135deg so the swatch leans the same way as the SLD's shape://slash). */}
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <HatchSwatch />
+                Low quality, independent observations
             </div>
         </div>
     )

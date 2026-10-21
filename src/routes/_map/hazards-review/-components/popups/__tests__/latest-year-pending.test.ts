@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { isLatestYearLookupPending } from '../use-displacement-queries'
 
-// The map's year clause resolves from a cheap latest-year lookup, with the 20k
+// The map's year clause resolves from a cheap latest-year lookup, with the full-layer
 // bulk pull as a fallback only when the cheap lookup errors. `isPending` gates the
 // layer to a no-match clause while loading — so it MUST clear on every terminal
 // state, or a lookup failure blanks the map forever (Clinton's #572-1). These
