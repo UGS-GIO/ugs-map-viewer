@@ -23,13 +23,11 @@ export function StacRenderLegend({ layer }: { layer: PMTilesLayerProps }) {
     if (error) return <div className="px-1 py-1 text-xs text-destructive">Error loading legend: {error.message}</div>
 
     return (
-        <div className="px-1 py-1">
-            <LegendSwatchGrid
-                columns="single"
-                shape={swatchShapeOf(fragment?.layers?.map(l => l.type) ?? [])}
-                // ugs-styles keeps labels as the raw field value (lowercase) so consumers can join on it.
-                items={entries.map(e => ({ key: e.label, label: toTitleCase(e.label), color: e.color, stroke: e.stroke }))}
-            />
-        </div>
+        <LegendSwatchGrid
+            columns="single"
+            shape={swatchShapeOf(fragment?.layers?.map(l => l.type) ?? [])}
+            // ugs-styles keeps labels as the raw field value (lowercase) so consumers can join on it.
+            items={entries.map(e => ({ key: e.label, label: toTitleCase(e.label), color: e.color, stroke: e.stroke }))}
+        />
     )
 }
