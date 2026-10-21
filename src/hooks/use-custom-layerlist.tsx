@@ -216,6 +216,14 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
             </span>
         </>
     );
+    // Phones get no tooltip, so there the hidden-at-this-zoom note stands in for the source line.
+    const source = layerConfig.subtitle ?? layerConfig.sourceAgency;
+    const layerSubtitle = (source || zoomHint) && (
+        <p className="text-xs font-normal text-muted-foreground">
+            {zoomHint && <span className="text-primary md:hidden">Hidden at this zoom</span>}
+            {source && <span className={zoomHint ? 'hidden md:inline' : undefined}>{source}</span>}
+        </p>
+    );
 
     const handleOpacityChange = useCallback((value: number) => {
         // Continuously updates, so don't update url with this
@@ -346,11 +354,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                                 <AccordionTrigger>
                                     <div className={`text-left ${reserveZoomHint ? 'pr-12 md:pr-28' : ''}`}>
                                         <span className={`block text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}>{layerConfig.title}</span>
-                                        {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
-                                            <p className="text-xs font-normal text-muted-foreground">
-                                                {layerConfig.subtitle ?? layerConfig.sourceAgency}
-                                            </p>
-                                        )}
+                                        {layerSubtitle}
                                     </div>
                                 </AccordionTrigger>
                             </AccordionHeader>
@@ -574,11 +578,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                                 >
                                     {layerConfig.title}
                                 </span>
-                                {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
-                                    <p className="text-xs font-normal text-muted-foreground">
-                                        {layerConfig.subtitle ?? layerConfig.sourceAgency}
-                                    </p>
-                                )}
+                                {layerSubtitle}
                             </div>
                         </AccordionTrigger>
                         </AccordionHeader>
