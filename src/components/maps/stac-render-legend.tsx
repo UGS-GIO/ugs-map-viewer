@@ -27,12 +27,16 @@ export function StacRenderLegend({ layer }: { layer: PMTilesLayerProps }) {
     const render = layer.renders?.find(r => r.id === layer.defaultRenderId) ?? layer.renders?.[0]
     const entries = render?.legend ?? []
     // Same query the map draws from, so this is normally a cache hit.
-    const { data: fragment } = useQuery(styleFragmentQueryOptions(render?.styleUrl))
-    const shape = swatchShapeOf(fragment?.layers?.map(l => l.type) ?? [])
+    const { data: fragment, isLoading, error } = useQuery(styleFragmentQueryOptions(render?.styleUrl))
 
     if (entries.length === 0) {
         return <div className="px-1 py-1 text-xs text-muted-foreground italic">No legend available</div>
     }
+    // Swatch shape comes from the fragment, so wait for it rather than flash dots first.
+    if (isLoading) return <div className="px-1 py-1 text-xs text-muted-foreground">Loading legend...</div>
+    if (error) return <div className="px-1 py-1 text-xs text-destructive">Error loading legend: {error.message}</div>
+
+    const shape = swatchShapeOf(fragment?.layers?.map(l => l.type) ?? [])
 
     return (
         <ul className="flex flex-col gap-1 px-1 py-1">
