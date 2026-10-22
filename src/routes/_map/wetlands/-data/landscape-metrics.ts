@@ -272,12 +272,77 @@ export function equalIntervalBreaks(values: number[], numClasses: number): numbe
 
 export function quantileBreaks(values: number[], numClasses: number): number[] {
   if (values.length === 0 || numClasses <= 1) return []
-  const breaks: number[] = []
-  for (let i = 1; i < numClasses; i++) {
-    const idx = Math.floor((i * values.length) / numClasses) - 1
-    breaks.push(values[Math.max(0, idx)])
+  const minVal = values[0]
+  const maxVal = values[values.length - 1]
+  if (minVal === maxVal) return []
+
+  const n = values.length
+  const uniqueVals = Array.from(new Set(values))
+
+  // If there are fewer or equal unique values than classes, partition each unique value
+  if (uniqueVals.length <= numClasses) {
+    return uniqueVals.slice(1)
   }
-  return breaks
+
+  // Count occurrences of min and max to detect boundary spikes (e.g. 0-inflation or 100% saturation)
+  let minCount = 0
+  while (minCount < n && values[minCount] === minVal) {
+    minCount++
+  }
+
+  let maxCount = 0
+  while (maxCount < n && values[n - 1 - maxCount] === maxVal) {
+    maxCount++
+  }
+
+  const minIsSpike = minCount / n >= 1 / numClasses
+  const maxIsSpike = maxCount / n >= 1 / numClasses && maxVal > minVal
+
+  // Case 1: Spike at minimum (e.g. >= 1/numClasses zeros in wetlands datasets)
+  if (minIsSpike) {
+    const posValues = values.slice(minCount)
+    if (posValues.length === 0) return []
+
+    // Subcase 1a: Spikes at BOTH min and max (e.g. utah_percent with large 0% and 100% clusters)
+    if (maxIsSpike && numClasses >= 3) {
+      const interValues = posValues.filter((v) => v < maxVal)
+      if (interValues.length === 0) {
+        return [maxVal]
+      }
+      const kInter = numClasses - 2
+      const interBreaks: number[] = []
+      for (let i = 1; i < kInter; i++) {
+        const idx = Math.min(interValues.length - 1, Math.floor((i * interValues.length) / kInter))
+        interBreaks.push(interValues[idx])
+      }
+      const raw = [posValues[0], ...interBreaks, maxVal]
+      return Array.from(new Set(raw))
+        .filter((b) => b > minVal && b <= maxVal)
+        .sort((a, b) => a - b)
+    }
+
+    // Subcase 1b: Spike at min only
+    const kPos = numClasses - 1
+    const posBreaks: number[] = []
+    for (let i = 1; i < kPos; i++) {
+      const idx = Math.min(posValues.length - 1, Math.floor((i * posValues.length) / kPos))
+      posBreaks.push(posValues[idx])
+    }
+    const raw = [posValues[0], ...posBreaks]
+    return Array.from(new Set(raw))
+      .filter((b) => b > minVal && b <= maxVal)
+      .sort((a, b) => a - b)
+  }
+
+  // Case 2: Standard quantile sampling without boundary spike
+  const raw: number[] = []
+  for (let i = 1; i < numClasses; i++) {
+    const idx = Math.min(n - 1, Math.floor((i * n) / numClasses))
+    raw.push(values[idx])
+  }
+  return Array.from(new Set(raw))
+    .filter((b) => b > minVal && b <= maxVal)
+    .sort((a, b) => a - b)
 }
 
 export function naturalBreaks(values: number[], numClasses: number): number[] {
@@ -371,9 +436,9 @@ export function computeClassBreaks(
       rawBreaks = quantileBreaks(values, numClasses)
   }
 
-  // Ensure strictly ascending, unique stops that are > min and < max
+  // Ensure strictly ascending, unique stops that are > min and <= max
   const sortedUnique = Array.from(new Set(rawBreaks))
-    .filter((b) => b > min && b < max)
+    .filter((b) => b > min && b <= max)
     .sort((a, b) => a - b)
 
   return sortedUnique
