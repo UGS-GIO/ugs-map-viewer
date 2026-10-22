@@ -134,4 +134,13 @@ describe('buildPmtilesLayerSpecs', () => {
         })
         expect(specs[0].filter).toEqual(['all', ['==', 'a', 1], ['==', 'b', 2]])
     })
+
+    it("ANDs the config featureFilter onto every render's filter", () => {
+        const specs = specsOf({
+            layer: { ...sectionsLayer, featureFilter: ['==', 'c', 3] },
+            fragment: { layers: [{ id: 'a', type: 'line' as const, filter: ['==', 'a', 1], paint: {} }] },
+            layerFilter: ['==', 'b', 2] as never,
+        })
+        expect(specs[0].filter).toEqual(['all', ['==', 'a', 1], ['==', 'c', 3], ['==', 'b', 2]])
+    })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatNumeric, toTitleCase, toSentenceCase, isSafeHref } from '../utils';
+import { formatNumeric, toTitleCase, toSentenceCase, isSafeHref, isHttpUrl } from '../utils';
 
 describe('formatNumeric', () => {
   it('returns empty string for null/undefined/empty', () => {
@@ -73,5 +73,39 @@ describe('isSafeHref', () => {
 
   it('rejects an empty or unparseable value', () => {
     expect(isSafeHref('')).toBe(false);
+  });
+});
+
+describe('isHttpUrl', () => {
+  it('accepts valid http and https URLs', () => {
+    expect(isHttpUrl('https://example.com')).toBe(true);
+    expect(isHttpUrl('http://example.com/path?foo=bar#hash')).toBe(true);
+    expect(isHttpUrl('https://doi.org/10.34191/RI-291')).toBe(true);
+  });
+
+  it('trims leading and trailing whitespace', () => {
+    expect(isHttpUrl('   https://example.com   ')).toBe(true);
+  });
+
+  it('rejects non-http/https protocols', () => {
+    expect(isHttpUrl('javascript:alert(1)')).toBe(false);
+    expect(isHttpUrl('data:text/html,test')).toBe(false);
+    expect(isHttpUrl('ftp://example.com')).toBe(false);
+    expect(isHttpUrl('mailto:user@example.com')).toBe(false);
+  });
+
+  it('rejects relative paths and plain text', () => {
+    expect(isHttpUrl('/relative/path')).toBe(false);
+    expect(isHttpUrl('relative/path')).toBe(false);
+    expect(isHttpUrl('not a url')).toBe(false);
+    expect(isHttpUrl('')).toBe(false);
+    expect(isHttpUrl('   ')).toBe(false);
+  });
+
+  it('rejects non-string values', () => {
+    expect(isHttpUrl(null)).toBe(false);
+    expect(isHttpUrl(undefined)).toBe(false);
+    expect(isHttpUrl(123)).toBe(false);
+    expect(isHttpUrl({})).toBe(false);
   });
 });

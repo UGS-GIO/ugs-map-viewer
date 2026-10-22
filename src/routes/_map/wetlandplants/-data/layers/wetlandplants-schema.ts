@@ -46,6 +46,12 @@ export const wetlandPlantsFilterSchema: FilterSchema = {
             relatedAsset: 'wetlands_plants_species',
             foreignKey: 'surveyeventid',
         },
+        {
+            kind: 'multiSelect',
+            field: 'privacystatus',
+            label: 'Location Privacy',
+            placeholder: 'Select privacy status...',
+        },
     ],
 };
 

@@ -13,6 +13,7 @@ const georegionsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: georegionsWMSTitle,
+    sectionHeading: 'Statewide',
     visible: true,
     opacity: 0.3,
     crs: 'EPSG:3857',
@@ -107,6 +108,7 @@ const sco2GridSummaryWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: sco2GridSummaryWMSTitle,
+    sectionHeading: 'Statewide',
     visible: false,
     opacity: 0.75,
     crs: 'EPSG:4326',
@@ -631,6 +633,7 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: sitlaReportsWMSTitle,
+    sectionHeading: 'Statewide',
     visible: false,
     crs: 'EPSG:26912',
     sourceAgency: 'Utah Geological Survey',
@@ -702,20 +705,35 @@ const ccsExclusionAreasWMSConfig: WMSLayerProps = {
 };
 
 
-const ccusProjectsLayerName = 'ccus_projects_current';
-const ccusProjectsWMSTitle = 'CCUS Projects';
-const ccusProjectsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: ccusProjectsWMSTitle,
-    visible: true,
-    crs: 'EPSG:3857',
-    downloadParquetUrl: parquetUrl("ccus_projects"),
+// Past and Ongoing Projects — STAC-driven PMTiles item `enmin_ccs_pastprojects`, one layer
+// per `projectscale`. Statewide rows are skipped: those projects already have their own layers.
+const pastProjectsLayerName = 'enmin_ccs_pastprojects';
+export const pastProjectsRegionalTitle = 'Past and Ongoing Projects - Regional';
+export const pastProjectsSiteSpecificTitle = 'Past and Ongoing Projects - Site-Specific';
+
+const pastProjectsConfig = ({ title, sectionHeading, projectScale, defaultRenderId, visible }: {
+    title: string;
+    sectionHeading: string;
+    projectScale: string;
+    defaultRenderId: string;
+    visible: boolean;
+}): PMTilesLayerProps => ({
+    type: 'pmtiles',
+    stacItemId: pastProjectsLayerName,
+    defaultRenderId,
+    pmtilesUrl: '',
+    sourceLayer: pastProjectsLayerName,
+    title,
+    sectionHeading,
+    featureFilter: ['==', ['get', 'projectscale'], projectScale],
+    visible,
+    opacity: 1,
+    downloadParquetUrl: parquetUrl(pastProjectsLayerName),
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${ccusProjectsLayerName}`,
-            popupEnabled: false,
+            name: pastProjectsLayerName,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
                 'Project Name': { field: 'generalregionname', type: 'string' },
@@ -727,16 +745,33 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
             linkFields: {
                 'link': {
                     transform: (value: string) => {
-                        if (!value) {
-                            return [{ label: 'Not available', href: '' }];
+                        const trimmed = value?.trim();
+                        if (!trimmed || trimmed.toLowerCase() === 'coming soon' || !trimmed.startsWith('http')) {
+                            return [{ label: trimmed || 'Not available', href: '' }];
                         }
-                        return [{ label: 'More Information', href: value }];
+                        return [{ label: 'More Information', href: trimmed }];
                     }
                 }
             }
         }
     ],
-};
+});
+
+export const pastProjectsRegionalConfig = pastProjectsConfig({
+    title: pastProjectsRegionalTitle,
+    sectionHeading: 'Regional',
+    projectScale: 'Regional',
+    defaultRenderId: 'regional',
+    visible: true,
+});
+
+export const pastProjectsSiteSpecificConfig = pastProjectsConfig({
+    title: pastProjectsSiteSpecificTitle,
+    sectionHeading: 'Site-Specific',
+    projectScale: 'Site Specific',
+    defaultRenderId: 'site-specific',
+    visible: true,
+});
 
 // STAC-driven: pmtilesUrl, sourceLayer, renders (colour by `primsource`, radius by `total_mw`)
 // and parquet come from the warehouse item `enmin_powerplants`. Symbology lives in ugs-styles.
@@ -847,7 +882,7 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
     title: geothermalWellsJoinsTitle,
     visible: false,
     downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_wellfeatures"),
-    sourceAgency: 'Utah Geological Survey',
+    sourceAgency: 'INGENIOUS Project, 2022',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsJoinsName}`,
@@ -906,7 +941,7 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
     title: geothermalSpringsJoinsTitle,
     visible: false,
     downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_springfeatures"),
-    sourceAgency: 'Utah Geological Survey',
+    sourceAgency: 'INGENIOUS Project, 2022',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalSpringsJoinsName}`,
@@ -1312,6 +1347,7 @@ export const natCarbLocationsConfig: PMTilesLayerProps = {
     pmtilesUrl: '',
     sourceLayer: natCarbLocationsLayerName,
     title: natCarbLocationsTitle,
+    sectionHeading: 'Statewide',
     visible: false,
     opacity: 1,
     sourceAgency: 'Utah Geological Survey',
@@ -1368,11 +1404,10 @@ const ccsResourcesConfig: LayerProps = {
     layers: [
         sco2GridSummaryWMSConfig,
         georegionsWMSConfig,
-        co2SourcesWFSConfig,
-        sitlaReportsWMSConfig,
-        ccsExclusionAreasWMSConfig,
-        ccusProjectsWMSConfig,
         natCarbLocationsConfig,
+        sitlaReportsWMSConfig,
+        pastProjectsRegionalConfig,
+        pastProjectsSiteSpecificConfig,
     ]
 }
 
@@ -1381,6 +1416,8 @@ const infrastructureAndLandUseConfig: LayerProps = {
     title: 'Infrastructure and Land Use',
     visible: false,
     layers: [
+        co2SourcesWFSConfig,
+        ccsExclusionAreasWMSConfig,
         powerplantsConfig,
         pipelinesWMSConfig,
         riversWMSConfig,

@@ -1,4 +1,5 @@
 import { FeatureCollection, GeoJsonProperties } from "geojson"
+import type { FilterSpecification } from "maplibre-gl"
 
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -146,6 +147,8 @@ interface BaseLayerProps {
     variantLabel?: string;
     /** One-line plain-language description of this variant, shown under the surface switch to explain what it means and how it relates to the map. */
     variantDescription?: string;
+    /** Heading shown above this layer in the layer list; consecutive layers sharing it show it once. */
+    sectionHeading?: string;
 }
 
 export interface WMSLayerProps extends BaseLayerProps {
@@ -157,6 +160,8 @@ export interface WMSLayerProps extends BaseLayerProps {
     legendUnit?: string;
     /** GeoServer SLD style name. When set, both map tiles and the layer-list legend request this style instead of the layer's default. */
     styleName?: string;
+    /** Most zoomed-in ratio scale (the X in 1:X) the layer draws at, measured at the view center like the footer readout. Caps `visibleZoomRange`. */
+    maxScale?: number;
 }
 
 export interface ArcGISMapServerLayerProps extends BaseLayerProps {
@@ -243,6 +248,8 @@ export interface PMTilesLayerProps extends BaseLayerProps {
     defaultRenderId?: string;
     /** Source layer name within the PMTiles file */
     sourceLayer: string;
+    /** Filter ANDed onto every render; kept off the style so STAC renders can't drop it. */
+    featureFilter?: FilterSpecification;
     /** Optional sublayer config for popups/queries */
     sublayers?: ExtendedSublayerProperties[];
 }
@@ -415,8 +422,8 @@ export interface RelatedTable {
     /** Sort key, or keys in precedence order. */
     sortBy?: string | string[];
     sortDirection?: 'asc' | 'desc';
-    /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers, 'gallery' renders a photo gallery, 'accordion' renders one collapsible item per row, 'documents' groups files by type with per-row open/download, search, and pagination */
-    displayAs?: 'list' | 'table' | 'gallery' | 'accordion' | 'documents';
+    /** How to display the related data. 'list' shows label:value pairs (default), 'table' shows a proper table with headers, 'gallery' renders a photo gallery, 'accordion' renders one collapsible item per row, 'documents' groups files by type with per-row open/download, search, and pagination, 'outline' renders stacked key-value outline cards per record */
+    displayAs?: 'list' | 'table' | 'gallery' | 'accordion' | 'documents' | 'outline';
     /** Render in a collapsible accordion. Defaults to true when `fieldLabel` is set, else inline. */
     collapsible?: boolean;
     /** Required when displayAs is 'gallery'. Field name containing the full-size image URL */

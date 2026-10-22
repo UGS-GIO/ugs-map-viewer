@@ -1,4 +1,4 @@
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import { cogProtocol } from '@geomatico/maplibre-cog-protocol';
 import type { COGLayerProps } from '@/lib/types/mapping-types';
 

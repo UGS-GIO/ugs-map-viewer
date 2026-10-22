@@ -1,11 +1,17 @@
 import { Checkbox } from '@/components/ui/checkbox'
+import { cn } from '@/lib/utils'
+import type { SwatchShape } from '@/lib/legend/swatch-shape'
+import { LEGEND_ROW_CLASS, LEGEND_SWATCH_SLOT_CLASS } from '@/lib/legend/legend-layout'
 
 export interface LegendSwatchItem {
     key: string
     label: string
     color: string
     stroke?: string
-    count?: number
+    /** Shown in parentheses after the label; a string is shown as-is (e.g. "12 of 40"). */
+    count?: number | string
+    /** Greyed out and not toggleable, e.g. a category with no features in view. */
+    disabled?: boolean
     /** Right-aligned readout, e.g. "12.3 mi²". Unlike `count`, gets its own column. */
     value?: string
     /** Second readout column, for comparing two measures of the same row. */
@@ -38,31 +44,42 @@ interface LegendSwatchGridProps {
      * already shares the coloured group header's shade.
      */
     showSwatch?: boolean
+    /** Geometry the swatch stands for: polygons draw as rectangles, lines as a stroke, points as dots. */
+    shape?: SwatchShape
 }
 
 /**
- * Shared grid-of-swatches legend body: circular swatch + label rows.
+ * One legend swatch. Painted over the paper tone the map shows, so a transparent or
+ * part-transparent colour reads as see-through rather than as the panel.
+ */
+export function LegendSwatch({ shape = 'circle', color, stroke }: { shape?: SwatchShape; color: string; stroke?: string }) {
+    const paint = { backgroundImage: `linear-gradient(${color}, ${color})`, borderColor: stroke ?? 'rgba(0,0,0,0.3)' }
+    return (
+        <span className={LEGEND_SWATCH_SLOT_CLASS} aria-hidden>
+            {shape === 'line' && <span className="h-[3px] w-7 rounded-full" style={{ backgroundColor: color }} />}
+            {shape === 'circle' && <span className="legend-swatch h-3 w-3 rounded-full border" style={paint} />}
+            {shape === 'fill' && <span className="legend-swatch h-3.5 w-7 rounded-[2px] border" style={paint} />}
+        </span>
+    )
+}
+
+/**
+ * Shared grid-of-swatches legend body: swatch + label rows.
  * Extracted from the UCRC interactive symbology legend so other legends
  * (e.g. the displacement layers' static Uplift/Subsidence split) can reuse the
  * same visual style without carrying the checkbox/filter wiring.
  */
-export function LegendSwatchGrid({ items, isChecked, onToggle, columns = 'auto', showSwatch = true }: LegendSwatchGridProps) {
+export function LegendSwatchGrid({ items, isChecked, onToggle, columns = 'auto', showSwatch = true, shape = 'circle' }: LegendSwatchGridProps) {
     if (items.length === 0) return null
     const interactive = !!onToggle
     const containerClassName = columns === 'single'
-        ? 'flex flex-col gap-y-1.5'
-        : 'grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-1.5'
+        ? 'flex flex-col'
+        : 'grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6'
 
     return (
         <div className={containerClassName}>
             {items.map(item => {
-                const swatch = showSwatch && (
-                    <span
-                        className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
-                        style={{ backgroundColor: item.color, borderColor: item.stroke ?? 'rgba(0,0,0,0.3)' }}
-                        aria-hidden
-                    />
-                )
+                const swatch = showSwatch && <LegendSwatch shape={shape} color={item.color} stroke={item.stroke} />
                 const label = (
                     <span className="min-w-0 break-words leading-tight">
                         {item.label}
@@ -79,7 +96,7 @@ export function LegendSwatchGrid({ items, isChecked, onToggle, columns = 'auto',
 
                 if (!interactive) {
                     return (
-                        <div key={item.key} className="flex min-w-0 items-start gap-1.5 pr-1 text-xs">
+                        <div key={item.key} className={cn(LEGEND_ROW_CLASS, 'pr-1')}>
                             {swatch}
                             {label}
                             {value}
@@ -89,11 +106,15 @@ export function LegendSwatchGrid({ items, isChecked, onToggle, columns = 'auto',
                 }
 
                 return (
-                    <label key={item.key} className="flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer">
+                    <label
+                        key={item.key}
+                        className={cn(LEGEND_ROW_CLASS, 'pr-1 cursor-pointer', item.disabled && 'opacity-40 cursor-not-allowed')}
+                    >
                         <Checkbox
-                            className="mt-0.5 shrink-0"
+                            className="shrink-0"
                             checked={isChecked?.(item.key) ?? true}
-                            onCheckedChange={() => onToggle(item.key)}
+                            disabled={item.disabled}
+                            onCheckedChange={() => !item.disabled && onToggle(item.key)}
                             aria-label={`Toggle ${item.label}`}
                         />
                         {swatch}

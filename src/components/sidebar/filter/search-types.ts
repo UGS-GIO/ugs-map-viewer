@@ -1,3 +1,4 @@
+import type * as maplibregl from 'maplibre-gl';
 import type { FeatureCollection, Geometry, GeoJsonProperties, Feature } from 'geojson';
 
 interface BaseConfig {

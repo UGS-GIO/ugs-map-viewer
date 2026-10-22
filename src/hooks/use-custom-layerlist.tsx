@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionHeader } from '@/components/ui/accordion';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight, SlidersHorizontal } from 'lucide-react';
@@ -8,17 +8,17 @@ import { useLayerItemState } from '@/hooks/use-layer-item-state';
 import { LayerProps } from '@/lib/types/mapping-types';
 import { useMap } from '@/hooks/use-map';
 import { findLayerByTitle } from '@/lib/map/utils';
-import { isWMSLayer, isWFSLayer, isPMTilesLayer, isArcGISMapServerLayer, isCOGLayer } from '@/lib/map/layer-utils';
+import { isWMSLayer, isWFSLayer, isPMTilesLayer, isArcGISMapServerLayer, isCOGLayer, effectiveZoomRange } from '@/lib/map/layer-utils';
 import { CogLegend } from '@/components/maps/cog-legend';
 import { useLayerExtent, UseLayerExtentOptions } from '@/hooks/use-layer-extent';
-import { useMapZoom, getZoomHint } from '@/hooks/use-map-zoom';
+import { useMapZoom, useMapLatitude, getZoomHint } from '@/hooks/use-map-zoom';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions';
-import { useSidebar } from '@/hooks/use-sidebar';
+import { usePhoneSheetActions } from '@/components/maps/phone-sheet/use-phone-sheet';
 import LayerControls from '@/components/maps/layer-controls';
 import { WfsVectorLegend } from '@/components/maps/wfs-vector-legend';
 import { StacRenderLegend } from '@/components/maps/stac-render-legend';
 import { ZoomHintPill } from '@/components/maps/zoom-hint-pill';
-import { useIsMobile } from './use-mobile';
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from '@/lib/constants';
 import { useLayerUrl } from '@/context/layer-url-provider';
 
@@ -67,6 +67,48 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
     );
 }
 
+/** Zoom hint for a selected layer that only draws in part of the zoom range, and a jump into that range. */
+function useLayerZoomHint(layer: LayerProps, active: boolean) {
+    const { map } = useMap();
+    const currentZoom = useMapZoom();
+    const viewLatitude = useMapLatitude();
+    const range = (viewLatitude === null ? layer.visibleZoomRange : effectiveZoomRange(layer, viewLatitude)) ?? null;
+    const hint = active ? getZoomHint(currentZoom, range) : null;
+    // Name the 1:X scale only when it, not a lower configured maxzoom, is the limit.
+    const configuredMax = layer.visibleZoomRange?.[1] ?? Infinity;
+    const maxScale = isWMSLayer(layer) && range && range[1] < configuredMax ? layer.maxScale : undefined;
+    const zoomToRange = () => {
+        if (!map || !range) return;
+        const [minZ, maxZ] = range;
+        // maxzoom is exclusive, so land just inside it.
+        map.flyTo({ zoom: currentZoom !== null && currentZoom >= maxZ ? maxZ - 0.01 : minZ });
+    };
+    return { range, hint, maxScale, zoomToRange };
+}
+
+const newSectionHeading = (current: LayerProps, previous?: LayerProps): string | undefined =>
+    current.sectionHeading !== previous?.sectionHeading ? current.sectionHeading : undefined;
+
+const SectionHeading = ({
+    heading,
+    isTopLevel = false,
+}: {
+    heading: string;
+    isTopLevel?: boolean;
+}) => {
+    const HeadingTag = isTopLevel ? 'h2' : 'h3';
+    return (
+        <div
+            className={`${isTopLevel ? 'mr-2 mt-4' : 'ml-4 mr-2 mt-3'} mb-1 px-2 border-b border-border/50 pb-1`}
+            data-section-heading={heading}
+        >
+            <HeadingTag className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {heading}
+            </HeadingTag>
+        </div>
+    );
+};
+
 const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFilters, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender, embedded }: LayerAccordionItemProps) => {
     const {
         isSelected,
@@ -80,9 +122,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
     // Which variant a `variantSelector` group is focused on when none is selected
     // yet (once one is selected, that drives it). null → fall back to the first.
     const [variantActivePick, setVariantActivePick] = useState<string | null>(null);
-    const { setIsCollapsed, setNavOpened } = useSidebar();
+    const { peek } = usePhoneSheetActions();
     const { data: layerDescriptions } = useFetchLayerDescriptions();
-    const isMobile = useIsMobile();
     const [isUserExpanded, setIsUserExpanded] = useState(() => {
         if (layerConfig.type === 'group') {
             // If it is, expand it ONLY if any of its children are selected.
@@ -178,16 +219,37 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
         return [];
     }, [layerConfig]);
 
-    const currentZoom = useMapZoom();
-    const visibleZoomRange = layerConfig.visibleZoomRange ?? null;
-    const zoomHint = isSelected ? getZoomHint(currentZoom, visibleZoomRange) : null;
-
-    const handleZoomToVisibleRange = () => {
-        if (!map || !visibleZoomRange) return;
-        const [minZ, maxZ] = visibleZoomRange;
-        const target = currentZoom !== null && currentZoom > maxZ ? maxZ : minZ;
-        map.flyTo({ zoom: target });
-    };
+    // A variant group's hint follows whichever variant is on the map.
+    const zoomHintLayer = layerConfig.type === 'group' && 'layers' in layerConfig && layerConfig.variantSelector
+        ? (layerConfig.layers ?? []).find(v => v.title && selectedLayerTitles.has(v.title)) ?? null
+        : isSelected ? layerConfig : null;
+    const { range: zoomRange, hint: zoomHint, maxScale: zoomMaxScale, zoomToRange } = useLayerZoomHint(zoomHintLayer ?? layerConfig, zoomHintLayer !== null);
+    // Overlaid just left of the chevron. While a range-limited layer is on, its
+    // title keeps room for the chip and a live region is mounted, so the chip
+    // appearing never moves the row and screen readers hear it.
+    const reserveZoomHint = zoomHintLayer !== null && zoomRange !== null;
+    const zoomHintButton = reserveZoomHint && (
+        <>
+            {zoomHint && (
+                <div className="absolute right-8 top-1/2 -translate-y-1/2">
+                    <ZoomHintPill direction={zoomHint} range={zoomRange} maxScale={zoomMaxScale} layerTitle={layerConfig.title} onClick={zoomToRange} />
+                </div>
+            )}
+            <span className="sr-only" aria-live="polite">
+                {zoomHint ? `${layerConfig.title ?? 'This layer'} is hidden at this zoom. Zoom ${zoomHint} to see it.` : ''}
+            </span>
+        </>
+    );
+    // Phones get no tooltip, so there the hidden-at-this-zoom note stands in for the source line.
+    const isMobile = useIsMobile();
+    const source = layerConfig.subtitle ?? layerConfig.sourceAgency;
+    const showZoomNote = isMobile && Boolean(zoomHint);
+    const layerSubtitle = (showZoomNote || source) && (
+        <p className={`text-xs font-normal ${showZoomNote ? 'text-primary' : 'text-muted-foreground'}`}>
+            {showZoomNote ? 'Hidden at this zoom' : source}
+        </p>
+    );
+    const zoomHintPadding = reserveZoomHint ? (isMobile ? 'pr-12' : 'pr-28') : '';
 
     const handleOpacityChange = useCallback((value: number) => {
         // Continuously updates, so don't update url with this
@@ -232,10 +294,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                     [[extent[0], extent[1]], [extent[2], extent[3]]],
                     { padding: 50, animate: true }
                 );
-                if (isMobile) {
-                    setIsCollapsed(true);
-                    setNavOpened(false);
-                }
+                // Show the zoom: on phones the sheet drops to its peek.
+                peek();
             }
         } catch (error) {
             console.error("Error in handleZoomToLayer:", error);
@@ -300,7 +360,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                     onValueChange={(val) => setIsUserExpanded(val === 'item-1')}
                 >
                     <AccordionItem value="item-1">
-                        <div className="flex items-center justify-between">
+                        <div className="relative flex items-center justify-between">
                             {isTopLevel ? (
                                 <Switch
                                     checked={isOn}
@@ -318,16 +378,13 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                             )}
                             <AccordionHeader level={headingLevel} className="flex-1">
                                 <AccordionTrigger>
-                                    <div className="text-left">
-                                        <span className="block text-md font-medium">{layerConfig.title}</span>
-                                        {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
-                                            <p className="text-xs font-normal text-muted-foreground">
-                                                {layerConfig.subtitle ?? layerConfig.sourceAgency}
-                                            </p>
-                                        )}
+                                    <div className={`text-left ${zoomHintPadding}`}>
+                                        <span className={`block text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}>{layerConfig.title}</span>
+                                        {layerSubtitle}
                                     </div>
                                 </AccordionTrigger>
                             </AccordionHeader>
+                            {zoomHintButton}
                         </div>
                         <AccordionContent>
                             {variants.length > 1 && (
@@ -447,19 +504,26 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                                 />
                                 <label htmlFor={selectAllId} className="text-sm font-medium italic">Select All</label>
                             </div>
-                            {childLayers.map((child) => (
-                                <div className="ml-4" key={child.title}>
-                                    <LayerAccordionItem
-                                        disableExport={disableExport}
-                                        layerConfig={child}
-                                        isTopLevel={false}
-                                        groupExtrasRender={groupExtrasRender}
-                                        layerExtrasRender={layerExtrasRender}
-                                        layerStatsRender={layerStatsRender}
-                                        layerLegendRender={layerLegendRender}
-                                    />
-                                </div>
-                            ))}
+                            {childLayers.map((child, index) => {
+                                const heading = newSectionHeading(child, index > 0 ? childLayers[index - 1] : undefined);
+
+                                return (
+                                    <Fragment key={child.title || index}>
+                                        {heading && <SectionHeading heading={heading} isTopLevel={false} />}
+                                        <div className="ml-4">
+                                            <LayerAccordionItem
+                                                disableExport={disableExport}
+                                                layerConfig={child}
+                                                isTopLevel={false}
+                                                groupExtrasRender={groupExtrasRender}
+                                                layerExtrasRender={layerExtrasRender}
+                                                layerStatsRender={layerStatsRender}
+                                                layerLegendRender={layerLegendRender}
+                                            />
+                                        </div>
+                                    </Fragment>
+                                );
+                            })}
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
@@ -505,19 +569,9 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
     );
 
     // Embedded (active child of a variantSelector group): the group already owns
-    // the header/switch/title, so render only the controls (plus the zoom hint,
-    // for any future variant child that declares a visibleZoomRange).
+    // the header, zoom hint and switch, so render only the controls.
     if (embedded) {
-        return (
-            <div className="mt-1">
-                {zoomHint && visibleZoomRange && (
-                    <div className="px-2 pb-2">
-                        <ZoomHintPill direction={zoomHint} range={visibleZoomRange} onClick={handleZoomToVisibleRange} />
-                    </div>
-                )}
-                {layerControls}
-            </div>
-        );
+        return <div className="mt-1">{layerControls}</div>;
     }
 
     return (
@@ -529,7 +583,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                 onValueChange={(val) => setIsUserExpanded(val === 'item-1')}
             >
                 <AccordionItem value="item-1">
-                    <div className="flex items-center justify-between">
+                    <div className="relative flex items-center justify-between">
                         {isTopLevel ? (
                             <Switch
                                 checked={isSelected}
@@ -551,30 +605,18 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
                         )}
                         <AccordionHeader level={headingLevel} className="flex-1">
                             <AccordionTrigger>
-                            <div className="text-left">
+                            <div className={`text-left ${zoomHintPadding}`}>
                                 <span
                                     className={`block text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}
                                 >
                                     {layerConfig.title}
                                 </span>
-                                {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
-                                    <p className="text-xs font-normal text-muted-foreground">
-                                        {layerConfig.subtitle ?? layerConfig.sourceAgency}
-                                    </p>
-                                )}
+                                {layerSubtitle}
                             </div>
                         </AccordionTrigger>
                         </AccordionHeader>
+                        {zoomHintButton}
                     </div>
-                    {zoomHint && visibleZoomRange && (
-                        <div className="px-2 pb-2 -mt-1">
-                            <ZoomHintPill
-                                direction={zoomHint}
-                                range={visibleZoomRange}
-                                onClick={handleZoomToVisibleRange}
-                            />
-                        </div>
-                    )}
                     <AccordionContent>
                         {layerControls}
                     </AccordionContent>
@@ -589,20 +631,24 @@ export const useCustomLayerList = ({ config, disableExport, hasLayerFilters, gro
 
     const layerList = useMemo(() => {
         if (!config) return [];
-        return [...config].map(layer => {
+        return [...config].map((layer, index) => {
+            const heading = newSectionHeading(layer, index > 0 ? config[index - 1] : undefined);
+
             return (
-                <LayerAccordionItem
-                    key={layer.title}
-                    layerConfig={layer}
-                    isTopLevel={true}
-                    disableExport={disableExport}
-                    hasLayerFilters={hasLayerFilters}
-                    groupExtrasRender={groupExtrasRender}
-                    layerExtrasRender={layerExtrasRender}
-                    layerStatsRender={layerStatsRender}
-                    layerLegendRender={layerLegendRender}
-                />
-            )
+                <Fragment key={layer.title || index}>
+                    {heading && <SectionHeading heading={heading} isTopLevel={true} />}
+                    <LayerAccordionItem
+                        layerConfig={layer}
+                        isTopLevel={true}
+                        disableExport={disableExport}
+                        hasLayerFilters={hasLayerFilters}
+                        groupExtrasRender={groupExtrasRender}
+                        layerExtrasRender={layerExtrasRender}
+                        layerStatsRender={layerStatsRender}
+                        layerLegendRender={layerLegendRender}
+                    />
+                </Fragment>
+            );
         });
     }, [config, disableExport, hasLayerFilters, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender]);
 

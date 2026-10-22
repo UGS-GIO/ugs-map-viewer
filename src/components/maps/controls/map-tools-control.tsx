@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom'
 import { useControl } from 'react-map-gl/maplibre'
 import { PortalControl } from './portal-control'
 import { ControlButton } from './control-button'
-import { Square, Pentagon, X, Crosshair, CopyPlus } from 'lucide-react'
+import { Square, Pentagon, X, SquareDashedMousePointer, CopyPlus } from 'lucide-react'
 import type { DrawMode } from '../types'
 
 interface MapToolsControlProps {
@@ -104,7 +104,7 @@ export function MapToolsControl({
           {/* Box select */}
           {onBoxSelectToggle && (
             <ControlButton
-              icon={Crosshair}
+              icon={SquareDashedMousePointer}
               title={boxSelectActive ? 'Exit box select' : 'Box select mode'}
               onClick={() => onBoxSelectToggle(!boxSelectActive)}
               active={boxSelectActive}

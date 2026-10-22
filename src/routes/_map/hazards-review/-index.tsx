@@ -48,7 +48,8 @@ export default function Map() {
     <MapContext.Provider value={contextValue}>
     <DisplacementFilterProvider>
     <DisplacementAnalysisProvider>
-      <TourAutoStart route="hazards" />
+      {/* The tour waits for the welcome dialog to close. */}
+      {!showWelcomeDialog && <TourAutoStart route="hazards" />}
       <>
         <AlertDialog open={showWelcomeDialog} onOpenChange={setShowWelcomeDialog}>
           <AlertDialogContent className="max-w-2xl">

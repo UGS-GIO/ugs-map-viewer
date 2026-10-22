@@ -1,4 +1,3 @@
-import { BackToMenuButton } from '@/components/ui/back-to-menu-button'
 import { useCustomLayerList } from '@/hooks/use-custom-layerlist'
 import { useGetLayerConfigs } from '@/hooks/use-get-layer-configs'
 import { renderDisplacementLayerPanel } from '../popups/displacement-layer-panel'
@@ -27,7 +26,6 @@ export function HazardsReviewLayers() {
 
     return (
         <>
-            <BackToMenuButton />
             <div className="overflow-y-visible max-h-[calc(100vh)]" data-tour="layer-panel">
                 {layerList}
             </div>

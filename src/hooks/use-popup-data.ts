@@ -8,7 +8,7 @@
  * - Returning unified PopupData ready for display
  */
 import { useMemo } from 'react'
-import { useQueries } from '@tanstack/react-query'
+import { queryOptions, useQueries } from '@tanstack/react-query'
 import type { FeatureCollection, GeoJsonProperties } from 'geojson'
 import type { WfsFeature } from '@/lib/map/wfs-service'
 import type { LayerProps, RasterSource, ProcessedRasterSource } from '@/lib/types/mapping-types'
@@ -39,10 +39,8 @@ interface UsePopupDataOptions {
   displayedTitles?: Set<string>
 }
 
-interface RasterQueryConfig {
-  layerTitle: string
-  rasterSource: RasterSource
-}
+type LngLat = { lng: number; lat: number }
+type Bbox = { sw: [number, number]; ne: [number, number] }
 
 /**
  * Fetch WMS GetFeatureInfo for a raster layer at a point
@@ -178,6 +176,30 @@ async function fetchCogValue(
   }
 }
 
+const rasterQuery = (queryKey: readonly unknown[], layerTitle: string, rasterSource: RasterSource, fetch: () => Promise<GeoServerGeoJSON | null>) =>
+  queryOptions({
+    queryKey,
+    queryFn: async () => ({ layerTitle, rasterSource, data: await fetch() }),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  })
+
+/**
+ * One query per displayed raster layer (WMS GetFeatureInfo) and COG (sampled client-side) at a
+ * click. usePopupData reads them; the map's click handler awaits the same queries to decide
+ * whether to open the results, so both share one cache entry per layer and point.
+ * COG values use queryKeys.cog.value() — coords are rounded so near-duplicate clicks share cache.
+ */
+export function rasterQueries(layersConfig: LayerProps[], displayedTitles: Set<string> | undefined, clickPoint: LngLat | null, clickBbox?: Bbox | null) {
+  if (!clickPoint) return []
+  const wms = [...getLayersWithRasterSource(layersConfig, displayedTitles)].map(([layerTitle, rasterSource]) =>
+    rasterQuery(['rasterValue', rasterSource.layerName, clickPoint.lng, clickPoint.lat], layerTitle, rasterSource,
+      () => fetchRasterValue(rasterSource, clickPoint, clickBbox)))
+  const cog = [...getCogLayersForPopup(layersConfig, displayedTitles)].map(([layerTitle, { rasterSource }]) =>
+    rasterQuery(queryKeys.cog.value(rasterSource.layerName, clickPoint.lng, clickPoint.lat), layerTitle, rasterSource,
+      () => fetchCogValue(rasterSource.url, clickPoint, rasterSource.valueField)))
+  return [...wms, ...cog]
+}
+
 /**
  * Hook that prepares popup data from WFS results and fetches raster values
  */
@@ -202,42 +224,12 @@ export function usePopupData({
     return grouped
   }, [vectorFeatures])
 
-  // Get all layers with rasterSource config (WMS) and visible COG layers (sampled client-side)
-  const layersWithRaster = useMemo(() => getLayersWithRasterSource(layersConfig, displayedTitles), [layersConfig, displayedTitles])
-  const cogLayers = useMemo(() => getCogLayersForPopup(layersConfig, displayedTitles), [layersConfig, displayedTitles])
-
-  // Determine which layers need raster fetching. Tagged 'wms' or 'cog' to dispatch query path.
-  const rasterQueries = useMemo((): Array<RasterQueryConfig & { kind: 'wms' | 'cog' }> => {
-    if (!clickPoint) return []
-
-    const queries: Array<RasterQueryConfig & { kind: 'wms' | 'cog' }> = []
-    for (const [layerTitle, rasterSource] of layersWithRaster) {
-      queries.push({ layerTitle, rasterSource, kind: 'wms' })
-    }
-    for (const [layerTitle, { rasterSource }] of cogLayers) {
-      queries.push({ layerTitle, rasterSource, kind: 'cog' })
-    }
-    return queries
-  }, [clickPoint, layersWithRaster, cogLayers])
-
   // Fetch raster values for all layers in parallel.
-  // COG values use queryKeys.cog.value() — coords are rounded so near-duplicate clicks share cache.
-  const rasterResults = useQueries({
-    queries: rasterQueries.map(({ layerTitle, rasterSource, kind }) => ({
-      queryKey: kind === 'cog'
-        ? queryKeys.cog.value(rasterSource.layerName, clickPoint?.lng ?? 0, clickPoint?.lat ?? 0)
-        : ['rasterValue', rasterSource.layerName, clickPoint?.lng, clickPoint?.lat] as const,
-      queryFn: async () => {
-        if (!clickPoint) return null
-        const data = kind === 'cog'
-          ? await fetchCogValue(rasterSource.url, clickPoint, rasterSource.valueField)
-          : await fetchRasterValue(rasterSource, clickPoint, clickBbox)
-        return { layerTitle, rasterSource, data }
-      },
-      enabled: !!clickPoint,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-    })),
-  })
+  const queries = useMemo(
+    () => rasterQueries(layersConfig, displayedTitles, clickPoint, clickBbox),
+    [layersConfig, displayedTitles, clickPoint, clickBbox],
+  )
+  const rasterResults = useQueries({ queries })
 
   const isLoadingRaster = rasterResults.some(r => r.isLoading)
 

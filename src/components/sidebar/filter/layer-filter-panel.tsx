@@ -1,4 +1,6 @@
 import { useCallback, useId, useState } from 'react';
+import { LegendSwatch } from '@/components/maps/legend-swatch-grid';
+import { LEGEND_ROW_CLASS } from '@/lib/legend/legend-layout';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DualRangeSlider } from '@/components/ui/dual-range-slider';
@@ -55,20 +57,14 @@ function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<
             <Label className="text-sm font-medium text-muted-foreground mb-2 block">{field.label}</Label>
             <div className="grid grid-cols-2 gap-2">
                 {filtered.map(label => (
-                    <div key={label} className="flex items-center space-x-2">
+                    <div key={label} className={LEGEND_ROW_CLASS}>
                         <Checkbox
                             id={`${optionIdPrefix}-${optionId(label)}`}
                             checked={selected.includes(label)}
                             onCheckedChange={checked => toggle(label, checked === true)}
                         />
                         {field.optionSwatches?.[label] && (
-                            <span
-                                className="inline-block w-3 h-3 rounded-full shrink-0 border"
-                                style={{
-                                    backgroundColor: field.optionSwatches[label],
-                                    borderColor: field.optionStrokes?.[label] ?? 'rgba(0,0,0,0.3)',
-                                }}
-                            />
+                            <LegendSwatch color={field.optionSwatches[label]} stroke={field.optionStrokes?.[label]} />
                         )}
                         <Label htmlFor={`${optionIdPrefix}-${optionId(label)}`} className="text-sm cursor-pointer">
                             {label}

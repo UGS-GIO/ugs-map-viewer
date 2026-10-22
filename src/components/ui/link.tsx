@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn, isHttpUrl } from "@/lib/utils";
 import { Link as RouterLink } from "@tanstack/react-router";
 import { cva, type VariantProps } from 'class-variance-authority';
 
@@ -47,4 +47,7 @@ const Link = ({ children, variant, className, target, rel, ...props }: LinkProps
     );
 };
 
-export { Link };
+export { Link, isHttpUrl };
+
+export const linkIfUrl = (label?: string) => (v: unknown): React.ReactNode =>
+    isHttpUrl(v) ? <Link to={v.trim()}>{label ?? v}</Link> : (v as React.ReactNode);
