@@ -12,6 +12,7 @@ import {
 } from '../../-data/landscape-metrics'
 import {
   useLandscapeFilterState,
+  useLandscapeChoropleth,
   DEFAULT_LANDSCAPE_FILTER,
   type LandscapeFilterState,
 } from '../../-hooks/use-landscape-choropleth'
@@ -28,6 +29,7 @@ export function LandscapeDataFilters({ layer }: LandscapeDataFiltersProps) {
 
   const filterState = useLandscapeFilterState()
   const activeScale = layer.title || LANDSCAPE_SCALES[0].value
+  const { legendData } = useLandscapeChoropleth(layer.title)
 
   const allowedMetrics = useMemo(() => resolveMetricsForLayer(activeScale), [activeScale])
 
@@ -209,6 +211,11 @@ export function LandscapeDataFilters({ layer }: LandscapeDataFiltersProps) {
                   </option>
                 ))}
               </select>
+              {!isCategorical && legendData && legendData.bins.length < filterState.numClasses && (
+                <span className='text-[10px] text-muted-foreground italic leading-tight'>
+                  Adjusted to {legendData.bins.length} classes due to duplicate values
+                </span>
+              )}
             </div>
           </div>
 

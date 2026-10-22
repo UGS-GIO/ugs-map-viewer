@@ -57,8 +57,49 @@ describe('Landscape classification breaks', () => {
     }
     for (const b of breaks) {
       expect(b).toBeGreaterThan(0)
-      expect(b).toBeLessThan(100)
+      expect(b).toBeLessThanOrEqual(100)
     }
+  })
+
+  it('calculates quantile breaks accurately for small unique datasets without dropping classes', () => {
+    // Utah Ecoregions has 11 features
+    const ecoregions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    for (let k = 2; k <= 10; k++) {
+      const breaks = computeClassBreaks('quantile', ecoregions, k)
+      expect(breaks).toHaveLength(k - 1)
+      for (let i = 0; i < breaks.length - 1; i++) {
+        expect(breaks[i]).toBeLessThan(breaks[i + 1])
+      }
+    }
+  })
+
+  it('handles zero-inflated quantile distributions without collapsing into 1 flat color', () => {
+    // Mackenzie's HUC8 case: 44 zeros and 23 positive values
+    const huc8Data = [
+      ...Array(44).fill(0),
+      1.0, 1.1, 3.9, 4.0, 4.6, 4.7, 5.2, 6.1, 11.0, 14.1, 14.9, 16.0, 17.7, 19.6, 30.1, 30.9, 32.4, 37.3, 37.9, 40.8, 48.5, 68.9, 98.6,
+    ]
+    const breaks = computeClassBreaks('quantile', huc8Data, 8)
+    expect(breaks).toHaveLength(7)
+    expect(breaks[0]).toBe(1.0)
+    for (let i = 0; i < breaks.length - 1; i++) {
+      expect(breaks[i]).toBeLessThan(breaks[i + 1])
+    }
+  })
+
+  it('handles dual boundary saturation (0s and 100s with intermediate values) gracefully', () => {
+    // utah_percent case with 0s, 100s, and border values
+    const utahPctData = [
+      ...Array(20).fill(0),
+      5, 12, 25, 50, 75, 90,
+      ...Array(40).fill(100),
+    ]
+    const breaks = computeClassBreaks('quantile', utahPctData, 5)
+    expect(breaks.length).toBeGreaterThanOrEqual(3)
+    for (let i = 0; i < breaks.length - 1; i++) {
+      expect(breaks[i]).toBeLessThan(breaks[i + 1])
+    }
+    expect(breaks[breaks.length - 1]).toBe(100)
   })
 
   it('computeClassBreaks returns empty for uniform values', () => {

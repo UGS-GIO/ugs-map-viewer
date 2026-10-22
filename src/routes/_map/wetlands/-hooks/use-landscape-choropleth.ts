@@ -284,12 +284,38 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
 
     const fillColor = buildChoroplethStepExpression(activeMetric.value, minVal, breaks, colors)
 
+    // First value strictly greater than minVal to check if bin 0 is exclusively minimums (e.g. zeros)
+    const firstNonMin = values.find((v) => v > minVal)
+
     // Build Legend bins matching actualClasses exactly
     const bins: LegendBin[] = []
     for (let i = 0; i < actualClasses; i++) {
       const start = i === 0 ? minVal : breaks[i - 1]
-      const end = i === actualClasses - 1 ? maxVal : breaks[i]
-      const label = `${formatValue(start, activeMetric.unit)} – ${formatValue(end, activeMetric.unit)}`
+      const rawEnd = i === actualClasses - 1 ? maxVal : breaks[i]
+      let end = rawEnd
+
+      // When the upper bound of an interior bin is maxVal (e.g. 100% saturation spike),
+      // show the actual upper value in this bin so it doesn't display identical ranges
+      if (rawEnd === maxVal && i < actualClasses - 1) {
+        let maxInBin = start
+        for (let j = values.length - 1; j >= 0; j--) {
+          if (values[j] < rawEnd && values[j] >= start) {
+            maxInBin = values[j]
+            break
+          }
+        }
+        end = maxInBin
+      }
+
+      let label: string
+      if (start === end) {
+        label = formatValue(start, activeMetric.unit)
+      } else if (i === 0 && start === 0 && breaks[0] > 0 && firstNonMin !== undefined && breaks[0] <= firstNonMin) {
+        label = formatValue(0, activeMetric.unit)
+      } else {
+        label = `${formatValue(start, activeMetric.unit)} – ${formatValue(end, activeMetric.unit)}`
+      }
+
       bins.push({
         label,
         color: colors[i],
