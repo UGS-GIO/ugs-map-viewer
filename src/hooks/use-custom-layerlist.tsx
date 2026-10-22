@@ -70,6 +70,7 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
 /** Zoom hint for a selected layer that only draws in part of the zoom range, and a jump into that range. */
 function useLayerZoomHint(layer: LayerProps, active: boolean) {
     const { map } = useMap();
+    const { peek } = usePhoneSheetActions();
     const currentZoom = useMapZoom();
     const viewLatitude = useMapLatitude();
     const range = (viewLatitude === null ? layer.visibleZoomRange : effectiveZoomRange(layer, viewLatitude)) ?? null;
@@ -82,6 +83,7 @@ function useLayerZoomHint(layer: LayerProps, active: boolean) {
         const [minZ, maxZ] = range;
         // maxzoom is exclusive, so land just inside it.
         map.flyTo({ zoom: currentZoom !== null && currentZoom >= maxZ ? maxZ - 0.01 : minZ });
+        peek();
     };
     return { range, hint, maxScale, zoomToRange };
 }

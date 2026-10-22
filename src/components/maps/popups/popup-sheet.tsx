@@ -30,6 +30,8 @@ interface PopupSheetProps {
     layerHeaderExtras?: (layer: LayerContentProps) => React.ReactNode;
     /** Optional render-prop for content shown inside each feature card */
     featureExtras?: (feature: ExtendedFeature, layer: LayerContentProps) => React.ReactNode;
+    /** Called (and awaited) right before zooming to a feature — collapses this sheet first. */
+    onBeforeZoom?: () => void | Promise<void>;
 }
 
 export interface PopupSheetRef {
@@ -55,6 +57,7 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
     headerExtras,
     layerHeaderExtras,
     featureExtras,
+    onBeforeZoom,
 }, ref) => {
     const containerRef = useRef<HTMLDivElement | null>(null);
     const floatingCloseRef = useRef<HTMLDivElement>(null);
@@ -202,6 +205,7 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
                                 clickPoint={clickPoint}
                                 layerHeaderExtras={layerHeaderExtras}
                                 featureExtras={featureExtras}
+                                onBeforeZoom={onBeforeZoom}
                             />
                         </div>
                     </div>
