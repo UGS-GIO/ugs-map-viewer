@@ -613,13 +613,13 @@ const ecoregionConfig: PMTilesLayerProps = {
 const ecoregionsGroupConfig: LayerProps = {
   type: 'group',
   title: 'Landscape Ecoregion Data',
-  visible: false,
+  variantSelector: true,
   layers: [
-    huc12ecoConfig,
-    huc12Config,
-    huc8ecoConfig,
-    huc8Config,
-    ecoregionConfig,
+    { ...huc12ecoConfig, variantLabel: 'HUC12 by Ecoregion' },
+    { ...huc12Config, variantLabel: 'HUC12' },
+    { ...huc8ecoConfig, variantLabel: 'HUC8 by Ecoregion' },
+    { ...huc8Config, variantLabel: 'HUC8' },
+    { ...ecoregionConfig, variantLabel: 'Ecoregion' },
   ],
 }
 

@@ -149,13 +149,13 @@ export default function Sidebar({ className }: SidebarProps) {
       )}
       style={sidebarStyle}
     >
-      <div className='flex h-full flex-col'>
+      <div className='flex h-full min-h-0 flex-col'>
         {/* Navigation links */}
         {areLinksLoading ?
           <NavSkeleton id='sidebar-menu' className='flex h-full flex-1' />
           : <Nav
             id='sidebar-menu'
-            className='h-full flex-1 overflow-hidden z-40 max-h-screen py-2'
+            className='h-full min-h-0 flex-1 overflow-hidden z-40 max-h-screen py-2'
             isCollapsed={isCollapsed}
             showPanel={showPanel}
             setIsCollapsed={setIsCollapsed}
