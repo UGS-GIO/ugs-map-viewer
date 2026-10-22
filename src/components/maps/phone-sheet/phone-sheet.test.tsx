@@ -74,6 +74,13 @@ describe('PhoneSheet', () => {
     expect(props.onSetDetent).toHaveBeenCalledWith(PEEK)
   })
 
+  it('leaves Escape inside a Base UI listbox to that listbox', () => {
+    const props = base({ children: <div role='listbox' tabIndex={0}>options</div> })
+    render(<PhoneSheet {...props} />)
+    key(q(document.body, '[role=listbox]'), 'Escape')
+    expect(props.onSetDetent).not.toHaveBeenCalled()
+  })
+
   it('makes the content inert at the peek and shows the summary there', () => {
     const { rerender } = render(<PhoneSheet {...base({ detent: PEEK, summary: '3 layers on' })} />)
     expect(q(document.body, '[inert]')).not.toBeNull()

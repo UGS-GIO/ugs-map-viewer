@@ -5,6 +5,7 @@ import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { z } from 'zod'
 import { INFO_DETAILS, RESULTS_PARAMS, SHEET_PARAMS } from '@/components/maps/phone-sheet/sheet-model'
 import { RouteErrorBoundary } from '@/components/route-error-boundary'
+import { resolveBasemapId } from '@/lib/basemaps'
 
 // Get responsive default sidebar width based on screen size
 const getDefaultSidebarWidth = () => {
@@ -23,7 +24,7 @@ const mapSearchSchema = z.object({
     sidebar_collapsed: z.coerce.boolean().optional().default(false),
     sidebar_width: z.enum(['icon', 'wide', 'narrow']).optional().default(getDefaultSidebarWidth),
     coordinate_format: z.enum(['dd', 'dms']).optional(),
-    basemap: z.string().optional(),
+    basemap: z.string().transform(resolveBasemapId).optional(),
     layers: z.preprocess((val) => {
         if (typeof val === 'string') {
             try { return JSON.parse(val); } catch (e) { return undefined; }
