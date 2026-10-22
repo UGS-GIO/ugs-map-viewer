@@ -56,9 +56,9 @@ export function LegendSwatch({ shape = 'circle', color, stroke }: { shape?: Swat
     const paint = { backgroundImage: `linear-gradient(${color}, ${color})`, borderColor: stroke ?? 'rgba(0,0,0,0.3)' }
     return (
         <span className={LEGEND_SWATCH_SLOT_CLASS} aria-hidden>
-            {shape === 'line' && <span className="h-[3px] w-7 rounded-full" style={{ backgroundColor: color }} />}
-            {shape === 'circle' && <span className="legend-swatch h-3 w-3 rounded-full border" style={paint} />}
-            {shape === 'fill' && <span className="legend-swatch h-3.5 w-7 rounded-[2px] border" style={paint} />}
+            {shape === 'line' && <span className="h-0.5 w-7 rounded-full" style={{ backgroundColor: color }} />}
+            {shape === 'circle' && <span className="legend-swatch size-2.5 rounded-full border" style={paint} />}
+            {shape === 'fill' && <span className="legend-swatch h-3.5 w-7 rounded-sm border" style={paint} />}
         </span>
     )
 }
@@ -81,17 +81,17 @@ export function LegendSwatchGrid({ items, isChecked, onToggle, columns = 'auto',
             {items.map(item => {
                 const swatch = showSwatch && <LegendSwatch shape={shape} color={item.color} stroke={item.stroke} />
                 const label = (
-                    <span className="min-w-0 break-words leading-tight">
+                    <span className="min-w-0 break-words">
                         {item.label}
                         {item.count != null && <span className="ml-1 text-muted-foreground">({item.count.toLocaleString()})</span>}
                     </span>
                 )
                 // Fixed min-width aligns numbers into columns across rows.
                 const value = item.value != null && (
-                    <span className="ml-auto shrink-0 pl-1 min-w-[4.25rem] text-right tabular-nums leading-tight text-muted-foreground">{item.value}</span>
+                    <span className="ml-auto shrink-0 pl-1 min-w-[4.25rem] text-right tabular-nums text-muted-foreground">{item.value}</span>
                 )
                 const secondaryValue = item.secondaryValue != null && (
-                    <span className="shrink-0 pl-2 min-w-[4.25rem] text-right tabular-nums leading-tight text-muted-foreground">{item.secondaryValue}</span>
+                    <span className="shrink-0 pl-2 min-w-[4.25rem] text-right tabular-nums text-muted-foreground">{item.secondaryValue}</span>
                 )
 
                 if (!interactive) {

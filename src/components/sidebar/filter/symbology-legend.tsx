@@ -1,8 +1,11 @@
 import { useCallback, useId, useMemo } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { Checkbox } from '@/components/ui/checkbox'
 import { LegendSwatch, LegendSwatchGrid } from '@/components/maps/legend-swatch-grid'
 import { LEGEND_ROW_CLASS } from '@/lib/legend/legend-layout'
+import { swatchShapeOf, type SwatchShape } from '@/lib/legend/swatch-shape'
+import { styleFragmentQueryOptions } from '@/components/maps/pmtiles-layer-source'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -43,12 +46,12 @@ const countLabel = (shown: number, total: number) =>
 interface LegendGroup { key: string; label: string; color: string; values: readonly { value: string; color: string }[] }
 
 // One symbology option, derived from a STAC render.
-interface Mode { id: string; label: string; field: string; entries: readonly LegendEntry[] }
+interface Mode { id: string; label: string; field: string; entries: readonly LegendEntry[]; styleUrl?: string }
 
 const modesFromRenders = (renders: readonly PMTilesRender[]): Mode[] =>
     renders
         .filter(r => r.field)
-        .map(r => ({ id: r.id, label: r.title ?? r.id, field: r.field ?? '', entries: r.legend ?? [] }))
+        .map(r => ({ id: r.id, label: r.title ?? r.id, field: r.field ?? '', entries: r.legend ?? [], styleUrl: r.styleUrl }))
 
 /** Generic symbology read/write on the route's `vector_symbology` search param. */
 export function useVectorSymbology(layerTitle: string) {
@@ -105,6 +108,7 @@ export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
         ?? modes.find(m => m.id === layer.defaultRenderId)
         ?? modes[0]
     const field = mode ? schema.fields.find(f => f.field === mode.field) : undefined
+    const { data: fragment } = useQuery(styleFragmentQueryOptions(mode?.styleUrl))
     const layerTitle = layer.title ?? ''
 
     // Switching renders resets the outgoing field, so an all-off legend can't leave the map
@@ -150,14 +154,14 @@ export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
                     </Select>
                 </div>
             )}
-            <CategoryLegendGrid schema={schema} field={field} entries={mode.entries} />
+            <CategoryLegendGrid schema={schema} field={field} entries={mode.entries} shape={swatchShapeOf(fragment?.layers?.map(l => l.type) ?? [])} />
         </div>
     )
 }
 
 function CategoryLegendGrid(
-    { schema, field, entries }:
-        { schema: FilterSchema; field: FilterFieldKind; entries: readonly LegendEntry[] },
+    { schema, field, entries, shape }:
+        { schema: FilterSchema; field: FilterFieldKind; entries: readonly LegendEntry[]; shape: SwatchShape },
 ) {
     const mgr = useLayerFilter(schema)
     const isContains = field.kind === 'containsAny'
@@ -221,6 +225,7 @@ function CategoryLegendGrid(
     const renderRows = (items: string[], showSwatch = true) => (
         <LegendSwatchGrid
             showSwatch={showSwatch}
+            shape={shape}
             isChecked={value => onSet.has(value) && (counts[value] ?? 0) > 0}
             onToggle={toggle}
             items={items.map(value => ({
@@ -298,7 +303,7 @@ function CategoryLegendGrid(
                                     onCheckedChange={() => !groupDisabled && toggleGroup()}
                                     aria-label={`Toggle ${g.label} group`}
                                 />
-                                <LegendSwatch color={g.color} />
+                                <LegendSwatch shape={shape} color={g.color} />
                                 <Label className={cn("text-sm font-semibold cursor-pointer", groupDisabled && "cursor-not-allowed")}>
                                     {g.label}
                                     <span className="ml-1 font-normal text-muted-foreground">
