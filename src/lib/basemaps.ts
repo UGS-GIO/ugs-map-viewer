@@ -86,6 +86,9 @@ export const BASEMAP_STYLES: BasemapStyle[] = [
   },
 ];
 
+// The retired id still in saved links.
+export const resolveBasemapId = (id: string): string => (id === 'utah-satellite' ? 'satellite' : id);
+
 // Default basemap
 export const DEFAULT_BASEMAP = BASEMAP_STYLES[0];
 

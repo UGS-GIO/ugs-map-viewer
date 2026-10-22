@@ -70,6 +70,7 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
 /** Zoom hint for a selected layer that only draws in part of the zoom range, and a jump into that range. */
 function useLayerZoomHint(layer: LayerProps, active: boolean) {
     const { map } = useMap();
+    const { peek } = usePhoneSheetActions();
     const currentZoom = useMapZoom();
     const viewLatitude = useMapLatitude();
     const range = (viewLatitude === null ? layer.visibleZoomRange : effectiveZoomRange(layer, viewLatitude)) ?? null;
@@ -82,9 +83,14 @@ function useLayerZoomHint(layer: LayerProps, active: boolean) {
         const [minZ, maxZ] = range;
         // maxzoom is exclusive, so land just inside it.
         map.flyTo({ zoom: currentZoom !== null && currentZoom >= maxZ ? maxZ - 0.01 : minZ });
+        peek();
     };
     return { range, hint, maxScale, zoomToRange };
 }
+
+// Description rows are keyed by title; a renamed layer still finds its row under a former title.
+const descriptionFor = (descriptions: Record<string, string>, layer: LayerProps): string =>
+    [layer.title ?? '', ...(layer.formerTitles ?? [])].map(t => descriptions[t]).find(Boolean) ?? '';
 
 const newSectionHeading = (current: LayerProps, previous?: LayerProps): string | undefined =>
     current.sectionHeading !== previous?.sectionHeading ? current.sectionHeading : undefined;
@@ -549,7 +555,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
             handleOpacityChange={handleOpacityChange}
             handleOpacityCommit={handleOpacityCommit}
             title={layerConfig.title || ''}
-            description={layerDescriptions ? layerDescriptions[layerConfig.title || ''] : ''}
+            description={layerDescriptions ? descriptionFor(layerDescriptions, layerConfig) : ''}
             handleZoomToLayer={handleZoomToLayer}
             url={extentOptions.type === 'wms' ? extentOptions.wmsUrl || '' : ''}
             openLegend={embedded ? true : isUserExpanded}
