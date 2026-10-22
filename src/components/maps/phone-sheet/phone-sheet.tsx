@@ -20,9 +20,10 @@ const SNAP_POINTS = DETENTS.map((d) => SNAP[d])
 // A null snap point (a cancelled swipe-off) is the peek.
 const detentOf = (p: Drawer.Root.SnapPoint | null) => DETENTS.find((d) => SNAP[d] === p) ?? PEEK
 
-// Radix menus, selects and popovers portal into a popper wrapper; dialogs carry their role.
+// Radix popups portal into a popper wrapper; Base UI's carry their role, as dialogs do.
+const OTHER_LAYER = '[data-radix-popper-content-wrapper], [role=dialog], [role=alertdialog], [role=menu], [role=listbox]'
 const inOtherLayer = (target: EventTarget | null, sheet: Element | null) => {
-  const layer = target instanceof Element ? target.closest('[data-radix-popper-content-wrapper], [role=dialog], [role=alertdialog]') : null
+  const layer = target instanceof Element ? target.closest(OTHER_LAYER) : null
   return layer !== null && layer !== sheet
 }
 

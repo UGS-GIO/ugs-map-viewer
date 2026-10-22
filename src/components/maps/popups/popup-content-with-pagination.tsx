@@ -43,6 +43,8 @@ interface PopupContentWithPaginationProps {
     layerHeaderExtras?: (layer: LayerContentProps) => React.ReactNode
     /** Optional render-prop for content shown inside each feature card */
     featureExtras?: (feature: ExtendedFeature, layer: LayerContentProps) => React.ReactNode
+    /** Called (and awaited) right before zooming to a feature/pixel — collapses whatever's covering the map. */
+    onBeforeZoom?: () => void | Promise<void>
 }
 
 const FeatureCard = memo(({
@@ -166,8 +168,18 @@ const RasterOnlyCard = memo(({
 });
 RasterOnlyCard.displayName = 'RasterOnlyCard';
 
-const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clickPoint, layerHeaderExtras, featureExtras }: PopupContentWithPaginationProps) => {
-    const { zoomTo } = useZoomToFeature({ onHighlightChange })
+const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clickPoint, layerHeaderExtras, featureExtras, onBeforeZoom }: PopupContentWithPaginationProps) => {
+    const { zoomTo: zoomToFeatureRaw } = useZoomToFeature({ onHighlightChange })
+
+    // Awaits onBeforeZoom (drawer collapse) before fitBounds runs.
+    const zoomTo = useCallback(async (
+        feature: ExtendedFeature,
+        sourceCRS: string,
+        options?: Parameters<typeof zoomToFeatureRaw>[2]
+    ) => {
+        await onBeforeZoom?.()
+        zoomToFeatureRaw(feature, sourceCRS, options)
+    }, [zoomToFeatureRaw, onBeforeZoom])
 
     const handleZoomToPixel = useCallback(async (layer: LayerContentProps, point: { lng: number; lat: number }) => {
         const cogUrl = layer.rasterSource?.url
