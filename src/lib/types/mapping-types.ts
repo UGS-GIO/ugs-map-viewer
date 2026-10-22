@@ -149,6 +149,8 @@ interface BaseLayerProps {
     variantDescription?: string;
     /** Heading shown above this layer in the layer list; consecutive layers sharing it show it once. */
     sectionHeading?: string;
+    /** Titles this layer had before a rename, so old links and description rows still find it. */
+    formerTitles?: string[];
 }
 
 export interface WMSLayerProps extends BaseLayerProps {

@@ -76,9 +76,9 @@ const sco2Config: PMTilesLayerProps = {
     ],
 };
 
-// Basin Names - Geo-region Carbon Storage Ranking
+// Basin Names - Geo-Region Carbon Storage Ranking
 const basinNamesLayerName = 'basin_names';
-const basinNamesTitle = 'Geo-region Carbon Storage Ranking';
+const basinNamesTitle = 'Geo-Region Carbon Storage Ranking';
 const basinNamesConfig: PMTilesLayerProps = {
     type: 'pmtiles',
     pmtilesUrl: CARBONSTORAGE_PMTILES_URL,
