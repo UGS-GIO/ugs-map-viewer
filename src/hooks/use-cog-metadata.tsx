@@ -70,12 +70,12 @@ async function readCogMetadata(cogUrl: string): Promise<CogMetadata | null> {
     try {
         const tiff = await getTiff(cogUrl)
         const image = await tiff.getImage(0)
-        const md = image.getGDALMetadata(0) as Record<string, string> | null
+        const md = await image.getGDALMetadata(0)
         if (!md) return null
-        const min = parseFloat(md.STATISTICS_MINIMUM)
-        const max = parseFloat(md.STATISTICS_MAXIMUM)
-        const mean = parseFloat(md.STATISTICS_MEAN)
-        const stddev = parseFloat(md.STATISTICS_STDDEV)
+        const min = parseFloat(String(md.STATISTICS_MINIMUM))
+        const max = parseFloat(String(md.STATISTICS_MAXIMUM))
+        const mean = parseFloat(String(md.STATISTICS_MEAN))
+        const stddev = parseFloat(String(md.STATISTICS_STDDEV))
         if ([min, max, mean, stddev].some(v => !Number.isFinite(v))) return null
 
         // Grid info — used to snap click to pixel cell for highlighting

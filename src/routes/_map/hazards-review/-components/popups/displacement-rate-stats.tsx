@@ -2,14 +2,17 @@ import { useCallback, useMemo, useRef } from 'react'
 import { ChevronLeft, MapPin } from 'lucide-react'
 import area from '@turf/area'
 import { Button } from '@/components/ui/button'
-import { useDisplacementFilters } from './displacement-filter-context'
+import { useDisplacementFilters, useEffectiveYear } from './displacement-filter-context'
 import {
+    getBucketYear,
     useDisplacementFeaturesByType,
     useDisplacementSldBins,
     type DisplacementFeature,
 } from './use-displacement-queries'
 import { getShortUnitForType, getStyleNameForType } from './displacement-layers'
-import { BasinList, KPI, combinedBbox, findBin, useZoomToBboxes } from './displacement-layer-charts'
+import { passesDataQuality } from './displacement-quality'
+import { maxReadingWithBasin } from './displacement-analytics'
+import { BasinList, BasinScopeLabel, KPI, combinedBbox, findBin, useZoomToBboxes } from './displacement-layer-charts'
 import { DisplacementAnalysisLayout } from './displacement-analysis-layout'
 import { renderDisplacementLayerFilters } from './displacement-layer-filters'
 
@@ -21,7 +24,7 @@ import { renderDisplacementLayerFilters } from './displacement-layer-filters'
 const RATE_TYPE = 'Vertical Displacement Rate' as const
 const SQM_TO_SQMI = 1 / 2_589_988.110336
 const fmt1 = (n: number): string => n.toFixed(1)
-// Rate magnitudes are small (SLD bands start at 0.075 in/yr), so two decimals.
+// Rate magnitudes are small (bands are 0.3 in/yr wide), so two decimals.
 const fmt2 = (n: number): string => n.toFixed(2)
 
 // `mode='panel'` (default) is the compact sidebar column; `mode='analysis'` is the
@@ -53,29 +56,34 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
     const qualFiltered = useMemo(
         () => excludedQuals.size === 0
             ? features
-            : features.filter(f => !excludedQuals.has(String(f.properties.data_qual ?? ''))),
+            : features.filter(f => passesDataQuality(f.properties, excludedQuals)),
         [features, excludedQuals],
+    )
+    // Rate spans several period-end years; the map draws only the selected one, so
+    // the KPIs and ranking use the same year. Null while the year is resolving.
+    const year = useEffectiveYear(RATE_TYPE)
+    const yearFiltered = useMemo(
+        () => (year ? qualFiltered.filter(f => getBucketYear(f.properties) === year) : []),
+        [qualFiltered, year],
     )
     // Basin-scoped view drives the KPIs; the ranking below intentionally ignores
     // the basin filter so it stays complete (matching the charted BasinList).
     const scoped = useMemo(
         () => selectedBasins.size === 0
-            ? qualFiltered
-            : qualFiltered.filter(f => selectedBasins.has(f.properties.location)),
-        [qualFiltered, selectedBasins],
+            ? yearFiltered
+            : yearFiltered.filter(f => selectedBasins.has(f.properties.location)),
+        [yearFiltered, selectedBasins],
     )
     const measuredScoped = useMemo(
         () => scoped.filter(f => isMeasured(f.properties.value_inches_min)),
         [scoped, isMeasured],
     )
 
-    const maxRate = useMemo(() => {
-        let m = 0
-        for (const f of measuredScoped) {
-            const a = Math.abs(f.properties.value_inches_min)
-            if (a > m) m = a
-        }
-        return m
+    // Fastest rate in scope and the basin it's in, so the hero's basin name always
+    // matches its number (the ranking below stays statewide).
+    const { maxRate, fastestBasin } = useMemo(() => {
+        const { max, where } = maxReadingWithBasin(measuredScoped)
+        return { maxRate: max, fastestBasin: where }
     }, [measuredScoped])
 
     const totalAreaSqMi = useMemo(
@@ -97,12 +105,12 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
         return { from, to }
     }, [scoped])
 
-    // Deepest (fastest) subsidence rate per basin, over ALL basins (skips the
+    // Deepest (fastest) subsidence rate per basin in the selected year, over ALL basins (skips the
     // basin filter like the charted ranking); precompute bbox per basin so the
     // click-to-zoom combines baked numbers instead of re-walking coordinates.
     const basinsByRate = useMemo(() => {
         const byLoc = new Map<string, { abs: number; signed: number; features: DisplacementFeature[] }>()
-        for (const f of qualFiltered) {
+        for (const f of yearFiltered) {
             const v = f.properties.value_inches_min
             if (!isMeasured(v)) continue
             const loc = f.properties.location
@@ -122,7 +130,7 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
             bbox: combinedBbox(locFeatures),
             bin: findBin(plotBins, signed),
         })).sort((a, b) => b.abs - a.abs)
-    }, [qualFiltered, isMeasured, plotBins])
+    }, [yearFiltered, isMeasured, plotBins])
 
     // Bar-width denominator: the fastest rate across the whole dataset, so a
     // basin's bar keeps the same physical meaning regardless of the active filter.
@@ -187,17 +195,13 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
 
     // One-sentence, scope-aware read — rate is a velocity snapshot, so it reads
     // "subsiding at up to X in/year", not a cumulative depth.
-    // The ranking ignores the basin filter (stays complete), so its top entry is
-    // the STATEWIDE fastest basin — drop the "· basin" suffix when drilled into one
-    // (the summary already names it, and the hero number is scope-filtered).
-    const fastestBasin = basinFilterActive && selectedBasins.size === 1 ? undefined : basinsByRate[0]?.location
     const whereText = basinFilterActive && selectedBasins.size === 1
         ? [...selectedBasins][0]
         : `${distinctBasins} ${distinctBasins === 1 ? 'basin' : 'basins'}`
     let summaryLine: string
     if (isLoading) summaryLine = 'Loading…'
     else if (distinctBasins === 0) summaryLine = 'No basins above the rate deadband in the current filters.'
-    else summaryLine = `Land in ${whereText} is subsiding at up to ${fmt2(maxRate)} in/year — about ${fmt1(totalAreaSqMi)} mi² is subsiding now.`
+    else summaryLine = `Land in ${whereText} is subsiding at up to ${fmt2(maxRate)} in/year, and about ${fmt1(totalAreaSqMi)} mi² is subsiding now.`
 
     return (
         <div className="mb-3 flex flex-col gap-3 px-2 py-1">
@@ -209,9 +213,7 @@ export function DisplacementRateStats({ layerTitle, mode = 'panel' }: { layerTit
                 <div ref={scopeLabelRef} tabIndex={-1} className="flex min-w-0 items-center gap-1.5 text-xs focus:outline-none" aria-live="polite">
                     <MapPin className={`h-3 w-3 shrink-0 ${basinFilterActive ? 'text-foreground' : 'text-muted-foreground'}`} aria-hidden="true" />
                     {basinFilterActive ? (
-                        <span className="truncate font-medium text-foreground" title={[...selectedBasins].join(', ')}>
-                            {selectedBasins.size === 1 ? [...selectedBasins][0] : `${selectedBasins.size} basins`}
-                        </span>
+                        <BasinScopeLabel basins={selectedBasins} className="font-medium text-foreground" />
                     ) : (
                         <span className="text-muted-foreground">Statewide</span>
                     )}

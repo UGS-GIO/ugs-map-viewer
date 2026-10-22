@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { LngLat } from 'maplibre-gl';
-import { ExportControl } from '../export-control';
+import { MapExporter } from '../export-control';
 
 const EQUATORIAL_CIRCUMFERENCE_M = 40075016.686;
 const MAPLIBRE_TILE_SIZE = 512;
@@ -75,7 +75,7 @@ function parseLabelMeters(label: string): number {
 function measureBar(
     opts: { lat: number; zoom: number; cssWidth: number; pixelRatio: number; dpi: number; unit: 'metric' | 'imperial' }
 ) {
-    const control = new ExportControl() as unknown as ExportInternals;
+    const control = new MapExporter() as unknown as ExportInternals;
     const map = fakeExportMap(opts.lat, opts.zoom, opts.cssWidth, opts.pixelRatio);
     const { ctx, fillRects, texts } = recordingContext();
     const canvasPixels = opts.cssWidth * opts.pixelRatio;
@@ -94,7 +94,7 @@ function measureBar(
     };
 }
 
-describe('ExportControl scale bar', () => {
+describe('MapExporter scale bar', () => {
     // ~1% tolerance: maplibre's distanceTo is a spherical haversine while the reference
     // formula uses the equatorial circumference.
     const withinOnePercent = (a: number, b: number) => Math.abs(a / b - 1) < 0.01;

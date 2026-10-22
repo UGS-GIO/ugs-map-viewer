@@ -13,10 +13,13 @@ import {
   flattenDataLayers,
   flattenDataLayersWithAncestors,
   resolveLeafVisibility,
+  isWithinZoomRange,
+  effectiveZoomRange,
   findAncestorGroupTitles,
   buildFragmentLayerSpec,
   zoomRangeToBounds,
 } from '../layer-utils'
+import { zoomForScale } from '../map-scale'
 import type {
   LayerProps,
   WMSLayerProps,
@@ -341,5 +344,37 @@ describe('buildFragmentLayerSpec', () => {
     )
     expect(spec.minzoom).toBe(13)
     expect(spec.maxzoom).toBe(20)
+  })
+})
+
+describe('isWithinZoomRange', () => {
+  it('draws everywhere when no range is set', () => {
+    expect(isWithinZoomRange(undefined, 3)).toBe(true)
+  })
+
+  it('treats minzoom as inclusive and maxzoom as exclusive, like MapLibre', () => {
+    expect(isWithinZoomRange([0, 11.85], 11.84)).toBe(true)
+    expect(isWithinZoomRange([0, 11.85], 11.85)).toBe(false)
+    expect(isWithinZoomRange([11, 22], 11)).toBe(true)
+    expect(isWithinZoomRange([11, 22], 10.9)).toBe(false)
+  })
+})
+
+describe('effectiveZoomRange', () => {
+  it('returns visibleZoomRange untouched when there is no maxScale', () => {
+    expect(effectiveZoomRange({ ...wmsLayer, visibleZoomRange: [11, 22] }, 39.5)).toEqual([11, 22])
+    expect(effectiveZoomRange(wmsLayer, 39.5)).toBeUndefined()
+  })
+
+  it('caps the top at the zoom where the map reaches 1:maxScale at that latitude', () => {
+    const layer = { ...wmsLayer, maxScale: 62_500 }
+    expect(effectiveZoomRange(layer, 37)).toEqual([0, zoomForScale(62_500, 37)])
+    expect(effectiveZoomRange(layer, 42)).toEqual([0, zoomForScale(62_500, 42)])
+    // Ground shrinks toward the pole, so 1:62,500 arrives at a lower zoom in northern Utah.
+    expect(effectiveZoomRange(layer, 42)![1]).toBeLessThan(effectiveZoomRange(layer, 37)![1])
+  })
+
+  it('keeps the lower of the configured max and the scale cap', () => {
+    expect(effectiveZoomRange({ ...wmsLayer, visibleZoomRange: [5, 10], maxScale: 62_500 }, 39.5)).toEqual([5, 10])
   })
 })

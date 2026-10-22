@@ -1,4 +1,4 @@
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
 import { Home } from 'lucide-react';
