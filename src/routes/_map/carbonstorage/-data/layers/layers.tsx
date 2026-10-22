@@ -8,7 +8,7 @@ import { ucrcWellsConfig } from "@/routes/_map/-shared/layers/ucrc-wells";
 // GeoRegions WMS Layer
 const CCUS_IMAGE_BASE_URL = `${MAPS_ASSETS_CDN_URL}/ccus/png`;
 const georegionsLayerName = 'enmin_ccus_georegions_current';
-const georegionsWMSTitle = 'Geo-region Carbon Storage Ranking';
+const georegionsWMSTitle = 'Geo-Region Carbon Storage Ranking';
 const georegionsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -32,7 +32,7 @@ const georegionsWMSConfig: WMSLayerProps = {
                 'Description': { field: 'description', type: 'string' },
             },
             imageFields: [
-                { field: 'georegionmap', label: 'Geo-region Map', baseUrl: `${CCUS_IMAGE_BASE_URL}/georegionmaps` },
+                { field: 'georegionmap', label: 'Geo-Region Map', baseUrl: `${CCUS_IMAGE_BASE_URL}/georegionmaps` },
                 { field: 'stratcolumn', label: 'Stratigraphic Column', baseUrl: `${CCUS_IMAGE_BASE_URL}/stratcolumns` },
             ],
             colorCodingMap: {
@@ -399,6 +399,7 @@ const SITLAConfig: ArcGISMapServerLayerProps = {
     title: 'Land Ownership',
     opacity: 0.5,
     visible: false,
+    sourceAgency: 'Utah School and Institutional Trust Lands Administration (SITLA)',
 };
 
 const faultsLayerName = 'faults_m-179dm';
@@ -546,6 +547,7 @@ const co2SourcesWFSConfig: WFSLayerProps = {
     title: co2SourcesWFSTitle,
     visible: false,
     opacity: 0.8,
+    sourceAgency: 'EPA FLIGHT Data, 2023',
     crs: 'EPSG:4326',
     geometryType: 'point',
     style: {
@@ -736,7 +738,7 @@ const pastProjectsConfig = ({ title, sectionHeading, projectScale, defaultRender
             popupEnabled: true,
             queryable: true,
             popupFields: {
-                'Project Name': { field: 'generalregionname', type: 'string' },
+                'Project Name': { field: 'namealias', type: 'string' },
                 'Project Summary': { field: 'projectsummary', type: 'string' },
                 'Timeline': { field: 'timeline', type: 'string' },
                 'Reservoir Investigated': { field: 'reservoirinvestigated', type: 'string' },
@@ -824,7 +826,7 @@ const geochemWellSitesWMSConfig: WMSLayerProps = {
                 'UWI': { field: 'uwi', type: 'string' },
                 'Operator': { field: 'operator', type: 'string' },
                 'Data Type': { field: 'datatype', type: 'string' },
-                'Geo-region': { field: 'georegion', type: 'string' },
+                'Geo-Region': { field: 'georegion', type: 'string' },
                 'Field Name': { field: 'fieldname', type: 'string' },
                 'County': { field: 'section', type: 'string' },
                 'Location': {
@@ -875,7 +877,7 @@ const geochemWellSitesWMSConfig: WMSLayerProps = {
 
 // Wells and Springs with Joins WMS Layer
 const geothermalWellsJoinsName = 'enmin_geothermal_ingenious_wellfeatures_current';
-const geothermalWellsJoinsTitle = 'Geothermal Wells';
+const geothermalWellsJoinsTitle = 'Groundwater Wells';
 const geothermalWellsJoinsConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
@@ -934,7 +936,7 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
 
 // Springs with Joins WMS Layer
 const geothermalSpringsJoinsName = 'enmin_geothermal_ingenious_springfeatures_current';
-const geothermalSpringsJoinsTitle = 'Geothermal Springs';
+const geothermalSpringsJoinsTitle = 'Springs';
 const geothermalSpringsJoinsConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,

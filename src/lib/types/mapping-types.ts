@@ -205,6 +205,8 @@ export interface COGLayerProps extends BaseLayerProps {
 export interface LegendEntry {
     label: string;
     color: string;
+    /** Raw data/filter token when it differs from human `label`. Falls back to `label`. */
+    value?: string;
     values?: readonly { value: string; color: string; label?: string }[];
     stroke?: string;
 }

@@ -170,14 +170,20 @@ function CategoryLegendGrid(
     // Colour per value, derived from the render's legend. Flat renders: entry label == value.
     // Grouped renders: each group's `values` carry per-item shades. `stroke` is a flat-render
     // swatch outline. Item shade wins, then flat swatch, then default.
-    const swatch = useMemo(() => new Map(entries.map(e => [e.label, e.color])), [entries])
-    const stroke = useMemo(() => new Map(entries.map(e => [e.label, e.stroke])), [entries])
+    const swatch = useMemo(() => new Map(entries.map(e => [e.value ?? e.label, e.color])), [entries])
+    const stroke = useMemo(() => new Map(entries.map(e => [e.value ?? e.label, e.stroke])), [entries])
     const itemColor = useMemo(() => new Map(entries.flatMap(e => (e.values ?? []).map(v => [v.value, v.color] as const))), [entries])
     const colorFor = (value: string) => itemColor.get(value) ?? swatch.get(value) ?? '#bdbdbd'
-    // Display text per raw value — grouped renders may carry a friendlier `label` for a shouty-case
-    // managed code (e.g. 'CORESAMPLES' -> 'Core Samples'); flat renders have no per-item labels, so
-    // this is a no-op there and the raw field value (already fit to show) is used as-is.
-    const itemLabel = useMemo(() => new Map(entries.flatMap(e => (e.values ?? []).map(v => [v.value, v.label] as const))), [entries])
+    const itemLabel = useMemo(() => {
+        const map = new Map<string, string>()
+        for (const e of entries) {
+            if (e.value) map.set(e.value, e.label)
+            for (const v of e.values ?? []) {
+                if (v.label) map.set(v.value, v.label)
+            }
+        }
+        return map
+    }, [entries])
     const displayLabel = (value: string) => itemLabel.get(value) ?? value
     // Grouped render when any legend entry carries `values`; each entry becomes a colour group.
     const groups = useMemo<LegendGroup[] | null>(() =>
