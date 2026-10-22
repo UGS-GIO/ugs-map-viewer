@@ -25,7 +25,7 @@ describe('Carbon Storage layer headings and reorganization (ALL-6187)', () => {
     expect(ccsLayers[0].title).toBe('Statewide Storage Resource Estimates')
     expect(ccsLayers[0].sectionHeading).toBe('Statewide')
 
-    expect(ccsLayers[1].title).toBe('Geo-region Carbon Storage Ranking')
+    expect(ccsLayers[1].title).toBe('Geo-Region Carbon Storage Ranking')
     expect(ccsLayers[1].sectionHeading).toBe('Statewide')
 
     expect(ccsLayers[2].title).toBe('NATCARB Atlas (2015)')

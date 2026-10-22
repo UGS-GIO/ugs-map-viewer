@@ -149,6 +149,8 @@ interface BaseLayerProps {
     variantDescription?: string;
     /** Heading shown above this layer in the layer list; consecutive layers sharing it show it once. */
     sectionHeading?: string;
+    /** Titles this layer had before a rename, so old links and description rows still find it. */
+    formerTitles?: string[];
 }
 
 export interface WMSLayerProps extends BaseLayerProps {
@@ -205,6 +207,8 @@ export interface COGLayerProps extends BaseLayerProps {
 export interface LegendEntry {
     label: string;
     color: string;
+    /** Raw data/filter token when it differs from human `label`. Falls back to `label`. */
+    value?: string;
     values?: readonly { value: string; color: string; label?: string }[];
     stroke?: string;
 }

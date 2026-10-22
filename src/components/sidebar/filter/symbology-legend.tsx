@@ -5,6 +5,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { LegendSwatch, LegendSwatchGrid } from '@/components/maps/legend-swatch-grid'
 import { LEGEND_ROW_CLASS } from '@/lib/legend/legend-layout'
 import { swatchShapeOf, type SwatchShape } from '@/lib/legend/swatch-shape'
+import { legendLookups } from '@/lib/legend/legend-lookups'
 import { styleFragmentQueryOptions } from '@/components/maps/pmtiles-layer-source'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
@@ -171,18 +172,7 @@ function CategoryLegendGrid(
     const totals = data?.totals ?? {}
     const options = useMemo(() => orderedCategories(data?.totals, data?.counts), [data])
 
-    // Colour per value, derived from the render's legend. Flat renders: entry label == value.
-    // Grouped renders: each group's `values` carry per-item shades. `stroke` is a flat-render
-    // swatch outline. Item shade wins, then flat swatch, then default.
-    const swatch = useMemo(() => new Map(entries.map(e => [e.label, e.color])), [entries])
-    const stroke = useMemo(() => new Map(entries.map(e => [e.label, e.stroke])), [entries])
-    const itemColor = useMemo(() => new Map(entries.flatMap(e => (e.values ?? []).map(v => [v.value, v.color] as const))), [entries])
-    const colorFor = (value: string) => itemColor.get(value) ?? swatch.get(value) ?? '#bdbdbd'
-    // Display text per raw value — grouped renders may carry a friendlier `label` for a shouty-case
-    // managed code (e.g. 'CORESAMPLES' -> 'Core Samples'); flat renders have no per-item labels, so
-    // this is a no-op there and the raw field value (already fit to show) is used as-is.
-    const itemLabel = useMemo(() => new Map(entries.flatMap(e => (e.values ?? []).map(v => [v.value, v.label] as const))), [entries])
-    const displayLabel = (value: string) => itemLabel.get(value) ?? value
+    const { colorFor, strokeFor, labelFor } = useMemo(() => legendLookups(entries), [entries])
     // Grouped render when any legend entry carries `values`; each entry becomes a colour group.
     const groups = useMemo<LegendGroup[] | null>(() =>
         entries.some(e => e.values && e.values.length)
@@ -230,9 +220,9 @@ function CategoryLegendGrid(
             onToggle={toggle}
             items={items.map(value => ({
                 key: value,
-                label: displayLabel(value),
+                label: labelFor(value),
                 color: colorFor(value),
-                stroke: stroke.get(value),
+                stroke: strokeFor(value),
                 count: countLabel(counts[value] ?? 0, totals[value] ?? 0),
                 disabled: (counts[value] ?? 0) === 0,
             }))}

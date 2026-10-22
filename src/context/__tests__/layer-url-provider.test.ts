@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hasActiveChildren, getDefaultGroupVisibility, enforceVariantExclusivity, computeExclusiveSelection } from '../layer-url-provider';
+import { hasActiveChildren, getDefaultGroupVisibility, enforceVariantExclusivity, computeExclusiveSelection, renameFormerTitles } from '../layer-url-provider';
 import type { LayerProps, GroupLayerProps } from '@/lib/types/mapping-types';
 
 const wmsLayer = (title: string, visible = false): LayerProps => ({
@@ -170,5 +170,12 @@ describe('computeExclusiveSelection', () => {
       'Cumulative', ['Cumulative', 'Yearly', 'Rate'], [],
     );
     expect(res).toBeNull();
+  });
+});
+
+describe('renameFormerTitles', () => {
+  it('maps a renamed layer\'s former title in an old link to its current title', () => {
+    const layers = [group('Resources', [{ ...wmsLayer('Geo-Region Carbon Storage Ranking'), formerTitles: ['Geo-region Carbon Storage Ranking'] }])];
+    expect(renameFormerTitles(layers, ['Geo-region Carbon Storage Ranking', 'Other'])).toEqual(['Geo-Region Carbon Storage Ranking', 'Other']);
   });
 });
