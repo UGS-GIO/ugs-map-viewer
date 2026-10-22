@@ -86,9 +86,8 @@ export const BASEMAP_STYLES: BasemapStyle[] = [
   },
 ];
 
-// Retired ids still in saved links.
-const BASEMAP_ALIASES: Record<string, string> = { 'utah-satellite': 'satellite' };
-export const resolveBasemapId = (id: string): string => BASEMAP_ALIASES[id] ?? id;
+// The retired id still in saved links.
+export const resolveBasemapId = (id: string): string => (id === 'utah-satellite' ? 'satellite' : id);
 
 // Default basemap
 export const DEFAULT_BASEMAP = BASEMAP_STYLES[0];

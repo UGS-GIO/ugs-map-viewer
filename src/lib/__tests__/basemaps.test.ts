@@ -50,6 +50,7 @@ describe('resolveBasemapId', () => {
 
     it('passes current ids through', () => {
         expect(resolveBasemapId('lite')).toBe('lite')
+        expect(resolveBasemapId('constructor')).toBe('constructor')
     })
 })
 
