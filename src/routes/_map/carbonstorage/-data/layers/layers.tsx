@@ -5,23 +5,24 @@ import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils"
 import { GeoJsonProperties } from "geojson";
 import { ucrcWellsConfig } from "@/routes/_map/-shared/layers/ucrc-wells";
 
-// GeoRegions WMS Layer
+// GeoRegions Layer — STAC-driven: pmtilesUrl and the ranking render come from the
+// warehouse item `enmin_ccus_cbgeoregion`.
 const CCUS_IMAGE_BASE_URL = `${MAPS_ASSETS_CDN_URL}/ccus/png`;
-const georegionsLayerName = 'enmin_ccus_georegions_current';
-const georegionsWMSTitle = 'Geo-region Carbon Storage Ranking';
-const georegionsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: georegionsWMSTitle,
+const georegionsLayerName = 'enmin_ccus_cbgeoregion';
+const georegionsTitle = 'Geo-region Carbon Storage Ranking';
+const georegionsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: georegionsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: georegionsLayerName,
+    title: georegionsTitle,
     sectionHeading: 'Statewide',
     visible: true,
     opacity: 0.3,
-    crs: 'EPSG:3857',
-    downloadParquetUrl: parquetUrl("enmin_ccus_georegions"),
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${georegionsLayerName}`,
+            name: georegionsLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
@@ -1403,7 +1404,7 @@ const ccsResourcesConfig: LayerProps = {
     visible: true,
     layers: [
         sco2GridSummaryWMSConfig,
-        georegionsWMSConfig,
+        georegionsConfig,
         natCarbLocationsConfig,
         sitlaReportsWMSConfig,
         pastProjectsRegionalConfig,
