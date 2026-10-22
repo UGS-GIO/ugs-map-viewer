@@ -616,6 +616,18 @@ export default function GenericMapContainer({
 
   const shouldShrinkMap = !isMobile && viewMode === 'map' && panelState.isSheetOpen
 
+  // Collapses the drawer covering the map so zoom-to-feature centers correctly; 220ms
+  // covers the sheet's 200ms width transition before fitBounds reads the container.
+  const collapseSheetBeforeZoom = useCallback((): Promise<void> => {
+    if (isMobile) {
+      peek()
+      return Promise.resolve()
+    }
+    if (!panelState.isSheetOpen) return Promise.resolve()
+    popupSheetRef.current?.close()
+    return new Promise((resolve) => setTimeout(resolve, 220))
+  }, [isMobile, panelState.isSheetOpen, peek])
+
   const mapElement = (
     <DataMap
       wmsUrl={`${PROD_GEOSERVER_URL}/wms`}
@@ -688,6 +700,7 @@ export default function GenericMapContainer({
                   clickPoint={clickPoint}
                   layerHeaderExtras={popupLayerHeaderRender}
                   featureExtras={popupFeatureRender}
+                  onBeforeZoom={collapseSheetBeforeZoom}
                 />
               ) : (
                 <div className="min-h-[18rem] flex-1">
@@ -747,6 +760,7 @@ export default function GenericMapContainer({
               headerExtras={popupHeaderRender?.(popupContent)}
               layerHeaderExtras={popupLayerHeaderRender}
               featureExtras={popupFeatureRender}
+              onBeforeZoom={collapseSheetBeforeZoom}
             />
           </div>
         )}
