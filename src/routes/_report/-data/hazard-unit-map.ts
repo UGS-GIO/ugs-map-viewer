@@ -42,12 +42,18 @@ export const hazardLayerNameMap = {
 // TODO: All layers will eventually migrate to 'geom'
 const geometryFieldOverrides: Record<string, string> = {
     [quaternaryFaultsHazardCode]: 'geom',
+    'SFR': 'geom',
 };
 
 // Native CRS per layer (default is EPSG:26912, override where different)
-// TODO: All layers will eventually migrate to EPSG:3857
+// EPSG:3857 here is GeoServer's current migrated state for these layers, NOT
+// the final target. The ugs-warehouse vector producer normalizes all
+// geometries to EPSG:4326 (see vector/transform.py TARGET_SRS). Once this
+// report reads from the warehouse (STAC/GeoParquet/DuckLake) instead of
+// hitting GeoServer WFS directly, this whole overrides map goes away.
 const crsOverrides: Record<string, string> = {
     [quaternaryFaultsHazardCode]: 'EPSG:3857',
+    'SFR': 'EPSG:3857',
 };
 
 /**
