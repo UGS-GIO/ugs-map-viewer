@@ -141,9 +141,9 @@ export function RelatedDataTable({
                             const node = flexRender(cell.column.columnDef.cell, cell.getContext());
                             return (
                                 <TableCell key={cell.id} className="py-1.5 text-xs">
-                                    {/* Clamp long text (sources, paths) so one wordy cell can't balloon every row. */}
+                                    {/* Size text to one line (the table already side-scrolls); wrap only past the cap. */}
                                     {typeof content === 'string'
-                                        ? <div className="line-clamp-2 max-w-48 break-words" title={content}>{node}</div>
+                                        ? <div className="w-max max-w-md break-words">{node}</div>
                                         : node}
                                 </TableCell>
                             );
