@@ -136,11 +136,18 @@ export function RelatedDataTable({
             <TableBody>
                 {table.getRowModel().rows.map(row => (
                     <TableRow key={row.id}>
-                        {row.getVisibleCells().map(cell => (
-                            <TableCell key={cell.id} className="py-1.5 text-xs">
-                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </TableCell>
-                        ))}
+                        {row.getVisibleCells().map(cell => {
+                            const content = rendered[row.index][cell.column.getIndex()];
+                            const node = flexRender(cell.column.columnDef.cell, cell.getContext());
+                            return (
+                                <TableCell key={cell.id} className="py-1.5 text-xs">
+                                    {/* Clamp long text (sources, paths) so one wordy cell can't balloon every row. */}
+                                    {typeof content === 'string'
+                                        ? <div className="line-clamp-2 max-w-48 break-words" title={content}>{node}</div>
+                                        : node}
+                                </TableCell>
+                            );
+                        })}
                     </TableRow>
                 ))}
             </TableBody>
