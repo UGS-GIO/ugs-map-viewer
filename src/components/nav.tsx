@@ -14,31 +14,32 @@ import {
 } from './ui/tooltip'
 import { cn } from '@/lib/utils'
 import useCheckActiveNav from '@/hooks/use-check-active-nav'
-import { Suspense } from 'react'
 import { ChevronLeft } from 'lucide-react'
-import { Spinner } from './ui/loading-spinner'
+import { CurrentPanel } from '@/components/sidebar/current-panel'
 import { useSidebar } from '@/hooks/use-sidebar'
 import { SideLink } from '@/lib/types/sidelink-types'
 import ThemeSwitch from '@/components/theme-switch'
 import { TourButton } from '@/components/tour-button'
 
+const TOOL_PANEL_ID = 'sidebar-tool-panel'
+
 interface NavProps extends React.HTMLAttributes<HTMLDivElement> {
   isCollapsed: boolean
+  showPanel: boolean
   links: SideLink[]
-  closeNav: () => void
   setIsCollapsed: React.Dispatch<React.SetStateAction<boolean>>
   className?: string
 }
 
 export default function Nav({
+  id,
   links,
   isCollapsed,
+  showPanel,
   setIsCollapsed,
-  closeNav,
   className,
 }: NavProps) {
   const { currentContent, setCurrentContent } = useSidebar()
-
   const renderLink = (link: SideLink) => {
     const key = `${link.title}`
 
@@ -48,7 +49,6 @@ export default function Nav({
     //       {...link}
     //       sub={link.sub}
     //       key={key}
-    //       closeNav={closeNav}
     //       setCurrentContent={setCurrentContent}
     //     />
     //   )
@@ -60,7 +60,6 @@ export default function Nav({
         <NavLinkDropdown
           {...link}
           key={key}
-          closeNav={closeNav}
           setCurrentContent={setCurrentContent}
         />
       )
@@ -69,7 +68,6 @@ export default function Nav({
       <NavLink
         {...link}
         key={key}
-        closeNav={closeNav}
         setCurrentContent={setCurrentContent}
         currentContent={currentContent}
         isCollapsed={isCollapsed}
@@ -78,13 +76,14 @@ export default function Nav({
   }
 
 
-  const DynamicComponent = currentContent?.component
-    ? currentContent?.component
-    : null
-
   return (
-    <div className="flex flex-1 overflow-hidden" >
-      <div className="hidden md:flex flex-col items-center gap-4 pt-2 border-r px-1" data-tour="sidebar-icons">
+    <div id={id} className="flex h-full min-h-0 flex-1 overflow-hidden">
+      <div
+        role="group"
+        aria-label="Tools"
+        className="hidden md:flex flex-col items-center gap-4 pt-2 border-r px-1"
+        data-tour="sidebar-icons"
+      >
         {links.map((link, index) => (
           <NavLinkIcon
             key={index}
@@ -93,7 +92,6 @@ export default function Nav({
             currentContent={currentContent}
             setIsCollapsed={setIsCollapsed}
             setCurrentContent={setCurrentContent}
-            closeNav={closeNav}
           />
         ))}
         {/* Tour and theme switch at bottom of icon bar */}
@@ -105,27 +103,20 @@ export default function Nav({
       <div
         data-collapsed={isCollapsed}
         className={cn(
-          'group border-b bg-background py-2 transition-[max-height,padding] duration-500 data-[collapsed=true]:py-2 md:border-none',
+          'group border-b bg-background py-2 transition-[max-height,padding] duration-500 data-[collapsed=true]:py-2 md:border-none min-h-0',
+          !showPanel && 'hidden',
           className
         )}
       >
         <TooltipProvider delayDuration={0}>
           {currentContent ? (
-            <div className="h-full overflow-y-auto">
-              <Suspense fallback={<div className="px-4"><Spinner /></div>}>
-                {DynamicComponent ? (
-                  <div className="px-4 pb-4">
-                    <DynamicComponent />
-                  </div>
-                ) : (
-                  <div className='w-full flex justify-center'>
-                    <Spinner />
-                  </div>
-                )}
-              </Suspense>
+            <div id={TOOL_PANEL_ID} role="region" aria-label={currentContent.title} className="h-full min-h-0 overflow-y-auto">
+              <div className="px-4 pb-4">
+                <CurrentPanel />
+              </div>
             </div>
           ) : (
-            <nav className='grid gap-4 group-[[data-collapsed=true]]:justify-center group-[[data-collapsed=true]]:px-2'>
+            <nav className='grid max-h-full content-start gap-4 overflow-y-auto group-[[data-collapsed=true]]:justify-center group-[[data-collapsed=true]]:px-2'>
               {links.map(renderLink)}
             </nav>
           )}
@@ -137,7 +128,6 @@ export default function Nav({
 
 interface NavLinkProps extends SideLink {
   subLink?: boolean
-  closeNav: () => void
   isCollapsed?: boolean
   href?: string
   setIsCollapsed?: React.Dispatch<React.SetStateAction<boolean>>
@@ -152,7 +142,6 @@ function NavLink({
   component,
   componentPath,
   href,
-  // closeNav,
   subLink = false,
   setCurrentContent,
   isCollapsed,
@@ -171,7 +160,6 @@ function NavLink({
 
   const linkContent = (
     <>
-      <div className='block md:hidden mr-2'>{icon}</div>
       {title}
       {label && (
         <div className='ml-2 rounded-lg bg-primary px-1 text-[0.75rem] text-primary-foreground'>
@@ -184,15 +172,15 @@ function NavLink({
   return href ? (
     <Link
       target='_blank'
+      rel='noopener noreferrer'
       to={href}
       className={cn(
         buttonVariants({
           variant: 'ghost',
           size: 'sm',
         }),
-        'h-12 justify-start text-wrap rounded-none px-6',
-        subLink && 'h-10 w-full border-l border-l-slate-500 px-2',
-        title === 'Home' ? 'hidden md:flex' : '' // hide Home on mobile,
+        'h-12 justify-start text-wrap rounded-none px-6 text-sm',
+        subLink && 'h-10 w-full border-l border-l-slate-500 px-2'
       )}
       aria-current={checkActiveNav(componentPath ?? '') ? 'page' : undefined}
     >
@@ -206,9 +194,8 @@ function NavLink({
           variant: 'ghost',
           size: 'sm',
         }),
-        'h-12 justify-start text-wrap rounded-none px-6',
+        'h-12 justify-start text-wrap rounded-none px-6 text-sm',
         subLink && 'h-10 w-full border-l border-l-slate-500 px-2',
-        title === 'Home' ? 'hidden md:flex' : '', // hide Home on mobile
         title === 'Home' && !currentContent && !isCollapsed ? 'underline' : ''
 
       )}
@@ -224,7 +211,6 @@ function NavLinkDropdown({
   icon,
   label,
   sub,
-  closeNav,
   setCurrentContent,
 }: NavLinkProps) {
   const { checkActiveNav } = useCheckActiveNav()
@@ -236,7 +222,7 @@ function NavLinkDropdown({
       <CollapsibleTrigger
         className={cn(
           buttonVariants({ variant: 'ghost', size: 'sm' }),
-          'group h-12 w-full justify-start rounded-none px-6'
+          'group h-12 w-full justify-start rounded-none px-6 text-sm'
         )}
       >
         <div className='mr-2'>{icon}</div>
@@ -260,7 +246,6 @@ function NavLinkDropdown({
             key={item.componentPath}
             {...item}
             subLink
-            closeNav={closeNav}
             setCurrentContent={setCurrentContent}
           />
         ))}
@@ -275,7 +260,6 @@ interface NavLinkIconProps {
   currentContent: SideLink | null
   setIsCollapsed: React.Dispatch<React.SetStateAction<boolean>>
   setCurrentContent: (content: SideLink | null) => void
-  closeNav: () => void
 }
 
 export function NavLinkIcon({
@@ -284,7 +268,6 @@ export function NavLinkIcon({
   currentContent,
   setIsCollapsed,
   setCurrentContent,
-  closeNav,
 }: NavLinkIconProps) {
   const { checkActiveNav } = useCheckActiveNav()
   const handleClick = () => {
@@ -307,11 +290,6 @@ export function NavLinkIcon({
       return
     }
 
-    if (link.href) {
-      closeNav()
-      return
-    }
-
     if (isCollapsed) {
       setIsCollapsed(false)
     }
@@ -324,57 +302,63 @@ export function NavLinkIcon({
     }
   }
 
-  return link.href ? (
-    <Link
-      target='_blank'
-      to={link.href}
-      className={cn(
-        buttonVariants({
-          variant: 'ghost',
-          size: 'icon',
-        }),
-        'h-12 w-10 justify-center rounded-none transition-transform duration-200 ease-in-out',
-        // checkActiveNav(link.title ?? '') ? 'bg-accent text-primary-foreground' : 'hover:bg-accent hover:text-accent-foreground'
+  // Home closes the panel rather than opening one, so it reads as active when nothing is open.
+  const isHome = link.title === 'Home'
+  // Collapsed unmounts nothing but shows nothing either, so the rail must not advertise an open
+  // panel: aria-controls would dangle and the active bar would point at a hidden region.
+  const showsPanel = !isCollapsed && (isHome ? !currentContent : currentContent?.title === link.title)
 
-      )}
-      aria-current={checkActiveNav(link.componentPath ?? '') ? 'page' : undefined}
-      data-tour={link.title?.toLowerCase() === 'feedback' ? 'feedback' : undefined}
-    >
-      {/* {link.icon} */}
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
+  // The bar is a non-colour cue for the active tool; `bg-accent` alone carries it by colour only.
+  const railItem = cn(
+    'relative h-12 w-10 justify-center rounded-none transition-transform duration-200 ease-in-out',
+    'before:absolute before:inset-y-1 before:left-0 before:w-0.5 before:rounded-full before:bg-transparent',
+    showsPanel && 'bg-accent text-accent-foreground before:bg-primary'
+  )
+
+  // The trigger wraps the control, not the icon: an svg takes no focus, so a
+  // keyboard user tabbing the rail would never see the tooltip.
+  return link.href ? (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Link
+            target='_blank'
+            rel='noopener noreferrer'
+            to={link.href}
+            aria-label={`${link.title} (opens in a new tab)`}
+            className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), railItem)}
+            aria-current={checkActiveNav(link.componentPath ?? '') ? 'page' : undefined}
+            data-tour={link.title?.toLowerCase() === 'feedback' ? 'feedback' : undefined}
+          >
             {link.icon}
-          </TooltipTrigger>
-          <TooltipContent side='right'>
-            <p>{link.title}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    </Link>
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side='right'>
+          <p>{link.title}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   ) : (
-    <Button
-      variant="ghost"
-      size="icon"
-      aria-label={link.title}
-      className={cn('h-12 w-10 justify-center rounded-none transition-transform duration-200 ease-in-out z-50',
-        isCollapsed ? '' : 'rotate-0',
-        checkActiveNav(link.title ?? '') ? 'bg-accent text-primary-foreground text-white dark:text-black' : 'hover:bg-accent hover:text-accent-foreground',        // home can be active when currentContent is null
-        link.title === 'Home' && !currentContent && !isCollapsed ? 'bg-accent text-accent-foreground' : ''
-      )}
-      onClick={handleClick}
-    >
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={link.title}
+            aria-expanded={isHome ? undefined : showsPanel}
+            aria-controls={showsPanel && !isHome ? TOOL_PANEL_ID : undefined}
+            className={cn(railItem, 'z-50', !showsPanel && 'hover:bg-accent hover:text-accent-foreground')}
+            onClick={handleClick}
+          >
             {link.icon}
-          </TooltipTrigger>
-          <TooltipContent side='right'>
-            <p>{link.title}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    </Button>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side='right'>
+          <p>{link.title}</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 
@@ -387,7 +371,7 @@ export function NavLinkIcon({
 //   const isChildActive = !!sub?.find((s) => checkActiveNav(s.href))
 
 //   return (
-//     <DropdownMenu>
+//     <DropdownMenu modal={false}>
 //       <Tooltip delayDuration={0}>
 //         <TooltipTrigger asChild>
 //           <DropdownMenuTrigger asChild>

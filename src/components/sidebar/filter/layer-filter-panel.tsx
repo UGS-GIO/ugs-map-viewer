@@ -1,4 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
+import { LegendSwatch } from '@/components/maps/legend-swatch-grid';
+import { LEGEND_ROW_CLASS } from '@/lib/legend/legend-layout';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DualRangeSlider } from '@/components/ui/dual-range-slider';
@@ -13,6 +15,10 @@ import type {
     FilterState,
     FilterFieldValue,
 } from '@/lib/filter/types';
+
+/** Label → legal id. Escapes rather than collapses: "Oil Gas" and "Oil & Gas" need distinct ids. */
+export const optionId = (label: string) =>
+    label.replace(/[^a-z0-9]/gi, char => `_${char.charCodeAt(0).toString(16).padStart(4, '0')}`);
 
 /* ─── Field renderers ──────────────────────────────────────────────────── */
 
@@ -36,6 +42,8 @@ function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<
     const selected = v && (v.kind === 'multiSelect' || v.kind === 'containsAny') ? v.values : [];
     const filtered = field.optionLabelFilter ? options.filter(field.optionLabelFilter) : options;
 
+    const optionIdPrefix = useId();
+
     const toggle = (label: string, checked: boolean) => {
         const next = new Set(selected);
         if (checked) next.add(label); else next.delete(label);
@@ -49,22 +57,16 @@ function MultiSelectGrid({ schema, state, field, onChange }: FieldProps<Extract<
             <Label className="text-sm font-medium text-muted-foreground mb-2 block">{field.label}</Label>
             <div className="grid grid-cols-2 gap-2">
                 {filtered.map(label => (
-                    <div key={label} className="flex items-center space-x-2">
+                    <div key={label} className={LEGEND_ROW_CLASS}>
                         <Checkbox
-                            id={`${field.field}-${label}`}
+                            id={`${optionIdPrefix}-${optionId(label)}`}
                             checked={selected.includes(label)}
                             onCheckedChange={checked => toggle(label, checked === true)}
                         />
                         {field.optionSwatches?.[label] && (
-                            <span
-                                className="inline-block w-3 h-3 rounded-full shrink-0 border"
-                                style={{
-                                    backgroundColor: field.optionSwatches[label],
-                                    borderColor: field.optionStrokes?.[label] ?? 'rgba(0,0,0,0.3)',
-                                }}
-                            />
+                            <LegendSwatch color={field.optionSwatches[label]} stroke={field.optionStrokes?.[label]} />
                         )}
-                        <Label htmlFor={`${field.field}-${label}`} className="text-sm cursor-pointer">
+                        <Label htmlFor={`${optionIdPrefix}-${optionId(label)}`} className="text-sm cursor-pointer">
                             {label}
                             {counts[label] != null && (
                                 <span className="ml-1 text-muted-foreground">({counts[label].toLocaleString()})</span>
@@ -84,7 +86,8 @@ function MultiSelectComboboxField({ schema, state, field, onChange }: FieldProps
         field,
         splitCommaDelimited: field.kind === 'containsAny',
     });
-    const options = data?.options ?? [];
+    const rawOptions = data?.options ?? [];
+    const options = field.optionLabelFilter ? rawOptions.filter(field.optionLabelFilter) : rawOptions;
     const counts = data?.counts ?? {};
     const value = state[field.field];
     const selected = value && (value.kind === 'multiSelect' || value.kind === 'containsAny') ? value.values : [];
@@ -139,6 +142,9 @@ function RangeField({ schema, state, field, onChange }: FieldProps<Extract<Filte
                 <span>{display[0].toLocaleString()}{field.units ? ` ${field.units}` : ''}</span>
                 <span>{display[1].toLocaleString()}{field.units ? ` ${field.units}` : ''}</span>
             </div>
+            {field.nullExcludedNote && (currentMin != null || currentMax != null) && (
+                <p className="mt-2 text-xs text-muted-foreground">{field.nullExcludedNote}</p>
+            )}
         </div>
     );
 }

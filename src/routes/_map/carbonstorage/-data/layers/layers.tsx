@@ -1,17 +1,20 @@
-import { Link } from "@/components/ui/link";
+import { Link, linkIfUrl } from "@/components/ui/link";
 import { MAPS_ASSETS_CDN_URL, parquetUrl, ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps, WFSLayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
+import { ucrcWellsConfig } from "@/routes/_map/-shared/layers/ucrc-wells";
 
 // GeoRegions WMS Layer
 const CCUS_IMAGE_BASE_URL = `${MAPS_ASSETS_CDN_URL}/ccus/png`;
 const georegionsLayerName = 'enmin_ccus_georegions_current';
-const georegionsWMSTitle = 'Geo-region Carbon Storage Ranking';
+const georegionsWMSTitle = 'Geo-Region Carbon Storage Ranking';
 const georegionsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: georegionsWMSTitle,
+    formerTitles: ['Geo-region Carbon Storage Ranking'],
+    sectionHeading: 'Statewide',
     visible: true,
     opacity: 0.3,
     crs: 'EPSG:3857',
@@ -30,7 +33,7 @@ const georegionsWMSConfig: WMSLayerProps = {
                 'Description': { field: 'description', type: 'string' },
             },
             imageFields: [
-                { field: 'georegionmap', label: 'Geo-region Map', baseUrl: `${CCUS_IMAGE_BASE_URL}/georegionmaps` },
+                { field: 'georegionmap', label: 'Geo-Region Map', baseUrl: `${CCUS_IMAGE_BASE_URL}/georegionmaps` },
                 { field: 'stratcolumn', label: 'Stratigraphic Column', baseUrl: `${CCUS_IMAGE_BASE_URL}/stratcolumns` },
             ],
             colorCodingMap: {
@@ -106,6 +109,7 @@ const sco2GridSummaryWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: sco2GridSummaryWMSTitle,
+    sectionHeading: 'Statewide',
     visible: false,
     opacity: 0.75,
     crs: 'EPSG:4326',
@@ -396,6 +400,7 @@ const SITLAConfig: ArcGISMapServerLayerProps = {
     title: 'Land Ownership',
     opacity: 0.5,
     visible: false,
+    sourceAgency: 'Utah School and Institutional Trust Lands Administration (SITLA)',
 };
 
 const faultsLayerName = 'faults_m-179dm';
@@ -519,123 +524,6 @@ const qFaultsWMSConfig: WMSLayerProps = {
     ],
 };
 
-const coresAndCuttingsLayerName = 'cores';
-const coresAndCuttingsWMSTitle = 'Cores and Cuttings';
-const coresAndCuttingsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: coresAndCuttingsWMSTitle,
-    visible: false,
-    crs: 'EPSG:26912',
-    sourceAgency: 'Utah Geological Survey',
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${coresAndCuttingsLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'API': { field: 'apishort', type: 'string' },
-                'UWI': { field: 'uwi', type: 'string' },
-                'Well Name': { field: 'well_name', type: 'string' },
-                'Sample Types': {
-                    field: 'all_types', type: 'string', transform: (value: string | null) => {
-                        if (!value) return 'No Data';
-                        const lower = value.toLowerCase();
-
-                        // Map raw sample types to simplified categories
-                        const coreTypes = /\b(core|butts?|slabs?|skeletonized core|sidewall)\b/;
-                        const cuttingsTypes = /\b(chips?|core chips?|cuttings?)\b/;
-                        const samplesTypes = /\b(samples?|outcrop samples?)\b/;
-                        const displayTypes = /\bdisplay\b/;
-
-                        const categories: string[] = [];
-                        if (coreTypes.test(lower)) categories.push('Core');
-                        if (cuttingsTypes.test(lower)) categories.push('Cuttings');
-                        if (samplesTypes.test(lower)) categories.push('Samples');
-                        if (displayTypes.test(lower)) categories.push('Display');
-
-                        return categories.length ? categories.join(', ') : toTitleCase(value.replace(/,/g, ', '));
-                    }
-                },
-                'Purpose': { field: 'purpose_description', type: 'string' },
-                'Operator': { field: 'operator', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
-                'Depth': {
-                    field: 'depth_display',
-                    type: 'custom',
-                    transform: (props: GeoJsonProperties | null | undefined) => {
-                        const top = props?.['top_ft'];
-                        const bottom = props?.['bottom_ft'];
-
-                        if (top == null || bottom == null) {
-                            return 'Depth N/A';
-                        }
-                        const topFt = addThousandsSeparator(top);
-                        const bottomFt = addThousandsSeparator(bottom);
-                        return `${topFt} - ${bottomFt} ft`;
-                    }
-                },
-                'Formation at TD': { field: 'form_td', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
-                'Cored Formations': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: (props: GeoJsonProperties | null | undefined) => {
-                        const formation = props?.['formation'] || '';
-                        const coredFormation = props?.['cored_formation'] || '';
-
-                        if (formation && coredFormation) {
-                            return `${formation}, ${coredFormation}`;
-                        } else if (formation) {
-                            return `${formation}`;
-                        } else if (coredFormation) {
-                            return `${coredFormation}`;
-                        } else {
-                            return '';
-                        }
-                    }
-                },
-                '': {
-                    field: 'inventory_link',
-                    type: 'custom',
-                    transform: (() => 'Utah Core Research Center Inventory')
-                },
-            },
-            linkFields: {
-                'inventory_link': {
-                    transform: (value: string | null) => {
-                        return [
-                            {
-                                label: `${value}`,
-                                href: 'https://geology.utah.gov/apps/subsurface/'
-                            }
-                        ];
-                    }
-                }
-            },
-            relatedTables: [
-                {
-                    fieldLabel: 'Core Photos',
-                    matchingField: 'uwi',
-                    targetField: 'uwi',
-                    url: PROD_POSTGREST_URL + '/ucrc_photographs',
-                    headers: {
-                        'Accept-Profile': 'emp',
-                        'Accept': 'application/json',
-                    },
-                    displayAs: 'gallery',
-                    galleryUrlField: 'photo_url',
-                    galleryThumbnailField: 'thumb_url',
-                    galleryLabelField: 'filename',
-                    galleryMetadataFields: [
-                        { field: 'photo_type', label: 'Type' },
-                        { field: 'top_depth', label: 'Top (ft)' },
-                        { field: 'bottom_depth', label: 'Bottom (ft)' },
-                    ],
-                },
-            ],
-        }
-    ],
-};
-
 // CO2 Sources WFS Layer (vector — avoids WMS tile-edge clipping of symbols)
 const co2SourcesLayerName = 'ccus_co2_sources';
 const co2SourcesWFSTitle = 'CO₂ Sources';
@@ -660,6 +548,7 @@ const co2SourcesWFSConfig: WFSLayerProps = {
     title: co2SourcesWFSTitle,
     visible: false,
     opacity: 0.8,
+    sourceAgency: 'EPA FLIGHT Data, 2023',
     crs: 'EPSG:4326',
     geometryType: 'point',
     style: {
@@ -747,6 +636,7 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: sitlaReportsWMSTitle,
+    sectionHeading: 'Statewide',
     visible: false,
     crs: 'EPSG:26912',
     sourceAgency: 'Utah Geological Survey',
@@ -818,23 +708,38 @@ const ccsExclusionAreasWMSConfig: WMSLayerProps = {
 };
 
 
-const ccusProjectsLayerName = 'ccus_projects_current';
-const ccusProjectsWMSTitle = 'CCUS Projects';
-const ccusProjectsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: ccusProjectsWMSTitle,
-    visible: true,
-    crs: 'EPSG:3857',
-    downloadParquetUrl: parquetUrl("ccus_projects"),
+// Past and Ongoing Projects — STAC-driven PMTiles item `enmin_ccs_pastprojects`, one layer
+// per `projectscale`. Statewide rows are skipped: those projects already have their own layers.
+const pastProjectsLayerName = 'enmin_ccs_pastprojects';
+export const pastProjectsRegionalTitle = 'Past and Ongoing Projects - Regional';
+export const pastProjectsSiteSpecificTitle = 'Past and Ongoing Projects - Site-Specific';
+
+const pastProjectsConfig = ({ title, sectionHeading, projectScale, defaultRenderId, visible }: {
+    title: string;
+    sectionHeading: string;
+    projectScale: string;
+    defaultRenderId: string;
+    visible: boolean;
+}): PMTilesLayerProps => ({
+    type: 'pmtiles',
+    stacItemId: pastProjectsLayerName,
+    defaultRenderId,
+    pmtilesUrl: '',
+    sourceLayer: pastProjectsLayerName,
+    title,
+    sectionHeading,
+    featureFilter: ['==', ['get', 'projectscale'], projectScale],
+    visible,
+    opacity: 1,
+    downloadParquetUrl: parquetUrl(pastProjectsLayerName),
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${ccusProjectsLayerName}`,
-            popupEnabled: false,
+            name: pastProjectsLayerName,
+            popupEnabled: true,
             queryable: true,
             popupFields: {
-                'Project Name': { field: 'generalregionname', type: 'string' },
+                'Project Name': { field: 'namealias', type: 'string' },
                 'Project Summary': { field: 'projectsummary', type: 'string' },
                 'Timeline': { field: 'timeline', type: 'string' },
                 'Reservoir Investigated': { field: 'reservoirinvestigated', type: 'string' },
@@ -843,16 +748,33 @@ const ccusProjectsWMSConfig: WMSLayerProps = {
             linkFields: {
                 'link': {
                     transform: (value: string) => {
-                        if (!value) {
-                            return [{ label: 'Not available', href: '' }];
+                        const trimmed = value?.trim();
+                        if (!trimmed || trimmed.toLowerCase() === 'coming soon' || !trimmed.startsWith('http')) {
+                            return [{ label: trimmed || 'Not available', href: '' }];
                         }
-                        return [{ label: 'More Information', href: value }];
+                        return [{ label: 'More Information', href: trimmed }];
                     }
                 }
             }
         }
     ],
-};
+});
+
+export const pastProjectsRegionalConfig = pastProjectsConfig({
+    title: pastProjectsRegionalTitle,
+    sectionHeading: 'Regional',
+    projectScale: 'Regional',
+    defaultRenderId: 'regional',
+    visible: true,
+});
+
+export const pastProjectsSiteSpecificConfig = pastProjectsConfig({
+    title: pastProjectsSiteSpecificTitle,
+    sectionHeading: 'Site-Specific',
+    projectScale: 'Site Specific',
+    defaultRenderId: 'site-specific',
+    visible: true,
+});
 
 // STAC-driven: pmtilesUrl, sourceLayer, renders (colour by `primsource`, radius by `total_mw`)
 // and parquet come from the warehouse item `enmin_powerplants`. Symbology lives in ugs-styles.
@@ -884,27 +806,27 @@ const powerplantsConfig: PMTilesLayerProps = {
     ],
 };
 
-// Rock Property Data WMS Layer — wells (points) + fields (polygons) bundled as one toggle.
-// Both sublayers render together; each keeps its own popup fields, related table, and parquet
-// download, labelled via popupTitle so Wells vs Fields stay distinct in the popup, legend, and
-// download menu.
-const geochemWellSitesLayerName = 'enmin_ccus_geochemistry_current';
-const geochemFieldsLayerName = 'enmin_ccus_geochemfieldpolys_current';
-const rockPropertyDataWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Rock Property Data',
+// Rock Property Data — wells and fields from warehouse items `enmin_ccus_geochemistry` and
+// `enmin_ccus_geochemfieldpolys`. Symbology lives in ugs-styles.
+const rockPropertySourceFields = [
+    { field: 'source_detailed', label: 'Source', transform: linkIfUrl() },
+    { field: 'doi', label: 'DOI', transform: linkIfUrl() },
+];
+
+const geochemWellsLayerName = 'enmin_ccus_geochemistry';
+const geochemWellsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: geochemWellsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: geochemWellsLayerName,
+    title: 'Rock Property Data: Wells',
+    formerTitles: ['Wells with Rock Property Data'],
     visible: false,
-    crs: 'EPSG:3857',
-    // Layer-level URL feeds the Data Sources panel, which reads parent `downloadParquetUrl` only.
-    // Layer controls prefer the per-sublayer entries below, so this doesn't duplicate a button.
-    downloadParquetUrl: parquetUrl("enmin_ccus_geochemistry"),
+    opacity: 1,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${geochemWellSitesLayerName}`,
-            popupTitle: 'Wells',
-            downloadParquetUrl: parquetUrl("enmin_ccus_geochemistry"),
+            name: geochemWellsLayerName,
             popupEnabled: true,
             queryable: true,
             popupFields: {
@@ -912,7 +834,7 @@ const rockPropertyDataWMSConfig: WMSLayerProps = {
                 'UWI': { field: 'uwi', type: 'string' },
                 'Operator': { field: 'operator', type: 'string' },
                 'Data Type': { field: 'datatype', type: 'string' },
-                'Geo-region': { field: 'georegion', type: 'string' },
+                'Geo-Region': { field: 'georegion', type: 'string' },
                 'Field Name': { field: 'fieldname', type: 'string' },
                 'County': { field: 'section', type: 'string' },
                 'Location': {
@@ -936,20 +858,14 @@ const rockPropertyDataWMSConfig: WMSLayerProps = {
             relatedTables: [
                 {
                     fieldLabel: 'Rock Property Data',
-                    matchingField: 'uwi',
-                    targetField: 'uwi',
-                    url: PROD_POSTGREST_URL + '/enmin_ccus_geochemistry_measurements_current',
-                    headers: {
-                        "Accept-Profile": 'emp',
-                        "Accept": "application/json",
-                        "Cache-Control": "no-cache",
-                    },
+                    stacAsset: 'enmin_ccus_geochemistry_measurements',
                     displayFields: [
                         { field: 'formation', label: 'Formation' },
                         { field: 'depth_top_interval', label: 'Depth (ft)' },
                         { field: 'porosity_percent', label: 'Porosity (%)' },
                         { field: 'perm_md_klink', label: 'Permeability (mD)' },
                         { field: 'salinity_ppm', label: 'Salinity (ppm)' },
+                        ...rockPropertySourceFields,
                     ],
                     sortBy: 'depth_top_interval',
                     sortDirection: 'asc',
@@ -957,10 +873,23 @@ const rockPropertyDataWMSConfig: WMSLayerProps = {
                 },
             ],
         },
+    ],
+};
+
+// No warehouse related asset for fields yet, so the measurements join stays on PostgREST.
+const geochemFieldsLayerName = 'enmin_ccus_geochemfieldpolys';
+const geochemFieldsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: geochemFieldsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: geochemFieldsLayerName,
+    title: 'Rock Property Data: Fields',
+    visible: false,
+    opacity: 1,
+    sourceAgency: 'Utah Geological Survey',
+    sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${geochemFieldsLayerName}`,
-            popupTitle: 'Fields',
-            downloadParquetUrl: parquetUrl("enmin_ccus_geochemfieldpolys"),
+            name: geochemFieldsLayerName,
             popupEnabled: true,
             queryable: true,
             popupFields: {
@@ -988,6 +917,7 @@ const rockPropertyDataWMSConfig: WMSLayerProps = {
                         { field: 'porosity_percent', label: 'Porosity (%)' },
                         { field: 'perm_md_klink', label: 'Permeability (mD)' },
                         { field: 'lithology', label: 'Lithology' },
+                        ...rockPropertySourceFields,
                     ],
                     sortBy: 'depth_top_interval',
                     sortDirection: 'asc',
@@ -1001,14 +931,15 @@ const rockPropertyDataWMSConfig: WMSLayerProps = {
 
 // Wells and Springs with Joins WMS Layer
 const geothermalWellsJoinsName = 'enmin_geothermal_ingenious_wellfeatures_current';
-const geothermalWellsJoinsTitle = 'Geothermal Wells';
+const geothermalWellsJoinsTitle = 'Groundwater Wells';
 const geothermalWellsJoinsConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalWellsJoinsTitle,
+    formerTitles: ['Geothermal Wells'],
     visible: false,
     downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_wellfeatures"),
-    sourceAgency: 'Utah Geological Survey',
+    sourceAgency: 'INGENIOUS Project, 2022',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsJoinsName}`,
@@ -1060,14 +991,15 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
 
 // Springs with Joins WMS Layer
 const geothermalSpringsJoinsName = 'enmin_geothermal_ingenious_springfeatures_current';
-const geothermalSpringsJoinsTitle = 'Geothermal Springs';
+const geothermalSpringsJoinsTitle = 'Springs';
 const geothermalSpringsJoinsConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalSpringsJoinsTitle,
+    formerTitles: ['Geothermal Springs'],
     visible: false,
     downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_springfeatures"),
-    sourceAgency: 'Utah Geological Survey',
+    sourceAgency: 'INGENIOUS Project, 2022',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalSpringsJoinsName}`,
@@ -1240,20 +1172,46 @@ const utTownshipRangesConfig: WMSLayerProps = {
     }],
 };
 
+// Sections — STAC-driven: pmtilesUrl, sourceLayer, and renders come from the
+// warehouse item `enmin_plss_sections`. Sits just below Township & Range
+// (same PLSS/UGRC source) in both the layer list and the map stack.
+const sectionsLayerName = 'enmin_plss_sections';
+export const sectionsTitle = 'Sections';
+const sectionsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: sectionsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: sectionsLayerName,
+    title: sectionsTitle,
+    visible: false,
+    opacity: 1,
+    visibleZoomRange: [11, 22],
+    sourceAgency: 'UGRC',
+    sourceUrl: 'https://gis.utah.gov/products/sgid/cadastre/plss-sections/',
+    sublayers: [{
+        name: sectionsLayerName,
+        popupEnabled: false,
+        queryable: false,
+    }],
+};
 
-// Non Petroleum Wells Layer
-const nonpetrolWellsLayerName = 'nwpd_nonpetroleumwellcatalogwells';
-const nonpetrolWellsTitle = 'Non-Petroleum Wells';
-const nonpetrolWellsConfig: WMSLayerProps = {
-  type: 'wms',
-  url: `${PROD_GEOSERVER_URL}/wms`,
+
+// Non Petroleum Wells Layer — STAC-driven: pmtilesUrl, sourceLayer, and
+// renders come from the warehouse item `enmin_non_petroleum_wells`.
+const nonpetrolWellsLayerName = 'enmin_non_petroleum_wells';
+const nonpetrolWellsTitle = 'Exploration Boreholes - Downhole Data';
+const nonpetrolWellsConfig: PMTilesLayerProps = {
+  type: 'pmtiles',
+  stacItemId: nonpetrolWellsLayerName,
+  pmtilesUrl: '',
+  sourceLayer: nonpetrolWellsLayerName,
   title: nonpetrolWellsTitle,
   visible: false,
-  crs: 'EPSG:3857',
+  opacity: 1,
   sourceAgency: 'Utah Geological Survey',
   sublayers: [
     {
-      name: `${ENERGY_MINERALS_WORKSPACE}:${nonpetrolWellsLayerName}`,
+      name: nonpetrolWellsLayerName,
       popupEnabled: true,
       queryable: true,
       popupFields: {
@@ -1411,6 +1369,91 @@ const nonPetroleumCatLayerConfig: WMSLayerProps = {
 */
 
 
+// NatCarb Locations Layer — STAC-driven: pmtilesUrl, sourceLayer, and related
+// table (enmin_ccs_natcarb_measurement) come from the warehouse item `enmin_ccs_natcarb_location`.
+const natCarbLocationsLayerName = 'enmin_ccs_natcarb_location';
+export const natCarbLocationsTitle = 'NATCARB Atlas (2015)';
+
+// Temporary inline style until published to @ugs-gio/ugs-styles. Once published in the STAC
+// catalog renders extension, delete this defaultNatCarbStyle and the renders array below.
+const defaultNatCarbStyle = `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify({
+    layers: [
+        {
+            id: 'enmin_ccs_natcarb_location-fill',
+            type: 'fill',
+            'source-layer': 'enmin_ccs_natcarb_location',
+            paint: {
+                'fill-color': '#d2b48c',
+                'fill-opacity': 0.3,
+            },
+        },
+        {
+            id: 'enmin_ccs_natcarb_location-line',
+            type: 'line',
+            'source-layer': 'enmin_ccs_natcarb_location',
+            paint: {
+                'line-color': '#8b6d47',
+                'line-width': 1.5,
+            },
+        },
+    ],
+}))}`;
+
+export const natCarbLocationsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: natCarbLocationsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: natCarbLocationsLayerName,
+    title: natCarbLocationsTitle,
+    sectionHeading: 'Statewide',
+    visible: false,
+    opacity: 1,
+    sourceAgency: 'Utah Geological Survey',
+    renders: [
+        {
+            id: 'default',
+            title: 'NATCARB Atlas (2015)',
+            styleUrl: defaultNatCarbStyle,
+            legend: [
+                {
+                    label: 'NATCARB Grid Cell',
+                    color: 'rgba(210, 180, 140, 0.3)',
+                    stroke: '#8b6d47',
+                },
+            ],
+        },
+    ],
+    sublayers: [
+        {
+            name: natCarbLocationsLayerName,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {},
+            relatedTables: [
+                {
+                    fieldLabel: 'Project Data',
+                    stacAsset: 'enmin_ccs_natcarb_measurement',
+                    displayAs: 'table',
+                    displayFields: [
+                        { field: 'resource_n', label: 'Resource Name' },
+                        { field: 'vol_low', label: 'Vol Low (Mt)', format: 'number' },
+                        { field: 'vol_med', label: 'Vol Med (Mt)', format: 'number' },
+                        { field: 'vol_high', label: 'Vol High (Mt)', format: 'number' },
+                        { field: 'depth_ft', label: 'Depth (ft)', format: 'number' },
+                        { field: 'thickness_', label: 'Thickness (ft)', format: 'number' },
+                        { field: 'temperatur', label: 'Temp (°F)', format: 'number' },
+                        { field: 'pressure_p', label: 'Pressure (psi)', format: 'number' },
+                        { field: 'porosity_p', label: 'Porosity (%)', format: 'number' },
+                        { field: 'permeabili', label: 'Permeability (mD)', format: 'number' },
+                    ],
+                    sortBy: 'depth_ft',
+                    sortDirection: 'asc',
+                },
+            ],
+        },
+    ],
+};
+
 // Energy and Minerals Group Layer
 const ccsResourcesConfig: LayerProps = {
     type: 'group',
@@ -1419,10 +1462,10 @@ const ccsResourcesConfig: LayerProps = {
     layers: [
         sco2GridSummaryWMSConfig,
         georegionsWMSConfig,
-        co2SourcesWFSConfig,
+        natCarbLocationsConfig,
         sitlaReportsWMSConfig,
-        ccsExclusionAreasWMSConfig,
-        ccusProjectsWMSConfig
+        pastProjectsRegionalConfig,
+        pastProjectsSiteSpecificConfig,
     ]
 }
 
@@ -1431,6 +1474,8 @@ const infrastructureAndLandUseConfig: LayerProps = {
     title: 'Infrastructure and Land Use',
     visible: false,
     layers: [
+        co2SourcesWFSConfig,
+        ccsExclusionAreasWMSConfig,
         powerplantsConfig,
         pipelinesWMSConfig,
         riversWMSConfig,
@@ -1441,6 +1486,7 @@ const infrastructureAndLandUseConfig: LayerProps = {
         SITLAConfig,
         utCountiesConfig,
         utTownshipRangesConfig,
+        sectionsConfig,
     ]
 }
 
@@ -1460,13 +1506,30 @@ const subsurfaceDataConfig: LayerProps = {
     visible: false,
     layers: [
         wellWithTopsWMSConfig,
-        rockPropertyDataWMSConfig,
-        coresAndCuttingsWMSConfig,
+        geochemWellsConfig,
+        geochemFieldsConfig,
+        // UCRC inventory replaces the old WMS cores layer (ALL-4356). popupFooterLink is set here
+        // (not the shared config) so the per-well subsurface deep link is carbonstorage-only.
+        {
+            ...ucrcWellsConfig,
+            visible: false,
+            popupFooterLink: {
+                label: 'Open this well in the UCRC Subsurface app',
+                getHref: (properties) => {
+                    const base = 'https://maps.geology.utah.gov/subsurface';
+                    const lat = properties?.['latitude'];
+                    const lon = properties?.['longitude'];
+                    if (lat == null || lon == null) return base;
+                    const layers = encodeURIComponent(JSON.stringify({ selected: ['Utah Core Research Center Inventory'] }));
+                    return `${base}?lat=${encodeURIComponent(String(lat))}&lon=${encodeURIComponent(String(lon))}&zoom=15&layers=${layers}`;
+                },
+            },
+        },
         oilGasFieldsWMSConfig,
         geothermalWellsWMSConfig,
         geothermalSpringsJoinsConfig,
         geothermalWellsJoinsConfig,
-        nonpetrolWellsConfig
+        nonpetrolWellsConfig,
     ]
 }
 

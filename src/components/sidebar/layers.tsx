@@ -1,5 +1,4 @@
 import { useCustomLayerList } from "@/hooks/use-custom-layerlist";
-import { BackToMenuButton } from "../ui/back-to-menu-button";
 import { useGetLayerConfigs } from "@/hooks/use-get-layer-configs";
 
 function Layers({ disableExport = false }: { disableExport?: boolean } = {}) {
@@ -12,7 +11,6 @@ function Layers({ disableExport = false }: { disableExport?: boolean } = {}) {
 
   return (
     <>
-      <BackToMenuButton />
       <div key='layer-list' className='overflow-y-visible max-h-[calc(100vh)]' data-tour="layer-panel">
         {layerList}
       </div>

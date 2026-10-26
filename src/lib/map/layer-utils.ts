@@ -2,6 +2,7 @@
  * Layer type guards, traversal, and URL parsing utilities
  */
 import type { LayerProps, WMSLayerProps, WFSLayerProps, PMTilesLayerProps, COGLayerProps, GroupLayerProps, ArcGISMapServerLayerProps } from '@/lib/types/mapping-types'
+import { zoomForScale } from '@/lib/map/map-scale'
 
 // ── Type guards ──────────────────────────────────────────────────────
 
@@ -206,12 +207,9 @@ export function buildWmsTileUrl(baseUrl: string, layerName: string, cqlFilter?: 
  * Sublayer name is already in workspace:layername format
  */
 export function getWmsLayerName(layer: WMSLayerProps): string {
-  // Join all sublayer names so GetMap renders every sublayer (comma-separated layers param).
-  // For single-sublayer layers this is just the one name. Legend code splits on the comma since
-  // GetLegendGraphic only accepts one layer per request.
-  const sublayerNames = (layer.sublayers?.map(s => s.name).filter(Boolean) ?? []) as string[]
-  if (sublayerNames.length > 0) {
-    return sublayerNames.join(',')
+  const sublayerName = layer.sublayers?.[0]?.name
+  if (sublayerName) {
+    return sublayerName
   }
   return layer.title
 }
@@ -221,4 +219,81 @@ export function getWmsLayerName(layer: WMSLayerProps): string {
  */
 export function buildArcGisExportUrl(baseUrl: string): string {
   return `${baseUrl}/export?bboxSR=3857&imageSR=3857&size=512,512&format=png32&transparent=true&f=image&bbox={bbox-epsg-3857}`
+}
+
+// ── PMTiles fragment layers ──────────────────────────────────────────
+
+/**
+ * Map a config `visibleZoomRange` to maplibre `minzoom`/`maxzoom`; empty when
+ * unset. Direct indexing (not `||`) so a legitimate zoom-0 bound survives.
+ */
+export function zoomRangeToBounds(
+  visibleZoomRange?: [number, number],
+): { minzoom?: number; maxzoom?: number } {
+  return visibleZoomRange
+    ? { minzoom: visibleZoomRange[0], maxzoom: visibleZoomRange[1] }
+    : {}
+}
+
+/**
+ * Zoom range a layer draws in with the view centered at `latitude`. A WMS
+ * `maxScale` caps the top at the zoom where the map reaches 1:`maxScale`, which
+ * shifts with latitude, so callers pass the current view center.
+ */
+export function effectiveZoomRange(layer: LayerProps, latitude: number): [number, number] | undefined {
+  const maxScale = isWMSLayer(layer) ? layer.maxScale : undefined
+  if (maxScale === undefined) return layer.visibleZoomRange
+  const [min, max] = layer.visibleZoomRange ?? [0, 24]
+  return [min, Math.min(max, zoomForScale(maxScale, latitude))]
+}
+
+/** Whether a layer with this `visibleZoomRange` draws at `zoom` (MapLibre: minzoom inclusive, maxzoom exclusive). */
+export function isWithinZoomRange(visibleZoomRange: [number, number] | undefined, zoom: number): boolean {
+  if (!visibleZoomRange) return true
+  return zoom >= visibleZoomRange[0] && zoom < visibleZoomRange[1]
+}
+
+/** The fields the viewer injects when turning a style fragment into a layer. */
+export interface FragmentLayerInjection {
+  layerId: string
+  sourceId: string
+  sourceLayer: string
+  /** Viewer-owned metadata; the fragment's own metadata never leaks through. */
+  metadata: Record<string, unknown>
+  visible: boolean
+  /** Paint after viewer overrides (e.g. the opacity slider). Omit to keep the fragment's. */
+  paint?: Record<string, unknown>
+  /** Filter after merging the fragment's with any user filter. Omit to keep the fragment's. */
+  filter?: unknown
+  visibleZoomRange?: [number, number]
+}
+
+/**
+ * Turn one layer from an ugs-styles style fragment (`{ layers: [...] }`) into a
+ * MapLibre layer spec. Preserves EVERYTHING the fragment authored — paint,
+ * layout, filter, minzoom/maxzoom, and any future property — so cartographic
+ * intent set in ugs-styles is never silently dropped (a dropped minzoom is why
+ * PLSS sections drew at every zoom). Overrides only what the viewer must own:
+ * the namespaced `id`, the injected `source` (+ `source-layer` when the fragment
+ * omits it), `layout.visibility`, viewer `metadata`, and the paint/filter the
+ * viewer recomputed. A config `visibleZoomRange`, when set, wins over the
+ * fragment's own zoom.
+ */
+export function buildFragmentLayerSpec(
+  fragmentLayer: Record<string, unknown>,
+  opts: FragmentLayerInjection,
+): Record<string, unknown> {
+  const fragmentLayout = (fragmentLayer.layout as Record<string, unknown> | undefined) ?? {}
+  const fragmentSourceLayer = fragmentLayer['source-layer'] as string | undefined
+  return {
+    ...fragmentLayer,
+    id: opts.layerId,
+    source: opts.sourceId,
+    'source-layer': fragmentSourceLayer ?? opts.sourceLayer,
+    layout: { ...fragmentLayout, visibility: opts.visible ? 'visible' : 'none' },
+    ...(opts.paint ? { paint: opts.paint } : {}),
+    ...(opts.filter ? { filter: opts.filter } : {}),
+    metadata: opts.metadata,
+    ...zoomRangeToBounds(opts.visibleZoomRange),
+  }
 }

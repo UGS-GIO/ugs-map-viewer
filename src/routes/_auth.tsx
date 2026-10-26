@@ -10,7 +10,11 @@ const authSearchSchema = z.object({
 function AuthLayout() {
     return (
         <AuthProvider>
-            <Outlet />
+            {/* #root is overflow:clip (fixed viewport, never a scroll container), so auth
+                routes own their own scroller — otherwise the card is clipped on short viewports. */}
+            <div className="h-full overflow-y-auto">
+                <Outlet />
+            </div>
         </AuthProvider>
     )
 }

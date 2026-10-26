@@ -1,4 +1,3 @@
-import { BackToMenuButton } from '@/components/ui/back-to-menu-button'
 import { useCustomLayerList } from '@/hooks/use-custom-layerlist'
 import { useGetLayerConfigs } from '@/hooks/use-get-layer-configs'
 import { renderGeophysicsLegend } from './geophysics-symbology-legend'
@@ -22,7 +21,6 @@ function GeophysicsLayers({ disableExport = false }: { disableExport?: boolean }
 
     return (
         <>
-            <BackToMenuButton />
             <div key='layer-list' className='overflow-y-visible max-h-[calc(100vh)]' data-tour="layer-panel">
                 {layerList}
             </div>

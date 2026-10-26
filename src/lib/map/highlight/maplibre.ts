@@ -1,4 +1,5 @@
-import maplibregl, { LayerSpecification } from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
+import type { LayerSpecification } from 'maplibre-gl';
 import { Feature, Geometry, GeoJsonProperties } from 'geojson';
 import { convertGeometryToWGS84 } from '@/lib/map/conversion-utils';
 import { HighlightProvider, HighlightOptions } from './types';

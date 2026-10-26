@@ -11,7 +11,6 @@ import type { HighlightFeature } from "@/components/maps/types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { useBulkRelatedTable, RelatedDataMap } from "@/hooks/use-bulk-related-table"
-import type { RelatedTable } from "@/lib/types/mapping-types"
 import { ExtendedFeature, LayerContentProps, hasRasterData, getLayerCountText } from "./types"
 
 const POPUP_PAGE_SIZE = 10
@@ -40,6 +39,12 @@ interface PopupContentWithPaginationProps {
     layerContent: LayerContentProps[]
     onHighlightChange?: (features: HighlightFeature[]) => void
     clickPoint?: { lng: number; lat: number } | null
+    /** Optional render-prop for content shown under each layer's heading */
+    layerHeaderExtras?: (layer: LayerContentProps) => React.ReactNode
+    /** Optional render-prop for content shown inside each feature card */
+    featureExtras?: (feature: ExtendedFeature, layer: LayerContentProps) => React.ReactNode
+    /** Called (and awaited) right before zooming to a feature/pixel — collapses whatever's covering the map. */
+    onBeforeZoom?: () => void | Promise<void>
 }
 
 const FeatureCard = memo(({
@@ -49,6 +54,7 @@ const FeatureCard = memo(({
     handleZoomToFeature,
     bulkRelatedData,
     relatedLoading,
+    featureExtras,
 }: {
     layer: LayerContentProps,
     feature: ExtendedFeature,
@@ -56,6 +62,7 @@ const FeatureCard = memo(({
     handleZoomToFeature: (feature: ExtendedFeature, sourceCRS: string, maxZoomLevel?: number) => void,
     bulkRelatedData?: RelatedDataMap[],
     relatedLoading?: boolean,
+    featureExtras?: (feature: ExtendedFeature, layer: LayerContentProps) => React.ReactNode,
 }) => {
     return (
         <div className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
@@ -74,6 +81,7 @@ const FeatureCard = memo(({
                 bulkRelatedData={bulkRelatedData}
                 relatedLoading={relatedLoading}
             />
+            {featureExtras?.(feature, layer)}
         </div>
     )
 });
@@ -87,12 +95,14 @@ const PaginatedFeatureList = memo(({
     handleZoomToFeature,
     bulkRelatedData,
     relatedLoading,
+    featureExtras,
 }: {
     layer: LayerContentProps,
     buttons: React.ReactNode[] | null,
     handleZoomToFeature: (feature: ExtendedFeature, sourceCRS: string, maxZoomLevel?: number) => void,
     bulkRelatedData?: RelatedDataMap[],
     relatedLoading?: boolean,
+    featureExtras?: (feature: ExtendedFeature, layer: LayerContentProps) => React.ReactNode,
 }) => {
     const [page, setPage] = useState(0)
     const total = layer.features.length
@@ -121,6 +131,7 @@ const PaginatedFeatureList = memo(({
                     handleZoomToFeature={handleZoomToFeature}
                     bulkRelatedData={bulkRelatedData}
                     relatedLoading={relatedLoading}
+                    featureExtras={featureExtras}
                 />
             ))}
         </>
@@ -157,8 +168,18 @@ const RasterOnlyCard = memo(({
 });
 RasterOnlyCard.displayName = 'RasterOnlyCard';
 
-const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clickPoint }: PopupContentWithPaginationProps) => {
-    const { zoomTo } = useZoomToFeature({ onHighlightChange })
+const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clickPoint, layerHeaderExtras, featureExtras, onBeforeZoom }: PopupContentWithPaginationProps) => {
+    const { zoomTo: zoomToFeatureRaw } = useZoomToFeature({ onHighlightChange })
+
+    // Awaits onBeforeZoom (drawer collapse) before fitBounds runs.
+    const zoomTo = useCallback(async (
+        feature: ExtendedFeature,
+        sourceCRS: string,
+        options?: Parameters<typeof zoomToFeatureRaw>[2]
+    ) => {
+        await onBeforeZoom?.()
+        zoomToFeatureRaw(feature, sourceCRS, options)
+    }, [zoomToFeatureRaw, onBeforeZoom])
 
     const handleZoomToPixel = useCallback(async (layer: LayerContentProps, point: { lng: number; lat: number }) => {
         const cogUrl = layer.rasterSource?.url
@@ -216,43 +237,38 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
         return count
     }, [layerContent])
 
-    // Each layer entry can carry its own related-table configs (e.g. a layer with mixed-geometry
-    // sublayers, where points and polygons have different related tables). Flatten every layer's
-    // tables into one list, record each layer's slice offset, and gather target values per table
-    // from its owning layer's features — so layers no longer have to share one related-table config.
-    const { allTables, layerOffsets, valuesByTable } = useMemo(() => {
-        const allTables: RelatedTable[] = []
-        const layerOffsets: number[] = []
-        const valuesByTable: string[][] = []
+    // Collect all relatedTables and target values for bulk fetch
+    // We group by layer since each layer might have different related tables
+    const bulkFetchConfig = useMemo(() => {
+        // Find the first layer with relatedTables (they should all share the same config)
+        const layerWithRelated = layerContent.find(l => l.relatedTables?.length);
+        if (!layerWithRelated?.relatedTables) return { tables: undefined, values: [] };
+
+        // Collect all target values from all features across all layers with these related tables
+        const allTargetValues: string[] = [];
         for (const layer of layerContent) {
-            layerOffsets.push(allTables.length)
-            for (const table of layer.relatedTables ?? []) {
-                allTables.push(table)
-                // Values for this table come only from its owning layer's features.
-                valuesByTable.push(
-                    layer.features
-                        .map(f => f.properties?.[table.targetField!])
-                        .filter(Boolean)
-                        .map(String)
-                )
+            if (!layer.relatedTables?.length) continue;
+            for (const feature of layer.features) {
+                for (const table of layer.relatedTables) {
+                    const targetValue = feature.properties?.[table.targetField!];
+                    if (targetValue) {
+                        allTargetValues.push(String(targetValue));
+                    }
+                }
             }
         }
-        return { allTables, layerOffsets, valuesByTable }
+
+        return {
+            tables: layerWithRelated.relatedTables,
+            values: allTargetValues
+        };
     }, [layerContent])
 
     // Bulk fetch related data for all features at once
     const { dataByTable: bulkRelatedData, isLoading: relatedLoading } = useBulkRelatedTable(
-        allTables.length ? allTables : undefined,
-        valuesByTable
+        bulkFetchConfig.tables,
+        bulkFetchConfig.values
     )
-
-    // Slice the flat bulk result back to a single layer's related tables, aligned to its config order.
-    const bulkForLayer = useCallback((layerIdx: number, layer: LayerContentProps): RelatedDataMap[] | undefined => {
-        const count = layer.relatedTables?.length ?? 0
-        if (!count) return undefined
-        const offset = layerOffsets[layerIdx] ?? 0
-        return bulkRelatedData.slice(offset, offset + count)
-    }, [bulkRelatedData, layerOffsets])
 
     // Handle layer change via dropdown
     const handleLayerChange = useCallback((index: number) => {
@@ -290,7 +306,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                     >
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <SelectTrigger className="w-full">
+                                <SelectTrigger aria-label="Choose which layer's results to show" className="w-full">
                                     <SelectValue />
                                 </SelectTrigger>
                             </TooltipTrigger>
@@ -343,6 +359,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                                     )}
                                     <span><span className="uppercase tracking-wide">Layer:</span> <span className="capitalize">{layer.layerTitle || layer.groupLayerTitle}</span></span>
                                 </div>
+                                {layerHeaderExtras?.(layer)}
                                 {/* Features or raster-only content */}
                                 <div className="space-y-2">
                                     {hasFeatures ? (
@@ -350,8 +367,9 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                                             layer={layer}
                                             buttons={buttons}
                                             handleZoomToFeature={handleZoomToFeature}
-                                            bulkRelatedData={bulkForLayer(layerIdx, layer)}
+                                            bulkRelatedData={layer.relatedTables?.length ? bulkRelatedData : undefined}
                                             relatedLoading={layer.relatedTables?.length ? relatedLoading : false}
+                                            featureExtras={featureExtras}
                                         />
                                     ) : hasRaster ? (
                                         <RasterOnlyCard layer={layer} clickPoint={clickPoint} onZoomToPixel={handleZoomToPixel} />
@@ -362,13 +380,15 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                     })
                 ) : selectedLayer ? (
                     <div className="space-y-2">
+                        {layerHeaderExtras?.(selectedLayer)}
                         {selectedLayer.features.length > 0 ? (
                             <PaginatedFeatureList
                                 layer={selectedLayer}
                                 buttons={buttons}
                                 handleZoomToFeature={handleZoomToFeature}
-                                bulkRelatedData={bulkForLayer(selectedLayerIndex, selectedLayer)}
+                                bulkRelatedData={selectedLayer.relatedTables?.length ? bulkRelatedData : undefined}
                                 relatedLoading={selectedLayer.relatedTables?.length ? relatedLoading : false}
+                                featureExtras={featureExtras}
                             />
                         ) : hasRasterData(selectedLayer) ? (
                             <RasterOnlyCard layer={selectedLayer} clickPoint={clickPoint} onZoomToPixel={handleZoomToPixel} />
@@ -380,7 +400,11 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
     )
 }
 
-const PopupContentWithPagination = memo(PopupContentWithPaginationInner);
-PopupContentWithPagination.displayName = 'PopupContentWithPagination';
+const MemoContent = memo(PopupContentWithPaginationInner);
 
-export { PopupContentWithPagination };
+// A new set of layers remounts the content, so its pagination starts over.
+const contentKey = (layers: LayerContentProps[]) => layers.map((l) => `${l.groupLayerTitle}-${l.layerTitle}`).join('|');
+
+export function PopupContentWithPagination(props: PopupContentWithPaginationProps) {
+    return <MemoContent key={contentKey(props.layerContent)} {...props} />;
+}

@@ -20,7 +20,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
     DropdownMenu,
     DropdownMenuTrigger,
@@ -107,9 +107,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
 
     const relatedTableTargetValues = useMemo(() => {
         if (!selectedLayer?.relatedTables?.length) return [];
-        // Values scoped per table (index-aligned with relatedTables) so each table is queried
-        // only with its own key column's values.
-        return selectedLayer.relatedTables.map(table =>
+        return selectedLayer.relatedTables.flatMap(table =>
             rowData.map(row => String(row.properties[table.targetField!] ?? ''))
         );
     }, [selectedLayer?.relatedTables, rowData]);
@@ -306,27 +304,28 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
     }
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full min-w-0 w-full overflow-hidden">
             {/* Header row 1: Layer selector + close */}
-            <div className="flex items-center justify-between gap-2 py-1.5 px-2 md:px-4 border-b shrink-0 bg-background">
+            <div className="flex items-center justify-between gap-2 py-1.5 px-2 md:px-4 border-b shrink-0 bg-background min-w-0 w-full">
                 {layersWithData.length > 1 ? (
-                    <select
-                        value={selectedLayerIndex}
-                        onChange={(e) => handleLayerChange(Number(e.target.value))}
-                        className="h-7 px-2 rounded border border-input bg-background text-sm font-medium truncate flex-1 min-w-0"
-                    >
-                        {layersWithData.map((layer, index) => {
-                            const title = layer.layerTitle || layer.groupLayerTitle;
-                            const count = layer.features?.length || 0;
-                            return (
-                                <option key={title} value={index}>
-                                    {title} ({count})
-                                </option>
-                            );
-                        })}
-                    </select>
+                    <Select value={String(selectedLayerIndex)} onValueChange={(v) => handleLayerChange(Number(v))}>
+                        <SelectTrigger aria-label="Choose which layer's results to show" className="h-7 flex-1 min-w-0 text-sm font-medium">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {layersWithData.map((layer, index) => {
+                                const title = layer.layerTitle || layer.groupLayerTitle;
+                                const count = layer.features?.length || 0;
+                                return (
+                                    <SelectItem key={index} value={String(index)}>
+                                        {title} ({count})
+                                    </SelectItem>
+                                );
+                            })}
+                        </SelectContent>
+                    </Select>
                 ) : (
-                    <span className="text-sm font-medium truncate">
+                    <span className="text-sm font-medium truncate min-w-0 flex-1">
                         {selectedLayer?.layerTitle || selectedLayer?.groupLayerTitle} ({rowData.length})
                     </span>
                 )}
@@ -337,6 +336,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             size="sm"
                             onClick={() => onViewModeChange('map')}
                             className="h-7 w-7 p-0"
+                            aria-label="Map view"
                             title="Map view"
                         >
                             <Map className="h-4 w-4" />
@@ -346,6 +346,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             size="sm"
                             onClick={() => onViewModeChange('split')}
                             className="h-7 w-7 p-0"
+                            aria-label="Split view"
                             title="Split view"
                         >
                             <SplitSquareVertical className="h-4 w-4" />
@@ -355,6 +356,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             size="sm"
                             onClick={() => onViewModeChange('table')}
                             className="h-7 w-7 p-0"
+                            aria-label="Table view"
                             title="Table view"
                         >
                             <Table2 className="h-4 w-4" />
@@ -362,14 +364,14 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                     </div>
                 )}
                 {onClose && (
-                    <Button variant="ghost" size="sm" onClick={onClose} className="h-7 w-7 p-0 shrink-0" title="Clear results">
+                    <Button variant="ghost" size="sm" onClick={onClose} className="h-7 w-7 p-0 shrink-0" aria-label="Clear results" title="Clear results">
                         <X className="h-4 w-4" />
                     </Button>
                 )}
             </div>
 
             {/* Header row 2: Selection actions / Column filter + search */}
-            <div className="flex items-center gap-2 py-1.5 px-2 md:px-4 border-b shrink-0 bg-muted/30">
+            <div className="flex items-center gap-2 py-1.5 px-2 md:px-4 border-b shrink-0 bg-muted/30 min-w-0 w-full">
                 {hasSelection ? (
                     <div className="flex items-center gap-2 flex-1">
                         <span className="text-xs text-muted-foreground">
@@ -396,19 +398,21 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                     </div>
                 ) : (
                     <>
-                        <select
-                            value={filter.column}
-                            onChange={(e) => setFilter({ column: e.target.value, value: '' })}
-                            className="h-7 px-2 rounded border border-input bg-background text-sm shrink-0"
-                        >
-                            <option value="all">All</option>
-                            {columnConfigs.map((config) => (
-                                <option key={config.id} value={config.id}>
-                                    {config.label}
-                                </option>
-                            ))}
-                        </select>
+                        <Select value={filter.column} onValueChange={(column) => setFilter({ column, value: '' })}>
+                            <SelectTrigger aria-label="Column to search" className="h-7 w-auto max-w-[130px] shrink-0 text-sm">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All</SelectItem>
+                                {columnConfigs.map((config) => (
+                                    <SelectItem key={config.id} value={config.id}>
+                                        {config.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <Input
+                            aria-label="Search within the selected column"
                             placeholder="Search..."
                             value={filter.value}
                             onChange={(e) => setFilter(prev => ({ ...prev, value: e.target.value }))}
@@ -418,7 +422,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                 )}
 
                 {!disableExport && (
-                    <DropdownMenu>
+                    <DropdownMenu modal={false}>
                         <DropdownMenuTrigger asChild>
                             <Button
                                 variant="ghost"
@@ -461,11 +465,12 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                     </DropdownMenu>
                 )}
 
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                     <DropdownMenuTrigger asChild>
                         <Button
                             variant="ghost"
                             size="sm"
+                            aria-label="Show or hide columns"
                             className="h-6 px-2 text-xs text-muted-foreground"
                         >
                             <Columns3 className="h-3 w-3" />
@@ -476,24 +481,24 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                             .getAllColumns()
                             .filter((column) => column.getCanHide())
                             .map((column) => (
-                                <label
+                                // A role="menu" only takes menu items; a raw label + checkbox is invalid inside one.
+                                <DropdownMenuCheckboxItem
                                     key={column.id}
-                                    className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-accent rounded-sm cursor-pointer"
+                                    className="text-sm"
+                                    checked={column.getIsVisible()}
+                                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                                    onSelect={(event) => event.preventDefault()}
                                 >
-                                    <Checkbox
-                                        checked={column.getIsVisible()}
-                                        onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                                    />
-                                    <span>{column.columnDef.meta?.columnConfig?.label || (typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id)}</span>
-                                </label>
+                                    {column.columnDef.meta?.columnConfig?.label || (typeof column.columnDef.header === 'string' ? column.columnDef.header : column.id)}
+                                </DropdownMenuCheckboxItem>
                             ))}
                     </DropdownMenuContent>
                 </DropdownMenu>
             </div>
 
             {/* Table */}
-            <div className="flex-1 min-h-0 overflow-hidden">
-                <div className="h-full overflow-auto">
+            <div className="flex-1 min-h-0 min-w-0 w-full overflow-hidden">
+                <div className="h-full w-full overflow-auto">
                     <Table style={{ minWidth: table.getCenterTotalSize() }}>
                         <TableHeader className="sticky top-0 bg-background z-10">
                             {table.getHeaderGroups().map((headerGroup) => (

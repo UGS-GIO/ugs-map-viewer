@@ -22,16 +22,13 @@ interface BulkRelatedResult {
  */
 export function useBulkRelatedTable(
     relatedTables: RelatedTable[] | undefined,
-    /** Target values scoped per related table (index-aligned with `relatedTables`). Each table is
-     * queried only with its own values so differently-typed key columns (e.g. numeric `uwi` vs a
-     * string field name) never get mixed into one filter. */
-    targetValuesByTable: string[][]
+    targetValues: string[]
 ): BulkRelatedResult {
     const configs = relatedTables || [];
 
-    // Unique values per table + a stable cache key spanning all tables.
-    const uniqueByTable = configs.map((_, i) => [...new Set((targetValuesByTable[i] || []).filter(Boolean))]);
-    const valuesKey = uniqueByTable.map(vals => [...vals].sort().join(',')).join('|');
+    // Create a stable key from unique target values
+    const uniqueValues = [...new Set(targetValues.filter(Boolean))];
+    const valuesKey = uniqueValues.sort().join(',');
 
     const { data, isLoading, error } = useQuery({
         queryKey: queryKeys.features.bulkRelatedTable(
@@ -39,14 +36,12 @@ export function useBulkRelatedTable(
             valuesKey
         ),
         queryFn: async (): Promise<RelatedDataMap[]> => {
-            if (configs.length === 0 || uniqueByTable.every(v => v.length === 0)) {
+            if (configs.length === 0 || uniqueValues.length === 0) {
                 return configs.map(() => new Map());
             }
 
             const results = await Promise.all(
-                configs.map(async (config, configIndex): Promise<RelatedDataMap> => {
-                    const uniqueValues = uniqueByTable[configIndex];
-                    if (uniqueValues.length === 0) return new Map();
+                configs.map(async (config): Promise<RelatedDataMap> => {
                     // STAC-backed entries are resolved to a full url/matchingField before reaching
                     // here; bail if a config is missing the join column either way.
                     const matchingField = config.matchingField;
@@ -66,7 +61,7 @@ export function useBulkRelatedTable(
             return results;
         },
         staleTime: 1000 * 60 * 60, // 1 hour
-        enabled: configs.length > 0 && uniqueByTable.some(v => v.length > 0),
+        enabled: configs.length > 0 && uniqueValues.length > 0,
     });
 
     return {

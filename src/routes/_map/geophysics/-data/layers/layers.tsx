@@ -74,7 +74,7 @@ const seamlessGeolunitsLayerName = 'mapping_geolunits_500k'
 const seamlessGeolunitsWMSTitle = 'Geologic Units (500k)';
 const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/mapping/wms`,
+    url: `${PROD_GEOSERVER_URL}/wms`,
     title: seamlessGeolunitsWMSTitle,
     opacity: 0.5,
     visible: false,
@@ -700,14 +700,14 @@ const mtStationsLayerConfig: WMSLayerProps = {
 
 // Wells and Springs with Joins WMS Layer
 const geothermalWellsJoinsName = 'enmin_geothermal_ingenious_wellfeatures_current';
-const geothermalWellsJoinsTitle = 'Geothermal Wells (INGENIOUS)';
+const geothermalWellsJoinsTitle = 'Geothermal Wells';
 const geothermalWellsJoinsConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalWellsJoinsTitle,
     visible: false,
     downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_wellfeatures"),
-    sourceAgency: 'Utah Geological Survey',
+    sourceAgency: 'INGENIOUS Project, 2022',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsJoinsName}`,
@@ -759,14 +759,14 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
 
 // Springs with Joins WMS Layer
 const geothermalSpringsJoinsName = 'enmin_geothermal_ingenious_springfeatures_current';
-const geothermalSpringsJoinsTitle = 'Geothermal Springs (INGENIOUS)';
+const geothermalSpringsJoinsTitle = 'Geothermal Springs';
 const geothermalSpringsJoinsConfig: WMSLayerProps = {
     type: 'wms',
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: geothermalSpringsJoinsTitle,
     visible: false,
     downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_springfeatures"),
-    sourceAgency: 'Utah Geological Survey',
+    sourceAgency: 'INGENIOUS Project, 2022',
     sublayers: [
         {
             name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalSpringsJoinsName}`,

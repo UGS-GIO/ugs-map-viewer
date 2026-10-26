@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent, AccordionHeader } from '@/components/ui/accordion';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronRight, SlidersHorizontal } from 'lucide-react';
@@ -8,17 +8,17 @@ import { useLayerItemState } from '@/hooks/use-layer-item-state';
 import { LayerProps } from '@/lib/types/mapping-types';
 import { useMap } from '@/hooks/use-map';
 import { findLayerByTitle } from '@/lib/map/utils';
-import { isWMSLayer, isWFSLayer, isPMTilesLayer, isArcGISMapServerLayer, isCOGLayer } from '@/lib/map/layer-utils';
+import { isWMSLayer, isWFSLayer, isPMTilesLayer, isArcGISMapServerLayer, isCOGLayer, effectiveZoomRange } from '@/lib/map/layer-utils';
 import { CogLegend } from '@/components/maps/cog-legend';
 import { useLayerExtent, UseLayerExtentOptions } from '@/hooks/use-layer-extent';
-import { useMapZoom, getZoomHint } from '@/hooks/use-map-zoom';
+import { useMapZoom, useMapLatitude, getZoomHint } from '@/hooks/use-map-zoom';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useFetchLayerDescriptions } from '@/hooks/use-fetch-layer-descriptions';
-import { useSidebar } from '@/hooks/use-sidebar';
+import { usePhoneSheetActions } from '@/components/maps/phone-sheet/use-phone-sheet';
 import LayerControls from '@/components/maps/layer-controls';
 import { WfsVectorLegend } from '@/components/maps/wfs-vector-legend';
 import { StacRenderLegend } from '@/components/maps/stac-render-legend';
 import { ZoomHintPill } from '@/components/maps/zoom-hint-pill';
-import { useIsMobile } from './use-mobile';
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from '@/lib/constants';
 import { useLayerUrl } from '@/context/layer-url-provider';
 
@@ -26,14 +26,18 @@ interface LayerAccordionItemProps {
     layerConfig: LayerProps;
     isTopLevel: boolean;
     disableExport?: boolean;
+    /** Optional predicate to check if a layer has filters without rendering JSX */
+    hasLayerFilters?: (layerTitle: string) => boolean;
     /** Optional render-prop for content shown inside a group's accordion */
     groupExtrasRender?: (groupTitle: string) => React.ReactNode;
     /** Optional render-prop for content shown inside a single layer's accordion */
-    layerExtrasRender?: (layerTitle: string) => React.ReactNode;
+    layerExtrasRender?: (layerTitle: string, layer: LayerProps) => React.ReactNode;
     /** Optional render-prop for whole-layer stats / charts rendered via the Stats toggle */
     layerStatsRender?: (layerTitle: string) => React.ReactNode;
     /** Optional render-prop overriding a layer's legend content (e.g. an interactive symbology legend). */
     layerLegendRender?: (layer: LayerProps) => React.ReactNode;
+    /** Render just this layer's controls, without its own accordion header/switch — used to embed the active child of a `variantSelector` group under the group's shared header. */
+    embedded?: boolean;
 }
 
 /**
@@ -50,7 +54,7 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
     return (
         <div className="mx-8 mt-2">
             <Collapsible open={open} onOpenChange={setOpen}>
-                <CollapsibleTrigger className="flex w-full items-center gap-1.5 rounded border border-border bg-muted/40 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted">
+                <CollapsibleTrigger className="flex w-full items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted">
                     <ChevronRight className={`h-3 w-3 transition-transform ${open ? 'rotate-90' : ''}`} />
                     <SlidersHorizontal className="h-3 w-3" />
                     <span>Filters</span>
@@ -63,7 +67,55 @@ function FiltersCollapsible({ content }: { content: React.ReactNode }) {
     );
 }
 
-const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: LayerAccordionItemProps) => {
+/** Zoom hint for a selected layer that only draws in part of the zoom range, and a jump into that range. */
+function useLayerZoomHint(layer: LayerProps, active: boolean) {
+    const { map } = useMap();
+    const { peek } = usePhoneSheetActions();
+    const currentZoom = useMapZoom();
+    const viewLatitude = useMapLatitude();
+    const range = (viewLatitude === null ? layer.visibleZoomRange : effectiveZoomRange(layer, viewLatitude)) ?? null;
+    const hint = active ? getZoomHint(currentZoom, range) : null;
+    // Name the 1:X scale only when it, not a lower configured maxzoom, is the limit.
+    const configuredMax = layer.visibleZoomRange?.[1] ?? Infinity;
+    const maxScale = isWMSLayer(layer) && range && range[1] < configuredMax ? layer.maxScale : undefined;
+    const zoomToRange = () => {
+        if (!map || !range) return;
+        const [minZ, maxZ] = range;
+        // maxzoom is exclusive, so land just inside it.
+        map.flyTo({ zoom: currentZoom !== null && currentZoom >= maxZ ? maxZ - 0.01 : minZ });
+        peek();
+    };
+    return { range, hint, maxScale, zoomToRange };
+}
+
+// Description rows are keyed by title; a renamed layer still finds its row under a former title.
+const descriptionFor = (descriptions: Record<string, string>, layer: LayerProps): string =>
+    [layer.title ?? '', ...(layer.formerTitles ?? [])].map(t => descriptions[t]).find(Boolean) ?? '';
+
+const newSectionHeading = (current: LayerProps, previous?: LayerProps): string | undefined =>
+    current.sectionHeading !== previous?.sectionHeading ? current.sectionHeading : undefined;
+
+const SectionHeading = ({
+    heading,
+    isTopLevel = false,
+}: {
+    heading: string;
+    isTopLevel?: boolean;
+}) => {
+    const HeadingTag = isTopLevel ? 'h2' : 'h3';
+    return (
+        <div
+            className={`${isTopLevel ? 'mr-2 mt-4' : 'ml-4 mr-2 mt-3'} mb-1 px-2 border-b border-border/50 pb-1`}
+            data-section-heading={heading}
+        >
+            <HeadingTag className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {heading}
+            </HeadingTag>
+        </div>
+    );
+};
+
+const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFilters, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender, embedded }: LayerAccordionItemProps) => {
     const {
         isSelected,
         handleToggleSelection,
@@ -72,14 +124,21 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
     } = useLayerItemState(layerConfig);
 
     const { map } = useMap();
-    const { groupVisibility, setGroupVisibility, layerOpacity: layerOpacityMap, setLayerOpacity } = useLayerUrl();
-    const { setIsCollapsed, setNavOpened } = useSidebar();
+    const { groupVisibility, setGroupVisibility, layerOpacity: layerOpacityMap, setLayerOpacity, selectedLayerTitles, setExclusiveSelection, updateLayerSelection } = useLayerUrl();
+    // Which variant a `variantSelector` group is focused on when none is selected
+    // yet (once one is selected, that drives it). null → fall back to the first.
+    const [variantActivePick, setVariantActivePick] = useState<string | null>(null);
+    const { peek } = usePhoneSheetActions();
     const { data: layerDescriptions } = useFetchLayerDescriptions();
-    const isMobile = useIsMobile();
     const [isUserExpanded, setIsUserExpanded] = useState(() => {
         if (layerConfig.type === 'group') {
             // If it is, expand it ONLY if any of its children are selected.
             return groupCheckboxState === 'all' || groupCheckboxState === 'some';
+        }
+
+        // Expand layers with custom filters by default so controls are immediately visible.
+        if (layerConfig.title && hasLayerFilters?.(layerConfig.title)) {
+            return true;
         }
 
         // If it's not a group, it's a single layer. ALWAYS start collapsed.
@@ -157,60 +216,46 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
 
     const { refetch: fetchExtent, data: cachedExtent } = useLayerExtent(extentOptions);
 
-    // Legend uses ALL sublayer names (comma-separated) so a multi-sublayer layer shows every
-    // sublayer's swatches. Kept separate from extentOptions.layerName, which must stay a single
-    // name — fetchLayerExtent looks it up verbatim in GetCapabilities and a joined name won't match.
-    const legendLayerName = useMemo(() => {
-        if (isWMSLayer(layerConfig)) {
-            const names = (layerConfig.sublayers?.map(s => s.name).filter(Boolean) ?? []) as string[];
-            if (names.length > 0) return names.join(',');
-        }
-        return extentOptions.type === 'wms' ? extentOptions.layerName : null;
-    }, [layerConfig, extentOptions]);
-
-    // Friendly heading per sublayer (its popupTitle), so a composite legend can label each group.
-    const legendLayerLabels = useMemo(() => {
-        if (!isWMSLayer(layerConfig)) return undefined;
-        const labels: Record<string, string> = {};
-        for (const sub of layerConfig.sublayers ?? []) {
-            if (sub.name && sub.popupTitle) labels[sub.name] = sub.popupTitle;
-        }
-        return Object.keys(labels).length > 0 ? labels : undefined;
-    }, [layerConfig]);
-
-    // Downloadable datasets: one per sublayer that defines a parquet URL (labelled by popupTitle),
-    // else the single layer-level URL (from STAC for PMTiles). Each entry carries its own related
-    // tables (flattened from the sublayer) so the download menu can bundle them in a zip. Lets a
-    // composite layer download each sublayer's data.
-    const downloadEntries = useMemo(() => {
+    // Related tables live on sublayer popup config (WMS/PMTiles). Flattened
+    // across sublayers so the download menu can bundle them all in one zip.
+    const relatedTables = useMemo(() => {
         if (isWMSLayer(layerConfig) || isPMTilesLayer(layerConfig)) {
-            const subs = (layerConfig.sublayers ?? [])
-                .filter(s => s.downloadParquetUrl)
-                .map(s => ({
-                    label: s.popupTitle || layerConfig.title || '',
-                    url: s.downloadParquetUrl as string,
-                    relatedTables: s.relatedTables ?? [],
-                }));
-            if (subs.length > 0) return subs;
+            return layerConfig.sublayers?.flatMap(sub => sub.relatedTables ?? []) ?? [];
         }
-        const relatedTables = (isWMSLayer(layerConfig) || isPMTilesLayer(layerConfig))
-            ? (layerConfig.sublayers?.flatMap(sub => sub.relatedTables ?? []) ?? [])
-            : [];
-        return layerConfig.downloadParquetUrl
-            ? [{ label: layerConfig.title || '', url: layerConfig.downloadParquetUrl, relatedTables }]
-            : [];
+        return [];
     }, [layerConfig]);
 
-    const currentZoom = useMapZoom();
-    const visibleZoomRange = layerConfig.visibleZoomRange ?? null;
-    const zoomHint = isSelected ? getZoomHint(currentZoom, visibleZoomRange) : null;
-
-    const handleZoomToVisibleRange = () => {
-        if (!map || !visibleZoomRange) return;
-        const [minZ, maxZ] = visibleZoomRange;
-        const target = currentZoom !== null && currentZoom > maxZ ? maxZ : minZ;
-        map.flyTo({ zoom: target });
-    };
+    // A variant group's hint follows whichever variant is on the map.
+    const zoomHintLayer = layerConfig.type === 'group' && 'layers' in layerConfig && layerConfig.variantSelector
+        ? (layerConfig.layers ?? []).find(v => v.title && selectedLayerTitles.has(v.title)) ?? null
+        : isSelected ? layerConfig : null;
+    const { range: zoomRange, hint: zoomHint, maxScale: zoomMaxScale, zoomToRange } = useLayerZoomHint(zoomHintLayer ?? layerConfig, zoomHintLayer !== null);
+    // Overlaid just left of the chevron. While a range-limited layer is on, its
+    // title keeps room for the chip and a live region is mounted, so the chip
+    // appearing never moves the row and screen readers hear it.
+    const reserveZoomHint = zoomHintLayer !== null && zoomRange !== null;
+    const zoomHintButton = reserveZoomHint && (
+        <>
+            {zoomHint && (
+                <div className="absolute right-8 top-1/2 -translate-y-1/2">
+                    <ZoomHintPill direction={zoomHint} range={zoomRange} maxScale={zoomMaxScale} layerTitle={layerConfig.title} onClick={zoomToRange} />
+                </div>
+            )}
+            <span className="sr-only" aria-live="polite">
+                {zoomHint ? `${layerConfig.title ?? 'This layer'} is hidden at this zoom. Zoom ${zoomHint} to see it.` : ''}
+            </span>
+        </>
+    );
+    // Phones get no tooltip, so there the hidden-at-this-zoom note stands in for the source line.
+    const isMobile = useIsMobile();
+    const source = layerConfig.subtitle ?? layerConfig.sourceAgency;
+    const showZoomNote = isMobile && Boolean(zoomHint);
+    const layerSubtitle = (showZoomNote || source) && (
+        <p className={`text-xs font-normal ${showZoomNote ? 'text-primary' : 'text-muted-foreground'}`}>
+            {showZoomNote ? 'Hidden at this zoom' : source}
+        </p>
+    );
+    const zoomHintPadding = reserveZoomHint ? (isMobile ? 'pr-12' : 'pr-28') : '';
 
     const handleOpacityChange = useCallback((value: number) => {
         // Continuously updates, so don't update url with this
@@ -255,10 +300,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                     [[extent[0], extent[1]], [extent[2], extent[3]]],
                     { padding: 50, animate: true }
                 );
-                if (isMobile) {
-                    setIsCollapsed(true);
-                    setNavOpened(false);
-                }
+                // Show the zoom: on phones the sheet drops to its peek.
+                peek();
             }
         } catch (error) {
             console.error("Error in handleZoomToLayer:", error);
@@ -267,13 +310,160 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
 
     const accordionValue = isUserExpanded ? "item-1" : "";
 
+    // The app title is the page's only h1, so a top-level entry is an h2 and its children h3s.
+    const headingLevel = isTopLevel ? 2 : 3;
+    const selectAllId = useId();
+
+
+    // --- Variant-Selector Group Rendering ---
+    // One entry with a segmented "surface" switch that keeps exactly one child
+    // selected at a time; the active child's own controls render below via an
+    // embedded LayerAccordionItem, so every per-layer behavior (legend, opacity,
+    // filters, stats, zoom) is reused rather than reimplemented.
+    if (layerConfig.type === 'group' && 'layers' in layerConfig && layerConfig.variantSelector) {
+        const variants = (layerConfig.layers ?? []).filter((v): v is LayerProps & { title: string } => Boolean(v.title));
+        const variantTitles = variants.map(v => v.title);
+        const selectedVariant = variants.find(v => selectedLayerTitles.has(v.title)) ?? null;
+        const isOn = selectedVariant !== null;
+        // Active surface: the selected one wins; else the user's last pick; else the first.
+        const activeTitle = selectedVariant?.title ?? variantActivePick ?? variantTitles[0];
+        const activeChild = variants.find(v => v.title === activeTitle) ?? variants[0];
+
+        const toggleOn = (checked: boolean) => {
+            if (checked && activeChild) setExclusiveSelection(activeChild.title, variantTitles);
+            else updateLayerSelection(variantTitles, false);
+            setIsUserExpanded(checked);
+        };
+        const pickVariant = (title: string) => {
+            setVariantActivePick(title);
+            setExclusiveSelection(title, variantTitles);
+            setIsUserExpanded(true);
+        };
+        // Radiogroup keyboard model: arrows/Home/End move selection (and focus)
+        // among the surfaces, wrapping at the ends.
+        const onVariantKeyDown = (e: React.KeyboardEvent, idx: number) => {
+            const n = variants.length;
+            let next = idx;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = (idx + 1) % n;
+            else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = (idx - 1 + n) % n;
+            else if (e.key === 'Home') next = 0;
+            else if (e.key === 'End') next = n - 1;
+            else return;
+            e.preventDefault();
+            const target = variants[next];
+            if (!target) return;
+            pickVariant(target.title);
+            const group = (e.currentTarget as HTMLElement).closest('[role="radiogroup"]');
+            group?.querySelectorAll<HTMLElement>('[role="radio"]')[next]?.focus();
+        };
+
+        return (
+            <div className={`mr-2 my-1 ${isTopLevel ? 'border border-secondary rounded' : ''}`}>
+                <Accordion
+                    type="single"
+                    collapsible
+                    value={accordionValue}
+                    onValueChange={(val) => setIsUserExpanded(val === 'item-1')}
+                >
+                    <AccordionItem value="item-1">
+                        <div className="relative flex items-center justify-between">
+                            {isTopLevel ? (
+                                <Switch
+                                    checked={isOn}
+                                    onCheckedChange={toggleOn}
+                                    aria-label={`Show ${layerConfig.title}`}
+                                    className="mx-2"
+                                />
+                            ) : (
+                                <Checkbox
+                                    checked={isOn}
+                                    onCheckedChange={(checked) => { if (typeof checked === 'boolean') toggleOn(checked); }}
+                                    aria-label={`Show ${layerConfig.title}`}
+                                    className="mx-2"
+                                />
+                            )}
+                            <AccordionHeader level={headingLevel} className="flex-1">
+                                <AccordionTrigger>
+                                    <div className={`text-left ${zoomHintPadding}`}>
+                                        <span className={`block text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}>{layerConfig.title}</span>
+                                        {layerSubtitle}
+                                    </div>
+                                </AccordionTrigger>
+                            </AccordionHeader>
+                            {zoomHintButton}
+                        </div>
+                        <AccordionContent>
+                            {variants.length > 1 && (
+                                <div className="mx-8 mb-1 mt-2">
+                                    {/* "Show on map" — a variantSelector picks which mutually-exclusive
+                                        variant the map paints; the label makes that explicit. */}
+                                    <div className="mb-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Show on map</div>
+                                    <div
+                                        role="radiogroup"
+                                        aria-label={`${layerConfig.title ?? 'Layer'}: choose a surface`}
+                                        className="inline-flex flex-wrap gap-0.5 rounded-md border border-border bg-muted/40 p-0.5"
+                                    >
+                                        {variants.map((v, i) => {
+                                            const active = v.title === activeTitle;
+                                            // Only paint the raised "selected" chip while the entry is
+                                            // actually on — a highlight with nothing on the map misleads.
+                                            const highlighted = active && isOn;
+                                            return (
+                                                <button
+                                                    key={v.title}
+                                                    type="button"
+                                                    role="radio"
+                                                    aria-checked={highlighted}
+                                                    tabIndex={active ? 0 : -1}
+                                                    title={v.title}
+                                                    onClick={() => pickVariant(v.title)}
+                                                    onKeyDown={(e) => onVariantKeyDown(e, i)}
+                                                    className={`rounded px-2 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 ${highlighted ? 'bg-background text-foreground shadow-sm ring-1 ring-border' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'}`}
+                                                >
+                                                    {v.variantLabel ?? v.title}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    {/* Plain-language explainer for the active surface — the switch
+                                        labels alone ("Cumulative"/"Yearly") are jargon. */}
+                                    {activeChild?.variantDescription && (
+                                        <p className="mt-1.5 text-xs leading-snug text-muted-foreground">{activeChild.variantDescription}</p>
+                                    )}
+                                </div>
+                            )}
+                            {activeChild && (
+                                // Key by the active surface so switching REMOUNTS the child:
+                                // its stats/SLD/threshold queries re-resolve for the new type
+                                // from a clean slate (reusing the instance left the KPIs stuck
+                                // on the previous surface's data). Trade-off: the open Filters
+                                // panel re-collapses on switch — acceptable vs. showing stale
+                                // numbers.
+                                <LayerAccordionItem
+                                    key={activeChild.title}
+                                    layerConfig={activeChild}
+                                    isTopLevel={false}
+                                    embedded
+                                    disableExport={disableExport}
+                                    groupExtrasRender={groupExtrasRender}
+                                    layerExtrasRender={layerExtrasRender}
+                                    layerStatsRender={layerStatsRender}
+                                    layerLegendRender={layerLegendRender}
+                                />
+                            )}
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            </div>
+        );
+    }
 
     // --- Group Layer Rendering ---
     if (layerConfig.type === 'group' && 'layers' in layerConfig) {
         const childLayers = [...(layerConfig.layers || [])];
 
         return (
-            <div className="mr-2 border border-secondary rounded my-1">
+            <div className="mr-2 border border-secondary rounded-md my-1">
                 <Accordion
                     type="single"
                     collapsible
@@ -281,44 +471,65 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                     onValueChange={(val) => setIsUserExpanded(val === "item-1")}
                 >
                     <AccordionItem value="item-1">
-                        <AccordionHeader>
+                        {/* Only the trigger sits in the heading: a screen reader jumping by
+                            heading would otherwise also announce the visibility control. */}
+                        <div className="flex items-center justify-between">
                             <Switch
                                 checked={isGroupLayerVisible}
                                 onCheckedChange={handleGroupVisibilityToggle}
+                                aria-label={`Show ${layerConfig.title} layers`}
                                 className="mx-2"
                             />
-                            <AccordionTrigger>
-                                <h3 className="font-medium text-left text-md">
-                                    {layerConfig.title}
-                                </h3>
+                            <AccordionHeader level={headingLevel} className="flex-1">
+                                <AccordionTrigger>
+                                <div className="text-left">
+                                    <span className="font-medium text-md">
+                                        {layerConfig.title}
+                                    </span>
+                                    {(layerConfig.subtitle ?? layerConfig.sourceAgency) && (
+                                        <p className="text-xs font-normal text-muted-foreground">
+                                            {layerConfig.subtitle ?? layerConfig.sourceAgency}
+                                        </p>
+                                    )}
+                                </div>
                             </AccordionTrigger>
-                        </AccordionHeader>
+                            </AccordionHeader>
+                        </div>
                         <AccordionContent>
                             {layerConfig.title && (
                                 <FiltersCollapsible
                                     content={groupExtrasRender?.(layerConfig.title)}
                                 />
                             )}
-                            <div className="flex items-center space-x-2">
+                            <div className="ml-4 flex items-center gap-2 px-2 py-1">
                                 <Checkbox
                                     checked={groupCheckboxState === 'all'}
                                     onCheckedChange={handleSelectAllToggle}
+                                    id={selectAllId}
+                                    aria-label={`Select all ${layerConfig.title} layers`}
                                 />
-                                <label className="text-sm font-medium italic">Select All</label>
+                                <label htmlFor={selectAllId} className="text-sm font-medium italic">Select All</label>
                             </div>
-                            {childLayers.map((child) => (
-                                <div className="ml-4" key={child.title}>
-                                    <LayerAccordionItem
-                                        disableExport={disableExport}
-                                        layerConfig={child}
-                                        isTopLevel={false}
-                                        groupExtrasRender={groupExtrasRender}
-                                        layerExtrasRender={layerExtrasRender}
-                                        layerStatsRender={layerStatsRender}
-                                        layerLegendRender={layerLegendRender}
-                                    />
-                                </div>
-                            ))}
+                            {childLayers.map((child, index) => {
+                                const heading = newSectionHeading(child, index > 0 ? childLayers[index - 1] : undefined);
+
+                                return (
+                                    <Fragment key={child.title || index}>
+                                        {heading && <SectionHeading heading={heading} isTopLevel={false} />}
+                                        <div className="ml-4">
+                                            <LayerAccordionItem
+                                                disableExport={disableExport}
+                                                layerConfig={child}
+                                                isTopLevel={false}
+                                                groupExtrasRender={groupExtrasRender}
+                                                layerExtrasRender={layerExtrasRender}
+                                                layerStatsRender={layerStatsRender}
+                                                layerLegendRender={layerLegendRender}
+                                            />
+                                        </div>
+                                    </Fragment>
+                                );
+                            })}
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>
@@ -338,8 +549,39 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
         ?? (isPMTilesLayer(layerConfig) ? <StacRenderLegend layer={layerConfig} /> : undefined);
 
     // --- Single Layer Rendering ---
+    const layerControls = (
+        <LayerControls
+            layerOpacity={isSelected ? (layerOpacityMap.get(layerConfig.title || '') ?? layerConfig.opacity ?? 0.8) : null}
+            handleOpacityChange={handleOpacityChange}
+            handleOpacityCommit={handleOpacityCommit}
+            title={layerConfig.title || ''}
+            description={layerDescriptions ? descriptionFor(layerDescriptions, layerConfig) : ''}
+            handleZoomToLayer={handleZoomToLayer}
+            url={extentOptions.type === 'wms' ? extentOptions.wmsUrl || '' : ''}
+            openLegend={embedded ? true : isUserExpanded}
+            layerName={extentOptions.type === 'wms' ? extentOptions.layerName : null}
+            customLegend={resolvedCustomLegend}
+            bivariateLegend={layerConfig.bivariateLegend}
+            arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
+            legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}
+            downloadParquetUrl={layerConfig.downloadParquetUrl}
+            relatedTables={relatedTables}
+            disableExport={disableExport}
+            filtersContent={layerConfig.title ? layerExtrasRender?.(layerConfig.title, layerConfig) : undefined}
+            statsContent={layerConfig.title ? layerStatsRender?.(layerConfig.title) : undefined}
+            styleName={isWMSLayer(layerConfig) ? layerConfig.styleName : undefined}
+            defaultFiltersOpen={embedded}
+        />
+    );
+
+    // Embedded (active child of a variantSelector group): the group already owns
+    // the header, zoom hint and switch, so render only the controls.
+    if (embedded) {
+        return <div className="mt-1">{layerControls}</div>;
+    }
+
     return (
-        <div className={`mr-2 my-1 ${isTopLevel ? 'border border-secondary rounded' : ''}`}>
+        <div className={`mr-2 my-1 ${isTopLevel ? 'border border-secondary rounded-md' : ''}`}>
             <Accordion
                 type="single"
                 collapsible
@@ -347,11 +589,12 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                 onValueChange={(val) => setIsUserExpanded(val === 'item-1')}
             >
                 <AccordionItem value="item-1">
-                    <AccordionHeader>
+                    <div className="relative flex items-center justify-between">
                         {isTopLevel ? (
                             <Switch
                                 checked={isSelected}
                                 onCheckedChange={handleLocalToggle}
+                                aria-label={`Show ${layerConfig.title}`}
                                 className="mx-2"
                             />
                         ) : (
@@ -362,47 +605,26 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
                                         handleLocalToggle(checked);
                                     }
                                 }}
+                                aria-label={`Show ${layerConfig.title}`}
                                 className="mx-2"
                             />
                         )}
-                        <AccordionTrigger>
-                            <h3
-                                className={`text-md font-medium text-left ${zoomHint ? 'text-muted-foreground italic' : ''}`}
-                            >
-                                {layerConfig.title}
-                            </h3>
+                        <AccordionHeader level={headingLevel} className="flex-1">
+                            <AccordionTrigger>
+                            <div className={`text-left ${zoomHintPadding}`}>
+                                <span
+                                    className={`block text-md font-medium ${zoomHint ? 'text-muted-foreground italic' : ''}`}
+                                >
+                                    {layerConfig.title}
+                                </span>
+                                {layerSubtitle}
+                            </div>
                         </AccordionTrigger>
-                    </AccordionHeader>
-                    {zoomHint && visibleZoomRange && (
-                        <div className="px-2 pb-2 -mt-1">
-                            <ZoomHintPill
-                                direction={zoomHint}
-                                range={visibleZoomRange}
-                                onClick={handleZoomToVisibleRange}
-                            />
-                        </div>
-                    )}
+                        </AccordionHeader>
+                        {zoomHintButton}
+                    </div>
                     <AccordionContent>
-                        <LayerControls
-                            layerOpacity={isSelected ? (layerOpacityMap.get(layerConfig.title || '') ?? layerConfig.opacity ?? 0.8) : null}
-                            handleOpacityChange={handleOpacityChange}
-                            handleOpacityCommit={handleOpacityCommit}
-                            title={layerConfig.title || ''}
-                            description={layerDescriptions ? layerDescriptions[layerConfig.title || ''] : ''}
-                            handleZoomToLayer={handleZoomToLayer}
-                            url={extentOptions.type === 'wms' ? extentOptions.wmsUrl || '' : ''}
-                            openLegend={isUserExpanded}
-                            layerName={extentOptions.type === 'wms' ? legendLayerName : null}
-                            layerLabels={legendLayerLabels}
-                            customLegend={resolvedCustomLegend}
-                            bivariateLegend={layerConfig.bivariateLegend}
-                            arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
-                            legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}
-                            downloadEntries={downloadEntries}
-                            disableExport={disableExport}
-                            filtersContent={layerConfig.title ? layerExtrasRender?.(layerConfig.title) : undefined}
-                            statsContent={layerConfig.title ? layerStatsRender?.(layerConfig.title) : undefined}
-                        />
+                        {layerControls}
                     </AccordionContent>
                 </AccordionItem>
             </Accordion>
@@ -411,25 +633,30 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, groupExtra
 };
 
 
-export const useCustomLayerList = ({ config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: { config: LayerProps[] | null; disableExport?: boolean; groupExtrasRender?: (groupTitle: string) => React.ReactNode; layerExtrasRender?: (layerTitle: string) => React.ReactNode; layerStatsRender?: (layerTitle: string) => React.ReactNode; layerLegendRender?: (layer: LayerProps) => React.ReactNode }) => {
+export const useCustomLayerList = ({ config, disableExport, hasLayerFilters, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender }: { config: LayerProps[] | null; disableExport?: boolean; hasLayerFilters?: (layerTitle: string) => boolean; groupExtrasRender?: (groupTitle: string) => React.ReactNode; layerExtrasRender?: (layerTitle: string, layer: LayerProps) => React.ReactNode; layerStatsRender?: (layerTitle: string) => React.ReactNode; layerLegendRender?: (layer: LayerProps) => React.ReactNode }) => {
 
     const layerList = useMemo(() => {
         if (!config) return [];
-        return [...config].map(layer => {
+        return [...config].map((layer, index) => {
+            const heading = newSectionHeading(layer, index > 0 ? config[index - 1] : undefined);
+
             return (
-                <LayerAccordionItem
-                    key={layer.title}
-                    layerConfig={layer}
-                    isTopLevel={true}
-                    disableExport={disableExport}
-                    groupExtrasRender={groupExtrasRender}
-                    layerExtrasRender={layerExtrasRender}
-                    layerStatsRender={layerStatsRender}
-                    layerLegendRender={layerLegendRender}
-                />
-            )
+                <Fragment key={layer.title || index}>
+                    {heading && <SectionHeading heading={heading} isTopLevel={true} />}
+                    <LayerAccordionItem
+                        layerConfig={layer}
+                        isTopLevel={true}
+                        disableExport={disableExport}
+                        hasLayerFilters={hasLayerFilters}
+                        groupExtrasRender={groupExtrasRender}
+                        layerExtrasRender={layerExtrasRender}
+                        layerStatsRender={layerStatsRender}
+                        layerLegendRender={layerLegendRender}
+                    />
+                </Fragment>
+            );
         });
-    }, [config, disableExport, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender]);
+    }, [config, disableExport, hasLayerFilters, groupExtrasRender, layerExtrasRender, layerStatsRender, layerLegendRender]);
 
     return layerList;
 };

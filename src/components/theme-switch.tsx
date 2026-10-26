@@ -1,19 +1,20 @@
 import { Moon, Sun } from 'lucide-react'
-import { useTheme } from '../context/theme-provider'
+import { useDarkTheme } from '@/hooks/use-dark-theme'
 import { Button } from './ui/button'
 
 export default function ThemeSwitch() {
-  const { theme, setTheme } = useTheme()
+  const { isDark, setDark } = useDarkTheme()
 
   return (
     <Button
       size='icon'
       variant='ghost'
       className='rounded-full'
-      onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+      aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+      onClick={() => setDark(!isDark)}
       data-tour="theme-switch"
     >
-      {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
+      {isDark ? <Sun size={20} /> : <Moon size={20} />}
     </Button>
   )
 }

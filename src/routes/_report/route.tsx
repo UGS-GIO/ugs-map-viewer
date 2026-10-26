@@ -7,7 +7,7 @@ export const Route = createFileRoute('/_report')({
 
 function ReportRootLayout() {
   return (
-    <Layout className="h-screen">
+    <Layout className="h-full">
       <Outlet />
     </Layout>
   )

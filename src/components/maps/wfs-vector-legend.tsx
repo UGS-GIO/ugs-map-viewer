@@ -1,31 +1,20 @@
 import { useSearch } from '@tanstack/react-router';
 import type { WFSLayerProps } from '@/lib/types/mapping-types';
+import { LegendSwatch } from '@/components/maps/legend-swatch-grid';
+import { LEGEND_ROW_CLASS } from '@/lib/legend/legend-layout';
 
 /**
  * Renders a legend for a client-side WFS vector layer. The legend's content
  * tracks the active symbology mode stored on the route's `vector_symbology`
  * search param. When the mode matches the layer's `iconSymbologyKey`, the
  * `pieGlyphLegend` swatches are shown; otherwise falls back to the
- * `circleColorMatch` swatches. Row shape matches the WMS legend (see
- * `legend-accordion.tsx`'s `LegendItem`).
+ * `circleColorMatch` swatches.
  */
 function LegendRow({ color, label, strokeColor }: { color: string; label: string; strokeColor?: string }) {
-    // Match WMS legend SVG dimensions (SYMBOL_CONSTANTS.SVG_WIDTH/HEIGHT) and point size
-    // so WFS swatches render at the same visual size as WMS ones in the legend list.
     return (
-        <div className="flex items-center space-x-2 py-1">
-            <span className="flex items-center justify-center w-8 min-w-8" aria-hidden>
-                <svg width="32" height="20" viewBox="0 0 32 20">
-                    <circle
-                        cx="16"
-                        cy="10"
-                        r="5"
-                        fill={color}
-                        stroke={strokeColor ?? '#000'}
-                        strokeWidth="1"
-                    />
-                </svg>
-            </span>
+        <div className={LEGEND_ROW_CLASS}>
+            {/* Ink from the swatch palette, not pure black: these sit on the panel, which is dark half the time. */}
+            <LegendSwatch color={color} stroke={strokeColor ?? '#333333'} />
             <span>{label}</span>
         </div>
     );

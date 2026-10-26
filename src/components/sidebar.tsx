@@ -1,63 +1,70 @@
-import { useEffect, useCallback, useState } from 'react';
-import { ChevronsLeft, ChevronLeft, Menu, X } from 'lucide-react';
-import { Layout } from './layout/layout';
-import { Button } from './ui/button';
+import { useCallback, useState } from 'react';
+import { ChevronsLeft, ChevronLeft } from 'lucide-react';
 import Nav from './nav';
 import { cn } from '@/lib/utils';
 import { useSidebar } from '@/hooks/use-sidebar';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { Link } from '@/components/ui/link';
 import { useGetSidebarLinks } from '@/hooks/use-get-sidebar-links';
-import { useGetCurrentPage } from '@/hooks/use-get-current-page';
-import { getAppTitle } from '@/lib/app-titles';
 import { NavSkeleton } from './sidebar/sidebar-skeleton';
-import { SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_MD, SIDEBAR_WIDTH_XL } from '@/context/sidebar-provider';
+import { SIDEBAR_WIDTH_MIN, SIDEBAR_WIDTH_MAX, SIDEBAR_WIDTH_MD, SIDEBAR_WIDTH_XL, SIDEBAR_WIDTH_COLLAPSED } from '@/context/sidebar-provider';
+
+const SIDEBAR_RESIZE_STEP = 24;
 
 interface SidebarProps extends React.HTMLAttributes<HTMLElement> { }
 
-export default function Sidebar({ className }: SidebarProps) {
-  const { navOpened, setNavOpened, isCollapsed, setIsCollapsed, sidebarWidthPx, setSidebarWidthPx } = useSidebar();
-  const { data: sidebarLinks, isLoading: areLinksLoading } = useGetSidebarLinks();
-  const currentPage = useGetCurrentPage();
-  const appTitle = getAppTitle(currentPage);
-  const [isDragging, setIsDragging] = useState(false);
-  const isMobile = useIsMobile();
+const clampWidth = (px: number) => Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, px));
 
-  // Use pixel width when expanded, icon width when collapsed (desktop only)
-  // On mobile, let CSS handle the width (w-full)
-  const sidebarStyle = isMobile ? undefined : (isCollapsed ? { width: '3.5rem' } : { width: `${sidebarWidthPx}px` });
+export default function Sidebar({ className }: SidebarProps) {
+  const { isCollapsed, setIsCollapsed, sidebarWidthPx, setSidebarWidthPx } = useSidebar();
+  const { data: sidebarLinks, isLoading: areLinksLoading } = useGetSidebarLinks();
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Hidden, not unmounted: unmounting would drop the layer groups' local expansion state on every collapse.
+  const showPanel = !isCollapsed;
+
+  // Collapsed shares one constant with MapShell so the sidebar and the map's margin can't drift.
+  const sidebarStyle = { width: `${isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : sidebarWidthPx}px` };
 
   // Get default width based on screen size
   const getDefaultWidth = useCallback(() => {
     return window.innerWidth >= 1280 ? SIDEBAR_WIDTH_XL : SIDEBAR_WIDTH_MD;
   }, []);
 
-  // Combined drag-to-resize and click-to-toggle handler
-  const handleResizeMouseDown = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+  const toggleCollapsed = useCallback(() => {
+    if (isCollapsed) {
+      setSidebarWidthPx(getDefaultWidth());
+      setIsCollapsed(false);
+    } else {
+      setIsCollapsed(true);
+    }
+  }, [isCollapsed, setIsCollapsed, setSidebarWidthPx, getDefaultWidth]);
+
+  // Drag to resize, click to toggle. The element carries `touch-none` so a touch drag resizes
+  // rather than scrolling the page.
+  const handleResizePointerDown = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
-    const isTouch = 'touches' in e;
-    const startX = isTouch ? e.touches[0].clientX : e.clientX;
+    const startX = e.clientX;
     const collapseThreshold = SIDEBAR_WIDTH_MIN - 50;
-    const dragThreshold = 5; // pixels before considering it a drag
+    const dragThreshold = 5; // px of travel before a press counts as a drag rather than a click
     let hasDragged = false;
     let expandedFromCollapsed = false;
 
-    // If collapsed, we'll expand on first drag movement
     const startWidth = isCollapsed ? SIDEBAR_WIDTH_MIN : sidebarWidthPx;
 
-    const onMove = (moveEvent: MouseEvent | TouchEvent) => {
-      const clientX = 'touches' in moveEvent ? moveEvent.touches[0].clientX : moveEvent.clientX;
-      const deltaX = clientX - startX;
+    const stop = () => {
+      setIsDragging(false);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onEnd);
+      window.removeEventListener('pointercancel', stop);
+    };
 
-      // Only start dragging after threshold
+    const onMove = (moveEvent: PointerEvent) => {
+      const deltaX = moveEvent.clientX - startX;
       if (!hasDragged && Math.abs(deltaX) < dragThreshold) return;
-
       if (!hasDragged) {
         setIsDragging(true);
         hasDragged = true;
       }
 
-      // First movement while collapsed - expand to min width
       if (isCollapsed && !expandedFromCollapsed) {
         setIsCollapsed(false);
         setSidebarWidthPx(SIDEBAR_WIDTH_MIN);
@@ -66,139 +73,114 @@ export default function Sidebar({ className }: SidebarProps) {
 
       const rawWidth = startWidth + deltaX;
 
-      // If dragged below collapse threshold, collapse to icons
       if (rawWidth < collapseThreshold) {
         setIsCollapsed(true);
-        setIsDragging(false);
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup', onEnd);
-        document.removeEventListener('touchmove', onMove);
-        document.removeEventListener('touchend', onEnd);
+        stop();
         return;
       }
 
-      const newWidth = Math.min(SIDEBAR_WIDTH_MAX, Math.max(SIDEBAR_WIDTH_MIN, rawWidth));
-      setSidebarWidthPx(newWidth);
+      setSidebarWidthPx(clampWidth(rawWidth));
     };
 
+    // Only a completed press toggles. A cancelled pointer (OS edge gesture, second touch, long
+    // press) unwinds through `stop` alone, or an aborted gesture would silently collapse the panel.
     const onEnd = () => {
-      setIsDragging(false);
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onEnd);
-      document.removeEventListener('touchmove', onMove);
-      document.removeEventListener('touchend', onEnd);
-
-      // If didn't drag, treat as click - toggle collapse
-      if (!hasDragged) {
-        if (isCollapsed) {
-          setSidebarWidthPx(getDefaultWidth());
-          setIsCollapsed(false);
-        } else {
-          setIsCollapsed(true);
-        }
-      }
+      stop();
+      if (!hasDragged) toggleCollapsed();
     };
 
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onEnd);
-    document.addEventListener('touchmove', onMove, { passive: false });
-    document.addEventListener('touchend', onEnd);
-  }, [isCollapsed, setIsCollapsed, sidebarWidthPx, setSidebarWidthPx, getDefaultWidth]);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onEnd);
+    window.addEventListener('pointercancel', stop);
+  }, [isCollapsed, setIsCollapsed, sidebarWidthPx, setSidebarWidthPx, toggleCollapsed]);
 
-  /* Make body not scrollable when navBar is opened */
-  useEffect(() => {
-    if (navOpened) {
-      document.body.classList.add('overflow-hidden');
-    } else {
-      document.body.classList.remove('overflow-hidden');
+  // The splitter is the only way to collapse or resize on desktop, so it has to work from the keyboard.
+  const handleResizeKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const { key } = e;
+
+    if (key === 'Enter' || key === ' ') {
+      e.preventDefault();
+      toggleCollapsed();
+      return;
     }
-  }, [navOpened]);
 
-  // Mobile menu click handler is simplified (no setTimeout needed unless for specific animation)
-  const handleMenuClick = () => {
-    setNavOpened((prev) => !prev);
-    // You can decide if you still want the collapse logic tied to the mobile menu
-    if (!isCollapsed) {
+    if (key === 'Home') {
+      e.preventDefault();
       setIsCollapsed(true);
+      return;
     }
-  };
+
+    if (key === 'End') {
+      e.preventDefault();
+      setIsCollapsed(false);
+      setSidebarWidthPx(SIDEBAR_WIDTH_MAX);
+      return;
+    }
+
+    if (key !== 'ArrowLeft' && key !== 'ArrowRight') return;
+    e.preventDefault();
+
+    const step = key === 'ArrowLeft' ? -SIDEBAR_RESIZE_STEP : SIDEBAR_RESIZE_STEP;
+
+    // Both branches mirror the drag: out of collapsed lands on the minimum, under it snaps shut.
+    if (isCollapsed) {
+      if (step > 0) {
+        setIsCollapsed(false);
+        setSidebarWidthPx(SIDEBAR_WIDTH_MIN);
+      }
+      return;
+    }
+
+    if (sidebarWidthPx + step < SIDEBAR_WIDTH_MIN) {
+      setIsCollapsed(true);
+      return;
+    }
+
+    setSidebarWidthPx(clampWidth(sidebarWidthPx + step));
+  }, [isCollapsed, setIsCollapsed, sidebarWidthPx, setSidebarWidthPx, toggleCollapsed]);
 
   return (
     <aside
+      aria-label="Map tools"
       className={cn(
-        "fixed left-0 right-0 top-0 z-50 w-full border-b md:border-b-0 md:border-r-2 md:border-r-muted md:bottom-0 md:right-auto md:h-svh",
+        "absolute bottom-0 left-0 top-0 z-50 h-full max-w-full border-r-2 border-r-muted",
         !isDragging && "transition-[width] duration-200 ease-linear",
         className
       )}
       style={sidebarStyle}
     >
-      <div
-        onClick={() => setNavOpened(false)}
-        className={`absolute inset-0 transition-opacity duration-700 ${navOpened ? 'h-svh opacity-50' : 'h-0 opacity-0'
-          } w-full bg-black md:hidden`}
-      />
-
-      <Layout fixed className={cn('md:h-full', navOpened && 'h-svh')}>
-        {/* Header */}
-        <Layout.Header
-          sticky
-          className={`z-50 flex justify-between shadow-sm px-4 md:px-1`}
-        >
-          <div className={`flex items-center ${!isCollapsed ? 'gap-4' : 'w-full'}`}>
-            <Link to="https://geology.utah.gov/" className="cursor-pointer flex items-center justify-center w-10">
-              <img
-                src='/logo_main.png'
-                alt='Utah Geological Survey Logo'
-                className={`transition-all duration-300 ${isCollapsed ? 'h-8 w-7' : 'h-8 w-[1.75rem]'}`}
-              />
-            </Link>
-            {!isCollapsed && (
-              <div className="flex flex-col justify-end truncate transition-all duration-300">
-                <span className='font-medium text-wrap'>{appTitle}</span>
-                <span className='text-sm'>Utah Geological Survey</span>
-              </div>
-            )}
-          </div>
-
-          {/* Toggle Button in mobile */}
-          <Button
-            variant='ghost'
-            size='icon'
-            className='md:hidden'
-            aria-label='Toggle Navigation'
-            aria-controls='sidebar-menu'
-            aria-expanded={navOpened}
-            onClick={handleMenuClick}
-          >
-            {navOpened ? <X /> : <Menu />}
-          </Button>
-        </Layout.Header>
-
+      <div className='flex h-full min-h-0 flex-col'>
         {/* Navigation links */}
         {areLinksLoading ?
-          <NavSkeleton className='hidden h-full flex-1 md:flex' />
+          <NavSkeleton id='sidebar-menu' className='flex h-full flex-1' />
           : <Nav
             id='sidebar-menu'
-            className={cn(
-              'h-full flex-1 overflow-hidden z-40',
-              navOpened ? 'max-h-screen' : 'max-h-0 py-0 md:max-h-screen md:py-2'
-            )}
-            closeNav={() => setNavOpened(!navOpened)}
+            className='h-full min-h-0 flex-1 overflow-hidden z-40 max-h-screen py-2'
             isCollapsed={isCollapsed}
+            showPanel={showPanel}
             setIsCollapsed={setIsCollapsed}
             links={sidebarLinks || []}
           />}
 
         {/* Combined toggle button + drag handle */}
         <div
-          onMouseDown={handleResizeMouseDown}
-          onTouchStart={handleResizeMouseDown}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize map tools"
+          aria-controls="sidebar-menu"
+          aria-valuenow={isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : Math.round(sidebarWidthPx)}
+          aria-valuemin={SIDEBAR_WIDTH_COLLAPSED}
+          aria-valuemax={SIDEBAR_WIDTH_MAX}
+          tabIndex={0}
+          onPointerDown={handleResizePointerDown}
+          onKeyDown={handleResizeKeyDown}
           className={cn(
             "absolute -right-3 top-1/2 -translate-y-1/2 z-[60] hidden md:flex",
             "w-6 h-12 items-center justify-center",
             "bg-background border border-border rounded-sm",
             "cursor-col-resize hover:bg-accent active:bg-accent",
-            "transition-colors duration-150 select-none"
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "transition-colors duration-150 select-none touch-none"
           )}
           title={isCollapsed ? 'Click to expand, drag to resize' : 'Click to collapse, drag to resize'}
         >
@@ -208,7 +190,7 @@ export default function Sidebar({ className }: SidebarProps) {
             <ChevronsLeft strokeWidth={1.5} className="h-5 w-5 pointer-events-none" />
           )}
         </div>
-      </Layout>
+      </div>
     </aside>
   );
 }

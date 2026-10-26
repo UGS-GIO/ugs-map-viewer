@@ -3,6 +3,7 @@ import { BivariateLegend } from '@/components/maps/bivariate-legend';
 import useLegendPreview, { type PreviewItem } from '@/hooks/use-legend-preview';
 import { useArcGisLegend } from '@/hooks/use-arcgis-legend';
 import { mountDomNode } from '@/lib/legend/mount-dom-node';
+import { LEGEND_ROW_CLASS, LEGEND_SWATCH_SLOT_CLASS } from '@/lib/legend/legend-layout';
 
 interface LegendAccordionProps {
     url: string;
@@ -12,21 +13,11 @@ interface LegendAccordionProps {
     bivariateLegend?: { xLabel: string; yLabel: string };
     arcgisUrl?: string;
     legendUnit?: string;
-    /** Maps a GeoServer sublayer name to a friendly heading, for delineating sublayers in a
-     * merged multi-sublayer legend. */
-    layerLabels?: Record<string, string>;
+    /** Optional SLD style name appended to GetLegendGraphic so the legend matches what the map renders. */
+    styleName?: string;
 }
 
 function LegendItem({ item }: { item: PreviewItem }) {
-    // Group heading row for a sublayer in a merged composite legend (no swatch).
-    if (item.sectionTitle) {
-        return (
-            <div className="text-xs font-semibold uppercase tracking-wide text-foreground/60 pt-2 pb-0.5 first:pt-0">
-                {item.sectionTitle}
-            </div>
-        );
-    }
-
     const html = item.html;
     if (!html) return null;
 
@@ -36,9 +27,9 @@ function LegendItem({ item }: { item: PreviewItem }) {
     }
 
     return (
-        <div className="flex items-center space-x-2 py-1">
+        <div className={LEGEND_ROW_CLASS}>
             <span
-                className="flex items-center justify-center w-8 min-w-8"
+                className={LEGEND_SWATCH_SLOT_CLASS}
                 aria-hidden
                 ref={mountDomNode(html)}
             />
@@ -47,9 +38,9 @@ function LegendItem({ item }: { item: PreviewItem }) {
     );
 }
 
-const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend, arcgisUrl, legendUnit, layerLabels }: LegendAccordionProps) => {
+const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend, arcgisUrl, legendUnit, styleName }: LegendAccordionProps) => {
     const skipFetch = !!customLegend || !!bivariateLegend || !!arcgisUrl;
-    const { preview, isLoading, error } = useLegendPreview(url, layerName ?? undefined, skipFetch, legendUnit, layerLabels);
+    const { preview, isLoading, error } = useLegendPreview(url, layerName ?? undefined, skipFetch, legendUnit, styleName);
     const { data: arcgisLegendItems, isLoading: arcgisLoading, error: arcgisError } = useArcGisLegend(arcgisUrl);
     // Use empty string instead of undefined to keep accordion controlled
     const accordionValue = isOpen ? "legend-accordion" : "";
@@ -74,15 +65,20 @@ const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend
                     {arcgisLoading && <div>Loading legend...</div>}
                     {arcgisError && <div>Error loading legend: {arcgisError.message}</div>}
                     {arcgisLegendItems?.map((item, index) => (
-                        <div key={index} className="flex items-center space-x-2 py-1">
-                            <img
-                                src={`data:${item.contentType};base64,${item.imageData}`}
-                                width={item.width}
-                                height={item.height}
-                                alt={item.label}
-                                className="min-w-5"
-                            />
-                            <span className="text-sm">{item.label}</span>
+                        <div key={index} className={LEGEND_ROW_CLASS}>
+                            {/* Server-rendered swatches are transparent wherever the symbol has no
+                                fill (a border-only class like "Private" is all transparency), so they
+                                get the same map-toned backing as the SVG symbols. */}
+                            <span className={LEGEND_SWATCH_SLOT_CLASS}>
+                                <img
+                                    src={`data:${item.contentType};base64,${item.imageData}`}
+                                    width={item.width}
+                                    height={item.height}
+                                    alt=""
+                                    className="legend-swatch min-w-5 rounded-[2px]"
+                                />
+                            </span>
+                            <span>{item.label}</span>
                         </div>
                     ))}
                 </>
@@ -91,8 +87,11 @@ const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend
 
         if (isLoading) return <div>Loading legend...</div>;
         if (error) return <div>Error loading legend: {error.message}</div>;
+        if (!preview || preview.length === 0) {
+            return <div className="text-xs text-muted-foreground italic">No legend available</div>;
+        }
 
-        return <>{preview?.map((item, i) => <LegendItem key={i} item={item} />)}</>;
+        return <>{preview.map((item, i) => <LegendItem key={i} item={item} />)}</>;
     };
 
     return (

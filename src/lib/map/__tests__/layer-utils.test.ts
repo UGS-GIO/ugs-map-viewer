@@ -13,8 +13,13 @@ import {
   flattenDataLayers,
   flattenDataLayersWithAncestors,
   resolveLeafVisibility,
+  isWithinZoomRange,
+  effectiveZoomRange,
   findAncestorGroupTitles,
+  buildFragmentLayerSpec,
+  zoomRangeToBounds,
 } from '../layer-utils'
+import { zoomForScale } from '../map-scale'
 import type {
   LayerProps,
   WMSLayerProps,
@@ -231,5 +236,145 @@ describe('findAncestorGroupTitles', () => {
 
   it('returns the ancestors of a group itself', () => {
     expect(findAncestorGroupTitles(tree, 'Inner')).toEqual(['Outer'])
+  })
+})
+
+// ── zoomRangeToBounds ────────────────────────────────────────────────
+
+describe('zoomRangeToBounds', () => {
+  it('returns empty when no range is set', () => {
+    expect(zoomRangeToBounds(undefined)).toEqual({})
+  })
+
+  it('maps [min, max] to minzoom/maxzoom, keeping a 0 bound', () => {
+    // Direct indexing (not `||`) so a legitimate zoom-0 min survives.
+    expect(zoomRangeToBounds([0, 12] as [number, number])).toEqual({ minzoom: 0, maxzoom: 12 })
+  })
+})
+
+// ── buildFragmentLayerSpec ───────────────────────────────────────────
+
+describe('buildFragmentLayerSpec', () => {
+  const opts = {
+    layerId: 'pmtiles-layer-Sections',
+    sourceId: 'pmtiles-sections',
+    sourceLayer: 'enmin_plss_sections',
+    metadata: { title: 'Sections', pmtilesLayer: true, pmtilesSourceId: 'pmtiles-sections' },
+    visible: true,
+  }
+
+  it('preserves every rendering property the fragment authored, including minzoom and unknown keys', () => {
+    // The regression guard: whatever a ugs-styles fragment sets must survive, so
+    // the next new property (or layer) can't silently vanish the way minzoom did.
+    const spec = buildFragmentLayerSpec(
+      {
+        id: 'frag-0',
+        type: 'line',
+        minzoom: 11.13,
+        paint: { 'line-color': '#000', 'line-width': 1 },
+        futureProp: 'keep-me',
+      },
+      opts,
+    )
+    expect(spec.type).toBe('line')
+    expect(spec.minzoom).toBe(11.13)
+    expect(spec.paint).toEqual({ 'line-color': '#000', 'line-width': 1 })
+    expect(spec.futureProp).toBe('keep-me')
+  })
+
+  it('overrides id and source with the injected viewer values', () => {
+    const spec = buildFragmentLayerSpec(
+      { id: 'frag-0', type: 'line', source: 'stale-source', paint: {} },
+      opts,
+    )
+    expect(spec.id).toBe(opts.layerId)
+    expect(spec.source).toBe(opts.sourceId)
+  })
+
+  it("injects the config source-layer when the fragment omits it, else keeps the fragment's", () => {
+    const injected = buildFragmentLayerSpec({ id: 'a', type: 'line', paint: {} }, opts)
+    expect(injected['source-layer']).toBe('enmin_plss_sections')
+    const authored = buildFragmentLayerSpec(
+      { id: 'a', type: 'line', 'source-layer': 'other', paint: {} },
+      opts,
+    )
+    expect(authored['source-layer']).toBe('other')
+  })
+
+  it('forces layout.visibility from `visible` while preserving other layout keys', () => {
+    const spec = buildFragmentLayerSpec(
+      { id: 'a', type: 'symbol', layout: { 'text-field': '{lab}', 'symbol-placement': 'point' }, paint: {} },
+      { ...opts, visible: false },
+    )
+    expect(spec.layout).toEqual({
+      'text-field': '{lab}',
+      'symbol-placement': 'point',
+      visibility: 'none',
+    })
+  })
+
+  it('keeps viewer metadata authoritative — fragment metadata does not leak through', () => {
+    const spec = buildFragmentLayerSpec(
+      { id: 'a', type: 'line', paint: {}, metadata: { legendHint: 'nope' } },
+      opts,
+    )
+    expect(spec.metadata).toEqual(opts.metadata)
+  })
+
+  it("takes the viewer's recomputed paint and filter, and keeps the fragment's when omitted", () => {
+    const overridden = buildFragmentLayerSpec(
+      { id: 'a', type: 'line', paint: { 'line-opacity': 1 }, filter: ['==', 'a', 1] },
+      { ...opts, paint: { 'line-opacity': 0.4 }, filter: ['all', ['==', 'a', 1], ['==', 'b', 2]] },
+    )
+    expect(overridden.paint).toEqual({ 'line-opacity': 0.4 })
+    expect(overridden.filter).toEqual(['all', ['==', 'a', 1], ['==', 'b', 2]])
+
+    const kept = buildFragmentLayerSpec(
+      { id: 'a', type: 'line', paint: { 'line-opacity': 1 }, filter: ['==', 'a', 1] },
+      opts,
+    )
+    expect(kept.paint).toEqual({ 'line-opacity': 1 })
+    expect(kept.filter).toEqual(['==', 'a', 1])
+  })
+
+  it("lets the config visibleZoomRange override the fragment's own minzoom", () => {
+    const spec = buildFragmentLayerSpec(
+      { id: 'a', type: 'line', minzoom: 11.13, paint: {} },
+      { ...opts, visibleZoomRange: [13, 20] as [number, number] },
+    )
+    expect(spec.minzoom).toBe(13)
+    expect(spec.maxzoom).toBe(20)
+  })
+})
+
+describe('isWithinZoomRange', () => {
+  it('draws everywhere when no range is set', () => {
+    expect(isWithinZoomRange(undefined, 3)).toBe(true)
+  })
+
+  it('treats minzoom as inclusive and maxzoom as exclusive, like MapLibre', () => {
+    expect(isWithinZoomRange([0, 11.85], 11.84)).toBe(true)
+    expect(isWithinZoomRange([0, 11.85], 11.85)).toBe(false)
+    expect(isWithinZoomRange([11, 22], 11)).toBe(true)
+    expect(isWithinZoomRange([11, 22], 10.9)).toBe(false)
+  })
+})
+
+describe('effectiveZoomRange', () => {
+  it('returns visibleZoomRange untouched when there is no maxScale', () => {
+    expect(effectiveZoomRange({ ...wmsLayer, visibleZoomRange: [11, 22] }, 39.5)).toEqual([11, 22])
+    expect(effectiveZoomRange(wmsLayer, 39.5)).toBeUndefined()
+  })
+
+  it('caps the top at the zoom where the map reaches 1:maxScale at that latitude', () => {
+    const layer = { ...wmsLayer, maxScale: 62_500 }
+    expect(effectiveZoomRange(layer, 37)).toEqual([0, zoomForScale(62_500, 37)])
+    expect(effectiveZoomRange(layer, 42)).toEqual([0, zoomForScale(62_500, 42)])
+    // Ground shrinks toward the pole, so 1:62,500 arrives at a lower zoom in northern Utah.
+    expect(effectiveZoomRange(layer, 42)![1]).toBeLessThan(effectiveZoomRange(layer, 37)![1])
+  })
+
+  it('keeps the lower of the configured max and the scale cap', () => {
+    expect(effectiveZoomRange({ ...wmsLayer, visibleZoomRange: [5, 10], maxScale: 62_500 }, 39.5)).toEqual([5, 10])
   })
 })

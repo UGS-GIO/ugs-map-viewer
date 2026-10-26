@@ -37,14 +37,14 @@ const MapCoordinates = () => {
     )
 
     return (
-        <div className="flex items-center space-x-1.5">
+        <div className="flex shrink-0 items-center space-x-1.5 whitespace-nowrap">
             <div className="flex items-center space-x-1.5">
                 <span className="text-xs md:text-sm text-muted-foreground">Lat:{' '}{coordinates.y}</span>
                 <span className="text-xs md:text-sm text-muted-foreground">Lon:{' '}{coordinates.x}</span>
                 <UnitSwitch />
                 <div className="h-3 md:h-4 w-px bg-border" aria-hidden="true" />
                 <span className="text-xs md:text-sm text-muted-foreground">
-                    Scale: 1:{addThousandsSeparator(scale?.toFixed(0).toString() || '')}
+                    Scale: {scale > 0 ? `1:${addThousandsSeparator(scale.toFixed(0))}` : '—'}
                 </span>
             </div>
         </div>

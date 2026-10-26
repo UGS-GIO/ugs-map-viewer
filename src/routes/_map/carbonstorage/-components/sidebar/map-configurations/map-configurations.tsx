@@ -1,5 +1,5 @@
 import React from 'react';
-import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useId, useRef } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
@@ -19,7 +19,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { BackToMenuButton } from '@/components/ui/back-to-menu-button';
 import { useMap } from '@/hooks/use-map';
 import { wellWithTopsWMSTitle } from '../../../-data/layers/layers';
 import { Badge } from '@/components/ui/badge';
@@ -283,10 +282,9 @@ const MapConfigurations = () => {
 
     return (
         <>
-            <BackToMenuButton />
             <div className='space-y-4 p-4 max-h-full overflow-y-auto'>
                 <div className="mb-4">
-                    <h3 className="text-lg font-medium">Map Configurations</h3>
+                    <h2 className="text-lg font-medium">Map Configurations</h2>
                 </div>
 
                 {/* Card for Coordinate Format */}
@@ -485,10 +483,13 @@ const WellFormationFilter = React.memo(({
         new Map(mappings.map(m => [m.value, m.label])),
         [mappings]
     );
+    const formationLabelId = useId();
+    const formationTriggerId = useId();
+    const operatorToggleId = useId();
 
     return (
         <div>
-            <Label className="text-sm font-medium text-muted-foreground mb-2 block">
+            <Label id={formationLabelId} className="text-sm font-medium text-muted-foreground mb-2 block">
                 {formationNameMappingConfig.label}
             </Label>
 
@@ -502,7 +503,7 @@ const WellFormationFilter = React.memo(({
                             OR
                         </span>
                         <Switch
-                            id="formation-operator-toggle"
+                            id={operatorToggleId}
                             checked={useAndOperator}
                             onCheckedChange={onOperatorChange}
                         />
@@ -514,7 +515,7 @@ const WellFormationFilter = React.memo(({
                         </span>
                     </div>
                     <Label
-                        htmlFor="formation-operator-toggle"
+                        htmlFor={operatorToggleId}
                         className="text-xs text-muted-foreground cursor-pointer"
                     >
                         {useAndOperator
@@ -556,6 +557,8 @@ const WellFormationFilter = React.memo(({
                         disabled={disabled || isLoading || !!error}
                         variant="outline"
                         role="combobox"
+                        id={formationTriggerId}
+                        aria-labelledby={`${formationLabelId} ${formationTriggerId}`}
                         aria-expanded={open}
                         className="w-full justify-between text-xs h-9"
                     >

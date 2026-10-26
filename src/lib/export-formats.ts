@@ -4,7 +4,42 @@
  * dropdown + handler dispatch both pick it up.
  */
 
+import type { RelatedTable } from '@/lib/types/mapping-types';
+import { isInternalColumn } from '@/lib/export-fields';
+
 export type ExportFormat = 'parquet' | 'geojson' | 'csv' | 'gpkg' | 'shp' | 'gdb' | 'fgb';
+
+// Optional despite `fieldLabel` being required: a config object built at runtime can still omit it.
+const columnPrefix = (label?: string): string =>
+    (label ?? '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'related';
+
+/** A projection name no other column has taken: the field, then label-prefixed, then numbered. */
+export const uniqueColumnName = (field: string, label: string | undefined, taken: Set<string>): string => {
+    let name = field;
+    if (taken.has(name)) name = `${columnPrefix(label)}_${field}`;
+    for (let n = 2; taken.has(name); n++) name = `${columnPrefix(label)}_${field}_${n}`;
+    taken.add(name);
+    return name;
+};
+
+/** The names merged tables will actually contribute, collisions resolved as the export resolves them. */
+export const mergedColumnNames = (mainColumns: string[], tables: RelatedTable[]): string[] => {
+    const taken = new Set(mainColumns);
+    const names: string[] = [];
+    for (const table of tables) {
+        for (const { field } of table.displayFields ?? []) {
+            // Same skip the join applies, or the warning counts columns the file never carries.
+            if (!field || isInternalColumn(field)) continue;
+            names.push(uniqueColumnName(field, table.fieldLabel, taken));
+        }
+    }
+    return names;
+};
+
+/** Merged into the exported file itself, rather than shipped as its own CSV. Parquet-backed only. */
+export const isCombinedTable = (table: RelatedTable): boolean =>
+    !!table.combineIntoExport && table.fetchMode === 'parquet'
+    && !!table.url && !!table.matchingField && !!table.targetField;
 
 /** Formats converted by gdal3.js rather than DuckDB — see `gdal-export.ts`. */
 export const GDAL_FORMATS = ['gpkg', 'shp', 'gdb', 'fgb'] as const;

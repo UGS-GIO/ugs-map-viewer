@@ -19,17 +19,18 @@ import type {
     SearchSourceConfig,
     PostgRESTConfig,
     MasqueradeConfig,
+    ParquetSearchConfig,
     Suggestion,
     QueryData,
     QueryResultWrapper,
     SearchComboboxHandle,
     SearchComboboxProps,
 } from './search-types';
-import { formatAddressCase, getDisplayValue, getSourceDisplayName, resultHasData, appendFunctionParams } from './search-utils';
-import { fetchMasqueradeSuggestions, fetchPostgRESTResults } from './search-fetchers';
+import { formatAddressCase, getDisplayValue, getSourceDisplayName, resultHasData, appendFunctionParams, resolveDefaultSourceIndex } from './search-utils';
+import { fetchMasqueradeSuggestions, fetchPostgRESTResults, fetchParquetResults, withParquetGeometry, prewarmParquetSources } from './search-fetchers';
 
 // Re-export types and handlers for consumers
-export type { SearchSourceConfig, MasqueradeConfig, PostgRESTConfig, SearchComboboxHandle, ExtendedGeometry } from './search-types';
+export type { SearchSourceConfig, MasqueradeConfig, PostgRESTConfig, ParquetSearchConfig, SearchComboboxHandle, ExtendedGeometry } from './search-types';
 export { handleSearchSelect, handleCollectionSelect } from './search-handlers';
 
 export const defaultMasqueradeConfig: SearchSourceConfig = {
@@ -45,12 +46,25 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
     onFeatureSelect,
     onCollectionSelect,
     className,
+    defaultSourceName,
 }, ref) {
+    // Source to pre-select on load / restore on clear; null = search all sources.
+    const defaultSourceIndex = useMemo(
+        () => resolveDefaultSourceIndex(config, defaultSourceName),
+        [config, defaultSourceName],
+    );
     const [open, setOpen] = useState(false);
+    // Opening the box is the first sign of intent — nothing loads for sessions that never search.
+    const handleOpenChange = useCallback((next: boolean) => {
+        setOpen(next);
+        if (next) {
+            prewarmParquetSources(config.filter((s): s is ParquetSearchConfig => s.type === 'parquet'));
+        }
+    }, [config]);
     const [inputValue, setInputValue] = useState('');
     const [search, setSearch] = useState('');
     const [debouncedSearch] = useDebounce(search, 500);
-    const [activeSourceIndex, setActiveSourceIndex] = useState<number | null>(null);
+    const [activeSourceIndex, setActiveSourceIndex] = useState<number | null>(defaultSourceIndex);
     const [isShaking, setIsShaking] = useState(false);
     const { map } = useMap();
     const commandRef = useRef<HTMLDivElement>(null);
@@ -103,10 +117,10 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
     const clearSearch = useCallback(() => {
         setInputValue('');
         setSearch('');
-        setActiveSourceIndex(null);
+        setActiveSourceIndex(defaultSourceIndex);
         setOpen(false);
         if (map) clearGraphics(map);
-    }, [map]);
+    }, [map, defaultSourceIndex]);
 
     useImperativeHandle(ref, () => ({ clear: clearSearch }), [clearSearch]);
 
@@ -120,10 +134,18 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
     // Typeahead queries — delegates to source-specific fetchers
     const queries = useQueries({
         queries: config.map((source, index) => ({
-            queryKey: queryKeys.sidebar.search(source.url, source.type, debouncedSearch, index),
+            queryKey: queryKeys.sidebar.search(
+                source.type === 'parquet' ? source.parquetUrl : source.url,
+                source.type,
+                debouncedSearch,
+                index,
+            ),
             queryFn: async (): Promise<QueryData> => {
                 if (source.type === 'masquerade') {
                     return fetchMasqueradeSuggestions(source, debouncedSearch);
+                }
+                if (source.type === 'parquet') {
+                    return fetchParquetResults(source, debouncedSearch);
                 }
                 return fetchPostgRESTResults(source, debouncedSearch, index);
             },
@@ -196,15 +218,23 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
             return;
         }
 
-        // PostgREST: use feature directly, or fetch geometry if missing
-        if (sourceConfig.type === 'postgREST' && 'type' in itemData && itemData.type === 'Feature') {
+        // PostgREST / Parquet: use feature directly, or fetch geometry if missing
+        if ((sourceConfig.type === 'postgREST' || sourceConfig.type === 'parquet') && 'type' in itemData && itemData.type === 'Feature') {
             const displayValue = getDisplayValue(itemData.properties, sourceConfig);
             setInputValue(displayValue || value);
-            ensureLayerVisibleByTitle(sourceConfig.layerName);
 
             let result: Feature<Geometry, GeoJsonProperties> | FeatureCollection<Geometry, GeoJsonProperties> | null = itemData;
 
-            if (!itemData.geometry && sourceConfig.functionName) {
+            if (!itemData.geometry && sourceConfig.type === 'parquet') {
+                try {
+                    const [withGeometry] = await withParquetGeometry(sourceConfig, [itemData]);
+                    if (withGeometry) result = withGeometry;
+                } catch (error) {
+                    console.error("Error fetching parquet geometry:", error);
+                }
+            }
+
+            if (!itemData.geometry && sourceConfig.type === 'postgREST' && sourceConfig.functionName) {
                 const searchValue = itemData.properties?.[sourceConfig.displayField];
                 if (searchValue) {
                     try {
@@ -226,7 +256,11 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                 }
             }
 
-            onFeatureSelect?.(result, sourceConfig.url, sourceIndex, searchConfig, map);
+            // After the fetch: enabling re-renders the map, racing fitBounds against the style reload.
+            ensureLayerVisibleByTitle(sourceConfig.layerName);
+
+            const sourceUrl = sourceConfig.type === 'parquet' ? sourceConfig.parquetUrl : sourceConfig.url;
+            onFeatureSelect?.(result, sourceUrl, sourceIndex, searchConfig, map);
         }
 
         setOpen(false);
@@ -253,20 +287,39 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
         let firstValidSourceUrl: string | null = null;
         let firstValidSourceIndex: number = -1;
         let needsGeometryFetch = false;
+        const layerTitlesToShow: string[] = [];
         const indicesToCheck = activeSourceIndex !== null ? [activeSourceIndex] : config.map((_, index) => index);
 
         for (const index of indicesToCheck) {
             const sourceResult = queryResults[index];
-            if (sourceResult?.data && sourceResult.type === 'postgREST' && 'features' in sourceResult.data && Array.isArray(sourceResult.data.features)) {
+            if (
+                sourceResult?.data &&
+                (sourceResult.type === 'postgREST' || sourceResult.type === 'parquet') &&
+                'features' in sourceResult.data &&
+                Array.isArray(sourceResult.data.features)
+            ) {
                 const sourceConfig = config[index];
-                if (sourceConfig?.type === 'postgREST' && sourceResult.data.features.length > 0) {
+                if (sourceConfig.type !== 'masquerade' && sourceResult.data.features.length > 0) {
                     allVisibleFeatures = allVisibleFeatures.concat(sourceResult.data.features);
                     if (firstValidSourceIndex === -1) {
-                        firstValidSourceUrl = sourceConfig.url;
+                        firstValidSourceUrl = sourceConfig.type === 'parquet' ? sourceConfig.parquetUrl : sourceConfig.url;
                         firstValidSourceIndex = index;
                     }
-                    if (!sourceResult.data.features[0]?.geometry) needsGeometryFetch = true;
-                    ensureLayerVisibleByTitle(sourceConfig.layerName);
+                    if (!sourceResult.data.features[0]?.geometry && sourceConfig.type === 'postgREST') needsGeometryFetch = true;
+                    if (sourceConfig.layerName) layerTitlesToShow.push(sourceConfig.layerName);
+                }
+            }
+        }
+
+        // Suggestions are geometry-free; resolve the visible set in one query.
+        if (allVisibleFeatures.length > 0 && firstValidSourceIndex !== -1) {
+            const parquetSource = searchConfig[firstValidSourceIndex];
+            if (parquetSource?.type === 'parquet' && !allVisibleFeatures[0]?.geometry) {
+                try {
+                    allVisibleFeatures = await withParquetGeometry(parquetSource, allVisibleFeatures);
+                } catch (error) {
+                    console.error('Error fetching parquet geometries for collection:', error);
+                    allVisibleFeatures = [];
                 }
             }
         }
@@ -288,6 +341,9 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                 }
             }
         }
+
+        // Same ordering as single selection — layers on, then one camera move.
+        layerTitlesToShow.forEach(ensureLayerVisibleByTitle);
 
         const combinedCollection = allVisibleFeatures.length > 0 ? featureCollection(allVisibleFeatures) : null;
 
@@ -311,7 +367,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
     };
 
     return (
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover open={open} onOpenChange={handleOpenChange}>
                 <div className="relative flex items-center">
                     <PopoverTrigger asChild>
                         <Button
@@ -430,10 +486,18 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                                     );
                                 }
 
-                                // PostgREST results
-                                if (sourceResult.type === 'postgREST' && sourceResult.data && 'features' in sourceResult.data) {
+                                // PostgREST / Parquet results
+                                if (
+                                    (sourceResult.type === 'postgREST' || sourceResult.type === 'parquet') &&
+                                    sourceResult.data &&
+                                    'features' in sourceResult.data
+                                ) {
                                     const features = sourceResult.data.features;
-                                    const postgRESTSource = source as PostgRESTConfig;
+                                    const isParquet = sourceResult.type === 'parquet';
+                                    const postgRESTSource = isParquet ? null : (source as PostgRESTConfig);
+                                    const parquetSource = isParquet ? (source as ParquetSearchConfig) : null;
+                                    const groupByField = postgRESTSource?.groupByField || parquetSource?.groupByField;
+                                    const groupLabels = postgRESTSource?.groupLabels || parquetSource?.groupLabels;
 
                                     const renderFeatureItems = (items: typeof features) =>
                                         items.map((feature, featureIndex) => {
@@ -451,10 +515,10 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                                             );
                                         });
 
-                                    if (postgRESTSource.groupByField) {
+                                    if (groupByField) {
                                         const groups = new Map<string, typeof features>();
                                         for (const feature of features) {
-                                            const groupKey = String(feature.properties?.[postgRESTSource.groupByField] ?? 'other');
+                                            const groupKey = String(feature.properties?.[groupByField] ?? 'other');
                                             const existing = groups.get(groupKey);
                                             if (existing) existing.push(feature);
                                             else groups.set(groupKey, [feature]);
@@ -463,7 +527,7 @@ const SearchCombobox = forwardRef<SearchComboboxHandle, SearchComboboxProps>(fun
                                         return Array.from(groups.entries()).map(([groupKey, groupFeatures]) => (
                                             <CommandGroup
                                                 key={`${sourceIndex}-${groupKey}`}
-                                                heading={postgRESTSource.groupLabels?.[groupKey] ?? groupKey}
+                                                heading={groupLabels?.[groupKey] ?? groupKey}
                                             >
                                                 {renderFeatureItems(groupFeatures)}
                                             </CommandGroup>

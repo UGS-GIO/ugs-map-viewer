@@ -16,6 +16,7 @@ interface DownloadableDataset {
     title: string;
     parquetUrl: string | null;
     relatedTables: RelatedTable[];
+    subtitle?: string;
     sourceAgency?: string;
     sourceUrl?: string;
 }
@@ -36,6 +37,7 @@ const collectDatasets = (layers: LayerProps[]): DownloadableDataset[] =>
             title: layer.title,
             parquetUrl: layer.downloadParquetUrl ?? null,
             relatedTables: relatedTablesOf(layer),
+            subtitle: layer.subtitle,
             sourceAgency: layer.sourceAgency,
             sourceUrl: layer.sourceUrl,
         }];
@@ -87,15 +89,15 @@ export function DatasetDownloads() {
     return (
         <div className="mx-2 mb-4 space-y-3">
             <div>
-                <h4 className="text-sm font-semibold">Download Datasets</h4>
+                <h3 className="text-sm font-semibold">Download Datasets</h3>
             </div>
             <ul className="grid grid-cols-[1fr_auto] items-start gap-x-2 gap-y-3">
                 {sorted.map(dataset => (
                     <li key={dataset.title} className="contents">
                         <span className="min-w-0 break-words leading-tight">
                             <span className="block text-sm">{dataset.title}</span>
-                            {dataset.sourceAgency && (
-                                <span className="block text-xs text-muted-foreground">{dataset.sourceAgency}</span>
+                            {(dataset.sourceAgency ?? dataset.subtitle) && (
+                                <span className="block text-xs text-muted-foreground">{dataset.sourceAgency ?? dataset.subtitle}</span>
                             )}
                         </span>
                         {dataset.parquetUrl
