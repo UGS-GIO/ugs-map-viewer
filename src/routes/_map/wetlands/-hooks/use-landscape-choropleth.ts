@@ -1,6 +1,7 @@
 import { useMemo, useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSearch } from '@tanstack/react-router'
+import { z } from 'zod'
 import {
   LANDSCAPE_GROUP_TITLE,
   LANDSCAPE_SCALES,
@@ -26,6 +27,25 @@ export const DEFAULT_LANDSCAPE_FILTER: LandscapeFilterState = {
   numClasses: 5,
   colorRamp: 'blues',
 }
+
+export const landscapeFilterSchema = z.object({
+  metric: z.string().catch(DEFAULT_LANDSCAPE_FILTER.metric).default(DEFAULT_LANDSCAPE_FILTER.metric),
+  classification: z
+    .enum(['quantile', 'equal-interval', 'natural-breaks'])
+    .catch(DEFAULT_LANDSCAPE_FILTER.classification)
+    .default(DEFAULT_LANDSCAPE_FILTER.classification),
+  numClasses: z
+    .coerce
+    .number()
+    .int()
+    .min(2)
+    .max(10)
+    .catch(DEFAULT_LANDSCAPE_FILTER.numClasses)
+    .default(DEFAULT_LANDSCAPE_FILTER.numClasses),
+  colorRamp: z.string().catch(DEFAULT_LANDSCAPE_FILTER.colorRamp).default(DEFAULT_LANDSCAPE_FILTER.colorRamp),
+})
+
+const EMPTY_OVERRIDES: Record<string, PMTilesStyleOverride> = {}
 
 export interface LegendBin {
   label: string
@@ -132,13 +152,9 @@ export function useLandscapeFilterState(): LandscapeFilterState {
   return useMemo(() => {
     if (!raw) return DEFAULT_LANDSCAPE_FILTER
     try {
-      const parsed = JSON.parse(raw) as Partial<LandscapeFilterState>
-      return {
-        metric: parsed.metric || DEFAULT_LANDSCAPE_FILTER.metric,
-        classification: parsed.classification || DEFAULT_LANDSCAPE_FILTER.classification,
-        numClasses: typeof parsed.numClasses === 'number' ? Math.min(10, Math.max(2, parsed.numClasses)) : DEFAULT_LANDSCAPE_FILTER.numClasses,
-        colorRamp: parsed.colorRamp || DEFAULT_LANDSCAPE_FILTER.colorRamp,
-      }
+      const parsed = JSON.parse(raw)
+      const validated = landscapeFilterSchema.safeParse(parsed)
+      return validated.success ? validated.data : DEFAULT_LANDSCAPE_FILTER
     } catch {
       return DEFAULT_LANDSCAPE_FILTER
     }
@@ -177,7 +193,7 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
 
     if (!layerTitle || !activeMetric) {
       return {
-        pmtilesStyleOverrides: {},
+        pmtilesStyleOverrides: EMPTY_OVERRIDES,
         legendData: null,
         filterState: effectiveFilterState,
         isLoading: false,
@@ -187,7 +203,7 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
 
     if (isError) {
       return {
-        pmtilesStyleOverrides: {},
+        pmtilesStyleOverrides: EMPTY_OVERRIDES,
         legendData: null,
         filterState: effectiveFilterState,
         isLoading: false,
@@ -236,7 +252,7 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
     const values = queryResult ?? []
     if (values.length === 0) {
       return {
-        pmtilesStyleOverrides: {},
+        pmtilesStyleOverrides: EMPTY_OVERRIDES,
         legendData: null,
         filterState: effectiveFilterState,
         isLoading,
@@ -310,8 +326,8 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
       let label: string
       if (start === end) {
         label = formatValue(start, activeMetric.unit)
-      } else if (i === 0 && start === 0 && breaks[0] > 0 && firstNonMin !== undefined && breaks[0] <= firstNonMin) {
-        label = formatValue(0, activeMetric.unit)
+      } else if (i === 0 && breaks[0] === firstNonMin) {
+        label = formatValue(start, activeMetric.unit)
       } else {
         label = `${formatValue(start, activeMetric.unit)} – ${formatValue(end, activeMetric.unit)}`
       }

@@ -11,7 +11,10 @@ import {
   HUC12_ECO_TITLE,
   ECOREGION_TITLE,
 } from '../-data/landscape-metrics'
-import { buildChoroplethStepExpression } from '../-hooks/use-landscape-choropleth'
+import {
+  buildChoroplethStepExpression,
+  landscapeFilterSchema,
+} from '../-hooks/use-landscape-choropleth'
 
 describe('Landscape classification breaks', () => {
   it('calculates equal interval breaks correctly', () => {
@@ -95,11 +98,14 @@ describe('Landscape classification breaks', () => {
       ...Array(40).fill(100),
     ]
     const breaks = computeClassBreaks('quantile', utahPctData, 5)
-    expect(breaks.length).toBeGreaterThanOrEqual(3)
-    for (let i = 0; i < breaks.length - 1; i++) {
-      expect(breaks[i]).toBeLessThan(breaks[i + 1])
-    }
-    expect(breaks[breaks.length - 1]).toBe(100)
+    expect(breaks).toEqual([5, 25, 75, 100])
+  })
+
+  it('handles spike at max only without collapsing classes', () => {
+    // 8 small values and 30 values of 100
+    const maxSpikeData = [1, 2, 3, 4, 5, 6, 7, 8, ...Array(30).fill(100)]
+    const breaks = computeClassBreaks('quantile', maxSpikeData, 5)
+    expect(breaks).toEqual([3, 5, 7, 100])
   })
 
   it('computeClassBreaks returns empty for uniform values', () => {
@@ -233,5 +239,30 @@ describe('Metric compatibility and scale switching', () => {
 
     const isMetricValidOnHuc12 = huc12Metrics.some((m) => m.value === trendMetric)
     expect(isMetricValidOnHuc12).toBe(true)
+  })
+})
+
+describe('landscapeFilterSchema', () => {
+  it('validates and supplies defaults for valid or partial filters', () => {
+    const parsed = landscapeFilterSchema.safeParse({ metric: 'lake_area', numClasses: 4 })
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      expect(parsed.data.metric).toBe('lake_area')
+      expect(parsed.data.classification).toBe('quantile')
+      expect(parsed.data.numClasses).toBe(4)
+      expect(parsed.data.colorRamp).toBe('blues')
+    }
+  })
+
+  it('falls back to default for invalid classification or out-of-range numClasses', () => {
+    const parsed = landscapeFilterSchema.safeParse({
+      classification: 'invalid-method',
+      numClasses: 99,
+    })
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      expect(parsed.data.classification).toBe('quantile')
+      expect(parsed.data.numClasses).toBe(5)
+    }
   })
 })

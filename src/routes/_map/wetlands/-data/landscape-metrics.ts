@@ -315,10 +315,7 @@ export function quantileBreaks(values: number[], numClasses: number): number[] {
         const idx = Math.min(interValues.length - 1, Math.floor((i * interValues.length) / kInter))
         interBreaks.push(interValues[idx])
       }
-      const raw = [posValues[0], ...interBreaks, maxVal]
-      return Array.from(new Set(raw))
-        .filter((b) => b > minVal && b <= maxVal)
-        .sort((a, b) => a - b)
+      return [posValues[0], ...interBreaks, maxVal]
     }
 
     // Subcase 1b: Spike at min only
@@ -328,21 +325,30 @@ export function quantileBreaks(values: number[], numClasses: number): number[] {
       const idx = Math.min(posValues.length - 1, Math.floor((i * posValues.length) / kPos))
       posBreaks.push(posValues[idx])
     }
-    const raw = [posValues[0], ...posBreaks]
-    return Array.from(new Set(raw))
-      .filter((b) => b > minVal && b <= maxVal)
-      .sort((a, b) => a - b)
+    return [posValues[0], ...posBreaks]
   }
 
-  // Case 2: Standard quantile sampling without boundary spike
+  // Case 2: Spike at maximum only
+  if (maxIsSpike) {
+    const nonMaxValues = values.slice(0, n - maxCount)
+    if (nonMaxValues.length === 0) return []
+
+    const kNonMax = numClasses - 1
+    const nonMaxBreaks: number[] = []
+    for (let i = 1; i < kNonMax; i++) {
+      const idx = Math.min(nonMaxValues.length - 1, Math.floor((i * nonMaxValues.length) / kNonMax))
+      nonMaxBreaks.push(nonMaxValues[idx])
+    }
+    return [...nonMaxBreaks, maxVal]
+  }
+
+  // Case 3: Standard quantile sampling without boundary spike
   const raw: number[] = []
   for (let i = 1; i < numClasses; i++) {
     const idx = Math.min(n - 1, Math.floor((i * n) / numClasses))
     raw.push(values[idx])
   }
-  return Array.from(new Set(raw))
-    .filter((b) => b > minVal && b <= maxVal)
-    .sort((a, b) => a - b)
+  return raw
 }
 
 export function naturalBreaks(values: number[], numClasses: number): number[] {
