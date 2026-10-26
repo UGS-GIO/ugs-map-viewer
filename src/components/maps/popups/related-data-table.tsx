@@ -143,7 +143,7 @@ export function RelatedDataTable({
                                 <TableCell key={cell.id} className="py-1.5 text-xs">
                                     {/* Size text to one line (the table already side-scrolls); wrap only past the cap. */}
                                     {typeof content === 'string'
-                                        ? <div className="w-max max-w-md break-words">{node}</div>
+                                        ? <div className="w-max max-w-xs break-words">{node}</div>
                                         : node}
                                 </TableCell>
                             );
