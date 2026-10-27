@@ -29,8 +29,6 @@ interface MapUrlState {
     pitch: number;
     bearing: number;
     setMapPosition: (lat: number, lon: number, zoom: number, pitch?: number, bearing?: number) => void;
-    terrain: boolean;
-    hillshade: boolean;
     filters?: Record<string, string>;
     popupCoords: PopupCoords | null;
     setPopupCoords: (coords: PopupCoords | null) => void;
@@ -238,8 +236,6 @@ export function useMapUrlSync({ onFiltersChange }: UseMapUrlSyncProps = {}): Map
         pitch: search.pitch ?? 0,
         bearing: search.bearing ?? 0,
         setMapPosition,
-        terrain: search.terrain ?? false,
-        hillshade: search.hillshade ?? false,
         filters: search.filters,
         popupCoords,
         setPopupCoords,

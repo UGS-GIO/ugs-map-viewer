@@ -1,7 +1,7 @@
-import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { useAppTerrain } from '@/hooks/use-app-terrain'
 
 const OPTIONS = [
   { key: 'terrain', label: 'Show 3D terrain' },
@@ -9,16 +9,7 @@ const OPTIONS = [
 ] as const
 
 export function TerrainCard() {
-  const navigate = useNavigate()
-  const search = useSearch({ from: '/_map' })
-
-  const handleChange = (key: (typeof OPTIONS)[number]['key'], checked: boolean) => {
-    navigate({
-      to: '.',
-      search: (prev) => ({ ...prev, [key]: checked || undefined }),
-      replace: true,
-    })
-  }
+  const settings = useAppTerrain()
 
   return (
     <Card>
@@ -30,7 +21,7 @@ export function TerrainCard() {
         {OPTIONS.map(({ key, label }) => (
           <div key={key} className="flex items-center justify-between gap-2">
             <Label htmlFor={`${key}-toggle`}>{label}</Label>
-            <Switch id={`${key}-toggle`} checked={search[key] ?? false} onCheckedChange={(checked) => handleChange(key, checked)} />
+            <Switch id={`${key}-toggle`} checked={settings[key]} onCheckedChange={(checked) => settings.setSetting(key, checked)} />
           </div>
         ))}
       </CardContent>

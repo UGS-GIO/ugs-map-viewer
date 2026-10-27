@@ -25,6 +25,7 @@ import { PROD_GEOSERVER_URL, POPUP_TITLES } from '@/lib/constants'
 import { useMap } from '@/hooks/use-map'
 import { useGetCurrentPage } from '@/hooks/use-get-current-page'
 import { useAppBasemaps } from '@/hooks/use-app-basemaps'
+import { useAppTerrain } from '@/hooks/use-app-terrain'
 import { MapChromeControls } from '@/components/maps/controls/map-chrome-controls'
 import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
@@ -313,7 +314,8 @@ export default function GenericMapContainer({
   const currentPage = useGetCurrentPage()
   const { defaultStyle: defaultBasemap } = useAppBasemaps()
   const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
-  const { viewMode, setViewMode, center, zoom, pitch, bearing, setMapPosition, basemap, terrain, hillshade, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
+  const { viewMode, setViewMode, center, zoom, pitch, bearing, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
+  const { terrain, hillshade } = useAppTerrain()
   // Phones select straight from the map, whatever a desktop link's `view` still says.
   const selectionView: ViewMode = isMobile ? 'map' : viewMode
   const phoneSheet = usePhoneSheet()
