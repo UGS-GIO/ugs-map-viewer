@@ -3,7 +3,8 @@ export interface AppTerrainConfig {
   hillshade: boolean;
 }
 
-export const DEFAULT_TERRAIN: AppTerrainConfig = { terrain: true, hillshade: true };
+// Off: both pull ~1.9 MB of DEM tiles, roughly doubling a phone's first load on slow 4G
+export const DEFAULT_TERRAIN: AppTerrainConfig = { terrain: false, hillshade: false };
 
 /** Per-app defaults for the Terrain card; the URL only records a choice that differs from these. */
 const APP_TERRAIN: Record<string, AppTerrainConfig> = {
