@@ -77,7 +77,10 @@ export function RelatedDataTable({
             id: df.field,
             accessorFn: (row) => sortKey(row[df.field]),
             header: df.label || df.field,
-            cell: ({ row }) => rendered[row.index][ci],
+            // Size cells to one line (the table already side-scrolls); wrap only past the cap.
+            cell: ({ row }) => (
+                <div className="w-max max-w-xs [overflow-wrap:anywhere]">{rendered[row.index][ci]}</div>
+            ),
             enableSorting: sortableCols[ci],
             sortUndefined: 'last',
             sortDescFirst: false, // first click = ascending for every column (TanStack defaults numbers to desc-first)
@@ -136,18 +139,11 @@ export function RelatedDataTable({
             <TableBody>
                 {table.getRowModel().rows.map(row => (
                     <TableRow key={row.id}>
-                        {row.getVisibleCells().map(cell => {
-                            const content = rendered[row.index][cell.column.getIndex()];
-                            const node = flexRender(cell.column.columnDef.cell, cell.getContext());
-                            return (
-                                <TableCell key={cell.id} className="py-1.5 text-xs">
-                                    {/* Size text to one line (the table already side-scrolls); wrap only past the cap. */}
-                                    {typeof content === 'string'
-                                        ? <div className="w-max max-w-xs break-words">{node}</div>
-                                        : node}
-                                </TableCell>
-                            );
-                        })}
+                        {row.getVisibleCells().map(cell => (
+                            <TableCell key={cell.id} className="py-1.5 text-xs">
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </TableCell>
+                        ))}
                     </TableRow>
                 ))}
             </TableBody>
