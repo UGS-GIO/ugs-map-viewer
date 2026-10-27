@@ -781,36 +781,16 @@ export default function DataMap({
   // Combine loading states
   const showLoading = isLoading || queryLoading
 
-  // Listen for contextmenu events on the map canvas
-  useEffect(() => {
-    const map = mapRef.current?.getMap()
-    if (!map) return
-
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault()
-      const rect = containerRef.current?.getBoundingClientRect()
-      if (!rect) return
-
-      const x = e.clientX - rect.left
-      const y = e.clientY - rect.top
-      const lngLat = map.unproject([x, y])
-
-      setContextMenuCoords({
-        lng: lngLat.lng,
-        lat: lngLat.lat,
-        screenX: e.clientX,
-        screenY: e.clientY,
-      })
-      setContextMenuOpen(true)
-    }
-
-    const canvas = map.getCanvas()
-    canvas.addEventListener('contextmenu', handleContextMenu)
-
-    return () => {
-      canvas.removeEventListener('contextmenu', handleContextMenu)
-    }
-  }, [styleLoaded]) // Re-run when style loads (map is ready)
+  // MapLibre's contextmenu waits for mouseup and skips right-drags, so tilting/rotating doesn't open the menu
+  const handleContextMenu = useCallback((e: MapLayerMouseEvent) => {
+    setContextMenuCoords({
+      lng: e.lngLat.lng,
+      lat: e.lngLat.lat,
+      screenX: e.originalEvent.clientX,
+      screenY: e.originalEvent.clientY,
+    })
+    setContextMenuOpen(true)
+  }, [])
 
   return (
     <>
@@ -838,6 +818,7 @@ export default function DataMap({
         boxZoom={false}
         attributionControl={false}
         onLoad={handleLoad}
+        onContextMenu={handleContextMenu}
       >
         {/* visualizePitch: compass shows tilt, and clicking it resets both pitch and bearing */}
         <NavigationControl position="top-left" visualizePitch />

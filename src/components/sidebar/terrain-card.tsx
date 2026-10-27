@@ -19,7 +19,7 @@ export function TerrainCard() {
     <Card>
       <CardHeader>
         <CardTitle>3D Terrain</CardTitle>
-        <CardDescription>Ctrl+drag or drag the compass to tilt the map.</CardDescription>
+        <CardDescription>Right-drag or Ctrl+drag to tilt and rotate. Click the compass to reset.</CardDescription>
       </CardHeader>
       <CardContent className="flex items-center justify-between gap-2">
         <Label htmlFor="terrain-toggle">Show 3D terrain</Label>
