@@ -1,6 +1,6 @@
 import { useRef, useMemo, useCallback, useState, useEffect } from 'react'
 import { useWfsLayerData, getWfsSourceId, queryWfsLayersInScreenBbox, queryWfsLayersAtPoint, type WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
-import Map, { AttributionControl, NavigationControl, Source, Layer, Marker, MapLayerMouseEvent } from 'react-map-gl/maplibre'
+import Map, { AttributionControl, Source, Layer, Marker, MapLayerMouseEvent } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import { useIsMobile } from '@/hooks/use-mobile'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -763,8 +763,6 @@ export default function DataMap({
         onLoad={handleLoad}
         onContextMenu={handleContextMenu}
       >
-        {/* visualizePitch: compass shows tilt, and clicking it resets both pitch and bearing */}
-        <NavigationControl position="top-left" visualizePitch />
         {/* Phones keep bottom-right for locate-me, in thumb reach, as Google Maps does. */}
         <AttributionControl compact={isMobile || undefined} position={isMobile ? 'bottom-left' : 'bottom-right'} />
 
