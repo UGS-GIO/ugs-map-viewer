@@ -1,4 +1,5 @@
 import React from 'react';
+import { TerrainCard } from '@/components/sidebar/terrain-card';
 import { useState, useMemo, useEffect, useCallback, useId, useRef } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
@@ -358,6 +359,7 @@ const MapConfigurations = () => {
                         />
                     </CardContent>
                 </Card>
+                <TerrainCard />
             </div>
         </>
     );

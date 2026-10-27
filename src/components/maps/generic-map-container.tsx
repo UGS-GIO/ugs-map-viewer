@@ -313,7 +313,7 @@ export default function GenericMapContainer({
   const currentPage = useGetCurrentPage()
   const { defaultStyle: defaultBasemap } = useAppBasemaps()
   const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
-  const { viewMode, setViewMode, center, zoom, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
+  const { viewMode, setViewMode, center, zoom, pitch, bearing, setMapPosition, basemap, terrain, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
   // Phones select straight from the map, whatever a desktop link's `view` still says.
   const selectionView: ViewMode = isMobile ? 'map' : viewMode
   const phoneSheet = usePhoneSheet()
@@ -637,6 +637,8 @@ export default function GenericMapContainer({
       layers={layersConfig}
       center={center}
       zoom={zoom}
+      pitch={pitch}
+      bearing={bearing}
       highlightFeatures={highlightedFeatures}
       onFeatureClick={(...args) => { setPopupCoords(null); handleFeatureClick(...args) }}
       onMoveEnd={setMapPosition}
@@ -647,6 +649,7 @@ export default function GenericMapContainer({
       pmtilesStyleOverrides={pmtilesStyleOverrides}
       onMapReady={handleMapReady}
       basemapId={basemap ?? defaultBasemap.id}
+      terrain={terrain}
       clickBufferBounds={clickBufferBounds}
       onClickBufferChange={handleClickBufferChange}
       featureBbox={featureBbox}

@@ -26,7 +26,10 @@ export interface FeatureBbox {
 interface MapUrlState {
     center: [number, number];
     zoom: number;
-    setMapPosition: (lat: number, lon: number, zoom: number) => void;
+    pitch: number;
+    bearing: number;
+    setMapPosition: (lat: number, lon: number, zoom: number, pitch?: number, bearing?: number) => void;
+    terrain: boolean;
     filters?: Record<string, string>;
     popupCoords: PopupCoords | null;
     setPopupCoords: (coords: PopupCoords | null) => void;
@@ -132,7 +135,7 @@ export function useMapUrlSync({ onFiltersChange }: UseMapUrlSyncProps = {}): Map
         };
     }, []);
 
-    const setMapPosition = useCallback((lat: number, lon: number, zoom: number) => {
+    const setMapPosition = useCallback((lat: number, lon: number, zoom: number, pitch = 0, bearing = 0) => {
         if (positionTimeoutRef.current) clearTimeout(positionTimeoutRef.current);
         positionTimeoutRef.current = setTimeout(() => {
             navigate({
@@ -142,6 +145,9 @@ export function useMapUrlSync({ onFiltersChange }: UseMapUrlSyncProps = {}): Map
                     lat: round6(lat),
                     lon: round6(lon),
                     zoom: Math.round(zoom * 100) / 100,
+                    // Flat, north-up is the default, so keep it out of the URL
+                    pitch: Math.round(pitch) || undefined,
+                    bearing: Math.round(bearing) || undefined,
                 }),
                 replace: true,
             });
@@ -228,7 +234,10 @@ export function useMapUrlSync({ onFiltersChange }: UseMapUrlSyncProps = {}): Map
     return {
         center,
         zoom: search.zoom,
+        pitch: search.pitch ?? 0,
+        bearing: search.bearing ?? 0,
         setMapPosition,
+        terrain: search.terrain ?? false,
         filters: search.filters,
         popupCoords,
         setPopupCoords,

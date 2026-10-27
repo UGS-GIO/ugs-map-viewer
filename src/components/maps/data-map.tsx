@@ -1,6 +1,6 @@
 import { useRef, useMemo, useCallback, useState, useEffect } from 'react'
 import { useWfsLayerData, getWfsSourceId, queryWfsLayersInScreenBbox, queryWfsLayersAtPoint, type WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
-import Map, { AttributionControl, NavigationControl, Source, Layer, Marker, MapLayerMouseEvent } from 'react-map-gl/maplibre'
+import Map, { AttributionControl, NavigationControl, Source, Layer, Marker, MapLayerMouseEvent, useControl } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import { useIsMobile } from '@/hooks/use-mobile'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -34,6 +34,41 @@ import type { ClickedFeature, DataMapProps } from './types'
 import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
 import { toast } from 'sonner'
+
+// Spike: free AWS Terrarium DEM; swap for a USGS 3DEP tileset if this ships.
+const TERRAIN = { source: 'terrain-dem', exaggeration: 1.5 }
+
+// react-map-gl's terrain prop can't turn terrain off (undefined is a no-op), so set it here and
+// re-attach after basemap swaps, once react-map-gl has re-added the DEM source.
+function Terrain3D() {
+  useControl(() => {
+    const attach = ({ target }: { target: maplibregl.Map }) => {
+      if (target.getSource(TERRAIN.source) && !target.getTerrain()) target.setTerrain(TERRAIN)
+    }
+    return {
+      onAdd(map: maplibregl.Map) {
+        map.on('sourcedata', attach)
+        attach({ target: map })
+        return document.createElement('div')
+      },
+      onRemove(map: maplibregl.Map) {
+        map.off('sourcedata', attach)
+        map.setTerrain(null)
+      },
+    }
+  })
+  return (
+    <Source
+      id={TERRAIN.source}
+      type="raster-dem"
+      tiles={['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png']}
+      encoding="terrarium"
+      tileSize={256}
+      maxzoom={15}
+      attribution='<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain: Mapzen/AWS</a>'
+    />
+  )
+}
 
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps, PMTilesStyleOverride } from './types'
@@ -252,6 +287,8 @@ export default function DataMap({
   highlightFeatures = [],
   onFeatureClick,
   onMoveEnd,
+  pitch,
+  bearing,
   clickTolerance = DEFAULT_CLICK_TOLERANCE,
   isLoading = false,
   isAdditiveMode = false,
@@ -276,6 +313,7 @@ export default function DataMap({
   pmtilesStyleOverrides = {},
   onMapReady,
   basemapId,
+  terrain,
   clickBufferBounds,
   onClickBufferChange,
   featureBbox,
@@ -573,6 +611,8 @@ export default function DataMap({
     longitude?: number
     latitude?: number
     zoom?: number
+    pitch?: number
+    bearing?: number
     bounds?: [[number, number], [number, number]]
     fitBoundsOptions?: { padding: number; maxZoom?: number }
   } | null>(null)
@@ -581,10 +621,12 @@ export default function DataMap({
     if (bbox) {
       initialViewRef.current = {
         bounds: [bbox.sw, bbox.ne],
-        fitBoundsOptions: { padding: 50, maxZoom: 14 }
+        fitBoundsOptions: { padding: 50, maxZoom: 14 },
+        pitch,
+        bearing,
       }
     } else {
-      initialViewRef.current = { longitude: center[0], latitude: center[1], zoom }
+      initialViewRef.current = { longitude: center[0], latitude: center[1], zoom, pitch, bearing }
     }
   }
   const initialView = initialViewRef.current
@@ -632,7 +674,7 @@ export default function DataMap({
     syncViewLatitude()
     // Only trigger re-render when the box-select validity threshold is crossed
     setIsBoxSelectZoomValid(mapZoom >= BOX_SELECT_MIN_ZOOM)
-    onMoveEnd?.(mapCenter.lat, mapCenter.lng, mapZoom)
+    onMoveEnd?.(mapCenter.lat, mapCenter.lng, mapZoom, map.getPitch(), map.getBearing())
   }, [onMoveEnd, syncViewLatitude])
 
   // Handle box select confirmation - calculate geographic bbox, store it, and trigger query
@@ -773,6 +815,7 @@ export default function DataMap({
         attributionControl={false}
         onLoad={handleLoad}
       >
+        {terrain && <Terrain3D />}
         <NavigationControl position="top-left" />
         {/* Phones keep bottom-right for locate-me, in thumb reach, as Google Maps does. */}
         <AttributionControl compact={isMobile || undefined} position={isMobile ? 'bottom-left' : 'bottom-right'} />
