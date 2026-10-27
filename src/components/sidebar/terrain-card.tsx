@@ -15,7 +15,7 @@ export function TerrainCard() {
     <Card>
       <CardHeader>
         <CardTitle>Terrain</CardTitle>
-        <CardDescription>In 3D, right-drag or Ctrl+drag to tilt and rotate. Click the compass to reset.</CardDescription>
+        <CardDescription>In 3D, tilt with right-drag or Ctrl+drag, or a two-finger drag on phones. Click the compass to reset.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         {OPTIONS.map(({ key, label }) => (

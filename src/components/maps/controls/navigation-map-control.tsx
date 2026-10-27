@@ -23,7 +23,8 @@ export function NavigationMapControl() {
   return createPortal(
     <button
       type="button"
-      className="text-xs font-bold aria-pressed:text-primary"
+      // Same active fill as ControlButton
+      className="text-xs font-bold aria-pressed:!bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:!bg-primary/90"
       title={terrain ? 'Switch to 2D' : 'Switch to 3D'}
       aria-label={terrain ? 'Switch to 2D' : 'Switch to 3D'}
       aria-pressed={terrain}
