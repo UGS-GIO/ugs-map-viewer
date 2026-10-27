@@ -883,7 +883,8 @@ const geochemFieldsConfig: PMTilesLayerProps = {
     sourceLayer: geochemFieldsLayerName,
     title: 'Rock Property Data: Fields',
     visible: false,
-    opacity: 1,
+    // Slider value replaces the style's fill-opacity, so set it see-through here.
+    opacity: 0.5,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
@@ -1505,7 +1506,6 @@ const subsurfaceDataConfig: LayerProps = {
     layers: [
         wellWithTopsWMSConfig,
         geochemWellsConfig,
-        geochemFieldsConfig,
         // UCRC inventory replaces the old WMS cores layer (ALL-4356). popupFooterLink is set here
         // (not the shared config) so the per-well subsurface deep link is carbonstorage-only.
         {
@@ -1528,6 +1528,8 @@ const subsurfaceDataConfig: LayerProps = {
         geothermalSpringsJoinsConfig,
         geothermalWellsJoinsConfig,
         nonpetrolWellsConfig,
+        // Last so the field polygons draw under every point layer.
+        geochemFieldsConfig,
     ]
 }
 
