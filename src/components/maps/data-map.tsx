@@ -19,6 +19,7 @@ import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
 import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
 import type * as maplibregl from 'maplibre-gl'
+import type { RasterDEMSourceSpecification } from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 
 import { useCogRange } from '@/hooks/use-cog-metadata'
@@ -37,10 +38,18 @@ import { toast } from 'sonner'
 
 // Spike: free AWS Terrarium DEM; swap for a USGS 3DEP tileset if this ships.
 const TERRAIN = { source: 'terrain-dem', exaggeration: 1.5 }
+const DEM_SOURCE: RasterDEMSourceSpecification = {
+  type: 'raster-dem',
+  tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+  encoding: 'terrarium',
+  tileSize: 256,
+  maxzoom: 15,
+  attribution: '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain: Mapzen/AWS</a>',
+}
 
 // react-map-gl's terrain prop can't turn terrain off (undefined is a no-op), so set it here and
 // re-attach after basemap swaps, once react-map-gl has re-added the DEM source.
-function Terrain3D() {
+function Terrain3D({ beforeId }: { beforeId: string | undefined }) {
   useControl(() => {
     const attach = ({ target }: { target: maplibregl.Map }) => {
       if (target.getSource(TERRAIN.source) && !target.getTerrain()) target.setTerrain(TERRAIN)
@@ -53,20 +62,24 @@ function Terrain3D() {
       },
       onRemove(map: maplibregl.Map) {
         map.off('sourcedata', attach)
-        map.setTerrain(null)
+        // Unmounting before the style loads (StrictMode) leaves nothing to clear, and setTerrain would throw
+        if (map.getTerrain()) map.setTerrain(null)
       },
     }
   })
   return (
-    <Source
-      id={TERRAIN.source}
-      type="raster-dem"
-      tiles={['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png']}
-      encoding="terrarium"
-      tileSize={256}
-      maxzoom={15}
-      attribution='<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain: Mapzen/AWS</a>'
-    />
+    <>
+      <Source id={TERRAIN.source} {...DEM_SOURCE} />
+      {/* Separate source: MapLibre renders hillshade blurry when it shares the terrain DEM */}
+      <Source id="hillshade-dem" {...DEM_SOURCE}>
+        <Layer
+          id="terrain-hillshade"
+          type="hillshade"
+          beforeId={beforeId}
+          paint={{ 'hillshade-exaggeration': 0.4, 'hillshade-shadow-color': '#473B24' }}
+        />
+      </Source>
+    </>
   )
 }
 
@@ -815,8 +828,8 @@ export default function DataMap({
         attributionControl={false}
         onLoad={handleLoad}
       >
-        {terrain && <Terrain3D />}
-        <NavigationControl position="top-left" />
+        {/* visualizePitch: compass shows tilt, and clicking it resets both pitch and bearing */}
+        <NavigationControl position="top-left" visualizePitch />
         {/* Phones keep bottom-right for locate-me, in thumb reach, as Google Maps does. */}
         <AttributionControl compact={isMobile || undefined} position={isMobile ? 'bottom-left' : 'bottom-right'} />
 
@@ -913,6 +926,9 @@ export default function DataMap({
           }
           return null
         })}
+
+        {/* After the data layers so the hillshade can slot in beneath the bottom one */}
+        {terrain && <Terrain3D beforeId={renderableEntries.length ? getLayerId(renderableEntries[renderableEntries.length - 1].layer) : undefined} />}
 
         {/* Highlight layers */}
         <HighlightLayers features={highlightFeatures} />
