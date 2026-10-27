@@ -47,12 +47,30 @@ const DEM_SOURCE: RasterDEMSourceSpecification = {
   attribution: '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain: Mapzen/AWS</a>',
 }
 
+const HILLSHADE: maplibregl.HillshadeLayerSpecification = {
+  id: 'terrain-hillshade',
+  type: 'hillshade',
+  // Separate source: MapLibre renders hillshade blurry when it shares the terrain DEM
+  source: 'hillshade-dem',
+  paint: { 'hillshade-exaggeration': 0.4, 'hillshade-shadow-color': '#473B24' },
+}
+
 // react-map-gl's terrain prop can't turn terrain off (undefined is a no-op), so set it here and
-// re-attach after basemap swaps, once react-map-gl has re-added the DEM source.
-function Terrain3D({ beforeId }: { beforeId: string | undefined }) {
+// re-attach after basemap swaps, once react-map-gl has re-added the DEM sources.
+// Hillshade goes under the basemap's labels; raster basemaps have none, so under the bottom data layer.
+function Terrain3D({ bottomDataLayerId }: { bottomDataLayerId: string | undefined }) {
+  const bottomDataLayerIdRef = useRef(bottomDataLayerId)
+  bottomDataLayerIdRef.current = bottomDataLayerId
+
   useControl(() => {
     const attach = ({ target }: { target: maplibregl.Map }) => {
       if (target.getSource(TERRAIN.source) && !target.getTerrain()) target.setTerrain(TERRAIN)
+      if (!target.getSource(HILLSHADE.source) || target.getLayer(HILLSHADE.id)) return
+      const firstLabelId = target.getStyle().layers.find((l) => l.type === 'symbol')?.id
+      const beforeId = firstLabelId ?? bottomDataLayerIdRef.current
+      // Data layers re-mount after a basemap swap; wait for the next sourcedata rather than land on top
+      if (beforeId && !target.getLayer(beforeId)) return
+      target.addLayer(HILLSHADE, beforeId)
     }
     return {
       onAdd(map: maplibregl.Map) {
@@ -62,6 +80,7 @@ function Terrain3D({ beforeId }: { beforeId: string | undefined }) {
       },
       onRemove(map: maplibregl.Map) {
         map.off('sourcedata', attach)
+        if (map.getLayer(HILLSHADE.id)) map.removeLayer(HILLSHADE.id)
         // Unmounting before the style loads (StrictMode) leaves nothing to clear, and setTerrain would throw
         if (map.getTerrain()) map.setTerrain(null)
       },
@@ -70,15 +89,7 @@ function Terrain3D({ beforeId }: { beforeId: string | undefined }) {
   return (
     <>
       <Source id={TERRAIN.source} {...DEM_SOURCE} />
-      {/* Separate source: MapLibre renders hillshade blurry when it shares the terrain DEM */}
-      <Source id="hillshade-dem" {...DEM_SOURCE}>
-        <Layer
-          id="terrain-hillshade"
-          type="hillshade"
-          beforeId={beforeId}
-          paint={{ 'hillshade-exaggeration': 0.4, 'hillshade-shadow-color': '#473B24' }}
-        />
-      </Source>
+      <Source id={HILLSHADE.source} {...DEM_SOURCE} />
     </>
   )
 }
@@ -927,8 +938,8 @@ export default function DataMap({
           return null
         })}
 
-        {/* After the data layers so the hillshade can slot in beneath the bottom one */}
-        {terrain && <Terrain3D beforeId={renderableEntries.length ? getLayerId(renderableEntries[renderableEntries.length - 1].layer) : undefined} />}
+        {/* After the data layers so they're mounted when the hillshade looks for the bottom one */}
+        {terrain && <Terrain3D bottomDataLayerId={renderableEntries.length ? getLayerId(renderableEntries[renderableEntries.length - 1].layer) : undefined} />}
 
         {/* Highlight layers */}
         <HighlightLayers features={highlightFeatures} />
