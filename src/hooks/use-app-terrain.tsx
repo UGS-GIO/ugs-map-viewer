@@ -1,26 +1,27 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useGetCurrentPage } from '@/hooks/use-get-current-page';
-import { resolveAppTerrain, type AppTerrainConfig } from '@/lib/terrain';
+import { useMapInstance } from '@/context/map-instance-context';
+import { resolveAppTerrain } from '@/lib/terrain';
 
-/** Terrain and hillshade for the app being viewed: the URL's choice, else the app's default. */
+const TILT_3D = 60;
+
+/** 3D (terrain + hillshade) for the app being viewed: the URL's choice, else the app's default. */
 export function useAppTerrain() {
-    const defaults = resolveAppTerrain(useGetCurrentPage());
+    const defaultTerrain = resolveAppTerrain(useGetCurrentPage());
     const search = useSearch({ from: '/_map' });
     const navigate = useNavigate();
+    const { map } = useMapInstance();
 
-    const settings: AppTerrainConfig = {
-        terrain: search.terrain ?? defaults.terrain,
-        hillshade: search.hillshade ?? defaults.hillshade,
-    };
-
-    const setSetting = (key: keyof AppTerrainConfig, value: boolean) => {
+    const setTerrain = (value: boolean) => {
         navigate({
             to: '.',
             // Matching the default drops the param, so links stay short and follow later default changes
-            search: (prev) => ({ ...prev, [key]: value === defaults[key] ? undefined : value }),
+            search: (prev) => ({ ...prev, terrain: value === defaultTerrain ? undefined : value }),
             replace: true,
         });
+        // Tilt on the way in so the switch visibly does something; flatten on the way out
+        map?.easeTo(value ? { pitch: TILT_3D } : { pitch: 0, bearing: 0 });
     };
 
-    return { ...settings, setSetting };
+    return { terrain: search.terrain ?? defaultTerrain, setTerrain };
 }

@@ -1,13 +1,8 @@
-export interface AppTerrainConfig {
-  terrain: boolean;
-  hillshade: boolean;
-}
+// Off: 3D pulls ~1.9 MB of DEM tiles, roughly doubling a phone's first load on slow 4G
+export const DEFAULT_TERRAIN = false;
 
-// Off: both pull ~1.9 MB of DEM tiles, roughly doubling a phone's first load on slow 4G
-export const DEFAULT_TERRAIN: AppTerrainConfig = { terrain: false, hillshade: false };
-
-/** Per-app defaults for the Terrain card; the URL only records a choice that differs from these. */
-const APP_TERRAIN: Record<string, AppTerrainConfig> = {
+/** Per-app 3D default (terrain + hillshade); the URL only records a choice that differs from it. */
+const APP_TERRAIN: Record<string, boolean> = {
   hazards: DEFAULT_TERRAIN,
   'hazards-review': DEFAULT_TERRAIN,
   carbonstorage: DEFAULT_TERRAIN,
@@ -18,7 +13,7 @@ const APP_TERRAIN: Record<string, AppTerrainConfig> = {
   wetlandplants: DEFAULT_TERRAIN,
 };
 
-/** Resolve an app's terrain defaults from its route segment (e.g. 'hazards'). */
-export function resolveAppTerrain(page: string): AppTerrainConfig {
+/** Resolve an app's 3D default from its route segment (e.g. 'hazards'). */
+export function resolveAppTerrain(page: string): boolean {
   return APP_TERRAIN[page] ?? DEFAULT_TERRAIN;
 }
