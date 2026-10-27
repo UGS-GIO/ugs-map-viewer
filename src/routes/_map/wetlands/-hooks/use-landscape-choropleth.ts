@@ -5,45 +5,33 @@ import { z } from 'zod'
 import {
   LANDSCAPE_GROUP_TITLE,
   LANDSCAPE_SCALES,
+  CLASSIFICATION_METHODS,
+  MIN_CLASSES,
+  MAX_CLASSES,
   getStacItemIdForScale,
   resolveMetricsForLayer,
   computeClassBreaks,
   getColorRampColors,
-  type ClassificationMethod,
   type LandscapeMetric,
 } from '../-data/landscape-metrics'
 import type { PMTilesStyleOverride } from '@/components/maps/types'
 
-export interface LandscapeFilterState {
-  metric: string
-  classification: ClassificationMethod
-  numClasses: number
-  colorRamp: string
-}
-
-export const DEFAULT_LANDSCAPE_FILTER: LandscapeFilterState = {
-  metric: 'utah_percent',
-  classification: 'quantile',
-  numClasses: 5,
-  colorRamp: 'blues',
-}
-
 export const landscapeFilterSchema = z.object({
-  metric: z.string().catch(DEFAULT_LANDSCAPE_FILTER.metric).default(DEFAULT_LANDSCAPE_FILTER.metric),
-  classification: z
-    .enum(['quantile', 'equal-interval', 'natural-breaks'])
-    .catch(DEFAULT_LANDSCAPE_FILTER.classification)
-    .default(DEFAULT_LANDSCAPE_FILTER.classification),
-  numClasses: z
-    .coerce
+  metric: z.string().catch('utah_percent'),
+  classification: z.enum(CLASSIFICATION_METHODS).catch('quantile'),
+  numClasses: z.coerce
     .number()
     .int()
-    .min(2)
-    .max(10)
-    .catch(DEFAULT_LANDSCAPE_FILTER.numClasses)
-    .default(DEFAULT_LANDSCAPE_FILTER.numClasses),
-  colorRamp: z.string().catch(DEFAULT_LANDSCAPE_FILTER.colorRamp).default(DEFAULT_LANDSCAPE_FILTER.colorRamp),
+    .min(MIN_CLASSES)
+    .max(MAX_CLASSES)
+    .catch(5),
+  colorRamp: z.string().catch('blues'),
 })
+
+export type LandscapeFilterState = z.infer<typeof landscapeFilterSchema>
+
+export const DEFAULT_LANDSCAPE_FILTER: LandscapeFilterState =
+  landscapeFilterSchema.parse({})
 
 const EMPTY_OVERRIDES: Record<string, PMTilesStyleOverride> = {}
 
@@ -83,7 +71,11 @@ export function buildChoroplethStepExpression(
   colors: string[]
 ): unknown[] {
   const safeFallback = Number.isFinite(minVal) ? minVal : 0
-  const stepArgs: unknown[] = ['step', ['to-number', ['get', metricCol], safeFallback], colors[0]]
+  const stepArgs: unknown[] = [
+    'step',
+    ['to-number', ['get', metricCol], safeFallback],
+    colors[0],
+  ]
   for (let i = 0; i < breaks.length; i++) {
     stepArgs.push(breaks[i], colors[i + 1] ?? colors[colors.length - 1])
   }
@@ -100,9 +92,13 @@ export function getLandscapeParquetUrl(stacItemId: string): string {
   return `https://maps-assets.geology.utah.gov/warehouse/geoparquet/${stacItemId}/${stacItemId}.parquet`
 }
 
-export async function fetchLandscapeMetricValues(stacItemId: string, metric: string): Promise<number[]> {
+export async function fetchLandscapeMetricValues(
+  stacItemId: string,
+  metric: string
+): Promise<number[]> {
   const url = getLandscapeParquetUrl(stacItemId)
-  const { withConnection, escapeSql, quoteIdent } = await import('@/lib/duckdb/client')
+  const { withConnection, escapeSql, quoteIdent } =
+    await import('@/lib/duckdb/client')
 
   return withConnection(async (conn) => {
     const res = await conn.query(`
@@ -161,12 +157,17 @@ export function useLandscapeFilterState(): LandscapeFilterState {
   }, [raw])
 }
 
-export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoroplethResult {
+export function useLandscapeChoropleth(
+  layerTitle?: string
+): LandscapeChoroplethResult {
   const filterState = useLandscapeFilterState()
   const stacItemId = layerTitle ? getStacItemIdForScale(layerTitle) : undefined
 
   // Ensure metric is valid for this layer (fallback if switching from HUC8 to ecoregion)
-  const allowedMetrics = useMemo(() => (layerTitle ? resolveMetricsForLayer(layerTitle) : []), [layerTitle])
+  const allowedMetrics = useMemo(
+    () => (layerTitle ? resolveMetricsForLayer(layerTitle) : []),
+    [layerTitle]
+  )
   const activeMetric = useMemo(() => {
     const found = allowedMetrics.find((m) => m.value === filterState.metric)
     return found || allowedMetrics[0]
@@ -175,7 +176,11 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
   const isCategorical = activeMetric?.value === 'surface_water_trend'
 
   // Query DuckDB-WASM for values to compute breaks for numeric metrics (keyed on metric data only)
-  const { data: queryResult, isLoading, isError } = useQuery({
+  const {
+    data: queryResult,
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['landscape-raw-values', stacItemId, activeMetric?.value],
     queryFn: async () => {
       if (!stacItemId || !activeMetric || isCategorical) return null
@@ -191,25 +196,19 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
       ? { ...filterState, metric: activeMetric.value }
       : filterState
 
-    if (!layerTitle || !activeMetric) {
-      return {
-        pmtilesStyleOverrides: EMPTY_OVERRIDES,
-        legendData: null,
-        filterState: effectiveFilterState,
-        isLoading: false,
-        isError: false,
-      }
-    }
+    const empty = (
+      loading = false,
+      error = false
+    ): LandscapeChoroplethResult => ({
+      pmtilesStyleOverrides: EMPTY_OVERRIDES,
+      legendData: null,
+      filterState: effectiveFilterState,
+      isLoading: loading,
+      isError: error,
+    })
 
-    if (isError) {
-      return {
-        pmtilesStyleOverrides: EMPTY_OVERRIDES,
-        legendData: null,
-        filterState: effectiveFilterState,
-        isLoading: false,
-        isError: true,
-      }
-    }
+    if (!layerTitle || !activeMetric) return empty()
+    if (isError) return empty(false, true)
 
     // 1. Categorical: surface_water_trend
     if (isCategorical) {
@@ -250,26 +249,26 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
 
     // 2. Numeric metric with DuckDB values
     const values = queryResult ?? []
-    if (values.length === 0) {
-      return {
-        pmtilesStyleOverrides: EMPTY_OVERRIDES,
-        legendData: null,
-        filterState: effectiveFilterState,
-        isLoading,
-        isError: false,
-      }
-    }
+    if (values.length === 0) return empty(isLoading)
 
     const minVal = values[0]
     const maxVal = values[values.length - 1]
-    const breaks = computeClassBreaks(filterState.classification, values, filterState.numClasses)
+    const breaks = computeClassBreaks(
+      filterState.classification,
+      values,
+      filterState.numClasses
+    )
 
     // Fall back to a single flat color if values cannot be partitioned
     if (breaks.length === 0) {
       const colors = getColorRampColors(filterState.colorRamp, 2)
       const fillColor = [
         'case',
-        ['all', ['has', activeMetric.value], ['!=', ['get', activeMetric.value], null]],
+        [
+          'all',
+          ['has', activeMetric.value],
+          ['!=', ['get', activeMetric.value], null],
+        ],
         colors[0],
         'rgba(168, 168, 168, 0.15)',
       ]
@@ -298,7 +297,12 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
     const actualClasses = breaks.length + 1
     const colors = getColorRampColors(filterState.colorRamp, actualClasses)
 
-    const fillColor = buildChoroplethStepExpression(activeMetric.value, minVal, breaks, colors)
+    const fillColor = buildChoroplethStepExpression(
+      activeMetric.value,
+      minVal,
+      breaks,
+      colors
+    )
 
     // First value strictly greater than minVal to check if bin 0 is exclusively minimums (e.g. zeros)
     const firstNonMin = values.find((v) => v > minVal)
@@ -313,14 +317,7 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
       // When the upper bound of an interior bin is maxVal (e.g. 100% saturation spike),
       // show the actual upper value in this bin so it doesn't display identical ranges
       if (rawEnd === maxVal && i < actualClasses - 1) {
-        let maxInBin = start
-        for (let j = values.length - 1; j >= 0; j--) {
-          if (values[j] < rawEnd && values[j] >= start) {
-            maxInBin = values[j]
-            break
-          }
-        }
-        end = maxInBin
+        end = Math.max(start, values[values.indexOf(rawEnd) - 1])
       }
 
       let label: string
@@ -352,5 +349,13 @@ export function useLandscapeChoropleth(layerTitle?: string): LandscapeChoropleth
       isLoading: false,
       isError: false,
     }
-  }, [layerTitle, activeMetric, isCategorical, queryResult, filterState, isLoading, isError])
+  }, [
+    layerTitle,
+    activeMetric,
+    isCategorical,
+    queryResult,
+    filterState,
+    isLoading,
+    isError,
+  ])
 }
