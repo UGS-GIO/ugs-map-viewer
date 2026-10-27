@@ -3,14 +3,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 
+const OPTIONS = [
+  { key: 'terrain', label: 'Show 3D terrain' },
+  { key: 'hillshade', label: 'Show hillshade' },
+] as const
+
 export function TerrainCard() {
   const navigate = useNavigate()
-  const { terrain } = useSearch({ from: '/_map' })
+  const search = useSearch({ from: '/_map' })
 
-  const handleChange = (checked: boolean) => {
+  const handleChange = (key: (typeof OPTIONS)[number]['key'], checked: boolean) => {
     navigate({
       to: '.',
-      search: (prev) => ({ ...prev, terrain: checked || undefined }),
+      search: (prev) => ({ ...prev, [key]: checked || undefined }),
       replace: true,
     })
   }
@@ -18,12 +23,16 @@ export function TerrainCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>3D Terrain</CardTitle>
-        <CardDescription>Right-drag or Ctrl+drag to tilt and rotate. Click the compass to reset.</CardDescription>
+        <CardTitle>Terrain</CardTitle>
+        <CardDescription>In 3D, right-drag or Ctrl+drag to tilt and rotate. Click the compass to reset.</CardDescription>
       </CardHeader>
-      <CardContent className="flex items-center justify-between gap-2">
-        <Label htmlFor="terrain-toggle">Show 3D terrain</Label>
-        <Switch id="terrain-toggle" checked={terrain ?? false} onCheckedChange={handleChange} />
+      <CardContent className="space-y-3">
+        {OPTIONS.map(({ key, label }) => (
+          <div key={key} className="flex items-center justify-between gap-2">
+            <Label htmlFor={`${key}-toggle`}>{label}</Label>
+            <Switch id={`${key}-toggle`} checked={search[key] ?? false} onCheckedChange={(checked) => handleChange(key, checked)} />
+          </div>
+        ))}
       </CardContent>
     </Card>
   )

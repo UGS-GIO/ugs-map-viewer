@@ -1,6 +1,6 @@
 import { useRef, useMemo, useCallback, useState, useEffect } from 'react'
 import { useWfsLayerData, getWfsSourceId, queryWfsLayersInScreenBbox, queryWfsLayersAtPoint, type WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
-import Map, { AttributionControl, NavigationControl, Source, Layer, Marker, MapLayerMouseEvent, useControl } from 'react-map-gl/maplibre'
+import Map, { AttributionControl, NavigationControl, Source, Layer, Marker, MapLayerMouseEvent } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import { useIsMobile } from '@/hooks/use-mobile'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -19,7 +19,6 @@ import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
 import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
 import type * as maplibregl from 'maplibre-gl'
-import type { RasterDEMSourceSpecification } from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 
 import { useCogRange } from '@/hooks/use-cog-metadata'
@@ -35,64 +34,7 @@ import type { ClickedFeature, DataMapProps } from './types'
 import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
 import { toast } from 'sonner'
-
-// Spike: free AWS Terrarium DEM; swap for a USGS 3DEP tileset if this ships.
-const TERRAIN = { source: 'terrain-dem', exaggeration: 1.5 }
-const DEM_SOURCE: RasterDEMSourceSpecification = {
-  type: 'raster-dem',
-  tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
-  encoding: 'terrarium',
-  tileSize: 256,
-  maxzoom: 15,
-  attribution: '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain: Mapzen/AWS</a>',
-}
-
-const HILLSHADE: maplibregl.HillshadeLayerSpecification = {
-  id: 'terrain-hillshade',
-  type: 'hillshade',
-  // Separate source: MapLibre renders hillshade blurry when it shares the terrain DEM
-  source: 'hillshade-dem',
-  paint: { 'hillshade-exaggeration': 0.4, 'hillshade-shadow-color': '#473B24' },
-}
-
-// react-map-gl's terrain prop can't turn terrain off (undefined is a no-op), so set it here and
-// re-attach after basemap swaps, once react-map-gl has re-added the DEM sources.
-// Hillshade goes under the basemap's labels; raster basemaps have none, so under the bottom data layer.
-function Terrain3D({ bottomDataLayerId }: { bottomDataLayerId: string | undefined }) {
-  const bottomDataLayerIdRef = useRef(bottomDataLayerId)
-  bottomDataLayerIdRef.current = bottomDataLayerId
-
-  useControl(() => {
-    const attach = ({ target }: { target: maplibregl.Map }) => {
-      if (target.getSource(TERRAIN.source) && !target.getTerrain()) target.setTerrain(TERRAIN)
-      if (!target.getSource(HILLSHADE.source) || target.getLayer(HILLSHADE.id)) return
-      const firstLabelId = target.getStyle().layers.find((l) => l.type === 'symbol')?.id
-      const beforeId = firstLabelId ?? bottomDataLayerIdRef.current
-      // Data layers re-mount after a basemap swap; wait for the next sourcedata rather than land on top
-      if (beforeId && !target.getLayer(beforeId)) return
-      target.addLayer(HILLSHADE, beforeId)
-    }
-    return {
-      onAdd(map: maplibregl.Map) {
-        map.on('sourcedata', attach)
-        attach({ target: map })
-        return document.createElement('div')
-      },
-      onRemove(map: maplibregl.Map) {
-        map.off('sourcedata', attach)
-        if (map.getLayer(HILLSHADE.id)) map.removeLayer(HILLSHADE.id)
-        // Unmounting before the style loads (StrictMode) leaves nothing to clear, and setTerrain would throw
-        if (map.getTerrain()) map.setTerrain(null)
-      },
-    }
-  })
-  return (
-    <>
-      <Source id={TERRAIN.source} {...DEM_SOURCE} />
-      <Source id={HILLSHADE.source} {...DEM_SOURCE} />
-    </>
-  )
-}
+import { Terrain3D, Hillshade } from './terrain-layers'
 
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps, PMTilesStyleOverride } from './types'
@@ -338,6 +280,7 @@ export default function DataMap({
   onMapReady,
   basemapId,
   terrain,
+  hillshade,
   clickBufferBounds,
   onClickBufferChange,
   featureBbox,
@@ -919,8 +862,9 @@ export default function DataMap({
           return null
         })}
 
+        {terrain && <Terrain3D />}
         {/* After the data layers so they're mounted when the hillshade looks for the bottom one */}
-        {terrain && <Terrain3D bottomDataLayerId={renderableEntries.length ? getLayerId(renderableEntries[renderableEntries.length - 1].layer) : undefined} />}
+        {hillshade && <Hillshade bottomDataLayerId={renderableEntries.length ? getLayerId(renderableEntries[renderableEntries.length - 1].layer) : undefined} />}
 
         {/* Highlight layers */}
         <HighlightLayers features={highlightFeatures} />
