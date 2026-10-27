@@ -808,10 +808,7 @@ const powerplantsConfig: PMTilesLayerProps = {
 
 // Rock Property Data — wells and fields from warehouse items `enmin_ccus_geochemistry` and
 // `enmin_ccus_geochemfieldpolys`. Symbology lives in ugs-styles.
-const rockPropertySourceFields = [
-    { field: 'source_detailed', label: 'Source', transform: linkIfUrl() },
-    { field: 'doi', label: 'DOI', transform: linkIfUrl() },
-];
+const rockPropertySourceField = { field: 'source_detailed', label: 'Source', transform: linkIfUrl() };
 
 const geochemWellsLayerName = 'enmin_ccus_geochemistry';
 const geochemWellsConfig: PMTilesLayerProps = {
@@ -865,7 +862,8 @@ const geochemWellsConfig: PMTilesLayerProps = {
                         { field: 'porosity_percent', label: 'Porosity (%)' },
                         { field: 'perm_md_klink', label: 'Permeability (mD)' },
                         { field: 'salinity_ppm', label: 'Salinity (ppm)' },
-                        ...rockPropertySourceFields,
+                        rockPropertySourceField,
+                        { field: 'doi', label: 'DOI', transform: linkIfUrl() },
                     ],
                     sortBy: 'depth_top_interval',
                     sortDirection: 'asc',
@@ -916,8 +914,8 @@ const geochemFieldsConfig: PMTilesLayerProps = {
                         { field: 'depth_top_interval', label: 'Depth (ft)' },
                         { field: 'porosity_percent', label: 'Porosity (%)' },
                         { field: 'perm_md_klink', label: 'Permeability (mD)' },
-                        { field: 'lithology', label: 'Lithology' },
-                        ...rockPropertySourceFields,
+                        { field: 'salinity_ppm', label: 'Salinity (ppm)' },
+                        rockPropertySourceField,
                     ],
                     sortBy: 'depth_top_interval',
                     sortDirection: 'asc',
