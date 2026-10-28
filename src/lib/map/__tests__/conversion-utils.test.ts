@@ -1,6 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
 import {
   convertDDToDMS,
+  convertDDToUTM,
+  formatCoordinatePair,
   convertCoordinate,
   convertBbox,
   convertGeometryToWGS84,
@@ -13,6 +15,37 @@ import {
 } from '../conversion-utils';
 import type { Geometry } from 'geojson';
 import type { PolygonGeometry } from '../conversion-utils';
+
+describe('convertDDToUTM', () => {
+  it('puts the zone 12 central meridian at the false easting', () => {
+    const { easting, northing } = convertDDToUTM(-111, 0);
+    expect(easting).toBeCloseTo(500000, 3);
+    expect(northing).toBeCloseTo(0, 3);
+  });
+
+  it('keeps the western border in zone 12 rather than switching to 11', () => {
+    const { easting } = convertDDToUTM(-114.05, 40);
+    expect(easting).toBeGreaterThan(200000);
+    expect(easting).toBeLessThan(250000);
+  });
+});
+
+describe('formatCoordinatePair', () => {
+  it('orders degrees lat first', () => {
+    expect(formatCoordinatePair(-111.891, 40.761, 'dd', 3)).toEqual([
+      { label: 'Lat', value: '40.761' },
+      { label: 'Lon', value: '-111.891' },
+    ]);
+  });
+
+  it('orders UTM easting first, rounded to the meter', () => {
+    const [e, n] = formatCoordinatePair(-111, 40, 'utm');
+    expect(e.label).toBe('E');
+    expect(e.value).toBe('500000');
+    expect(n.label).toBe('N');
+    expect(n.value).toMatch(/^4\d{6}$/);
+  });
+});
 
 describe('convertDDToDMS', () => {
   it('converts positive longitude to DMS', () => {

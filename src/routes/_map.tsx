@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { INFO_DETAILS, RESULTS_PARAMS, SHEET_PARAMS } from '@/components/maps/phone-sheet/sheet-model'
 import { RouteErrorBoundary } from '@/components/route-error-boundary'
 import { resolveBasemapId, BASEMAP_STYLES } from '@/lib/basemaps'
+import { COORDINATE_FORMATS } from '@/lib/map/conversion-utils'
 
 // Get responsive default sidebar width based on screen size
 const getDefaultSidebarWidth = () => {
@@ -23,7 +24,7 @@ const mapSearchSchema = z.object({
     tab: z.string().optional().default('info'),
     sidebar_collapsed: z.coerce.boolean().optional().default(false),
     sidebar_width: z.enum(['icon', 'wide', 'narrow']).optional().default(getDefaultSidebarWidth),
-    coordinate_format: z.enum(['dd', 'dms']).optional(),
+    coordinate_format: z.enum(COORDINATE_FORMATS).optional(),
     basemap: z.string().transform(resolveBasemapId).refine((id) => BASEMAP_STYLES.some((b) => b.id === id)).optional().catch(undefined),
     layers: z.preprocess((val) => {
         if (typeof val === 'string') {
