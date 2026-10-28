@@ -965,6 +965,7 @@ const utCountiesConfig: PMTilesLayerProps = {
     opacity: 1,
     sourceAgency: 'UGRC',
     sourceUrl: 'https://gis.utah.gov/products/sgid/boundaries/county/',
+    viewportLabels: true,
     sublayers: [{
         name: utCountiesLayerName,
         popupEnabled: false,

@@ -256,6 +256,8 @@ export interface PMTilesLayerProps extends BaseLayerProps {
     featureFilter?: FilterSpecification;
     /** Optional sublayer config for popups/queries */
     sublayers?: ExtendedSublayerProperties[];
+    /** Draw the style's symbol layers once per polygon, inside its visible part, instead of once per tile. */
+    viewportLabels?: boolean;
 }
 
 export interface WFSLayerProps extends BaseLayerProps {
