@@ -40,14 +40,6 @@ jobs:
             npm run build -- --mode preview
           fi
 
-      # === Semantic Release (Only on master branch) ===
-      # Creates GitHub releases and tags based on commit messages
-      - name: Run Semantic Release
-        if: github.ref == 'refs/heads/master'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
-
       # === Firebase Deployment ===
       # Set correct Firebase Service Account and Project ID based on the branch
       - name: Set Firebase Environment Variables
@@ -97,14 +89,10 @@ jobs:
           target: hazards-subdomain
           firebaseToolsVersion: '13.29.1'
 
-      # === Sync master back to develop (Only on master branch) ===
-      # After semantic-release commits CHANGELOG.md and package.json updates,
-      # merge those changes back to develop so it stays in sync
-      - name: Sync master back to develop
+      # === Semantic Release (Only on master branch) ===
+      # Creates GitHub releases and tags based on commit messages
+      - name: Run Semantic Release
         if: github.ref == 'refs/heads/master'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout develop
-          git merge master --no-edit
-          git push origin develop
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release
