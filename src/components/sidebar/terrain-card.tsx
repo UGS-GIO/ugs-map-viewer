@@ -2,15 +2,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useAppTerrain } from '@/hooks/use-app-terrain'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 export function TerrainCard() {
   const { terrain, setTerrain } = useAppTerrain()
+  const isMobile = useIsMobile()
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>3D Terrain</CardTitle>
-        <CardDescription>Tilt with right-drag or Ctrl+drag, or a two-finger drag on phones. Click the compass to reset.</CardDescription>
+        <CardDescription>
+          {isMobile
+            ? 'Drag two fingers up or down to tilt, twist to rotate. Tap the compass to reset.'
+            : 'Right-drag or Ctrl+drag to tilt and rotate. Click the compass to reset.'}
+        </CardDescription>
       </CardHeader>
       <CardContent className="flex items-center justify-between gap-2">
         <Label htmlFor="terrain-toggle">Show 3D terrain</Label>
