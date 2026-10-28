@@ -14,7 +14,7 @@ import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { useParquetSchema } from '@/hooks/use-parquet-schema';
 import { EXPORT_FORMATS, availableFormats, isCombinedTable, mergedColumnNames, type ExportFormat } from '@/lib/export-formats';
-import { shapefileFieldChecks } from '@/lib/gdal-export';
+import { shapefileFieldChecks } from '@/lib/shapefile-field-checks';
 import type { RelatedTable } from '@/lib/types/mapping-types';
 
 interface ParquetDownloadMenuProps {

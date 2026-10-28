@@ -38,26 +38,6 @@ proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs +type=crs");
 // Create a new router instance
 const router = createRouter({ routeTree })
 
-// Lazy load Firebase Analytics - only initialize when user navigates
-let analyticsInitialized = false;
-const initAnalyticsOnce = async () => {
-  if (analyticsInitialized) return;
-  analyticsInitialized = true;
-
-  try {
-    const { getAnalytics, logEvent } = await import('firebase/analytics');
-    const analytics = getAnalytics();
-    logEvent(analytics, 'app_initialized');
-  } catch (error) {
-    console.warn('Analytics not available:', error);
-  }
-};
-
-// Initialize analytics on first navigation
-router.subscribe('onResolved', () => {
-  initAnalyticsOnce();
-});
-
 // Register the router instance for type safety
 declare module '@tanstack/react-router' {
   interface Register {
