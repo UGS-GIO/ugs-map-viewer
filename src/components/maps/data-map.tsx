@@ -34,7 +34,7 @@ import type { ClickedFeature, DataMapProps } from './types'
 import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
 import { toast } from 'sonner'
-import { Terrain3D, Hillshade } from './terrain-layers'
+import { Terrain3D, Hillshade, MAX_PITCH, SKY } from './terrain-layers'
 
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps, PMTilesStyleOverride } from './types'
@@ -751,6 +751,8 @@ export default function DataMap({
         cursor={activeDrawShape !== 'off' ? 'crosshair' : boxSelectMode ? 'move' : onFeatureClick ? (isAdditiveMode ? 'copy' : 'pointer') : 'grab'}
         boxZoom={false}
         attributionControl={false}
+        maxPitch={MAX_PITCH}
+        sky={SKY}
         onLoad={handleLoad}
         onContextMenu={handleContextMenu}
       >

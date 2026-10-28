@@ -178,6 +178,8 @@ export class MapExporter {
             ...camera,
             bearing,
             pitch,
+            // Else a view tilted past MapLibre's default 60° prints clamped
+            maxPitch: this.map.getMaxPitch(),
             interactive: false,
             attributionControl: false,
         });

@@ -16,6 +16,19 @@ const DEM_SOURCE: RasterDEMSourceSpecification = {
 
 const TERRAIN = { source: 'terrain-dem', exaggeration: 1.5 }
 
+// MapLibre's default is 60; 85 allows near-horizon views, which need a sky above the horizon
+export const MAX_PITCH = 85
+
+export const SKY: maplibregl.SkySpecification = {
+  'sky-color': '#88c6fc',
+  'horizon-color': '#dceefc',
+  'sky-horizon-blend': 0.6,
+  'fog-color': '#dceefc',
+  // Haze only toward the horizon, so nearby terrain stays crisp
+  'fog-ground-blend': 0.9,
+  'horizon-fog-blend': 0.6,
+}
+
 const HILLSHADE: maplibregl.HillshadeLayerSpecification = {
   id: 'terrain-hillshade',
   type: 'hillshade',
