@@ -64,6 +64,22 @@ export interface ExportSettings {
     legendMode: LegendMode;
 }
 
+/**
+ * The credits the on-screen attribution bar shows (basemap, terrain, data sources), as plain text.
+ * Read via getSource: TileJSON-backed sources only learn their attribution after loading.
+ */
+export function mapAttributionText(map: {
+    getStyle(): { sources: Record<string, unknown> };
+    getSource(id: string): { attribution?: string } | undefined;
+}): string {
+    const credits = Object.keys(map.getStyle().sources)
+        .map((id) => map.getSource(id)?.attribution)
+        .filter((html): html is string => !!html)
+        .map((html) => new DOMParser().parseFromString(html, 'text/html').body.textContent?.trim() ?? '')
+        .filter(Boolean);
+    return ['© Utah Geological Survey', ...new Set(credits)].join(' | ');
+}
+
 export const DEFAULT_EXPORT_SETTINGS: ExportSettings = {
     pageSize: 'A4',
     pageOrientation: 'landscape',
@@ -147,14 +163,18 @@ export class MapExporter {
         `;
         document.body.appendChild(hiddenContainer);
 
-        // Create a new map instance for export
-        // Use fitBoundsOptions instead of center/zoom so the export shows the same
-        // geographic extent regardless of the (much larger) export container size.
+        // Fit the current bounds so the export shows the same extent in its (much larger) container.
+        // Bounds can't carry rotation, and a tilted view's bounds reach the horizon, so a rotated or
+        // tilted map keeps its camera instead, zoomed in by how much bigger the export canvas is.
+        const liveCanvas = this.map.getCanvas();
+        const camera = pitch || bearing
+            ? { center: this.map.getCenter(), zoom: this.map.getZoom() + Math.log2(Math.min(width / liveCanvas.clientWidth, height / liveCanvas.clientHeight)) }
+            : { bounds: currentBounds, fitBoundsOptions: { padding: 0 } };
+
         const exportMap = new maplibregl.Map({
             container: hiddenContainer,
             style: this.map.getStyle(),
-            bounds: currentBounds,
-            fitBoundsOptions: { padding: 0 },
+            ...camera,
             bearing,
             pitch,
             interactive: false,
@@ -207,8 +227,11 @@ export class MapExporter {
                 const scale = this.settings.dpi / 96; // Scale factor for high DPI
                 const bearing = exportMap.getBearing();
                 this.drawNorthArrow(ctx, outputCanvas.width, scale, bearing);
-                this.drawScaleBar(ctx, outputCanvas.width, outputCanvas.height, exportMap, scale, this.settings.scaleUnit);
-                this.drawAttribution(ctx, outputCanvas.width, outputCanvas.height, scale);
+                // A tilted map has no single scale, so a bar would mislead
+                if (exportMap.getPitch() === 0) {
+                    this.drawScaleBar(ctx, outputCanvas.width, outputCanvas.height, exportMap, scale, this.settings.scaleUnit);
+                }
+                this.drawAttribution(ctx, outputCanvas.width, outputCanvas.height, scale, mapAttributionText(exportMap));
 
                 // Draw legend on map if mode is 'on-map'
                 if (this.settings.legendMode === 'on-map' && legendData.length > 0) {
@@ -392,10 +415,10 @@ export class MapExporter {
         ctx: CanvasRenderingContext2D,
         canvasWidth: number,
         canvasHeight: number,
-        scale: number
+        scale: number,
+        text: string
     ): void {
         const margin = 16 * scale;
-        const text = '© Utah Geological Survey | OpenStreetMap contributors';
 
         ctx.font = `${10 * scale}px sans-serif`;
         const textWidth = ctx.measureText(text).width;
