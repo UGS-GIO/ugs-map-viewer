@@ -33,7 +33,7 @@ const MapCoordinates = () => {
                             key={format}
                             value={format}
                             title={FORMAT_LABELS[format].full}
-                            className="rounded-sm px-1.5 text-xs text-muted-foreground data-[pressed]:bg-background data-[pressed]:text-foreground data-[pressed]:shadow-sm"
+                            className="rounded-sm px-1.5 text-xs text-muted-foreground data-[pressed]:bg-background data-[pressed]:text-foreground data-[pressed]:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                         >
                             {FORMAT_LABELS[format].short}
                         </Toggle>

@@ -7,7 +7,7 @@ import type * as maplibregl from 'maplibre-gl';
 
 export function useCoordinateFormat() {
     const navigate = useNavigate();
-    const { coordinate_format: coordinateFormat = 'dd' } = useSearch({ from: '/_map' });
+    const coordinateFormat = useSearch({ from: '/_map', select: (s) => s.coordinate_format ?? 'dd' });
 
     const setCoordinateFormat = useCallback((format: CoordinateFormat) => {
         navigate({

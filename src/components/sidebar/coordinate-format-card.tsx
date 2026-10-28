@@ -29,7 +29,7 @@ export function CoordinateFormatCard() {
             <Radio.Root
               key={o.value}
               value={o.value}
-              className="rounded-sm bg-popover p-3 text-center text-sm hover:bg-accent hover:text-accent-foreground data-[checked]:bg-primary data-[checked]:text-primary-foreground"
+              className="rounded-sm bg-popover p-3 text-center text-sm hover:bg-accent hover:text-accent-foreground data-[checked]:bg-primary data-[checked]:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {o.label}
             </Radio.Root>
