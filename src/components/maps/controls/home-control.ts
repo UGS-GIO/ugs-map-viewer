@@ -36,11 +36,12 @@ export class HomeControl implements maplibregl.IControl {
     );
     button.innerHTML = homeIcon;
 
+    // Home is flat and north-up; 3D terrain stays as the user set it
     button.addEventListener('click', () => {
       if (this.initialBounds) {
-        map.fitBounds(this.initialBounds, { padding: 50 });
+        map.fitBounds(this.initialBounds, { padding: 50, pitch: 0, bearing: 0 });
       } else {
-        map.flyTo({ center: [-111.5, 39], zoom: 6 });
+        map.flyTo({ center: [-111.5, 39], zoom: 6, pitch: 0, bearing: 0 });
       }
     });
 
