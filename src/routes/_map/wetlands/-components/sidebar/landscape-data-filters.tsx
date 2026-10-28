@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useId, useMemo } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { Label } from '@/components/ui/label'
 import { useLayerUrl } from '@/context/layer-url-provider'
@@ -7,6 +7,7 @@ import {
   LANDSCAPE_SCALES,
   LANDSCAPE_LAYER_TITLES,
   COLOR_RAMPS,
+  CLASS_COUNTS,
   resolveMetricsForLayer,
   type ClassificationMethod,
 } from '../../-data/landscape-metrics'
@@ -26,10 +27,15 @@ export function LandscapeDataFilters({ layer }: LandscapeDataFiltersProps) {
   const navigate = useNavigate()
   const { setExclusiveSelection } = useLayerUrl()
 
+  const id = useId()
+
   const filterState = useLandscapeFilterState()
   const activeScale = layer.title || LANDSCAPE_SCALES[0].value
 
-  const allowedMetrics = useMemo(() => resolveMetricsForLayer(activeScale), [activeScale])
+  const allowedMetrics = useMemo(
+    () => resolveMetricsForLayer(activeScale),
+    [activeScale]
+  )
 
   // Group metrics by category for the select element
   const groupedMetrics = useMemo(() => {
@@ -42,7 +48,10 @@ export function LandscapeDataFilters({ layer }: LandscapeDataFiltersProps) {
   }, [allowedMetrics])
 
   const activeMetricObj = useMemo(() => {
-    return allowedMetrics.find((m) => m.value === filterState.metric) || allowedMetrics[0]
+    return (
+      allowedMetrics.find((m) => m.value === filterState.metric) ||
+      allowedMetrics[0]
+    )
   }, [allowedMetrics, filterState.metric])
 
   const isCategorical = activeMetricObj?.value === 'surface_water_trend'
@@ -76,7 +85,9 @@ export function LandscapeDataFilters({ layer }: LandscapeDataFiltersProps) {
     (newScaleTitle: string) => {
       setExclusiveSelection(newScaleTitle, LANDSCAPE_LAYER_TITLES)
       const newAllowed = resolveMetricsForLayer(newScaleTitle)
-      const isMetricValid = newAllowed.some((m) => m.value === filterState.metric)
+      const isMetricValid = newAllowed.some(
+        (m) => m.value === filterState.metric
+      )
       if (!isMetricValid && newAllowed.length > 0) {
         updateFilter({ metric: newAllowed[0].value })
       }
@@ -87,7 +98,9 @@ export function LandscapeDataFilters({ layer }: LandscapeDataFiltersProps) {
   // Verify and reset metric in URL search params if it is invalid for the active scale
   useEffect(() => {
     if (allowedMetrics.length === 0) return
-    const isMetricValid = allowedMetrics.some((m) => m.value === filterState.metric)
+    const isMetricValid = allowedMetrics.some(
+      (m) => m.value === filterState.metric
+    )
     if (!isMetricValid) {
       updateFilter({ metric: allowedMetrics[0].value })
     }
@@ -97,11 +110,14 @@ export function LandscapeDataFilters({ layer }: LandscapeDataFiltersProps) {
     navigate({
       to: '.',
       search: (prev: Record<string, unknown>) => {
-        const prevFilters = { ...((prev.filters as Record<string, string>) || {}) }
+        const prevFilters = {
+          ...((prev.filters as Record<string, string>) || {}),
+        }
         delete prevFilters[LANDSCAPE_GROUP_TITLE]
         return {
           ...prev,
-          filters: Object.keys(prevFilters).length > 0 ? prevFilters : undefined,
+          filters:
+            Object.keys(prevFilters).length > 0 ? prevFilters : undefined,
         }
       },
       replace: true,
@@ -118,7 +134,9 @@ export function LandscapeDataFilters({ layer }: LandscapeDataFiltersProps) {
   return (
     <div className='flex flex-col gap-3 px-1 py-1 text-xs'>
       <div className='flex items-center justify-between'>
-        <span className='font-semibold text-foreground'>Classification Filters</span>
+        <span className='font-semibold text-foreground'>
+          Classification Filters
+        </span>
         {hasNonDefaultFilter && (
           <button
             onClick={handleReset}
@@ -131,11 +149,14 @@ export function LandscapeDataFilters({ layer }: LandscapeDataFiltersProps) {
 
       {/* Select Scale */}
       <div className='flex flex-col gap-1'>
-        <Label htmlFor='landscape-scale-select' className='text-[11px] font-medium text-muted-foreground'>
+        <Label
+          htmlFor={`${id}-scale`}
+          className='text-[11px] font-medium text-muted-foreground'
+        >
           Select Scale
         </Label>
         <select
-          id='landscape-scale-select'
+          id={`${id}-scale`}
           value={activeScale}
           onChange={(e) => handleScaleChange(e.target.value)}
           className='h-8 w-full rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
@@ -150,11 +171,14 @@ export function LandscapeDataFilters({ layer }: LandscapeDataFiltersProps) {
 
       {/* Select Metric */}
       <div className='flex flex-col gap-1'>
-        <Label htmlFor='landscape-metric-select' className='text-[11px] font-medium text-muted-foreground'>
+        <Label
+          htmlFor={`${id}-metric`}
+          className='text-[11px] font-medium text-muted-foreground'
+        >
           Select Metric
         </Label>
         <select
-          id='landscape-metric-select'
+          id={`${id}-metric`}
           value={activeMetricObj?.value || filterState.metric}
           onChange={(e) => updateFilter({ metric: e.target.value })}
           className='h-8 w-full rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
@@ -177,13 +201,20 @@ export function LandscapeDataFilters({ layer }: LandscapeDataFiltersProps) {
           <div className='grid grid-cols-2 gap-2'>
             {/* Classification Method */}
             <div className='flex flex-col gap-1'>
-              <Label htmlFor='landscape-class-select' className='text-[11px] font-medium text-muted-foreground'>
+              <Label
+                htmlFor={`${id}-class`}
+                className='text-[11px] font-medium text-muted-foreground'
+              >
                 Classification
               </Label>
               <select
-                id='landscape-class-select'
+                id={`${id}-class`}
                 value={filterState.classification}
-                onChange={(e) => updateFilter({ classification: e.target.value as ClassificationMethod })}
+                onChange={(e) =>
+                  updateFilter({
+                    classification: e.target.value as ClassificationMethod,
+                  })
+                }
                 className='h-8 w-full rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
               >
                 <option value='quantile'>Quantile</option>
@@ -194,16 +225,21 @@ export function LandscapeDataFilters({ layer }: LandscapeDataFiltersProps) {
 
             {/* Breaks (Classes Count) */}
             <div className='flex flex-col gap-1'>
-              <Label htmlFor='landscape-breaks-select' className='text-[11px] font-medium text-muted-foreground'>
+              <Label
+                htmlFor={`${id}-breaks`}
+                className='text-[11px] font-medium text-muted-foreground'
+              >
                 Breaks
               </Label>
               <select
-                id='landscape-breaks-select'
+                id={`${id}-breaks`}
                 value={filterState.numClasses}
-                onChange={(e) => updateFilter({ numClasses: Number(e.target.value) })}
+                onChange={(e) =>
+                  updateFilter({ numClasses: Number(e.target.value) })
+                }
                 className='h-8 w-full rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
               >
-                {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                {CLASS_COUNTS.map((n) => (
                   <option key={n} value={n}>
                     {n} Classes
                   </option>
@@ -214,11 +250,14 @@ export function LandscapeDataFilters({ layer }: LandscapeDataFiltersProps) {
 
           {/* Color Ramp */}
           <div className='flex flex-col gap-1'>
-            <Label htmlFor='landscape-ramp-select' className='text-[11px] font-medium text-muted-foreground'>
+            <Label
+              htmlFor={`${id}-ramp`}
+              className='text-[11px] font-medium text-muted-foreground'
+            >
               Color Ramp
             </Label>
             <select
-              id='landscape-ramp-select'
+              id={`${id}-ramp`}
               value={filterState.colorRamp}
               onChange={(e) => updateFilter({ colorRamp: e.target.value })}
               className='h-8 w-full rounded-md border border-input bg-background px-2 text-xs focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
