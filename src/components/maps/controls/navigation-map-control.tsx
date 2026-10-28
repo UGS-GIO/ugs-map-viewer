@@ -14,8 +14,9 @@ export function NavigationMapControl() {
   return createPortal(
     <button
       type="button"
-      // Same active fill as ControlButton
-      className="text-xs font-bold aria-pressed:!bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:!bg-primary/90"
+      // Active fill as ControlButton, text forced white: dark-theme primary-foreground is near-black
+      // and the ctrl-group hover rule overrides colour
+      className="text-xs font-bold aria-pressed:!bg-primary aria-pressed:!text-white aria-pressed:hover:!bg-primary/90"
       title={terrain ? 'Switch to 2D' : 'Switch to 3D'}
       aria-label={terrain ? 'Switch to 2D' : 'Switch to 3D'}
       aria-pressed={terrain}
