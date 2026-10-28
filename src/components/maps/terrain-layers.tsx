@@ -10,7 +10,8 @@ const DEM_SOURCE: RasterDEMSourceSpecification = {
   encoding: 'terrarium',
   tileSize: 256,
   maxzoom: 15,
-  attribution: '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain: Mapzen/AWS</a>',
+  // Joerd asks to credit the USGS sources behind US terrain, plus Mapzen for the tileset
+  attribution: '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain: USGS 3DEP, SRTM, GMTED2010 · Mapzen</a>',
 }
 
 const TERRAIN = { source: 'terrain-dem', exaggeration: 1.5 }
