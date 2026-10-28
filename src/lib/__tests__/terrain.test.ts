@@ -2,15 +2,17 @@ import { describe, it, expect } from 'vitest'
 import { DEFAULT_TERRAIN, resolveAppTerrain } from '../terrain'
 
 describe('resolveAppTerrain', () => {
-    it('loads flat, with 3D off by default', () => {
-        expect(DEFAULT_TERRAIN).toBe(false)
+    it('turns 3D on by default on desktop', () => {
+        expect(DEFAULT_TERRAIN).toBe(true)
+        expect(resolveAppTerrain('hazards', false)).toBe(true)
+    })
+
+    it('loads phones flat', () => {
+        expect(resolveAppTerrain('hazards', true)).toBe(false)
+        expect(resolveAppTerrain('not-an-app', true)).toBe(false)
     })
 
     it('gives an unconfigured route the global default', () => {
-        expect(resolveAppTerrain('not-an-app')).toBe(DEFAULT_TERRAIN)
-    })
-
-    it('resolves a configured route', () => {
-        expect(resolveAppTerrain('hazards')).toBe(false)
+        expect(resolveAppTerrain('not-an-app', false)).toBe(DEFAULT_TERRAIN)
     })
 })

@@ -1,5 +1,4 @@
-// Off: 3D pulls ~1.9 MB of DEM tiles, roughly doubling a phone's first load on slow 4G
-export const DEFAULT_TERRAIN = false;
+export const DEFAULT_TERRAIN = true;
 
 /** Per-app 3D default (terrain + hillshade); the URL only records a choice that differs from it. */
 const APP_TERRAIN: Record<string, boolean> = {
@@ -14,6 +13,8 @@ const APP_TERRAIN: Record<string, boolean> = {
 };
 
 /** Resolve an app's 3D default from its route segment (e.g. 'hazards'). */
-export function resolveAppTerrain(page: string): boolean {
+export function resolveAppTerrain(page: string, isPhone: boolean): boolean {
+  // Phones load flat: 3D pulls ~1.9 MB of DEM tiles, roughly doubling a first load on slow 4G
+  if (isPhone) return false;
   return APP_TERRAIN[page] ?? DEFAULT_TERRAIN;
 }
