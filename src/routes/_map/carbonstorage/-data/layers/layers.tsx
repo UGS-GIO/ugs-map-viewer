@@ -1,4 +1,4 @@
-import { Link } from "@/components/ui/link";
+import { Link, linkIfUrl } from "@/components/ui/link";
 import { MAPS_ASSETS_CDN_URL, parquetUrl, ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps, WFSLayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils";
@@ -806,20 +806,24 @@ const powerplantsConfig: PMTilesLayerProps = {
     ],
 };
 
-// Geochemistry Well Sites WMS Layer
-const geochemWellSitesLayerName = 'enmin_ccus_geochemistry_current';
-const geochemWellSitesWMSTitle = 'Wells with Rock Property Data';
-const geochemWellSitesWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: geochemWellSitesWMSTitle,
+// Rock Property Data — wells and fields from warehouse items `enmin_ccus_geochemistry` and
+// `enmin_ccus_geochemfieldpolys`. Symbology lives in ugs-styles.
+const rockPropertySourceField = { field: 'source_detailed', label: 'Source', transform: linkIfUrl() };
+
+const geochemWellsLayerName = 'enmin_ccus_geochemistry';
+const geochemWellsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: geochemWellsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: geochemWellsLayerName,
+    title: 'Rock Property Data: Wells',
+    formerTitles: ['Wells with Rock Property Data'],
     visible: false,
-    crs: 'EPSG:3857',
-    downloadParquetUrl: parquetUrl("enmin_ccus_geochemistry"),
+    opacity: 1,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${geochemWellSitesLayerName}`,
+            name: geochemWellsLayerName,
             popupEnabled: true,
             queryable: true,
             popupFields: {
@@ -850,10 +854,57 @@ const geochemWellSitesWMSConfig: WMSLayerProps = {
             },
             relatedTables: [
                 {
-                    fieldLabel: 'Geochemistry Data',
-                    matchingField: 'uwi',
-                    targetField: 'uwi',
-                    url: PROD_POSTGREST_URL + '/ccus_geochem_data',
+                    fieldLabel: 'Rock Property Data',
+                    stacAsset: 'enmin_ccus_geochemistry_measurements',
+                    displayFields: [
+                        { field: 'formation', label: 'Formation' },
+                        { field: 'depth_top_interval', label: 'Depth (ft)' },
+                        { field: 'porosity_percent', label: 'Porosity (%)' },
+                        { field: 'perm_md_klink', label: 'Permeability (mD)' },
+                        { field: 'salinity_ppm', label: 'Salinity (ppm)' },
+                        rockPropertySourceField,
+                        { field: 'doi', label: 'DOI', transform: linkIfUrl() },
+                    ],
+                    sortBy: 'depth_top_interval',
+                    sortDirection: 'asc',
+                    displayAs: 'table'
+                },
+            ],
+        },
+    ],
+};
+
+// No warehouse related asset for fields yet, so the measurements join stays on PostgREST.
+const geochemFieldsLayerName = 'enmin_ccus_geochemfieldpolys';
+const geochemFieldsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: geochemFieldsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: geochemFieldsLayerName,
+    title: 'Rock Property Data: Fields',
+    visible: false,
+    // Slider value replaces the style's fill-opacity, so set it see-through here.
+    opacity: 0.5,
+    sourceAgency: 'Utah Geological Survey',
+    sublayers: [
+        {
+            name: geochemFieldsLayerName,
+            popupEnabled: true,
+            queryable: true,
+            popupFields: {
+                'Field Name': { field: 'field', type: 'string' },
+                'Type': { field: 'type', type: 'string' },
+                'Status': { field: 'status', type: 'string' },
+                'Discovery Year': { field: 'date', type: 'string' },
+                'Producing Formations': { field: 'prodformations', type: 'string' },
+                'Reservoir Rocks': { field: 'reservoir_rocks', type: 'string' },
+            },
+            relatedTables: [
+                {
+                    fieldLabel: 'Rock Property Data',
+                    matchingField: 'fieldnamejoin',
+                    targetField: 'field',
+                    url: PROD_POSTGREST_URL + '/enmin_geochemistry_fields_current',
                     headers: {
                         "Accept-Profile": 'emp',
                         "Accept": "application/json",
@@ -865,6 +916,7 @@ const geochemWellSitesWMSConfig: WMSLayerProps = {
                         { field: 'porosity_percent', label: 'Porosity (%)' },
                         { field: 'perm_md_klink', label: 'Permeability (mD)' },
                         { field: 'salinity_ppm', label: 'Salinity (ppm)' },
+                        rockPropertySourceField,
                     ],
                     sortBy: 'depth_top_interval',
                     sortDirection: 'asc',
@@ -1453,7 +1505,7 @@ const subsurfaceDataConfig: LayerProps = {
     visible: false,
     layers: [
         wellWithTopsWMSConfig,
-        geochemWellSitesWMSConfig,
+        geochemWellsConfig,
         // UCRC inventory replaces the old WMS cores layer (ALL-4356). popupFooterLink is set here
         // (not the shared config) so the per-well subsurface deep link is carbonstorage-only.
         {
@@ -1476,6 +1528,8 @@ const subsurfaceDataConfig: LayerProps = {
         geothermalSpringsJoinsConfig,
         geothermalWellsJoinsConfig,
         nonpetrolWellsConfig,
+        // Last so the field polygons draw under every point layer.
+        geochemFieldsConfig,
     ]
 }
 

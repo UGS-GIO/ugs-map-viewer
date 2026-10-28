@@ -139,7 +139,7 @@ export const toMaplibreFilter = (schema: FilterSchema, state: FilterState): Expr
 // standard URL encoding via `encodeURIComponent` — each value separately then
 // rejoined on literal commas.
 
-const encodeInValue = (v: string): string => {
+export const encodeInValue = (v: string): string => {
     // Comma/paren/space must be encoded so they don't terminate the list.
     // PostgREST also accepts double-quoted strings to embed such chars.
     const needsQuote = /[,()"\s]/.test(v);
