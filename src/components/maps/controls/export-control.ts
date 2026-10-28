@@ -4,6 +4,7 @@
  * Adapted for UGS styling and theme integration
  */
 import * as maplibregl from 'maplibre-gl';
+import { metersPerPixelAtCenter } from '@/lib/map/map-scale';
 
 export type PageSize = 'A4' | 'A3' | 'Letter' | 'Tabloid';
 export type PageOrientation = 'landscape' | 'portrait';
@@ -300,18 +301,11 @@ export class MapExporter {
         const barHeight = 8 * scale;
         const y = canvasHeight - margin - barHeight;
 
-        // Measure ground distance across a known pixel span at the center of the map
-        // rather than deriving it from zoom. The overlays below are drawn into a canvas
-        // sized to the map's backing store, so convert from CSS pixels to those pixels.
+        // The overlays are drawn into a canvas sized to the map's backing store, so convert
+        // the on-screen scale bar's CSS-pixel measurement to those pixels.
         const mapCanvas = map.getCanvas();
         const pixelRatio = mapCanvas.width / mapCanvas.clientWidth;
-        const midX = mapCanvas.clientWidth / 2;
-        const midY = mapCanvas.clientHeight / 2;
-        const span = Math.min(200, mapCanvas.clientWidth);
-        const left = map.unproject([midX - span / 2, midY]);
-        const right = map.unproject([midX + span / 2, midY]);
-        const metersPerCssPixel = left.distanceTo(right) / span;
-        const metersPerPixel = metersPerCssPixel / pixelRatio;
+        const metersPerPixel = metersPerPixelAtCenter(map, 200) / pixelRatio;
 
         // Find a nice round distance
         const maxBarWidth = 150 * scale;
