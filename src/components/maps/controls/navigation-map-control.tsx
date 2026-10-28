@@ -15,7 +15,7 @@ export function NavigationMapControl() {
     <button
       type="button"
       // Same active look as ControlButton; `!` beats the ctrl-group hover rule's colour
-      className="text-xs font-bold aria-pressed:!bg-primary aria-pressed:!text-white aria-pressed:hover:!bg-primary/90"
+      className="text-xs font-bold aria-pressed:!bg-primary aria-pressed:!text-primary-foreground aria-pressed:hover:!bg-primary/90"
       title={terrain ? 'Switch to 2D' : 'Switch to 3D'}
       aria-label={terrain ? 'Switch to 2D' : 'Switch to 3D'}
       aria-pressed={terrain}
