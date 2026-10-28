@@ -28,7 +28,8 @@ export function ControlButton({
         // Theme tokens, not hardcoded washes: white/10 over the dark chip barely registered.
         'hover:!bg-accent hover:text-accent-foreground',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
-        active && '!bg-primary text-primary-foreground hover:!bg-primary/90 hover:text-primary-foreground',
+        // White, not primary-foreground (near-black in dark theme); `!` beats the ctrl-group hover colour
+        active && '!bg-primary !text-white hover:!bg-primary/90',
         disabled && 'cursor-not-allowed text-muted-foreground hover:!bg-transparent hover:text-muted-foreground',
         variant === 'danger' && !active && 'text-destructive',
         className,
