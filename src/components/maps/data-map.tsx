@@ -24,7 +24,7 @@ import type { FeatureCollection } from 'geojson'
 import { useCogRange } from '@/hooks/use-cog-metadata'
 import { CogPixelHighlight } from '@/components/maps/cog-pixel-highlight'
 import { buildCogProtocolUrl } from '@/lib/map/cog/setup'
-import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
+import { calculateBboxFromGeometry, polygonBounds, screenBoxToPolygon } from '@/lib/map/geometry-utils'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
 import { useTerraDraw } from '@/hooks/use-terra-draw'
 import type { Polygon } from 'geojson'
@@ -621,9 +621,7 @@ export default function DataMap({
     if (spatialFilter) onSpatialFilterChange?.(null)
 
     // Calculate click buffer bbox for visualization
-    const sw = map.unproject([e.point.x - clickTolerance, e.point.y + clickTolerance])
-    const ne = map.unproject([e.point.x + clickTolerance, e.point.y - clickTolerance])
-    onClickBufferChange?.({ sw: [sw.lng, sw.lat], ne: [ne.lng, ne.lat] })
+    onClickBufferChange?.(polygonBounds(screenBoxToPolygon(map, [e.point.x - clickTolerance, e.point.y - clickTolerance], [e.point.x + clickTolerance, e.point.y + clickTolerance])))
 
     const isAdditive = isAdditiveMode || (e.originalEvent?.shiftKey ?? false)
     queryAtPoint(map, e.point, clickTolerance, isAdditive, { extractBbox: true, clearOnEmpty: true })
@@ -653,13 +651,7 @@ export default function DataMap({
     const centerY = containerRect.height / 2
     const halfBox = BOX_SELECT_SIZE / 2
 
-    // Convert screen box corners to geographic coordinates
-    const sw = map.unproject([centerX - halfBox, centerY + halfBox])
-    const ne = map.unproject([centerX + halfBox, centerY - halfBox])
-    onBoxSelectConfirm?.({
-      sw: [sw.lng, sw.lat] as [number, number],
-      ne: [ne.lng, ne.lat] as [number, number]
-    })
+    onBoxSelectConfirm?.(polygonBounds(screenBoxToPolygon(map, [centerX - halfBox, centerY - halfBox], [centerX + halfBox, centerY + halfBox])))
 
     // Query client-side vector layers in the box area, then merge with WMS results
     const screenBbox: [maplibregl.PointLike, maplibregl.PointLike] = [
