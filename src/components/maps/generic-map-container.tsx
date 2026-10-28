@@ -25,6 +25,7 @@ import { PROD_GEOSERVER_URL, POPUP_TITLES } from '@/lib/constants'
 import { useMap } from '@/hooks/use-map'
 import { useGetCurrentPage } from '@/hooks/use-get-current-page'
 import { useAppBasemaps } from '@/hooks/use-app-basemaps'
+import { useAppTerrain } from '@/hooks/use-app-terrain'
 import { MapChromeControls } from '@/components/maps/controls/map-chrome-controls'
 import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
@@ -313,7 +314,8 @@ export default function GenericMapContainer({
   const currentPage = useGetCurrentPage()
   const { defaultStyle: defaultBasemap } = useAppBasemaps()
   const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
-  const { viewMode, setViewMode, center, zoom, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
+  const { viewMode, setViewMode, center, zoom, pitch, bearing, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
+  const { terrain } = useAppTerrain()
   // Phones select straight from the map, whatever a desktop link's `view` still says.
   const selectionView: ViewMode = isMobile ? 'map' : viewMode
   const phoneSheet = usePhoneSheet()
@@ -637,6 +639,8 @@ export default function GenericMapContainer({
       layers={layersConfig}
       center={center}
       zoom={zoom}
+      pitch={pitch}
+      bearing={bearing}
       highlightFeatures={highlightedFeatures}
       onFeatureClick={(...args) => { setPopupCoords(null); handleFeatureClick(...args) }}
       onMoveEnd={setMapPosition}
@@ -647,6 +651,7 @@ export default function GenericMapContainer({
       pmtilesStyleOverrides={pmtilesStyleOverrides}
       onMapReady={handleMapReady}
       basemapId={basemap ?? defaultBasemap.id}
+      terrain={terrain}
       clickBufferBounds={clickBufferBounds}
       onClickBufferChange={handleClickBufferChange}
       featureBbox={featureBbox}
