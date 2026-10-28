@@ -1,6 +1,6 @@
 import { useRef, useMemo, useCallback, useState, useEffect } from 'react'
 import { useWfsLayerData, getWfsSourceId, queryWfsLayersInScreenBbox, queryWfsLayersAtPoint, type WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
-import Map, { AttributionControl, NavigationControl, Source, Layer, Marker, MapLayerMouseEvent } from 'react-map-gl/maplibre'
+import Map, { AttributionControl, Source, Layer, Marker, MapLayerMouseEvent } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import { useIsMobile } from '@/hooks/use-mobile'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -24,7 +24,7 @@ import type { FeatureCollection } from 'geojson'
 import { useCogRange } from '@/hooks/use-cog-metadata'
 import { CogPixelHighlight } from '@/components/maps/cog-pixel-highlight'
 import { buildCogProtocolUrl } from '@/lib/map/cog/setup'
-import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
+import { calculateBboxFromGeometry, polygonBounds, screenBoxToPolygon } from '@/lib/map/geometry-utils'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
 import { useTerraDraw } from '@/hooks/use-terra-draw'
 import type { Polygon } from 'geojson'
@@ -34,6 +34,7 @@ import type { ClickedFeature, DataMapProps } from './types'
 import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
 import { toast } from 'sonner'
+import { Terrain3D, Hillshade, MAX_PITCH, SKY } from './terrain-layers'
 
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps, PMTilesStyleOverride } from './types'
@@ -252,6 +253,8 @@ export default function DataMap({
   highlightFeatures = [],
   onFeatureClick,
   onMoveEnd,
+  pitch,
+  bearing,
   clickTolerance = DEFAULT_CLICK_TOLERANCE,
   isLoading = false,
   isAdditiveMode = false,
@@ -276,6 +279,7 @@ export default function DataMap({
   pmtilesStyleOverrides = {},
   onMapReady,
   basemapId,
+  terrain,
   clickBufferBounds,
   onClickBufferChange,
   featureBbox,
@@ -573,6 +577,8 @@ export default function DataMap({
     longitude?: number
     latitude?: number
     zoom?: number
+    pitch?: number
+    bearing?: number
     bounds?: [[number, number], [number, number]]
     fitBoundsOptions?: { padding: number; maxZoom?: number }
   } | null>(null)
@@ -581,10 +587,12 @@ export default function DataMap({
     if (bbox) {
       initialViewRef.current = {
         bounds: [bbox.sw, bbox.ne],
-        fitBoundsOptions: { padding: 50, maxZoom: 14 }
+        fitBoundsOptions: { padding: 50, maxZoom: 14 },
+        pitch,
+        bearing,
       }
     } else {
-      initialViewRef.current = { longitude: center[0], latitude: center[1], zoom }
+      initialViewRef.current = { longitude: center[0], latitude: center[1], zoom, pitch, bearing }
     }
   }
   const initialView = initialViewRef.current
@@ -613,9 +621,7 @@ export default function DataMap({
     if (spatialFilter) onSpatialFilterChange?.(null)
 
     // Calculate click buffer bbox for visualization
-    const sw = map.unproject([e.point.x - clickTolerance, e.point.y + clickTolerance])
-    const ne = map.unproject([e.point.x + clickTolerance, e.point.y - clickTolerance])
-    onClickBufferChange?.({ sw: [sw.lng, sw.lat], ne: [ne.lng, ne.lat] })
+    onClickBufferChange?.(polygonBounds(screenBoxToPolygon(map, [e.point.x - clickTolerance, e.point.y - clickTolerance], [e.point.x + clickTolerance, e.point.y + clickTolerance])))
 
     const isAdditive = isAdditiveMode || (e.originalEvent?.shiftKey ?? false)
     queryAtPoint(map, e.point, clickTolerance, isAdditive, { extractBbox: true, clearOnEmpty: true })
@@ -632,7 +638,7 @@ export default function DataMap({
     syncViewLatitude()
     // Only trigger re-render when the box-select validity threshold is crossed
     setIsBoxSelectZoomValid(mapZoom >= BOX_SELECT_MIN_ZOOM)
-    onMoveEnd?.(mapCenter.lat, mapCenter.lng, mapZoom)
+    onMoveEnd?.(mapCenter.lat, mapCenter.lng, mapZoom, map.getPitch(), map.getBearing())
   }, [onMoveEnd, syncViewLatitude])
 
   // Handle box select confirmation - calculate geographic bbox, store it, and trigger query
@@ -645,13 +651,7 @@ export default function DataMap({
     const centerY = containerRect.height / 2
     const halfBox = BOX_SELECT_SIZE / 2
 
-    // Convert screen box corners to geographic coordinates
-    const sw = map.unproject([centerX - halfBox, centerY + halfBox])
-    const ne = map.unproject([centerX + halfBox, centerY - halfBox])
-    onBoxSelectConfirm?.({
-      sw: [sw.lng, sw.lat] as [number, number],
-      ne: [ne.lng, ne.lat] as [number, number]
-    })
+    onBoxSelectConfirm?.(polygonBounds(screenBoxToPolygon(map, [centerX - halfBox, centerY - halfBox], [centerX + halfBox, centerY + halfBox])))
 
     // Query client-side vector layers in the box area, then merge with WMS results
     const screenBbox: [maplibregl.PointLike, maplibregl.PointLike] = [
@@ -715,36 +715,16 @@ export default function DataMap({
   // Combine loading states
   const showLoading = isLoading || queryLoading
 
-  // Listen for contextmenu events on the map canvas
-  useEffect(() => {
-    const map = mapRef.current?.getMap()
-    if (!map) return
-
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault()
-      const rect = containerRef.current?.getBoundingClientRect()
-      if (!rect) return
-
-      const x = e.clientX - rect.left
-      const y = e.clientY - rect.top
-      const lngLat = map.unproject([x, y])
-
-      setContextMenuCoords({
-        lng: lngLat.lng,
-        lat: lngLat.lat,
-        screenX: e.clientX,
-        screenY: e.clientY,
-      })
-      setContextMenuOpen(true)
-    }
-
-    const canvas = map.getCanvas()
-    canvas.addEventListener('contextmenu', handleContextMenu)
-
-    return () => {
-      canvas.removeEventListener('contextmenu', handleContextMenu)
-    }
-  }, [styleLoaded]) // Re-run when style loads (map is ready)
+  // MapLibre's contextmenu waits for mouseup and skips right-drags, so tilting/rotating doesn't open the menu
+  const handleContextMenu = useCallback((e: MapLayerMouseEvent) => {
+    setContextMenuCoords({
+      lng: e.lngLat.lng,
+      lat: e.lngLat.lat,
+      screenX: e.originalEvent.clientX,
+      screenY: e.originalEvent.clientY,
+    })
+    setContextMenuOpen(true)
+  }, [])
 
   return (
     <>
@@ -771,9 +751,11 @@ export default function DataMap({
         cursor={activeDrawShape !== 'off' ? 'crosshair' : boxSelectMode ? 'move' : onFeatureClick ? (isAdditiveMode ? 'copy' : 'pointer') : 'grab'}
         boxZoom={false}
         attributionControl={false}
+        maxPitch={MAX_PITCH}
+        sky={SKY}
         onLoad={handleLoad}
+        onContextMenu={handleContextMenu}
       >
-        <NavigationControl position="top-left" />
         {/* Phones keep bottom-right for locate-me, in thumb reach, as Google Maps does. */}
         <AttributionControl compact={isMobile || undefined} position={isMobile ? 'bottom-left' : 'bottom-right'} />
 
@@ -870,6 +852,10 @@ export default function DataMap({
           }
           return null
         })}
+
+        {terrain && <Terrain3D />}
+        {/* After the data layers so they're mounted when the hillshade looks for the bottom one */}
+        {terrain && <Hillshade bottomDataLayerId={renderableEntries.length ? getLayerId(renderableEntries[renderableEntries.length - 1].layer) : undefined} />}
 
         {/* Highlight layers */}
         <HighlightLayers features={highlightFeatures} />

@@ -35,7 +35,9 @@ export interface DataMapProps {
   zoom?: number
   highlightFeatures?: HighlightFeature[]
   onFeatureClick?: (features: ClickedFeature[], options?: { additive?: boolean }) => void
-  onMoveEnd?: (lat: number, lng: number, zoom: number) => void
+  pitch?: number
+  bearing?: number
+  onMoveEnd?: (lat: number, lng: number, zoom: number, pitch: number, bearing: number) => void
   clickTolerance?: number
   isLoading?: boolean
   children?: React.ReactNode
@@ -78,6 +80,7 @@ export interface DataMapProps {
   onMapReady?: (map: maplibregl.Map) => void
   /** Basemap ID from URL */
   basemapId?: string
+  terrain?: boolean
   /** Click buffer bounds for visualization (controlled by parent) */
   clickBufferBounds?: BoundsBox | null
   /** Callback when click buffer should update */

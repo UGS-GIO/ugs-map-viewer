@@ -1,4 +1,5 @@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { TerrainCard } from '@/components/sidebar/terrain-card';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMapCoordinates } from '@/hooks/use-map-coordinates';
@@ -49,6 +50,7 @@ function MapConfigurations() {
                         <CoordFormatToggle value={locationCoordinateFormat} onChange={handleCoordFormatChange} />
                     </CardContent>
                 </Card>
+                <TerrainCard />
             </div>
         </>
     );

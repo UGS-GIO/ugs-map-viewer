@@ -38,6 +38,10 @@ const mapSearchSchema = z.object({
     popup_lon: z.coerce.number().min(-180).max(180).optional(),
     // View mode for split/table layout
     view: z.enum(['map', 'split', 'table']).optional(),
+    // 3D (terrain + hillshade) on/off, plus camera tilt and rotation in degrees
+    terrain: z.boolean().optional().catch(undefined),
+    pitch: z.coerce.number().min(0).max(85).optional().catch(undefined),
+    bearing: z.coerce.number().min(-180).max(180).optional().catch(undefined),
     // Phone sheet: how high it is, whether it shows results, and the Info detail. Unknown values drop.
     sheet: z.enum(SHEET_PARAMS).optional().catch(undefined),
     results: z.enum(RESULTS_PARAMS).optional().catch(undefined),
