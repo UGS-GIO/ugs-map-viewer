@@ -49,7 +49,6 @@
     "@tanstack/zod-adapter": "1.167.0",
     "@turf/area": "^7.4.0",
     "@turf/bbox": "^7.4.0",
-    "@turf/buffer": "^7.4.0",
     "@turf/clone": "^7.4.0",
     "@turf/helpers": "^7.4.0",
     "@turf/meta": "7.4.0",
