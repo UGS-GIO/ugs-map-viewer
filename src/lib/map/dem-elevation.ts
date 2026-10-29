@@ -1,10 +1,9 @@
+import type { QueryClient } from '@tanstack/react-query'
 import { TERRARIUM_TILES } from '@/lib/terrain'
 
 // z13 is ~15 m per pixel in Utah, close to the source DEM; one tile covers a few miles
 const ZOOM = 13
 const TILE_SIZE = 256
-
-const tiles = new Map<string, Promise<ImageData>>()
 
 async function loadTile(x: number, y: number): Promise<ImageData> {
   const url = TERRARIUM_TILES.replace('{z}', String(ZOOM)).replace('{x}', String(x)).replace('{y}', String(y))
@@ -34,17 +33,14 @@ export function decodeTerrarium(r: number, g: number, b: number) {
 }
 
 /** Ground elevation in meters at a lng/lat, from the same DEM as 3D terrain. */
-export async function elevationAt(lng: number, lat: number): Promise<number> {
+export async function elevationAt(queryClient: QueryClient, lng: number, lat: number): Promise<number> {
   const { x, y, px, py } = tilePixel(lng, lat)
-  const key = `${x}/${y}`
-  let tile = tiles.get(key)
-  if (!tile) {
-    tile = loadTile(x, y)
-    tiles.set(key, tile)
-    // Let a failed fetch retry next time
-    tile.catch(() => tiles.delete(key))
-  }
-  const { data } = await tile
+  // DEM tiles never change; keep each for the session
+  const { data } = await queryClient.fetchQuery({
+    queryKey: ['dem-tile', ZOOM, x, y],
+    queryFn: () => loadTile(x, y),
+    staleTime: Infinity,
+  })
   const i = (py * TILE_SIZE + px) * 4
   return decodeTerrarium(data[i], data[i + 1], data[i + 2])
 }

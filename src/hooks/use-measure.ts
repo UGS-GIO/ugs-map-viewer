@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react'
+import { useCallback, useSyncExternalStore } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useMapInstance } from '@/context/map-instance-context'
 import { getMeasureControl, subscribeMeasureControls, type MeasureMode, type Measurement } from '@/lib/map/measure-store'
@@ -8,10 +8,12 @@ const noop = () => () => {}
 
 /** The active measure tool, kept in the URL like the other map modes. */
 export function useMeasureMode() {
-  const { measure } = useSearch({ from: '/_map' })
+  const measure = useSearch({ from: '/_map', select: (s) => s.measure })
   const navigate = useNavigate()
-  const setMeasure = (mode: MeasureMode | undefined) =>
-    navigate({ to: '.', search: (prev) => ({ ...prev, measure: mode }), replace: true })
+  const setMeasure = useCallback(
+    (mode: MeasureMode | undefined) => navigate({ to: '.', search: (prev) => ({ ...prev, measure: mode }), replace: true }),
+    [navigate],
+  )
   return { measure, setMeasure }
 }
 

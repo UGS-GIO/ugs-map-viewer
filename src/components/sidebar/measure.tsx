@@ -1,28 +1,19 @@
 import { Radio } from '@base-ui/react/radio'
 import { RadioGroup } from '@base-ui/react/radio-group'
-import { LandPlot, MapPin, Spline, Trash2 } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useMeasureMode, useMeasurements } from '@/hooks/use-measure'
 import { useCoordinateFormat } from '@/hooks/use-map-coordinates'
 import { formatCoordinatePair } from '@/lib/map/conversion-utils'
-import { MEASURE_MODES, type MeasureMode, type Measurement } from '@/lib/map/measure-store'
-
-const TOOLS: Record<MeasureMode, { label: string; icon: typeof Spline; hint: string }> = {
-  linestring: { label: 'Distance', icon: Spline, hint: 'Click to add points, click the last one again to finish.' },
-  polygon: { label: 'Area', icon: LandPlot, hint: 'Click to add corners, click the first one to close.' },
-  point: { label: 'Point', icon: MapPin, hint: 'Click the map for coordinates and elevation.' },
-}
-
-function isMeasureMode(value: unknown): value is MeasureMode {
-  return MEASURE_MODES.some((m) => m === value)
-}
+import { MEASURE_MODES, isMeasureMode, type Measurement } from '@/lib/map/measure-store'
+import { MEASURE_TOOLS } from '@/components/maps/measure-tools'
 
 const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 2 })
 
 function MeasurementRow({ m, index }: { m: Measurement; index: number }) {
   const { coordinateFormat } = useCoordinateFormat()
-  const { label, icon: Icon } = TOOLS[m.mode]
+  const { label, icon: Icon } = MEASURE_TOOLS[m.mode]
   const coords = m.coordinates && formatCoordinatePair(m.coordinates[0], m.coordinates[1], coordinateFormat, 5)
   return (
     <li className="flex gap-3 rounded-sm bg-popover p-3 text-sm">
@@ -46,7 +37,7 @@ export default function Measure() {
       <Card>
         <CardHeader>
           <CardTitle>Measure</CardTitle>
-          <CardDescription>{measure ? TOOLS[measure].hint : 'Pick a tool, then draw on the map.'}</CardDescription>
+          <CardDescription>{measure ? MEASURE_TOOLS[measure].hint : 'Pick a tool, then draw on the map.'}</CardDescription>
         </CardHeader>
         <CardContent>
           <RadioGroup
@@ -56,7 +47,7 @@ export default function Measure() {
             className="grid grid-cols-3 gap-2"
           >
             {MEASURE_MODES.map((mode) => {
-              const { label, icon: Icon } = TOOLS[mode]
+              const { label, icon: Icon } = MEASURE_TOOLS[mode]
               return (
                 <Radio.Root
                   key={mode}

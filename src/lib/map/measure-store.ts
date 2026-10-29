@@ -5,6 +5,10 @@ import type { MeasureControl } from './measure'
 export const MEASURE_MODES = ['linestring', 'polygon', 'point'] as const
 export type MeasureMode = (typeof MEASURE_MODES)[number]
 
+export function isMeasureMode(value: unknown): value is MeasureMode {
+  return MEASURE_MODES.some((m) => m === value)
+}
+
 export interface Measurement {
   id: string | number
   mode: MeasureMode

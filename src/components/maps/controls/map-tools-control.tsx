@@ -2,15 +2,10 @@ import { createPortal } from 'react-dom'
 import { useControl } from 'react-map-gl/maplibre'
 import { PortalControl } from './portal-control'
 import { ControlButton } from './control-button'
-import { Square, Pentagon, X, SquareDashedMousePointer, CopyPlus, Ruler, Spline, LandPlot, MapPin, Trash2 } from 'lucide-react'
+import { Square, Pentagon, X, SquareDashedMousePointer, CopyPlus, Ruler, Trash2 } from 'lucide-react'
 import type { DrawMode } from '../types'
-import type { MeasureMode } from '@/lib/map/measure-store'
-
-const MEASURE_TOOLS = [
-  { mode: 'linestring', icon: Spline, label: 'Measure distance' },
-  { mode: 'polygon', icon: LandPlot, label: 'Measure area' },
-  { mode: 'point', icon: MapPin, label: 'Point location and elevation' },
-] as const satisfies ReadonlyArray<{ mode: MeasureMode; icon: typeof Ruler; label: string }>
+import { MEASURE_MODES, type MeasureMode } from '@/lib/map/measure-store'
+import { MEASURE_TOOLS } from '../measure-tools'
 
 interface MapToolsControlProps {
   // Draw mode
@@ -70,7 +65,7 @@ export function MapToolsControl({
     if (drawMode === 'polygon') return 'Polygon draw'
     if (boxSelectActive) return 'Box select'
     if (isAdditiveMode) return 'Multi-select'
-    if (measureMode) return MEASURE_TOOLS.find((t) => t.mode === measureMode)?.label ?? null
+    if (measureMode) return MEASURE_TOOLS[measureMode].title
     return null
   }
   const activeModeLabel = getActiveModeLabel()
@@ -149,11 +144,11 @@ export function MapToolsControl({
           )}
           {onMeasureModeChange && (measureMode || hasMeasurements) && (
             <>
-              {MEASURE_TOOLS.map(({ mode, icon, label }) => (
+              {MEASURE_MODES.map((mode) => (
                 <ControlButton
                   key={mode}
-                  icon={icon}
-                  title={label}
+                  icon={MEASURE_TOOLS[mode].icon}
+                  title={MEASURE_TOOLS[mode].title}
                   onClick={() => onMeasureModeChange(measureMode === mode ? undefined : mode)}
                   active={measureMode === mode}
                 />

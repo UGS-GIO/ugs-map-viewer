@@ -1,4 +1,5 @@
 import type { GeoJSONSource, IControl, Map as MapLibreMap } from 'maplibre-gl'
+import type { QueryClient } from '@tanstack/react-query'
 import type { Feature, Point } from 'geojson'
 import {
   TerraDraw,
@@ -12,22 +13,11 @@ import { area } from '@turf/area'
 import { length } from '@turf/length'
 import polylabel from 'polylabel'
 import { elevationAt } from './dem-elevation'
-import {
-  MEASURE_MODES,
-  formatArea,
-  formatLength,
-  metersToFeet,
-  type MeasureMode,
-  type Measurement,
-} from './measure-store'
+import { formatArea, formatLength, isMeasureMode, metersToFeet, type MeasureMode, type Measurement } from './measure-store'
 
 const PREFIX = 'measure-td'
 const LABELS = `${PREFIX}-labels`
 const COLOR = '#2563eb'
-
-function isMeasureMode(value: unknown): value is MeasureMode {
-  return MEASURE_MODES.some((m) => m === value)
-}
 
 const labelText = (m: Measurement) =>
   m.mode === 'point'
@@ -58,6 +48,8 @@ export class MeasureControl implements IControl {
   private draw?: TerraDraw
   private elevationsFt = new Map<string | number, number | 'pending'>()
   private listeners = new Set<() => void>()
+
+  constructor(private queryClient: QueryClient) {}
 
   onAdd(map: MapLibreMap) {
     this.map = map
@@ -157,7 +149,7 @@ export class MeasureControl implements IControl {
     const [lng, lat] = g.coordinates
     if (!this.elevationsFt.has(id)) {
       this.elevationsFt.set(id, 'pending')
-      elevationAt(lng, lat)
+      elevationAt(this.queryClient, lng, lat)
         .then((m) => { this.elevationsFt.set(id, metersToFeet(m)); this.refresh() })
         .catch(() => this.elevationsFt.delete(id))
     }
