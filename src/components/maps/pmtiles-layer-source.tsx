@@ -18,7 +18,7 @@ import type * as maplibregl from 'maplibre-gl'
 import type { PMTilesLayerProps, PMTilesRender } from '@/lib/types/mapping-types'
 import { buildFragmentLayerSpec } from '@/lib/map/layer-utils'
 import type { WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
-import { viewportLabelPoints } from '@/lib/map/viewport-labels'
+import { labelDiff, toFeatureCollection, viewportLabelPoints, type LabelPoints } from '@/lib/map/viewport-labels'
 
 interface StyleFragmentLayer {
     id: string
@@ -296,7 +296,9 @@ export function buildPmtilesLayerSpecs({
             metadata: { title: layer.title, pmtilesLayer: true, pmtilesSourceId: sourceId },
             visibleZoomRange: layer.visibleZoomRange,
         })
-        if (!layer.viewportLabels || l.type !== 'symbol') return spec as unknown as LayerProps
+        // Line-placed text follows the polygon's edge, which a label point doesn't have
+        const placement = l.layout?.['symbol-placement'] ?? 'point'
+        if (!layer.viewportLabels || l.type !== 'symbol' || placement !== 'point') return spec as unknown as LayerProps
         // Label points carry no source-layer, and stay out of the click query (they repeat the polygon).
         const { 'source-layer': _sourceLayer, ...labelSpec } = spec
         return { ...labelSpec, source: getPmtilesLabelSourceId(layer), metadata: { title: layer.title } } as unknown as LayerProps
@@ -337,14 +339,23 @@ export function PMTilesLayerSource({
         if (!layer.viewportLabels || hidden || !mapRef) return
         const map = mapRef.getMap()
         let raf = 0
+        let labels: LabelPoints = new Map()
+        // react-map-gl re-adds the source empty after a basemap swap, so a new instance gets the full set
+        let target: maplibregl.GeoJSONSource | undefined
         const update = () => {
             cancelAnimationFrame(raf)
             raf = requestAnimationFrame(() => {
+                const source = map.getSource<maplibregl.GeoJSONSource>(labelSourceId)
+                if (!source) return
                 const b = map.getBounds()
-                map.getSource<maplibregl.GeoJSONSource>(labelSourceId)?.setData(viewportLabelPoints(
-                    map.querySourceFeatures(sourceId, { sourceLayer: layer.sourceLayer }),
-                    [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()],
-                ))
+                const pieces = map.querySourceFeatures(sourceId, { sourceLayer: layer.sourceLayer })
+                const next = viewportLabelPoints(pieces, [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], labels)
+                // Only changed labels: a full setData re-places every label, which flashes on each pan
+                const diff = source === target ? labelDiff(labels, next) : null
+                if (source !== target) source.setData(toFeatureCollection(next))
+                else if (diff) source.updateData(diff)
+                target = source
+                labels = next
             })
         }
         const onSourceData = (e: maplibregl.MapSourceDataEvent) => {
@@ -361,7 +372,7 @@ export function PMTilesLayerSource({
     }, [layer.viewportLabels, layer.sourceLayer, hidden, mapRef, sourceId, labelSourceId])
 
     const specs = buildPmtilesLayerSpecs({ layer, fragment, layerFilter, hidden, opacity, styleOverride })
-    const isLabel = (spec: LayerProps) => !!layer.viewportLabels && spec.type === 'symbol'
+    const isLabel = (spec: LayerProps) => 'source' in spec && spec.source === labelSourceId
     const labelSpecs = specs.filter(isLabel)
 
     return (

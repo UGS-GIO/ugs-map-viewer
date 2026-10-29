@@ -50,6 +50,7 @@
     "@turf/area": "^7.4.0",
     "@turf/bbox": "^7.4.0",
     "@turf/bbox-clip": "^7.4.0",
+    "@turf/boolean-point-in-polygon": "^7.4.0",
     "@turf/clone": "^7.4.0",
     "@turf/helpers": "^7.4.0",
     "@turf/meta": "7.4.0",
