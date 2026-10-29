@@ -7,6 +7,7 @@ export const landslideLegacyLayerName = 'landslidelegacy_current';
 const landslideLegacyWMSTitle = 'Legacy Landslide Compilation - Statewide';
 const landslideLegacyWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: landslideLegacyWMSTitle,
     visible: false,
@@ -41,6 +42,7 @@ const landslideInventoryLayerName = 'landslideinventory_current';
 const landslideInventoryWMSTitle = 'Mapped Landslides';
 const landslideInventoryWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: landslideInventoryWMSTitle,
     visible: false,
@@ -88,6 +90,7 @@ const landslideSusceptibilityLayerName = 'landslidesusceptibility_current';
 const landslideSusceptibilityWMSTitle = 'Landslide Susceptibility';
 const landslideSusceptibilityWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: landslideSusceptibilityWMSTitle,
     visible: false,
@@ -129,6 +132,7 @@ const liquefactionLayerName = 'liquefaction_current';
 const liquefactionWMSTitle = 'Liquefaction Susceptibility';
 const liquefactionWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: liquefactionWMSTitle,
     visible: false,
@@ -170,6 +174,7 @@ const groundshakingLayerName = 'groundshaking_current';
 const groundshakingWMSTitle = 'Earthquake Ground Shaking - Statewide';
 const groundshakingWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: groundshakingWMSTitle,
     visible: false,
@@ -280,6 +285,7 @@ const surfaceFaultRuptureLayerName = 'hazards_surfacefaultrupture_current';
 const surfaceFaultRuptureWMSTitle = 'Surface-Fault-Rupture Hazard Special-Study Zones';
 const surfaceFaultRuptureWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: surfaceFaultRuptureWMSTitle,
     visible: false,
@@ -319,6 +325,7 @@ const windBlownSandLayerName = 'windblownsand_current';
 const windBlownSandWMSTitle = 'Wind-Blown Sand Susceptibility';
 const windBlownSandWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: windBlownSandWMSTitle,
     opacity: 0.75,
@@ -356,6 +363,7 @@ const saltTectonicsDeformationLayerName = 'salttectonicsdeformation_current';
 const saltTectonicsDeformationWMSTitle = 'Salt Tectonics Related Ground Deformation';
 const saltTectonicsDeformationWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: saltTectonicsDeformationWMSTitle,
     opacity: 0.75,
@@ -395,6 +403,7 @@ const shallowBedrockLayerName = 'shallowbedrock_current';
 const shallowBedrockWMSTitle = 'Shallow Bedrock Potential';
 const shallowBedrockWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: shallowBedrockWMSTitle,
     opacity: 0.75,
@@ -434,6 +443,7 @@ const rockfallHazardLayerName = 'rockfall_current';
 const rockfallHazardWMSTitle = 'Rockfall Hazard';
 const rockfallHazardWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: rockfallHazardWMSTitle,
     visible: false,
@@ -473,6 +483,7 @@ const pipingAndErosionLayerName = 'pipinganderosion_current';
 const pipingAndErosionWMSTitle = 'Piping and Erosion Susceptibility';
 const pipingAndErosionWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: pipingAndErosionWMSTitle,
     opacity: 0.75,
@@ -512,6 +523,7 @@ const expansiveSoilRockLayerName = 'expansivesoilrock_current';
 const expansiveSoilRockWMSTitle = 'Expansive Soil and Rock Susceptibility';
 const expansiveSoilRockWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: expansiveSoilRockWMSTitle,
     opacity: 0.75,
@@ -551,6 +563,7 @@ const shallowGroundwaterLayerName = 'shallowgroundwater_current';
 const shallowGroundwaterWMSTitle = 'Shallow Groundwater Susceptibility';
 const shallowGroundwaterWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: shallowGroundwaterWMSTitle,
     visible: false,
@@ -591,6 +604,7 @@ const radonSusceptibilityLayerName = 'radonsusceptibility_current';
 const radonSusceptibilityWMSTitle = 'Geologic Radon Susceptibility';
 const radonSusceptibilityWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: radonSusceptibilityWMSTitle,
     opacity: 0.75,
@@ -630,6 +644,7 @@ const corrosiveSoilRockLayerName = 'corrosivesoilrock_current';
 const corrosiveSoilRockWMSTitle = 'Corrosive Soil and Rock Susceptibility';
 const corrosiveSoilRockWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: corrosiveSoilRockWMSTitle,
     opacity: 0.75,
@@ -669,6 +684,7 @@ const collapsibleSoilLayerName = 'collapsiblesoil_current';
 const collapsibleSoilWMSTitle = 'Collapsible Soil Susceptibility';
 const collapsibleSoilWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: collapsibleSoilWMSTitle,
     opacity: 0.75,
@@ -708,6 +724,7 @@ const solubleSoilAndRockLayerName = 'solublesoilandrock_current';
 const solubleSoilAndRockWMSTitle = 'Soluble Soil and Rock Susceptibility';
 const solubleSoilAndRockWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: solubleSoilAndRockWMSTitle,
     opacity: 0.75,
@@ -747,6 +764,7 @@ const alluvialFanLayerName = 'alluvialfan_current';
 const alluvialFanWMSTitle = 'Alluvial-Fan Flooding Susceptibility (Source: Division of Emergency Management)';
 const alluvialFanWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: alluvialFanWMSTitle,
     visible: false,
@@ -786,6 +804,7 @@ const floodAndDebrisLayerName = 'floodanddebrisflow_current';
 const floodAndDebrisWMSTitle = 'Flood and Debris-Flow Hazard';
 const floodAndDebrisWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: floodAndDebrisWMSTitle,
     opacity: 0.75,
@@ -863,6 +882,7 @@ const erosionHazardZoneLayerName = 'erosionhazardzone_current';
 const erosionHazardZoneWMSTitle = 'J.E. Fuller Flood Erosion-Hazard Zones';
 const erosionHazardZoneWMSConfig: WMSLayerProps = {
     type: 'wms',
+    blend: true,
     url: `${PROD_GEOSERVER_URL}/wms`,
     title: erosionHazardZoneWMSTitle,
     opacity: 0.75,
