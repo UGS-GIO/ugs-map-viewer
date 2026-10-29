@@ -1187,6 +1187,7 @@ const sectionsConfig: PMTilesLayerProps = {
     visibleZoomRange: [11, 22],
     sourceAgency: 'UGRC',
     sourceUrl: 'https://gis.utah.gov/products/sgid/cadastre/plss-sections/',
+    polygonLabels: true,
     sublayers: [{
         name: sectionsLayerName,
         popupEnabled: false,
