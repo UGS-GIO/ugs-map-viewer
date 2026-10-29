@@ -23,7 +23,11 @@ export const geolunits500kConfig: PMTilesLayerProps = {
                 'Unit': {
                     field: 'custom',
                     type: 'custom',
-                    transform: (props) => `${props?.['unitname']} (${props?.['unitsymbol']})`,
+                    transform: (props) => {
+                        const name = props?.['unitname'] ?? ''
+                        const symbol = props?.['unitsymbol']
+                        return symbol ? `${name} (${symbol})` : name
+                    },
                 },
                 'Age': { field: 'age', type: 'string' },
                 'Source': { field: 'metadata_publication_id', type: 'string' },
