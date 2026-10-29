@@ -40,7 +40,7 @@ export function getPmtilesSourceId(layer: PMTilesLayerProps): string {
     return `pmtiles-${layer.title || layer.sourceLayer}`.replace(/\s+/g, '-').toLowerCase()
 }
 
-/** The GeoJSON source a `viewportLabels` layer's symbol layers draw from. */
+/** The GeoJSON source a `polygonLabels` layer's symbol layers draw from. */
 export function getPmtilesLabelSourceId(layer: PMTilesLayerProps): string {
     return `${getPmtilesSourceId(layer)}-labels`
 }
@@ -298,7 +298,7 @@ export function buildPmtilesLayerSpecs({
         })
         // Line-placed text follows the polygon's edge, which a label point doesn't have
         const placement = l.layout?.['symbol-placement'] ?? 'point'
-        if (!layer.viewportLabels || l.type !== 'symbol' || placement !== 'point') return spec as unknown as LayerProps
+        if (!layer.polygonLabels || l.type !== 'symbol' || placement !== 'point') return spec as unknown as LayerProps
         // Label points carry no source-layer, and stay out of the click query (they repeat the polygon).
         const { 'source-layer': _sourceLayer, ...labelSpec } = spec
         return { ...labelSpec, source: getPmtilesLabelSourceId(layer), metadata: { title: layer.title } } as unknown as LayerProps
@@ -336,7 +336,7 @@ export function PMTilesLayerSource({
 
     const labelSourceId = getPmtilesLabelSourceId(layer)
     useEffect(() => {
-        if (!layer.viewportLabels || hidden || !mapRef) return
+        if (!layer.polygonLabels || hidden || !mapRef) return
         const map = mapRef.getMap()
         let raf = 0
         let labels: LabelPoints = new Map()
@@ -369,7 +369,7 @@ export function PMTilesLayerSource({
             map.off('moveend', update)
             cancelAnimationFrame(raf)
         }
-    }, [layer.viewportLabels, layer.sourceLayer, hidden, mapRef, sourceId, labelSourceId])
+    }, [layer.polygonLabels, layer.sourceLayer, hidden, mapRef, sourceId, labelSourceId])
 
     const specs = buildPmtilesLayerSpecs({ layer, fragment, layerFilter, hidden, opacity, styleOverride })
     const isLabel = (spec: LayerProps) => 'source' in spec && spec.source === labelSourceId
