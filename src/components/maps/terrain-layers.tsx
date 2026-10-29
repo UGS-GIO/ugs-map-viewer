@@ -4,7 +4,7 @@ import type * as maplibregl from 'maplibre-gl'
 import type { RasterDEMSourceSpecification } from 'maplibre-gl'
 
 // Spike: free AWS Terrarium DEM; swap for a USGS 3DEP tileset if this ships.
-const DEM_SOURCE: RasterDEMSourceSpecification = {
+export const DEM_SOURCE: RasterDEMSourceSpecification = {
   type: 'raster-dem',
   tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
   encoding: 'terrarium',
@@ -14,7 +14,7 @@ const DEM_SOURCE: RasterDEMSourceSpecification = {
   attribution: '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain: USGS 3DEP, SRTM, GMTED2010 · Mapzen</a>',
 }
 
-const TERRAIN = { source: 'terrain-dem', exaggeration: 1.5 }
+export const TERRAIN = { source: 'terrain-dem', exaggeration: 1.5 }
 
 // MapLibre's default is 60; 85 allows near-horizon views, which need a sky above the horizon
 export const MAX_PITCH = 85
@@ -29,7 +29,7 @@ export const SKY: maplibregl.SkySpecification = {
   'horizon-fog-blend': 0.6,
 }
 
-const HILLSHADE: maplibregl.HillshadeLayerSpecification = {
+export const HILLSHADE: maplibregl.HillshadeLayerSpecification = {
   id: 'terrain-hillshade',
   type: 'hillshade',
   // Separate source: MapLibre renders hillshade blurry when it shares the terrain DEM

@@ -1,5 +1,6 @@
 import React from 'react';
 import { TerrainCard } from '@/components/sidebar/terrain-card';
+import { BasemapBlendCard } from '@/components/sidebar/basemap-blend-card';
 import { CoordinateFormatCard } from '@/components/sidebar/coordinate-format-card';
 import { useState, useMemo, useEffect, useCallback, useId, useRef } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
@@ -314,6 +315,7 @@ const MapConfigurations = () => {
                     </CardContent>
                 </Card>
                 <TerrainCard />
+                <BasemapBlendCard />
             </div>
         </>
     );

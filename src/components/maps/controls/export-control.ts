@@ -69,12 +69,12 @@ export interface ExportSettings {
  * The credits the on-screen attribution bar shows (basemap, terrain, data sources), as plain text.
  * Read via getSource: TileJSON-backed sources only learn their attribution after loading.
  */
-export function mapAttributionText(map: {
+export function mapAttributionText(...maps: {
     getStyle(): { sources: Record<string, unknown> };
     getSource(id: string): { attribution?: string } | undefined;
-}): string {
-    const credits = Object.keys(map.getStyle().sources)
-        .map((id) => map.getSource(id)?.attribution)
+}[]): string {
+    const credits = maps
+        .flatMap((map) => Object.keys(map.getStyle().sources).map((id) => map.getSource(id)?.attribution))
         .filter((html): html is string => !!html)
         .map((html) => new DOMParser().parseFromString(html, 'text/html').body.textContent?.trim() ?? '')
         .filter(Boolean);
@@ -96,6 +96,7 @@ export type GetLegendData = (bounds: MapBounds) => Promise<LegendItem[]>;
 /** Renders the current map view to a PNG, JPEG or PDF download. */
 export class MapExporter {
     private map?: maplibregl.Map;
+    private underlay?: maplibregl.Map;
 
     constructor(
         private readonly settings: ExportSettings = DEFAULT_EXPORT_SETTINGS,
@@ -103,8 +104,10 @@ export class MapExporter {
         private readonly getLegendData?: GetLegendData,
     ) {}
 
-    async run(map: maplibregl.Map): Promise<void> {
+    /** `underlay`: the basemap map under `map` while blending, multiplied back together in the export. */
+    async run(map: maplibregl.Map, underlay?: maplibregl.Map): Promise<void> {
         this.map = map;
+        this.underlay = underlay;
 
         // Calculate dimensions based on page size and DPI
         const pageDims = PAGE_SIZES[this.settings.pageSize];
@@ -172,32 +175,40 @@ export class MapExporter {
             ? { center: this.map.getCenter(), zoom: this.map.getZoom() + Math.log2(Math.min(width / liveCanvas.clientWidth, height / liveCanvas.clientHeight)) }
             : { bounds: currentBounds, fitBoundsOptions: { padding: 0 } };
 
-        const exportMap = new maplibregl.Map({
-            container: hiddenContainer,
-            style: this.map.getStyle(),
-            ...camera,
-            bearing,
-            pitch,
-            // Else a view tilted past MapLibre's default 60° prints clamped
-            maxPitch: this.map.getMaxPitch(),
-            interactive: false,
-            attributionControl: false,
-        });
+        const maxPitch = this.map.getMaxPitch();
+        const offscreenMap = (style: maplibregl.StyleSpecification) => {
+            const container = hiddenContainer.appendChild(document.createElement('div'));
+            container.style.cssText = 'position: absolute; inset: 0;';
+            return new maplibregl.Map({
+                container,
+                style,
+                ...camera,
+                bearing,
+                pitch,
+                // Else a view tilted past MapLibre's default 60° prints clamped
+                maxPitch,
+                interactive: false,
+                attributionControl: false,
+            });
+        };
+        const exportMap = offscreenMap(this.map.getStyle());
+        const underlayMap = this.underlay && offscreenMap(this.underlay.getStyle());
+        const maps = [exportMap, underlayMap].filter((m) => m !== undefined);
 
         // A failed render or legend fetch still has to tear down the offscreen map.
         try {
             // Wait for map to fully render
-            await new Promise<void>((resolve, reject) => {
+            await Promise.all(maps.map((m) => new Promise<void>((resolve, reject) => {
                 const timeout = setTimeout(() => reject(new Error('Map render timeout')), 30000);
-                exportMap.once('idle', () => {
+                m.once('idle', () => {
                     clearTimeout(timeout);
                     resolve();
                 });
-                exportMap.once('error', (e) => {
+                m.once('error', (e) => {
                     clearTimeout(timeout);
                     reject(e);
                 });
-            });
+            })));
 
             // Get canvas
             const canvas = exportMap.getCanvas();
@@ -224,7 +235,12 @@ export class MapExporter {
             outputCanvas.height = canvas.height;
             const ctx = outputCanvas.getContext('2d');
             if (ctx) {
+                if (underlayMap) {
+                    ctx.drawImage(underlayMap.getCanvas(), 0, 0);
+                    ctx.globalCompositeOperation = 'multiply';
+                }
                 ctx.drawImage(canvas, 0, 0);
+                ctx.globalCompositeOperation = 'source-over';
 
                 // Add overlays
                 const scale = this.settings.dpi / 96; // Scale factor for high DPI
@@ -234,7 +250,7 @@ export class MapExporter {
                 if (exportMap.getPitch() === 0) {
                     this.drawScaleBar(ctx, outputCanvas.width, outputCanvas.height, exportMap, scale, this.settings.scaleUnit);
                 }
-                this.drawAttribution(ctx, outputCanvas.width, outputCanvas.height, scale, mapAttributionText(exportMap));
+                this.drawAttribution(ctx, outputCanvas.width, outputCanvas.height, scale, mapAttributionText(...maps));
 
                 // Draw legend on map if mode is 'on-map'
                 if (this.settings.legendMode === 'on-map' && legendData.length > 0) {
@@ -244,7 +260,7 @@ export class MapExporter {
 
             return outputCanvas;
         } finally {
-            exportMap.remove();
+            maps.forEach((m) => m.remove());
             hiddenContainer.remove();
         }
     }

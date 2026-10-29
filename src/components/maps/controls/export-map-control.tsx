@@ -12,6 +12,7 @@ import {
   type ExportSettings,
   type GetLegendData,
 } from './export-control'
+import { getBasemapUnderlay } from '../basemap-underlay'
 
 type SettingOption<K extends keyof ExportSettings> = { value: ExportSettings[K]; label: string }
 
@@ -86,7 +87,7 @@ export default function ExportMapControl({ getLegendData }: { getLegendData?: Ge
   const exportMap = useMutation({
     mutationFn: async () => {
       if (!map) throw new Error('Map not available')
-      await new MapExporter(settings, 'ugs-map', getLegendData).run(map.getMap())
+      await new MapExporter(settings, 'ugs-map', getLegendData).run(map.getMap(), getBasemapUnderlay(map.getMap()))
     },
     onSuccess: () => setOpen(false),
     onError: (error) => {

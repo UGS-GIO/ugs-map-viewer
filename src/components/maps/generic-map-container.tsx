@@ -26,6 +26,7 @@ import { useMap } from '@/hooks/use-map'
 import { useGetCurrentPage } from '@/hooks/use-get-current-page'
 import { useAppBasemaps } from '@/hooks/use-app-basemaps'
 import { useAppTerrain } from '@/hooks/use-app-terrain'
+import { useBasemapBlend } from '@/hooks/use-basemap-blend'
 import { MapChromeControls } from '@/components/maps/controls/map-chrome-controls'
 import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
@@ -316,6 +317,7 @@ export default function GenericMapContainer({
   const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
   const { viewMode, setViewMode, center, zoom, pitch, bearing, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
   const { terrain } = useAppTerrain()
+  const { blend } = useBasemapBlend()
   // Phones select straight from the map, whatever a desktop link's `view` still says.
   const selectionView: ViewMode = isMobile ? 'map' : viewMode
   const phoneSheet = usePhoneSheet()
@@ -652,6 +654,7 @@ export default function GenericMapContainer({
       onMapReady={handleMapReady}
       basemapId={basemap ?? defaultBasemap.id}
       terrain={terrain}
+      blend={blend}
       clickBufferBounds={clickBufferBounds}
       onClickBufferChange={handleClickBufferChange}
       featureBbox={featureBbox}
