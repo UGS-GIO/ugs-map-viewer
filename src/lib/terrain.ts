@@ -1,3 +1,6 @@
+/** AWS Terrarium DEM tiles, used for 3D terrain, hillshade and measure elevations. */
+export const TERRARIUM_TILES = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+
 export const DEFAULT_TERRAIN = true;
 
 /** Per-app 3D default (terrain + hillshade); the URL only records a choice that differs from it. */

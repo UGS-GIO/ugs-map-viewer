@@ -31,7 +31,7 @@ function MeasurementRow({ m, index }: { m: Measurement; index: number }) {
         <span className="font-medium">{label} {index + 1}</span>
         {m.value !== undefined && <span>{fmt(m.value)} {m.unit}</span>}
         {coords?.map((c) => <span key={c.label}>{c.label}: {c.value}</span>)}
-        {m.elevation !== undefined && <span>Elevation: {fmt(m.elevation)} {m.elevationUnit}</span>}
+        {m.mode === 'point' && <span>Elevation: {m.elevationFt === undefined ? '…' : `${fmt(m.elevationFt)} ft`}</span>}
       </div>
     </li>
   )

@@ -20,5 +20,5 @@ export function useMeasurements() {
   const { map } = useMapInstance()
   const control = useSyncExternalStore(subscribeMeasureControls, () => getMeasureControl(map))
   const measurements = useSyncExternalStore(control?.subscribe ?? noop, () => control?.measurements ?? NO_MEASUREMENTS)
-  return { measurements, clearAll: () => control?.clearAll() }
+  return { measurements, clearAll: () => control?.clear() }
 }
