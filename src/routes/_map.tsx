@@ -41,7 +41,7 @@ const mapSearchSchema = z.object({
     view: z.enum(['map', 'split', 'table']).optional(),
     // 3D (terrain + hillshade) on/off, plus camera tilt and rotation in degrees
     terrain: z.boolean().optional().catch(undefined),
-    // Multiply data layers over the basemap, like the geology portal's basemap blending
+    // Draw `blend` layers under the hillshade and basemap labels, like geolMapPortal's basemap blending
     blend: z.boolean().optional().catch(undefined),
     pitch: z.coerce.number().min(0).max(85).optional().catch(undefined),
     bearing: z.coerce.number().min(-180).max(180).optional().catch(undefined),

@@ -26,7 +26,7 @@ export interface BasemapStyle {
   type: 'short' | 'long'; // short = main nav, long = dropdown
   /** Basemap id drawn beneath; only useful when this style's tiles are transparent outside Utah. */
   underlay?: string;
-  /** Credit for raster tiles, and for vector styles while blending, when the data map can't read the style's own. */
+  /** Credit for raster tiles; vector styles carry their own. */
   attribution?: string;
 }
 
@@ -37,7 +37,6 @@ export const BASEMAP_STYLES: BasemapStyle[] = [
     id: 'liberty',
     title: 'Streets',
     url: 'https://tiles.openfreemap.org/styles/liberty',
-    attribution: '<a href="https://openfreemap.org">OpenFreeMap</a> <a href="https://www.openmaptiles.org/">© OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     type: 'short',
   },
   {

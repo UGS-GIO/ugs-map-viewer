@@ -1,8 +1,9 @@
 import { Link } from "@/components/ui/link";
-import { ENERGY_MINERALS_WORKSPACE, MAPPING_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
+import { ENERGY_MINERALS_WORKSPACE, parquetUrl, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
 import { LayerProps, WMSLayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 import { formatNumeric } from "@/lib/utils";
 import { ucrcWellsConfig } from "@/routes/_map/-shared/layers/ucrc-wells";
+import { geolunits500kConfig } from "@/routes/_map/-shared/layers/geolunits-500k";
 
 
 export const wellWithTopsLayerName = 'wellswithtops_hascore';
@@ -405,29 +406,6 @@ const metalMiningDistrictsConfig: WMSLayerProps = {
 };
 
 
-// Seamless Geological Units WMS Layer
-const seamlessGeolunitsLayerName = 'mapping_geolunits_500k';
-export const seamlessGeolunitsWMSTitle = 'Geologic Units (500k)';
-const seamlessGeolunitsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: seamlessGeolunitsWMSTitle,
-    opacity: 0.5,
-    visible: false,
-    crs: 'EPSG:3857',
-    sourceAgency: 'Utah Geological Survey',
-    sourceUrl: 'https://geology.utah.gov/publication-details/?pub=M-179dm',
-    sublayers: [
-        {
-            name: `${MAPPING_WORKSPACE}:${seamlessGeolunitsLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'Unit Description': { field: 'unit_name', type: 'string' },
-            },
-        },
-    ],
-};
 
 const subsurfaceDataConfig: LayerProps = {
     type: 'group',
@@ -444,7 +422,7 @@ const geologicalInformationConfig: LayerProps = {
     title: 'Geological Information',
     visible: false,
     layers: [
-        seamlessGeolunitsWMSConfig,
+        geolunits500kConfig,
     ]
 }
 

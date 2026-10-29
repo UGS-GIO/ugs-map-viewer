@@ -1,9 +1,10 @@
+import { geolunits500kTitle } from '@/routes/_map/-shared/layers/geolunits-500k'
 import { useMemo, useEffect, useRef } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import GenericMapContainer from '@/components/maps/generic-map-container'
 import { MapShell } from '@/components/maps/map-shell'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { sectionsTitle, wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, metalMiningDistrictsTitle } from './-data/layers/layers'
+import { sectionsTitle, wellWithTopsWMSTitle, metalMiningDistrictsTitle } from './-data/layers/layers'
 import { ucrcWellsWMSTitle } from '@/routes/_map/-shared/layers/ucrc-wells'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
@@ -84,7 +85,7 @@ const searchConfig: SearchSourceConfig[] = [
     searchTerm: "search_term",
     functionParams: { search_scale: 'small' },
     sourceName: 'Geologic Units',
-    layerName: seamlessGeolunitsWMSTitle,
+    layerName: geolunits500kTitle,
     displayField: "unit_label",
     params: { select: 'unit_label,match_type' },
     groupByField: 'match_type',

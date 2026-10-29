@@ -1,6 +1,5 @@
 import { CoordinateFormatCard } from '@/components/sidebar/coordinate-format-card';
 import { TerrainCard } from '@/components/sidebar/terrain-card';
-import { BasemapBlendCard } from '@/components/sidebar/basemap-blend-card';
 
 function MapConfigurations() {
     return (
@@ -10,7 +9,6 @@ function MapConfigurations() {
             </div>
             <CoordinateFormatCard />
             <TerrainCard />
-            <BasemapBlendCard />
         </div>
     );
 }

@@ -1,9 +1,10 @@
+import { geolunits500kTitle } from '@/routes/_map/-shared/layers/geolunits-500k'
 import { useMemo, useEffect, useRef } from 'react'
 import { useSearch } from '@tanstack/react-router'
 import GenericMapContainer from '@/components/maps/generic-map-container'
 import { MapShell } from '@/components/maps/map-shell'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { wellWithTopsWMSTitle, seamlessGeolunitsWMSTitle, sectionsTitle, powerplantsTitle } from './-data/layers/layers'
+import { wellWithTopsWMSTitle, sectionsTitle, powerplantsTitle } from './-data/layers/layers'
 import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
@@ -54,7 +55,7 @@ const searchConfig: SearchSourceConfig[] = [
     // `search_scale: 'small'` selected the 500k units; that scale is its own warehouse item.
     parquetUrl: parquetUrl('geolmap_geolunits_500k'),
     sourceName: 'Geologic Units',
-    layerName: seamlessGeolunitsWMSTitle,
+    layerName: geolunits500kTitle,
     // The RPC returned a pre-joined label; the warehouse keeps name and symbol apart.
     derivedFields: {
       unit_label: `unitname || ' (' || unitsymbol || ')'`,

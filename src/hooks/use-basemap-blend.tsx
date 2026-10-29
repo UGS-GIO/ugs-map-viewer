@@ -1,6 +1,6 @@
 import { useNavigate, useSearch } from '@tanstack/react-router';
 
-/** Basemap blending (data layers multiplied over the basemap), off unless the URL turns it on. */
+/** Basemap blending (`blend` layers drawn under the hillshade and basemap labels), off unless the URL turns it on. */
 export function useBasemapBlend() {
     const search = useSearch({ from: '/_map' });
     const navigate = useNavigate();

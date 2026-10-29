@@ -10,10 +10,10 @@ export function BasemapBlendCard() {
     <Card>
       <CardHeader>
         <CardTitle>Basemap Blending</CardTitle>
-        <CardDescription>Multiply map layers over the basemap, so terrain and labels show through.</CardDescription>
+        <CardDescription>Show terrain shading and basemap labels through the geologic map.</CardDescription>
       </CardHeader>
       <CardContent className="flex items-center justify-between gap-2">
-        <Label htmlFor="basemap-blend-toggle">Blend with basemap</Label>
+        <Label htmlFor="basemap-blend-toggle">Blend geology with basemap</Label>
         <Switch id="basemap-blend-toggle" checked={blend} onCheckedChange={setBlend} />
       </CardContent>
     </Card>

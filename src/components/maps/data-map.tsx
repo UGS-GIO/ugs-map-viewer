@@ -35,7 +35,6 @@ import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
 import { toast } from 'sonner'
 import { Terrain3D, Hillshade, MAX_PITCH, SKY } from './terrain-layers'
-import { BasemapUnderlay, BLEND_SKY, BLEND_STYLE } from './basemap-underlay'
 
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps, PMTilesStyleOverride } from './types'
@@ -605,7 +604,14 @@ export default function DataMap({
     [basemapId]
   )
 
-  const basemapStyle = useMemo(() => buildBasemapStyle(currentBasemap), [currentBasemap])
+  const mapStyle = useMemo(() => buildBasemapStyle(currentBasemap), [currentBasemap])
+
+  // While blending, `blend` layers draw under the hillshade and basemap labels; the rest stay on top
+  const blendedTitles = useMemo(
+    () => new Set(blend ? renderableEntries.filter((e) => e.layer.blend).map((e) => e.layer.title) : []),
+    [blend, renderableEntries],
+  )
+  const unblendedEntries = renderableEntries.filter((e) => !blendedTitles.has(e.layer.title))
 
   // Handle map click - triggers mutation instead of direct fetch
   const handleMapClick = useCallback((e: MapLayerMouseEvent) => {
@@ -746,7 +752,7 @@ export default function DataMap({
         ref={mapRef}
         initialViewState={initialView}
         style={{ width: '100%', height: '100%' }}
-        mapStyle={blend ? BLEND_STYLE : basemapStyle}
+        mapStyle={mapStyle}
         refreshExpiredTiles={false}
         onMoveEnd={handleMoveEnd}
         onClick={boxSelectMode ? undefined : handleMapClick}
@@ -754,19 +760,12 @@ export default function DataMap({
         boxZoom={false}
         attributionControl={false}
         maxPitch={MAX_PITCH}
-        sky={blend ? BLEND_SKY : SKY}
+        sky={SKY}
         onLoad={handleLoad}
         onContextMenu={handleContextMenu}
       >
         {/* Phones keep bottom-right for locate-me, in thumb reach, as Google Maps does. */}
-        {/* Keyed: the control reads customAttribution only when it mounts. The underlay's credits go here. */}
-        <AttributionControl
-          key={blend ? currentBasemap.id : 'basemap'}
-          compact={isMobile || undefined}
-          position={isMobile ? 'bottom-left' : 'bottom-right'}
-          customAttribution={blend ? currentBasemap.attribution : undefined}
-        />
-        {blend && <BasemapUnderlay style={basemapStyle} terrain={!!terrain} />}
+        <AttributionControl compact={isMobile || undefined} position={isMobile ? 'bottom-left' : 'bottom-right'} />
 
         {/* View mode control - rendered before MapToolsControl so it stacks above */}
         {viewMode && onViewModeChange && (
@@ -801,12 +800,14 @@ export default function DataMap({
           const hidden = !displayed
           const opacity = layerOpacity.get(layer.title || '')
           const beforeId = i > 0 ? getLayerId(renderableEntries[i - 1].layer) : undefined
+          // Remounts a blended layer when blending turns off, putting it back in its place in the stack
+          const keyPrefix = blendedTitles.has(layer.title) ? 'blend-' : ''
           if (isWMSLayer(layer)) {
             const cqlFilter = layerFilters[layer.title]
             const styleName = layerStyles[layer.title] ?? layer.styleName
             return (
               <WmsLayerSource
-                key={`${layer.title}-${cqlFilter ?? ''}-${styleName ?? ''}`}
+                key={`${keyPrefix}${layer.title}-${cqlFilter ?? ''}-${styleName ?? ''}`}
                 layer={layer}
                 wmsUrl={wmsUrl}
                 cqlFilter={cqlFilter}
@@ -823,7 +824,7 @@ export default function DataMap({
             const geojson = wfsLayerData.get(sourceId)!
             return (
               <WfsLayerSource
-                key={sourceId}
+                key={`${keyPrefix}${sourceId}`}
                 layer={layer}
                 geojson={geojson}
                 beforeId={beforeId}
@@ -835,10 +836,10 @@ export default function DataMap({
             )
           }
           if (isArcGISMapServerLayer(layer)) {
-            return <ArcGisLayerSource key={layer.title} layer={layer} beforeId={beforeId} hidden={hidden} opacity={opacity} />
+            return <ArcGisLayerSource key={`${keyPrefix}${layer.title}`} layer={layer} beforeId={beforeId} hidden={hidden} opacity={opacity} />
           }
           if (isCOGLayer(layer)) {
-            return <CogLayerSource key={layer.title} layer={layer} beforeId={beforeId} hidden={hidden} opacity={opacity} />
+            return <CogLayerSource key={`${keyPrefix}${layer.title}`} layer={layer} beforeId={beforeId} hidden={hidden} opacity={opacity} />
           }
           if (isPMTilesLayer(layer)) {
             const fragment = pmtilesFragments.get(layer.title || '')!
@@ -847,7 +848,7 @@ export default function DataMap({
             const styleOverride = title ? pmtilesStyleOverrides[title] : undefined
             return (
               <PMTilesLayerSource
-                key={`${title}-${activeSymbology}`}
+                key={`${keyPrefix}${title}-${activeSymbology}`}
                 layer={layer}
                 fragment={fragment}
                 activeSymbology={activeSymbology}
@@ -864,7 +865,14 @@ export default function DataMap({
 
         {terrain && <Terrain3D />}
         {/* After the data layers so they're mounted when the hillshade looks for the bottom one */}
-        {terrain && !blend && <Hillshade bottomDataLayerId={renderableEntries.length ? getLayerId(renderableEntries[renderableEntries.length - 1].layer) : undefined} />}
+        {(terrain || blend) && (
+          // Keyed: remounting reorders right away when blending turns on, rather than on the next tile load
+          <Hillshade
+            key={blendedTitles.size ? 'blend' : 'plain'}
+            bottomDataLayerId={unblendedEntries.length ? getLayerId(unblendedEntries[unblendedEntries.length - 1].layer) : undefined}
+            blendedTitles={blendedTitles}
+          />
+        )}
 
         {/* Highlight layers */}
         <HighlightLayers features={highlightFeatures} />

@@ -151,6 +151,8 @@ interface BaseLayerProps {
     sectionHeading?: string;
     /** Titles this layer had before a rename, so old links and description rows still find it. */
     formerTitles?: string[];
+    /** Draws under the hillshade and basemap labels while basemap blending is on, like geolMapPortal's geology layers. */
+    blend?: boolean;
 }
 
 export interface WMSLayerProps extends BaseLayerProps {

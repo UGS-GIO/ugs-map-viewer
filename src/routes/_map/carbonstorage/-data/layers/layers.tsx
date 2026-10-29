@@ -4,6 +4,7 @@ import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps, WFSLayerProps
 import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
 import { ucrcWellsConfig } from "@/routes/_map/-shared/layers/ucrc-wells";
+import { geolunits500kConfig } from "@/routes/_map/-shared/layers/geolunits-500k";
 
 // GeoRegions WMS Layer
 const CCUS_IMAGE_BASE_URL = `${MAPS_ASSETS_CDN_URL}/ccus/png`;
@@ -272,51 +273,6 @@ const transmissionLinesWMSConfig: WMSLayerProps = {
     ],
 }
 
-// Seamless Geological Units WMS Layer
-const seamlessGeolunitsLayerName = 'mapping_geolunits_500k';
-export const seamlessGeolunitsWMSTitle = 'Geologic Units (500k)';
-const seamlessGeolunitsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: seamlessGeolunitsWMSTitle,
-    opacity: 0.5,
-    crs: 'EPSG:26912',
-    sourceAgency: 'Utah Geological Survey',
-    sourceUrl: 'https://geology.utah.gov/publication-details/?pub=M-179dm',
-    sublayers: [
-        {
-            name: `${MAPPING_WORKSPACE}:${seamlessGeolunitsLayerName}`,
-            popupEnabled: true,
-            queryable: true,
-            popupFields: {
-                'Unit': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: (props: GeoJsonProperties | null | undefined) => {
-                        const unitName = props?.['unit_name'];
-                        const unitSymbol = props?.['unit_symbol'];
-                        const value = `${unitName} (${unitSymbol})`;
-                        return value;
-                    }
-                },
-                'Unit Description': { field: 'unit_description', type: 'string' },
-                'Source': { field: 'series_id', type: 'string' },
-            },
-            linkFields: {
-                'series_id': {
-                    baseUrl: '',
-                    transform: (value: string) => {
-                        const transformedValues = {
-                            href: `https://doi.org/10.34191/${value}`,
-                            label: `${value}`
-                        };
-                        return [transformedValues];
-                    }
-                }
-            }
-        },
-    ],
-};
 
 export const wellWithTopsLayerName = 'wellswithtops_hascore';
 export const wellWithTopsWMSTitle = 'Wells Database';
@@ -1496,7 +1452,7 @@ const geologicalInformationConfig: LayerProps = {
     layers: [
         qFaultsWMSConfig,
         faultsWMSConfig,
-        seamlessGeolunitsWMSConfig,
+        geolunits500kConfig,
     ]
 }
 const subsurfaceDataConfig: LayerProps = {

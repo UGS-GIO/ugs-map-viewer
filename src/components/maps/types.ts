@@ -81,7 +81,7 @@ export interface DataMapProps {
   /** Basemap ID from URL */
   basemapId?: string
   terrain?: boolean
-  /** Multiply the data layers over a basemap drawn on its own map, like the geology portal's basemap blending. */
+  /** Draw `blend` layers under the hillshade and basemap labels, like geolMapPortal's basemap blending. */
   blend?: boolean
   /** Click buffer bounds for visualization (controlled by parent) */
   clickBufferBounds?: BoundsBox | null
