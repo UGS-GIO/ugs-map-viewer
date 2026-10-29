@@ -7,6 +7,7 @@ import { INFO_DETAILS, RESULTS_PARAMS, SHEET_PARAMS } from '@/components/maps/ph
 import { RouteErrorBoundary } from '@/components/route-error-boundary'
 import { resolveBasemapId, BASEMAP_STYLES } from '@/lib/basemaps'
 import { COORDINATE_FORMATS } from '@/lib/map/conversion-utils'
+import { MEASURE_MODES } from '@/lib/map/measure-store'
 
 // Get responsive default sidebar width based on screen size
 const getDefaultSidebarWidth = () => {
@@ -41,6 +42,8 @@ const mapSearchSchema = z.object({
     view: z.enum(['map', 'split', 'table']).optional(),
     // 3D (terrain + hillshade) on/off, plus camera tilt and rotation in degrees
     terrain: z.boolean().optional().catch(undefined),
+    // Active measure tool
+    measure: z.enum(MEASURE_MODES).optional().catch(undefined),
     pitch: z.coerce.number().min(0).max(85).optional().catch(undefined),
     bearing: z.coerce.number().min(-180).max(180).optional().catch(undefined),
     // Phone sheet: how high it is, whether it shows results, and the Info detail. Unknown values drop.

@@ -266,6 +266,10 @@ export default function DataMap({
   toolbarDrawShape = 'off',
   onToolbarDrawToggle,
   onCancelMode,
+  measureMode,
+  onMeasureModeChange,
+  hasMeasurements,
+  onClearMeasurements,
   spatialFilter,
   onSpatialFilterChange,
   boxSelectMode = false,
@@ -607,7 +611,7 @@ export default function DataMap({
 
   // Handle map click - triggers mutation instead of direct fetch
   const handleMapClick = useCallback((e: MapLayerMouseEvent) => {
-    if (boxSelectMode || activeDrawShape !== 'off') return
+    if (boxSelectMode || activeDrawShape !== 'off' || measureMode) return
     if (justFinishedDrawingRef.current) {
       justFinishedDrawingRef.current = false
       return
@@ -625,7 +629,7 @@ export default function DataMap({
 
     const isAdditive = isAdditiveMode || (e.originalEvent?.shiftKey ?? false)
     queryAtPoint(map, e.point, clickTolerance, isAdditive, { extractBbox: true, clearOnEmpty: true })
-  }, [onFeatureClick, hasClickableLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, activeDrawShape, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange, layerFilters])
+  }, [onFeatureClick, hasClickableLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, activeDrawShape, measureMode, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange, layerFilters])
 
   // Handle map move end - track zoom only (box select now uses click-to-confirm)
   const handleMoveEnd = useCallback(() => {
@@ -782,6 +786,10 @@ export default function DataMap({
           onBoxSelectToggle={onBoxSelectModeChange}
           isAdditiveMode={isAdditiveMode}
           onAdditiveModeToggle={onAdditiveModeToggle}
+          measureMode={measureMode}
+          onMeasureModeChange={onMeasureModeChange}
+          hasMeasurements={hasMeasurements}
+          onClearMeasurements={onClearMeasurements}
           position="top-right"
         />
 

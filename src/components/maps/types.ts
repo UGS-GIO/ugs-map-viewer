@@ -3,6 +3,7 @@ import type * as maplibregl from 'maplibre-gl'
 import type { LayerProps } from '@/lib/types/mapping-types'
 import type { WfsFeature } from '@/lib/map/wfs-service'
 import type { PMTilesStyleOverride } from './pmtiles-layer-source'
+import type { MeasureMode } from '@/lib/map/measure-store'
 
 export type { PMTilesStyleOverride }
 
@@ -57,6 +58,11 @@ export interface DataMapProps {
   onToolbarDrawToggle?: (mode: DrawMode) => void
   /** Cancel any active mode (draw, box select, additive) */
   onCancelMode?: () => void
+  /** Active measure tool; map clicks don't identify features while one is on */
+  measureMode?: MeasureMode
+  onMeasureModeChange?: (mode: MeasureMode | undefined) => void
+  hasMeasurements?: boolean
+  onClearMeasurements?: () => void
   spatialFilter?: SpatialFilter
   onSpatialFilterChange?: (filter: SpatialFilter) => void
   /** Box select mode - shows positioning overlay */

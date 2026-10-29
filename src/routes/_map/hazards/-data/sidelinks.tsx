@@ -1,6 +1,7 @@
-import { FileText, House, Info as InfoIcon, Layers as LayersIcon, MessageSquare, Settings } from 'lucide-react'
+import { FileText, House, Info as InfoIcon, Layers as LayersIcon, MessageSquare, Ruler, Settings } from 'lucide-react'
 import Info from '@/components/sidebar/info'
 import Layers from '@/components/sidebar/layers'
+import Measure from '@/components/sidebar/measure'
 import MapConfigurations from '../-components/sidebar/map-configurations/map-configurations'
 import ReportGenerator from '../-components/sidebar/report-generator'
 export interface NavLink {
@@ -47,6 +48,12 @@ export const sidelinks: SideLink[] = [
   //   icon: <Database />,
   //   component: GeologicalUnitSearch, // Direct component reference
   // },
+  {
+    title: 'Measure',
+    label: '',
+    icon: <Ruler className='stroke-foreground' />,
+    component: Measure,
+  },
   {
     title: 'Report Generator',
     label: '',

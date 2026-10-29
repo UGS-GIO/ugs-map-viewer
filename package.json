@@ -54,6 +54,7 @@
     "@turf/clone": "^7.4.0",
     "@turf/helpers": "^7.4.0",
     "@turf/meta": "7.4.0",
+    "@watergis/maplibre-gl-terradraw": "^1.17.0",
     "class-variance-authority": "^0.7.1",
     "client-zip": "^2.5.1",
     "clsx": "^2.1.1",

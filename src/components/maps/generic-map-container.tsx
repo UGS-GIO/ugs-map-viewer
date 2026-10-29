@@ -26,6 +26,7 @@ import { useMap } from '@/hooks/use-map'
 import { useGetCurrentPage } from '@/hooks/use-get-current-page'
 import { useAppBasemaps } from '@/hooks/use-app-basemaps'
 import { useAppTerrain } from '@/hooks/use-app-terrain'
+import { useMeasureMode, useMeasurements } from '@/hooks/use-measure'
 import { MapChromeControls } from '@/components/maps/controls/map-chrome-controls'
 import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
@@ -510,8 +511,17 @@ export default function GenericMapContainer({
     setAdditiveModeToggled(mode === 'additive')
   }, [cancelDraw, clearSelectionState])
 
+  const { measure, setMeasure } = useMeasureMode()
+  const { measurements, clearAll: clearMeasurements } = useMeasurements()
+  const handleMeasureModeChange = (mode: typeof measure) => {
+    if (mode) setActiveMode('none')
+    setMeasure(mode)
+    if (mode) peek()
+  }
+
   // Toolbar draw toggle — starts draw via context, tracks highlight locally
   const handleToolbarDrawToggle = useCallback((mode: DrawMode) => {
+    if (mode !== 'off') setMeasure(undefined)
     setBoxSelectMode(false)
     clearSelectionState()
     if (mode === 'off') {
@@ -523,7 +533,7 @@ export default function GenericMapContainer({
       // Map tools need the map: on phones the sheet drops to its peek.
       peek()
     }
-  }, [cancelDraw, startDraw, clearSelectionState, peek])
+  }, [cancelDraw, startDraw, clearSelectionState, peek, setMeasure])
 
   // Called by useTerraDraw when drawing finishes (resets to 'off')
   const handleDrawReset = useCallback(() => {
@@ -534,7 +544,8 @@ export default function GenericMapContainer({
   // Cancel any active mode (draw, box select, additive)
   const handleCancelMode = useCallback(() => {
     setActiveMode('none')
-  }, [setActiveMode])
+    setMeasure(undefined)
+  }, [setActiveMode, setMeasure])
 
   const handleSpatialFilterChange = useCallback((filter: SpatialFilter) => {
     setSpatialFilter(filter)
@@ -549,9 +560,10 @@ export default function GenericMapContainer({
   // Handler for box select toggle from toolbar
   const handleBoxSelectModeChange = useCallback((active: boolean) => {
     setActiveMode(active ? 'boxSelect' : 'none')
+    if (active) setMeasure(undefined)
     // The box sits at the map's center: on phones the sheet drops to its peek so all of it shows.
     if (active) peek()
-  }, [setActiveMode, peek])
+  }, [setActiveMode, peek, setMeasure])
 
   const handleBoxSelectConfirm = useCallback((bounds: { sw: [number, number]; ne: [number, number] }) => {
     setBoxSelectBounds(bounds)
@@ -662,6 +674,10 @@ export default function GenericMapContainer({
       toolbarDrawShape={toolbarDrawShape}
       onToolbarDrawToggle={handleToolbarDrawToggle}
       onCancelMode={handleCancelMode}
+      measureMode={measure}
+      onMeasureModeChange={handleMeasureModeChange}
+      hasMeasurements={measurements.length > 0}
+      onClearMeasurements={clearMeasurements}
       spatialFilter={spatialFilter}
       onSpatialFilterChange={handleSpatialFilterChange}
       boxSelectMode={boxSelectMode}
@@ -669,7 +685,11 @@ export default function GenericMapContainer({
       boxSelectBounds={boxSelectBounds}
       onBoxSelectConfirm={handleBoxSelectConfirm}
       isAdditiveMode={isAdditiveMode}
-      onAdditiveModeToggle={() => additiveModeToggled ? setActiveMode('none') : setActiveMode('additive')}
+      onAdditiveModeToggle={() => {
+        if (additiveModeToggled) return setActiveMode('none')
+        setMeasure(undefined)
+        setActiveMode('additive')
+      }}
       onClearSelection={handleClearAllSelections}
       pinCoords={popupCoords}
       onPinChange={setPopupCoords}
