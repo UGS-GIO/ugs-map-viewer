@@ -1,9 +1,10 @@
 import { area } from '@turf/area'
+import { bbox } from '@turf/bbox'
 import { bboxClip } from '@turf/bbox-clip'
 import { booleanPointInPolygon } from '@turf/boolean-point-in-polygon'
 import polylabel from 'polylabel'
 import type { GeoJSONSourceDiff } from 'maplibre-gl'
-import type { BBox, Feature, FeatureCollection, Geometry, Point, Position } from 'geojson'
+import type { BBox, Feature, FeatureCollection, Geometry, Point, Polygon, Position } from 'geojson'
 
 type FeatureId = string | number
 export type LabelPoints = Map<FeatureId, Feature<Point>>
@@ -26,17 +27,20 @@ function polygonsOf(geometry: Geometry): Position[][][] {
  * `previous` that is still inside a visible piece stays put, so panning doesn't move it.
  */
 export function viewportLabelPoints(features: Feature[], bounds: BBox, previous: LabelPoints = new Map()): LabelPoints {
-    // polylabel precision, in degrees: a thousandth of the view is well under a pixel
-    const precision = Math.max(bounds[2] - bounds[0], bounds[3] - bounds[1]) / 1000
-    const visible = new Map<FeatureId, { pieces: Position[][][]; feature: Feature }>()
+    // polylabel precision, in degrees: a 200th of the view is a few pixels, and a third faster than a 1000th
+    const precision = Math.max(bounds[2] - bounds[0], bounds[3] - bounds[1]) / 200
+    const visible = new Map<FeatureId, { pieces: { rings: Position[][]; area: number }[]; feature: Feature }>()
     for (const feature of features) {
         if (feature.id == null) continue
         for (const rings of polygonsOf(feature.geometry)) {
-            const clipped = bboxClip({ type: 'Polygon', coordinates: rings }, bounds).geometry
-            for (const piece of polygonsOf(clipped)) {
+            const polygon: Polygon = { type: 'Polygon', coordinates: rings }
+            const [w, s, e, n] = bbox(polygon)
+            if (e < bounds[0] || w > bounds[2] || n < bounds[1] || s > bounds[3]) continue
+            const inside = w >= bounds[0] && e <= bounds[2] && s >= bounds[1] && n <= bounds[3]
+            for (const piece of inside ? [rings] : polygonsOf(bboxClip(polygon, bounds).geometry)) {
                 if (!piece[0] || piece[0].length < 4) continue
                 const entry = visible.get(feature.id) ?? { pieces: [], feature }
-                entry.pieces.push(piece)
+                entry.pieces.push({ rings: piece, area: area({ type: 'Polygon', coordinates: piece }) })
                 visible.set(feature.id, entry)
             }
         }
@@ -44,12 +48,11 @@ export function viewportLabelPoints(features: Feature[], bounds: BBox, previous:
     const out: LabelPoints = new Map()
     for (const [id, { pieces, feature }] of visible) {
         const prev = previous.get(id)
-        if (prev && pieces.some(p => booleanPointInPolygon(prev.geometry, { type: 'Polygon', coordinates: p }))) {
+        if (prev && pieces.some(p => booleanPointInPolygon(prev.geometry, { type: 'Polygon', coordinates: p.rings }))) {
             out.set(id, prev)
             continue
         }
-        const largest = pieces.reduce((a, b) =>
-            area({ type: 'Polygon', coordinates: b }) > area({ type: 'Polygon', coordinates: a }) ? b : a)
+        const largest = pieces.reduce((a, b) => (b.area > a.area ? b : a)).rings
         out.set(id, {
             type: 'Feature',
             id,
