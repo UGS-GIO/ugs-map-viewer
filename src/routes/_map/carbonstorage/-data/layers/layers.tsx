@@ -273,7 +273,6 @@ const transmissionLinesWMSConfig: WMSLayerProps = {
     ],
 }
 
-
 export const wellWithTopsLayerName = 'wellswithtops_hascore';
 export const wellWithTopsWMSTitle = 'Wells Database';
 const wellWithTopsWMSConfig: WMSLayerProps = {

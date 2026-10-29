@@ -37,16 +37,15 @@ export function createPointBufferBbox(
     return null;
 }
 
+/** The viewer layer title a style layer carries in `metadata.title`, if any. */
+export function layerTitle(metadata: unknown): string | undefined {
+    return typeof metadata === 'object' && metadata !== null && 'title' in metadata && typeof metadata.title === 'string' ? metadata.title : undefined;
+}
+
 /** The rendered layer whose viewer `metadata.title` matches, or null. */
 function findRenderedLayerIdByTitle(mapInstance: MapLibreMap, title: string): string | null {
     const style = mapInstance.getStyle();
-    for (const layer of style?.layers ?? []) {
-        const metadata = layer.metadata;
-        if (metadata && typeof metadata === 'object' && 'title' in metadata) {
-            if ((metadata as Record<string, unknown>).title === title) return layer.id;
-        }
-    }
-    return null;
+    return style?.layers?.find((layer) => layerTitle(layer.metadata) === title)?.id ?? null;
 }
 
 export function findLayerByTitle(mapInstance: MapLibreMap, title: string): MapLibreLayerProxy | null {

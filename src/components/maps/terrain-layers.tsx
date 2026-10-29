@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { Source, useControl } from 'react-map-gl/maplibre'
 import type * as maplibregl from 'maplibre-gl'
 import type { RasterDEMSourceSpecification } from 'maplibre-gl'
+import { layerTitle } from '@/lib/map/utils'
 
 // Spike: free AWS Terrarium DEM; swap for a USGS 3DEP tileset if this ships.
 const DEM_SOURCE: RasterDEMSourceSpecification = {
@@ -56,10 +57,6 @@ function useMapLifecycle(apply: (map: maplibregl.Map) => void, clear: (map: mapl
       },
     }
   })
-}
-
-function layerTitle(metadata: unknown): string | undefined {
-  return typeof metadata === 'object' && metadata !== null && 'title' in metadata && typeof metadata.title === 'string' ? metadata.title : undefined
 }
 
 interface LayerOrderMap {
