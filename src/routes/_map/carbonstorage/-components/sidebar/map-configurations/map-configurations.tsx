@@ -1,5 +1,6 @@
 import React from 'react';
 import { TerrainCard } from '@/components/sidebar/terrain-card';
+import { CoordinateFormatCard } from '@/components/sidebar/coordinate-format-card';
 import { useState, useMemo, useEffect, useCallback, useId, useRef } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
@@ -231,7 +232,6 @@ const useWellFilterManager = () => {
 
 const MapConfigurations = () => {
     const { map } = useMap();
-    const navigate = useNavigate({ from: '/carbonstorage/' });
     const search = useSearch({ from: '/_map/carbonstorage/' });
 
     const { simpleState, updateFilters } = useWellFilterManager();
@@ -258,13 +258,6 @@ const MapConfigurations = () => {
         applyLayerFilter(map, wellWithTopsWMSTitle, filterFromUrl);
     }, [map, search.filters]);
 
-    const handleCoordFormatChange = useCallback((value: 'dd' | 'dms') => {
-        navigate({
-            search: (prev) => ({ ...prev, coordinate_format: value }),
-            replace: true
-        });
-    }, [navigate]);
-
     const handleHasCoreChange = useCallback((value: YesNoAll) => {
         updateFilters({ core: value });
     }, [updateFilters]);
@@ -288,46 +281,7 @@ const MapConfigurations = () => {
                     <h2 className="text-lg font-medium">Map Configurations</h2>
                 </div>
 
-                {/* Card for Coordinate Format */}
-                <Card>
-                    <CardHeader className="py-3 px-4">
-                        <CardTitle className="text-base">Location Coordinate Format</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-4">
-                        <RadioGroup
-                            value={search.coordinate_format ?? 'dd'}
-                            onValueChange={handleCoordFormatChange}
-                            className="grid grid-cols-2 gap-2"
-                        >
-                            <div>
-                                <RadioGroupItem
-                                    value="dd"
-                                    id="dd-radio"
-                                    className="peer sr-only"
-                                />
-                                <Label
-                                    htmlFor="dd-radio"
-                                    className="flex flex-1 items-center justify-center rounded-md border-2 border-transparent bg-popover p-3 text-center cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground"
-                                >
-                                    Decimal Degrees
-                                </Label>
-                            </div>
-                            <div>
-                                <RadioGroupItem
-                                    value="dms"
-                                    id="dms-radio"
-                                    className="peer sr-only"
-                                />
-                                <Label
-                                    htmlFor="dms-radio"
-                                    className="flex flex-1 items-center justify-center rounded-md border-2 border-transparent bg-popover p-3 text-center cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground"
-                                >
-                                    Degrees, Minutes, Seconds
-                                </Label>
-                            </div>
-                        </RadioGroup>
-                    </CardContent>
-                </Card>
+                <CoordinateFormatCard />
 
                 {/* Card for Wells Database Filter */}
                 <Card>

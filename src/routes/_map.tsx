@@ -1,11 +1,12 @@
 import { LayerUrlProvider } from '@/context/layer-url-provider';
 import { SidebarProvider } from '@/context/sidebar-provider';
 import { MapInstanceProvider } from '@/context/map-instance-context';
-import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { createFileRoute, Outlet, stripSearchParams } from '@tanstack/react-router'
 import { z } from 'zod'
 import { INFO_DETAILS, RESULTS_PARAMS, SHEET_PARAMS } from '@/components/maps/phone-sheet/sheet-model'
 import { RouteErrorBoundary } from '@/components/route-error-boundary'
 import { resolveBasemapId, BASEMAP_STYLES } from '@/lib/basemaps'
+import { COORDINATE_FORMATS } from '@/lib/map/conversion-utils'
 
 // Get responsive default sidebar width based on screen size
 const getDefaultSidebarWidth = () => {
@@ -23,7 +24,7 @@ const mapSearchSchema = z.object({
     tab: z.string().optional().default('info'),
     sidebar_collapsed: z.coerce.boolean().optional().default(false),
     sidebar_width: z.enum(['icon', 'wide', 'narrow']).optional().default(getDefaultSidebarWidth),
-    coordinate_format: z.enum(['dd', 'dms']).optional(),
+    coordinate_format: z.enum(COORDINATE_FORMATS).optional().catch(undefined),
     basemap: z.string().transform(resolveBasemapId).refine((id) => BASEMAP_STYLES.some((b) => b.id === id)).optional().catch(undefined),
     layers: z.preprocess((val) => {
         if (typeof val === 'string') {
@@ -68,6 +69,7 @@ export type MapSearch = z.infer<typeof mapSearchSchema>
 
 export const Route = createFileRoute('/_map')({
     validateSearch: mapSearchSchema,
+    search: { middlewares: [stripSearchParams({ coordinate_format: 'dd' })] },
     errorComponent: RouteErrorBoundary,
     component: () => (
         <MapInstanceProvider>
