@@ -2,6 +2,7 @@ import { createContext } from "react";
 import type { Polygon } from "geojson";
 import type { Map as MapLibreMap } from "maplibre-gl";
 import type { ClickedFeature, DrawMode } from "@/components/maps/types";
+import type { MeasureMode } from "@/lib/map/measure-store";
 
 export type { DrawMode }
 
@@ -18,6 +19,10 @@ export type MapContextProps = {
     startDraw: (mode: 'rectangle' | 'polygon', onComplete?: (polygon: Polygon) => void, onCancel?: () => void) => void
     cancelDraw: () => void
     handleDrawComplete: (polygon: Polygon) => boolean
+
+    // Measure tool — routed through the container so it cancels the other map modes
+    setMeasureMode: (mode: MeasureMode | undefined) => void
+    registerSetMeasureMode: (fn: (mode: MeasureMode | undefined) => void) => void
 
     // Feature selection — container registers, consumers (e.g. sidebar filters) call
     selectFeatures: (features: ClickedFeature[]) => void
@@ -40,6 +45,8 @@ export const MapContext = createContext<MapContextProps>({
     startDraw: () => { },
     cancelDraw: () => { },
     handleDrawComplete: () => false,
+    setMeasureMode: () => { },
+    registerSetMeasureMode: () => { },
     selectFeatures: () => { },
     clearAllSelections: () => { },
     registerSelectFeatures: () => { },

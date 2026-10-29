@@ -3,6 +3,7 @@ import type * as maplibregl from 'maplibre-gl'
 import type { MapContextProps, DrawMode } from '@/context/map-context'
 import type { ClickedFeature } from '@/components/maps/types'
 import type { Polygon } from 'geojson'
+import type { MeasureMode } from '@/lib/map/measure-store'
 import { useMapInstance } from '@/context/map-instance-context'
 
 /**
@@ -21,6 +22,7 @@ export function useMapContextState() {
   const prepareForDrawRef = useRef<(() => void) | undefined>(undefined)
   const selectFeaturesCallbackRef = useRef<((features: ClickedFeature[]) => void) | undefined>(undefined)
   const clearSelectionsCallbackRef = useRef<(() => void) | undefined>(undefined)
+  const setMeasureModeRef = useRef<((mode: MeasureMode | undefined) => void) | undefined>(undefined)
 
   // Container forwards map instance here
   const onMapReady = useCallback((map: maplibregl.Map) => {
@@ -49,6 +51,14 @@ export function useMapContextState() {
 
   const registerClearSelections = useCallback((callback: () => void) => {
     clearSelectionsCallbackRef.current = callback
+  }, [])
+
+  const registerSetMeasureMode = useCallback((callback: (mode: MeasureMode | undefined) => void) => {
+    setMeasureModeRef.current = callback
+  }, [])
+
+  const setMeasureMode = useCallback((mode: MeasureMode | undefined) => {
+    setMeasureModeRef.current?.(mode)
   }, [])
 
   const selectFeatures = useCallback((features: ClickedFeature[]) => {
@@ -96,6 +106,8 @@ export function useMapContextState() {
     startDraw,
     cancelDraw,
     handleDrawComplete,
+    setMeasureMode,
+    registerSetMeasureMode,
     selectFeatures,
     clearAllSelections,
     registerSelectFeatures,
@@ -103,7 +115,7 @@ export function useMapContextState() {
     registerPrepareForDraw,
     registerLayerTurnedOff,
     onMapReady,
-  }), [mapInstance, isSketching, onLayerTurnedOff, activeDrawShape, startDraw, cancelDraw, handleDrawComplete, selectFeatures, clearAllSelections, registerSelectFeatures, registerClearSelections, registerPrepareForDraw, registerLayerTurnedOff, onMapReady])
+  }), [mapInstance, isSketching, onLayerTurnedOff, activeDrawShape, startDraw, cancelDraw, handleDrawComplete, setMeasureMode, registerSetMeasureMode, selectFeatures, clearAllSelections, registerSelectFeatures, registerClearSelections, registerPrepareForDraw, registerLayerTurnedOff, onMapReady])
 
   return { contextValue }
 }

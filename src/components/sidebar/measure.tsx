@@ -4,6 +4,7 @@ import { Trash2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useMeasureMode, useMeasurements } from '@/hooks/use-measure'
+import { useMap } from '@/hooks/use-map'
 import { useCoordinateFormat } from '@/hooks/use-map-coordinates'
 import { formatCoordinatePair } from '@/lib/map/conversion-utils'
 import { MEASURE_MODES, isMeasureMode, type Measurement } from '@/lib/map/measure-store'
@@ -29,7 +30,8 @@ function MeasurementRow({ m, index }: { m: Measurement; index: number }) {
 }
 
 export default function Measure() {
-  const { measure, setMeasure } = useMeasureMode()
+  const { measure } = useMeasureMode()
+  const { setMeasureMode: setMeasure } = useMap()
   const { measurements, clearAll } = useMeasurements()
 
   return (

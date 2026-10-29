@@ -357,6 +357,7 @@ export default function GenericMapContainer({
     cancelDraw,
     handleDrawComplete,
     registerPrepareForDraw,
+    registerSetMeasureMode,
     registerLayerTurnedOff,
     registerSelectFeatures,
     registerClearSelections,
@@ -491,18 +492,19 @@ export default function GenericMapContainer({
   }, [])
 
   // Register callback so startDraw can clear conflicting container state
+  const { measure, setMeasure } = useMeasureMode()
+  const { measurements, clearAll: clearMeasurements } = useMeasurements()
+
   const prepareForDraw = useCallback(() => {
     clearSelectionState()
     setBoxSelectMode(false)
     setToolbarDrawShape('off')
-  }, [clearSelectionState])
+    setMeasure(undefined)
+  }, [clearSelectionState, setMeasure])
 
   useEffect(() => {
     registerPrepareForDraw(prepareForDraw)
   }, [registerPrepareForDraw, prepareForDraw])
-
-  const { measure, setMeasure } = useMeasureMode()
-  const { measurements, clearAll: clearMeasurements } = useMeasurements()
 
   // Centralized mode setter - handles mutual exclusivity (non-draw modes, measuring included)
   const setActiveMode = useCallback((
@@ -517,14 +519,18 @@ export default function GenericMapContainer({
     setMeasure(measureMode)
   }, [cancelDraw, clearSelectionState, setMeasure])
 
-  const handleMeasureModeChange = (mode: MeasureMode | undefined) => {
+  const handleMeasureModeChange = useCallback((mode: MeasureMode | undefined) => {
     setActiveMode('none', mode)
     if (mode) peek()
-  }
+  }, [setActiveMode, peek])
+
+  // The sidebar's measure panel goes through here too, so it cancels the other modes
+  useEffect(() => {
+    registerSetMeasureMode(handleMeasureModeChange)
+  }, [registerSetMeasureMode, handleMeasureModeChange])
 
   // Toolbar draw toggle — starts draw via context, tracks highlight locally
   const handleToolbarDrawToggle = useCallback((mode: DrawMode) => {
-    if (mode !== 'off') setMeasure(undefined)
     setBoxSelectMode(false)
     clearSelectionState()
     if (mode === 'off') {
@@ -536,7 +542,7 @@ export default function GenericMapContainer({
       // Map tools need the map: on phones the sheet drops to its peek.
       peek()
     }
-  }, [cancelDraw, startDraw, clearSelectionState, peek, setMeasure])
+  }, [cancelDraw, startDraw, clearSelectionState, peek])
 
   // Called by useTerraDraw when drawing finishes (resets to 'off')
   const handleDrawReset = useCallback(() => {
