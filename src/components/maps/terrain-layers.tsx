@@ -98,7 +98,11 @@ export function Hillshade({ bottomDataLayerId, blendedTitles }: { bottomDataLaye
     (map) => {
       if (!map.getSource(HILLSHADE.source)) return
       if (!map.getLayer(HILLSHADE.id)) {
-        const firstLabelId = map.getLayersOrder().find((id) => map.getLayer(id)?.type === 'symbol')
+        // The basemap's labels, not a data layer's symbols
+        const firstLabelId = map.getLayersOrder().find((id) => {
+          const layer = map.getLayer(id)
+          return layer?.type === 'symbol' && !layerTitle(layer.metadata)
+        })
         const beforeId = firstLabelId ?? bottomDataLayerIdRef.current
         // Data layers re-mount after a basemap swap; wait for the next sourcedata rather than land on top
         if (beforeId && !map.getLayer(beforeId)) return

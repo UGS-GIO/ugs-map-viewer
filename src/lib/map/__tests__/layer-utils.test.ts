@@ -18,6 +18,7 @@ import {
   findAncestorGroupTitles,
   buildFragmentLayerSpec,
   zoomRangeToBounds,
+  stackBeforeIds,
 } from '../layer-utils'
 import { zoomForScale } from '../map-scale'
 import type {
@@ -377,4 +378,23 @@ describe('effectiveZoomRange', () => {
   it('keeps the lower of the configured max and the scale cap', () => {
     expect(effectiveZoomRange({ ...wmsLayer, visibleZoomRange: [5, 10], maxScale: 62_500 }, 39.5)).toEqual([5, 10])
   })
+})
+
+describe('stackBeforeIds', () => {
+    it('stacks each layer under the nearest one above it in its own group', () => {
+        expect(stackBeforeIds([
+            { id: 'faults', blended: false },
+            { id: 'corrosive', blended: true },
+            { id: 'fissure', blended: false },
+            { id: 'landslide', blended: true },
+        ])).toEqual([undefined, undefined, 'faults', 'corrosive'])
+    })
+
+    it('chains every layer to the one above when nothing blends', () => {
+        expect(stackBeforeIds([
+            { id: 'a', blended: false },
+            { id: 'b', blended: false },
+            { id: 'c', blended: false },
+        ])).toEqual([undefined, 'a', 'b'])
+    })
 })

@@ -14,7 +14,7 @@ import {
 import { BASEMAP_STYLES, DEFAULT_BASEMAP, buildBasemapStyle } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
-import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds, isWithinZoomRange, effectiveZoomRange } from '@/lib/map/layer-utils'
+import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds, isWithinZoomRange, effectiveZoomRange, stackBeforeIds } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
 import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
@@ -611,7 +611,13 @@ export default function DataMap({
     () => new Set(blend ? renderableEntries.filter((e) => e.layer.blend).map((e) => e.layer.title) : []),
     [blend, renderableEntries],
   )
+  const beforeIds = useMemo(
+    () => stackBeforeIds(renderableEntries.map(({ layer }) => ({ id: getLayerId(layer), blended: blendedTitles.has(layer.title) }))),
+    [renderableEntries, blendedTitles],
+  )
   const unblendedEntries = renderableEntries.filter((e) => !blendedTitles.has(e.layer.title))
+  // The hillshade goes under the bottom unblended layer, or, with none, under the top blended one
+  const hillshadeBeforeEntry = unblendedEntries[unblendedEntries.length - 1] ?? renderableEntries.find((e) => blendedTitles.has(e.layer.title))
 
   // Handle map click - triggers mutation instead of direct fetch
   const handleMapClick = useCallback((e: MapLayerMouseEvent) => {
@@ -799,9 +805,9 @@ export default function DataMap({
           const { layer, displayed } = entry
           const hidden = !displayed
           const opacity = layerOpacity.get(layer.title || '')
-          const beforeId = i > 0 ? getLayerId(renderableEntries[i - 1].layer) : undefined
-          // Remounts a blended layer when blending turns off, putting it back in its place in the stack
-          const keyPrefix = blendedTitles.has(layer.title) ? 'blend-' : ''
+          const beforeId = beforeIds[i]
+          // Remounts every layer when blending flips, so the whole stack is rebuilt against the new beforeIds
+          const keyPrefix = blend ? 'blend-' : ''
           if (isWMSLayer(layer)) {
             const cqlFilter = layerFilters[layer.title]
             const styleName = layerStyles[layer.title] ?? layer.styleName
@@ -866,10 +872,8 @@ export default function DataMap({
         {terrain && <Terrain3D />}
         {/* After the data layers so they're mounted when the hillshade looks for the bottom one */}
         {(terrain || blend) && (
-          // Keyed: remounting reorders right away when blending turns on, rather than on the next tile load
           <Hillshade
-            key={blendedTitles.size ? 'blend' : 'plain'}
-            bottomDataLayerId={unblendedEntries.length ? getLayerId(unblendedEntries[unblendedEntries.length - 1].layer) : undefined}
+            bottomDataLayerId={hillshadeBeforeEntry ? getLayerId(hillshadeBeforeEntry.layer) : undefined}
             blendedTitles={blendedTitles}
           />
         )}

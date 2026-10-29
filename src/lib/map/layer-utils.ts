@@ -297,3 +297,17 @@ export function buildFragmentLayerSpec(
     ...zoomRangeToBounds(opts.visibleZoomRange),
   }
 }
+
+/**
+ * The `beforeId` for each layer in a top-first stack: the nearest layer above it in the same group, so
+ * blended layers (under the hillshade) and unblended ones (on top) never take each other's place.
+ */
+export function stackBeforeIds(layers: Array<{ id: string; blended: boolean }>): Array<string | undefined> {
+    const above: { blended?: string; unblended?: string } = {};
+    return layers.map(({ id, blended }) => {
+        const group = blended ? 'blended' : 'unblended';
+        const beforeId = above[group];
+        above[group] = id;
+        return beforeId;
+    });
+}
