@@ -58,7 +58,7 @@ export function viewportLabelPoints(features: Feature[], bounds: BBox, previous:
             id,
             // Tile features' properties have a null prototype, which MapLibre can't post to its worker
             properties: { ...feature.properties },
-            geometry: { type: 'Point', coordinates: [...polylabel(largest.map(r => r.map(toXY)), precision)] },
+            geometry: { type: 'Point', coordinates: polylabel(largest.map(r => r.map(toXY)), precision) },
         })
     }
     return out
