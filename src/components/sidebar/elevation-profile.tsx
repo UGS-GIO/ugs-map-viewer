@@ -55,6 +55,7 @@ export function ElevationProfile({ path }: { path: [number, number][] }) {
             width={44}
           />
           <Tooltip
+            separator=": "
             formatter={(e) => [`${fmt(Number(e))} ft`, 'Elevation']}
             labelFormatter={(d) => `${inMiles ? Number(d).toFixed(2) : fmt(Number(d))} ${unit}`}
             contentStyle={{ background: 'hsl(var(--popover))', color: 'hsl(var(--popover-foreground))', fontSize: 12 }}

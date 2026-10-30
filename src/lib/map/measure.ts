@@ -149,7 +149,8 @@ export class MeasureControl implements IControl {
       return { id, mode, path, ...formatLength(length(f, { units: 'meters' })) }
     }
     if (g.type === 'Polygon') return { id, mode, ...formatArea(area(f)) }
-    if (g.type !== 'Point') return undefined
+    // Line and polygon modes add helper points (closing, snapping) while drawing
+    if (g.type !== 'Point' || mode !== 'point') return undefined
     const [lng, lat] = g.coordinates
     if (!this.elevationsFt.has(id)) {
       this.elevationsFt.set(id, 'pending')
