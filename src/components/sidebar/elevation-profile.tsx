@@ -10,7 +10,7 @@ const FT_PER_MI = 5280
 const fmt = (n: number) => Math.round(n).toLocaleString()
 
 /** Ground elevation along a measured line, with its low, high, climb and descent. */
-export function ElevationProfile({ path }: { path: [number, number][] }) {
+export default function ElevationProfile({ path }: { path: [number, number][] }) {
   const queryClient = useQueryClient()
   const { data, isPending, isError } = useQuery({
     queryKey: ['elevation-profile', path],

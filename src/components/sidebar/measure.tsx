@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Radio } from '@base-ui/react/radio'
 import { RadioGroup } from '@base-ui/react/radio-group'
 import { Trash2 } from 'lucide-react'
@@ -9,7 +10,9 @@ import { useCoordinateFormat } from '@/hooks/use-map-coordinates'
 import { formatCoordinatePair } from '@/lib/map/conversion-utils'
 import { MEASURE_MODES, isMeasureMode, type Measurement } from '@/lib/map/measure-store'
 import { MEASURE_TOOLS } from '@/components/maps/measure-tools'
-import { ElevationProfile } from './elevation-profile'
+
+// Recharts is heavy; load it only once a line is finished
+const ElevationProfile = lazy(() => import('./elevation-profile'))
 
 const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 2 })
 
@@ -25,7 +28,11 @@ function MeasurementRow({ m, index }: { m: Measurement; index: number }) {
         {m.value !== undefined && <span>{fmt(m.value)} {m.unit}</span>}
         {coords?.map((c) => <span key={c.label}>{c.label}: {c.value}</span>)}
         {m.mode === 'point' && <span>Elevation: {m.elevationFt === undefined ? '…' : `${fmt(m.elevationFt)} ft`}</span>}
-        {m.path && <ElevationProfile path={m.path} />}
+        {m.path && (
+          <Suspense fallback={<span className="text-muted-foreground">Loading elevation profile…</span>}>
+            <ElevationProfile path={m.path} />
+          </Suspense>
+        )}
       </div>
     </li>
   )
