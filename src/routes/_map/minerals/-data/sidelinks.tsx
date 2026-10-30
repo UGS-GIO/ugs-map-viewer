@@ -2,6 +2,7 @@ import { House, Info as InfoIcon, Layers as LayersIcon, Settings } from 'lucide-
 import Info from '@/components/sidebar/info'
 import Layers from '@/components/sidebar/layers'
 import MapConfigurations from '../-components/sidebar/map-configurations/map-configurations'
+import { measureSidelink } from '@/components/sidebar/measure-sidelink'
 
 export interface NavLink {
   title: string
@@ -41,4 +42,5 @@ export const sidelinks: SideLink[] = [
     icon: <Settings className='stroke-foreground' />,
     component: MapConfigurations, // Direct component reference
   },
+  measureSidelink,
 ];

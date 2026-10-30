@@ -10,6 +10,8 @@ const DRAW_FILL_COLOR = '#f59e0b'
 const DRAW_FILL_OPACITY = 0.15
 const DRAW_OUTLINE_COLOR = '#f59e0b'
 const DRAW_OUTLINE_WIDTH = 2
+// Own prefix so this instance and the measure control's never remove each other's layers
+const LAYER_PREFIX = 'filter-td'
 
 function isPolygon(geometry: GeoJSON.Geometry): geometry is Polygon {
   return geometry.type === 'Polygon'
@@ -51,14 +53,14 @@ export function useTerraDraw({
     const style = mapInstance.getStyle()
     if (style?.layers) {
       for (const layer of [...style.layers]) {
-        if (layer.id.startsWith('td-') || layer.id.startsWith('terra-draw')) {
+        if (layer.id.startsWith(LAYER_PREFIX)) {
           try { mapInstance.removeLayer(layer.id) } catch { /* ignore */ }
         }
       }
     }
     if (style?.sources) {
       for (const sourceId of Object.keys(style.sources)) {
-        if (sourceId.startsWith('td-') || sourceId.startsWith('terra-draw')) {
+        if (sourceId.startsWith(LAYER_PREFIX)) {
           try { mapInstance.removeSource(sourceId) } catch { /* ignore */ }
         }
       }
@@ -70,7 +72,7 @@ export function useTerraDraw({
     cleanupTerraDrawLayers(mapInstance)
 
     const terraDraw = new TerraDraw({
-      adapter: new TerraDrawMapLibreGLAdapter({ map: mapInstance }),
+      adapter: new TerraDrawMapLibreGLAdapter({ map: mapInstance, prefixId: LAYER_PREFIX }),
       modes: [
         new TerraDrawRectangleMode({
           styles: {
@@ -137,7 +139,7 @@ export function useTerraDraw({
     const handleStyleData = () => {
       // Check if our Terra Draw layers still exist
       const style = map.getStyle()
-      const hasTdLayers = style?.layers?.some(l => l.id.startsWith('td-'))
+      const hasTdLayers = style?.layers?.some(l => l.id.startsWith(LAYER_PREFIX))
 
       // If style changed and we lost our layers, reinitialize
       if (!hasTdLayers && terraDrawRef.current) {

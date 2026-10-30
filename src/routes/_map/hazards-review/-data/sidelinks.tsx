@@ -2,6 +2,7 @@ import { House, Info as InfoIcon, Layers as LayersIcon, Settings } from 'lucide-
 import Info from '@/components/sidebar/info'
 import MapConfigurations from '../-components/sidebar/map-configurations/map-configurations'
 import { HazardsReviewLayers } from '../-components/sidebar/hazards-review-layers'
+import { measureSidelink } from '@/components/sidebar/measure-sidelink'
 export interface NavLink {
   title: string
   label?: string
@@ -40,6 +41,7 @@ export const sidelinks: SideLink[] = [
     icon: <Settings className='stroke-foreground' />,
     component: MapConfigurations, // Direct component reference
   },
+  measureSidelink,
   // {
   //   title: 'Geological Unit Search',
   //   label: '',

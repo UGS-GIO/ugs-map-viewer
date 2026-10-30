@@ -2,6 +2,7 @@ import { House, Info as InfoIcon, Layers as LayersIcon, Settings, ExternalLink, 
 import Info from '@/components/sidebar/info'
 import SubsurfaceLayers from '../-components/sidebar/subsurface-layers'
 import MapConfigurations from '../-components/sidebar/map-configurations/map-configurations'
+import { measureSidelink } from '@/components/sidebar/measure-sidelink'
 
 export interface NavLink {
   title: string
@@ -41,6 +42,7 @@ export const sidelinks: SideLink[] = [
     icon: <Settings className='stroke-foreground' />,
     component: MapConfigurations, // Direct component reference
   },
+  measureSidelink,
   {
     title: 'Learn More',
     label: '',

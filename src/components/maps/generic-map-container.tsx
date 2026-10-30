@@ -26,6 +26,8 @@ import { useMap } from '@/hooks/use-map'
 import { useGetCurrentPage } from '@/hooks/use-get-current-page'
 import { useAppBasemaps } from '@/hooks/use-app-basemaps'
 import { useAppTerrain } from '@/hooks/use-app-terrain'
+import { useMeasureMode, useMeasurements } from '@/hooks/use-measure'
+import type { MeasureMode } from '@/lib/map/measure-store'
 import { MapChromeControls } from '@/components/maps/controls/map-chrome-controls'
 import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
@@ -355,6 +357,7 @@ export default function GenericMapContainer({
     cancelDraw,
     handleDrawComplete,
     registerPrepareForDraw,
+    registerSetMeasureMode,
     registerLayerTurnedOff,
     registerSelectFeatures,
     registerClearSelections,
@@ -489,26 +492,42 @@ export default function GenericMapContainer({
   }, [])
 
   // Register callback so startDraw can clear conflicting container state
+  const { measure, setMeasure } = useMeasureMode()
+  const { measurements, clearAll: clearMeasurements } = useMeasurements()
+
   const prepareForDraw = useCallback(() => {
     clearSelectionState()
     setBoxSelectMode(false)
     setToolbarDrawShape('off')
-  }, [clearSelectionState])
+    setMeasure(undefined)
+  }, [clearSelectionState, setMeasure])
 
   useEffect(() => {
     registerPrepareForDraw(prepareForDraw)
   }, [registerPrepareForDraw, prepareForDraw])
 
-  // Centralized mode setter - handles mutual exclusivity (non-draw modes)
+  // Centralized mode setter - handles mutual exclusivity (non-draw modes, measuring included)
   const setActiveMode = useCallback((
-    mode: 'boxSelect' | 'additive' | 'none'
+    mode: 'boxSelect' | 'additive' | 'none',
+    measureMode?: MeasureMode,
   ) => {
     cancelDraw()
     setToolbarDrawShape('off')
     clearSelectionState()
     setBoxSelectMode(mode === 'boxSelect')
     setAdditiveModeToggled(mode === 'additive')
-  }, [cancelDraw, clearSelectionState])
+    setMeasure(measureMode)
+  }, [cancelDraw, clearSelectionState, setMeasure])
+
+  const handleMeasureModeChange = useCallback((mode: MeasureMode | undefined) => {
+    setActiveMode('none', mode)
+    if (mode) peek()
+  }, [setActiveMode, peek])
+
+  // The sidebar's measure panel goes through here too, so it cancels the other modes
+  useEffect(() => {
+    registerSetMeasureMode(handleMeasureModeChange)
+  }, [registerSetMeasureMode, handleMeasureModeChange])
 
   // Toolbar draw toggle — starts draw via context, tracks highlight locally
   const handleToolbarDrawToggle = useCallback((mode: DrawMode) => {
@@ -662,6 +681,10 @@ export default function GenericMapContainer({
       toolbarDrawShape={toolbarDrawShape}
       onToolbarDrawToggle={handleToolbarDrawToggle}
       onCancelMode={handleCancelMode}
+      measureMode={measure}
+      onMeasureModeChange={handleMeasureModeChange}
+      hasMeasurements={measurements.length > 0}
+      onClearMeasurements={clearMeasurements}
       spatialFilter={spatialFilter}
       onSpatialFilterChange={handleSpatialFilterChange}
       boxSelectMode={boxSelectMode}

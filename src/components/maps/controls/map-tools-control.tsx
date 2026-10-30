@@ -2,8 +2,10 @@ import { createPortal } from 'react-dom'
 import { useControl } from 'react-map-gl/maplibre'
 import { PortalControl } from './portal-control'
 import { ControlButton } from './control-button'
-import { Square, Pentagon, X, SquareDashedMousePointer, CopyPlus } from 'lucide-react'
+import { Square, Pentagon, X, SquareDashedMousePointer, CopyPlus, Ruler, Trash2 } from 'lucide-react'
 import type { DrawMode } from '../types'
+import { MEASURE_MODES, type MeasureMode } from '@/lib/map/measure-store'
+import { MEASURE_TOOLS } from '../measure-tools'
 
 interface MapToolsControlProps {
   // Draw mode
@@ -19,6 +21,11 @@ interface MapToolsControlProps {
   onAdditiveModeToggle?: () => void
   // Cancel any active mode
   onCancelMode?: () => void
+  // Measure
+  measureMode?: MeasureMode
+  onMeasureModeChange?: (mode: MeasureMode | undefined) => void
+  hasMeasurements?: boolean
+  onClearMeasurements?: () => void
   // Pin marker
   hasPin?: boolean
   onClearPin?: () => void
@@ -37,6 +44,10 @@ export function MapToolsControl({
   onCancelMode,
   hasPin = false,
   onClearPin,
+  measureMode,
+  onMeasureModeChange,
+  hasMeasurements = false,
+  onClearMeasurements,
   position = 'top-right',
 }: MapToolsControlProps) {
   const control = useControl<PortalControl>(
@@ -46,7 +57,7 @@ export function MapToolsControl({
 
   const container = control?.getContainer()
 
-  const isModeActive = drawMode !== 'off' || boxSelectActive || isAdditiveMode
+  const isModeActive = drawMode !== 'off' || boxSelectActive || isAdditiveMode || !!measureMode
 
   // Determine active mode label for the indicator
   const getActiveModeLabel = (): string | null => {
@@ -54,6 +65,7 @@ export function MapToolsControl({
     if (drawMode === 'polygon') return 'Polygon draw'
     if (boxSelectActive) return 'Box select'
     if (isAdditiveMode) return 'Multi-select'
+    if (measureMode) return MEASURE_TOOLS[measureMode].title
     return null
   }
   const activeModeLabel = getActiveModeLabel()
@@ -119,6 +131,32 @@ export function MapToolsControl({
               onClick={onAdditiveModeToggle}
               active={isAdditiveMode}
             />
+          )}
+
+          {/* Measure: one ruler button; the tools open while measuring or while results are on the map */}
+          {onMeasureModeChange && (
+            <ControlButton
+              icon={Ruler}
+              title={measureMode ? 'Stop measuring' : 'Measure'}
+              onClick={() => onMeasureModeChange(measureMode ? undefined : 'linestring')}
+              active={!!measureMode}
+            />
+          )}
+          {onMeasureModeChange && (measureMode || hasMeasurements) && (
+            <>
+              {MEASURE_MODES.map((mode) => (
+                <ControlButton
+                  key={mode}
+                  icon={MEASURE_TOOLS[mode].icon}
+                  title={MEASURE_TOOLS[mode].title}
+                  onClick={() => onMeasureModeChange(measureMode === mode ? undefined : mode)}
+                  active={measureMode === mode}
+                />
+              ))}
+              {hasMeasurements && onClearMeasurements && (
+                <ControlButton icon={Trash2} title="Clear measurements" onClick={onClearMeasurements} variant="danger" />
+              )}
+            </>
           )}
 
           {/* Cancel active mode */}

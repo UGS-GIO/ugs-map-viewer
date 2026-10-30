@@ -3,6 +3,7 @@ import Info from '@/components/sidebar/info'
 import Layers from '@/components/sidebar/layers'
 import MapConfigurations from '../-components/sidebar/map-configurations/map-configurations'
 import ReportGenerator from '../-components/sidebar/report-generator'
+import { measureSidelink } from '@/components/sidebar/measure-sidelink'
 export interface NavLink {
   title: string
   label?: string
@@ -47,6 +48,7 @@ export const sidelinks: SideLink[] = [
   //   icon: <Database />,
   //   component: GeologicalUnitSearch, // Direct component reference
   // },
+  measureSidelink,
   {
     title: 'Report Generator',
     label: '',
