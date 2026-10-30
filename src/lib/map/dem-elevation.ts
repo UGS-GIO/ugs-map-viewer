@@ -1,4 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query'
+import { lineString } from '@turf/helpers'
+import { length } from '@turf/length'
 import { TERRARIUM_TILES } from '@/lib/terrain'
 
 // z13 is ~15 m per pixel in Utah, close to the source DEM; one tile covers a few miles
@@ -43,4 +45,31 @@ export async function elevationAt(queryClient: QueryClient, lng: number, lat: nu
   })
   const i = (py * TILE_SIZE + px) * 4
   return decodeTerrarium(data[i], data[i + 1], data[i + 2])
+}
+
+/** `count` evenly spaced points along a path, with their distance from its start in meters. */
+export function samplePath(path: [number, number][], count: number) {
+  const segments = path.slice(1).map((b, i) => ({ a: path[i], b, m: length(lineString([path[i], b]), { units: 'meters' }) }))
+  const total = segments.reduce((sum, s) => sum + s.m, 0)
+  let seg = 0
+  let start = 0
+  return Array.from({ length: count }, (_, i) => {
+    const d = (total * i) / (count - 1)
+    while (seg < segments.length - 1 && start + segments[seg].m < d) start += segments[seg++].m
+    const { a, b, m } = segments[seg]
+    const t = m ? Math.min(1, (d - start) / m) : 0
+    return { distanceM: d, lng: a[0] + (b[0] - a[0]) * t, lat: a[1] + (b[1] - a[1]) * t }
+  })
+}
+
+const PROFILE_SAMPLES = 128
+
+/** Ground elevation in meters along a path; samples sharing a DEM tile share one fetch. */
+export function elevationProfile(queryClient: QueryClient, path: [number, number][]) {
+  return Promise.all(
+    samplePath(path, PROFILE_SAMPLES).map(async (p) => ({
+      distanceM: p.distanceM,
+      elevationM: await elevationAt(queryClient, p.lng, p.lat),
+    })),
+  )
 }

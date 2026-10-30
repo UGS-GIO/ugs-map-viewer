@@ -9,6 +9,7 @@ import { useCoordinateFormat } from '@/hooks/use-map-coordinates'
 import { formatCoordinatePair } from '@/lib/map/conversion-utils'
 import { MEASURE_MODES, isMeasureMode, type Measurement } from '@/lib/map/measure-store'
 import { MEASURE_TOOLS } from '@/components/maps/measure-tools'
+import { ElevationProfile } from './elevation-profile'
 
 const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 2 })
 
@@ -19,11 +20,12 @@ function MeasurementRow({ m, index }: { m: Measurement; index: number }) {
   return (
     <li className="flex gap-3 rounded-sm bg-popover p-3 text-sm">
       <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-      <div className="grid gap-0.5">
+      <div className="grid min-w-0 flex-1 gap-0.5">
         <span className="font-medium">{label} {index + 1}</span>
         {m.value !== undefined && <span>{fmt(m.value)} {m.unit}</span>}
         {coords?.map((c) => <span key={c.label}>{c.label}: {c.value}</span>)}
         {m.mode === 'point' && <span>Elevation: {m.elevationFt === undefined ? '…' : `${fmt(m.elevationFt)} ft`}</span>}
+        {m.path && <ElevationProfile path={m.path} />}
       </div>
     </li>
   )

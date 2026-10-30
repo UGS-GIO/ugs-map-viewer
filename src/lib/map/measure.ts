@@ -106,7 +106,8 @@ export class MeasureControl implements IControl {
       id: LABELS,
       type: 'symbol',
       source: LABELS,
-      layout: { 'text-field': ['get', 'label'], 'text-size': 13, 'text-offset': [0, -1.2], 'text-allow-overlap': true },
+      // Streets serves only Noto glyphs; raster basemaps have no glyphs URL and draw text locally
+      layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Regular'], 'text-size': 13, 'text-offset': [0, -1.2], 'text-allow-overlap': true },
       paint: { 'text-color': '#111827', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
     })
     this.refresh()
@@ -143,7 +144,10 @@ export class MeasureControl implements IControl {
     const id = f.id
     if (!isMeasureMode(mode) || id === undefined) return undefined
     const g = f.geometry
-    if (g.type === 'LineString') return { id, mode, ...formatLength(length(f, { units: 'meters' })) }
+    if (g.type === 'LineString') {
+      const path = f.properties.currentlyDrawing ? undefined : g.coordinates.map(([x, y]): [number, number] => [x, y])
+      return { id, mode, path, ...formatLength(length(f, { units: 'meters' })) }
+    }
     if (g.type === 'Polygon') return { id, mode, ...formatArea(area(f)) }
     if (g.type !== 'Point') return undefined
     const [lng, lat] = g.coordinates

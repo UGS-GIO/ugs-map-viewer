@@ -18,6 +18,8 @@ export interface Measurement {
   /** Point elevation in feet, once its DEM tile loads */
   elevationFt?: number
   coordinates?: [number, number]
+  /** A finished line's vertices, for its elevation profile */
+  path?: [number, number][]
 }
 
 const FT_PER_M = 3.28084
