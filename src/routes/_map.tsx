@@ -42,7 +42,8 @@ const mapSearchSchema = z.object({
     view: z.enum(['map', 'split', 'table']).optional(),
     // 3D (terrain + hillshade) on/off, plus camera tilt and rotation in degrees
     terrain: z.boolean().optional().catch(undefined),
-    exaggeration: z.coerce.number().min(EXAGGERATION.min).max(EXAGGERATION.max).optional().catch(undefined),
+    exaggeration: z.coerce.number().min(EXAGGERATION.min).max(EXAGGERATION.max)
+        .refine((v) => Number.isInteger((v - EXAGGERATION.min) / EXAGGERATION.step)).optional().catch(undefined),
     pitch: z.coerce.number().min(0).max(85).optional().catch(undefined),
     bearing: z.coerce.number().min(-180).max(180).optional().catch(undefined),
     // Phone sheet: how high it is, whether it shows results, and the Info detail. Unknown values drop.
