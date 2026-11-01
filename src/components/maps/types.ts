@@ -81,7 +81,7 @@ export interface DataMapProps {
   /** Basemap ID from URL */
   basemapId?: string
   terrain?: boolean
-  exaggeration?: number
+  exaggeration: number
   /** Click buffer bounds for visualization (controlled by parent) */
   clickBufferBounds?: BoundsBox | null
   /** Callback when click buffer should update */
