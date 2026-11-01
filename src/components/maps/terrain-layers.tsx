@@ -1,5 +1,5 @@
-import { useRef } from 'react'
-import { Source, useControl } from 'react-map-gl/maplibre'
+import { useEffect, useRef } from 'react'
+import { Source, useControl, useMap } from 'react-map-gl/maplibre'
 import type * as maplibregl from 'maplibre-gl'
 import type { RasterDEMSourceSpecification } from 'maplibre-gl'
 import { applyTerrain, TERRAIN_SOURCE_ID } from '@/lib/terrain'
@@ -68,6 +68,13 @@ export function Terrain3D({ exaggeration }: { exaggeration: number }) {
     // Unmounting before the style loads (StrictMode) leaves nothing to clear, and setTerrain would throw
     (map) => { if (map.getTerrain()) map.setTerrain(null) },
   )
+  // The lifecycle only re-applies on sourcedata; URL changes need their own sync
+  const { current } = useMap()
+  useEffect(() => {
+    const map = current?.getMap()
+    if (map) applyTerrain(map, exaggeration)
+  }, [current, exaggeration])
+
   return <Source id={TERRAIN_SOURCE_ID} {...DEM_SOURCE} />
 }
 
