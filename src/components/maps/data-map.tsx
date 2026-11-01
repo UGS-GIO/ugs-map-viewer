@@ -35,6 +35,7 @@ import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
 import { toast } from 'sonner'
 import { Terrain3D, Hillshade, MAX_PITCH, SKY } from './terrain-layers'
+import { EXAGGERATION } from '@/lib/terrain'
 
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps, PMTilesStyleOverride } from './types'
@@ -280,6 +281,7 @@ export default function DataMap({
   onMapReady,
   basemapId,
   terrain,
+  exaggeration,
   clickBufferBounds,
   onClickBufferChange,
   featureBbox,
@@ -853,7 +855,7 @@ export default function DataMap({
           return null
         })}
 
-        {terrain && <Terrain3D />}
+        {terrain && <Terrain3D exaggeration={exaggeration ?? EXAGGERATION.default} />}
         {/* After the data layers so they're mounted when the hillshade looks for the bottom one */}
         {terrain && <Hillshade bottomDataLayerId={renderableEntries.length ? getLayerId(renderableEntries[renderableEntries.length - 1].layer) : undefined} />}
 
