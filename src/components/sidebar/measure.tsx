@@ -27,7 +27,7 @@ function MeasurementRow({ m, index }: { m: Measurement; index: number }) {
         <span className="font-medium">{label} {index + 1}</span>
         {m.value !== undefined && <span>{fmt(m.value)} {m.unit}</span>}
         {coords?.map((c) => <span key={c.label}>{c.label}: {c.value}</span>)}
-        {m.mode === 'point' && <span>Elevation: {m.elevationFt === undefined ? '…' : `${fmt(m.elevationFt)} ft`}</span>}
+        {m.mode === 'point' && <span>Elevation: {m.elevationFt === undefined ? '…' : m.elevationFt === null ? 'Unavailable' : `${fmt(m.elevationFt)} ft`}</span>}
         {m.path && (
           <Suspense fallback={<span className="text-muted-foreground">Loading elevation profile…</span>}>
             <ElevationProfile path={m.path} />

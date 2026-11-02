@@ -15,8 +15,8 @@ export interface Measurement {
   /** Line length or polygon area, already in `unit` */
   value?: number
   unit?: string
-  /** Point elevation in feet, once its DEM tile loads */
-  elevationFt?: number
+  /** Point elevation in feet once its DEM tile loads; null if the lookup failed */
+  elevationFt?: number | null
   coordinates?: [number, number]
   /** A finished line's vertices, for its elevation profile */
   path?: [number, number][]

@@ -13,7 +13,7 @@ import { area } from '@turf/area'
 import { length } from '@turf/length'
 import polylabel from 'polylabel'
 import { elevationAt } from './dem-elevation'
-import { formatArea, formatLength, isMeasureMode, metersToFeet, type MeasureMode, type Measurement } from './measure-store'
+import { formatArea, formatLength, isMeasureMode, metersToFeet, registerMeasureControl, type MeasureMode, type Measurement } from './measure-store'
 
 const PREFIX = 'measure-td'
 const LABELS = `${PREFIX}-labels`
@@ -21,7 +21,7 @@ const COLOR = '#2563eb'
 
 const labelText = (m: Measurement) =>
   m.mode === 'point'
-    ? m.elevationFt === undefined ? '' : `${Math.round(m.elevationFt).toLocaleString()} ft`
+    ? m.elevationFt == null ? '' : `${Math.round(m.elevationFt).toLocaleString()} ft`
     : `${m.value?.toLocaleString()} ${m.unit}`
 
 function labelPoint(f: GeoJSONStoreFeatures): [number, number] | undefined {
@@ -46,7 +46,7 @@ export class MeasureControl implements IControl {
   measurements: Measurement[] = []
   private map?: MapLibreMap
   private draw?: TerraDraw
-  private elevationsFt = new Map<string | number, number | 'pending'>()
+  private elevationsFt = new Map<string | number, number | 'pending' | 'failed'>()
   private listeners = new Set<() => void>()
 
   constructor(private queryClient: QueryClient) {}
@@ -55,13 +55,17 @@ export class MeasureControl implements IControl {
     this.map = map
     this.start()
     map.on('style.load', this.restart)
+    registerMeasureControl(map, this)
     const container = document.createElement('div')
     container.hidden = true
     return container
   }
 
   onRemove() {
-    this.map?.off('style.load', this.restart)
+    if (this.map) {
+      this.map.off('style.load', this.restart)
+      registerMeasureControl(this.map, undefined)
+    }
     this.stopDraw()
     if (this.map?.getLayer(LABELS)) this.map.removeLayer(LABELS)
     if (this.map?.getSource(LABELS)) this.map.removeSource(LABELS)
@@ -101,8 +105,8 @@ export class MeasureControl implements IControl {
     draw.setMode(mode)
     draw.on('change', this.refresh)
     this.draw = draw
-    map.addSource(LABELS, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
-    map.addLayer({
+    if (!map.getSource(LABELS)) map.addSource(LABELS, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+    if (!map.getLayer(LABELS)) map.addLayer({
       id: LABELS,
       type: 'symbol',
       source: LABELS,
@@ -156,9 +160,10 @@ export class MeasureControl implements IControl {
       this.elevationsFt.set(id, 'pending')
       elevationAt(this.queryClient, lng, lat)
         .then((m) => { this.elevationsFt.set(id, metersToFeet(m)); this.refresh() })
-        .catch(() => this.elevationsFt.delete(id))
+        // Keep the failure so later draw changes don't refetch it
+        .catch(() => { this.elevationsFt.set(id, 'failed'); this.refresh() })
     }
     const ft = this.elevationsFt.get(id)
-    return { id, mode, coordinates: [lng, lat], elevationFt: typeof ft === 'number' ? ft : undefined }
+    return { id, mode, coordinates: [lng, lat], elevationFt: typeof ft === 'number' ? ft : ft === 'failed' ? null : undefined }
   }
 }
