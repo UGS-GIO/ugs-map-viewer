@@ -11,7 +11,11 @@ import {
   HUC12_ECO_TITLE,
   ECOREGION_TITLE,
 } from '../-data/landscape-metrics'
-import { buildChoroplethStepExpression } from '../-hooks/use-landscape-choropleth'
+import {
+  buildChoroplethStepExpression,
+  landscapeFilterSchema,
+  DEFAULT_LANDSCAPE_FILTER,
+} from '../-hooks/use-landscape-choropleth'
 
 describe('Landscape classification breaks', () => {
   it('calculates equal interval breaks correctly', () => {
@@ -57,8 +61,79 @@ describe('Landscape classification breaks', () => {
     }
     for (const b of breaks) {
       expect(b).toBeGreaterThan(0)
-      expect(b).toBeLessThan(100)
+      expect(b).toBeLessThanOrEqual(100)
     }
+  })
+
+  it('calculates quantile breaks accurately for small unique datasets without dropping classes', () => {
+    // Utah Ecoregions has 11 features
+    const ecoregions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    for (let k = 2; k <= 10; k++) {
+      const breaks = computeClassBreaks('quantile', ecoregions, k)
+      expect(breaks).toHaveLength(k - 1)
+      for (let i = 0; i < breaks.length - 1; i++) {
+        expect(breaks[i]).toBeLessThan(breaks[i + 1])
+      }
+    }
+  })
+
+  it('handles zero-inflated quantile distributions without collapsing into 1 flat color', () => {
+    // Mackenzie's HUC8 case: 44 zeros and 23 positive values
+    const huc8Data = [
+      ...Array(44).fill(0),
+      1.0,
+      1.1,
+      3.9,
+      4.0,
+      4.6,
+      4.7,
+      5.2,
+      6.1,
+      11.0,
+      14.1,
+      14.9,
+      16.0,
+      17.7,
+      19.6,
+      30.1,
+      30.9,
+      32.4,
+      37.3,
+      37.9,
+      40.8,
+      48.5,
+      68.9,
+      98.6,
+    ]
+    const breaks = computeClassBreaks('quantile', huc8Data, 8)
+    expect(breaks).toHaveLength(7)
+    expect(breaks[0]).toBe(1.0)
+    for (let i = 0; i < breaks.length - 1; i++) {
+      expect(breaks[i]).toBeLessThan(breaks[i + 1])
+    }
+  })
+
+  it('handles dual boundary saturation (0s and 100s with intermediate values) gracefully', () => {
+    // utah_percent case with 0s, 100s, and border values
+    const utahPctData = [
+      ...Array(20).fill(0),
+      5,
+      12,
+      25,
+      50,
+      75,
+      90,
+      ...Array(40).fill(100),
+    ]
+    const breaks = computeClassBreaks('quantile', utahPctData, 5)
+    expect(breaks).toEqual([5, 25, 75, 100])
+  })
+
+  it('handles spike at max only without collapsing classes', () => {
+    // 8 small values and 30 values of 100
+    const maxSpikeData = [1, 2, 3, 4, 5, 6, 7, 8, ...Array(30).fill(100)]
+    const breaks = computeClassBreaks('quantile', maxSpikeData, 5)
+    expect(breaks).toEqual([3, 5, 7, 100])
   })
 
   it('computeClassBreaks returns empty for uniform values', () => {
@@ -104,7 +179,12 @@ describe('resolveMetricsForLayer', () => {
   })
 
   it('includes common wetland and ownership metrics across all layers', () => {
-    for (const title of [HUC12_TITLE, HUC8_TITLE, HUC12_ECO_TITLE, ECOREGION_TITLE]) {
+    for (const title of [
+      HUC12_TITLE,
+      HUC8_TITLE,
+      HUC12_ECO_TITLE,
+      ECOREGION_TITLE,
+    ]) {
       const values = resolveMetricsForLayer(title).map((m) => m.value)
       expect(values).toContain('utah_percent')
       expect(values).toContain('emergent_density')
@@ -135,9 +215,18 @@ describe('getColorRampColors', () => {
 
 describe('buildChoroplethStepExpression', () => {
   it('builds step expression with safe fallback when minVal is finite', () => {
-    const expr = buildChoroplethStepExpression('utah_percent', 12.5, [25, 50, 75], ['#c6dbef', '#6baed6', '#2171b5', '#08306b'])
+    const expr = buildChoroplethStepExpression(
+      'utah_percent',
+      12.5,
+      [25, 50, 75],
+      ['#c6dbef', '#6baed6', '#2171b5', '#08306b']
+    )
     expect(expr[0]).toBe('case')
-    expect(expr[1]).toEqual(['all', ['has', 'utah_percent'], ['!=', ['get', 'utah_percent'], null]])
+    expect(expr[1]).toEqual([
+      'all',
+      ['has', 'utah_percent'],
+      ['!=', ['get', 'utah_percent'], null],
+    ])
     const stepArgs = expr[2] as unknown[]
     expect(stepArgs[0]).toBe('step')
     expect(stepArgs[1]).toEqual(['to-number', ['get', 'utah_percent'], 12.5])
@@ -152,15 +241,30 @@ describe('buildChoroplethStepExpression', () => {
   })
 
   it('guards non-finite and NaN minVal with 0 fallback', () => {
-    const nanExpr = buildChoroplethStepExpression('utah_percent', NaN, [25, 50], ['#aaa', '#bbb', '#ccc'])
+    const nanExpr = buildChoroplethStepExpression(
+      'utah_percent',
+      NaN,
+      [25, 50],
+      ['#aaa', '#bbb', '#ccc']
+    )
     const nanStepArgs = nanExpr[2] as unknown[]
     expect(nanStepArgs[1]).toEqual(['to-number', ['get', 'utah_percent'], 0])
 
-    const infExpr = buildChoroplethStepExpression('utah_percent', Infinity, [25, 50], ['#aaa', '#bbb', '#ccc'])
+    const infExpr = buildChoroplethStepExpression(
+      'utah_percent',
+      Infinity,
+      [25, 50],
+      ['#aaa', '#bbb', '#ccc']
+    )
     const infStepArgs = infExpr[2] as unknown[]
     expect(infStepArgs[1]).toEqual(['to-number', ['get', 'utah_percent'], 0])
 
-    const negInfExpr = buildChoroplethStepExpression('utah_percent', -Infinity, [25, 50], ['#aaa', '#bbb', '#ccc'])
+    const negInfExpr = buildChoroplethStepExpression(
+      'utah_percent',
+      -Infinity,
+      [25, 50],
+      ['#aaa', '#bbb', '#ccc']
+    )
     const negInfStepArgs = negInfExpr[2] as unknown[]
     expect(negInfStepArgs[1]).toEqual(['to-number', ['get', 'utah_percent'], 0])
   })
@@ -173,12 +277,18 @@ describe('Metric compatibility and scale switching', () => {
 
     const groundwaterMetric = 'pct_wells_rising'
     expect(huc8Metrics.some((m) => m.value === groundwaterMetric)).toBe(true)
-    expect(ecoregionMetrics.some((m) => m.value === groundwaterMetric)).toBe(false)
+    expect(ecoregionMetrics.some((m) => m.value === groundwaterMetric)).toBe(
+      false
+    )
 
     // Verification logic matching LandscapeDataFilters:
-    const isMetricValid = ecoregionMetrics.some((m) => m.value === groundwaterMetric)
+    const isMetricValid = ecoregionMetrics.some(
+      (m) => m.value === groundwaterMetric
+    )
     expect(isMetricValid).toBe(false)
-    const fallbackMetric = ecoregionMetrics.find((m) => m.value === groundwaterMetric) || ecoregionMetrics[0]
+    const fallbackMetric =
+      ecoregionMetrics.find((m) => m.value === groundwaterMetric) ||
+      ecoregionMetrics[0]
     expect(fallbackMetric.value).toBe('utah_percent')
   })
 
@@ -190,7 +300,46 @@ describe('Metric compatibility and scale switching', () => {
     expect(huc8Metrics.some((m) => m.value === trendMetric)).toBe(true)
     expect(huc12Metrics.some((m) => m.value === trendMetric)).toBe(true)
 
-    const isMetricValidOnHuc12 = huc12Metrics.some((m) => m.value === trendMetric)
+    const isMetricValidOnHuc12 = huc12Metrics.some(
+      (m) => m.value === trendMetric
+    )
     expect(isMetricValidOnHuc12).toBe(true)
+  })
+})
+
+describe('landscapeFilterSchema', () => {
+  it('validates and supplies defaults for valid or partial filters', () => {
+    const parsed = landscapeFilterSchema.safeParse({
+      metric: 'lake_area',
+      numClasses: 4,
+    })
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      expect(parsed.data.metric).toBe('lake_area')
+      expect(parsed.data.classification).toBe('quantile')
+      expect(parsed.data.numClasses).toBe(4)
+      expect(parsed.data.colorRamp).toBe('blues')
+    }
+  })
+
+  it('falls back to default for invalid classification or out-of-range numClasses', () => {
+    const parsed = landscapeFilterSchema.safeParse({
+      classification: 'invalid-method',
+      numClasses: 99,
+    })
+    expect(parsed.success).toBe(true)
+    if (parsed.success) {
+      expect(parsed.data.classification).toBe('quantile')
+      expect(parsed.data.numClasses).toBe(5)
+    }
+  })
+
+  it('derives DEFAULT_LANDSCAPE_FILTER from schema parsing empty input', () => {
+    expect(DEFAULT_LANDSCAPE_FILTER).toEqual({
+      metric: 'utah_percent',
+      classification: 'quantile',
+      numClasses: 5,
+      colorRamp: 'blues',
+    })
   })
 })
