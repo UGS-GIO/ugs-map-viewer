@@ -280,6 +280,7 @@ export default function DataMap({
   onMapReady,
   basemapId,
   terrain,
+  exaggeration,
   clickBufferBounds,
   onClickBufferChange,
   featureBbox,
@@ -853,7 +854,7 @@ export default function DataMap({
           return null
         })}
 
-        {terrain && <Terrain3D />}
+        {terrain && <Terrain3D exaggeration={exaggeration} />}
         {/* After the data layers so they're mounted when the hillshade looks for the bottom one */}
         {terrain && <Hillshade bottomDataLayerId={renderableEntries.length ? getLayerId(renderableEntries[renderableEntries.length - 1].layer) : undefined} />}
 
