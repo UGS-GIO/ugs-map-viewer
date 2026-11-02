@@ -7,7 +7,7 @@ import { INFO_DETAILS, RESULTS_PARAMS, SHEET_PARAMS } from '@/components/maps/ph
 import { RouteErrorBoundary } from '@/components/route-error-boundary'
 import { resolveBasemapId, BASEMAP_STYLES } from '@/lib/basemaps'
 import { COORDINATE_FORMATS } from '@/lib/map/conversion-utils'
-import { MEASURE_MODES } from '@/lib/map/measure-store'
+import { MEASURE_MODES, UNIT_SYSTEMS } from '@/lib/map/measure-store'
 import { EXAGGERATION } from '@/lib/terrain'
 
 // Get responsive default sidebar width based on screen size
@@ -27,6 +27,7 @@ const mapSearchSchema = z.object({
     sidebar_collapsed: z.coerce.boolean().optional().default(false),
     sidebar_width: z.enum(['icon', 'wide', 'narrow']).optional().default(getDefaultSidebarWidth),
     coordinate_format: z.enum(COORDINATE_FORMATS).optional().catch(undefined),
+    units: z.enum(UNIT_SYSTEMS).optional().catch(undefined),
     basemap: z.string().transform(resolveBasemapId).refine((id) => BASEMAP_STYLES.some((b) => b.id === id)).optional().catch(undefined),
     layers: z.preprocess((val) => {
         if (typeof val === 'string') {
@@ -75,7 +76,7 @@ export type MapSearch = z.infer<typeof mapSearchSchema>
 
 export const Route = createFileRoute('/_map')({
     validateSearch: mapSearchSchema,
-    search: { middlewares: [stripSearchParams({ coordinate_format: 'dd' })] },
+    search: { middlewares: [stripSearchParams({ coordinate_format: 'dd', units: 'us' })] },
     errorComponent: RouteErrorBoundary,
     component: () => (
         <MapInstanceProvider>

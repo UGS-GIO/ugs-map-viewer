@@ -2,19 +2,20 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { elevationProfile } from '@/lib/map/dem-elevation'
-import { metersToFeet } from '@/lib/map/measure-store'
+import type { UnitSystem } from '@/lib/map/measure-store'
 
 // Numeric height: recharts v3 warns when ResponsiveContainer measures 0 at mount
 const CHART_HEIGHT = 128
-const FT_PER_MI = 5280
+const FT_PER_M = 3.28084
 // Same series color as the hazards-review displacement charts; clears 3:1 in both themes
 const LINE_COLOR = 'hsl(var(--chart-1))'
 
 const fmt = (n: number) => Math.round(n).toLocaleString()
 
 /** Ground elevation along a measured line, with its low, high, climb and descent. */
-export default function ElevationProfile({ path, onCursor }: {
+export default function ElevationProfile({ path, units, onCursor }: {
   path: [number, number][]
+  units: UnitSystem
   /** Where on the line the chart's active point is, for a marker on the map */
   onCursor?: (at: [number, number] | undefined) => void
 }) {
@@ -30,17 +31,20 @@ export default function ElevationProfile({ path, onCursor }: {
   if (isPending) return <span className="text-muted-foreground">Loading elevation profile…</span>
   if (isError) return <span className="text-muted-foreground">Elevation profile unavailable</span>
 
-  const totalFt = metersToFeet(data[data.length - 1].distanceM)
-  const inMiles = totalFt >= 1000
-  const points = data.map((p) => {
-    const ft = metersToFeet(p.distanceM)
-    return { distance: inMiles ? ft / FT_PER_MI : ft, elevation: metersToFeet(p.elevationM) }
-  })
+  // Same switch as the line's length: ft/mi or m/km at 1,000 of the small unit
+  const perM = units === 'metric' ? 1 : FT_PER_M
+  const big = units === 'metric' ? 1000 : 5280
+  const inBig = data[data.length - 1].distanceM * perM >= 1000
+  const points = data.map((p) => ({
+    distance: (p.distanceM * perM) / (inBig ? big : 1),
+    elevation: p.elevationM * perM,
+  }))
+  const elevUnit = units === 'metric' ? 'm' : 'ft'
   const elevations = points.map((p) => p.elevation)
   const steps = elevations.slice(1).map((e, i) => e - elevations[i])
   const climb = steps.reduce((sum, d) => sum + Math.max(d, 0), 0)
   const descent = steps.reduce((sum, d) => sum + Math.min(d, 0), 0)
-  const unit = inMiles ? 'mi' : 'ft'
+  const unit = units === 'metric' ? (inBig ? 'km' : 'm') : inBig ? 'mi' : 'ft'
 
   return (
     <div className="grid gap-1">
@@ -67,7 +71,7 @@ export default function ElevationProfile({ path, onCursor }: {
             domain={[0, 'dataMax']}
             stroke="currentColor"
             tick={{ fill: 'currentColor', fontSize: 11 }}
-            tickFormatter={(d: number) => `${inMiles ? d.toFixed(1) : fmt(d)} ${unit}`}
+            tickFormatter={(d: number) => `${inBig ? d.toFixed(1) : fmt(d)} ${unit}`}
           />
           <YAxis
             dataKey="elevation"
@@ -82,8 +86,8 @@ export default function ElevationProfile({ path, onCursor }: {
             trigger={pinnedIndex === undefined ? 'hover' : 'click'}
             cursor={{ stroke: 'currentColor', strokeOpacity: 0.2 }}
             separator=": "
-            formatter={(e) => [`${fmt(Number(e))} ft`, 'Elevation']}
-            labelFormatter={(d) => `${inMiles ? Number(d).toFixed(2) : fmt(Number(d))} ${unit}`}
+            formatter={(e) => [`${fmt(Number(e))} ${elevUnit}`, 'Elevation']}
+            labelFormatter={(d) => `${inBig ? Number(d).toFixed(2) : fmt(Number(d))} ${unit}`}
             contentStyle={{ background: 'hsl(var(--popover))', color: 'hsl(var(--popover-foreground))', fontSize: 12 }}
             itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
           />
@@ -91,8 +95,8 @@ export default function ElevationProfile({ path, onCursor }: {
         </AreaChart>
       </ResponsiveContainer>
       <span className="text-muted-foreground">
-        Low {fmt(Math.min(...elevations))} ft · High {fmt(Math.max(...elevations))} ft · Climb {fmt(climb)} ft · Descent{' '}
-        {fmt(-descent)} ft
+        Low {fmt(Math.min(...elevations))} {elevUnit} · High {fmt(Math.max(...elevations))} {elevUnit} · Climb {fmt(climb)} {elevUnit} ·
+        Descent {fmt(-descent)} {elevUnit}
       </span>
     </div>
   )

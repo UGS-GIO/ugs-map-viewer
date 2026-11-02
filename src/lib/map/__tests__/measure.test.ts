@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatArea, formatLength } from '../measure-store'
+import { formatArea, formatElevation, formatLength } from '../measure-store'
 import { decodeTerrarium, samplePath, tilePixel } from '../dem-elevation'
 
 describe('formatLength', () => {
@@ -17,6 +17,21 @@ describe('formatArea', () => {
   })
   it('switches to square miles at 640 acres', () => {
     expect(formatArea(2589988.110336 * 2)).toEqual({ value: 2, unit: 'mi²' })
+  })
+})
+
+describe('metric units', () => {
+  it('uses meters under 1,000 m, else kilometers', () => {
+    expect(formatLength(250.4, 'metric')).toEqual({ value: 250, unit: 'm' })
+    expect(formatLength(2500, 'metric')).toEqual({ value: 2.5, unit: 'km' })
+  })
+  it('uses hectares under 1 km², else km²', () => {
+    expect(formatArea(50_000, 'metric')).toEqual({ value: 5, unit: 'ha' })
+    expect(formatArea(3_000_000, 'metric')).toEqual({ value: 3, unit: 'km²' })
+  })
+  it('gives elevation in feet or meters', () => {
+    expect(formatElevation(1000)).toEqual({ value: 3281, unit: 'ft' })
+    expect(formatElevation(1000.4, 'metric')).toEqual({ value: 1000, unit: 'm' })
   })
 })
 

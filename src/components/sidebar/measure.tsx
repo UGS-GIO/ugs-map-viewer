@@ -9,17 +9,18 @@ import { useMeasureMode, useMeasurements } from '@/hooks/use-measure'
 import { useMap } from '@/hooks/use-map'
 import { useCoordinateFormat } from '@/hooks/use-map-coordinates'
 import { formatCoordinatePair } from '@/lib/map/conversion-utils'
-import { MEASURE_MODES, isMeasureMode, type Measurement } from '@/lib/map/measure-store'
+import { MEASURE_MODES, formatElevation, formatQuantity, isMeasureMode, measurementQuantity, type Measurement, type UnitSystem } from '@/lib/map/measure-store'
+import { useUnits } from '@/hooks/use-units'
+import { UnitsToggle } from './units-card'
 import { MEASURE_TOOLS } from '@/components/maps/measure-tools'
 
 // Recharts is heavy; load it only once a line is finished
 const ElevationProfile = lazy(() => import('./elevation-profile'))
 
-const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 2 })
-
 // Memoized: measurements keep their object while unchanged, so drawing doesn't re-render finished rows
-const MeasurementRow = memo(function MeasurementRow({ m, index, highlighted, onHighlight, onProfileCursor }: {
+const MeasurementRow = memo(function MeasurementRow({ m, units, index, highlighted, onHighlight, onProfileCursor }: {
   m: Measurement
+  units: UnitSystem
   index: number
   highlighted: boolean
   onHighlight?: (id: string | number | undefined) => void
@@ -27,6 +28,7 @@ const MeasurementRow = memo(function MeasurementRow({ m, index, highlighted, onH
 }) {
   const { coordinateFormat } = useCoordinateFormat()
   const { label, icon: Icon } = MEASURE_TOOLS[m.mode]
+  const size = m.mode === 'point' ? undefined : measurementQuantity(m, units)
   const coords = m.coordinates && formatCoordinatePair(m.coordinates[0], m.coordinates[1], coordinateFormat, 5)
   return (
     // Hovering a row halos its shape on the map, and hovering the shape highlights the row
@@ -39,12 +41,14 @@ const MeasurementRow = memo(function MeasurementRow({ m, index, highlighted, onH
       <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
       <div className="grid min-w-0 flex-1 gap-0.5">
         <span className="font-bold">{label} {index + 1}</span>
-        {m.value !== undefined && <span>{fmt(m.value)} {m.unit}</span>}
+        {size && <span>{formatQuantity(size)}</span>}
         {coords?.map((c) => <span key={c.label}>{c.label}: {c.value}</span>)}
-        {m.mode === 'point' && <span>Elevation: {m.elevationFt === undefined ? '…' : m.elevationFt === null ? 'Unavailable' : `${fmt(m.elevationFt)} ft`}</span>}
+        {m.mode === 'point' && (
+          <span>Elevation: {m.elevationM === undefined ? '…' : m.elevationM === null ? 'Unavailable' : formatQuantity(formatElevation(m.elevationM, units))}</span>
+        )}
         {m.path && (
           <Suspense fallback={<span className="text-muted-foreground">Loading elevation profile…</span>}>
-            <ElevationProfile path={m.path} onCursor={onProfileCursor} />
+            <ElevationProfile path={m.path} units={units} onCursor={onProfileCursor} />
           </Suspense>
         )}
       </div>
@@ -56,6 +60,7 @@ export default function Measure() {
   const { measure } = useMeasureMode()
   const { setMeasureMode: setMeasure } = useMap()
   const { measurements, highlightedId, setHighlight, setProfileCursor, clearAll } = useMeasurements()
+  const { units } = useUnits()
 
   return (
     <div className="grid gap-3 md:gap-4">
@@ -88,6 +93,7 @@ export default function Measure() {
               )
             })}
           </RadioGroup>
+          <UnitsToggle className="mt-3" />
           <p className="mt-3 text-xs text-muted-foreground">
             Distances and areas are horizontal, measured flat on the map as the crow flies. They don't follow the terrain, even in 3D.
           </p>
@@ -104,7 +110,7 @@ export default function Measure() {
           </CardHeader>
           <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
             <ul className="grid gap-2">
-              {measurements.map((m, i) => <MeasurementRow key={m.id} m={m} index={i} highlighted={m.id === highlightedId} onHighlight={setHighlight} onProfileCursor={setProfileCursor} />)}
+              {measurements.map((m, i) => <MeasurementRow key={m.id} m={m} units={units} index={i} highlighted={m.id === highlightedId} onHighlight={setHighlight} onProfileCursor={setProfileCursor} />)}
             </ul>
           </CardContent>
         </Card>

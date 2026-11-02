@@ -13,7 +13,7 @@ import { area } from '@turf/area'
 import { length } from '@turf/length'
 import polylabel from 'polylabel'
 import { elevationAt } from './dem-elevation'
-import { formatArea, formatLength, isMeasureMode, metersToFeet, registerMeasureControl, type MeasureMode, type Measurement } from './measure-store'
+import { formatQuantity, isMeasureMode, measurementQuantity, registerMeasureControl, type MeasureMode, type Measurement, type UnitSystem } from './measure-store'
 
 const PREFIX = 'measure-td'
 const LABELS = `${PREFIX}-labels`
@@ -42,11 +42,9 @@ function labelPoint(f: GeoJSONStoreFeatures): [number, number] | undefined {
   return undefined
 }
 
-const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 2 })
-
-function labelText(m: Measurement) {
-  if (m.value !== undefined) return `${fmt(m.value)} ${m.unit}`
-  return typeof m.elevationFt === 'number' ? `${fmt(Math.round(m.elevationFt))} ft` : ''
+function labelText(m: Measurement, units: UnitSystem) {
+  const q = measurementQuantity(m, units)
+  return q ? formatQuantity(q) : ''
 }
 
 const haloFilter = (id: string | number | undefined): FilterSpecification => ['==', ['get', 'mid'], id ?? '']
@@ -60,7 +58,8 @@ export class MeasureControl implements IControl {
   private map?: MapLibreMap
   private draw?: TerraDraw
   private syncing = false
-  private elevationsFt = new Map<string | number, number | 'pending' | 'failed'>()
+  private units: UnitSystem = 'us'
+  private elevationsM = new Map<string | number, number | 'pending' | 'failed'>()
   // Reused while a feature is unchanged, so finished rows and their profiles don't re-render
   private cache = new Map<string | number, { key: string; m: Measurement | undefined }>()
   private listeners = new Set<() => void>()
@@ -99,6 +98,12 @@ export class MeasureControl implements IControl {
     if (this.draw?.enabled) this.draw.setMode(mode ?? 'static')
   }
 
+  setUnits(units: UnitSystem) {
+    if (units === this.units) return
+    this.units = units
+    this.updateLabels(this.draw?.getSnapshot() ?? [])
+  }
+
   setProfileCursor = (at: [number, number] | undefined) => {
     this.profileCursor = at
     this.map?.getSource<GeoJSONSource>(PROFILE_CURSOR)?.setData(this.profileCursorData())
@@ -112,7 +117,7 @@ export class MeasureControl implements IControl {
   clear() {
     this.setProfileCursor(undefined)
     this.draw?.clear()
-    this.elevationsFt.clear()
+    this.elevationsM.clear()
     this.refresh()
   }
 
@@ -254,13 +259,7 @@ export class MeasureControl implements IControl {
     const changed = next.length !== this.measurements.length || next.some((m, i) => m !== this.measurements[i])
     if (changed) this.measurements = next
     this.cache.forEach((_, id) => { if (!snapshot.some((f) => f.id === id)) this.cache.delete(id) })
-    // The value at each shape, for when the panel is closed; hovering links it to its row
-    const labels: Feature<Point>[] = this.measurements.flatMap((m) => {
-      const f = snapshot.find((s) => s.id === m.id)
-      const at = f && labelPoint(f)
-      return at ? [{ type: 'Feature', properties: { label: labelText(m) }, geometry: { type: 'Point', coordinates: at } }] : []
-    })
-    this.map?.getSource<GeoJSONSource>(LABELS)?.setData({ type: 'FeatureCollection', features: labels })
+    this.updateLabels(snapshot)
     const shapes: Feature[] = snapshot.flatMap((f) =>
       f.id !== undefined && !f.properties.currentlyDrawing && this.measurements.some((m) => m.id === f.id)
         ? [{ type: 'Feature', properties: { mid: f.id }, geometry: f.geometry }]
@@ -271,13 +270,23 @@ export class MeasureControl implements IControl {
     if (changed) this.listeners.forEach((l) => l())
   }
 
+  // The value at each shape, for when the panel is closed; hovering links it to its row
+  private updateLabels(snapshot: GeoJSONStoreFeatures[]) {
+    const labels: Feature<Point>[] = this.measurements.flatMap((m) => {
+      const f = snapshot.find((s) => s.id === m.id)
+      const at = f && labelPoint(f)
+      return at ? [{ type: 'Feature', properties: { label: labelText(m, this.units) }, geometry: { type: 'Point', coordinates: at } }] : []
+    })
+    this.map?.getSource<GeoJSONSource>(LABELS)?.setData({ type: 'FeatureCollection', features: labels })
+  }
+
   private cached(f: GeoJSONStoreFeatures) {
     if (f.id === undefined) return undefined
-    const key = `${JSON.stringify(f.geometry)}|${f.properties.currentlyDrawing}|${this.elevationsFt.get(f.id)}`
+    const key = `${JSON.stringify(f.geometry)}|${f.properties.currentlyDrawing}|${this.elevationsM.get(f.id)}`
     const hit = this.cache.get(f.id)
     if (hit?.key === key) return hit.m
     const m = this.measure(f)
-    this.cache.set(f.id, { key: `${JSON.stringify(f.geometry)}|${f.properties.currentlyDrawing}|${this.elevationsFt.get(f.id)}`, m })
+    this.cache.set(f.id, { key: `${JSON.stringify(f.geometry)}|${f.properties.currentlyDrawing}|${this.elevationsM.get(f.id)}`, m })
     return m
   }
 
@@ -288,24 +297,24 @@ export class MeasureControl implements IControl {
     const g = f.geometry
     if (g.type === 'LineString') {
       const path = f.properties.currentlyDrawing ? undefined : g.coordinates.map(([x, y]): [number, number] => [x, y])
-      return { id, mode, path, ...formatLength(length(f, { units: 'meters' })) }
+      return { id, mode, path, lengthM: length(f, { units: 'meters' }) }
     }
-    if (g.type === 'Polygon') return { id, mode, ...formatArea(area(f)) }
+    if (g.type === 'Polygon') return { id, mode, areaM2: area(f) }
     // Line and polygon modes add helper points (closing, snapping) while drawing
     if (g.type !== 'Point' || mode !== 'point') return undefined
     const [lng, lat] = g.coordinates
-    if (!this.elevationsFt.has(id)) {
-      this.elevationsFt.set(id, 'pending')
+    if (!this.elevationsM.has(id)) {
+      this.elevationsM.set(id, 'pending')
       elevationAt(this.queryClient, lng, lat)
-        .then((m) => { this.elevationsFt.set(id, metersToFeet(m)); this.refresh() })
+        .then((m) => { this.elevationsM.set(id, m); this.refresh() })
         // Keep the failure so later draw changes don't refetch it
         .catch((err) => {
           console.warn('[measure] point elevation lookup failed:', err)
-          this.elevationsFt.set(id, 'failed')
+          this.elevationsM.set(id, 'failed')
           this.refresh()
         })
     }
-    const ft = this.elevationsFt.get(id)
-    return { id, mode, coordinates: [lng, lat], elevationFt: typeof ft === 'number' ? ft : ft === 'failed' ? null : undefined }
+    const e = this.elevationsM.get(id)
+    return { id, mode, coordinates: [lng, lat], elevationM: typeof e === 'number' ? e : e === 'failed' ? null : undefined }
   }
 }

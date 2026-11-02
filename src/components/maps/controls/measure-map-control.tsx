@@ -4,9 +4,11 @@ import { useControl } from 'react-map-gl/maplibre'
 import { useQueryClient } from '@tanstack/react-query'
 import { MeasureControl } from '@/lib/map/measure'
 import { useMeasureMode } from '@/hooks/use-measure'
+import { useUnits } from '@/hooks/use-units'
 
 export default function MeasureMapControl() {
   const { measure } = useMeasureMode()
+  const { units } = useUnits()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const control = useControl(
@@ -18,6 +20,10 @@ export default function MeasureMapControl() {
   useEffect(() => {
     control.setMode(measure)
   }, [control, measure])
+
+  useEffect(() => {
+    control.setUnits(units)
+  }, [control, units])
 
   // Results show in the sidebar, so open it on the first one in case measuring started from the map
   useEffect(
