@@ -261,6 +261,17 @@ body > #root {
   box-shadow: inset 0 0 0 2px hsl(var(--ring));
 }
 
+/* Recharts makes each chart (and its inner tabindex=-1 layers) focusable for arrow-key reading,
+   and Chrome outlines them on a mouse click too. Ring only the chart, on keyboard focus. */
+.recharts-wrapper :focus {
+  outline: none;
+}
+
+.recharts-wrapper .recharts-surface:focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+}
+
 .dark .maplibregl-ctrl-attrib {
   background-color: hsl(var(--popover) / 0.75);
   color: hsl(var(--foreground));
