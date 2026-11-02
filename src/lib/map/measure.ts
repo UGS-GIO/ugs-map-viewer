@@ -1,6 +1,6 @@
 import type { AddLayerObject, FilterSpecification, GeoJSONSource, IControl, MapMouseEvent, Map as MapLibreMap } from 'maplibre-gl'
 import type { QueryClient } from '@tanstack/react-query'
-import type { Feature, Point } from 'geojson'
+import type { Feature, FeatureCollection, Point } from 'geojson'
 import {
   TerraDraw,
   TerraDrawLineStringMode,
@@ -21,6 +21,11 @@ const LABELS = `${PREFIX}-labels`
 const SHAPES = `${PREFIX}-shapes`
 const HIT_LAYERS = [`${SHAPES}-hit-line`, `${SHAPES}-hit-fill`, `${SHAPES}-hit-point`]
 const HALO_LAYERS = [`${SHAPES}-halo-line`, `${SHAPES}-halo-point`]
+// Where the pointer is on an elevation profile, placed along its line
+const PROFILE_CURSOR = `${PREFIX}-profile-cursor`
+// --chart-1 (dark), the profile's series color, so the marker reads as the chart's point
+const PROFILE_COLOR = '#e37d49'
+const emptyCollection = (): FeatureCollection => ({ type: 'FeatureCollection', features: [] })
 const COLOR = '#2563eb'
 
 function labelPoint(f: GeoJSONStoreFeatures): [number, number] | undefined {
@@ -62,6 +67,7 @@ export class MeasureControl implements IControl {
   private firstResultListeners = new Set<() => void>()
   /** The measurement hovered on the map or in the sidebar, haloed in both */
   highlightedId?: string | number
+  private profileCursor?: [number, number]
   private highlightListeners = new Set<() => void>()
 
   constructor(private queryClient: QueryClient) {}
@@ -84,8 +90,8 @@ export class MeasureControl implements IControl {
       registerMeasureControl(this.map, undefined)
     }
     this.stopDraw()
-    ;[LABELS, ...HIT_LAYERS, ...HALO_LAYERS].forEach((id) => { if (this.map?.getLayer(id)) this.map.removeLayer(id) })
-    ;[LABELS, SHAPES].forEach((id) => { if (this.map?.getSource(id)) this.map.removeSource(id) })
+    ;[LABELS, ...HIT_LAYERS, ...HALO_LAYERS, PROFILE_CURSOR].forEach((id) => { if (this.map?.getLayer(id)) this.map.removeLayer(id) })
+    ;[LABELS, SHAPES, PROFILE_CURSOR].forEach((id) => { if (this.map?.getSource(id)) this.map.removeSource(id) })
     this.map = undefined
   }
 
@@ -93,7 +99,18 @@ export class MeasureControl implements IControl {
     if (this.draw?.enabled) this.draw.setMode(mode ?? 'static')
   }
 
+  setProfileCursor = (at: [number, number] | undefined) => {
+    this.profileCursor = at
+    this.map?.getSource<GeoJSONSource>(PROFILE_CURSOR)?.setData(this.profileCursorData())
+  }
+
+  private profileCursorData(): FeatureCollection {
+    const at = this.profileCursor
+    return at ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: at } }] } : emptyCollection()
+  }
+
   clear() {
+    this.setProfileCursor(undefined)
     this.draw?.clear()
     this.elevationsFt.clear()
     this.refresh()
@@ -199,6 +216,13 @@ export class MeasureControl implements IControl {
       { id: HIT_LAYERS[1], type: 'fill', source: SHAPES, filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-opacity': 0 } },
       { id: HIT_LAYERS[2], type: 'circle', source: SHAPES, filter: point, paint: { 'circle-radius': 12, 'circle-opacity': 0 } },
     ]
+    if (!map.getSource(PROFILE_CURSOR)) map.addSource(PROFILE_CURSOR, { type: 'geojson', data: this.profileCursorData() })
+    layers.push({
+      id: PROFILE_CURSOR,
+      type: 'circle',
+      source: PROFILE_CURSOR,
+      paint: { 'circle-color': PROFILE_COLOR, 'circle-radius': 6, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 },
+    })
     layers.forEach((l) => { if (!map.getLayer(l.id)) map.addLayer(l) })
     this.refresh()
   }

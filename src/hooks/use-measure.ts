@@ -23,7 +23,13 @@ export function useMeasurements() {
   const control = useSyncExternalStore(subscribeMeasureControls, () => getMeasureControl(map))
   const measurements = useSyncExternalStore(control?.subscribe ?? noop, () => control?.measurements ?? NO_MEASUREMENTS)
   const highlightedId = useSyncExternalStore(control?.subscribeHighlight ?? noop, () => control?.highlightedId)
-  return { measurements, highlightedId, setHighlight: control?.setHighlight, clearAll: () => control?.clear() }
+  return {
+    measurements,
+    highlightedId,
+    setHighlight: control?.setHighlight,
+    setProfileCursor: control?.setProfileCursor,
+    clearAll: () => control?.clear(),
+  }
 }
 
 /** Whether any measurement is on the map; a boolean so drawing doesn't re-render the map container. */

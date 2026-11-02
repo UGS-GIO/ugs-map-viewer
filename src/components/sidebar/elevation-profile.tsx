@@ -13,7 +13,11 @@ const LINE_COLOR = 'hsl(var(--chart-1))'
 const fmt = (n: number) => Math.round(n).toLocaleString()
 
 /** Ground elevation along a measured line, with its low, high, climb and descent. */
-export default function ElevationProfile({ path }: { path: [number, number][] }) {
+export default function ElevationProfile({ path, onCursor }: {
+  path: [number, number][]
+  /** Where on the line the chart's active point is, for a marker on the map */
+  onCursor?: (at: [number, number] | undefined) => void
+}) {
   const queryClient = useQueryClient()
   const { data, isPending, isError } = useQuery({
     queryKey: ['elevation-profile', path],
@@ -46,8 +50,15 @@ export default function ElevationProfile({ path }: { path: [number, number][] })
           margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
           onClick={({ activeTooltipIndex }) => {
             const i = activeTooltipIndex == null ? undefined : Number(activeTooltipIndex)
-            setPinnedIndex(i === pinnedIndex ? undefined : i)
+            const next = i === pinnedIndex ? undefined : i
+            setPinnedIndex(next)
+            onCursor?.(next === undefined ? undefined : data[next]?.at)
           }}
+          onMouseMove={({ activeTooltipIndex }) => {
+            if (pinnedIndex === undefined && activeTooltipIndex != null) onCursor?.(data[Number(activeTooltipIndex)]?.at)
+          }}
+          // A pinned point keeps its marker
+          onMouseLeave={() => onCursor?.(pinnedIndex === undefined ? undefined : data[pinnedIndex]?.at)}
         >
           <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
           <XAxis

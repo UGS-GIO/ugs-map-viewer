@@ -18,11 +18,12 @@ const ElevationProfile = lazy(() => import('./elevation-profile'))
 const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 2 })
 
 // Memoized: measurements keep their object while unchanged, so drawing doesn't re-render finished rows
-const MeasurementRow = memo(function MeasurementRow({ m, index, highlighted, onHighlight }: {
+const MeasurementRow = memo(function MeasurementRow({ m, index, highlighted, onHighlight, onProfileCursor }: {
   m: Measurement
   index: number
   highlighted: boolean
   onHighlight?: (id: string | number | undefined) => void
+  onProfileCursor?: (at: [number, number] | undefined) => void
 }) {
   const { coordinateFormat } = useCoordinateFormat()
   const { label, icon: Icon } = MEASURE_TOOLS[m.mode]
@@ -43,7 +44,7 @@ const MeasurementRow = memo(function MeasurementRow({ m, index, highlighted, onH
         {m.mode === 'point' && <span>Elevation: {m.elevationFt === undefined ? '…' : m.elevationFt === null ? 'Unavailable' : `${fmt(m.elevationFt)} ft`}</span>}
         {m.path && (
           <Suspense fallback={<span className="text-muted-foreground">Loading elevation profile…</span>}>
-            <ElevationProfile path={m.path} />
+            <ElevationProfile path={m.path} onCursor={onProfileCursor} />
           </Suspense>
         )}
       </div>
@@ -54,7 +55,7 @@ const MeasurementRow = memo(function MeasurementRow({ m, index, highlighted, onH
 export default function Measure() {
   const { measure } = useMeasureMode()
   const { setMeasureMode: setMeasure } = useMap()
-  const { measurements, highlightedId, setHighlight, clearAll } = useMeasurements()
+  const { measurements, highlightedId, setHighlight, setProfileCursor, clearAll } = useMeasurements()
 
   return (
     <div className="grid gap-3 md:gap-4">
@@ -103,7 +104,7 @@ export default function Measure() {
           </CardHeader>
           <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
             <ul className="grid gap-2">
-              {measurements.map((m, i) => <MeasurementRow key={m.id} m={m} index={i} highlighted={m.id === highlightedId} onHighlight={setHighlight} />)}
+              {measurements.map((m, i) => <MeasurementRow key={m.id} m={m} index={i} highlighted={m.id === highlightedId} onHighlight={setHighlight} onProfileCursor={setProfileCursor} />)}
             </ul>
           </CardContent>
         </Card>

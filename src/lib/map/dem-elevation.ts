@@ -74,6 +74,7 @@ export function elevationProfile(queryClient: QueryClient, path: [number, number
   return Promise.all(
     samplePath(path, PROFILE_SAMPLES).map(async (p) => ({
       distanceM: p.distanceM,
+      at: [p.lng, p.lat] as [number, number],
       elevationM: await elevationAt(queryClient, p.lng, p.lat),
     })),
   )
