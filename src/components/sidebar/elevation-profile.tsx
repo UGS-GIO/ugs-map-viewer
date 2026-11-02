@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { elevationProfile } from '@/lib/map/dem-elevation'
@@ -17,6 +18,8 @@ export default function ElevationProfile({ path }: { path: [number, number][] })
     queryFn: () => elevationProfile(queryClient, path),
     staleTime: Infinity,
   })
+  // Click pins the tooltip at a point so it stays readable without holding the pointer there
+  const [pinnedIndex, setPinnedIndex] = useState<number>()
 
   if (isPending) return <span className="text-muted-foreground">Loading elevation profile…</span>
   if (isError) return <span className="text-muted-foreground">Elevation profile unavailable</span>
@@ -36,7 +39,14 @@ export default function ElevationProfile({ path }: { path: [number, number][] })
   return (
     <div className="grid gap-1">
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
-        <AreaChart data={points} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+        <AreaChart
+          data={points}
+          margin={{ top: 4, right: 4, bottom: 0, left: 0 }}
+          onClick={({ activeTooltipIndex }) => {
+            const i = activeTooltipIndex == null ? undefined : Number(activeTooltipIndex)
+            setPinnedIndex(i === pinnedIndex ? undefined : i)
+          }}
+        >
           <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
           <XAxis
             dataKey="distance"
@@ -55,6 +65,8 @@ export default function ElevationProfile({ path }: { path: [number, number][] })
             width={44}
           />
           <Tooltip
+            // Recharts keeps the clicked point active in click mode
+            trigger={pinnedIndex === undefined ? 'hover' : 'click'}
             separator=": "
             formatter={(e) => [`${fmt(Number(e))} ft`, 'Elevation']}
             labelFormatter={(d) => `${inMiles ? Number(d).toFixed(2) : fmt(Number(d))} ${unit}`}

@@ -19,11 +19,6 @@ const PREFIX = 'measure-td'
 const LABELS = `${PREFIX}-labels`
 const COLOR = '#2563eb'
 
-const labelText = (m: Measurement) =>
-  m.mode === 'point'
-    ? m.elevationFt == null ? '' : `${Math.round(m.elevationFt).toLocaleString()} ft`
-    : `${m.value?.toLocaleString()} ${m.unit}`
-
 function labelPoint(f: GeoJSONStoreFeatures): [number, number] | undefined {
   const g = f.geometry
   if (g.type === 'Point') return [g.coordinates[0], g.coordinates[1]]
@@ -134,10 +129,11 @@ export class MeasureControl implements IControl {
   private refresh = () => {
     const snapshot = this.draw?.getSnapshot() ?? []
     this.measurements = snapshot.flatMap((f) => this.measure(f) ?? [])
-    const labels: Feature<Point>[] = this.measurements.flatMap((m) => {
+    // Numbered to match the sidebar's "Distance 1", "Area 2"; values live there
+    const labels: Feature<Point>[] = this.measurements.flatMap((m, i) => {
       const f = snapshot.find((s) => s.id === m.id)
       const at = f && labelPoint(f)
-      return at ? [{ type: 'Feature', properties: { label: labelText(m) }, geometry: { type: 'Point', coordinates: at } }] : []
+      return at ? [{ type: 'Feature', properties: { label: String(i + 1) }, geometry: { type: 'Point', coordinates: at } }] : []
     })
     this.map?.getSource<GeoJSONSource>(LABELS)?.setData({ type: 'FeatureCollection', features: labels })
     this.listeners.forEach((l) => l())

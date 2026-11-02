@@ -24,7 +24,7 @@ function MeasurementRow({ m, index }: { m: Measurement; index: number }) {
     <li className="flex gap-3 rounded-sm bg-popover p-3 text-sm">
       <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
       <div className="grid min-w-0 flex-1 gap-0.5">
-        <span className="font-medium">{label} {index + 1}</span>
+        <span className="font-bold">{label} {index + 1}</span>
         {m.value !== undefined && <span>{fmt(m.value)} {m.unit}</span>}
         {coords?.map((c) => <span key={c.label}>{c.label}: {c.value}</span>)}
         {m.mode === 'point' && <span>Elevation: {m.elevationFt === undefined ? '…' : m.elevationFt === null ? 'Unavailable' : `${fmt(m.elevationFt)} ft`}</span>}
@@ -45,6 +45,7 @@ export default function Measure() {
 
   return (
     <div className="grid gap-4">
+      <h2 className="mb-4 text-lg font-medium">Measure and Elevation Tools</h2>
       <Card>
         <CardHeader>
           <CardTitle>Measure</CardTitle>
@@ -73,6 +74,9 @@ export default function Measure() {
               )
             })}
           </RadioGroup>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Distances and areas are horizontal, measured flat on the map as the crow flies. They don't follow the terrain, even in 3D.
+          </p>
         </CardContent>
       </Card>
 
