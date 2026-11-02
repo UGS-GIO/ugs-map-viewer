@@ -114,6 +114,15 @@ export class MeasureControl implements IControl {
     return at ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: at } }] } : emptyCollection()
   }
 
+  remove = (id: string | number) => {
+    // A profile marker belongs to a line; drop it rather than leave it on a deleted one
+    if (this.measurements.find((m) => m.id === id)?.path) this.setProfileCursor(undefined)
+    if (this.highlightedId === id) this.setHighlight(undefined)
+    this.draw?.removeFeatures([id])
+    this.elevationsM.delete(id)
+    this.refresh()
+  }
+
   clear() {
     this.setProfileCursor(undefined)
     this.draw?.clear()

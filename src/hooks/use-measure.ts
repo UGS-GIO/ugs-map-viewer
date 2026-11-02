@@ -28,6 +28,7 @@ export function useMeasurements() {
     highlightedId,
     setHighlight: control?.setHighlight,
     setProfileCursor: control?.setProfileCursor,
+    remove: control?.remove,
     clearAll: () => control?.clear(),
   }
 }

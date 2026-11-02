@@ -1,7 +1,7 @@
 import { lazy, memo, Suspense } from 'react'
 import { Radio } from '@base-ui/react/radio'
 import { RadioGroup } from '@base-ui/react/radio-group'
-import { Trash2 } from 'lucide-react'
+import { Trash2, X } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -18,13 +18,14 @@ import { MEASURE_TOOLS } from '@/components/maps/measure-tools'
 const ElevationProfile = lazy(() => import('./elevation-profile'))
 
 // Memoized: measurements keep their object while unchanged, so drawing doesn't re-render finished rows
-const MeasurementRow = memo(function MeasurementRow({ m, units, index, highlighted, onHighlight, onProfileCursor }: {
+const MeasurementRow = memo(function MeasurementRow({ m, units, index, highlighted, onHighlight, onProfileCursor, onRemove }: {
   m: Measurement
   units: UnitSystem
   index: number
   highlighted: boolean
   onHighlight?: (id: string | number | undefined) => void
   onProfileCursor?: (at: [number, number] | undefined) => void
+  onRemove?: (id: string | number) => void
 }) {
   const { coordinateFormat } = useCoordinateFormat()
   const { label, icon: Icon } = MEASURE_TOOLS[m.mode]
@@ -40,7 +41,14 @@ const MeasurementRow = memo(function MeasurementRow({ m, units, index, highlight
     >
       <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
       <div className="grid min-w-0 flex-1 gap-0.5">
-        <span className="font-bold">{label} {index + 1}</span>
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-bold">{label} {index + 1}</span>
+          {onRemove && (
+            <Button variant="ghost" size="icon" className="size-6 shrink-0" aria-label={`Remove ${label} ${index + 1}`} onClick={() => onRemove(m.id)}>
+              <X className="size-4" />
+            </Button>
+          )}
+        </div>
         {size && <span>{formatQuantity(size)}</span>}
         {coords?.map((c) => <span key={c.label}>{c.label}: {c.value}</span>)}
         {m.mode === 'point' && (
@@ -59,7 +67,7 @@ const MeasurementRow = memo(function MeasurementRow({ m, units, index, highlight
 export default function Measure() {
   const { measure } = useMeasureMode()
   const { setMeasureMode: setMeasure } = useMap()
-  const { measurements, highlightedId, setHighlight, setProfileCursor, clearAll } = useMeasurements()
+  const { measurements, highlightedId, setHighlight, setProfileCursor, remove, clearAll } = useMeasurements()
   const { units } = useUnits()
 
   return (
@@ -110,7 +118,7 @@ export default function Measure() {
           </CardHeader>
           <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
             <ul className="grid gap-2">
-              {measurements.map((m, i) => <MeasurementRow key={m.id} m={m} units={units} index={i} highlighted={m.id === highlightedId} onHighlight={setHighlight} onProfileCursor={setProfileCursor} />)}
+              {measurements.map((m, i) => <MeasurementRow key={m.id} m={m} units={units} index={i} highlighted={m.id === highlightedId} onHighlight={setHighlight} onProfileCursor={setProfileCursor} onRemove={remove} />)}
             </ul>
           </CardContent>
         </Card>
