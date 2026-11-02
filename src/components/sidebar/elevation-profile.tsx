@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { elevationProfile } from '@/lib/map/dem-elevation'
-import type { UnitSystem } from '@/lib/map/measure-store'
+import { elevationProfile, groundDistanceM } from '@/lib/map/dem-elevation'
+import { formatLength, formatQuantity, type UnitSystem } from '@/lib/map/measure-store'
 
 // Numeric height: recharts v3 warns when ResponsiveContainer measures 0 at mount
 const CHART_HEIGHT = 128
@@ -45,6 +45,7 @@ export default function ElevationProfile({ path, units, onCursor }: {
   const climb = steps.reduce((sum, d) => sum + Math.max(d, 0), 0)
   const descent = steps.reduce((sum, d) => sum + Math.min(d, 0), 0)
   const unit = units === 'metric' ? (inBig ? 'km' : 'm') : inBig ? 'mi' : 'ft'
+  const ground = formatQuantity(formatLength(groundDistanceM(data), units))
 
   return (
     <div className="grid gap-1">
@@ -94,6 +95,8 @@ export default function ElevationProfile({ path, units, onCursor }: {
           <Area dataKey="elevation" stroke={LINE_COLOR} strokeWidth={2} fill={LINE_COLOR} fillOpacity={0.15} isAnimationActive={false} />
         </AreaChart>
       </ResponsiveContainer>
+      {/* What a measuring wheel would read along the line, up and down the terrain */}
+      <span>Along the ground: {ground}</span>
       <span className="text-muted-foreground">
         Low {fmt(Math.min(...elevations))} {elevUnit} · High {fmt(Math.max(...elevations))} {elevUnit} · Climb {fmt(climb)} {elevUnit} ·
         Descent {fmt(-descent)} {elevUnit}

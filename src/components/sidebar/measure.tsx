@@ -9,7 +9,7 @@ import { useMeasureMode, useMeasurements } from '@/hooks/use-measure'
 import { useMap } from '@/hooks/use-map'
 import { useCoordinateFormat } from '@/hooks/use-map-coordinates'
 import { formatCoordinatePair } from '@/lib/map/conversion-utils'
-import { MEASURE_MODES, formatElevation, formatQuantity, isMeasureMode, measurementQuantity, type Measurement, type UnitSystem } from '@/lib/map/measure-store'
+import { MEASURE_MODES, formatArea, formatElevation, formatLength, formatQuantity, isMeasureMode, measurementQuantity, type Measurement, type UnitSystem } from '@/lib/map/measure-store'
 import { useUnits } from '@/hooks/use-units'
 import { UnitsToggle } from './units-card'
 import { MEASURE_TOOLS } from '@/components/maps/measure-tools'
@@ -50,6 +50,10 @@ const MeasurementRow = memo(function MeasurementRow({ m, units, index, highlight
           )}
         </div>
         {size && <span>{formatQuantity(size)}</span>}
+        {m.segmentsM && m.segmentsM.length > 1 && (
+          <span className="text-muted-foreground">Legs: {m.segmentsM.map((s) => formatQuantity(formatLength(s, units))).join(' · ')}</span>
+        )}
+        {m.perimeterM !== undefined && <span className="text-muted-foreground">Perimeter: {formatQuantity(formatLength(m.perimeterM, units))}</span>}
         {coords?.map((c) => <span key={c.label}>{c.label}: {c.value}</span>)}
         {m.mode === 'point' && (
           <span>Elevation: {m.elevationM === undefined ? '…' : m.elevationM === null ? 'Unavailable' : formatQuantity(formatElevation(m.elevationM, units))}</span>
@@ -64,11 +68,23 @@ const MeasurementRow = memo(function MeasurementRow({ m, units, index, highlight
   )
 })
 
+/** Sums for lines and for areas, once there are two or more of a kind. */
+function measurementTotals(measurements: Measurement[], units: UnitSystem) {
+  const lines = measurements.flatMap((m) => m.lengthM ?? [])
+  const areas = measurements.flatMap((m) => m.areaM2 ?? [])
+  const parts = [
+    lines.length > 1 && `${formatQuantity(formatLength(lines.reduce((a, b) => a + b, 0), units))} of lines`,
+    areas.length > 1 && `${formatQuantity(formatArea(areas.reduce((a, b) => a + b, 0), units))} of areas`,
+  ].filter(Boolean)
+  return parts.length ? `Total: ${parts.join(' · ')}` : undefined
+}
+
 export default function Measure() {
   const { measure } = useMeasureMode()
   const { setMeasureMode: setMeasure } = useMap()
   const { measurements, highlightedId, setHighlight, setProfileCursor, remove, clearAll } = useMeasurements()
   const { units } = useUnits()
+  const totals = measurementTotals(measurements, units)
 
   return (
     <div className="grid gap-3 md:gap-4">
@@ -103,7 +119,7 @@ export default function Measure() {
           </RadioGroup>
           <UnitsToggle className="mt-3" />
           <p className="mt-3 text-xs text-muted-foreground">
-            Distances and areas are horizontal, measured flat on the map as the crow flies. They don't follow the terrain, even in 3D.
+            Distances and areas are measured flat on the map, as the crow flies, even in 3D. Each line also shows its distance along the ground, following the terrain.
           </p>
         </CardContent>
       </Card>
@@ -116,6 +132,7 @@ export default function Measure() {
               <Trash2 className="size-4" /> Clear
             </Button>
           </CardHeader>
+          {totals && <p className="px-4 pb-2 text-sm text-muted-foreground md:px-6">{totals}</p>}
           <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
             <ul className="grid gap-2">
               {measurements.map((m, i) => <MeasurementRow key={m.id} m={m} units={units} index={i} highlighted={m.id === highlightedId} onHighlight={setHighlight} onProfileCursor={setProfileCursor} onRemove={remove} />)}

@@ -67,15 +67,32 @@ export function samplePath(path: [number, number][], count: number) {
   })
 }
 
-const PROFILE_SAMPLES = 128
+// About one sample per DEM pixel (~15 m at z13) up to a cap, so ground distance doesn't smooth out
+// the terrain on long lines; at least enough for a smooth chart on short ones
+const SAMPLE_SPACING_M = 30
+const MIN_SAMPLES = 128
+const MAX_SAMPLES = 1024
+
+export interface ProfileSample {
+  distanceM: number
+  at: [number, number]
+  elevationM: number
+}
 
 /** Ground elevation in meters along a path; samples sharing a DEM tile share one fetch. */
-export function elevationProfile(queryClient: QueryClient, path: [number, number][]) {
+export function elevationProfile(queryClient: QueryClient, path: [number, number][]): Promise<ProfileSample[]> {
+  const totalM = length(lineString(path), { units: 'meters' })
+  const count = Math.min(MAX_SAMPLES, Math.max(MIN_SAMPLES, Math.ceil(totalM / SAMPLE_SPACING_M)))
   return Promise.all(
-    samplePath(path, PROFILE_SAMPLES).map(async (p) => ({
+    samplePath(path, count).map(async (p) => ({
       distanceM: p.distanceM,
-      at: [p.lng, p.lat] as [number, number],
+      at: [p.lng, p.lat],
       elevationM: await elevationAt(queryClient, p.lng, p.lat),
     })),
   )
+}
+
+/** Distance along the ground, following the terrain between samples (a measuring wheel, not a crow). */
+export function groundDistanceM(samples: Pick<ProfileSample, 'distanceM' | 'elevationM'>[]) {
+  return samples.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.distanceM - samples[i].distanceM, p.elevationM - samples[i].elevationM), 0)
 }

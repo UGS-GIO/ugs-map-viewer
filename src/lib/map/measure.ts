@@ -11,6 +11,7 @@ import {
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter'
 import { area } from '@turf/area'
 import { length } from '@turf/length'
+import { lineString } from '@turf/helpers'
 import polylabel from 'polylabel'
 import { elevationAt } from './dem-elevation'
 import { formatQuantity, isMeasureMode, measurementQuantity, registerMeasureControl, type MeasureMode, type Measurement, type UnitSystem } from './measure-store'
@@ -306,9 +307,10 @@ export class MeasureControl implements IControl {
     const g = f.geometry
     if (g.type === 'LineString') {
       const path = f.properties.currentlyDrawing ? undefined : g.coordinates.map(([x, y]): [number, number] => [x, y])
-      return { id, mode, path, lengthM: length(f, { units: 'meters' }) }
+      const segmentsM = g.coordinates.slice(1).map((b, i) => length(lineString([g.coordinates[i], b]), { units: 'meters' }))
+      return { id, mode, path, lengthM: segmentsM.reduce((a, b) => a + b, 0), segmentsM }
     }
-    if (g.type === 'Polygon') return { id, mode, areaM2: area(f) }
+    if (g.type === 'Polygon') return { id, mode, areaM2: area(f), perimeterM: length(f, { units: 'meters' }) }
     // Line and polygon modes add helper points (closing, snapping) while drawing
     if (g.type !== 'Point' || mode !== 'point') return undefined
     const [lng, lat] = g.coordinates

@@ -21,8 +21,11 @@ export interface Measurement {
   mode: MeasureMode
   /** Line length in meters */
   lengthM?: number
+  /** Each leg of a line, in meters */
+  segmentsM?: number[]
   /** Polygon area in square meters */
   areaM2?: number
+  perimeterM?: number
   /** Point elevation in meters once its DEM tile loads; null if the lookup failed */
   elevationM?: number | null
   coordinates?: [number, number]

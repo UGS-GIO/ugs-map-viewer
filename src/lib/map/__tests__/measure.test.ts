@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formatArea, formatElevation, formatLength } from '../measure-store'
-import { decodeTerrarium, samplePath, tilePixel } from '../dem-elevation'
+import { decodeTerrarium, groundDistanceM, samplePath, tilePixel } from '../dem-elevation'
 
 describe('formatLength', () => {
   it('uses feet under 1,000 ft', () => {
@@ -32,6 +32,14 @@ describe('metric units', () => {
   it('gives elevation in feet or meters', () => {
     expect(formatElevation(1000)).toEqual({ value: 3281, unit: 'ft' })
     expect(formatElevation(1000.4, 'metric')).toEqual({ value: 1000, unit: 'm' })
+  })
+})
+
+describe('groundDistanceM', () => {
+  it('follows the terrain between samples', () => {
+    // 300 m flat then a 400 m run that climbs 300 m (a 3-4-5 triangle)
+    const samples = [{ distanceM: 0, elevationM: 100 }, { distanceM: 300, elevationM: 100 }, { distanceM: 700, elevationM: 400 }]
+    expect(groundDistanceM(samples)).toBeCloseTo(800)
   })
 })
 
