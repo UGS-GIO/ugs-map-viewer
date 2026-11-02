@@ -12,7 +12,7 @@ import {
   BOX_SELECT_MIN_ZOOM,
 } from './constants'
 import { BASEMAP_STYLES, DEFAULT_BASEMAP, buildBasemapStyle } from '@/lib/basemaps'
-import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
+import { BoxSelectOverlay, ViewModeControl, MapToolsControl, MeasureToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
 import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds, isWithinZoomRange, effectiveZoomRange } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
@@ -787,12 +787,19 @@ export default function DataMap({
           onBoxSelectToggle={onBoxSelectModeChange}
           isAdditiveMode={isAdditiveMode}
           onAdditiveModeToggle={onAdditiveModeToggle}
-          measureMode={measureMode}
-          onMeasureModeChange={onMeasureModeChange}
-          hasMeasurements={hasMeasurements}
-          onClearMeasurements={onClearMeasurements}
           position="top-right"
         />
+
+        {/* Rendered after MapToolsControl so it stacks below as its own group */}
+        {onMeasureModeChange && (
+          <MeasureToolsControl
+            measureMode={measureMode}
+            onMeasureModeChange={onMeasureModeChange}
+            hasMeasurements={hasMeasurements}
+            onClearMeasurements={onClearMeasurements}
+            position="top-right"
+          />
+        )}
 
         {/* Data layers in sidebar/config order. First = top of stack.
             Render order = top → bottom so each `beforeId` references an already-mounted layer. */}
