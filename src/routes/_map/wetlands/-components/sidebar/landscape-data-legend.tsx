@@ -40,6 +40,9 @@ export function LandscapeDataLegend({ layer }: LandscapeDataLegendProps) {
       {!isCategorical && (
         <span className='text-[10px] text-muted-foreground capitalize'>
           {filterState.classification.replace('-', ' ')} • {legendData.bins.length} classes
+          {legendData.bins.length < filterState.numClasses && (
+            <span className='lowercase font-normal'> (adjusted from {filterState.numClasses})</span>
+          )}
         </span>
       )}
       <div className='flex flex-col gap-1 pt-1'>
