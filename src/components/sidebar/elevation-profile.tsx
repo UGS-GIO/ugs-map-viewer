@@ -7,6 +7,8 @@ import { metersToFeet } from '@/lib/map/measure-store'
 // Numeric height: recharts v3 warns when ResponsiveContainer measures 0 at mount
 const CHART_HEIGHT = 128
 const FT_PER_MI = 5280
+// Same series color as the hazards-review displacement charts; clears 3:1 in both themes
+const LINE_COLOR = 'hsl(var(--chart-1))'
 
 const fmt = (n: number) => Math.round(n).toLocaleString()
 
@@ -67,12 +69,14 @@ export default function ElevationProfile({ path }: { path: [number, number][] })
           <Tooltip
             // Recharts keeps the clicked point active in click mode
             trigger={pinnedIndex === undefined ? 'hover' : 'click'}
+            cursor={{ stroke: 'currentColor', strokeOpacity: 0.2 }}
             separator=": "
             formatter={(e) => [`${fmt(Number(e))} ft`, 'Elevation']}
             labelFormatter={(d) => `${inMiles ? Number(d).toFixed(2) : fmt(Number(d))} ${unit}`}
             contentStyle={{ background: 'hsl(var(--popover))', color: 'hsl(var(--popover-foreground))', fontSize: 12 }}
+            itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
           />
-          <Area dataKey="elevation" stroke="#2563eb" fill="#2563eb" fillOpacity={0.2} isAnimationActive={false} />
+          <Area dataKey="elevation" stroke={LINE_COLOR} strokeWidth={2} fill={LINE_COLOR} fillOpacity={0.15} isAnimationActive={false} />
         </AreaChart>
       </ResponsiveContainer>
       <span className="text-muted-foreground">
