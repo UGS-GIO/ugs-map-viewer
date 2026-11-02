@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy, memo, Suspense } from 'react'
 import { Radio } from '@base-ui/react/radio'
 import { RadioGroup } from '@base-ui/react/radio-group'
 import { Trash2 } from 'lucide-react'
@@ -16,12 +16,13 @@ const ElevationProfile = lazy(() => import('./elevation-profile'))
 
 const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 2 })
 
-function MeasurementRow({ m, index }: { m: Measurement; index: number }) {
+// Memoized: measurements keep their object while unchanged, so drawing doesn't re-render finished rows
+const MeasurementRow = memo(function MeasurementRow({ m, index }: { m: Measurement; index: number }) {
   const { coordinateFormat } = useCoordinateFormat()
   const { label, icon: Icon } = MEASURE_TOOLS[m.mode]
   const coords = m.coordinates && formatCoordinatePair(m.coordinates[0], m.coordinates[1], coordinateFormat, 5)
   return (
-    <li className="flex gap-3 rounded-sm bg-popover p-3 text-sm">
+    <li className="flex gap-3 rounded-sm bg-popover p-2 text-sm md:p-3">
       <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
       <div className="grid min-w-0 flex-1 gap-0.5">
         <span className="font-bold">{label} {index + 1}</span>
@@ -36,7 +37,7 @@ function MeasurementRow({ m, index }: { m: Measurement; index: number }) {
       </div>
     </li>
   )
-}
+})
 
 export default function Measure() {
   const { measure } = useMeasureMode()
@@ -44,8 +45,8 @@ export default function Measure() {
   const { measurements, clearAll } = useMeasurements()
 
   return (
-    <div className="grid gap-4">
-      <h2 className="mb-4 text-lg font-medium">Measure and Elevation Tools</h2>
+    <div className="grid gap-3 md:gap-4">
+      <h2 className="text-lg font-medium md:mb-4">Measure and Elevation Tools</h2>
       <Card>
         <CardHeader>
           <CardTitle>Measure</CardTitle>
@@ -66,7 +67,7 @@ export default function Measure() {
                   value={mode}
                   // Clicking the active tool again turns measuring off
                   onClick={() => measure === mode && setMeasure(undefined)}
-                  className="flex flex-col items-center gap-1 rounded-sm bg-popover p-3 text-sm hover:bg-accent hover:text-accent-foreground data-[checked]:bg-primary data-[checked]:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="flex flex-col items-center gap-1 rounded-sm bg-popover p-2 text-sm md:p-3 hover:bg-accent hover:text-accent-foreground data-[checked]:bg-primary data-[checked]:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <Icon className="size-4" />
                   {label}

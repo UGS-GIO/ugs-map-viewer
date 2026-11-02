@@ -24,3 +24,11 @@ export function useMeasurements() {
   const measurements = useSyncExternalStore(control?.subscribe ?? noop, () => control?.measurements ?? NO_MEASUREMENTS)
   return { measurements, clearAll: () => control?.clear() }
 }
+
+/** Whether any measurement is on the map; a boolean so drawing doesn't re-render the map container. */
+export function useHasMeasurements() {
+  const { map } = useMapInstance()
+  const control = useSyncExternalStore(subscribeMeasureControls, () => getMeasureControl(map))
+  const hasMeasurements = useSyncExternalStore(control?.subscribe ?? noop, () => (control?.measurements.length ?? 0) > 0)
+  return { hasMeasurements, clearAll: () => control?.clear() }
+}

@@ -11,11 +11,16 @@ async function loadTile(x: number, y: number): Promise<ImageData> {
   const url = TERRARIUM_TILES.replace('{z}', String(ZOOM)).replace('{x}', String(x)).replace('{y}', String(y))
   const res = await fetch(url)
   if (!res.ok) throw new Error(`DEM tile ${res.status}`)
-  const bitmap = await createImageBitmap(await res.blob())
-  const ctx = new OffscreenCanvas(TILE_SIZE, TILE_SIZE).getContext('2d')
-  if (!ctx) throw new Error('No 2D canvas')
-  ctx.drawImage(bitmap, 0, 0)
-  return ctx.getImageData(0, 0, TILE_SIZE, TILE_SIZE)
+  // Elevations are packed in the RGB values, so no color management or alpha premultiplying
+  const bitmap = await createImageBitmap(await res.blob(), { colorSpaceConversion: 'none', premultiplyAlpha: 'none' })
+  try {
+    const ctx = new OffscreenCanvas(TILE_SIZE, TILE_SIZE).getContext('2d')
+    if (!ctx) throw new Error('No 2D canvas')
+    ctx.drawImage(bitmap, 0, 0)
+    return ctx.getImageData(0, 0, TILE_SIZE, TILE_SIZE)
+  } finally {
+    bitmap.close()
+  }
 }
 
 /** Tile and pixel holding a lng/lat at ZOOM, in Web Mercator. */
@@ -37,7 +42,7 @@ export function decodeTerrarium(r: number, g: number, b: number) {
 /** Ground elevation in meters at a lng/lat, from the same DEM as 3D terrain. */
 export async function elevationAt(queryClient: QueryClient, lng: number, lat: number): Promise<number> {
   const { x, y, px, py } = tilePixel(lng, lat)
-  // DEM tiles never change; keep each for the session
+  // DEM tiles never change; unused ones drop after the app's gcTime
   const { data } = await queryClient.fetchQuery({
     queryKey: ['dem-tile', ZOOM, x, y],
     queryFn: () => loadTile(x, y),

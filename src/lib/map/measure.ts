@@ -41,16 +41,20 @@ export class MeasureControl implements IControl {
   measurements: Measurement[] = []
   private map?: MapLibreMap
   private draw?: TerraDraw
+  private syncing = false
   private elevationsFt = new Map<string | number, number | 'pending' | 'failed'>()
+  // Reused while a feature is unchanged, so finished rows and their profiles don't re-render
+  private cache = new Map<string | number, { key: string; m: Measurement | undefined }>()
   private listeners = new Set<() => void>()
+  private firstResultListeners = new Set<() => void>()
 
   constructor(private queryClient: QueryClient) {}
 
   onAdd(map: MapLibreMap) {
     this.map = map
-    this.start()
-    map.on('style.load', this.restart)
+    map.on('styledata', this.sync)
     registerMeasureControl(map, this)
+    this.sync()
     const container = document.createElement('div')
     container.hidden = true
     return container
@@ -58,7 +62,7 @@ export class MeasureControl implements IControl {
 
   onRemove() {
     if (this.map) {
-      this.map.off('style.load', this.restart)
+      this.map.off('styledata', this.sync)
       registerMeasureControl(this.map, undefined)
     }
     this.stopDraw()
@@ -82,6 +86,36 @@ export class MeasureControl implements IControl {
     return () => this.listeners.delete(listener)
   }
 
+  /** Fires when a measurement finishes and it's the only one on the map. */
+  onFirstResult = (listener: () => void) => {
+    this.firstResultListeners.add(listener)
+    return () => { this.firstResultListeners.delete(listener) }
+  }
+
+  /**
+   * Waits out the first style load, starts over when a basemap switch drops our layers (a diffed
+   * setStyle doesn't fire style.load), and keeps our layers above data layers added later.
+   */
+  private sync = () => {
+    const map = this.map
+    if (!map || this.syncing) return
+    const order = map.getLayersOrder()
+    if (!order.length) return
+    this.syncing = true
+    try {
+      if (!this.draw) this.start()
+      else if (!map.getLayer(LABELS)) this.restart()
+      else {
+        const first = order.findIndex((id) => id.startsWith(PREFIX))
+        if (first >= 0 && order.slice(first).some((id) => !id.startsWith(PREFIX))) {
+          order.filter((id) => id.startsWith(PREFIX)).forEach((id) => map.moveLayer(id))
+        }
+      }
+    } finally {
+      this.syncing = false
+    }
+  }
+
   private start(features: GeoJSONStoreFeatures[] = [], mode = 'static') {
     const map = this.map
     if (!map) return
@@ -99,6 +133,10 @@ export class MeasureControl implements IControl {
     if (features.length) draw.addFeatures(features)
     draw.setMode(mode)
     draw.on('change', this.refresh)
+    draw.on('finish', () => {
+      this.refresh()
+      if (this.measurements.length === 1) this.firstResultListeners.forEach((l) => l())
+    })
     this.draw = draw
     if (!map.getSource(LABELS)) map.addSource(LABELS, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
     if (!map.getLayer(LABELS)) map.addLayer({
@@ -112,23 +150,33 @@ export class MeasureControl implements IControl {
     this.refresh()
   }
 
-  private stopDraw() {
-    // stop() throws removing layers a new style already dropped
-    try { this.draw?.stop() } catch { /* already gone */ }
+  private stopDraw(layersGone = false) {
+    try {
+      this.draw?.stop()
+    } catch (err) {
+      // Expected when a basemap switch already dropped our layers; anything else is worth seeing
+      if (!layersGone) console.warn('[measure] Terra Draw stop failed:', err)
+    }
     this.draw = undefined
   }
 
-  // A basemap switch drops our layers; start over with the same drawings
-  private restart = () => {
-    const features = this.draw?.getSnapshot() ?? []
+  // Start over with the finished drawings; a half-drawn one and its helper points can't be re-added
+  private restart() {
+    const features = (this.draw?.getSnapshot() ?? []).filter((f) => {
+      const mode = f.properties.mode
+      return isMeasureMode(mode) && !f.properties.currentlyDrawing && (f.geometry.type !== 'Point' || mode === 'point')
+    })
     const mode = this.draw?.getMode()
-    this.stopDraw()
+    this.stopDraw(true)
     this.start(features, mode)
   }
 
   private refresh = () => {
     const snapshot = this.draw?.getSnapshot() ?? []
-    this.measurements = snapshot.flatMap((f) => this.measure(f) ?? [])
+    const next = snapshot.flatMap((f) => this.cached(f) ?? [])
+    const changed = next.length !== this.measurements.length || next.some((m, i) => m !== this.measurements[i])
+    if (changed) this.measurements = next
+    this.cache.forEach((_, id) => { if (!snapshot.some((f) => f.id === id)) this.cache.delete(id) })
     // Numbered to match the sidebar's "Distance 1", "Area 2"; values live there
     const labels: Feature<Point>[] = this.measurements.flatMap((m, i) => {
       const f = snapshot.find((s) => s.id === m.id)
@@ -136,7 +184,17 @@ export class MeasureControl implements IControl {
       return at ? [{ type: 'Feature', properties: { label: String(i + 1) }, geometry: { type: 'Point', coordinates: at } }] : []
     })
     this.map?.getSource<GeoJSONSource>(LABELS)?.setData({ type: 'FeatureCollection', features: labels })
-    this.listeners.forEach((l) => l())
+    if (changed) this.listeners.forEach((l) => l())
+  }
+
+  private cached(f: GeoJSONStoreFeatures) {
+    if (f.id === undefined) return undefined
+    const key = `${JSON.stringify(f.geometry)}|${f.properties.currentlyDrawing}|${this.elevationsFt.get(f.id)}`
+    const hit = this.cache.get(f.id)
+    if (hit?.key === key) return hit.m
+    const m = this.measure(f)
+    this.cache.set(f.id, { key: `${JSON.stringify(f.geometry)}|${f.properties.currentlyDrawing}|${this.elevationsFt.get(f.id)}`, m })
+    return m
   }
 
   private measure(f: GeoJSONStoreFeatures): Measurement | undefined {
@@ -157,7 +215,11 @@ export class MeasureControl implements IControl {
       elevationAt(this.queryClient, lng, lat)
         .then((m) => { this.elevationsFt.set(id, metersToFeet(m)); this.refresh() })
         // Keep the failure so later draw changes don't refetch it
-        .catch(() => { this.elevationsFt.set(id, 'failed'); this.refresh() })
+        .catch((err) => {
+          console.warn('[measure] point elevation lookup failed:', err)
+          this.elevationsFt.set(id, 'failed')
+          this.refresh()
+        })
     }
     const ft = this.elevationsFt.get(id)
     return { id, mode, coordinates: [lng, lat], elevationFt: typeof ft === 'number' ? ft : ft === 'failed' ? null : undefined }
