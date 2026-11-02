@@ -6,9 +6,9 @@ import { GeoJsonProperties } from "geojson";
 import { ucrcWellsConfig } from "@/routes/_map/-shared/layers/ucrc-wells";
 
 // GeoRegions Layer — STAC-driven: pmtilesUrl and the ranking render come from the
-// warehouse item `enmin_ccus_cbgeoregion`.
+// warehouse item `enmin_ccs_georegions`.
 const CCUS_IMAGE_BASE_URL = `${MAPS_ASSETS_CDN_URL}/ccus/png`;
-const georegionsLayerName = 'enmin_ccus_cbgeoregion';
+const georegionsLayerName = 'enmin_ccs_georegions';
 const georegionsTitle = 'Geo-Region Carbon Storage Ranking';
 const georegionsConfig: PMTilesLayerProps = {
     type: 'pmtiles',
