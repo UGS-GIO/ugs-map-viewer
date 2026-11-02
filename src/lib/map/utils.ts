@@ -1,8 +1,7 @@
 import { ExtendedFeature } from '@/components/maps/popups/types';
 import { convertBbox, convertCoordinate, convertGeometryToWGS84 } from '@/lib/map/conversion-utils';
 import type { Geometry } from 'geojson';
-import { buffer } from '@turf/buffer';
-import { point } from '@turf/helpers';
+import { LngLat, LngLatBounds } from 'maplibre-gl';
 import { bbox as turfBbox } from '@turf/bbox';
 import type { MapLibreMap } from '@/lib/types/map-types';
 
@@ -18,26 +17,20 @@ export interface ZoomToFeatureOptions {
 }
 
 /**
- * Create a bounding box around a point with a given radius buffer.
- * Uses Turf for accurate buffering at any latitude.
+ * Create a bounding box around a point with a given radius buffer, correct at any latitude.
+ * MapLibre's LngLatBounds.fromLngLat instead of @turf/buffer, which pulled ~50 KB into the first load.
  *
  * @param coords - [lng, lat] coordinates in WGS84
  * @param radiusKm - Buffer radius in kilometers (default: 0.1 = 100m)
- * @returns [minX, minY, maxX, maxY] bbox or null if buffering fails
+ * @returns [minX, minY, maxX, maxY] bbox or null if the coordinates are invalid
  */
 export function createPointBufferBbox(
     coords: [number, number],
     radiusKm: number = 0.1
 ): [number, number, number, number] | null {
     try {
-        const pointFeature = point(coords);
-        const bufferedFeature = buffer(pointFeature, radiusKm, { units: 'kilometers' });
-        if (bufferedFeature) {
-            const bboxResult = turfBbox(bufferedFeature);
-            if (bboxResult) {
-                return bboxResult as [number, number, number, number];
-            }
-        }
+        const [[minX, minY], [maxX, maxY]] = LngLatBounds.fromLngLat(new LngLat(coords[0], coords[1]), radiusKm * 1000).toArray();
+        return [minX, minY, maxX, maxY];
     } catch (error) {
         console.warn('[createPointBufferBbox] Error buffering point:', error);
     }

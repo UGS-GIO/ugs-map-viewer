@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query'
-import { toTitleCase } from '@/lib/utils'
 import { styleFragmentQueryOptions } from '@/components/maps/pmtiles-layer-source'
 import { LegendSwatchGrid } from '@/components/maps/legend-swatch-grid'
 import type { PMTilesLayerProps } from '@/lib/types/mapping-types'
@@ -26,8 +25,7 @@ export function StacRenderLegend({ layer }: { layer: PMTilesLayerProps }) {
         <LegendSwatchGrid
             columns="single"
             shape={swatchShapeOf(fragment?.layers?.map(l => l.type) ?? [])}
-            // ugs-styles keeps labels as the raw field value (lowercase) so consumers can join on it.
-            items={entries.map(e => ({ key: e.label, label: toTitleCase(e.label), color: e.color, stroke: e.stroke }))}
+            items={entries.map(e => ({ key: e.value ?? e.label, label: e.label, color: e.color, stroke: e.stroke }))}
         />
     )
 }

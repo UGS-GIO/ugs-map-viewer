@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { BASEMAP_STYLES, DEFAULT_BASEMAP, buildBasemapStyle, getBasemapUrl, resolveAppBasemaps, type BasemapStyle } from '../basemaps'
+import { BASEMAP_STYLES, DEFAULT_BASEMAP, buildBasemapStyle, getBasemapUrl, resolveAppBasemaps, resolveBasemapId, type BasemapStyle } from '../basemaps'
 
 describe('resolveAppBasemaps', () => {
     it('gives an unconfigured route every style and the global default', () => {
@@ -40,6 +40,17 @@ describe('resolveAppBasemaps', () => {
     it('leaves unlisted styles in the dropdown', () => {
         const long = resolveAppBasemaps('hazards').styles.filter(b => b.type === 'long').map(b => b.id)
         expect(long).toEqual(['hybrid', 'none'])
+    })
+})
+
+describe('resolveBasemapId', () => {
+    it('maps the retired utah-satellite id to satellite', () => {
+        expect(resolveBasemapId('utah-satellite')).toBe('satellite')
+    })
+
+    it('passes current ids through', () => {
+        expect(resolveBasemapId('lite')).toBe('lite')
+        expect(resolveBasemapId('constructor')).toBe('constructor')
     })
 })
 

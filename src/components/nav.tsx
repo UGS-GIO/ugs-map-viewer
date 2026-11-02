@@ -77,7 +77,7 @@ export default function Nav({
 
 
   return (
-    <div id={id} className="flex flex-1 overflow-hidden">
+    <div id={id} className="flex h-full min-h-0 flex-1 overflow-hidden">
       <div
         role="group"
         aria-label="Tools"
@@ -103,14 +103,14 @@ export default function Nav({
       <div
         data-collapsed={isCollapsed}
         className={cn(
-          'group border-b bg-background py-2 transition-[max-height,padding] duration-500 data-[collapsed=true]:py-2 md:border-none',
+          'group border-b bg-background py-2 transition-[max-height,padding] duration-500 data-[collapsed=true]:py-2 md:border-none min-h-0',
           !showPanel && 'hidden',
           className
         )}
       >
         <TooltipProvider delayDuration={0}>
           {currentContent ? (
-            <div id={TOOL_PANEL_ID} role="region" aria-label={currentContent.title} className="h-full overflow-y-auto">
+            <div id={TOOL_PANEL_ID} role="region" aria-label={currentContent.title} className="h-full min-h-0 overflow-y-auto">
               <div className="px-4 pb-4">
                 <CurrentPanel />
               </div>

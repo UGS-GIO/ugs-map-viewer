@@ -7,7 +7,7 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import * as maplibregl from 'maplibre-gl'
-import DataMap, { HighlightFeature, DrawMode, SpatialFilter } from '@/components/maps/data-map'
+import DataMap, { HighlightFeature, DrawMode, SpatialFilter, type PMTilesStyleOverride } from '@/components/maps/data-map'
 import { PopupSheet, PopupSheetRef } from '@/components/maps/popups/popup-sheet'
 import type { LayerContentProps, ExtendedFeature } from '@/components/maps/popups/types'
 import { QueryResultsTable } from '@/components/data-table/query-results-table'
@@ -25,6 +25,7 @@ import { PROD_GEOSERVER_URL, POPUP_TITLES } from '@/lib/constants'
 import { useMap } from '@/hooks/use-map'
 import { useGetCurrentPage } from '@/hooks/use-get-current-page'
 import { useAppBasemaps } from '@/hooks/use-app-basemaps'
+import { useAppTerrain } from '@/hooks/use-app-terrain'
 import { MapChromeControls } from '@/components/maps/controls/map-chrome-controls'
 import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
@@ -277,6 +278,8 @@ interface GenericMapContainerProps {
   vectorLayerFilters?: Record<string, maplibregl.FilterSpecification>
   /** Optional active symbology mode key for vector layers, keyed by layer title */
   vectorLayerSymbology?: Record<string, string>
+  /** Optional style overrides for PMTiles layers (e.g. choropleth fill-color), keyed by layer title */
+  pmtilesStyleOverrides?: Record<string, PMTilesStyleOverride>
   /** Layer config key (default: 'layers') */
   layerConfigKey?: string
   /** Called when all selections are cleared (context menu, popup close, etc.) */
@@ -298,6 +301,7 @@ export default function GenericMapContainer({
   layerStyles = {},
   vectorLayerFilters = {},
   vectorLayerSymbology = {},
+  pmtilesStyleOverrides = {},
   layerConfigKey = 'layers',
   onClearSearch,
   disableExport = false,
@@ -310,7 +314,8 @@ export default function GenericMapContainer({
   const currentPage = useGetCurrentPage()
   const { defaultStyle: defaultBasemap } = useAppBasemaps()
   const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
-  const { viewMode, setViewMode, center, zoom, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
+  const { viewMode, setViewMode, center, zoom, pitch, bearing, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
+  const { terrain, exaggeration } = useAppTerrain()
   // Phones select straight from the map, whatever a desktop link's `view` still says.
   const selectionView: ViewMode = isMobile ? 'map' : viewMode
   const phoneSheet = usePhoneSheet()
@@ -616,12 +621,26 @@ export default function GenericMapContainer({
 
   const shouldShrinkMap = !isMobile && viewMode === 'map' && panelState.isSheetOpen
 
+  // Collapses the drawer covering the map so zoom-to-feature centers correctly; 220ms
+  // covers the sheet's 200ms width transition before fitBounds reads the container.
+  const collapseSheetBeforeZoom = useCallback((): Promise<void> => {
+    if (isMobile) {
+      peek()
+      return Promise.resolve()
+    }
+    if (!panelState.isSheetOpen) return Promise.resolve()
+    popupSheetRef.current?.close()
+    return new Promise((resolve) => setTimeout(resolve, 220))
+  }, [isMobile, panelState.isSheetOpen, peek])
+
   const mapElement = (
     <DataMap
       wmsUrl={`${PROD_GEOSERVER_URL}/wms`}
       layers={layersConfig}
       center={center}
       zoom={zoom}
+      pitch={pitch}
+      bearing={bearing}
       highlightFeatures={highlightedFeatures}
       onFeatureClick={(...args) => { setPopupCoords(null); handleFeatureClick(...args) }}
       onMoveEnd={setMapPosition}
@@ -629,8 +648,11 @@ export default function GenericMapContainer({
       layerStyles={layerStyles}
       vectorLayerFilters={vectorLayerFilters}
       vectorLayerSymbology={vectorLayerSymbology}
+      pmtilesStyleOverrides={pmtilesStyleOverrides}
       onMapReady={handleMapReady}
       basemapId={basemap ?? defaultBasemap.id}
+      terrain={terrain}
+      exaggeration={exaggeration}
       clickBufferBounds={clickBufferBounds}
       onClickBufferChange={handleClickBufferChange}
       featureBbox={featureBbox}
@@ -688,6 +710,7 @@ export default function GenericMapContainer({
                   clickPoint={clickPoint}
                   layerHeaderExtras={popupLayerHeaderRender}
                   featureExtras={popupFeatureRender}
+                  onBeforeZoom={collapseSheetBeforeZoom}
                 />
               ) : (
                 <div className="min-h-[18rem] flex-1">
@@ -747,6 +770,7 @@ export default function GenericMapContainer({
               headerExtras={popupHeaderRender?.(popupContent)}
               layerHeaderExtras={popupLayerHeaderRender}
               featureExtras={popupFeatureRender}
+              onBeforeZoom={collapseSheetBeforeZoom}
             />
           </div>
         )}

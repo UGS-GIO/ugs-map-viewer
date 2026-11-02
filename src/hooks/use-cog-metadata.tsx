@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { fromUrl, GeoTIFF } from 'geotiff'
+import type { GeoTIFF } from 'geotiff'
 import type { Polygon } from 'geojson'
 import type { COGLayerProps } from '@/lib/types/mapping-types'
 import { convertCoordinate } from '@/lib/map/conversion-utils'
@@ -52,7 +52,8 @@ const tiffCache = new Map<string, Promise<GeoTIFF>>()
 function getTiff(cogUrl: string): Promise<GeoTIFF> {
     let p = tiffCache.get(cogUrl)
     if (!p) {
-        p = fromUrl(cogUrl).catch(err => { tiffCache.delete(cogUrl); throw err })
+        // geotiff loads with the first COG layer, not on every page
+        p = import('geotiff').then(({ fromUrl }) => fromUrl(cogUrl)).catch(err => { tiffCache.delete(cogUrl); throw err })
         tiffCache.set(cogUrl, p)
     }
     return p

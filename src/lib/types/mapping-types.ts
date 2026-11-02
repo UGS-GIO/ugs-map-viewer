@@ -149,6 +149,8 @@ interface BaseLayerProps {
     variantDescription?: string;
     /** Heading shown above this layer in the layer list; consecutive layers sharing it show it once. */
     sectionHeading?: string;
+    /** Titles this layer had before a rename, so old links and description rows still find it. */
+    formerTitles?: string[];
 }
 
 export interface WMSLayerProps extends BaseLayerProps {
@@ -205,6 +207,8 @@ export interface COGLayerProps extends BaseLayerProps {
 export interface LegendEntry {
     label: string;
     color: string;
+    /** Raw data/filter token when it differs from human `label`. Falls back to `label`. */
+    value?: string;
     values?: readonly { value: string; color: string; label?: string }[];
     stroke?: string;
 }
@@ -252,6 +256,8 @@ export interface PMTilesLayerProps extends BaseLayerProps {
     featureFilter?: FilterSpecification;
     /** Optional sublayer config for popups/queries */
     sublayers?: ExtendedSublayerProperties[];
+    /** Polygon layers only: draw the style's point-placed text once per polygon, inside its visible part, instead of once per tile. On a point layer its icons would disappear. */
+    polygonLabels?: boolean;
 }
 
 export interface WFSLayerProps extends BaseLayerProps {

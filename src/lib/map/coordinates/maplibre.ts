@@ -16,25 +16,6 @@ export class MapLibreCoordinateAdapter implements CoordinateAdapter {
         }
     }
 
-    createBoundingBox({ mapPoint, buffer, map }: { mapPoint: MapPoint; buffer: number; map: MapLibreMap }): BoundingBox {
-        // Use MapLibre's projection for accurate bbox at any latitude
-        // Convert map point to screen, apply pixel buffer, convert back
-        const screenPoint = this.mapToScreen(mapPoint, map);
-
-        // Calculate corners in screen space, then unproject to geographic
-        // SW corner: x - buffer, y + buffer (screen Y is inverted)
-        // NE corner: x + buffer, y - buffer
-        const sw = map.unproject([screenPoint.x - buffer, screenPoint.y + buffer]);
-        const ne = map.unproject([screenPoint.x + buffer, screenPoint.y - buffer]);
-
-        return {
-            minX: sw.lng,
-            minY: sw.lat,
-            maxX: ne.lng,
-            maxY: ne.lat,
-        };
-    }
-
     toJSON(point: MapPoint | null): any {
         return point ? { x: point.x, y: point.y, crs: point.crs } : null;
     }

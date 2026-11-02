@@ -9,6 +9,8 @@ vi.mock('@/lib/tour', () => ({
   useTour: () => ({ startTour }),
   TOUR_ROUTE_BY_PAGE: { hazards: 'hazards' },
 }))
+const peek = vi.fn()
+vi.mock('./use-phone-sheet', () => ({ usePhoneSheetActions: () => ({ peek }) }))
 vi.mock('@/hooks/use-dark-theme', () => ({ useDarkTheme: () => ({ isDark: false, setDark: () => {} }) }))
 
 const Panel = () => <div />
@@ -51,10 +53,11 @@ describe('MoreList', () => {
     expect(a.getAttribute('rel')).toBe('noopener noreferrer')
   })
 
-  it('starts the tour', () => {
+  it('drops the sheet to its peek and starts the tour', () => {
     const { container } = render(<MoreList links={links} page="hazards" onOpen={vi.fn()} />)
     const row = [...container.querySelectorAll('button')].find((b) => b.textContent?.includes('Take the tour'))!
     act(() => row.click())
+    expect(peek).toHaveBeenCalled()
     expect(startTour).toHaveBeenCalled()
   })
 })

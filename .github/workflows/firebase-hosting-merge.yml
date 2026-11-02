@@ -7,21 +7,20 @@ on:
       - master
       - develop
 
+# Queue runs per branch so two quick merges can't deploy or release out of order
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  build_deploy_release:
-    # Permissions needed for semantic-release to push tags/releases
+  build_deploy:
     permissions:
-      contents: write
-      issues: write
-      pull-requests: write
+      contents: read
 
     runs-on: ubuntu-latest
     steps:
-      # Checkout code - fetch-depth: 0 is needed for semantic-release
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -39,14 +38,6 @@ jobs:
           else
             npm run build -- --mode preview
           fi
-
-      # === Semantic Release (Only on master branch) ===
-      # Creates GitHub releases and tags based on commit messages
-      - name: Run Semantic Release
-        if: github.ref == 'refs/heads/master'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
 
       # === Firebase Deployment ===
       # Set correct Firebase Service Account and Project ID based on the branch
@@ -85,26 +76,60 @@ jobs:
           target: main-site 
           firebaseToolsVersion: '13.29.1'
 
-      # --- Deploy the production redirector configurations ---
+  # --- Deploy the production redirector configurations ---
+  # Own job so a redirector failure doesn't block the release of the main site
+  deploy_hazards_redirector:
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Redirects win over static files, so the redirector only needs a non-empty public dir
+      - name: Create placeholder public dir
+        run: mkdir -p dist && touch dist/index.html
+
       - name: Deploy Hazards Redirector to Production (live channel)
-        if: github.ref == 'refs/heads/master'
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
-          firebaseServiceAccount: '${{ secrets[env.FIREBASE_SERVICE_ACCOUNT_SECRET_NAME] }}'
-          projectId: '${{ env.PROJECT_ID }}' # ut-dnr-ugs-maps-prod
+          firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_UT_DNR_UGS_MAPS_PROD }}'
+          projectId: ut-dnr-ugs-maps-prod
           channelId: live
           target: hazards-subdomain
           firebaseToolsVersion: '13.29.1'
 
-      # === Sync master back to develop (Only on master branch) ===
-      # After semantic-release commits CHANGELOG.md and package.json updates,
-      # merge those changes back to develop so it stays in sync
-      - name: Sync master back to develop
-        if: github.ref == 'refs/heads/master'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout develop
-          git merge master --no-edit
-          git push origin develop
+  # === Semantic Release (Only on master branch) ===
+  # Runs after the main site deploys; creates GitHub releases and tags from commit messages
+  release:
+    needs: build_deploy
+    if: github.ref == 'refs/heads/master'
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+
+    runs-on: ubuntu-latest
+    steps:
+      # fetch-depth: 0 is needed for semantic-release
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Semantic Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx semantic-release

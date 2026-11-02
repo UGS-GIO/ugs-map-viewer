@@ -50,6 +50,25 @@ const getAllValidTitles = (layers: LayerProps[]): Set<string> => {
     return titles;
 };
 
+// Former title -> current title, for links shared before a layer was renamed.
+const getFormerTitleMap = (layers: LayerProps[]): Map<string, string> => {
+    const map = new Map<string, string>();
+    layers.forEach(layer => {
+        const { title } = layer;
+        if (title) layer.formerTitles?.forEach(old => map.set(old, title));
+        if (layer.type === 'group' && 'layers' in layer && layer.layers) {
+            getFormerTitleMap(layer.layers).forEach((t, old) => map.set(old, t));
+        }
+    });
+    return map;
+};
+
+/** Rewrites renamed layers' former titles in a URL selection to their current titles. */
+export const renameFormerTitles = (layers: LayerProps[], selected: string[]): string[] => {
+    const formerToCurrent = getFormerTitleMap(layers);
+    return selected.map(t => formerToCurrent.get(t) ?? t);
+};
+
 const getDefaultSelected = (layers: LayerProps[]): string[] => {
     const selected: string[] = [];
     layers.forEach(layer => {
@@ -197,8 +216,9 @@ export const LayerUrlProvider = ({ children }: LayerUrlProviderProps) => {
             needsUpdate = true;
         } else {
             const currentSelected = urlLayers!.selected!;
-            const validSelected = currentSelected.filter((title: string) => allValidLayerTitles.has(title));
-            if (validSelected.length !== currentSelected.length) {
+            const renamed = renameFormerTitles(layersConfig, currentSelected);
+            const validSelected = renamed.filter((title: string) => allValidLayerTitles.has(title));
+            if (validSelected.length !== currentSelected.length || renamed.some((t, i) => t !== currentSelected[i])) {
                 finalLayers = { selected: validSelected };
                 needsUpdate = true;
             }

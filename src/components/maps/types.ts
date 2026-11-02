@@ -2,6 +2,9 @@ import type { Geometry, Polygon } from 'geojson'
 import type * as maplibregl from 'maplibre-gl'
 import type { LayerProps } from '@/lib/types/mapping-types'
 import type { WfsFeature } from '@/lib/map/wfs-service'
+import type { PMTilesStyleOverride } from './pmtiles-layer-source'
+
+export type { PMTilesStyleOverride }
 
 // Re-export for convenience
 export type ClickedFeature = WfsFeature
@@ -32,7 +35,9 @@ export interface DataMapProps {
   zoom?: number
   highlightFeatures?: HighlightFeature[]
   onFeatureClick?: (features: ClickedFeature[], options?: { additive?: boolean }) => void
-  onMoveEnd?: (lat: number, lng: number, zoom: number) => void
+  pitch?: number
+  bearing?: number
+  onMoveEnd?: (lat: number, lng: number, zoom: number, pitch: number, bearing: number) => void
   clickTolerance?: number
   isLoading?: boolean
   children?: React.ReactNode
@@ -69,10 +74,14 @@ export interface DataMapProps {
   vectorLayerFilters?: Record<string, maplibregl.FilterSpecification>
   /** Active symbology mode key for vector layers (e.g. 'box-type'); empty/undefined = default circle styling. */
   vectorLayerSymbology?: Record<string, string>
+  /** Dynamic style overrides for PMTiles layers (e.g. choropleth fill-color), keyed by layer title */
+  pmtilesStyleOverrides?: Record<string, PMTilesStyleOverride>
   /** Callback when map is ready - exposes raw MapLibre map instance */
   onMapReady?: (map: maplibregl.Map) => void
   /** Basemap ID from URL */
   basemapId?: string
+  terrain?: boolean
+  exaggeration: number
   /** Click buffer bounds for visualization (controlled by parent) */
   clickBufferBounds?: BoundsBox | null
   /** Callback when click buffer should update */

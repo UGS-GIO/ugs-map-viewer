@@ -17,7 +17,6 @@ import type { GeoServerGeoJSON } from '@/lib/types/geoserver-types'
 import { convertCoordinate } from '@/lib/map/conversion-utils'
 import { createPointBufferBbox } from '@/lib/map/utils'
 import { findLayerByTitle, flattenWmsLayers, flattenLeaves, isCOGLayer } from '@/lib/map/layer-utils'
-import { locationValues } from '@geomatico/maplibre-cog-protocol'
 import { queryKeys } from '@/lib/query-keys'
 import type { COGLayerProps } from '@/lib/types/mapping-types'
 
@@ -160,6 +159,7 @@ async function fetchCogValue(
   valueField: string,
 ): Promise<GeoServerGeoJSON | null> {
   try {
+    const { locationValues } = await import('@geomatico/maplibre-cog-protocol')
     const values = await locationValues(cogUrl, { latitude: point.lat, longitude: point.lng })
     const v = values?.[0]
     if (v === undefined || !Number.isFinite(v)) return null

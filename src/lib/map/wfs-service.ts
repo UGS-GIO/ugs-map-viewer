@@ -5,6 +5,7 @@ import type * as maplibregl from 'maplibre-gl';
  */
 import type { FeatureCollection, Geometry, Feature, Polygon } from 'geojson'
 import type { WMSLayerProps } from '@/lib/types/mapping-types'
+import { screenBoxToPolygon } from '@/lib/map/geometry-utils'
 
 export interface FetchWfsFeaturesOptions {
   /** Optional max feature cap (`count` in WFS 2.0). */
@@ -455,18 +456,7 @@ async function queryVisibleLayers(
 export async function queryWFSFeatures(params: ClickQueryParams): Promise<WfsFeature[]> {
   const { point, visibleLayers, tolerance, mapInstance, wmsUrl, layerFilters } = params
 
-  const sw = mapInstance.unproject([point.x - tolerance, point.y + tolerance])
-  const ne = mapInstance.unproject([point.x + tolerance, point.y - tolerance])
-  const clickPolygon: Polygon = {
-    type: 'Polygon',
-    coordinates: [[
-      [sw.lng, sw.lat],
-      [ne.lng, sw.lat],
-      [ne.lng, ne.lat],
-      [sw.lng, ne.lat],
-      [sw.lng, sw.lat],
-    ]],
-  }
+  const clickPolygon = screenBoxToPolygon(mapInstance, [point.x - tolerance, point.y - tolerance], [point.x + tolerance, point.y + tolerance])
 
   const { features } = await queryVisibleLayers(visibleLayers, clickPolygon, wmsUrl, { pageSize: CLICK_PAGE_SIZE }, layerFilters)
   return features
@@ -482,12 +472,9 @@ export async function queryBoxSelectFeatures(params: BoxSelectQueryParams): Prom
   const centerY = containerRect.height / 2
   const halfBox = boxSize / 2
 
-  const bounds: Bounds = {
-    sw: mapInstance.unproject([centerX - halfBox, centerY + halfBox]),
-    ne: mapInstance.unproject([centerX + halfBox, centerY - halfBox]),
-  }
+  const box = screenBoxToPolygon(mapInstance, [centerX - halfBox, centerY - halfBox], [centerX + halfBox, centerY + halfBox])
 
-  return queryVisibleLayers(visibleLayers, bounds, wmsUrl, { paginate: true, pageSize }, layerFilters)
+  return queryVisibleLayers(visibleLayers, box, wmsUrl, { paginate: true, pageSize }, layerFilters)
 }
 
 /**

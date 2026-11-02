@@ -9,6 +9,7 @@ import type { RelatedTable, DisplayField } from '@/lib/types/mapping-types';
 import type { PostgRESTRow } from '@/lib/types/postgrest-types';
 import { buildCSV } from '@/lib/download-utils';
 import { formatNumeric } from '@/lib/utils';
+import { encodeInValue } from '@/lib/filter/generators';
 
 /**
  * Fetch every related row whose `matchingField` is in `values`, dispatching on
@@ -57,7 +58,7 @@ export async function fetchRelatedRows(config: RelatedTable, values: string[]): 
     }
 
     if (config.url) {
-        const inValues = uniqueValues.join(',');
+        const inValues = uniqueValues.map(encodeInValue).join(',');
         let queryUrl = `${config.url}?${matchingField}=in.(${inValues})`;
         const orderKeys = Array.isArray(config.sortBy) ? config.sortBy : config.sortBy ? [config.sortBy] : [];
         if (orderKeys.length) {

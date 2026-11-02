@@ -77,7 +77,10 @@ export function RelatedDataTable({
             id: df.field,
             accessorFn: (row) => sortKey(row[df.field]),
             header: df.label || df.field,
-            cell: ({ row }) => rendered[row.index][ci],
+            // Size cells to one line (the table already side-scrolls); wrap only past the cap.
+            cell: ({ row }) => (
+                <div className="w-max max-w-xs [overflow-wrap:anywhere]">{rendered[row.index][ci]}</div>
+            ),
             enableSorting: sortableCols[ci],
             sortUndefined: 'last',
             sortDescFirst: false, // first click = ascending for every column (TanStack defaults numbers to desc-first)

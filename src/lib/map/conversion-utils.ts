@@ -31,6 +31,29 @@ export function convertDDToDMS(dd: number, isLongitude: boolean = false) {
 }
 
 
+export const COORDINATE_FORMATS = ['dd', 'dms', 'utm'] as const;
+export type CoordinateFormat = typeof COORDINATE_FORMATS[number];
+
+// Utah maps statewide in zone 12N, including the thin zone 11 strip on the western border
+const NAD83_UTM_12N = '+proj=utm +zone=12 +ellps=GRS80 +datum=NAD83 +units=m +no_defs';
+
+export function convertDDToUTM(lng: number, lat: number): { easting: number; northing: number } {
+    const [easting, northing] = proj4('EPSG:4326', NAD83_UTM_12N, [lng, lat]);
+    return { easting, northing };
+}
+
+/** Label/value pairs in each format's conventional order: lat first for degrees, easting first for UTM. */
+export function formatCoordinatePair(lng: number, lat: number, format: CoordinateFormat, decimals: number = 6): [{ label: string; value: string }, { label: string; value: string }] {
+    if (format === 'utm') {
+        const { easting, northing } = convertDDToUTM(lng, lat);
+        return [{ label: 'E', value: easting.toFixed(0) }, { label: 'N', value: northing.toFixed(0) }];
+    }
+    if (format === 'dms') {
+        return [{ label: 'Lat', value: convertDDToDMS(lat) }, { label: 'Lon', value: convertDDToDMS(lng, true) }];
+    }
+    return [{ label: 'Lat', value: lat.toFixed(decimals) }, { label: 'Lon', value: lng.toFixed(decimals) }];
+}
+
 export const convertCoordinate = (point: number[], sourceEPSG: string, targetEPSG: string = "EPSG:4326"): number[] => {
     // Identity transform - no conversion needed
     if (sourceEPSG === targetEPSG ||

@@ -18,6 +18,7 @@ import type * as maplibregl from 'maplibre-gl'
 import type { PMTilesLayerProps, PMTilesRender } from '@/lib/types/mapping-types'
 import { buildFragmentLayerSpec } from '@/lib/map/layer-utils'
 import type { WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
+import { labelDiff, toFeatureCollection, viewportLabelPoints, type LabelPoints } from '@/lib/map/viewport-labels'
 
 interface StyleFragmentLayer {
     id: string
@@ -38,6 +39,13 @@ interface StyleFragment { layers?: StyleFragmentLayer[] }
 export function getPmtilesSourceId(layer: PMTilesLayerProps): string {
     return `pmtiles-${layer.title || layer.sourceLayer}`.replace(/\s+/g, '-').toLowerCase()
 }
+
+/** The GeoJSON source a `polygonLabels` layer's symbol layers draw from. */
+export function getPmtilesLabelSourceId(layer: PMTilesLayerProps): string {
+    return `${getPmtilesSourceId(layer)}-labels`
+}
+
+const EMPTY_LABELS: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] }
 
 /**
  * Canonical first-layer id for z-order (`beforeId`) lookups. Independent of the
@@ -219,6 +227,11 @@ function withOpacity(paint: Record<string, unknown> | undefined, type: string, o
     return out
 }
 
+export interface PMTilesStyleOverride {
+    fillColor?: unknown
+    paint?: Record<string, unknown>
+}
+
 /**
  * Build the MapLibre layer specs for one PMTiles layer's active style fragment.
  *
@@ -228,39 +241,72 @@ function withOpacity(paint: Record<string, unknown> | undefined, type: string, o
  * Kept separate from the JSX so the mapping is unit-testable. [ALL-5727]
  */
 export function buildPmtilesLayerSpecs({
-    layer, fragment, layerFilter, hidden, opacity,
+    layer, fragment, layerFilter, hidden, opacity, styleOverride,
 }: {
     layer: PMTilesLayerProps
     fragment: StyleFragment
     layerFilter?: maplibregl.FilterSpecification
     hidden?: boolean
     opacity?: number
+    styleOverride?: PMTilesStyleOverride
 }): LayerProps[] {
     const sourceId = getPmtilesSourceId(layer)
     const primaryId = getPmtilesLayerId(layer)
-    const styleLayers = (fragment.layers ?? []).filter(
+    const rawLayers = fragment.layers ?? []
+    const styleLayers = rawLayers.filter(
         l => l['source-layer'] == null || l['source-layer'] === layer.sourceLayer,
     )
 
-    return styleLayers.map((l, i) => {
+    let layersToRender = [...styleLayers]
+    if (styleOverride?.fillColor) {
+        const hasFill = layersToRender.some(l => l.type === 'fill')
+        if (!hasFill) {
+            const fillLayer: StyleFragmentLayer = {
+                id: `${primaryId}-dynamic-fill`,
+                type: 'fill',
+                'source-layer': layer.sourceLayer,
+                paint: {
+                    'fill-color': styleOverride.fillColor,
+                    'fill-opacity': 0.75,
+                },
+            }
+            layersToRender = [fillLayer, ...layersToRender]
+        }
+    }
+
+    return layersToRender.map((l, i) => {
         const fragmentFilter = l.filter as maplibregl.FilterSpecification | undefined
         const filters = [fragmentFilter, layer.featureFilter, layerFilter].filter(Boolean) as maplibregl.FilterSpecification[]
         const filter = filters.length > 1 ? (['all', ...filters] as unknown as maplibregl.FilterSpecification) : filters[0]
-        return buildFragmentLayerSpec(l, {
+
+        let paint = l.paint
+        if (styleOverride?.fillColor && l.type === 'fill') {
+            paint = { ...paint, 'fill-color': styleOverride.fillColor }
+        }
+        if (styleOverride?.paint) {
+            paint = { ...paint, ...styleOverride.paint }
+        }
+        const spec = buildFragmentLayerSpec(l, {
             layerId: i === 0 ? primaryId : `${primaryId}-${i}`,
             sourceId,
             sourceLayer: layer.sourceLayer,
             visible: !hidden,
-            paint: withOpacity(l.paint, l.type, opacity ?? layer.opacity),
+            paint: withOpacity(paint, l.type, opacity ?? layer.opacity),
             filter,
             metadata: { title: layer.title, pmtilesLayer: true, pmtilesSourceId: sourceId },
             visibleZoomRange: layer.visibleZoomRange,
-        }) as unknown as LayerProps
+        })
+        // Line-placed text follows the polygon's edge, which a label point doesn't have
+        const placement = l.layout?.['symbol-placement'] ?? 'point'
+        if (!layer.polygonLabels || l.type !== 'symbol' || placement !== 'point') return spec as unknown as LayerProps
+        // Label points carry no source-layer, and stay out of the click query (they repeat the polygon).
+        const { 'source-layer': _sourceLayer, ...labelSpec } = spec
+        return { ...labelSpec, source: getPmtilesLabelSourceId(layer), metadata: { title: layer.title } } as unknown as LayerProps
     })
 }
 
 export function PMTilesLayerSource({
-    layer, fragment, activeSymbology, beforeId, layerFilter, hidden, opacity,
+    layer, fragment, activeSymbology, beforeId, layerFilter, hidden, opacity, styleOverride,
 }: {
     layer: PMTilesLayerProps
     fragment: StyleFragment
@@ -269,6 +315,7 @@ export function PMTilesLayerSource({
     layerFilter?: maplibregl.FilterSpecification
     hidden?: boolean
     opacity?: number
+    styleOverride?: PMTilesStyleOverride
 }) {
     const { current: mapRef } = useMap()
     const sourceId = getPmtilesSourceId(layer)
@@ -287,13 +334,61 @@ export function PMTilesLayerSource({
         )
     }, [render, mapRef, layer.title])
 
-    const specs = buildPmtilesLayerSpecs({ layer, fragment, layerFilter, hidden, opacity })
+    const labelSourceId = getPmtilesLabelSourceId(layer)
+    useEffect(() => {
+        if (!layer.polygonLabels || hidden || !mapRef) return
+        const map = mapRef.getMap()
+        let raf = 0
+        let labels: LabelPoints = new Map()
+        // react-map-gl re-adds the source empty after a basemap swap, so a new instance gets the full set
+        let target: maplibregl.GeoJSONSource | undefined
+        const update = () => {
+            cancelAnimationFrame(raf)
+            raf = requestAnimationFrame(() => {
+                const source = map.getSource<maplibregl.GeoJSONSource>(labelSourceId)
+                if (!source) return
+                const b = map.getBounds()
+                const pieces = map.querySourceFeatures(sourceId, { sourceLayer: layer.sourceLayer })
+                const next = viewportLabelPoints(pieces, [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], labels)
+                // Only changed labels: a full setData re-places every label, which flashes on each pan
+                const diff = source === target ? labelDiff(labels, next) : null
+                if (source !== target) source.setData(toFeatureCollection(next))
+                else if (diff) source.updateData(diff)
+                target = source
+                labels = next
+            })
+        }
+        const onSourceData = (e: maplibregl.MapSourceDataEvent) => {
+            if (e.sourceId === sourceId && e.isSourceLoaded) update()
+        }
+        map.on('sourcedata', onSourceData)
+        map.on('moveend', update)
+        update()
+        return () => {
+            map.off('sourcedata', onSourceData)
+            map.off('moveend', update)
+            cancelAnimationFrame(raf)
+        }
+    }, [layer.polygonLabels, layer.sourceLayer, hidden, mapRef, sourceId, labelSourceId])
+
+    const specs = buildPmtilesLayerSpecs({ layer, fragment, layerFilter, hidden, opacity, styleOverride })
+    const isLabel = (spec: LayerProps) => 'source' in spec && spec.source === labelSourceId
+    const labelSpecs = specs.filter(isLabel)
 
     return (
-        <Source id={sourceId} type="vector" url={url}>
-            {specs.map(spec => (
-                <Layer key={spec.id} beforeId={beforeId} {...spec} />
-            ))}
-        </Source>
+        <>
+            <Source id={sourceId} type="vector" url={url}>
+                {specs.filter(spec => !isLabel(spec)).map(spec => (
+                    <Layer key={spec.id} beforeId={beforeId} {...spec} />
+                ))}
+            </Source>
+            {labelSpecs.length > 0 && (
+                <Source id={labelSourceId} type="geojson" data={EMPTY_LABELS}>
+                    {labelSpecs.map(spec => (
+                        <Layer key={spec.id} beforeId={beforeId} {...spec} />
+                    ))}
+                </Source>
+            )}
+        </>
     )
 }

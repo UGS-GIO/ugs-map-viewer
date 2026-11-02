@@ -1,13 +1,18 @@
 import * as maplibregl from 'maplibre-gl';
-import { cogProtocol } from '@geomatico/maplibre-cog-protocol';
 import type { COGLayerProps } from '@/lib/types/mapping-types';
 
 let protocolAdded = false;
 
-/** Register cog:// protocol once per app lifecycle. */
+/**
+ * Register cog:// protocol once per app lifecycle. The protocol and geotiff load on the first
+ * cog:// tile, so portals without COG layers never download them.
+ */
 export function setupCOGProtocol(): void {
     if (protocolAdded) return;
-    maplibregl.addProtocol('cog', cogProtocol);
+    maplibregl.addProtocol('cog', async (params) => {
+        const { cogProtocol } = await import('@geomatico/maplibre-cog-protocol');
+        return cogProtocol(params);
+    });
     protocolAdded = true;
 }
 
