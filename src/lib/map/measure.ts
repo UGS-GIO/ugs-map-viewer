@@ -1,4 +1,4 @@
-import type { GeoJSONSource, IControl, Map as MapLibreMap } from 'maplibre-gl'
+import type { AddLayerObject, FilterSpecification, GeoJSONSource, IControl, MapMouseEvent, Map as MapLibreMap } from 'maplibre-gl'
 import type { QueryClient } from '@tanstack/react-query'
 import type { Feature, Point } from 'geojson'
 import {
@@ -17,6 +17,10 @@ import { formatArea, formatLength, isMeasureMode, metersToFeet, registerMeasureC
 
 const PREFIX = 'measure-td'
 const LABELS = `${PREFIX}-labels`
+// Finished shapes again, for hover hit-testing and the highlight halo
+const SHAPES = `${PREFIX}-shapes`
+const HIT_LAYERS = [`${SHAPES}-hit-line`, `${SHAPES}-hit-fill`, `${SHAPES}-hit-point`]
+const HALO_LAYERS = [`${SHAPES}-halo-line`, `${SHAPES}-halo-point`]
 const COLOR = '#2563eb'
 
 function labelPoint(f: GeoJSONStoreFeatures): [number, number] | undefined {
@@ -33,6 +37,15 @@ function labelPoint(f: GeoJSONStoreFeatures): [number, number] | undefined {
   return undefined
 }
 
+const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 2 })
+
+function labelText(m: Measurement) {
+  if (m.value !== undefined) return `${fmt(m.value)} ${m.unit}`
+  return typeof m.elevationFt === 'number' ? `${fmt(Math.round(m.elevationFt))} ft` : ''
+}
+
+const haloFilter = (id: string | number | undefined): FilterSpecification => ['==', ['get', 'mid'], id ?? '']
+
 /**
  * Distance, area and point-elevation measuring on its own Terra Draw instance, labelled on the map.
  * A map control so react-map-gl adds and removes it; the map tools and sidebar drive it.
@@ -47,12 +60,16 @@ export class MeasureControl implements IControl {
   private cache = new Map<string | number, { key: string; m: Measurement | undefined }>()
   private listeners = new Set<() => void>()
   private firstResultListeners = new Set<() => void>()
+  /** The measurement hovered on the map or in the sidebar, haloed in both */
+  highlightedId?: string | number
+  private highlightListeners = new Set<() => void>()
 
   constructor(private queryClient: QueryClient) {}
 
   onAdd(map: MapLibreMap) {
     this.map = map
     map.on('styledata', this.sync)
+    map.on('mousemove', this.onHover)
     registerMeasureControl(map, this)
     this.sync()
     const container = document.createElement('div')
@@ -63,11 +80,12 @@ export class MeasureControl implements IControl {
   onRemove() {
     if (this.map) {
       this.map.off('styledata', this.sync)
+      this.map.off('mousemove', this.onHover)
       registerMeasureControl(this.map, undefined)
     }
     this.stopDraw()
-    if (this.map?.getLayer(LABELS)) this.map.removeLayer(LABELS)
-    if (this.map?.getSource(LABELS)) this.map.removeSource(LABELS)
+    ;[LABELS, ...HIT_LAYERS, ...HALO_LAYERS].forEach((id) => { if (this.map?.getLayer(id)) this.map.removeLayer(id) })
+    ;[LABELS, SHAPES].forEach((id) => { if (this.map?.getSource(id)) this.map.removeSource(id) })
     this.map = undefined
   }
 
@@ -84,6 +102,29 @@ export class MeasureControl implements IControl {
   subscribe = (listener: () => void) => {
     this.listeners.add(listener)
     return () => this.listeners.delete(listener)
+  }
+
+  setHighlight = (id: string | number | undefined) => {
+    if (id === this.highlightedId) return
+    this.highlightedId = id
+    HALO_LAYERS.forEach((l) => { if (this.map?.getLayer(l)) this.map.setFilter(l, haloFilter(id)) })
+    this.highlightListeners.forEach((l) => l())
+  }
+
+  subscribeHighlight = (listener: () => void) => {
+    this.highlightListeners.add(listener)
+    return () => { this.highlightListeners.delete(listener) }
+  }
+
+  private onHover = (e: MapMouseEvent) => {
+    const map = this.map
+    if (!map) return
+    const layers = HIT_LAYERS.filter((l) => map.getLayer(l))
+    const mid = layers.length ? map.queryRenderedFeatures(e.point, { layers })[0]?.properties.mid : undefined
+    const id = this.measurements.find((m) => m.id === mid)?.id
+    if (id === this.highlightedId) return
+    this.setHighlight(id)
+    if (id !== undefined) document.querySelector(`[data-measure-id="${CSS.escape(String(id))}"]`)?.scrollIntoView({ block: 'nearest' })
   }
 
   /** Fires when a measurement finishes and it's the only one on the map. */
@@ -147,6 +188,18 @@ export class MeasureControl implements IControl {
       layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Regular'], 'text-size': 13, 'text-offset': [0, -1.2], 'text-allow-overlap': true },
       paint: { 'text-color': '#111827', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
     })
+    if (!map.getSource(SHAPES)) map.addSource(SHAPES, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
+    const notPoint: FilterSpecification = ['!=', ['geometry-type'], 'Point']
+    const point: FilterSpecification = ['==', ['geometry-type'], 'Point']
+    const layers: AddLayerObject[] = [
+      { id: HALO_LAYERS[0], type: 'line', source: SHAPES, filter: haloFilter(this.highlightedId), paint: { 'line-color': COLOR, 'line-width': 10, 'line-opacity': 0.35 }, layout: { 'line-cap': 'round', 'line-join': 'round' } },
+      { id: HALO_LAYERS[1], type: 'circle', source: SHAPES, filter: haloFilter(this.highlightedId), paint: { 'circle-color': COLOR, 'circle-radius': 12, 'circle-opacity': 0.35 } },
+      // Invisible but still hit by queryRenderedFeatures; wider than the marks so hovering is easy
+      { id: HIT_LAYERS[0], type: 'line', source: SHAPES, filter: notPoint, paint: { 'line-width': 14, 'line-opacity': 0 } },
+      { id: HIT_LAYERS[1], type: 'fill', source: SHAPES, filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-opacity': 0 } },
+      { id: HIT_LAYERS[2], type: 'circle', source: SHAPES, filter: point, paint: { 'circle-radius': 12, 'circle-opacity': 0 } },
+    ]
+    layers.forEach((l) => { if (!map.getLayer(l.id)) map.addLayer(l) })
     this.refresh()
   }
 
@@ -177,13 +230,20 @@ export class MeasureControl implements IControl {
     const changed = next.length !== this.measurements.length || next.some((m, i) => m !== this.measurements[i])
     if (changed) this.measurements = next
     this.cache.forEach((_, id) => { if (!snapshot.some((f) => f.id === id)) this.cache.delete(id) })
-    // Numbered to match the sidebar's "Distance 1", "Area 2"; values live there
-    const labels: Feature<Point>[] = this.measurements.flatMap((m, i) => {
+    // The value at each shape, for when the panel is closed; hovering links it to its row
+    const labels: Feature<Point>[] = this.measurements.flatMap((m) => {
       const f = snapshot.find((s) => s.id === m.id)
       const at = f && labelPoint(f)
-      return at ? [{ type: 'Feature', properties: { label: String(i + 1) }, geometry: { type: 'Point', coordinates: at } }] : []
+      return at ? [{ type: 'Feature', properties: { label: labelText(m) }, geometry: { type: 'Point', coordinates: at } }] : []
     })
     this.map?.getSource<GeoJSONSource>(LABELS)?.setData({ type: 'FeatureCollection', features: labels })
+    const shapes: Feature[] = snapshot.flatMap((f) =>
+      f.id !== undefined && !f.properties.currentlyDrawing && this.measurements.some((m) => m.id === f.id)
+        ? [{ type: 'Feature', properties: { mid: f.id }, geometry: f.geometry }]
+        : [],
+    )
+    this.map?.getSource<GeoJSONSource>(SHAPES)?.setData({ type: 'FeatureCollection', features: shapes })
+    if (this.highlightedId !== undefined && !this.measurements.some((m) => m.id === this.highlightedId)) this.setHighlight(undefined)
     if (changed) this.listeners.forEach((l) => l())
   }
 

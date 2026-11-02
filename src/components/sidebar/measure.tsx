@@ -4,6 +4,7 @@ import { RadioGroup } from '@base-ui/react/radio-group'
 import { Trash2 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { useMeasureMode, useMeasurements } from '@/hooks/use-measure'
 import { useMap } from '@/hooks/use-map'
 import { useCoordinateFormat } from '@/hooks/use-map-coordinates'
@@ -17,12 +18,23 @@ const ElevationProfile = lazy(() => import('./elevation-profile'))
 const fmt = (n: number) => n.toLocaleString(undefined, { maximumFractionDigits: 2 })
 
 // Memoized: measurements keep their object while unchanged, so drawing doesn't re-render finished rows
-const MeasurementRow = memo(function MeasurementRow({ m, index }: { m: Measurement; index: number }) {
+const MeasurementRow = memo(function MeasurementRow({ m, index, highlighted, onHighlight }: {
+  m: Measurement
+  index: number
+  highlighted: boolean
+  onHighlight?: (id: string | number | undefined) => void
+}) {
   const { coordinateFormat } = useCoordinateFormat()
   const { label, icon: Icon } = MEASURE_TOOLS[m.mode]
   const coords = m.coordinates && formatCoordinatePair(m.coordinates[0], m.coordinates[1], coordinateFormat, 5)
   return (
-    <li className="flex gap-3 rounded-sm bg-popover p-2 text-sm md:p-3">
+    // Hovering a row halos its shape on the map, and hovering the shape highlights the row
+    <li
+      data-measure-id={m.id}
+      onPointerEnter={() => onHighlight?.(m.id)}
+      onPointerLeave={() => onHighlight?.(undefined)}
+      className={cn('flex gap-3 rounded-sm bg-popover p-2 text-sm ring-primary md:p-3', highlighted && 'ring-2')}
+    >
       <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
       <div className="grid min-w-0 flex-1 gap-0.5">
         <span className="font-bold">{label} {index + 1}</span>
@@ -42,17 +54,17 @@ const MeasurementRow = memo(function MeasurementRow({ m, index }: { m: Measureme
 export default function Measure() {
   const { measure } = useMeasureMode()
   const { setMeasureMode: setMeasure } = useMap()
-  const { measurements, clearAll } = useMeasurements()
+  const { measurements, highlightedId, setHighlight, clearAll } = useMeasurements()
 
   return (
     <div className="grid gap-3 md:gap-4">
       <h2 className="text-lg font-medium md:mb-4">Measure and Elevation Tools</h2>
       <Card>
-        <CardHeader>
+        <CardHeader className="p-4 md:p-6">
           <CardTitle>Measure</CardTitle>
           <CardDescription>{measure ? MEASURE_TOOLS[measure].hint : 'Pick a tool, then draw on the map.'}</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
           <RadioGroup
             aria-label="Measure tool"
             value={measure ?? null}
@@ -83,15 +95,15 @@ export default function Measure() {
 
       {measurements.length > 0 && (
         <Card>
-          <CardHeader className="flex-row items-center justify-between">
+          <CardHeader className="flex-row items-center justify-between p-4 md:p-6">
             <CardTitle>Results</CardTitle>
             <Button variant="ghost" size="sm" onClick={clearAll}>
               <Trash2 className="size-4" /> Clear
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
             <ul className="grid gap-2">
-              {measurements.map((m, i) => <MeasurementRow key={m.id} m={m} index={i} />)}
+              {measurements.map((m, i) => <MeasurementRow key={m.id} m={m} index={i} highlighted={m.id === highlightedId} onHighlight={setHighlight} />)}
             </ul>
           </CardContent>
         </Card>

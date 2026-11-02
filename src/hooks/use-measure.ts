@@ -22,7 +22,8 @@ export function useMeasurements() {
   const { map } = useMapInstance()
   const control = useSyncExternalStore(subscribeMeasureControls, () => getMeasureControl(map))
   const measurements = useSyncExternalStore(control?.subscribe ?? noop, () => control?.measurements ?? NO_MEASUREMENTS)
-  return { measurements, clearAll: () => control?.clear() }
+  const highlightedId = useSyncExternalStore(control?.subscribeHighlight ?? noop, () => control?.highlightedId)
+  return { measurements, highlightedId, setHighlight: control?.setHighlight, clearAll: () => control?.clear() }
 }
 
 /** Whether any measurement is on the map; a boolean so drawing doesn't re-render the map container. */
