@@ -1,11 +1,14 @@
 import { createPortal } from 'react-dom'
 import { useControl } from 'react-map-gl/maplibre'
-import { Ruler, Trash2 } from 'lucide-react'
+import { Check, Ruler, Trash2 } from 'lucide-react'
 import { PortalControl } from './portal-control'
 import { ControlButton } from './control-button'
 import { ActiveModeLabel } from './active-mode-label'
 import { MEASURE_MODES, type MeasureMode } from '@/lib/map/measure-store'
 import { MEASURE_TOOLS } from '../measure-tools'
+import { useMeasureDrawing } from '@/hooks/use-measure'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { useMapInstance } from '@/context/map-instance-context'
 
 interface MeasureToolsControlProps {
   measureMode?: MeasureMode
@@ -28,6 +31,10 @@ export function MeasureToolsControl({
 }: MeasureToolsControlProps) {
   const control = useControl<PortalControl>(() => new PortalControl(), { position })
   const container = control?.getContainer()
+  const { drawing, finish } = useMeasureDrawing()
+  const mapContainer = useMapInstance().map?.getContainer()
+  // Touch has no Enter key and double-tapping the last point isn't discoverable
+  const showFinish = useIsMobile() && drawing && measureMode !== 'point' && finish
 
   return container
     ? createPortal(
@@ -52,6 +59,18 @@ export function MeasureToolsControl({
             <ControlButton icon={Trash2} title="Clear measurements" onClick={onClearMeasurements} variant="danger" />
           )}
           {measureMode && <ActiveModeLabel>{MEASURE_TOOLS[measureMode].title}</ActiveModeLabel>}
+          {/* Floats over the map: the control group clips anything hanging off its side */}
+          {showFinish && mapContainer && createPortal(
+            <button
+              type="button"
+              onClick={finish}
+              className="absolute top-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Check className="size-4" />
+              {measureMode === 'polygon' ? 'Close shape' : 'Finish line'}
+            </button>,
+            mapContainer,
+          )}
         </div>,
         container,
       )

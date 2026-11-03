@@ -33,6 +33,14 @@ export function useMeasurements() {
   }
 }
 
+/** Whether a line or polygon is part-drawn, and a way to finish it. */
+export function useMeasureDrawing() {
+  const { map } = useMapInstance()
+  const control = useSyncExternalStore(subscribeMeasureControls, () => getMeasureControl(map))
+  const drawing = useSyncExternalStore(control?.subscribe ?? noop, () => control?.drawing ?? false)
+  return { drawing, finish: control?.finish }
+}
+
 /** Whether any measurement is on the map; a boolean so drawing doesn't re-render the map container. */
 export function useHasMeasurements() {
   const { map } = useMapInstance()

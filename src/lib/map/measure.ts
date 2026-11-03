@@ -44,6 +44,8 @@ export class MeasureControl implements IControl {
   /** The measurement hovered on the map or in the sidebar, haloed in both */
   highlightedId?: string | number
   private profileCursor?: [number, number]
+  /** A line or polygon is part-drawn */
+  drawing = false
   private highlightListeners = new Set<() => void>()
 
   constructor(private queryClient: QueryClient) {}
@@ -97,6 +99,14 @@ export class MeasureControl implements IControl {
     this.draw?.removeFeatures([id])
     this.elevationsM.delete(id)
     this.refresh()
+  }
+
+  /**
+   * Finishes the part-drawn line or polygon, for touch where double-tapping the last point isn't
+   * discoverable. Terra Draw has no public finish call; Enter on the map canvas is its finish key.
+   */
+  finish = () => {
+    this.map?.getCanvas().dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter' }))
   }
 
   clear() {
@@ -217,7 +227,10 @@ export class MeasureControl implements IControl {
     )
     this.map?.getSource<GeoJSONSource>(SHAPES)?.setData({ type: 'FeatureCollection', features: shapes })
     if (this.highlightedId !== undefined && !this.measurements.some((m) => m.id === this.highlightedId)) this.setHighlight(undefined)
-    if (changed) this.listeners.forEach((l) => l())
+    const drawing = snapshot.some((f) => f.properties.currentlyDrawing === true)
+    const drawingChanged = drawing !== this.drawing
+    this.drawing = drawing
+    if (changed || drawingChanged) this.listeners.forEach((l) => l())
   }
 
   // The value at each shape, for when the panel is closed; hovering links it to its row
