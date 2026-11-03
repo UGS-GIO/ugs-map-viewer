@@ -1,6 +1,6 @@
-import type { GeoJSONSource, IControl, MapMouseEvent, Map as MapLibreMap } from 'maplibre-gl'
+import type { IControl, MapMouseEvent, Map as MapLibreMap } from 'maplibre-gl'
 import type { QueryClient } from '@tanstack/react-query'
-import type { Feature, FeatureCollection, Point } from 'geojson'
+import type { Feature } from 'geojson'
 import {
   TerraDraw,
   TerraDrawLineStringMode,
@@ -9,25 +9,16 @@ import {
   type GeoJSONStoreFeatures,
 } from 'terra-draw'
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter'
-import { elevationsAt } from './dem-elevation'
 import { registerMeasureControl, type MeasureMode, type Measurement, type UnitSystem } from './measure-store'
-import { featureMeasurement, labelPoint, labelText, layersToRaise, restorableFeatures, type ElevationState } from './measure-features'
-import {
-  COLOR,
-  HALO_LAYERS,
-  HIT_LAYERS,
-  LABELS,
-  PREFIX,
-  PROFILE_CURSOR,
-  SHAPES,
-  addMeasureLayers,
-  haloFilter,
-  profileColor,
-  removeMeasureLayers,
-} from './measure-layers'
+import { featureMeasurement, labelPoint, labelText, restorableFeatures } from './measure-features'
+import { COLOR, HALO_LAYERS, HIT_LAYERS, LABELS, PREFIX, SHAPES, addMeasureLayers, haloFilter, layersToRaise, removeMeasureLayers, setLayerData } from './measure-layers'
+import { PointElevations } from './point-elevations'
+import { ProfileMarkers } from './profile-markers'
 
 // Terra Draw's finish key; the phone Finish button sends it to the active mode
 const FINISH_KEY = 'Enter'
+
+const sameItems = <T>(a: T[], b: T[]) => a.length === b.length && a.every((x, i) => x === b[i])
 
 /** Distance, area and point measuring on its own Terra Draw, as a map control the toolbar and sidebar drive. */
 export class MeasureControl implements IControl {
@@ -38,24 +29,23 @@ export class MeasureControl implements IControl {
   private polygonMode?: TerraDrawPolygonMode
   private syncing = false
   private units: UnitSystem = 'us'
-  private elevationsM = new Map<string | number, ElevationState>()
+  private elevations: PointElevations
   private cache = new Map<string | number, { key: string; m: Measurement | undefined; at?: [number, number] }>()
   private listeners = new Set<() => void>()
   private firstResultListeners = new Set<() => void>()
   /** The measurement hovered on the map or in the sidebar, haloed in both */
   highlightedId?: string | number
-  // Profile markers by line: each pinned point, plus where the pointer is on a chart
-  private profilePoints = { pin: new Map<string | number, [number, number]>(), hover: new Map<string | number, [number, number]>() }
+  private profileMarkers = new ProfileMarkers(() => this.map)
   // The tool to open with once Terra Draw starts (the URL can name one before the style loads)
   private mode: MeasureMode | undefined
-  // Points still waiting on their DEM lookup, read together
-  private pendingPoints = new Map<string | number, [number, number]>()
   /** A line or polygon is part-drawn */
   drawing = false
   // Finished measurements last sent to the shapes source, to skip setData while one is drawn
   private shapesFor: Measurement[] = []
 
-  constructor(private queryClient: QueryClient) {}
+  constructor(queryClient: QueryClient) {
+    this.elevations = new PointElevations(queryClient, (ids) => this.refresh(ids))
+  }
 
   onAdd(map: MapLibreMap) {
     this.map = map
@@ -92,21 +82,11 @@ export class MeasureControl implements IControl {
 
   /** Sets or clears a line's pinned or hovered profile marker on the map. */
   setProfilePoint = (owner: string | number, kind: 'pin' | 'hover', at: [number, number] | undefined) => {
-    if (at) this.profilePoints[kind].set(owner, at)
-    else this.profilePoints[kind].delete(owner)
-    // Follow the theme (MapLibre skips an unchanged paint value)
-    if (at && this.map?.getLayer(PROFILE_CURSOR)) this.map.setPaintProperty(PROFILE_CURSOR, 'circle-color', profileColor())
-    this.map?.getSource<GeoJSONSource>(PROFILE_CURSOR)?.setData(this.profileCursorData())
-  }
-
-  private profileCursorData(): FeatureCollection {
-    const at = [...this.profilePoints.pin.values(), ...this.profilePoints.hover.values()]
-    return { type: 'FeatureCollection', features: at.map((c) => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: c } })) }
+    this.profileMarkers.set(owner, kind, at)
   }
 
   remove = (id: string | number) => {
-    this.setProfilePoint(id, 'pin', undefined)
-    this.setProfilePoint(id, 'hover', undefined)
+    this.profileMarkers.dropLine(id)
     if (this.highlightedId === id) this.setHighlight(undefined)
     this.draw?.removeFeatures([id])
     this.refresh()
@@ -119,10 +99,8 @@ export class MeasureControl implements IControl {
     active?.onKeyUp({ key: FINISH_KEY, heldKeys: [], preventDefault: () => {} })
   }
 
-  clear() {
-    this.profilePoints.pin.clear()
-    this.profilePoints.hover.clear()
-    this.map?.getSource<GeoJSONSource>(PROFILE_CURSOR)?.setData(this.profileCursorData())
+  clear = () => {
+    this.profileMarkers.clear()
     this.draw?.clear()
     this.refresh()
   }
@@ -146,9 +124,7 @@ export class MeasureControl implements IControl {
     const layers = HIT_LAYERS.filter((l) => map.getLayer(l))
     const mid: unknown = layers.length ? map.queryRenderedFeatures(e.point, { layers })[0]?.properties.mid : undefined
     const id = typeof mid === 'string' || typeof mid === 'number' ? mid : undefined
-    if (id === this.highlightedId) return
     this.setHighlight(id)
-    if (id !== undefined) document.querySelector(`[data-measure-id="${CSS.escape(String(id))}"]`)?.scrollIntoView({ block: 'nearest' })
   }
 
   /** Fires when a measurement finishes and it's the only one on the map. */
@@ -170,7 +146,7 @@ export class MeasureControl implements IControl {
     try {
       if (!this.draw) this.start()
       else if (!map.getLayer(LABELS)) this.restart()
-      else layersToRaise(order, PREFIX).forEach((id) => map.moveLayer(id))
+      else layersToRaise(order).forEach((id) => map.moveLayer(id))
     } finally {
       this.syncing = false
     }
@@ -202,10 +178,11 @@ export class MeasureControl implements IControl {
       if (this.measurements.length === 1) this.firstResultListeners.forEach((l) => l())
     })
     this.draw = draw
-    addMeasureLayers(map, this.highlightedId, this.profileCursorData())
+    addMeasureLayers(map, this.highlightedId, this.profileMarkers.data())
     // Fresh sources after a style change: resend everything
     this.shapesFor = []
     this.refresh()
+    this.updateLabels()
   }
 
   private stopDraw(layersGone = false) {
@@ -231,12 +208,12 @@ export class MeasureControl implements IControl {
     const snapshot = this.draw?.getSnapshot() ?? []
     const byId = new Map(snapshot.flatMap((f) => (f.id === undefined ? [] : [[f.id, f] as const])))
     const next = snapshot.flatMap((f) => this.cached(f, touched) ?? [])
-    const changed = next.length !== this.measurements.length || next.some((m, i) => m !== this.measurements[i])
+    const changed = !sameItems(next, this.measurements)
     if (changed) this.measurements = next
     this.cache.forEach((_, id) => {
-      if (!byId.has(id)) { this.cache.delete(id); this.elevationsM.delete(id) }
+      if (!byId.has(id)) { this.cache.delete(id); this.elevations.delete(id) }
     })
-    this.updateLabels()
+    if (changed) this.updateLabels()
     this.updateShapes(byId)
     if (this.highlightedId !== undefined && !byId.has(this.highlightedId)) this.setHighlight(undefined)
     const drawing = snapshot.some((f) => f.properties.currentlyDrawing === true)
@@ -247,23 +224,21 @@ export class MeasureControl implements IControl {
 
   // The value at each shape, for when the panel is closed; hovering links it to its row
   private updateLabels() {
-    const labels: Feature<Point>[] = this.measurements.flatMap((m) => {
+    setLayerData(this.map, LABELS, this.measurements.flatMap((m): Feature[] => {
       const at = this.cache.get(m.id)?.at
       return at ? [{ type: 'Feature', properties: { label: labelText(m, this.units) }, geometry: { type: 'Point', coordinates: at } }] : []
-    })
-    this.map?.getSource<GeoJSONSource>(LABELS)?.setData({ type: 'FeatureCollection', features: labels })
+    }))
   }
 
   // Finished shapes for hover and halo; unchanged while another shape is being drawn
   private updateShapes(byId: Map<string | number, GeoJSONStoreFeatures>) {
     const ms = this.measurements.filter((m) => !byId.get(m.id)?.properties.currentlyDrawing)
-    if (ms.length === this.shapesFor.length && ms.every((m, i) => m === this.shapesFor[i])) return
+    if (sameItems(ms, this.shapesFor)) return
     this.shapesFor = ms
-    const shapes = ms.flatMap((m): Feature[] => {
+    setLayerData(this.map, SHAPES, ms.flatMap((m): Feature[] => {
       const f = byId.get(m.id)
       return f ? [{ type: 'Feature', properties: { mid: m.id }, geometry: f.geometry }] : []
-    })
-    this.map?.getSource<GeoJSONSource>(SHAPES)?.setData({ type: 'FeatureCollection', features: shapes })
+    }))
   }
 
   // Reused while a feature is unchanged, so finished rows, profiles and label positions aren't redone
@@ -273,36 +248,13 @@ export class MeasureControl implements IControl {
     const hit = this.cache.get(id)
     // Unchanged per Terra Draw: skip stringifying its geometry (this runs on every pointer move)
     if (hit && changed && !changed.has(id)) return hit.m
-    const geometry = JSON.stringify(f.geometry)
-    const keyOf = () => `${geometry}|${f.properties.currentlyDrawing}|${this.elevationsM.get(id)}`
-    if (hit?.key === keyOf()) return hit.m
-    const m = this.measure(f, id)
-    // Keyed after measuring: a new point's lookup is now pending
-    this.cache.set(id, { key: keyOf(), m, at: m && labelPoint(f) })
-    return m
-  }
-
-  private measure(f: GeoJSONStoreFeatures, id: string | number): Measurement | undefined {
     const g = f.geometry
-    if (g.type === 'Point' && f.properties.mode === 'point' && !this.elevationsM.has(id)) {
-      this.elevationsM.set(id, 'pending')
-      if (!this.pendingPoints.size) queueMicrotask(this.lookUpPoints)
-      this.pendingPoints.set(id, [g.coordinates[0], g.coordinates[1]])
-    }
-    return featureMeasurement(f, this.elevationsM.get(id))
-  }
-
-  // One DEM read and one refresh for every point added together (a loaded file can hold many)
-  private lookUpPoints = () => {
-    const batch = [...this.pendingPoints]
-    this.pendingPoints.clear()
-    elevationsAt(this.queryClient, batch.map(([, at]) => at))
-      .then((es) => batch.forEach(([id], i) => this.elevationsM.set(id, es[i])))
-      // Keep the failure so later draw changes don't refetch it
-      .catch((err) => {
-        console.warn('[measure] point elevation lookup failed:', err)
-        batch.forEach(([id]) => this.elevationsM.set(id, 'failed'))
-      })
-      .finally(() => this.refresh(new Set(batch.map(([id]) => id))))
+    // A new point's lookup starts here, so its key below already reads as pending
+    if (g.type === 'Point' && f.properties.mode === 'point') this.elevations.request(id, [g.coordinates[0], g.coordinates[1]])
+    const key = `${JSON.stringify(g)}|${f.properties.currentlyDrawing}|${this.elevations.get(id)}`
+    if (hit?.key === key) return hit.m
+    const m = featureMeasurement(f, this.elevations.get(id))
+    this.cache.set(id, { key, m, at: m && labelPoint(f) })
+    return m
   }
 }

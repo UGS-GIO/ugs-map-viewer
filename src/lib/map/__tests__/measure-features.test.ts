@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { GeoJSONStoreFeatures } from 'terra-draw'
-import { featureMeasurement, labelPoint, labelText, layersToRaise, restorableFeatures } from '../measure-features'
+import { featureMeasurement, labelPoint, labelText, restorableFeatures } from '../measure-features'
+import { layersToRaise } from '../measure-layers'
 
 const line = (currentlyDrawing = false): GeoJSONStoreFeatures => ({
   type: 'Feature',
@@ -40,8 +41,8 @@ describe('featureMeasurement', () => {
   })
   it('maps a point lookup to meters, pending (undefined) or failed (null)', () => {
     expect(featureMeasurement(point(), 1500)?.elevationM).toBe(1500)
-    expect(featureMeasurement(point(), 'pending')?.elevationM).toBeUndefined()
-    expect(featureMeasurement(point(), 'failed')?.elevationM).toBeNull()
+    expect(featureMeasurement(point(), undefined)?.elevationM).toBeUndefined()
+    expect(featureMeasurement(point(), null)?.elevationM).toBeNull()
   })
   it('skips the helper points line and polygon modes add', () => {
     expect(featureMeasurement(point('linestring'), undefined)).toBeUndefined()
@@ -57,13 +58,13 @@ describe('restorableFeatures', () => {
 
 describe('layersToRaise', () => {
   it('returns nothing when ours are already on top', () => {
-    expect(layersToRaise(['basemap', 'data', 'measure-td-a', 'measure-td-b'], 'measure-td')).toEqual([])
+    expect(layersToRaise(['basemap', 'data', 'measure-td-a', 'measure-td-b'])).toEqual([])
   })
   it('returns ours in order when a data layer lands above them', () => {
-    expect(layersToRaise(['basemap', 'measure-td-a', 'measure-td-b', 'data'], 'measure-td')).toEqual(['measure-td-a', 'measure-td-b'])
+    expect(layersToRaise(['basemap', 'measure-td-a', 'measure-td-b', 'data'])).toEqual(['measure-td-a', 'measure-td-b'])
   })
   it('returns nothing before our layers exist', () => {
-    expect(layersToRaise(['basemap', 'data'], 'measure-td')).toEqual([])
+    expect(layersToRaise(['basemap', 'data'])).toEqual([])
   })
 })
 

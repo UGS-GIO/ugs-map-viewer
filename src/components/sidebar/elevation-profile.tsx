@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { elevationProfile, groundDistanceM } from '@/lib/map/dem-elevation'
+import { queryKeys } from '@/lib/query-keys'
 import { elevationUnit, formatLength, formatQuantity, lengthUnit, type UnitSystem } from '@/lib/map/measure-store'
 
 // Numeric height: recharts v3 warns when ResponsiveContainer measures 0 at mount
@@ -21,13 +22,15 @@ export default function ElevationProfile({ id, path, units, onPoint }: {
 }) {
   const queryClient = useQueryClient()
   const { data, isPending, isError } = useQuery({
-    queryKey: ['elevation-profile', path],
+    queryKey: queryKeys.dem.profile(path),
     queryFn: () => elevationProfile(queryClient, path),
     staleTime: Infinity,
   })
   // Click pins the tooltip at a point so it stays readable without holding the pointer there
   const [pinnedIndex, setPinnedIndex] = useState<number>()
   const [hoverIndex, setHoverIndex] = useState<number>()
+  // Read by the memoized chart's handlers, which don't rebuild on hover
+  const lastHover = useRef<number>(undefined)
   // Leaving the panel (or removing the line) takes this chart's markers off the map
   useEffect(() => () => {
     onPoint?.(id, 'pin', undefined)
@@ -55,17 +58,11 @@ export default function ElevationProfile({ id, path, units, onPoint }: {
     }
   }, [data, units])
 
-  if (isPending) return <span className="text-muted-foreground">Loading elevation profile…</span>
-  if (isError || !chart) return <span className="text-muted-foreground">Elevation profile unavailable</span>
-
-  const { len, elevUnit, points, low, high, climb, descent, ground } = chart
-  const unit = len.unit
-  const fmtDistance = (d: number) => (len.small ? fmt(d) : d.toFixed(2))
-  const activeIndex = pinnedIndex ?? hoverIndex
-  const active = activeIndex === undefined ? undefined : points[activeIndex]
-
-  return (
-    <div className="grid gap-1">
+  // The chart only rebuilds when its data or pin changes; hovering just updates the readout below
+  const plot = useMemo(() => {
+    if (!data || !chart) return null
+    const { len, points } = chart
+    return (
       <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
         <AreaChart
           data={points}
@@ -80,12 +77,14 @@ export default function ElevationProfile({ id, path, units, onPoint }: {
           onMouseMove={({ activeTooltipIndex }) => {
             const i = activeTooltipIndex == null ? undefined : Number(activeTooltipIndex)
             // Skip while pinned or still on the same sample: no re-render, no map setData
-            if (pinnedIndex !== undefined || i === undefined || i === hoverIndex) return
+            if (pinnedIndex !== undefined || i === undefined || i === lastHover.current) return
+            lastHover.current = i
             setHoverIndex(i)
             onPoint?.(id, 'hover', data[i]?.at)
           }}
           // A pinned point keeps its marker and readout
           onMouseLeave={() => {
+            lastHover.current = undefined
             setHoverIndex(undefined)
             onPoint?.(id, 'hover', undefined)
           }}
@@ -97,7 +96,7 @@ export default function ElevationProfile({ id, path, units, onPoint }: {
             domain={[0, 'dataMax']}
             stroke="currentColor"
             tick={{ fill: 'currentColor', fontSize: 11 }}
-            tickFormatter={(d: number) => `${len.small ? fmt(d) : d.toFixed(1)} ${unit}`}
+            tickFormatter={(d: number) => `${len.small ? fmt(d) : d.toFixed(1)} ${len.unit}`}
           />
           <YAxis
             dataKey="elevation"
@@ -117,6 +116,21 @@ export default function ElevationProfile({ id, path, units, onPoint }: {
           <Area dataKey="elevation" stroke={LINE_COLOR} strokeWidth={2} fill={LINE_COLOR} fillOpacity={0.15} isAnimationActive={false} />
         </AreaChart>
       </ResponsiveContainer>
+    )
+  }, [data, chart, pinnedIndex, id, onPoint])
+
+  if (isPending) return <span className="text-muted-foreground">Loading elevation profile…</span>
+  if (isError || !chart) return <span className="text-muted-foreground">Elevation profile unavailable</span>
+
+  const { len, elevUnit, points, low, high, climb, descent, ground } = chart
+  const unit = len.unit
+  const fmtDistance = (d: number) => (len.small ? fmt(d) : d.toFixed(2))
+  const activeIndex = pinnedIndex ?? hoverIndex
+  const active = activeIndex === undefined ? undefined : points[activeIndex]
+
+  return (
+    <div className="grid gap-1">
+      {plot}
       <span aria-live="polite" className={active ? undefined : 'text-muted-foreground'}>
         {active
           ? `${fmtDistance(active.distance)} ${unit} along: ${fmt(active.elevation)} ${elevUnit}${pinnedIndex !== undefined ? ' (pinned; click again to release)' : ''}`

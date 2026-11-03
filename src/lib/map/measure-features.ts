@@ -7,13 +7,10 @@ import { formatQuantity, isMeasureMode, measurementQuantity, type Measurement, t
 
 // Pure pieces of the measure control: Terra Draw features in, measurements and map labels out
 
-/** A point's DEM lookup: meters, still loading, failed, or not started. */
-export type ElevationState = number | 'pending' | 'failed' | undefined
-
 const toPair = ([x, y]: number[]): [number, number] => [x, y]
 
-/** Measurement for a Terra Draw feature, or undefined for the helper points drawing modes add. */
-export function featureMeasurement(f: GeoJSONStoreFeatures, elevation: ElevationState): Measurement | undefined {
+/** Measurement for a Terra Draw feature, or undefined for the helper points drawing modes add; `elevationM` as in Measurement. */
+export function featureMeasurement(f: GeoJSONStoreFeatures, elevationM?: number | null): Measurement | undefined {
   const mode = f.properties.mode
   const id = f.id
   if (!isMeasureMode(mode) || id === undefined) return undefined
@@ -28,7 +25,6 @@ export function featureMeasurement(f: GeoJSONStoreFeatures, elevation: Elevation
   }
   // Line and polygon modes add helper points (closing, snapping) while drawing
   if (mode !== 'point') return undefined
-  const elevationM = typeof elevation === 'number' ? elevation : elevation === 'failed' ? null : undefined
   return { id, mode, coordinates: toPair(g.coordinates), elevationM }
 }
 
@@ -40,18 +36,13 @@ export function restorableFeatures(snapshot: GeoJSONStoreFeatures[]) {
   })
 }
 
-/** Our layer ids, in order, when any other layer sits above the lowest of them; else none. */
-export function layersToRaise(order: string[], prefix: string) {
-  const first = order.findIndex((id) => id.startsWith(prefix))
-  if (first < 0 || !order.slice(first).some((id) => !id.startsWith(prefix))) return []
-  return order.filter((id) => id.startsWith(prefix))
-}
-
-/** Where a feature's value label sits: a line's last vertex, a polygon's visual center, the point. */
+/** Where a feature's value label sits: a line's last vertex, a polygon's visual center (its first corner while drawn), the point. */
 export function labelPoint(f: GeoJSONStoreFeatures): [number, number] | undefined {
   const g = f.geometry
   if (g.type === 'Point') return toPair(g.coordinates)
   if (g.type === 'LineString') return toPair(g.coordinates[g.coordinates.length - 1])
+  // polylabel is too slow to rerun on every pointer move
+  if (g.type === 'Polygon' && f.properties.currentlyDrawing) return toPair(g.coordinates[0][0])
   if (g.type === 'Polygon') return toPair(polylabel(g.coordinates.map((ring) => ring.map(toPair)), 0.0001))
   return undefined
 }

@@ -1,5 +1,5 @@
-import type { AddLayerObject, FilterSpecification, Map as MapLibreMap } from 'maplibre-gl'
-import type { FeatureCollection } from 'geojson'
+import type { AddLayerObject, FilterSpecification, GeoJSONSource, Map as MapLibreMap } from 'maplibre-gl'
+import type { Feature, FeatureCollection } from 'geojson'
 
 // Map sources and layers the measure control adds beside Terra Draw's own
 
@@ -22,7 +22,7 @@ export function profileColor() {
   return hsl ? `hsl(${hsl.split(/\s+/).join(', ')})` : '#e37d49'
 }
 
-export const emptyCollection = (): FeatureCollection => ({ type: 'FeatureCollection', features: [] })
+const emptyCollection = (): FeatureCollection => ({ type: 'FeatureCollection', features: [] })
 
 export const haloFilter = (id: string | number | undefined): FilterSpecification => ['==', ['get', 'mid'], id ?? '']
 
@@ -56,6 +56,17 @@ export function addMeasureLayers(map: MapLibreMap, highlightedId: string | numbe
     },
   ]
   layers.forEach((l) => { if (!map.getLayer(l.id)) map.addLayer(l) })
+}
+
+/** Our layer ids, in order, when any other layer sits above the lowest of them; else none. */
+export function layersToRaise(order: string[]) {
+  const first = order.findIndex((id) => id.startsWith(PREFIX))
+  if (first < 0 || !order.slice(first).some((id) => !id.startsWith(PREFIX))) return []
+  return order.filter((id) => id.startsWith(PREFIX))
+}
+
+export function setLayerData(map: MapLibreMap | undefined, source: typeof LABELS | typeof SHAPES, features: Feature[]) {
+  map?.getSource<GeoJSONSource>(source)?.setData({ type: 'FeatureCollection', features })
 }
 
 export function removeMeasureLayers(map: MapLibreMap) {

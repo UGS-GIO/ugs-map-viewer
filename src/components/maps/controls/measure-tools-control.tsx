@@ -43,7 +43,7 @@ export function MeasureToolsControl() {
               active={measureMode === mode}
             />
           ))}
-          {hasMeasurements && <ControlButton icon={Trash2} title="Clear measurements" onClick={clear} variant="danger" />}
+          {hasMeasurements && clear && <ControlButton icon={Trash2} title="Clear measurements" onClick={clear} variant="danger" />}
           {measureMode && <ActiveModeLabel>{MEASURE_TOOLS[measureMode].title}</ActiveModeLabel>}
           {/* Floats over the map: the control group clips anything hanging off its side */}
           {showFinish && mapContainer && createPortal(

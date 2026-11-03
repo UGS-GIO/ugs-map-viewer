@@ -1,8 +1,6 @@
 import * as maplibregl from 'maplibre-gl';
 import { metersPerPixelAtCenter } from '@/lib/map/map-scale';
-
-const FEET_PER_METER = 3.28084;
-const FEET_PER_MILE = 5280;
+import { FT_PER_M as FEET_PER_METER, FT_PER_MI as FEET_PER_MILE } from '@/lib/map/measure-store';
 
 interface DualScaleControlOptions {
     maxWidth?: number;

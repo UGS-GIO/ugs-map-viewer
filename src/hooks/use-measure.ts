@@ -35,7 +35,7 @@ export function useMeasurements() {
     setHighlight: control?.setHighlight,
     setProfilePoint: control?.setProfilePoint,
     remove: control?.remove,
-    clearAll: () => control?.clear(),
+    clearAll: control?.clear,
   }
 }
 
@@ -43,5 +43,5 @@ export function useMeasurements() {
 export function useMeasureToolbar() {
   const { control, value: hasMeasurements } = useMeasureState((c) => (c?.measurements.length ?? 0) > 0)
   const { value: drawing } = useMeasureState((c) => c?.drawing ?? false)
-  return { hasMeasurements, drawing, finish: control?.finish, clear: () => control?.clear() }
+  return { hasMeasurements, drawing, finish: control?.finish, clear: control?.clear }
 }

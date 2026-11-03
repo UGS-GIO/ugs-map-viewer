@@ -1,9 +1,11 @@
 import type { QueryClient } from '@tanstack/react-query'
+import { MercatorCoordinate } from 'maplibre-gl'
 import { lineString, polygon } from '@turf/helpers'
 import { bbox } from '@turf/bbox'
 import { booleanPointInPolygon } from '@turf/boolean-point-in-polygon'
 import { length } from '@turf/length'
 import { TERRARIUM_TILES } from '@/lib/terrain'
+import { queryKeys } from '@/lib/query-keys'
 
 // z13 is ~15 m per pixel in Utah, close to the source DEM; one tile covers a few miles
 const MAX_ZOOM = 13
@@ -16,6 +18,9 @@ export function zoomForSpacing(spacingM: number, lat: number) {
   return Math.max(6, Math.min(MAX_ZOOM, Math.round(z)))
 }
 
+// One canvas reused for every tile decode
+let decodeCtx: OffscreenCanvasRenderingContext2D | null | undefined
+
 async function loadTile(z: number, x: number, y: number): Promise<ImageData> {
   const url = TERRARIUM_TILES.replace('{z}', String(z)).replace('{x}', String(x)).replace('{y}', String(y))
   const res = await fetch(url)
@@ -23,7 +28,8 @@ async function loadTile(z: number, x: number, y: number): Promise<ImageData> {
   // Elevations are packed in the RGB values, so no color management or alpha premultiplying
   const bitmap = await createImageBitmap(await res.blob(), { colorSpaceConversion: 'none', premultiplyAlpha: 'none' })
   try {
-    const ctx = new OffscreenCanvas(TILE_SIZE, TILE_SIZE).getContext('2d')
+    decodeCtx ??= new OffscreenCanvas(TILE_SIZE, TILE_SIZE).getContext('2d', { willReadFrequently: true })
+    const ctx = decodeCtx
     if (!ctx) throw new Error('No 2D canvas')
     ctx.drawImage(bitmap, 0, 0)
     return ctx.getImageData(0, 0, TILE_SIZE, TILE_SIZE)
@@ -35,11 +41,8 @@ async function loadTile(z: number, x: number, y: number): Promise<ImageData> {
 /** A lng/lat's position in pixels across the whole world at `zoom`, in Web Mercator; fractional. */
 export function worldPixel(lng: number, lat: number, zoom = MAX_ZOOM) {
   const size = 2 ** zoom * TILE_SIZE
-  const rad = (lat * Math.PI) / 180
-  return {
-    x: ((lng + 180) / 360) * size,
-    y: ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * size,
-  }
+  const { x, y } = MercatorCoordinate.fromLngLat([lng, lat])
+  return { x: x * size, y: y * size }
 }
 
 /** Terrarium packs meters as R*256 + G + B/256 - 32768. */
@@ -73,7 +76,7 @@ export async function elevationsAt(queryClient: QueryClient, lngLats: [number, n
       [...tileKeys].map(async (key) => {
         const [x, y] = key.split('/').map(Number)
         // DEM tiles never change; unused ones drop after the app's gcTime
-        const tile = await queryClient.fetchQuery({ queryKey: ['dem-tile', zoom, x, y], queryFn: () => loadTile(zoom, x, y), staleTime: Infinity })
+        const tile = await queryClient.fetchQuery({ queryKey: queryKeys.dem.tile(zoom, x, y), queryFn: () => loadTile(zoom, x, y), staleTime: Infinity })
         return [key, tile.data] as const
       }),
     ),

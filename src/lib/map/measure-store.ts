@@ -36,8 +36,8 @@ export interface Quantity {
   unit: string
 }
 
-const FT_PER_M = 3.28084
-const FT_PER_MI = 5280
+export const FT_PER_M = 3.28084
+export const FT_PER_MI = 5280
 const M2_PER_ACRE = 4046.8564224
 const ACRES_PER_MI2 = 640
 const M2_PER_HA = 10_000
