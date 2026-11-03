@@ -34,7 +34,7 @@ export function useMeasurements() {
     measurements,
     highlightedId,
     setHighlight: control?.setHighlight,
-    setProfileCursor: control?.setProfileCursor,
+    setProfilePoint: control?.setProfilePoint,
     remove: control?.remove,
     load: control ? (shapes: LoadedShape[]) => control.load(shapes) : undefined,
     clearAll: () => control?.clear(),

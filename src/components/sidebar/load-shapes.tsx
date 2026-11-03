@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import { Upload } from 'lucide-react'
-import { shapesFromGeoJSON, type LoadedShape } from '@/lib/map/measure-features'
+import { inLngLat, shapesFromGeoJSON, type LoadedShape } from '@/lib/map/measure-features'
 
 // More than this and the panel turns into a wall of profiles; measure a few, not a dataset
 const MAX_SHAPES = 100
@@ -8,11 +8,12 @@ const ACCEPT = '.geojson,.json,.zip,.gpkg,.fgb,.kml,.kmz,.gml'
 
 async function readShapes(file: File) {
   // GeoJSON parses directly; anything else goes through GDAL, which loads (~40 MB) only then
-  const text = /\.(geo)?json$/i.test(file.name)
-    ? await file.text()
-    : await (await import('@/lib/gdal-export')).readAsGeoJSON(file)
-  const shapes = shapesFromGeoJSON(JSON.parse(text))
+  const gdal = () => import('@/lib/gdal-export').then((m) => m.readAsGeoJSON(file))
+  let shapes = shapesFromGeoJSON(/\.(geo)?json$/i.test(file.name) ? JSON.parse(await file.text()) : await gdal())
+  // GeoJSON in a projected CRS (an old-style `crs` member): GDAL reprojects it
+  if (!inLngLat(shapes)) shapes = shapesFromGeoJSON(await gdal())
   if (!shapes.length) throw new Error(`No lines, areas or points found in "${file.name}".`)
+  if (!inLngLat(shapes)) throw new Error(`"${file.name}" isn't in longitude/latitude and doesn't say which coordinate system it uses.`)
   return shapes
 }
 

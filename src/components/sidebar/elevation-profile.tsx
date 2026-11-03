@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { elevationProfile, groundDistanceM } from '@/lib/map/dem-elevation'
@@ -12,11 +12,12 @@ const LINE_COLOR = 'hsl(var(--chart-1))'
 const fmt = (n: number) => Math.round(n).toLocaleString()
 
 /** Ground elevation along a measured line, with its low, high, climb and descent. */
-export default function ElevationProfile({ path, units, onCursor }: {
+export default function ElevationProfile({ id, path, units, onPoint }: {
+  id: string | number
   path: [number, number][]
   units: UnitSystem
-  /** Where on the line the chart's active point is, for a marker on the map */
-  onCursor?: (at: [number, number] | undefined) => void
+  /** This line's pinned or hovered chart point, for a marker on the map */
+  onPoint?: (owner: string | number, kind: 'pin' | 'hover', at: [number, number] | undefined) => void
 }) {
   const queryClient = useQueryClient()
   const { data, isPending, isError } = useQuery({
@@ -27,6 +28,11 @@ export default function ElevationProfile({ path, units, onCursor }: {
   // Click pins the tooltip at a point so it stays readable without holding the pointer there
   const [pinnedIndex, setPinnedIndex] = useState<number>()
   const [hoverIndex, setHoverIndex] = useState<number>()
+  // Leaving the panel (or removing the line) takes this chart's markers off the map
+  useEffect(() => () => {
+    onPoint?.(id, 'pin', undefined)
+    onPoint?.(id, 'hover', undefined)
+  }, [id, onPoint])
 
   // Memoized so hovering (which re-renders for the readout) hands recharts the same data
   const chart = useMemo(() => {
@@ -68,19 +74,20 @@ export default function ElevationProfile({ path, units, onCursor }: {
             const i = activeTooltipIndex == null ? undefined : Number(activeTooltipIndex)
             const next = i === pinnedIndex ? undefined : i
             setPinnedIndex(next)
-            onCursor?.(next === undefined ? undefined : data[next]?.at)
+            onPoint?.(id, 'pin', next === undefined ? undefined : data[next]?.at)
+            onPoint?.(id, 'hover', undefined)
           }}
           onMouseMove={({ activeTooltipIndex }) => {
             const i = activeTooltipIndex == null ? undefined : Number(activeTooltipIndex)
             // Skip while pinned or still on the same sample: no re-render, no map setData
             if (pinnedIndex !== undefined || i === undefined || i === hoverIndex) return
             setHoverIndex(i)
-            onCursor?.(data[i]?.at)
+            onPoint?.(id, 'hover', data[i]?.at)
           }}
           // A pinned point keeps its marker and readout
           onMouseLeave={() => {
             setHoverIndex(undefined)
-            onCursor?.(pinnedIndex === undefined ? undefined : data[pinnedIndex]?.at)
+            onPoint?.(id, 'hover', undefined)
           }}
         >
           <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />

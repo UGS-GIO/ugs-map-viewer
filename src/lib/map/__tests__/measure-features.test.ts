@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GeoJSONStoreFeatures } from 'terra-draw'
-import { featureMeasurement, labelPoint, labelText, layersToRaise, restorableFeatures, shapesFromGeoJSON } from '../measure-features'
+import { featureMeasurement, inLngLat, labelPoint, labelText, layersToRaise, restorableFeatures, shapesFromGeoJSON } from '../measure-features'
 
 const line = (currentlyDrawing = false): GeoJSONStoreFeatures => ({
   type: 'Feature',
@@ -109,5 +109,12 @@ describe('shapesFromGeoJSON', () => {
     expect(shapesFromGeoJSON({ type: 'LineString', coordinates: [[0, 0]] })).toEqual([])
     expect(shapesFromGeoJSON({ type: 'Polygon', coordinates: [[[0, 0], [1, 1], [0, 0]]] })).toEqual([])
     expect(shapesFromGeoJSON({ type: 'Point', coordinates: ['a', 1] })).toEqual([])
+  })
+})
+
+describe('inLngLat', () => {
+  it('tells longitude/latitude from projected meters', () => {
+    expect(inLngLat(shapesFromGeoJSON({ type: 'Point', coordinates: [-111.9, 40.7] }))).toBe(true)
+    expect(inLngLat(shapesFromGeoJSON({ type: 'Point', coordinates: [430000, 4500000] }))).toBe(false)
   })
 })

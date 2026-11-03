@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formatArea, formatElevation, formatLength } from '../measure-store'
-import { bilinear, decodeTerrarium, gridInRing, groundDistanceM, samplePath, slopeAngle, worldPixel } from '../dem-elevation'
+import { bilinear, decodeTerrarium, gridInRing, zoomForSpacing, groundDistanceM, samplePath, slopeAngle, worldPixel } from '../dem-elevation'
 
 describe('formatLength', () => {
   it('uses feet under 1,000 ft', () => {
@@ -44,6 +44,14 @@ describe('groundDistanceM', () => {
 })
 
 describe('surface area helpers', () => {
+  it('samples the middle of an area too small for one grid cell', () => {
+    const tiny: [number, number][] = [[-111.9, 40.7], [-111.8999, 40.7], [-111.8999, 40.7001], [-111.9, 40.7], [-111.9, 40.7]]
+    expect(gridInRing(tiny, 100).points).toHaveLength(1)
+  })
+  it('reads coarser DEM zooms for wider sample spacing', () => {
+    expect(zoomForSpacing(30, 40)).toBe(13)
+    expect(zoomForSpacing(2000, 40)).toBeLessThan(10)
+  })
   it('gives a 45° slope for a rise equal to the run', () => {
     expect((slopeAngle(30, 0) * 180) / Math.PI).toBeCloseTo(45)
     expect(slopeAngle(0, 0)).toBe(0)
@@ -51,7 +59,7 @@ describe('surface area helpers', () => {
   it('caps the grid near 1,500 points inside the ring', () => {
     // ~1.1 km square near Salt Lake City
     const ring: [number, number][] = [[-111.9, 40.7], [-111.887, 40.7], [-111.887, 40.71], [-111.9, 40.71], [-111.9, 40.7]]
-    const n = gridInRing(ring, 1_200_000).length
+    const n = gridInRing(ring, 1_200_000).points.length
     expect(n).toBeGreaterThan(1000)
     expect(n).toBeLessThanOrEqual(1600)
   })

@@ -6,11 +6,18 @@ import { length } from '@turf/length'
 import { TERRARIUM_TILES } from '@/lib/terrain'
 
 // z13 is ~15 m per pixel in Utah, close to the source DEM; one tile covers a few miles
-const ZOOM = 13
+const MAX_ZOOM = 13
 const TILE_SIZE = 256
+const M_PER_PX_Z0 = 156_543
 
-async function loadTile(x: number, y: number): Promise<ImageData> {
-  const url = TERRARIUM_TILES.replace('{z}', String(ZOOM)).replace('{x}', String(x)).replace('{y}', String(y))
+/** The DEM zoom whose pixels are about half `spacingM`, so wide samples don't pull thousands of z13 tiles. */
+export function zoomForSpacing(spacingM: number, lat: number) {
+  const z = Math.log2((M_PER_PX_Z0 * Math.cos((lat * Math.PI) / 180)) / (spacingM / 2))
+  return Math.max(6, Math.min(MAX_ZOOM, Math.round(z)))
+}
+
+async function loadTile(z: number, x: number, y: number): Promise<ImageData> {
+  const url = TERRARIUM_TILES.replace('{z}', String(z)).replace('{x}', String(x)).replace('{y}', String(y))
   const res = await fetch(url)
   if (!res.ok) throw new Error(`DEM tile ${res.status}`)
   // Elevations are packed in the RGB values, so no color management or alpha premultiplying
@@ -25,9 +32,9 @@ async function loadTile(x: number, y: number): Promise<ImageData> {
   }
 }
 
-/** A lng/lat's position in pixels across the whole ZOOM world, in Web Mercator; fractional. */
-export function worldPixel(lng: number, lat: number) {
-  const size = 2 ** ZOOM * TILE_SIZE
+/** A lng/lat's position in pixels across the whole world at `zoom`, in Web Mercator; fractional. */
+export function worldPixel(lng: number, lat: number, zoom = MAX_ZOOM) {
+  const size = 2 ** zoom * TILE_SIZE
   const rad = (lat * Math.PI) / 180
   return {
     x: ((lng + 180) / 360) * size,
@@ -50,9 +57,9 @@ export function bilinear(v00: number, v10: number, v01: number, v11: number, tx:
  * touch is fetched once, then every read is synchronous. Blends the four nearest pixel centers so
  * slopes and ground distance don't step at pixel edges; neighbors may sit in the next tile.
  */
-export async function elevationsAt(queryClient: QueryClient, lngLats: [number, number][]): Promise<number[]> {
+export async function elevationsAt(queryClient: QueryClient, lngLats: [number, number][], zoom = MAX_ZOOM): Promise<number[]> {
   const corners = lngLats.map(([lng, lat]) => {
-    const { x, y } = worldPixel(lng, lat)
+    const { x, y } = worldPixel(lng, lat, zoom)
     const fx = x - 0.5
     const fy = y - 0.5
     return { x0: Math.floor(fx), y0: Math.floor(fy), tx: fx - Math.floor(fx), ty: fy - Math.floor(fy) }
@@ -66,7 +73,7 @@ export async function elevationsAt(queryClient: QueryClient, lngLats: [number, n
       [...tileKeys].map(async (key) => {
         const [x, y] = key.split('/').map(Number)
         // DEM tiles never change; unused ones drop after the app's gcTime
-        const tile = await queryClient.fetchQuery({ queryKey: ['dem-tile', ZOOM, x, y], queryFn: () => loadTile(x, y), staleTime: Infinity })
+        const tile = await queryClient.fetchQuery({ queryKey: ['dem-tile', zoom, x, y], queryFn: () => loadTile(zoom, x, y), staleTime: Infinity })
         return [key, tile.data] as const
       }),
     ),
@@ -119,7 +126,8 @@ export async function elevationProfile(queryClient: QueryClient, path: [number, 
   const totalM = segmentLengthsM(path).reduce((a, b) => a + b, 0)
   const count = Math.min(MAX_SAMPLES, Math.max(MIN_SAMPLES, Math.ceil(totalM / SAMPLE_SPACING_M)))
   const samples = samplePath(path, count)
-  const elevations = await elevationsAt(queryClient, samples.map((p) => [p.lng, p.lat]))
+  const zoom = zoomForSpacing(totalM / (count - 1), path[0][1])
+  const elevations = await elevationsAt(queryClient, samples.map((p) => [p.lng, p.lat]), zoom)
   return samples.map((p, i) => ({ distanceM: p.distanceM, at: [p.lng, p.lat], elevationM: elevations[i] }))
 }
 
@@ -138,20 +146,23 @@ export function gridInRing(ring: [number, number][], areaM2: number) {
   const poly = polygon([ring])
   const [minX, minY, maxX, maxY] = bbox(poly)
   const spacingM = Math.max(SLOPE_RUN_M, Math.sqrt(areaM2 / MAX_GRID_POINTS))
+  const midLat = (minY + maxY) / 2
   const dLat = spacingM / M_PER_DEG_LAT
-  const dLng = spacingM / (M_PER_DEG_LAT * Math.cos((((minY + maxY) / 2) * Math.PI) / 180))
+  const dLng = spacingM / (M_PER_DEG_LAT * Math.cos((midLat * Math.PI) / 180))
   const points: [number, number][] = []
   for (let y = minY + dLat / 2; y < maxY; y += dLat) {
     for (let x = minX + dLng / 2; x < maxX; x += dLng) {
       if (booleanPointInPolygon([x, y], poly)) points.push([x, y])
     }
   }
-  return points
+  // Too small for one grid cell: sample its middle so it still gets a slope
+  if (!points.length) points.push([(minX + maxX) / 2, midLat])
+  return { points, spacingM, midLat }
 }
 
-/** Slope angle (radians) from elevation rises over SLOPE_RUN_M east and north. */
-export function slopeAngle(riseEastM: number, riseNorthM: number) {
-  return Math.atan(Math.hypot(riseEastM, riseNorthM) / SLOPE_RUN_M)
+/** Slope angle (radians) from elevation rises east and north over `runM`. */
+export function slopeAngle(riseEastM: number, riseNorthM: number, runM = SLOPE_RUN_M) {
+  return Math.atan(Math.hypot(riseEastM, riseNorthM) / runM)
 }
 
 /**
@@ -159,16 +170,16 @@ export function slopeAngle(riseEastM: number, riseNorthM: number) {
  * is) and mean slope, from the slope at grid points inside it.
  */
 export async function surfaceStats(queryClient: QueryClient, ring: [number, number][], areaM2: number) {
-  const points = gridInRing(ring, areaM2)
-  if (!points.length) return { surfaceAreaM2: areaM2, meanSlopeDeg: 0 }
-  // Each point with neighbors SLOPE_RUN_M east and north, read in one batch
-  const dLat = SLOPE_RUN_M / M_PER_DEG_LAT
+  const { points, spacingM, midLat } = gridInRing(ring, areaM2)
+  // Slope over the grid spacing, read at a matching zoom, so big areas don't pull thousands of z13 tiles
+  const runM = spacingM
+  const dLat = runM / M_PER_DEG_LAT
   const triples = points.flatMap(([lng, lat]): [number, number][] => {
-    const dLng = SLOPE_RUN_M / (M_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180))
+    const dLng = runM / (M_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180))
     return [[lng, lat], [lng + dLng, lat], [lng, lat + dLat]]
   })
-  const e = await elevationsAt(queryClient, triples)
-  const angles = points.map((_, i) => slopeAngle(e[i * 3 + 1] - e[i * 3], e[i * 3 + 2] - e[i * 3]))
+  const e = await elevationsAt(queryClient, triples, zoomForSpacing(spacingM, midLat))
+  const angles = points.map((_, i) => slopeAngle(e[i * 3 + 1] - e[i * 3], e[i * 3 + 2] - e[i * 3], runM))
   // A tilted patch covers 1/cos(slope) times its footprint
   const factor = angles.reduce((sum, a) => sum + 1 / Math.cos(a), 0) / angles.length
   const meanSlopeDeg = (angles.reduce((sum, a) => sum + a, 0) / angles.length) * (180 / Math.PI)

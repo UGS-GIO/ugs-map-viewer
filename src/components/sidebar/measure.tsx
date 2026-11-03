@@ -38,13 +38,13 @@ function AreaTerrain({ ring, areaM2, units }: { ring: [number, number][]; areaM2
 }
 
 // Memoized: measurements keep their object while unchanged, so drawing doesn't re-render finished rows
-const MeasurementRow = memo(function MeasurementRow({ m, units, index, highlighted, onHighlight, onProfileCursor, onRemove }: {
+const MeasurementRow = memo(function MeasurementRow({ m, units, index, highlighted, onHighlight, onProfilePoint, onRemove }: {
   m: Measurement
   units: UnitSystem
   index: number
   highlighted: boolean
   onHighlight?: (id: string | number | undefined) => void
-  onProfileCursor?: (at: [number, number] | undefined) => void
+  onProfilePoint?: (owner: string | number, kind: 'pin' | 'hover', at: [number, number] | undefined) => void
   onRemove?: (id: string | number) => void
 }) {
   const { coordinateFormat } = useCoordinateFormat()
@@ -81,7 +81,7 @@ const MeasurementRow = memo(function MeasurementRow({ m, units, index, highlight
         )}
         {m.path && (
           <Suspense fallback={<span className="text-muted-foreground">Loading elevation profile…</span>}>
-            <ElevationProfile path={m.path} units={units} onCursor={onProfileCursor} />
+            <ElevationProfile id={m.id} path={m.path} units={units} onPoint={onProfilePoint} />
           </Suspense>
         )}
       </div>
@@ -103,7 +103,7 @@ function measurementTotals(measurements: Measurement[], units: UnitSystem) {
 export default function Measure() {
   const { measure } = useMeasureMode()
   const { setMeasureMode } = useMap()
-  const { measurements, highlightedId, setHighlight, setProfileCursor, remove, load, clearAll } = useMeasurements()
+  const { measurements, highlightedId, setHighlight, setProfilePoint, remove, load, clearAll } = useMeasurements()
   const { units } = useUnits()
   const totals = measurementTotals(measurements, units)
 
@@ -148,7 +148,7 @@ export default function Measure() {
           {totals && <p className="px-4 pb-2 text-sm text-muted-foreground md:px-6">{totals}</p>}
           <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
             <ul className="grid gap-2">
-              {measurements.map((m, i) => <MeasurementRow key={m.id} m={m} units={units} index={i} highlighted={m.id === highlightedId} onHighlight={setHighlight} onProfileCursor={setProfileCursor} onRemove={remove} />)}
+              {measurements.map((m, i) => <MeasurementRow key={m.id} m={m} units={units} index={i} highlighted={m.id === highlightedId} onHighlight={setHighlight} onProfilePoint={setProfilePoint} onRemove={remove} />)}
             </ul>
           </CardContent>
         </Card>

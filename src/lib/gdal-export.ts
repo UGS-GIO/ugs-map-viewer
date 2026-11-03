@@ -103,18 +103,28 @@ export async function convertGeoJSON(
 }
 
 /**
- * Any OGR-readable file (zipped Shapefile or File Geodatabase, GeoPackage, FlatGeobuf, KML, …) →
- * GeoJSON text in WGS84. A file with no declared CRS can't be placed, so ogr2ogr's error stands.
+ * Every layer of any OGR-readable file (zipped Shapefiles or File Geodatabase, GeoPackage, KML, …)
+ * as one GeoJSON FeatureCollection in WGS84. GeoJSON output holds one layer, so each is converted
+ * on its own. A file with no declared CRS can't be placed, so ogr2ogr's error stands.
  */
-export async function readAsGeoJSON(file: File): Promise<string> {
+export async function readAsGeoJSON(file: File): Promise<{ type: 'FeatureCollection'; features: unknown[] }> {
     const gdal = await getGdal()
     const { datasets } = await gdal.open(file)
-    const ds = datasets[0]
-    if (!ds) throw new Error(`Couldn't open "${file.name}".`)
+    if (!datasets.length) throw new Error(`Couldn't open "${file.name}".`)
+    const features: unknown[] = []
     try {
-        const result = await gdal.ogr2ogr(ds, ['-f', 'GeoJSON', '-t_srs', 'EPSG:4326'], 'read.geojson')
-        return new TextDecoder().decode(await gdal.getFileBytes(result))
+        for (const [d, ds] of datasets.entries()) {
+            const layers = (await gdal.getInfo(ds)).layers ?? []
+            for (const [l, layer] of layers.entries()) {
+                const out = await gdal.ogr2ogr(ds, ['-f', 'GeoJSON', '-t_srs', 'EPSG:4326', layer.name], `read-${d}-${l}.geojson`)
+                const json: unknown = JSON.parse(new TextDecoder().decode(await gdal.getFileBytes(out)))
+                if (typeof json === 'object' && json !== null && 'features' in json && Array.isArray(json.features)) features.push(...json.features)
+            }
+        }
     } finally {
-        try { await gdal.close(ds) } catch { /* best-effort */ }
+        for (const ds of datasets) {
+            try { await gdal.close(ds) } catch { /* best-effort */ }
+        }
     }
+    return { type: 'FeatureCollection', features }
 }

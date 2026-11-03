@@ -22,7 +22,6 @@ import {
   PROFILE_CURSOR,
   SHAPES,
   addMeasureLayers,
-  emptyCollection,
   haloFilter,
   profileColor,
   removeMeasureLayers,
@@ -46,7 +45,12 @@ export class MeasureControl implements IControl {
   private firstResultListeners = new Set<() => void>()
   /** The measurement hovered on the map or in the sidebar, haloed in both */
   highlightedId?: string | number
-  private profileCursor?: [number, number]
+  // Profile markers by line: each pinned point, plus where the pointer is on a chart
+  private profilePoints = { pin: new Map<string | number, [number, number]>(), hover: new Map<string | number, [number, number]>() }
+  // The tool to open with once Terra Draw starts (the URL can name one before the style loads)
+  private mode: MeasureMode | undefined
+  // Points still waiting on their DEM lookup, read together
+  private pendingPoints = new Map<string | number, [number, number]>()
   /** A line or polygon is part-drawn */
   drawing = false
   // Finished measurements last sent to the shapes source, to skip setData while one is drawn
@@ -77,6 +81,7 @@ export class MeasureControl implements IControl {
   }
 
   setMode(mode: MeasureMode | undefined) {
+    this.mode = mode
     if (this.draw?.enabled) this.draw.setMode(mode ?? 'static')
   }
 
@@ -86,21 +91,23 @@ export class MeasureControl implements IControl {
     this.updateLabels()
   }
 
-  setProfileCursor = (at: [number, number] | undefined) => {
-    this.profileCursor = at
+  /** Sets or clears a line's pinned or hovered profile marker on the map. */
+  setProfilePoint = (owner: string | number, kind: 'pin' | 'hover', at: [number, number] | undefined) => {
+    if (at) this.profilePoints[kind].set(owner, at)
+    else this.profilePoints[kind].delete(owner)
     // Follow the theme (MapLibre skips an unchanged paint value)
     if (at && this.map?.getLayer(PROFILE_CURSOR)) this.map.setPaintProperty(PROFILE_CURSOR, 'circle-color', profileColor())
     this.map?.getSource<GeoJSONSource>(PROFILE_CURSOR)?.setData(this.profileCursorData())
   }
 
   private profileCursorData(): FeatureCollection {
-    const at = this.profileCursor
-    return at ? { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: at } }] } : emptyCollection()
+    const at = [...this.profilePoints.pin.values(), ...this.profilePoints.hover.values()]
+    return { type: 'FeatureCollection', features: at.map((c) => ({ type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: c } })) }
   }
 
   remove = (id: string | number) => {
-    // A profile marker belongs to a line; drop it rather than leave it on a deleted one
-    if (this.measurements.find((m) => m.id === id)?.path) this.setProfileCursor(undefined)
+    this.setProfilePoint(id, 'pin', undefined)
+    this.setProfilePoint(id, 'hover', undefined)
     if (this.highlightedId === id) this.setHighlight(undefined)
     this.draw?.removeFeatures([id])
     this.refresh()
@@ -130,7 +137,9 @@ export class MeasureControl implements IControl {
   }
 
   clear() {
-    this.setProfileCursor(undefined)
+    this.profilePoints.pin.clear()
+    this.profilePoints.hover.clear()
+    this.map?.getSource<GeoJSONSource>(PROFILE_CURSOR)?.setData(this.profileCursorData())
     this.draw?.clear()
     this.refresh()
   }
@@ -184,7 +193,7 @@ export class MeasureControl implements IControl {
     }
   }
 
-  private start(features: GeoJSONStoreFeatures[] = [], mode = 'static') {
+  private start(features: GeoJSONStoreFeatures[] = [], mode: string = this.mode ?? 'static') {
     const map = this.map
     if (!map) return
     const draw = new TerraDraw({
@@ -204,7 +213,7 @@ export class MeasureControl implements IControl {
     draw.start()
     if (features.length) draw.addFeatures(features)
     draw.setMode(mode)
-    draw.on('change', this.refresh)
+    draw.on('change', (ids) => this.refresh(new Set(ids)))
     draw.on('finish', () => {
       this.refresh()
       if (this.measurements.length === 1) this.firstResultListeners.forEach((l) => l())
@@ -234,10 +243,11 @@ export class MeasureControl implements IControl {
     this.start(features, mode)
   }
 
-  private refresh = () => {
+  // `touched` limits re-measuring to those features (Terra Draw names them on each change)
+  private refresh = (touched?: Set<string | number>) => {
     const snapshot = this.draw?.getSnapshot() ?? []
     const byId = new Map(snapshot.flatMap((f) => (f.id === undefined ? [] : [[f.id, f] as const])))
-    const next = snapshot.flatMap((f) => this.cached(f) ?? [])
+    const next = snapshot.flatMap((f) => this.cached(f, touched) ?? [])
     const changed = next.length !== this.measurements.length || next.some((m, i) => m !== this.measurements[i])
     if (changed) this.measurements = next
     this.cache.forEach((_, id) => {
@@ -274,12 +284,14 @@ export class MeasureControl implements IControl {
   }
 
   // Reused while a feature is unchanged, so finished rows, profiles and label positions aren't redone
-  private cached(f: GeoJSONStoreFeatures) {
+  private cached(f: GeoJSONStoreFeatures, changed?: Set<string | number>) {
     const id = f.id
     if (id === undefined) return undefined
+    const hit = this.cache.get(id)
+    // Unchanged per Terra Draw: skip stringifying its geometry (this runs on every pointer move)
+    if (hit && changed && !changed.has(id)) return hit.m
     const geometry = JSON.stringify(f.geometry)
     const keyOf = () => `${geometry}|${f.properties.currentlyDrawing}|${this.elevationsM.get(id)}`
-    const hit = this.cache.get(id)
     if (hit?.key === keyOf()) return hit.m
     const m = this.measure(f, id)
     // Keyed after measuring: a new point's lookup is now pending
@@ -291,15 +303,23 @@ export class MeasureControl implements IControl {
     const g = f.geometry
     if (g.type === 'Point' && f.properties.mode === 'point' && !this.elevationsM.has(id)) {
       this.elevationsM.set(id, 'pending')
-      elevationsAt(this.queryClient, [[g.coordinates[0], g.coordinates[1]]])
-        .then(([m]) => { this.elevationsM.set(id, m); this.refresh() })
-        // Keep the failure so later draw changes don't refetch it
-        .catch((err) => {
-          console.warn('[measure] point elevation lookup failed:', err)
-          this.elevationsM.set(id, 'failed')
-          this.refresh()
-        })
+      if (!this.pendingPoints.size) queueMicrotask(this.lookUpPoints)
+      this.pendingPoints.set(id, [g.coordinates[0], g.coordinates[1]])
     }
     return featureMeasurement(f, this.elevationsM.get(id))
+  }
+
+  // One DEM read and one refresh for every point added together (a loaded file can hold many)
+  private lookUpPoints = () => {
+    const batch = [...this.pendingPoints]
+    this.pendingPoints.clear()
+    elevationsAt(this.queryClient, batch.map(([, at]) => at))
+      .then((es) => batch.forEach(([id], i) => this.elevationsM.set(id, es[i])))
+      // Keep the failure so later draw changes don't refetch it
+      .catch((err) => {
+        console.warn('[measure] point elevation lookup failed:', err)
+        batch.forEach(([id]) => this.elevationsM.set(id, 'failed'))
+      })
+      .finally(() => this.refresh(new Set(batch.map(([id]) => id))))
   }
 }

@@ -106,3 +106,11 @@ export function shapesFromGeoJSON(json: unknown): LoadedShape[] {
   if (json.type === 'Feature') return fromGeometry(json.geometry)
   return fromGeometry(json)
 }
+
+/** Whether every shape's coordinates fit longitude/latitude, rather than a projected CRS's meters. */
+export function inLngLat(shapes: LoadedShape[]) {
+  const coords = shapes.flatMap((s) =>
+    s.geometry.type === 'Point' ? [s.geometry.coordinates] : s.geometry.type === 'LineString' ? s.geometry.coordinates : s.geometry.coordinates[0],
+  )
+  return coords.every(([x, y]) => Math.abs(x) <= 180 && Math.abs(y) <= 90)
+}
