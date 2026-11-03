@@ -48,6 +48,20 @@ export interface GdalConversion {
     mime: string
 }
 
+// .gdb files stay nested under `<stem>.gdb/`; shapefile sidecars (one set per `shpStems`) sit at the zip root.
+async function zipOutputs(gdal: Gdal, stem: string, target: GdalTarget, shpStems: string[], gdbPath = stem): Promise<GdalConversion> {
+    const entries: Record<string, Uint8Array> = {}
+    for (const f of await gdal.getOutputFiles()) {
+        const name = basename(f.path)
+        if (target.ext === 'gdb' && f.path.includes(`${gdbPath}.gdb/`)) {
+            entries[`${stem}.gdb/${name}`] = await gdal.getFileBytes(f.path)
+        } else if (target.ext === 'shp' && shpStems.some(s => name.startsWith(`${s}.`))) {
+            entries[name] = await gdal.getFileBytes(f.path)
+        }
+    }
+    return { bytes: zipSync(entries), filename: `${stem}.${target.ext}.zip`, mime: 'application/zip' }
+}
+
 /**
  * GeoJSON (WGS84) → `target`, reprojected to `epsg`. `floatCols` get an OGR-SQL CAST:
  * GDAL otherwise reads a whole-valued float column as Integer, downcasting depths.
@@ -85,18 +99,7 @@ export async function convertGeoJSON(
             return { bytes, filename: `${stem}.${target.ext}`, mime: 'application/octet-stream' }
         }
 
-        // .gdb files stay nested under `<stem>.gdb/`; shapefile sidecars sit at the zip root.
-        const outputs = await gdal.getOutputFiles()
-        const entries: Record<string, Uint8Array> = {}
-        for (const f of outputs) {
-            const name = basename(f.path)
-            if (target.ext === 'gdb' && f.path.includes(`${stem}.gdb`)) {
-                entries[`${stem}.gdb/${name}`] = await gdal.getFileBytes(f.path)
-            } else if (target.ext === 'shp' && name.startsWith(`${stem}.`)) {
-                entries[name] = await gdal.getFileBytes(f.path)
-            }
-        }
-        return { bytes: zipSync(entries), filename: `${stem}.${target.ext}.zip`, mime: 'application/zip' }
+        return await zipOutputs(gdal, stem, target, [stem])
     } finally {
         try { await gdal.close(ds) } catch { /* best-effort */ }
     }
@@ -127,4 +130,36 @@ export async function readAsGeoJSON(file: File): Promise<{ type: 'FeatureCollect
         }
     }
     return { type: 'FeatureCollection', features }
+}
+
+let layeredRuns = 0
+
+/**
+ * Named GeoJSON layers (WGS84) → one `target` file with a layer each, for formats that hold one
+ * geometry type per layer. Shapefile has no layers, so each becomes its own `<stem>_<name>.shp`.
+ */
+export async function convertGeoJSONLayers(layers: [name: string, geojson: string][], stem: string, target: GdalTarget): Promise<GdalConversion> {
+    const gdal = await getGdal()
+    const shp = target.ext === 'shp'
+    const stems = layers.map(([name]) => `${stem}_${name}`)
+    // A fresh path each time: an earlier export's file would keep layers this one doesn't have
+    const path = `${stem}-${++layeredRuns}`
+    const opened: Awaited<ReturnType<Gdal['open']>>['datasets'] = []
+    try {
+        let out
+        for (const [i, [name, geojson]] of layers.entries()) {
+            const { datasets } = await gdal.open(new File([geojson], `${name}.geojson`, { type: 'application/geo+json' }))
+            opened.push(...datasets)
+            const args = ['-f', target.driver, '-nln', shp ? stems[i] : name, ...(i && !shp ? ['-update', '-append'] : [])]
+            // gdal3.js adds the extension
+            out = await gdal.ogr2ogr(datasets[0], args, shp ? stems[i] : path)
+        }
+        if (!out) throw new Error('Nothing to export.')
+        if (!target.multi) return { bytes: await gdal.getFileBytes(out), filename: `${stem}.${target.ext}`, mime: 'application/octet-stream' }
+        return await zipOutputs(gdal, stem, target, stems, path)
+    } finally {
+        for (const ds of opened) {
+            try { await gdal.close(ds) } catch { /* best-effort */ }
+        }
+    }
 }

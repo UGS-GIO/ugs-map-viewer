@@ -1,4 +1,4 @@
-import type { LineString, Point, Polygon } from 'geojson'
+import type { Feature, FeatureCollection, LineString, Point, Polygon } from 'geojson'
 import type { GeoJSONStoreFeatures } from 'terra-draw'
 import { area } from '@turf/area'
 import { length } from '@turf/length'
@@ -113,4 +113,26 @@ export function inLngLat(shapes: LoadedShape[]) {
     s.geometry.type === 'Point' ? [s.geometry.coordinates] : s.geometry.type === 'LineString' ? s.geometry.coordinates : s.geometry.coordinates[0],
   )
   return coords.every(([x, y]) => Math.abs(x) <= 180 && Math.abs(y) <= 90)
+}
+
+const LAYER_BY_MODE = { linestring: 'lines', polygon: 'areas', point: 'points' } as const
+
+/**
+ * Finished measurements as GeoJSON, a layer per kind (formats like Shapefile take one geometry type
+ * each). `name` matches the panel's row title; sizes are in meters, `label` in the chosen units.
+ */
+export function measurementLayers(ms: Measurement[], nameOf: (m: Measurement, i: number) => string, units: UnitSystem) {
+  const layers = new Map<string, Feature[]>()
+  ms.forEach((m, i) => {
+    const geometry: LineString | Polygon | Point | undefined = m.path
+      ? { type: 'LineString', coordinates: m.path }
+      : m.ring ? { type: 'Polygon', coordinates: [m.ring] }
+      : m.coordinates && { type: 'Point', coordinates: m.coordinates }
+    // A shape still being drawn has none of these yet
+    if (!geometry) return
+    const properties = { name: nameOf(m, i), label: labelText(m, units), length_m: m.lengthM, area_m2: m.areaM2, perim_m: m.perimeterM, elev_m: m.elevationM }
+    const layer = LAYER_BY_MODE[m.mode]
+    layers.set(layer, [...(layers.get(layer) ?? []), { type: 'Feature', geometry, properties }])
+  })
+  return [...layers].map(([name, features]): [string, FeatureCollection] => [name, { type: 'FeatureCollection', features }])
 }

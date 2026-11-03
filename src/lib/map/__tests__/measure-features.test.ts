@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GeoJSONStoreFeatures } from 'terra-draw'
-import { featureMeasurement, inLngLat, labelPoint, labelText, layersToRaise, restorableFeatures, shapesFromGeoJSON } from '../measure-features'
+import { featureMeasurement, inLngLat, labelPoint, labelText, layersToRaise, measurementLayers, restorableFeatures, shapesFromGeoJSON } from '../measure-features'
 
 const line = (currentlyDrawing = false): GeoJSONStoreFeatures => ({
   type: 'Feature',
@@ -116,5 +116,21 @@ describe('inLngLat', () => {
   it('tells longitude/latitude from projected meters', () => {
     expect(inLngLat(shapesFromGeoJSON({ type: 'Point', coordinates: [-111.9, 40.7] }))).toBe(true)
     expect(inLngLat(shapesFromGeoJSON({ type: 'Point', coordinates: [430000, 4500000] }))).toBe(false)
+  })
+})
+
+describe('measurementLayers', () => {
+  const name = (m: { mode: string }, i: number) => `${m.mode} ${i + 1}`
+  it('splits finished measurements into a layer per kind, skipping one still being drawn', () => {
+    const layers = measurementLayers([
+      { id: 1, mode: 'linestring', path: [[0, 0], [1, 0]], lengthM: 111_000, segmentsM: [111_000] },
+      { id: 2, mode: 'point', coordinates: [0, 0], elevationM: 1500 },
+      { id: 3, mode: 'linestring', lengthM: 5, segmentsM: [5] },
+      { id: 4, mode: 'polygon', ring: [[0, 0], [1, 0], [1, 1], [0, 0]], areaM2: 6e9, perimeterM: 3e5 },
+    ], name, 'metric')
+    expect(layers.map(([n, fc]) => [n, fc.features.length])).toEqual([['lines', 1], ['points', 1], ['areas', 1]])
+    expect(layers[0][1].features[0].properties).toMatchObject({ name: 'linestring 1', length_m: 111_000, label: '111 km' })
+    expect(layers[1][1].features[0]).toMatchObject({ geometry: { type: 'Point', coordinates: [0, 0] }, properties: { name: 'point 2', elev_m: 1500 } })
+    expect(layers[2][1].features[0].geometry).toEqual({ type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]]] })
   })
 })

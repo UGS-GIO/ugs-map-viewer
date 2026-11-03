@@ -14,6 +14,7 @@ import { MEASURE_MODES, formatArea, formatElevation, formatLength, formatQuantit
 import { useUnits } from '@/hooks/use-units'
 import { UnitsToggle } from './units-card'
 import { LoadShapes } from './load-shapes'
+import { ExportShapes } from './export-shapes'
 import { MEASURE_TOOLS } from '@/components/maps/measure-tools'
 
 // Recharts is heavy; load it only once a line is finished
@@ -141,9 +142,12 @@ export default function Measure() {
         <Card>
           <CardHeader className="flex-row items-center justify-between p-4 md:p-6">
             <CardTitle>Results</CardTitle>
-            <Button variant="ghost" size="sm" onClick={clearAll}>
-              <Trash2 className="size-4" /> Clear
-            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-1">
+              <ExportShapes measurements={measurements} units={units} />
+              <Button variant="ghost" size="sm" onClick={clearAll}>
+                <Trash2 className="size-4" /> Clear
+              </Button>
+            </div>
           </CardHeader>
           {totals && <p className="px-4 pb-2 text-sm text-muted-foreground md:px-6">{totals}</p>}
           <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
