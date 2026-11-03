@@ -1,4 +1,6 @@
 import { lazy, memo, Suspense } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { surfaceStats } from '@/lib/map/dem-elevation'
 import { Radio } from '@base-ui/react/radio'
 import { RadioGroup } from '@base-ui/react/radio-group'
 import { Trash2, X } from 'lucide-react'
@@ -16,6 +18,24 @@ import { MEASURE_TOOLS } from '@/components/maps/measure-tools'
 
 // Recharts is heavy; load it only once a line is finished
 const ElevationProfile = lazy(() => import('./elevation-profile'))
+
+/** Surface area and mean slope of a finished polygon, from the DEM. */
+function AreaTerrain({ ring, areaM2, units }: { ring: [number, number][]; areaM2: number; units: UnitSystem }) {
+  const queryClient = useQueryClient()
+  const { data, isPending, isError } = useQuery({
+    queryKey: ['surface-stats', ring],
+    queryFn: () => surfaceStats(queryClient, ring, areaM2),
+    staleTime: Infinity,
+  })
+  if (isPending) return <span className="text-muted-foreground">Measuring the terrain…</span>
+  if (isError) return <span className="text-muted-foreground">Terrain stats unavailable</span>
+  return (
+    <>
+      <span>Along the ground: {formatQuantity(formatArea(data.surfaceAreaM2, units))}</span>
+      <span className="text-muted-foreground">Mean slope: {Math.round(data.meanSlopeDeg)}°</span>
+    </>
+  )
+}
 
 // Memoized: measurements keep their object while unchanged, so drawing doesn't re-render finished rows
 const MeasurementRow = memo(function MeasurementRow({ m, units, index, highlighted, onHighlight, onProfileCursor, onRemove }: {
@@ -54,6 +74,7 @@ const MeasurementRow = memo(function MeasurementRow({ m, units, index, highlight
           <span className="text-muted-foreground">Legs: {m.segmentsM.map((s) => formatQuantity(formatLength(s, units))).join(' · ')}</span>
         )}
         {m.perimeterM !== undefined && <span className="text-muted-foreground">Perimeter: {formatQuantity(formatLength(m.perimeterM, units))}</span>}
+        {m.ring && m.areaM2 !== undefined && <AreaTerrain ring={m.ring} areaM2={m.areaM2} units={units} />}
         {coords?.map((c) => <span key={c.label}>{c.label}: {c.value}</span>)}
         {m.mode === 'point' && (
           <span>Elevation: {m.elevationM === undefined ? '…' : m.elevationM === null ? 'Unavailable' : formatQuantity(formatElevation(m.elevationM, units))}</span>
@@ -119,7 +140,7 @@ export default function Measure() {
           </RadioGroup>
           <UnitsToggle className="mt-3" />
           <p className="mt-3 text-xs text-muted-foreground">
-            Distances and areas are measured flat on the map, as the crow flies, even in 3D. Each line also shows its distance along the ground, following the terrain.
+            Distances and areas are measured flat on the map, as the crow flies, even in 3D. Lines and areas also show their size along the ground, following the terrain.
           </p>
         </CardContent>
       </Card>

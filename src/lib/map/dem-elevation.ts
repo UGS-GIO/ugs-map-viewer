@@ -1,5 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
-import { lineString } from '@turf/helpers'
+import { lineString, polygon } from '@turf/helpers'
+import { bbox } from '@turf/bbox'
+import { booleanPointInPolygon } from '@turf/boolean-point-in-polygon'
 import { length } from '@turf/length'
 import { TERRARIUM_TILES } from '@/lib/terrain'
 
@@ -95,4 +97,55 @@ export function elevationProfile(queryClient: QueryClient, path: [number, number
 /** Distance along the ground, following the terrain between samples (a measuring wheel, not a crow). */
 export function groundDistanceM(samples: Pick<ProfileSample, 'distanceM' | 'elevationM'>[]) {
   return samples.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.distanceM - samples[i].distanceM, p.elevationM - samples[i].elevationM), 0)
+}
+
+const M_PER_DEG_LAT = 111_320
+// Slope is taken over this run, about two DEM pixels, so one noisy pixel doesn't dominate
+const SLOPE_RUN_M = 30
+const MAX_GRID_POINTS = 1500
+
+/** Grid points inside a ring, spaced so there are at most about MAX_GRID_POINTS (never closer than SLOPE_RUN_M). */
+export function gridInRing(ring: [number, number][], areaM2: number) {
+  const poly = polygon([ring])
+  const [minX, minY, maxX, maxY] = bbox(poly)
+  const spacingM = Math.max(SLOPE_RUN_M, Math.sqrt(areaM2 / MAX_GRID_POINTS))
+  const dLat = spacingM / M_PER_DEG_LAT
+  const dLng = spacingM / (M_PER_DEG_LAT * Math.cos((((minY + maxY) / 2) * Math.PI) / 180))
+  const points: [number, number][] = []
+  for (let y = minY + dLat / 2; y < maxY; y += dLat) {
+    for (let x = minX + dLng / 2; x < maxX; x += dLng) {
+      if (booleanPointInPolygon([x, y], poly)) points.push([x, y])
+    }
+  }
+  return points
+}
+
+/** Slope angle (radians) from elevation rises over SLOPE_RUN_M east and north. */
+export function slopeAngle(riseEastM: number, riseNorthM: number) {
+  return Math.atan(Math.hypot(riseEastM, riseNorthM) / SLOPE_RUN_M)
+}
+
+/**
+ * Terrain stats over a polygon: its surface area (the flat area scaled up by how steep the ground
+ * is) and mean slope, from the slope at grid points inside it.
+ */
+export async function surfaceStats(queryClient: QueryClient, ring: [number, number][], areaM2: number) {
+  const points = gridInRing(ring, areaM2)
+  if (!points.length) return { surfaceAreaM2: areaM2, meanSlopeDeg: 0 }
+  const angles = await Promise.all(
+    points.map(async ([lng, lat]) => {
+      const dLat = SLOPE_RUN_M / M_PER_DEG_LAT
+      const dLng = SLOPE_RUN_M / (M_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180))
+      const [here, east, north] = await Promise.all([
+        elevationAt(queryClient, lng, lat),
+        elevationAt(queryClient, lng + dLng, lat),
+        elevationAt(queryClient, lng, lat + dLat),
+      ])
+      return slopeAngle(east - here, north - here)
+    }),
+  )
+  // A tilted patch covers 1/cos(slope) times its footprint
+  const factor = angles.reduce((sum, a) => sum + 1 / Math.cos(a), 0) / angles.length
+  const meanSlopeDeg = (angles.reduce((sum, a) => sum + a, 0) / angles.length) * (180 / Math.PI)
+  return { surfaceAreaM2: areaM2 * factor, meanSlopeDeg }
 }

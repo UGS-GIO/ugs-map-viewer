@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formatArea, formatElevation, formatLength } from '../measure-store'
-import { decodeTerrarium, groundDistanceM, samplePath, tilePixel } from '../dem-elevation'
+import { decodeTerrarium, gridInRing, groundDistanceM, samplePath, slopeAngle, tilePixel } from '../dem-elevation'
 
 describe('formatLength', () => {
   it('uses feet under 1,000 ft', () => {
@@ -40,6 +40,20 @@ describe('groundDistanceM', () => {
     // 300 m flat then a 400 m run that climbs 300 m (a 3-4-5 triangle)
     const samples = [{ distanceM: 0, elevationM: 100 }, { distanceM: 300, elevationM: 100 }, { distanceM: 700, elevationM: 400 }]
     expect(groundDistanceM(samples)).toBeCloseTo(800)
+  })
+})
+
+describe('surface area helpers', () => {
+  it('gives a 45° slope for a rise equal to the run', () => {
+    expect((slopeAngle(30, 0) * 180) / Math.PI).toBeCloseTo(45)
+    expect(slopeAngle(0, 0)).toBe(0)
+  })
+  it('caps the grid near 1,500 points inside the ring', () => {
+    // ~1.1 km square near Salt Lake City
+    const ring: [number, number][] = [[-111.9, 40.7], [-111.887, 40.7], [-111.887, 40.71], [-111.9, 40.71], [-111.9, 40.7]]
+    const n = gridInRing(ring, 1_200_000).length
+    expect(n).toBeGreaterThan(1000)
+    expect(n).toBeLessThanOrEqual(1600)
   })
 })
 

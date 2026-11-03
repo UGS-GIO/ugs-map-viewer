@@ -26,6 +26,8 @@ export interface Measurement {
   /** Polygon area in square meters */
   areaM2?: number
   perimeterM?: number
+  /** A finished polygon's outer ring, for its terrain stats */
+  ring?: [number, number][]
   /** Point elevation in meters once its DEM tile loads; null if the lookup failed */
   elevationM?: number | null
   coordinates?: [number, number]
