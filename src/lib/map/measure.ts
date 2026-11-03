@@ -9,10 +9,9 @@ import {
   type GeoJSONStoreFeatures,
 } from 'terra-draw'
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter'
-import { bbox } from '@turf/bbox'
 import { elevationsAt } from './dem-elevation'
 import { registerMeasureControl, type MeasureMode, type Measurement, type UnitSystem } from './measure-store'
-import { featureMeasurement, labelPoint, labelText, layersToRaise, restorableFeatures, type ElevationState, type LoadedShape } from './measure-features'
+import { featureMeasurement, labelPoint, labelText, layersToRaise, restorableFeatures, type ElevationState } from './measure-features'
 import {
   COLOR,
   HALO_LAYERS,
@@ -118,22 +117,6 @@ export class MeasureControl implements IControl {
     const mode = this.draw?.getMode()
     const active = mode === 'linestring' ? this.lineMode : mode === 'polygon' ? this.polygonMode : undefined
     active?.onKeyUp({ key: FINISH_KEY, heldKeys: [], preventDefault: () => {} })
-  }
-
-  /** Adds loaded shapes and zooms to them; returns how many Terra Draw accepted (it rejects e.g. self-crossing). */
-  load(shapes: LoadedShape[]): number {
-    const draw = this.draw
-    if (!draw || !shapes.length) return 0
-    const results = draw.addFeatures(
-      shapes.map((s) => ({ type: 'Feature', id: draw.getFeatureId(), geometry: s.geometry, properties: { mode: s.mode } })),
-    )
-    const added = shapes.filter((_, i) => results[i]?.valid)
-    if (added.length) {
-      const [minX, minY, maxX, maxY] = bbox({ type: 'GeometryCollection', geometries: added.map((s) => s.geometry) })
-      this.map?.fitBounds([minX, minY, maxX, maxY], { padding: 60, maxZoom: 15 })
-    }
-    this.refresh()
-    return added.length
   }
 
   clear() {

@@ -13,8 +13,6 @@ import { formatCoordinatePair } from '@/lib/map/conversion-utils'
 import { MEASURE_MODES, formatArea, formatElevation, formatLength, formatQuantity, measurementQuantity, type Measurement, type UnitSystem } from '@/lib/map/measure-store'
 import { useUnits } from '@/hooks/use-units'
 import { UnitsToggle } from './units-card'
-import { LoadShapes } from './load-shapes'
-import { ExportShapes } from './export-shapes'
 import { MEASURE_TOOLS } from '@/components/maps/measure-tools'
 
 // Recharts is heavy; load it only once a line is finished
@@ -104,7 +102,7 @@ function measurementTotals(measurements: Measurement[], units: UnitSystem) {
 export default function Measure() {
   const { measure } = useMeasureMode()
   const { setMeasureMode } = useMap()
-  const { measurements, highlightedId, setHighlight, setProfilePoint, remove, load, clearAll } = useMeasurements()
+  const { measurements, highlightedId, setHighlight, setProfilePoint, remove, clearAll } = useMeasurements()
   const { units } = useUnits()
   const totals = measurementTotals(measurements, units)
 
@@ -130,7 +128,6 @@ export default function Measure() {
             className="grid-cols-3"
             itemClassName="flex flex-col items-center gap-1"
           />
-          <LoadShapes onLoad={load} />
           <UnitsToggle className="mt-3" />
           <p className="mt-3 text-xs text-muted-foreground">
             Distances and areas are measured flat on the map, as the crow flies, even in 3D. Lines and areas also show their size along the ground, following the terrain.
@@ -142,12 +139,9 @@ export default function Measure() {
         <Card>
           <CardHeader className="flex-row items-center justify-between p-4 md:p-6">
             <CardTitle>Results</CardTitle>
-            <div className="flex flex-wrap items-center justify-end gap-1">
-              <ExportShapes measurements={measurements} units={units} />
-              <Button variant="ghost" size="sm" onClick={clearAll}>
-                <Trash2 className="size-4" /> Clear
-              </Button>
-            </div>
+            <Button variant="ghost" size="sm" onClick={clearAll}>
+              <Trash2 className="size-4" /> Clear
+            </Button>
           </CardHeader>
           {totals && <p className="px-4 pb-2 text-sm text-muted-foreground md:px-6">{totals}</p>}
           <CardContent className="p-4 pt-0 md:p-6 md:pt-0">

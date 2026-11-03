@@ -2,7 +2,6 @@ import { useCallback, useSyncExternalStore } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useMapInstance } from '@/context/map-instance-context'
 import { getMeasureControl, subscribeMeasureControls, type MeasureMode, type Measurement } from '@/lib/map/measure-store'
-import type { LoadedShape } from '@/lib/map/measure-features'
 import type { MeasureControl } from '@/lib/map/measure'
 
 const NO_MEASUREMENTS: Measurement[] = []
@@ -36,7 +35,6 @@ export function useMeasurements() {
     setHighlight: control?.setHighlight,
     setProfilePoint: control?.setProfilePoint,
     remove: control?.remove,
-    load: control ? (shapes: LoadedShape[]) => control.load(shapes) : undefined,
     clearAll: () => control?.clear(),
   }
 }
