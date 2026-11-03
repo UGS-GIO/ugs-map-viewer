@@ -40,47 +40,61 @@ export function decodeTerrarium(r: number, g: number, b: number) {
   return r * 256 + g + b / 256 - 32768
 }
 
-async function pixelElevation(queryClient: QueryClient, px: number, py: number) {
-  const x = Math.floor(px / TILE_SIZE)
-  const y = Math.floor(py / TILE_SIZE)
-  // DEM tiles never change; unused ones drop after the app's gcTime
-  const { data } = await queryClient.fetchQuery({
-    queryKey: ['dem-tile', ZOOM, x, y],
-    queryFn: () => loadTile(x, y),
-    staleTime: Infinity,
-  })
-  const i = ((py - y * TILE_SIZE) * TILE_SIZE + (px - x * TILE_SIZE)) * 4
-  return decodeTerrarium(data[i], data[i + 1], data[i + 2])
-}
-
 /** Blend of four corner values by the fractional position between them. */
 export function bilinear(v00: number, v10: number, v01: number, v11: number, tx: number, ty: number) {
   return (v00 * (1 - tx) + v10 * tx) * (1 - ty) + (v01 * (1 - tx) + v11 * tx) * ty
 }
 
 /**
- * Ground elevation in meters at a lng/lat, from the same DEM as 3D terrain. Blends the four nearest
- * pixel centers so slopes and ground distance don't step at pixel edges; neighbors may sit in the
- * next tile.
+ * Ground elevation in meters at each lng/lat, from the same DEM as 3D terrain. Each tile the points
+ * touch is fetched once, then every read is synchronous. Blends the four nearest pixel centers so
+ * slopes and ground distance don't step at pixel edges; neighbors may sit in the next tile.
  */
+export async function elevationsAt(queryClient: QueryClient, lngLats: [number, number][]): Promise<number[]> {
+  const corners = lngLats.map(([lng, lat]) => {
+    const { x, y } = worldPixel(lng, lat)
+    const fx = x - 0.5
+    const fy = y - 0.5
+    return { x0: Math.floor(fx), y0: Math.floor(fy), tx: fx - Math.floor(fx), ty: fy - Math.floor(fy) }
+  })
+  const tileKeys = new Set<string>()
+  corners.forEach(({ x0, y0 }) => {
+    for (const px of [x0, x0 + 1]) for (const py of [y0, y0 + 1]) tileKeys.add(`${Math.floor(px / TILE_SIZE)}/${Math.floor(py / TILE_SIZE)}`)
+  })
+  const tiles = new Map(
+    await Promise.all(
+      [...tileKeys].map(async (key) => {
+        const [x, y] = key.split('/').map(Number)
+        // DEM tiles never change; unused ones drop after the app's gcTime
+        const tile = await queryClient.fetchQuery({ queryKey: ['dem-tile', ZOOM, x, y], queryFn: () => loadTile(x, y), staleTime: Infinity })
+        return [key, tile.data] as const
+      }),
+    ),
+  )
+  const pixel = (px: number, py: number) => {
+    const tx = Math.floor(px / TILE_SIZE)
+    const ty = Math.floor(py / TILE_SIZE)
+    const data = tiles.get(`${tx}/${ty}`)
+    if (!data) throw new Error('DEM tile missing')
+    const i = ((py - ty * TILE_SIZE) * TILE_SIZE + (px - tx * TILE_SIZE)) * 4
+    return decodeTerrarium(data[i], data[i + 1], data[i + 2])
+  }
+  return corners.map(({ x0, y0, tx, ty }) => bilinear(pixel(x0, y0), pixel(x0 + 1, y0), pixel(x0, y0 + 1), pixel(x0 + 1, y0 + 1), tx, ty))
+}
+
 export async function elevationAt(queryClient: QueryClient, lng: number, lat: number): Promise<number> {
-  const { x, y } = worldPixel(lng, lat)
-  const fx = x - 0.5
-  const fy = y - 0.5
-  const x0 = Math.floor(fx)
-  const y0 = Math.floor(fy)
-  const [v00, v10, v01, v11] = await Promise.all([
-    pixelElevation(queryClient, x0, y0),
-    pixelElevation(queryClient, x0 + 1, y0),
-    pixelElevation(queryClient, x0, y0 + 1),
-    pixelElevation(queryClient, x0 + 1, y0 + 1),
-  ])
-  return bilinear(v00, v10, v01, v11, fx - x0, fy - y0)
+  const [e] = await elevationsAt(queryClient, [[lng, lat]])
+  return e
+}
+
+/** Geodesic length of each leg of a path, in meters. */
+export function segmentLengthsM(path: number[][]) {
+  return path.slice(1).map((b, i) => length(lineString([path[i], b]), { units: 'meters' }))
 }
 
 /** `count` evenly spaced points along a path, with their distance from its start in meters. */
 export function samplePath(path: [number, number][], count: number) {
-  const segments = path.slice(1).map((b, i) => ({ a: path[i], b, m: length(lineString([path[i], b]), { units: 'meters' }) }))
+  const segments = segmentLengthsM(path).map((m, i) => ({ a: path[i], b: path[i + 1], m }))
   const total = segments.reduce((sum, s) => sum + s.m, 0)
   let seg = 0
   let start = 0
@@ -105,17 +119,13 @@ export interface ProfileSample {
   elevationM: number
 }
 
-/** Ground elevation in meters along a path; samples sharing a DEM tile share one fetch. */
-export function elevationProfile(queryClient: QueryClient, path: [number, number][]): Promise<ProfileSample[]> {
-  const totalM = length(lineString(path), { units: 'meters' })
+/** Ground elevation in meters along a path. */
+export async function elevationProfile(queryClient: QueryClient, path: [number, number][]): Promise<ProfileSample[]> {
+  const totalM = segmentLengthsM(path).reduce((a, b) => a + b, 0)
   const count = Math.min(MAX_SAMPLES, Math.max(MIN_SAMPLES, Math.ceil(totalM / SAMPLE_SPACING_M)))
-  return Promise.all(
-    samplePath(path, count).map(async (p) => ({
-      distanceM: p.distanceM,
-      at: [p.lng, p.lat],
-      elevationM: await elevationAt(queryClient, p.lng, p.lat),
-    })),
-  )
+  const samples = samplePath(path, count)
+  const elevations = await elevationsAt(queryClient, samples.map((p) => [p.lng, p.lat]))
+  return samples.map((p, i) => ({ distanceM: p.distanceM, at: [p.lng, p.lat], elevationM: elevations[i] }))
 }
 
 /** Distance along the ground, following the terrain between samples (a measuring wheel, not a crow). */
@@ -156,18 +166,14 @@ export function slopeAngle(riseEastM: number, riseNorthM: number) {
 export async function surfaceStats(queryClient: QueryClient, ring: [number, number][], areaM2: number) {
   const points = gridInRing(ring, areaM2)
   if (!points.length) return { surfaceAreaM2: areaM2, meanSlopeDeg: 0 }
-  const angles = await Promise.all(
-    points.map(async ([lng, lat]) => {
-      const dLat = SLOPE_RUN_M / M_PER_DEG_LAT
-      const dLng = SLOPE_RUN_M / (M_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180))
-      const [here, east, north] = await Promise.all([
-        elevationAt(queryClient, lng, lat),
-        elevationAt(queryClient, lng + dLng, lat),
-        elevationAt(queryClient, lng, lat + dLat),
-      ])
-      return slopeAngle(east - here, north - here)
-    }),
-  )
+  // Each point with neighbors SLOPE_RUN_M east and north, read in one batch
+  const dLat = SLOPE_RUN_M / M_PER_DEG_LAT
+  const triples = points.flatMap(([lng, lat]): [number, number][] => {
+    const dLng = SLOPE_RUN_M / (M_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180))
+    return [[lng, lat], [lng + dLng, lat], [lng, lat + dLat]]
+  })
+  const e = await elevationsAt(queryClient, triples)
+  const angles = points.map((_, i) => slopeAngle(e[i * 3 + 1] - e[i * 3], e[i * 3 + 2] - e[i * 3]))
   // A tilted patch covers 1/cos(slope) times its footprint
   const factor = angles.reduce((sum, a) => sum + 1 / Math.cos(a), 0) / angles.length
   const meanSlopeDeg = (angles.reduce((sum, a) => sum + a, 0) / angles.length) * (180 / Math.PI)

@@ -12,8 +12,15 @@ export const HIT_LAYERS = [`${SHAPES}-hit-line`, `${SHAPES}-hit-fill`, `${SHAPES
 export const HALO_LAYERS = [`${SHAPES}-halo-line`, `${SHAPES}-halo-point`]
 // Where the pointer is on an elevation profile, placed along its line
 export const PROFILE_CURSOR = `${PREFIX}-profile-cursor`
-// --chart-1 (dark), the profile's series color, so the marker reads as the chart's point
-const PROFILE_COLOR = '#e37d49'
+
+/**
+ * The profile chart's series color, `--chart-1`, for the current theme. MapLibre can't read CSS
+ * variables, so this resolves the `H S% L%` triplet the theme defines.
+ */
+export function profileColor() {
+  const hsl = getComputedStyle(document.documentElement).getPropertyValue('--chart-1').trim()
+  return hsl ? `hsl(${hsl.split(/\s+/).join(', ')})` : '#e37d49'
+}
 
 export const emptyCollection = (): FeatureCollection => ({ type: 'FeatureCollection', features: [] })
 
@@ -45,7 +52,7 @@ export function addMeasureLayers(map: MapLibreMap, highlightedId: string | numbe
       id: PROFILE_CURSOR,
       type: 'circle',
       source: PROFILE_CURSOR,
-      paint: { 'circle-color': PROFILE_COLOR, 'circle-radius': 6, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 },
+      paint: { 'circle-color': profileColor(), 'circle-radius': 6, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 },
     },
   ]
   layers.forEach((l) => { if (!map.getLayer(l.id)) map.addLayer(l) })

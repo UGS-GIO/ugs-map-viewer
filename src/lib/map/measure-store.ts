@@ -47,14 +47,30 @@ const ACRES_PER_MI2 = 640
 const M2_PER_HA = 10_000
 const HA_PER_KM2 = 100
 
-/** US: feet under 1,000 ft, else miles. Metric: meters under 1,000 m, else kilometers. */
-export function formatLength(meters: number, units: UnitSystem = 'us'): Quantity {
-  if (units === 'metric') {
-    return meters < 1000 ? { value: Math.round(meters), unit: 'm' } : { value: Number((meters / 1000).toFixed(2)), unit: 'km' }
-  }
-  const ft = meters * FT_PER_M
-  return ft < 1000 ? { value: Math.round(ft), unit: 'ft' } : { value: Number((ft / FT_PER_MI).toFixed(2)), unit: 'mi' }
+export interface LengthUnit {
+  unit: string
+  /** Meters in one of `unit` */
+  m: number
+  /** ft and m read as whole numbers; mi and km to two places */
+  small: boolean
 }
+
+/** The unit a length reads in. US: feet under 1,000 ft, else miles. Metric: meters under 1,000 m, else km. */
+export function lengthUnit(meters: number, units: UnitSystem = 'us'): LengthUnit {
+  if (units === 'metric') return meters < 1000 ? { unit: 'm', m: 1, small: true } : { unit: 'km', m: 1000, small: false }
+  return meters * FT_PER_M < 1000 ? { unit: 'ft', m: 1 / FT_PER_M, small: true } : { unit: 'mi', m: FT_PER_MI / FT_PER_M, small: false }
+}
+
+/** Elevations read in feet (US) or meters. */
+export const elevationUnit = (units: UnitSystem = 'us'): LengthUnit =>
+  units === 'metric' ? { unit: 'm', m: 1, small: true } : { unit: 'ft', m: 1 / FT_PER_M, small: true }
+
+const inUnit = (meters: number, u: LengthUnit): Quantity => {
+  const v = meters / u.m
+  return { value: u.small ? Math.round(v) : Number(v.toFixed(2)), unit: u.unit }
+}
+
+export const formatLength = (meters: number, units: UnitSystem = 'us') => inUnit(meters, lengthUnit(meters, units))
 
 /** US: acres under a square mile, else square miles. Metric: hectares under 1 km², else km². */
 export function formatArea(squareMeters: number, units: UnitSystem = 'us'): Quantity {
@@ -69,9 +85,7 @@ export function formatArea(squareMeters: number, units: UnitSystem = 'us'): Quan
 }
 
 /** Elevation in feet (US) or meters, rounded. */
-export function formatElevation(meters: number, units: UnitSystem = 'us'): Quantity {
-  return { value: Math.round(units === 'metric' ? meters : meters * FT_PER_M), unit: units === 'metric' ? 'm' : 'ft' }
-}
+export const formatElevation = (meters: number, units: UnitSystem = 'us') => inUnit(meters, elevationUnit(units))
 
 /** A measurement's main value: length, area or point elevation. */
 export function measurementQuantity(m: Measurement, units: UnitSystem): Quantity | undefined {

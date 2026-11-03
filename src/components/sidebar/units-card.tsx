@@ -1,6 +1,7 @@
 import { Radio } from '@base-ui/react/radio'
 import { RadioGroup } from '@base-ui/react/radio-group'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { radioTileClass } from '@/components/ui/radio-tile'
 import { useUnits } from '@/hooks/use-units'
 import { cn } from '@/lib/utils'
 import { isUnitSystem, type UnitSystem } from '@/lib/map/measure-store'
@@ -24,7 +25,7 @@ export function UnitsToggle({ className }: { className?: string }) {
         <Radio.Root
           key={o.value}
           value={o.value}
-          className="rounded-sm bg-popover p-2 text-center text-sm hover:bg-accent hover:text-accent-foreground data-[checked]:bg-primary data-[checked]:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:p-3"
+          className={cn(radioTileClass, 'text-center')}
         >
           {o.label}
         </Radio.Root>

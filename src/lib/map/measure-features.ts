@@ -2,8 +2,8 @@ import type { LineString, Point, Polygon } from 'geojson'
 import type { GeoJSONStoreFeatures } from 'terra-draw'
 import { area } from '@turf/area'
 import { length } from '@turf/length'
-import { lineString } from '@turf/helpers'
 import polylabel from 'polylabel'
+import { segmentLengthsM } from './dem-elevation'
 import { formatQuantity, isMeasureMode, measurementQuantity, type MeasureMode, type Measurement, type UnitSystem } from './measure-store'
 
 // Pure pieces of the measure control: Terra Draw features in, measurements and map labels out
@@ -21,7 +21,7 @@ export function featureMeasurement(f: GeoJSONStoreFeatures, elevation: Elevation
   const g = f.geometry
   const finished = !f.properties.currentlyDrawing
   if (g.type === 'LineString') {
-    const segmentsM = g.coordinates.slice(1).map((b, i) => length(lineString([g.coordinates[i], b]), { units: 'meters' }))
+    const segmentsM = segmentLengthsM(g.coordinates)
     return { id, mode, path: finished ? g.coordinates.map(toPair) : undefined, lengthM: segmentsM.reduce((a, b) => a + b, 0), segmentsM }
   }
   if (g.type === 'Polygon') {

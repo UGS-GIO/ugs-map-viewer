@@ -6,6 +6,7 @@ import { RadioGroup } from '@base-ui/react/radio-group'
 import { Trash2, X } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { radioTileClass } from '@/components/ui/radio-tile'
 import { cn } from '@/lib/utils'
 import { useMeasureMode, useMeasurements } from '@/hooks/use-measure'
 import { useMap } from '@/hooks/use-map'
@@ -103,7 +104,7 @@ function measurementTotals(measurements: Measurement[], units: UnitSystem) {
 
 export default function Measure() {
   const { measure } = useMeasureMode()
-  const { setMeasureMode: setMeasure } = useMap()
+  const { setMeasureMode } = useMap()
   const { measurements, highlightedId, setHighlight, setProfileCursor, remove, load, clearAll } = useMeasurements()
   const { units } = useUnits()
   const totals = measurementTotals(measurements, units)
@@ -120,7 +121,7 @@ export default function Measure() {
           <RadioGroup
             aria-label="Measure tool"
             value={measure ?? null}
-            onValueChange={(v) => setMeasure(isMeasureMode(v) ? v : undefined)}
+            onValueChange={(v) => setMeasureMode(isMeasureMode(v) ? v : undefined)}
             className="grid grid-cols-3 gap-2"
           >
             {MEASURE_MODES.map((mode) => {
@@ -130,8 +131,8 @@ export default function Measure() {
                   key={mode}
                   value={mode}
                   // Clicking the active tool again turns measuring off
-                  onClick={() => measure === mode && setMeasure(undefined)}
-                  className="flex flex-col items-center gap-1 rounded-sm bg-popover p-2 text-sm md:p-3 hover:bg-accent hover:text-accent-foreground data-[checked]:bg-primary data-[checked]:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => measure === mode && setMeasureMode(undefined)}
+                  className={cn(radioTileClass, 'flex flex-col items-center gap-1')}
                 >
                   <Icon className="size-4" />
                   {label}

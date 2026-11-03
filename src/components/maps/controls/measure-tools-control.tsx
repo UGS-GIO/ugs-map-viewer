@@ -9,6 +9,7 @@ import { MEASURE_TOOLS } from '../measure-tools'
 import { useMeasureDrawing } from '@/hooks/use-measure'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useMapInstance } from '@/context/map-instance-context'
+import { Button } from '@/components/ui/button'
 
 interface MeasureToolsControlProps {
   measureMode?: MeasureMode
@@ -61,14 +62,10 @@ export function MeasureToolsControl({
           {measureMode && <ActiveModeLabel>{MEASURE_TOOLS[measureMode].title}</ActiveModeLabel>}
           {/* Floats over the map: the control group clips anything hanging off its side */}
           {showFinish && mapContainer && createPortal(
-            <button
-              type="button"
-              onClick={finish}
-              className="absolute top-3 left-1/2 z-10 flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
+            <Button onClick={finish} className="absolute top-3 left-1/2 z-10 -translate-x-1/2 rounded-full shadow-lg">
               <Check className="size-4" />
               {measureMode === 'polygon' ? 'Close shape' : 'Finish line'}
-            </button>,
+            </Button>,
             mapContainer,
           )}
         </div>,

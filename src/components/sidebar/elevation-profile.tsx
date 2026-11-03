@@ -1,12 +1,11 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { elevationProfile, groundDistanceM } from '@/lib/map/dem-elevation'
-import { formatLength, formatQuantity, type UnitSystem } from '@/lib/map/measure-store'
+import { elevationUnit, formatLength, formatQuantity, lengthUnit, type UnitSystem } from '@/lib/map/measure-store'
 
 // Numeric height: recharts v3 warns when ResponsiveContainer measures 0 at mount
 const CHART_HEIGHT = 128
-const FT_PER_M = 3.28084
 // Same series color as the hazards-review displacement charts; clears 3:1 in both themes
 const LINE_COLOR = 'hsl(var(--chart-1))'
 
@@ -29,24 +28,33 @@ export default function ElevationProfile({ path, units, onCursor }: {
   const [pinnedIndex, setPinnedIndex] = useState<number>()
   const [hoverIndex, setHoverIndex] = useState<number>()
 
-  if (isPending) return <span className="text-muted-foreground">Loading elevation profile…</span>
-  if (isError) return <span className="text-muted-foreground">Elevation profile unavailable</span>
+  // Memoized so hovering (which re-renders for the readout) hands recharts the same data
+  const chart = useMemo(() => {
+    if (!data) return undefined
+    // Same unit switch as the line's length label
+    const len = lengthUnit(data[data.length - 1].distanceM, units)
+    const elev = elevationUnit(units)
+    const points = data.map((p) => ({ distance: p.distanceM / len.m, elevation: p.elevationM / elev.m }))
+    const elevations = points.map((p) => p.elevation)
+    const steps = elevations.slice(1).map((e, i) => e - elevations[i])
+    return {
+      len,
+      elevUnit: elev.unit,
+      points,
+      low: Math.min(...elevations),
+      high: Math.max(...elevations),
+      climb: steps.reduce((sum, d) => sum + Math.max(d, 0), 0),
+      descent: steps.reduce((sum, d) => sum - Math.min(d, 0), 0),
+      ground: formatQuantity(formatLength(groundDistanceM(data), units)),
+    }
+  }, [data, units])
 
-  // Same switch as the line's length: ft/mi or m/km at 1,000 of the small unit
-  const perM = units === 'metric' ? 1 : FT_PER_M
-  const big = units === 'metric' ? 1000 : 5280
-  const inBig = data[data.length - 1].distanceM * perM >= 1000
-  const points = data.map((p) => ({
-    distance: (p.distanceM * perM) / (inBig ? big : 1),
-    elevation: p.elevationM * perM,
-  }))
-  const elevUnit = units === 'metric' ? 'm' : 'ft'
-  const elevations = points.map((p) => p.elevation)
-  const steps = elevations.slice(1).map((e, i) => e - elevations[i])
-  const climb = steps.reduce((sum, d) => sum + Math.max(d, 0), 0)
-  const descent = steps.reduce((sum, d) => sum + Math.min(d, 0), 0)
-  const unit = units === 'metric' ? (inBig ? 'km' : 'm') : inBig ? 'mi' : 'ft'
-  const ground = formatQuantity(formatLength(groundDistanceM(data), units))
+  if (isPending) return <span className="text-muted-foreground">Loading elevation profile…</span>
+  if (isError || !chart) return <span className="text-muted-foreground">Elevation profile unavailable</span>
+
+  const { len, elevUnit, points, low, high, climb, descent, ground } = chart
+  const unit = len.unit
+  const fmtDistance = (d: number) => (len.small ? fmt(d) : d.toFixed(2))
   const activeIndex = pinnedIndex ?? hoverIndex
   const active = activeIndex === undefined ? undefined : points[activeIndex]
 
@@ -63,9 +71,11 @@ export default function ElevationProfile({ path, units, onCursor }: {
             onCursor?.(next === undefined ? undefined : data[next]?.at)
           }}
           onMouseMove={({ activeTooltipIndex }) => {
-            if (pinnedIndex !== undefined || activeTooltipIndex == null) return
-            setHoverIndex(Number(activeTooltipIndex))
-            onCursor?.(data[Number(activeTooltipIndex)]?.at)
+            const i = activeTooltipIndex == null ? undefined : Number(activeTooltipIndex)
+            // Skip while pinned or still on the same sample: no re-render, no map setData
+            if (pinnedIndex !== undefined || i === undefined || i === hoverIndex) return
+            setHoverIndex(i)
+            onCursor?.(data[i]?.at)
           }}
           // A pinned point keeps its marker and readout
           onMouseLeave={() => {
@@ -80,7 +90,7 @@ export default function ElevationProfile({ path, units, onCursor }: {
             domain={[0, 'dataMax']}
             stroke="currentColor"
             tick={{ fill: 'currentColor', fontSize: 11 }}
-            tickFormatter={(d: number) => `${inBig ? d.toFixed(1) : fmt(d)} ${unit}`}
+            tickFormatter={(d: number) => `${len.small ? fmt(d) : d.toFixed(1)} ${unit}`}
           />
           <YAxis
             dataKey="elevation"
@@ -102,14 +112,14 @@ export default function ElevationProfile({ path, units, onCursor }: {
       </ResponsiveContainer>
       <span aria-live="polite" className={active ? undefined : 'text-muted-foreground'}>
         {active
-          ? `${inBig ? active.distance.toFixed(2) : fmt(active.distance)} ${unit} along: ${fmt(active.elevation)} ${elevUnit}${pinnedIndex !== undefined ? ' (pinned; click again to release)' : ''}`
+          ? `${fmtDistance(active.distance)} ${unit} along: ${fmt(active.elevation)} ${elevUnit}${pinnedIndex !== undefined ? ' (pinned; click again to release)' : ''}`
           : 'Hover or tap the chart to read a point; click to pin it.'}
       </span>
       {/* What a measuring wheel would read along the line, up and down the terrain */}
       <span>Along the ground: {ground}</span>
       <span className="text-muted-foreground">
-        Low {fmt(Math.min(...elevations))} {elevUnit} · High {fmt(Math.max(...elevations))} {elevUnit} · Climb {fmt(climb)} {elevUnit} ·
-        Descent {fmt(-descent)} {elevUnit}
+        Low {fmt(low)} {elevUnit} · High {fmt(high)} {elevUnit} · Climb {fmt(climb)} {elevUnit} ·
+        Descent {fmt(descent)} {elevUnit}
       </span>
     </div>
   )

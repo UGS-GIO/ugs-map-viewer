@@ -1,6 +1,8 @@
 import { Radio } from '@base-ui/react/radio'
 import { RadioGroup } from '@base-ui/react/radio-group'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { radioTileClass } from '@/components/ui/radio-tile'
+import { cn } from '@/lib/utils'
 import { useCoordinateFormat } from '@/hooks/use-map-coordinates'
 import type { CoordinateFormat } from '@/lib/map/conversion-utils'
 
@@ -29,7 +31,7 @@ export function CoordinateFormatCard() {
             <Radio.Root
               key={o.value}
               value={o.value}
-              className="rounded-sm bg-popover p-3 text-center text-sm hover:bg-accent hover:text-accent-foreground data-[checked]:bg-primary data-[checked]:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className={cn(radioTileClass, 'text-center')}
             >
               {o.label}
             </Radio.Root>

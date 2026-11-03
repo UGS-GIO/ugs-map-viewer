@@ -3,6 +3,7 @@ import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useMapInstance } from '@/context/map-instance-context'
 import { getMeasureControl, subscribeMeasureControls, type MeasureMode, type Measurement } from '@/lib/map/measure-store'
 import type { LoadedShape } from '@/lib/map/measure-features'
+import type { MeasureControl } from '@/lib/map/measure'
 
 const NO_MEASUREMENTS: Measurement[] = []
 const noop = () => () => {}
@@ -18,12 +19,22 @@ export function useMeasureMode() {
   return { measure, setMeasure }
 }
 
-/** The map's measure control and its finished measurements, live. */
-export function useMeasurements() {
+/** The map's measure control, once it's mounted. */
+function useMeasureControl() {
   const { map } = useMapInstance()
-  const control = useSyncExternalStore(subscribeMeasureControls, () => getMeasureControl(map))
-  const measurements = useSyncExternalStore(control?.subscribe ?? noop, () => control?.measurements ?? NO_MEASUREMENTS)
-  const highlightedId = useSyncExternalStore(control?.subscribeHighlight ?? noop, () => control?.highlightedId)
+  return useSyncExternalStore(subscribeMeasureControls, () => getMeasureControl(map))
+}
+
+/** The control's state, picked so a component only re-renders when its pick changes. */
+function useMeasureState<T>(pick: (control: MeasureControl | undefined) => T) {
+  const control = useMeasureControl()
+  return { control, value: useSyncExternalStore(control?.subscribe ?? noop, () => pick(control)) }
+}
+
+/** The map's finished measurements and the one hovered, live. */
+export function useMeasurements() {
+  const { control, value: measurements } = useMeasureState((c) => c?.measurements ?? NO_MEASUREMENTS)
+  const { value: highlightedId } = useMeasureState((c) => c?.highlightedId)
   return {
     measurements,
     highlightedId,
@@ -37,16 +48,12 @@ export function useMeasurements() {
 
 /** Whether a line or polygon is part-drawn, and a way to finish it. */
 export function useMeasureDrawing() {
-  const { map } = useMapInstance()
-  const control = useSyncExternalStore(subscribeMeasureControls, () => getMeasureControl(map))
-  const drawing = useSyncExternalStore(control?.subscribe ?? noop, () => control?.drawing ?? false)
+  const { control, value: drawing } = useMeasureState((c) => c?.drawing ?? false)
   return { drawing, finish: control?.finish }
 }
 
 /** Whether any measurement is on the map; a boolean so drawing doesn't re-render the map container. */
 export function useHasMeasurements() {
-  const { map } = useMapInstance()
-  const control = useSyncExternalStore(subscribeMeasureControls, () => getMeasureControl(map))
-  const hasMeasurements = useSyncExternalStore(control?.subscribe ?? noop, () => (control?.measurements.length ?? 0) > 0)
+  const { control, value: hasMeasurements } = useMeasureState((c) => (c?.measurements.length ?? 0) > 0)
   return { hasMeasurements, clearAll: () => control?.clear() }
 }
