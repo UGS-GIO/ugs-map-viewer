@@ -49,8 +49,8 @@ export const MeasurementRow = memo(function MeasurementRow({ m, units, index, hi
     // Hovering a row halos its shape on the map, and hovering the shape highlights the row
     <li
       data-measure-id={m.id}
-      // Hovering the shape on the map highlights this row; bring it into view
-      ref={highlighted ? (el) => el?.scrollIntoView({ block: 'nearest' }) : undefined}
+      // Hovering the shape on the map highlights this row; bring it into view (not when the pointer is on it, or it jitters)
+      ref={highlighted ? (el) => { if (el && !el.matches(':hover')) el.scrollIntoView({ block: 'nearest' }) } : undefined}
       onPointerEnter={() => onHighlight?.(m.id)}
       onPointerLeave={() => onHighlight?.(undefined)}
       className={cn('flex gap-3 rounded-sm bg-popover p-2 text-sm ring-primary md:p-3', highlighted && 'ring-2')}

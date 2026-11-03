@@ -29,15 +29,20 @@ export class PointElevations {
     this.values.delete(id)
   }
 
+  // Ignored once the point is gone, so a late lookup doesn't bring it back
+  private settle(id: Id, value: number | null) {
+    if (this.values.has(id)) this.values.set(id, value)
+  }
+
   private lookUp = () => {
     const batch = [...this.queued]
     this.queued.clear()
     elevationsAt(this.queryClient, batch.map(([, at]) => at))
-      .then((es) => batch.forEach(([id], i) => this.values.set(id, es[i])))
+      .then((es) => batch.forEach(([id], i) => this.settle(id, es[i])))
       // Keep the failure so later draw changes don't refetch it
       .catch((err) => {
         console.warn('[measure] point elevation lookup failed:', err)
-        batch.forEach(([id]) => this.values.set(id, null))
+        batch.forEach(([id]) => this.settle(id, null))
       })
       .finally(() => this.onResolved(new Set(batch.map(([id]) => id))))
   }

@@ -71,6 +71,7 @@ export default function ElevationProfile({ id, path, units, onPoint }: {
             const i = activeTooltipIndex == null ? undefined : Number(activeTooltipIndex)
             const next = i === pinnedIndex ? undefined : i
             setPinnedIndex(next)
+            lastHover.current = undefined
             onPoint?.(id, 'pin', next === undefined ? undefined : data[next]?.at)
             onPoint?.(id, 'hover', undefined)
           }}
