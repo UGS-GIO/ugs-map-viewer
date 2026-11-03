@@ -27,6 +27,7 @@ export default function ElevationProfile({ path, units, onCursor }: {
   })
   // Click pins the tooltip at a point so it stays readable without holding the pointer there
   const [pinnedIndex, setPinnedIndex] = useState<number>()
+  const [hoverIndex, setHoverIndex] = useState<number>()
 
   if (isPending) return <span className="text-muted-foreground">Loading elevation profile…</span>
   if (isError) return <span className="text-muted-foreground">Elevation profile unavailable</span>
@@ -46,6 +47,8 @@ export default function ElevationProfile({ path, units, onCursor }: {
   const descent = steps.reduce((sum, d) => sum + Math.min(d, 0), 0)
   const unit = units === 'metric' ? (inBig ? 'km' : 'm') : inBig ? 'mi' : 'ft'
   const ground = formatQuantity(formatLength(groundDistanceM(data), units))
+  const activeIndex = pinnedIndex ?? hoverIndex
+  const active = activeIndex === undefined ? undefined : points[activeIndex]
 
   return (
     <div className="grid gap-1">
@@ -60,10 +63,15 @@ export default function ElevationProfile({ path, units, onCursor }: {
             onCursor?.(next === undefined ? undefined : data[next]?.at)
           }}
           onMouseMove={({ activeTooltipIndex }) => {
-            if (pinnedIndex === undefined && activeTooltipIndex != null) onCursor?.(data[Number(activeTooltipIndex)]?.at)
+            if (pinnedIndex !== undefined || activeTooltipIndex == null) return
+            setHoverIndex(Number(activeTooltipIndex))
+            onCursor?.(data[Number(activeTooltipIndex)]?.at)
           }}
-          // A pinned point keeps its marker
-          onMouseLeave={() => onCursor?.(pinnedIndex === undefined ? undefined : data[pinnedIndex]?.at)}
+          // A pinned point keeps its marker and readout
+          onMouseLeave={() => {
+            setHoverIndex(undefined)
+            onCursor?.(pinnedIndex === undefined ? undefined : data[pinnedIndex]?.at)
+          }}
         >
           <CartesianGrid stroke="currentColor" strokeOpacity={0.15} strokeDasharray="3 3" />
           <XAxis
@@ -86,15 +94,17 @@ export default function ElevationProfile({ path, units, onCursor }: {
             // Recharts keeps the clicked point active in click mode
             trigger={pinnedIndex === undefined ? 'hover' : 'click'}
             cursor={{ stroke: 'currentColor', strokeOpacity: 0.2 }}
-            separator=": "
-            formatter={(e) => [`${fmt(Number(e))} ${elevUnit}`, 'Elevation']}
-            labelFormatter={(d) => `${inBig ? Number(d).toFixed(2) : fmt(Number(d))} ${unit}`}
-            contentStyle={{ background: 'hsl(var(--popover))', color: 'hsl(var(--popover-foreground))', fontSize: 12 }}
-            itemStyle={{ color: 'hsl(var(--popover-foreground))' }}
+            // The readout below says the values; a floating box would cover the line being read
+            content={() => null}
           />
           <Area dataKey="elevation" stroke={LINE_COLOR} strokeWidth={2} fill={LINE_COLOR} fillOpacity={0.15} isAnimationActive={false} />
         </AreaChart>
       </ResponsiveContainer>
+      <span aria-live="polite" className={active ? undefined : 'text-muted-foreground'}>
+        {active
+          ? `${inBig ? active.distance.toFixed(2) : fmt(active.distance)} ${unit} along: ${fmt(active.elevation)} ${elevUnit}${pinnedIndex !== undefined ? ' (pinned; click again to release)' : ''}`
+          : 'Hover or tap the chart to read a point; click to pin it.'}
+      </span>
       {/* What a measuring wheel would read along the line, up and down the terrain */}
       <span>Along the ground: {ground}</span>
       <span className="text-muted-foreground">
