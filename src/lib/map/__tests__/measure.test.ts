@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formatArea, formatElevation, formatLength } from '../measure-store'
-import { decodeTerrarium, gridInRing, groundDistanceM, samplePath, slopeAngle, tilePixel } from '../dem-elevation'
+import { bilinear, decodeTerrarium, gridInRing, groundDistanceM, samplePath, slopeAngle, worldPixel } from '../dem-elevation'
 
 describe('formatLength', () => {
   it('uses feet under 1,000 ft', () => {
@@ -62,9 +62,14 @@ describe('DEM helpers', () => {
     // 32768 + 1500.5 m
     expect(decodeTerrarium(133, 220, 128)).toBeCloseTo(1500.5)
   })
-  it('finds the z13 tile and pixel for a lng/lat', () => {
-    // Null Island sits on the corner of tiles 4096/4096
-    expect(tilePixel(0, 0)).toEqual({ x: 4096, y: 4096, px: 0, py: 0 })
+  it('puts a lng/lat in z13 world pixels', () => {
+    // Null Island is the middle of the 2^13 x 256 px world
+    expect(worldPixel(0, 0)).toEqual({ x: 4096 * 256, y: 4096 * 256 })
+  })
+  it('blends four corners bilinearly', () => {
+    expect(bilinear(0, 10, 20, 30, 0, 0)).toBe(0)
+    expect(bilinear(0, 10, 20, 30, 1, 1)).toBe(30)
+    expect(bilinear(0, 10, 20, 30, 0.5, 0.5)).toBe(15)
   })
 })
 

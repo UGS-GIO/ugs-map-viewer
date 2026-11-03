@@ -1,4 +1,4 @@
-import type { AddLayerObject, FilterSpecification, GeoJSONSource, IControl, MapMouseEvent, Map as MapLibreMap } from 'maplibre-gl'
+import type { GeoJSONSource, IControl, MapMouseEvent, Map as MapLibreMap } from 'maplibre-gl'
 import type { QueryClient } from '@tanstack/react-query'
 import type { Feature, FeatureCollection, Point } from 'geojson'
 import {
@@ -9,46 +9,22 @@ import {
   type GeoJSONStoreFeatures,
 } from 'terra-draw'
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter'
-import { area } from '@turf/area'
-import { length } from '@turf/length'
-import { lineString } from '@turf/helpers'
-import polylabel from 'polylabel'
 import { elevationAt } from './dem-elevation'
-import { formatQuantity, isMeasureMode, measurementQuantity, registerMeasureControl, type MeasureMode, type Measurement, type UnitSystem } from './measure-store'
-
-const PREFIX = 'measure-td'
-const LABELS = `${PREFIX}-labels`
-// Finished shapes again, for hover hit-testing and the highlight halo
-const SHAPES = `${PREFIX}-shapes`
-const HIT_LAYERS = [`${SHAPES}-hit-line`, `${SHAPES}-hit-fill`, `${SHAPES}-hit-point`]
-const HALO_LAYERS = [`${SHAPES}-halo-line`, `${SHAPES}-halo-point`]
-// Where the pointer is on an elevation profile, placed along its line
-const PROFILE_CURSOR = `${PREFIX}-profile-cursor`
-// --chart-1 (dark), the profile's series color, so the marker reads as the chart's point
-const PROFILE_COLOR = '#e37d49'
-const emptyCollection = (): FeatureCollection => ({ type: 'FeatureCollection', features: [] })
-const COLOR = '#2563eb'
-
-function labelPoint(f: GeoJSONStoreFeatures): [number, number] | undefined {
-  const g = f.geometry
-  if (g.type === 'Point') return [g.coordinates[0], g.coordinates[1]]
-  if (g.type === 'LineString') {
-    const last = g.coordinates[g.coordinates.length - 1]
-    return [last[0], last[1]]
-  }
-  if (g.type === 'Polygon') {
-    const [x, y] = polylabel(g.coordinates.map((ring) => ring.map(([lng, lat]): [number, number] => [lng, lat])), 0.0001)
-    return [x, y]
-  }
-  return undefined
-}
-
-function labelText(m: Measurement, units: UnitSystem) {
-  const q = measurementQuantity(m, units)
-  return q ? formatQuantity(q) : ''
-}
-
-const haloFilter = (id: string | number | undefined): FilterSpecification => ['==', ['get', 'mid'], id ?? '']
+import { registerMeasureControl, type MeasureMode, type Measurement, type UnitSystem } from './measure-store'
+import { featureMeasurement, labelPoint, labelText, layersToRaise, restorableFeatures } from './measure-features'
+import {
+  COLOR,
+  HALO_LAYERS,
+  HIT_LAYERS,
+  LABELS,
+  PREFIX,
+  PROFILE_CURSOR,
+  SHAPES,
+  addMeasureLayers,
+  emptyCollection,
+  haloFilter,
+  removeMeasureLayers,
+} from './measure-layers'
 
 /**
  * Distance, area and point-elevation measuring on its own Terra Draw instance, labelled on the map.
@@ -90,8 +66,7 @@ export class MeasureControl implements IControl {
       registerMeasureControl(this.map, undefined)
     }
     this.stopDraw()
-    ;[LABELS, ...HIT_LAYERS, ...HALO_LAYERS, PROFILE_CURSOR].forEach((id) => { if (this.map?.getLayer(id)) this.map.removeLayer(id) })
-    ;[LABELS, SHAPES, PROFILE_CURSOR].forEach((id) => { if (this.map?.getSource(id)) this.map.removeSource(id) })
+    if (this.map) removeMeasureLayers(this.map)
     this.map = undefined
   }
 
@@ -178,12 +153,7 @@ export class MeasureControl implements IControl {
     try {
       if (!this.draw) this.start()
       else if (!map.getLayer(LABELS)) this.restart()
-      else {
-        const first = order.findIndex((id) => id.startsWith(PREFIX))
-        if (first >= 0 && order.slice(first).some((id) => !id.startsWith(PREFIX))) {
-          order.filter((id) => id.startsWith(PREFIX)).forEach((id) => map.moveLayer(id))
-        }
-      }
+      else layersToRaise(order, PREFIX).forEach((id) => map.moveLayer(id))
     } finally {
       this.syncing = false
     }
@@ -211,34 +181,7 @@ export class MeasureControl implements IControl {
       if (this.measurements.length === 1) this.firstResultListeners.forEach((l) => l())
     })
     this.draw = draw
-    if (!map.getSource(LABELS)) map.addSource(LABELS, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
-    if (!map.getLayer(LABELS)) map.addLayer({
-      id: LABELS,
-      type: 'symbol',
-      source: LABELS,
-      // Streets serves only Noto glyphs; raster basemaps have no glyphs URL and draw text locally
-      layout: { 'text-field': ['get', 'label'], 'text-font': ['Noto Sans Regular'], 'text-size': 13, 'text-offset': [0, -1.2], 'text-allow-overlap': true },
-      paint: { 'text-color': '#111827', 'text-halo-color': '#ffffff', 'text-halo-width': 2 },
-    })
-    if (!map.getSource(SHAPES)) map.addSource(SHAPES, { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
-    const notPoint: FilterSpecification = ['!=', ['geometry-type'], 'Point']
-    const point: FilterSpecification = ['==', ['geometry-type'], 'Point']
-    const layers: AddLayerObject[] = [
-      { id: HALO_LAYERS[0], type: 'line', source: SHAPES, filter: haloFilter(this.highlightedId), paint: { 'line-color': COLOR, 'line-width': 10, 'line-opacity': 0.35 }, layout: { 'line-cap': 'round', 'line-join': 'round' } },
-      { id: HALO_LAYERS[1], type: 'circle', source: SHAPES, filter: haloFilter(this.highlightedId), paint: { 'circle-color': COLOR, 'circle-radius': 12, 'circle-opacity': 0.35 } },
-      // Invisible but still hit by queryRenderedFeatures; wider than the marks so hovering is easy
-      { id: HIT_LAYERS[0], type: 'line', source: SHAPES, filter: notPoint, paint: { 'line-width': 14, 'line-opacity': 0 } },
-      { id: HIT_LAYERS[1], type: 'fill', source: SHAPES, filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-opacity': 0 } },
-      { id: HIT_LAYERS[2], type: 'circle', source: SHAPES, filter: point, paint: { 'circle-radius': 12, 'circle-opacity': 0 } },
-    ]
-    if (!map.getSource(PROFILE_CURSOR)) map.addSource(PROFILE_CURSOR, { type: 'geojson', data: this.profileCursorData() })
-    layers.push({
-      id: PROFILE_CURSOR,
-      type: 'circle',
-      source: PROFILE_CURSOR,
-      paint: { 'circle-color': PROFILE_COLOR, 'circle-radius': 6, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 },
-    })
-    layers.forEach((l) => { if (!map.getLayer(l.id)) map.addLayer(l) })
+    addMeasureLayers(map, this.highlightedId, this.profileCursorData())
     this.refresh()
   }
 
@@ -254,10 +197,7 @@ export class MeasureControl implements IControl {
 
   // Start over with the finished drawings; a half-drawn one and its helper points can't be re-added
   private restart() {
-    const features = (this.draw?.getSnapshot() ?? []).filter((f) => {
-      const mode = f.properties.mode
-      return isMeasureMode(mode) && !f.properties.currentlyDrawing && (f.geometry.type !== 'Point' || mode === 'point')
-    })
+    const features = restorableFeatures(this.draw?.getSnapshot() ?? [])
     const mode = this.draw?.getMode()
     this.stopDraw(true)
     this.start(features, mode)
@@ -301,25 +241,11 @@ export class MeasureControl implements IControl {
   }
 
   private measure(f: GeoJSONStoreFeatures): Measurement | undefined {
-    const mode = f.properties.mode
-    const id = f.id
-    if (!isMeasureMode(mode) || id === undefined) return undefined
     const g = f.geometry
-    if (g.type === 'LineString') {
-      const path = f.properties.currentlyDrawing ? undefined : g.coordinates.map(([x, y]): [number, number] => [x, y])
-      const segmentsM = g.coordinates.slice(1).map((b, i) => length(lineString([g.coordinates[i], b]), { units: 'meters' }))
-      return { id, mode, path, lengthM: segmentsM.reduce((a, b) => a + b, 0), segmentsM }
-    }
-    if (g.type === 'Polygon') {
-      const ring = f.properties.currentlyDrawing ? undefined : g.coordinates[0].map(([x, y]): [number, number] => [x, y])
-      return { id, mode, ring, areaM2: area(f), perimeterM: length(f, { units: 'meters' }) }
-    }
-    // Line and polygon modes add helper points (closing, snapping) while drawing
-    if (g.type !== 'Point' || mode !== 'point') return undefined
-    const [lng, lat] = g.coordinates
-    if (!this.elevationsM.has(id)) {
+    const id = f.id
+    if (id !== undefined && g.type === 'Point' && f.properties.mode === 'point' && !this.elevationsM.has(id)) {
       this.elevationsM.set(id, 'pending')
-      elevationAt(this.queryClient, lng, lat)
+      elevationAt(this.queryClient, g.coordinates[0], g.coordinates[1])
         .then((m) => { this.elevationsM.set(id, m); this.refresh() })
         // Keep the failure so later draw changes don't refetch it
         .catch((err) => {
@@ -328,7 +254,6 @@ export class MeasureControl implements IControl {
           this.refresh()
         })
     }
-    const e = this.elevationsM.get(id)
-    return { id, mode, coordinates: [lng, lat], elevationM: typeof e === 'number' ? e : e === 'failed' ? null : undefined }
+    return featureMeasurement(f, id === undefined ? undefined : this.elevationsM.get(id))
   }
 }

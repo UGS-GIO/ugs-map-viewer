@@ -25,15 +25,14 @@ async function loadTile(x: number, y: number): Promise<ImageData> {
   }
 }
 
-/** Tile and pixel holding a lng/lat at ZOOM, in Web Mercator. */
-export function tilePixel(lng: number, lat: number) {
-  const n = 2 ** ZOOM
+/** A lng/lat's position in pixels across the whole ZOOM world, in Web Mercator; fractional. */
+export function worldPixel(lng: number, lat: number) {
+  const size = 2 ** ZOOM * TILE_SIZE
   const rad = (lat * Math.PI) / 180
-  const tx = ((lng + 180) / 360) * n
-  const ty = ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * n
-  const x = Math.floor(tx)
-  const y = Math.floor(ty)
-  return { x, y, px: Math.floor((tx - x) * TILE_SIZE), py: Math.floor((ty - y) * TILE_SIZE) }
+  return {
+    x: ((lng + 180) / 360) * size,
+    y: ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * size,
+  }
 }
 
 /** Terrarium packs meters as R*256 + G + B/256 - 32768. */
@@ -41,17 +40,42 @@ export function decodeTerrarium(r: number, g: number, b: number) {
   return r * 256 + g + b / 256 - 32768
 }
 
-/** Ground elevation in meters at a lng/lat, from the same DEM as 3D terrain. */
-export async function elevationAt(queryClient: QueryClient, lng: number, lat: number): Promise<number> {
-  const { x, y, px, py } = tilePixel(lng, lat)
+async function pixelElevation(queryClient: QueryClient, px: number, py: number) {
+  const x = Math.floor(px / TILE_SIZE)
+  const y = Math.floor(py / TILE_SIZE)
   // DEM tiles never change; unused ones drop after the app's gcTime
   const { data } = await queryClient.fetchQuery({
     queryKey: ['dem-tile', ZOOM, x, y],
     queryFn: () => loadTile(x, y),
     staleTime: Infinity,
   })
-  const i = (py * TILE_SIZE + px) * 4
+  const i = ((py - y * TILE_SIZE) * TILE_SIZE + (px - x * TILE_SIZE)) * 4
   return decodeTerrarium(data[i], data[i + 1], data[i + 2])
+}
+
+/** Blend of four corner values by the fractional position between them. */
+export function bilinear(v00: number, v10: number, v01: number, v11: number, tx: number, ty: number) {
+  return (v00 * (1 - tx) + v10 * tx) * (1 - ty) + (v01 * (1 - tx) + v11 * tx) * ty
+}
+
+/**
+ * Ground elevation in meters at a lng/lat, from the same DEM as 3D terrain. Blends the four nearest
+ * pixel centers so slopes and ground distance don't step at pixel edges; neighbors may sit in the
+ * next tile.
+ */
+export async function elevationAt(queryClient: QueryClient, lng: number, lat: number): Promise<number> {
+  const { x, y } = worldPixel(lng, lat)
+  const fx = x - 0.5
+  const fy = y - 0.5
+  const x0 = Math.floor(fx)
+  const y0 = Math.floor(fy)
+  const [v00, v10, v01, v11] = await Promise.all([
+    pixelElevation(queryClient, x0, y0),
+    pixelElevation(queryClient, x0 + 1, y0),
+    pixelElevation(queryClient, x0, y0 + 1),
+    pixelElevation(queryClient, x0 + 1, y0 + 1),
+  ])
+  return bilinear(v00, v10, v01, v11, fx - x0, fy - y0)
 }
 
 /** `count` evenly spaced points along a path, with their distance from its start in meters. */
