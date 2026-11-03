@@ -11,7 +11,7 @@ import {
 import { TerraDrawMapLibreGLAdapter } from 'terra-draw-maplibre-gl-adapter'
 import { elevationAt } from './dem-elevation'
 import { registerMeasureControl, type MeasureMode, type Measurement, type UnitSystem } from './measure-store'
-import { featureMeasurement, labelPoint, labelText, layersToRaise, restorableFeatures } from './measure-features'
+import { featureMeasurement, labelPoint, labelText, layersToRaise, restorableFeatures, type LoadedShape } from './measure-features'
 import {
   COLOR,
   HALO_LAYERS,
@@ -107,6 +107,29 @@ export class MeasureControl implements IControl {
    */
   finish = () => {
     this.map?.getCanvas().dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter' }))
+  }
+
+  /**
+   * Adds loaded shapes as measurements and zooms to them. Returns how many Terra Draw accepted; it
+   * rejects ones that fail its checks, such as a self-crossing polygon.
+   */
+  load(shapes: LoadedShape[]): number {
+    const draw = this.draw
+    if (!draw || !shapes.length) return 0
+    const results = draw.addFeatures(
+      shapes.map((s) => ({ type: 'Feature', id: draw.getFeatureId(), geometry: s.geometry, properties: { mode: s.mode } })),
+    )
+    const added = shapes.filter((_, i) => results[i]?.valid)
+    const coords = added.flatMap((s) =>
+      s.geometry.type === 'Point' ? [s.geometry.coordinates] : s.geometry.type === 'LineString' ? s.geometry.coordinates : s.geometry.coordinates[0],
+    )
+    if (coords.length) {
+      const xs = coords.map((c) => c[0])
+      const ys = coords.map((c) => c[1])
+      this.map?.fitBounds([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)], { padding: 60, maxZoom: 15 })
+    }
+    this.refresh()
+    return added.length
   }
 
   clear() {

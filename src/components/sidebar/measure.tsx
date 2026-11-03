@@ -14,6 +14,7 @@ import { formatCoordinatePair } from '@/lib/map/conversion-utils'
 import { MEASURE_MODES, formatArea, formatElevation, formatLength, formatQuantity, isMeasureMode, measurementQuantity, type Measurement, type UnitSystem } from '@/lib/map/measure-store'
 import { useUnits } from '@/hooks/use-units'
 import { UnitsToggle } from './units-card'
+import { LoadShapes } from './load-shapes'
 import { MEASURE_TOOLS } from '@/components/maps/measure-tools'
 
 // Recharts is heavy; load it only once a line is finished
@@ -103,7 +104,7 @@ function measurementTotals(measurements: Measurement[], units: UnitSystem) {
 export default function Measure() {
   const { measure } = useMeasureMode()
   const { setMeasureMode: setMeasure } = useMap()
-  const { measurements, highlightedId, setHighlight, setProfileCursor, remove, clearAll } = useMeasurements()
+  const { measurements, highlightedId, setHighlight, setProfileCursor, remove, load, clearAll } = useMeasurements()
   const { units } = useUnits()
   const totals = measurementTotals(measurements, units)
 
@@ -138,6 +139,7 @@ export default function Measure() {
               )
             })}
           </RadioGroup>
+          <LoadShapes onLoad={load} />
           <UnitsToggle className="mt-3" />
           <p className="mt-3 text-xs text-muted-foreground">
             Distances and areas are measured flat on the map, as the crow flies, even in 3D. Lines and areas also show their size along the ground, following the terrain.

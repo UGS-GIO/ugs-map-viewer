@@ -101,3 +101,20 @@ export async function convertGeoJSON(
         try { await gdal.close(ds) } catch { /* best-effort */ }
     }
 }
+
+/**
+ * Any OGR-readable file (zipped Shapefile or File Geodatabase, GeoPackage, FlatGeobuf, KML, …) →
+ * GeoJSON text in WGS84. A file with no declared CRS can't be placed, so ogr2ogr's error stands.
+ */
+export async function readAsGeoJSON(file: File): Promise<string> {
+    const gdal = await getGdal()
+    const { datasets } = await gdal.open(file)
+    const ds = datasets[0]
+    if (!ds) throw new Error(`Couldn't open "${file.name}".`)
+    try {
+        const result = await gdal.ogr2ogr(ds, ['-f', 'GeoJSON', '-t_srs', 'EPSG:4326'], 'read.geojson')
+        return new TextDecoder().decode(await gdal.getFileBytes(result))
+    } finally {
+        try { await gdal.close(ds) } catch { /* best-effort */ }
+    }
+}

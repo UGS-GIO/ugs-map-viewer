@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { GeoJSONStoreFeatures } from 'terra-draw'
-import { featureMeasurement, labelPoint, labelText, layersToRaise, restorableFeatures } from '../measure-features'
+import { featureMeasurement, labelPoint, labelText, layersToRaise, restorableFeatures, shapesFromGeoJSON } from '../measure-features'
 
 const line = (currentlyDrawing = false): GeoJSONStoreFeatures => ({
   type: 'Feature',
@@ -82,5 +82,32 @@ describe('labels', () => {
     expect(labelText({ id: 1, mode: 'linestring', lengthM: 1609.344 }, 'us')).toBe('1 mi')
     expect(labelText({ id: 1, mode: 'linestring', lengthM: 1609.344 }, 'metric')).toBe('1.61 km')
     expect(labelText({ id: 2, mode: 'point' }, 'us')).toBe('')
+  })
+})
+
+describe('shapesFromGeoJSON', () => {
+  it('splits multi-parts and maps each geometry to a measure tool', () => {
+    const shapes = shapesFromGeoJSON({
+      type: 'FeatureCollection',
+      features: [
+        { type: 'Feature', properties: {}, geometry: { type: 'MultiLineString', coordinates: [[[0, 0], [1, 1]], [[2, 2], [3, 3]]] } },
+        { type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[0, 0], [1, 0], [1, 1], [0, 0]], [[0.2, 0.2], [0.3, 0.2], [0.3, 0.3], [0.2, 0.2]]] } },
+        { type: 'Feature', properties: {}, geometry: { type: 'Point', coordinates: [5, 5, 1200] } },
+      ],
+    })
+    expect(shapes.map((s) => s.mode)).toEqual(['linestring', 'linestring', 'polygon', 'point'])
+    // Holes dropped, Z dropped
+    expect(shapes[2].geometry.coordinates).toHaveLength(1)
+    expect(shapes[3].geometry.coordinates).toEqual([5, 5])
+  })
+  it('rounds to the 9 decimals Terra Draw accepts', () => {
+    const [s] = shapesFromGeoJSON({ type: 'Point', coordinates: [-111.1234567891234, 40.1] })
+    expect(s.geometry.coordinates).toEqual([-111.123456789, 40.1])
+  })
+  it('skips junk and degenerate shapes', () => {
+    expect(shapesFromGeoJSON('nope')).toEqual([])
+    expect(shapesFromGeoJSON({ type: 'LineString', coordinates: [[0, 0]] })).toEqual([])
+    expect(shapesFromGeoJSON({ type: 'Polygon', coordinates: [[[0, 0], [1, 1], [0, 0]]] })).toEqual([])
+    expect(shapesFromGeoJSON({ type: 'Point', coordinates: ['a', 1] })).toEqual([])
   })
 })
