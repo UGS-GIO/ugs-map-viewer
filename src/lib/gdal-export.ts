@@ -5,7 +5,7 @@
  *
  * Ported from ugs-warehouse `viewer/src/gdal.ts`; keep the two in sync.
  */
-import { zipSync } from 'fflate'
+import { unzipSync, zipSync } from 'fflate'
 import initGdalJs from 'gdal3.js'
 import dataUrl from 'gdal3.js/dist/package/gdal3WebAssembly.data?url'
 import wasmUrl from 'gdal3.js/dist/package/gdal3WebAssembly.wasm?url'
@@ -105,6 +105,17 @@ export async function convertGeoJSON(
     }
 }
 
+const gdalMessage = (e: unknown) =>
+    e instanceof Error ? e.message : Array.isArray(e) ? e.map(m => m?.message).filter(Boolean).join(' ') || 'GDAL error' : String(e)
+
+// This GDAL build has no LIBKML, so its KML driver can't read a KMZ (a zip around a .kml)
+async function kmzToKml(file: File) {
+    if (!/\.kmz$/i.test(file.name)) return file
+    const entries = unzipSync(new Uint8Array(await file.arrayBuffer()), { filter: f => /\.kml$/i.test(f.name) })
+    const [name, bytes] = Object.entries(entries)[0] ?? []
+    return name && bytes ? new File([bytes], name.split('/').pop() ?? name) : file
+}
+
 /**
  * Every layer of any OGR-readable file (zipped Shapefiles or File Geodatabase, GeoPackage, KML, …)
  * as one GeoJSON FeatureCollection in WGS84. GeoJSON output holds one layer, so each is converted
@@ -112,7 +123,8 @@ export async function convertGeoJSON(
  */
 export async function readAsGeoJSON(file: File): Promise<{ type: 'FeatureCollection'; features: unknown[] }> {
     const gdal = await getGdal()
-    const { datasets } = await gdal.open(file)
+    // gdal3.js rejects with [{ no, message }], not an Error
+    const { datasets } = await gdal.open(await kmzToKml(file)).catch(() => ({ datasets: [] }))
     if (!datasets.length) throw new Error(`Couldn't open "${file.name}".`)
     const features: unknown[] = []
     try {
@@ -120,6 +132,7 @@ export async function readAsGeoJSON(file: File): Promise<{ type: 'FeatureCollect
             const layers = (await gdal.getInfo(ds)).layers ?? []
             for (const [l, layer] of layers.entries()) {
                 const out = await gdal.ogr2ogr(ds, ['-f', 'GeoJSON', '-t_srs', 'EPSG:4326', layer.name], `read-${d}-${l}.geojson`)
+                    .catch((e: unknown) => { throw new Error(`Couldn't read layer "${layer.name}" of "${file.name}": ${gdalMessage(e)}`) })
                 const json: unknown = JSON.parse(new TextDecoder().decode(await gdal.getFileBytes(out)))
                 if (typeof json === 'object' && json !== null && 'features' in json && Array.isArray(json.features)) features.push(...json.features)
             }

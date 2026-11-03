@@ -47,7 +47,7 @@ export function LoadShapes({ onLoad }: { onLoad?: (shapes: LoadedShape[]) => num
           }}
         />
       </label>
-      <p className="text-xs text-muted-foreground">GeoJSON, KML, GeoPackage, FlatGeobuf, or a zipped Shapefile or File Geodatabase.</p>
+      <p className="text-xs text-muted-foreground">GeoJSON, KML or KMZ, GML, GeoPackage, FlatGeobuf, or a zipped Shapefile or File Geodatabase.</p>
       {error && <p className="text-xs text-destructive">{error.message}</p>}
       {data && <p className="text-xs text-muted-foreground">{data}</p>}
     </div>
