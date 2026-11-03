@@ -7,6 +7,8 @@ import { useMap } from '@/hooks/use-map'
 import { MEASURE_MODES, formatArea, formatLength, formatQuantity, type Measurement, type UnitSystem } from '@/lib/map/measure-store'
 import { useUnits } from '@/hooks/use-units'
 import { UnitsToggle } from './units-card'
+import { LoadShapes } from './load-shapes'
+import { ExportShapes } from './export-shapes'
 import { MEASURE_TOOLS } from '@/components/maps/measure-tools'
 import { MeasurementRow } from './measurement-row'
 
@@ -24,7 +26,7 @@ function measurementTotals(measurements: Measurement[], units: UnitSystem) {
 export default function Measure() {
   const { measure } = useMeasureMode()
   const { setMeasureMode } = useMap()
-  const { measurements, highlightedId, setHighlight, setProfilePoint, remove, clearAll } = useMeasurements()
+  const { measurements, highlightedId, setHighlight, setProfilePoint, remove, load, clearAll } = useMeasurements()
   const { units } = useUnits()
   const totals = measurementTotals(measurements, units)
 
@@ -52,6 +54,7 @@ export default function Measure() {
             className="grid-cols-3"
             itemClassName="flex flex-col items-center gap-1"
           />
+          <LoadShapes onLoad={load} />
           <UnitsToggle className="mt-3" />
           <p className="mt-3 text-xs text-muted-foreground">
             Distances and areas are measured flat on the map, as the crow flies, even in 3D. Lines and areas also show their size along the ground, following the terrain.
@@ -63,9 +66,12 @@ export default function Measure() {
         <Card>
           <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle>Results</CardTitle>
-            <Button variant="ghost" size="sm" onClick={clearAll}>
-              <Trash2 className="size-4" /> Clear
-            </Button>
+            <div className="flex flex-wrap items-center justify-end gap-1">
+              <ExportShapes measurements={measurements} units={units} />
+              <Button variant="ghost" size="sm" onClick={clearAll}>
+                <Trash2 className="size-4" /> Clear
+              </Button>
+            </div>
           </CardHeader>
           {totals && <p className="px-6 pb-2 text-sm text-muted-foreground">{totals}</p>}
           <CardContent>
