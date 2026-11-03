@@ -25,7 +25,7 @@ export function RadioTiles<T extends string>({ label, value, onValueChange, opti
           value={o.value}
           onClick={() => onItemClick?.(o.value)}
           className={cn(
-            'rounded-sm bg-popover p-2 text-center text-sm hover:bg-accent hover:text-accent-foreground data-[checked]:bg-primary data-[checked]:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:p-3',
+            'rounded-sm bg-popover p-3 text-center text-sm hover:bg-accent hover:text-accent-foreground data-[checked]:bg-primary data-[checked]:text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             itemClassName,
           )}
         >

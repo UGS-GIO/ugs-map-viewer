@@ -29,14 +29,16 @@ export default function Measure() {
   const totals = measurementTotals(measurements, units)
 
   return (
-    <div className="grid gap-3 md:gap-4">
-      <h2 className="text-lg font-medium md:mb-4">Measure and Elevation Tools</h2>
+    <div className="space-y-2">
+      <div className="mb-4">
+        <h2 className="mb-2 text-lg font-medium">Measure and Elevation Tools</h2>
+      </div>
       <Card>
-        <CardHeader className="p-4 md:p-6">
+        <CardHeader>
           <CardTitle>Measure</CardTitle>
           <CardDescription>{measure ? MEASURE_TOOLS[measure].hint : 'Pick a tool, then draw on the map.'}</CardDescription>
         </CardHeader>
-        <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+        <CardContent>
           <RadioTiles
             label="Measure tool"
             value={measure ?? null}
@@ -59,14 +61,14 @@ export default function Measure() {
 
       {measurements.length > 0 && (
         <Card>
-          <CardHeader className="flex-row items-center justify-between p-4 md:p-6">
+          <CardHeader className="flex-row items-center justify-between space-y-0">
             <CardTitle>Results</CardTitle>
             <Button variant="ghost" size="sm" onClick={clearAll}>
               <Trash2 className="size-4" /> Clear
             </Button>
           </CardHeader>
-          {totals && <p className="px-4 pb-2 text-sm text-muted-foreground md:px-6">{totals}</p>}
-          <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
+          {totals && <p className="px-6 pb-2 text-sm text-muted-foreground">{totals}</p>}
+          <CardContent>
             <ul className="grid gap-2">
               {measurements.map((m, i) => <MeasurementRow key={m.id} m={m} units={units} index={i} highlighted={m.id === highlightedId} onHighlight={setHighlight} onProfilePoint={setProfilePoint} onRemove={remove} />)}
             </ul>

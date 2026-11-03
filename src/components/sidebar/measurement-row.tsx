@@ -53,7 +53,7 @@ export const MeasurementRow = memo(function MeasurementRow({ m, units, index, hi
       ref={highlighted ? (el) => { if (el && !el.matches(':hover')) el.scrollIntoView({ block: 'nearest' }) } : undefined}
       onPointerEnter={() => onHighlight?.(m.id)}
       onPointerLeave={() => onHighlight?.(undefined)}
-      className={cn('flex gap-3 rounded-sm bg-popover p-2 text-sm ring-primary md:p-3', highlighted && 'ring-2')}
+      className={cn('flex gap-3 rounded-sm bg-popover p-3 text-sm ring-primary', highlighted && 'ring-2')}
     >
       <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
       <div className="grid min-w-0 flex-1 gap-0.5">
