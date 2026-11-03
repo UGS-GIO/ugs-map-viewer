@@ -2,12 +2,12 @@ import { useEffect, useRef } from 'react'
 import { Source, useControl, useMap } from 'react-map-gl/maplibre'
 import type * as maplibregl from 'maplibre-gl'
 import type { RasterDEMSourceSpecification } from 'maplibre-gl'
-import { applyTerrain, TERRAIN_SOURCE_ID } from '@/lib/terrain'
+import { applyTerrain, TERRAIN_SOURCE_ID, TERRARIUM_TILES } from '@/lib/terrain'
 
 // Spike: free AWS Terrarium DEM; swap for a USGS 3DEP tileset if this ships.
 const DEM_SOURCE: RasterDEMSourceSpecification = {
   type: 'raster-dem',
-  tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+  tiles: [TERRARIUM_TILES],
   encoding: 'terrarium',
   tileSize: 256,
   maxzoom: 15,

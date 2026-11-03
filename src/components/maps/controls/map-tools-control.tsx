@@ -4,6 +4,7 @@ import { PortalControl } from './portal-control'
 import { ControlButton } from './control-button'
 import { Square, Pentagon, X, SquareDashedMousePointer, CopyPlus } from 'lucide-react'
 import type { DrawMode } from '../types'
+import { ActiveModeLabel } from './active-mode-label'
 
 interface MapToolsControlProps {
   // Draw mode
@@ -132,11 +133,7 @@ export function MapToolsControl({
           )}
 
           {/* Active mode indicator */}
-          {activeModeLabel && (
-            <div className="absolute top-1/2 right-full mr-1.5 -translate-y-1/2 whitespace-nowrap rounded-md bg-primary px-2 py-0.5 text-[11px] font-medium text-primary-foreground shadow-sm">
-              {activeModeLabel}
-            </div>
-          )}
+          {activeModeLabel && <ActiveModeLabel>{activeModeLabel}</ActiveModeLabel>}
         </div>,
         container
       )

@@ -6,6 +6,7 @@ import { NavigationMapControl } from './navigation-map-control'
 import type { GetLegendData } from './export-control'
 
 const ExportMapControl = lazy(() => import('./export-map-control'))
+const MeasureMapControl = lazy(() => import('./measure-map-control'))
 
 function HomeMapControl() {
   useControl(() => new HomeControl(), { position: 'top-left' })
@@ -35,6 +36,9 @@ export function MapChromeControls({ isMobile, getLegendData }: { isMobile: boole
         showAccuracyCircle={false}
         fitBoundsOptions={{ maxZoom: 18 }}
       />
+      <Suspense fallback={null}>
+        <MeasureMapControl />
+      </Suspense>
       {!isMobile && (
         <>
           <ScaleMapControl />

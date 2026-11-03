@@ -12,7 +12,7 @@ import {
   BOX_SELECT_MIN_ZOOM,
 } from './constants'
 import { BASEMAP_STYLES, DEFAULT_BASEMAP, buildBasemapStyle } from '@/lib/basemaps'
-import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
+import { BoxSelectOverlay, ViewModeControl, MapToolsControl, MeasureToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
 import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds, isWithinZoomRange, effectiveZoomRange } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
@@ -35,6 +35,7 @@ import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
 import { toast } from 'sonner'
 import { Terrain3D, Hillshade, MAX_PITCH, SKY } from './terrain-layers'
+import { useMeasureMode } from '@/hooks/use-measure'
 
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps, PMTilesStyleOverride } from './types'
@@ -293,6 +294,7 @@ export default function DataMap({
   hasResults = false,
 }: DataMapProps) {
   const mapRef = useRef<MapRef>(null)
+  const { measure: measureMode } = useMeasureMode()
   const isMobile = useIsMobile()
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -608,7 +610,7 @@ export default function DataMap({
 
   // Handle map click - triggers mutation instead of direct fetch
   const handleMapClick = useCallback((e: MapLayerMouseEvent) => {
-    if (boxSelectMode || activeDrawShape !== 'off') return
+    if (boxSelectMode || activeDrawShape !== 'off' || measureMode) return
     if (justFinishedDrawingRef.current) {
       justFinishedDrawingRef.current = false
       return
@@ -626,7 +628,7 @@ export default function DataMap({
 
     const isAdditive = isAdditiveMode || (e.originalEvent?.shiftKey ?? false)
     queryAtPoint(map, e.point, clickTolerance, isAdditive, { extractBbox: true, clearOnEmpty: true })
-  }, [onFeatureClick, hasClickableLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, activeDrawShape, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange, layerFilters])
+  }, [onFeatureClick, hasClickableLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, activeDrawShape, measureMode, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange, layerFilters])
 
   // Handle map move end - track zoom only (box select now uses click-to-confirm)
   const handleMoveEnd = useCallback(() => {
@@ -749,7 +751,7 @@ export default function DataMap({
         refreshExpiredTiles={false}
         onMoveEnd={handleMoveEnd}
         onClick={boxSelectMode ? undefined : handleMapClick}
-        cursor={activeDrawShape !== 'off' ? 'crosshair' : boxSelectMode ? 'move' : onFeatureClick ? (isAdditiveMode ? 'copy' : 'pointer') : 'grab'}
+        cursor={activeDrawShape !== 'off' || measureMode ? 'crosshair' : boxSelectMode ? 'move' : onFeatureClick ? (isAdditiveMode ? 'copy' : 'pointer') : 'grab'}
         boxZoom={false}
         attributionControl={false}
         maxPitch={MAX_PITCH}
@@ -785,6 +787,9 @@ export default function DataMap({
           onAdditiveModeToggle={onAdditiveModeToggle}
           position="top-right"
         />
+
+        {/* Rendered after MapToolsControl so it stacks below as its own group */}
+        <MeasureToolsControl />
 
         {/* Data layers in sidebar/config order. First = top of stack.
             Render order = top → bottom so each `beforeId` references an already-mounted layer. */}
