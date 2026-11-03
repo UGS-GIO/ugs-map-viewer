@@ -1,21 +1,21 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { MercatorCoordinate } from 'maplibre-gl'
-import { lineString, polygon } from '@turf/helpers'
+import { degreesToRadians, lengthToDegrees, lineString, polygon, radiansToDegrees } from '@turf/helpers'
+import { along } from '@turf/along'
 import { bbox } from '@turf/bbox'
-import { booleanPointInPolygon } from '@turf/boolean-point-in-polygon'
 import { length } from '@turf/length'
+import { pointGrid } from '@turf/point-grid'
+import { zoomForResolution } from './map-scale'
 import { TERRARIUM_TILES } from '@/lib/terrain'
 import { queryKeys } from '@/lib/query-keys'
 
 // z13 is ~15 m per pixel in Utah, close to the source DEM; one tile covers a few miles
 const MAX_ZOOM = 13
 const TILE_SIZE = 256
-const M_PER_PX_Z0 = 156_543
 
 /** The DEM zoom whose pixels are about half `spacingM`, so wide samples don't pull thousands of z13 tiles. */
 export function zoomForSpacing(spacingM: number, lat: number) {
-  const z = Math.log2((M_PER_PX_Z0 * Math.cos((lat * Math.PI) / 180)) / (spacingM / 2))
-  return Math.max(6, Math.min(MAX_ZOOM, Math.round(z)))
+  return Math.max(6, Math.min(MAX_ZOOM, Math.round(zoomForResolution(spacingM / 2, lat, TILE_SIZE))))
 }
 
 // One canvas reused for every tile decode
@@ -99,16 +99,12 @@ export function segmentLengthsM(path: number[][]) {
 
 /** `count` evenly spaced points along a path, with their distance from its start in meters. */
 export function samplePath(path: [number, number][], count: number) {
-  const segments = segmentLengthsM(path).map((m, i) => ({ a: path[i], b: path[i + 1], m }))
-  const total = segments.reduce((sum, s) => sum + s.m, 0)
-  let seg = 0
-  let start = 0
+  const line = lineString(path)
+  const total = length(line, { units: 'meters' })
   return Array.from({ length: count }, (_, i) => {
-    const d = (total * i) / (count - 1)
-    while (seg < segments.length - 1 && start + segments[seg].m < d) start += segments[seg++].m
-    const { a, b, m } = segments[seg]
-    const t = m ? Math.min(1, (d - start) / m) : 0
-    return { distanceM: d, lng: a[0] + (b[0] - a[0]) * t, lat: a[1] + (b[1] - a[1]) * t }
+    const distanceM = (total * i) / (count - 1)
+    const [lng, lat] = along(line, distanceM, { units: 'meters' }).geometry.coordinates
+    return { distanceM, lng, lat }
   })
 }
 
@@ -139,7 +135,6 @@ export function groundDistanceM(samples: Pick<ProfileSample, 'distanceM' | 'elev
   return samples.slice(1).reduce((sum, p, i) => sum + Math.hypot(p.distanceM - samples[i].distanceM, p.elevationM - samples[i].elevationM), 0)
 }
 
-const M_PER_DEG_LAT = 111_320
 // Slope is taken over this run, about two DEM pixels, so one noisy pixel doesn't dominate
 const SLOPE_RUN_M = 30
 const MAX_GRID_POINTS = 1500
@@ -147,17 +142,11 @@ const MAX_GRID_POINTS = 1500
 /** Grid points inside a ring, spaced so there are at most about MAX_GRID_POINTS (never closer than SLOPE_RUN_M). */
 export function gridInRing(ring: [number, number][], areaM2: number) {
   const poly = polygon([ring])
-  const [minX, minY, maxX, maxY] = bbox(poly)
+  const box = bbox(poly)
+  const [minX, minY, maxX, maxY] = box
   const spacingM = Math.max(SLOPE_RUN_M, Math.sqrt(areaM2 / MAX_GRID_POINTS))
   const midLat = (minY + maxY) / 2
-  const dLat = spacingM / M_PER_DEG_LAT
-  const dLng = spacingM / (M_PER_DEG_LAT * Math.cos((midLat * Math.PI) / 180))
-  const points: [number, number][] = []
-  for (let y = minY + dLat / 2; y < maxY; y += dLat) {
-    for (let x = minX + dLng / 2; x < maxX; x += dLng) {
-      if (booleanPointInPolygon([x, y], poly)) points.push([x, y])
-    }
-  }
+  const points = pointGrid(box, spacingM, { units: 'meters', mask: poly }).features.map((f): [number, number] => [f.geometry.coordinates[0], f.geometry.coordinates[1]])
   // Too small for one grid cell: sample its middle so it still gets a slope
   if (!points.length) points.push([(minX + maxX) / 2, midLat])
   return { points, spacingM, midLat }
@@ -176,15 +165,15 @@ export async function surfaceStats(queryClient: QueryClient, ring: [number, numb
   const { points, spacingM, midLat } = gridInRing(ring, areaM2)
   // Slope over the grid spacing, read at a matching zoom, so big areas don't pull thousands of z13 tiles
   const runM = spacingM
-  const dLat = runM / M_PER_DEG_LAT
+  const dLat = lengthToDegrees(runM, 'meters')
   const triples = points.flatMap(([lng, lat]): [number, number][] => {
-    const dLng = runM / (M_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180))
+    const dLng = dLat / Math.cos(degreesToRadians(lat))
     return [[lng, lat], [lng + dLng, lat], [lng, lat + dLat]]
   })
   const e = await elevationsAt(queryClient, triples, zoomForSpacing(spacingM, midLat))
   const angles = points.map((_, i) => slopeAngle(e[i * 3 + 1] - e[i * 3], e[i * 3 + 2] - e[i * 3], runM))
   // A tilted patch covers 1/cos(slope) times its footprint
   const factor = angles.reduce((sum, a) => sum + 1 / Math.cos(a), 0) / angles.length
-  const meanSlopeDeg = (angles.reduce((sum, a) => sum + a, 0) / angles.length) * (180 / Math.PI)
+  const meanSlopeDeg = radiansToDegrees(angles.reduce((sum, a) => sum + a, 0) / angles.length)
   return { surfaceAreaM2: areaM2 * factor, meanSlopeDeg }
 }

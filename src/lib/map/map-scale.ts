@@ -7,10 +7,14 @@ const METERS_PER_CSS_PIXEL = 0.0254 / 96
 // sphere MapLibre measures distance with (`LngLat.distanceTo`, mean radius
 // 6,371,008.8 m), so a scale converted here matches the footer readout.
 const METERS_PER_PIXEL_Z0 = (2 * Math.PI * 6_371_008.8) / 512
+/** Fractional zoom whose `tileSize`-pixel tiles have `metersPerPixel` ground resolution at `latitude`. */
+export function zoomForResolution(metersPerPixel: number, latitude: number, tileSize = 512): number {
+  return Math.log2((METERS_PER_PIXEL_Z0 * Math.cos((latitude * Math.PI) / 180)) / metersPerPixel) + Math.log2(512 / tileSize)
+}
+
 /** Zoom level at which the map shows the ratio scale 1:`denominator` at `latitude`. */
 export function zoomForScale(denominator: number, latitude: number): number {
-  const metersPerPixel = denominator * METERS_PER_CSS_PIXEL
-  return Math.log2((METERS_PER_PIXEL_Z0 * Math.cos((latitude * Math.PI) / 180)) / metersPerPixel)
+  return zoomForResolution(denominator * METERS_PER_CSS_PIXEL, latitude)
 }
 
 /** Ratio scale denominator (the X in 1:X) for a ground resolution in meters per CSS pixel. */
