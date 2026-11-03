@@ -31,7 +31,7 @@ export function LoadShapes({ onLoad }: { onLoad?: (shapes: LoadedShape[]) => num
 
   return (
     <div className="mt-3 grid gap-1">
-      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-sm bg-popover p-2 text-sm hover:bg-accent hover:text-accent-foreground focus-within:ring-2 focus-within:ring-ring md:p-3">
+      <label className="flex cursor-pointer items-center justify-center gap-2 rounded-sm bg-popover p-3 text-sm hover:bg-accent hover:text-accent-foreground focus-within:ring-2 focus-within:ring-ring">
         <Upload className="size-4" />
         {isPending ? 'Reading file…' : 'Load shapes from a file'}
         <input
