@@ -71,7 +71,8 @@ export default function ElevationProfile({ id, path, units, onPoint }: {
             const i = activeTooltipIndex == null ? undefined : Number(activeTooltipIndex)
             const next = i === pinnedIndex ? undefined : i
             setPinnedIndex(next)
-            lastHover.current = undefined
+            // After unpinning, the next move should place the hover marker even on the same sample
+            if (next === undefined) lastHover.current = undefined
             onPoint?.(id, 'pin', next === undefined ? undefined : data[next]?.at)
             onPoint?.(id, 'hover', undefined)
           }}
