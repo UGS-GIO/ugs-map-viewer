@@ -35,6 +35,7 @@ import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
 import { toast } from 'sonner'
 import { Terrain3D, Hillshade, MAX_PITCH, SKY } from './terrain-layers'
+import { useMeasureMode } from '@/hooks/use-measure'
 
 // Re-export types for consumers
 export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps, PMTilesStyleOverride } from './types'
@@ -266,10 +267,6 @@ export default function DataMap({
   toolbarDrawShape = 'off',
   onToolbarDrawToggle,
   onCancelMode,
-  measureMode,
-  onMeasureModeChange,
-  hasMeasurements,
-  onClearMeasurements,
   spatialFilter,
   onSpatialFilterChange,
   boxSelectMode = false,
@@ -297,6 +294,7 @@ export default function DataMap({
   hasResults = false,
 }: DataMapProps) {
   const mapRef = useRef<MapRef>(null)
+  const { measure: measureMode } = useMeasureMode()
   const isMobile = useIsMobile()
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -791,15 +789,7 @@ export default function DataMap({
         />
 
         {/* Rendered after MapToolsControl so it stacks below as its own group */}
-        {onMeasureModeChange && (
-          <MeasureToolsControl
-            measureMode={measureMode}
-            onMeasureModeChange={onMeasureModeChange}
-            hasMeasurements={hasMeasurements}
-            onClearMeasurements={onClearMeasurements}
-            position="top-right"
-          />
-        )}
+        <MeasureToolsControl />
 
         {/* Data layers in sidebar/config order. First = top of stack.
             Render order = top → bottom so each `beforeId` references an already-mounted layer. */}

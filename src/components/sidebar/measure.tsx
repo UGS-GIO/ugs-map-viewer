@@ -1,18 +1,16 @@
 import { lazy, memo, Suspense } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { surfaceStats } from '@/lib/map/dem-elevation'
-import { Radio } from '@base-ui/react/radio'
-import { RadioGroup } from '@base-ui/react/radio-group'
 import { Trash2, X } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { radioTileClass } from '@/components/ui/radio-tile'
+import { RadioTiles } from '@/components/ui/radio-tiles'
 import { cn } from '@/lib/utils'
 import { useMeasureMode, useMeasurements } from '@/hooks/use-measure'
 import { useMap } from '@/hooks/use-map'
 import { useCoordinateFormat } from '@/hooks/use-map-coordinates'
 import { formatCoordinatePair } from '@/lib/map/conversion-utils'
-import { MEASURE_MODES, formatArea, formatElevation, formatLength, formatQuantity, isMeasureMode, measurementQuantity, type Measurement, type UnitSystem } from '@/lib/map/measure-store'
+import { MEASURE_MODES, formatArea, formatElevation, formatLength, formatQuantity, measurementQuantity, type Measurement, type UnitSystem } from '@/lib/map/measure-store'
 import { useUnits } from '@/hooks/use-units'
 import { UnitsToggle } from './units-card'
 import { LoadShapes } from './load-shapes'
@@ -118,28 +116,19 @@ export default function Measure() {
           <CardDescription>{measure ? MEASURE_TOOLS[measure].hint : 'Pick a tool, then draw on the map.'}</CardDescription>
         </CardHeader>
         <CardContent className="p-4 pt-0 md:p-6 md:pt-0">
-          <RadioGroup
-            aria-label="Measure tool"
+          <RadioTiles
+            label="Measure tool"
             value={measure ?? null}
-            onValueChange={(v) => setMeasureMode(isMeasureMode(v) ? v : undefined)}
-            className="grid grid-cols-3 gap-2"
-          >
-            {MEASURE_MODES.map((mode) => {
+            onValueChange={setMeasureMode}
+            // Clicking the active tool again turns measuring off
+            onItemClick={(mode) => measure === mode && setMeasureMode(undefined)}
+            options={MEASURE_MODES.map((mode) => {
               const { label, icon: Icon } = MEASURE_TOOLS[mode]
-              return (
-                <Radio.Root
-                  key={mode}
-                  value={mode}
-                  // Clicking the active tool again turns measuring off
-                  onClick={() => measure === mode && setMeasureMode(undefined)}
-                  className={cn(radioTileClass, 'flex flex-col items-center gap-1')}
-                >
-                  <Icon className="size-4" />
-                  {label}
-                </Radio.Root>
-              )
+              return { value: mode, label: <><Icon className="size-4" />{label}</> }
             })}
-          </RadioGroup>
+            className="grid-cols-3"
+            itemClassName="flex flex-col items-center gap-1"
+          />
           <LoadShapes onLoad={load} />
           <UnitsToggle className="mt-3" />
           <p className="mt-3 text-xs text-muted-foreground">

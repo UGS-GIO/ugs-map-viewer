@@ -12,10 +12,6 @@ export function isMeasureMode(value: unknown): value is MeasureMode {
 export const UNIT_SYSTEMS = ['us', 'metric'] as const
 export type UnitSystem = (typeof UNIT_SYSTEMS)[number]
 
-export function isUnitSystem(value: unknown): value is UnitSystem {
-  return UNIT_SYSTEMS.some((u) => u === value)
-}
-
 export interface Measurement {
   id: string | number
   mode: MeasureMode

@@ -91,7 +91,7 @@ function fromGeometry(g: unknown): LoadedShape[] {
     case 'Point': return isPosition(c) ? [{ mode: 'point', geometry: { type: 'Point', coordinates: pos(c) } }] : []
     case 'MultiPoint': return isPositions(c) ? c.map((p) => ({ mode: 'point', geometry: { type: 'Point', coordinates: pos(p) } })) : []
     case 'LineString': return isPositions(c) ? line(c) : []
-    case 'MultiLineString': return Array.isArray(c) && c.every(isPositions) ? c.flatMap(line) : []
+    case 'MultiLineString': return isRings(c) ? c.flatMap(line) : []
     case 'Polygon': return isRings(c) ? poly(c) : []
     case 'MultiPolygon': return Array.isArray(c) && c.every(isRings) ? c.flatMap(poly) : []
     case 'GeometryCollection': return Array.isArray(g.geometries) ? g.geometries.flatMap(fromGeometry) : []

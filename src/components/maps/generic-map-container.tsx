@@ -26,7 +26,7 @@ import { useMap } from '@/hooks/use-map'
 import { useGetCurrentPage } from '@/hooks/use-get-current-page'
 import { useAppBasemaps } from '@/hooks/use-app-basemaps'
 import { useAppTerrain } from '@/hooks/use-app-terrain'
-import { useHasMeasurements, useMeasureMode } from '@/hooks/use-measure'
+import { useMeasureMode } from '@/hooks/use-measure'
 import type { MeasureMode } from '@/lib/map/measure-store'
 import { MapChromeControls } from '@/components/maps/controls/map-chrome-controls'
 import type { LegendItem } from '@/components/maps/controls'
@@ -493,7 +493,6 @@ export default function GenericMapContainer({
 
   // Register callback so startDraw can clear conflicting container state
   const { measure, setMeasure } = useMeasureMode()
-  const { hasMeasurements, clearAll: clearMeasurements } = useHasMeasurements()
 
   const prepareForDraw = useCallback(() => {
     clearSelectionState()
@@ -684,10 +683,6 @@ export default function GenericMapContainer({
       toolbarDrawShape={toolbarDrawShape}
       onToolbarDrawToggle={handleToolbarDrawToggle}
       onCancelMode={handleCancelMode}
-      measureMode={measure}
-      onMeasureModeChange={handleMeasureModeChange}
-      hasMeasurements={hasMeasurements}
-      onClearMeasurements={clearMeasurements}
       spatialFilter={spatialFilter}
       onSpatialFilterChange={handleSpatialFilterChange}
       boxSelectMode={boxSelectMode}

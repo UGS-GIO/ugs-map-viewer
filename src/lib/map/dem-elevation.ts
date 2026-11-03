@@ -82,11 +82,6 @@ export async function elevationsAt(queryClient: QueryClient, lngLats: [number, n
   return corners.map(({ x0, y0, tx, ty }) => bilinear(pixel(x0, y0), pixel(x0 + 1, y0), pixel(x0, y0 + 1), pixel(x0 + 1, y0 + 1), tx, ty))
 }
 
-export async function elevationAt(queryClient: QueryClient, lng: number, lat: number): Promise<number> {
-  const [e] = await elevationsAt(queryClient, [[lng, lat]])
-  return e
-}
-
 /** Geodesic length of each leg of a path, in meters. */
 export function segmentLengthsM(path: number[][]) {
   return path.slice(1).map((b, i) => length(lineString([path[i], b]), { units: 'meters' }))

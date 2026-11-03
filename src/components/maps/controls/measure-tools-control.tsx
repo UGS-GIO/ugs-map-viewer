@@ -4,35 +4,22 @@ import { Check, Ruler, Trash2 } from 'lucide-react'
 import { PortalControl } from './portal-control'
 import { ControlButton } from './control-button'
 import { ActiveModeLabel } from './active-mode-label'
-import { MEASURE_MODES, type MeasureMode } from '@/lib/map/measure-store'
+import { MEASURE_MODES } from '@/lib/map/measure-store'
 import { MEASURE_TOOLS } from '../measure-tools'
-import { useMeasureDrawing } from '@/hooks/use-measure'
+import { useMeasureMode, useMeasureToolbar } from '@/hooks/use-measure'
+import { useMap } from '@/hooks/use-map'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useMapInstance } from '@/context/map-instance-context'
 import { Button } from '@/components/ui/button'
 
-interface MeasureToolsControlProps {
-  measureMode?: MeasureMode
-  onMeasureModeChange: (mode: MeasureMode | undefined) => void
-  hasMeasurements?: boolean
-  onClearMeasurements?: () => void
-  position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
-}
-
-/**
- * Measure tools in their own group, apart from the filter and select tools, so the ruler (not the
- * other group's cancel X) is what turns measuring off.
- */
-export function MeasureToolsControl({
-  measureMode,
-  onMeasureModeChange,
-  hasMeasurements = false,
-  onClearMeasurements,
-  position = 'top-right',
-}: MeasureToolsControlProps) {
-  const control = useControl<PortalControl>(() => new PortalControl(), { position })
+/** Measure tools in their own group, so the ruler (not the filter group's X) turns measuring off. */
+export function MeasureToolsControl() {
+  const control = useControl<PortalControl>(() => new PortalControl(), { position: 'top-right' })
   const container = control?.getContainer()
-  const { drawing, finish } = useMeasureDrawing()
+  const { measure: measureMode } = useMeasureMode()
+  // Goes through the map container so turning measuring on ends the other modes
+  const { setMeasureMode: onMeasureModeChange } = useMap()
+  const { hasMeasurements, drawing, finish, clear } = useMeasureToolbar()
   const mapContainer = useMapInstance().map?.getContainer()
   // Touch has no Enter key and double-tapping the last point isn't discoverable
   const showFinish = useIsMobile() && drawing && measureMode !== 'point' && finish
@@ -56,9 +43,7 @@ export function MeasureToolsControl({
               active={measureMode === mode}
             />
           ))}
-          {hasMeasurements && onClearMeasurements && (
-            <ControlButton icon={Trash2} title="Clear measurements" onClick={onClearMeasurements} variant="danger" />
-          )}
+          {hasMeasurements && <ControlButton icon={Trash2} title="Clear measurements" onClick={clear} variant="danger" />}
           {measureMode && <ActiveModeLabel>{MEASURE_TOOLS[measureMode].title}</ActiveModeLabel>}
           {/* Floats over the map: the control group clips anything hanging off its side */}
           {showFinish && mapContainer && createPortal(

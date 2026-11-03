@@ -19,15 +19,10 @@ export function useMeasureMode() {
   return { measure, setMeasure }
 }
 
-/** The map's measure control, once it's mounted. */
-function useMeasureControl() {
-  const { map } = useMapInstance()
-  return useSyncExternalStore(subscribeMeasureControls, () => getMeasureControl(map))
-}
-
-/** The control's state, picked so a component only re-renders when its pick changes. */
+/** The map's measure control and a pick of its state; re-renders only when the pick changes. */
 function useMeasureState<T>(pick: (control: MeasureControl | undefined) => T) {
-  const control = useMeasureControl()
+  const { map } = useMapInstance()
+  const control = useSyncExternalStore(subscribeMeasureControls, () => getMeasureControl(map))
   return { control, value: useSyncExternalStore(control?.subscribe ?? noop, () => pick(control)) }
 }
 
@@ -46,14 +41,9 @@ export function useMeasurements() {
   }
 }
 
-/** Whether a line or polygon is part-drawn, and a way to finish it. */
-export function useMeasureDrawing() {
-  const { control, value: drawing } = useMeasureState((c) => c?.drawing ?? false)
-  return { drawing, finish: control?.finish }
-}
-
-/** Whether any measurement is on the map; a boolean so drawing doesn't re-render the map container. */
-export function useHasMeasurements() {
+/** What the map's measure toolbar shows; booleans so drawing doesn't re-render it every move. */
+export function useMeasureToolbar() {
   const { control, value: hasMeasurements } = useMeasureState((c) => (c?.measurements.length ?? 0) > 0)
-  return { hasMeasurements, clearAll: () => control?.clear() }
+  const { value: drawing } = useMeasureState((c) => c?.drawing ?? false)
+  return { hasMeasurements, drawing, finish: control?.finish, clear: () => control?.clear() }
 }
