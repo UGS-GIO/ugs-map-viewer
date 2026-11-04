@@ -41,7 +41,9 @@ export class MapHistoryControl implements maplibregl.IControl {
     this.unsubscribe = history.subscribe(({ action, location }) => {
       if (action.type !== 'PUSH' && action.type !== 'REPLACE') {
         const camera = cameraOf(location.search);
-        if (camera) map.easeTo(camera);
+        // Not easeTo: it fixes its pixel anchor at the start, so the results panel opening or closing
+        // with the step resizes the map mid-animation and lands it half the width change off
+        if (camera) map.jumpTo(camera);
       }
       // After the router's microtask writes the entry, so the Navigation API sees it
       queueMicrotask(updateButtons);
