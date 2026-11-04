@@ -82,8 +82,8 @@ export interface DataMapProps {
   clickBufferBounds?: BoundsBox | null
   /** Callback when click buffer should update */
   onClickBufferChange?: (bounds: BoundsBox | null) => void
-  /** Feature geometry bounds for zoom extent (controlled by parent) */
-  featureBbox?: BoundsBox | null
+  /** Bounds to fit on load instead of the center/zoom props */
+  initialBounds?: BoundsBox | null
   /** Callback when feature bbox should update */
   onFeatureBboxChange?: (bbox: BoundsBox | null) => void
   /** Callback when selection should be cleared (from context menu) */

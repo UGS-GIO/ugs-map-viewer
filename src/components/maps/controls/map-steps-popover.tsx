@@ -1,8 +1,11 @@
 import { useState, useSyncExternalStore } from 'react'
 import { Popover } from '@base-ui/react/popover'
-import { History, Pencil, X } from 'lucide-react'
+import { useMutation } from '@tanstack/react-query'
+import { History, Link, Pencil, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { MapStep, MapSteps } from '@/lib/map/map-steps'
+import { buildStopsLink, toStopHref, type SharedStops } from '@/lib/map/shared-stops'
 
 function StepLabelInput({ step, onDone }: { step: MapStep; onDone: (label?: string) => void }) {
   return (
@@ -28,10 +31,26 @@ function StepLabelInput({ step, onDone }: { step: MapStep; onDone: (label?: stri
 /**
  * The map history as a list: jump to any step, and label the ones worth coming back to. Steps are
  * browser history entries, so they can't be removed; a label is how you mark the ones that matter.
+ * Labeled steps share as one link, which opens with them listed as stops.
  */
-export function MapStepsPopover({ steps: store }: { steps: MapSteps }) {
+export function MapStepsPopover({ steps: store, shared }: { steps: MapSteps; shared: SharedStops }) {
   const { steps, current } = useSyncExternalStore(store.subscribe, store.getSnapshot)
+  const { stops, unseen } = useSyncExternalStore(shared.subscribe, shared.getSnapshot)
   const [editing, setEditing] = useState<number>()
+  const [open, setOpen] = useState(false)
+  const labeled = steps.filter((step) => step.label)
+
+  const copyLink = useMutation({
+    mutationFn: async () => {
+      const link = await buildStopsLink(window.location.origin, labeled.map((step) => ({ label: step.label ?? '', href: toStopHref(step.href) })))
+      await navigator.clipboard.writeText(link)
+    },
+    onSuccess: () => toast.success(`Link to ${labeled.length} ${labeled.length === 1 ? 'stop' : 'stops'} copied`),
+    onError: (error) => {
+      console.error('Could not copy the share link:', error)
+      toast.error('Could not copy the link. Please try again.')
+    },
+  })
 
   const finishEditing = (index: number, label?: string) => {
     if (label !== undefined) store.setLabel(index, label)
@@ -39,7 +58,13 @@ export function MapStepsPopover({ steps: store }: { steps: MapSteps }) {
   }
 
   return (
-    <Popover.Root>
+    <Popover.Root
+      open={open || unseen}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) shared.markSeen()
+      }}
+    >
       <Popover.Trigger className='maplibregl-ctrl-icon' title='Map history' aria-label='Map history'>
         <History size={18} strokeWidth={2} aria-hidden />
       </Popover.Trigger>
@@ -52,6 +77,28 @@ export function MapStepsPopover({ steps: store }: { steps: MapSteps }) {
                 <X size={14} />
               </Popover.Close>
             </div>
+            {stops.length > 0 && (
+              <section aria-label='Shared stops' className='mb-2 border-b border-border pb-2'>
+                <div className='mb-1 flex items-center justify-between'>
+                  <h3 className='text-xs font-medium text-muted-foreground'>Shared stops</h3>
+                  <button type='button' onClick={shared.clear} className='text-xs text-muted-foreground hover:text-foreground'>Clear</button>
+                </div>
+                <ol>
+                  {stops.map((stop, i) => (
+                    <li key={`${i}-${stop.href}`}>
+                      <button
+                        type='button'
+                        onClick={() => shared.open(stop)}
+                        className='flex w-full items-baseline gap-1.5 rounded-sm px-1.5 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground'
+                      >
+                        <span className='w-4 shrink-0 text-right tabular-nums opacity-60'>{String.fromCharCode(65 + (i % 26))}</span>
+                        <span className='min-w-0 flex-1 truncate font-medium'>{stop.label}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
             <ol className='max-h-80 overflow-y-auto' aria-label='Map history steps'>
               {[...steps].reverse().map((step) => (
                 <li key={step.index} className='flex items-center gap-1'>
@@ -85,6 +132,16 @@ export function MapStepsPopover({ steps: store }: { steps: MapSteps }) {
                 </li>
               ))}
             </ol>
+            <button
+              type='button'
+              onClick={() => copyLink.mutate()}
+              disabled={labeled.length === 0 || copyLink.isPending}
+              title={labeled.length === 0 ? 'Label the steps to share first' : undefined}
+              className='mt-2 flex w-full items-center justify-center gap-1.5 rounded-sm bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50'
+            >
+              <Link size={12} aria-hidden />
+              {labeled.length === 0 ? 'Label steps to share them' : `Copy link to ${labeled.length} labeled ${labeled.length === 1 ? 'step' : 'steps'}`}
+            </button>
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>

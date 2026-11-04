@@ -316,7 +316,7 @@ export default function GenericMapContainer({
   const currentPage = useGetCurrentPage()
   const { defaultStyle: defaultBasemap } = useAppBasemaps()
   const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
-  const { viewMode, setViewMode, center, zoom, pitch, bearing, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords, spatialFilter, setSpatialFilter, boxSelectBounds, setBoxSelectBounds } = useMapUrlSync()
+  const { viewMode, setViewMode, center, zoom, pitch, bearing, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords, initialBounds, spatialFilter, setSpatialFilter, boxSelectBounds, setBoxSelectBounds } = useMapUrlSync()
   const { terrain, exaggeration } = useAppTerrain()
   // Phones select straight from the map, whatever a desktop link's `view` still says.
   const selectionView: ViewMode = isMobile ? 'map' : viewMode
@@ -675,7 +675,7 @@ export default function GenericMapContainer({
       exaggeration={exaggeration}
       clickBufferBounds={clickBufferBounds}
       onClickBufferChange={handleClickBufferChange}
-      featureBbox={featureBbox}
+      initialBounds={initialBounds}
       onFeatureBboxChange={setFeatureBbox}
       activeDrawShape={activeDrawShape}
       onDrawReset={handleDrawReset}

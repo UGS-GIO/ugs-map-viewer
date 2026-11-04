@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearch, useNavigate } from '@tanstack/react-router';
+import { linkHasCamera } from '@/lib/map/app-history';
 import type { Polygon } from 'geojson';
 import type { BoundsBox } from '@/components/maps/types';
 
@@ -30,7 +31,8 @@ interface MapUrlState {
     setBasemap: (id: string) => void;
     clickBufferBounds: BoundsBox | null;
     setClickBufferBounds: (bounds: BoundsBox | null) => void;
-    featureBbox: BoundsBox | null;
+    /** What the map fits on load: a link's selection, only when the link carries no camera of its own */
+    initialBounds: BoundsBox | null;
     setFeatureBbox: (bbox: BoundsBox | null) => void;
     boxSelectBounds: BoundsBox | null;
     setBoxSelectBounds: (bounds: BoundsBox | null) => void;
@@ -175,6 +177,7 @@ export function useMapUrlSync({ onFiltersChange }: UseMapUrlSyncProps = {}): Map
     }, [navigate]);
 
     const featureBbox = useMemo(() => parseBbox(search.feature_bbox), [search.feature_bbox]);
+    const initialBounds = linkHasCamera ? null : featureBbox ?? clickBufferBounds;
     const setFeatureBbox = useCallback((bbox: BoundsBox | null) => {
         navigate({ to: ".", search: (prev) => ({ ...prev, feature_bbox: formatBbox(bbox) }), replace: true });
     }, [navigate]);
@@ -232,7 +235,7 @@ export function useMapUrlSync({ onFiltersChange }: UseMapUrlSyncProps = {}): Map
         setBasemap,
         clickBufferBounds,
         setClickBufferBounds,
-        featureBbox,
+        initialBounds,
         setFeatureBbox,
         boxSelectBounds,
         setBoxSelectBounds,

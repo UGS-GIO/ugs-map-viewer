@@ -91,7 +91,7 @@ const HREFS_KEY = 'map-history-steps'
 const LABELS_KEY = 'map-history-labels'
 
 /**
- * The steps in this tab's history, so they can be listed, jumped between and labelled. Kept in
+ * The steps in this tab's history, so they can be listed, jumped between and labeled. Kept in
  * sessionStorage alongside the browser's own history, which outlives a reload but can't be read back.
  */
 export function createMapSteps(history: RouterHistory, storage: Storage = sessionStorage): MapSteps {

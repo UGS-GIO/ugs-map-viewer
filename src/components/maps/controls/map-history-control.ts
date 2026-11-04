@@ -8,12 +8,26 @@ const svg = (paths: string) =>
 const BACK_ICON = svg('<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>');
 const FORWARD_ICON = svg('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>');
 
+interface Camera {
+  center: [number, number];
+  zoom: number;
+  pitch: number;
+  bearing: number;
+}
+
 /** The camera in a URL's search, or undefined when it has none (before the map first writes it). */
-function cameraOf(search: string): maplibregl.CameraOptions | undefined {
+function cameraOf(search: string): Camera | undefined {
   const params = new URLSearchParams(search);
   const [lat, lon, zoom] = ['lat', 'lon', 'zoom'].map((key) => Number(params.get(key) ?? NaN));
   if ([lat, lon, zoom].some(Number.isNaN)) return undefined;
   return { center: [lon, lat], zoom, pitch: Number(params.get('pitch') ?? 0), bearing: Number(params.get('bearing') ?? 0) };
+}
+
+// Within what the URL rounds the camera to
+function sameCamera(map: maplibregl.Map, { center: [lng, lat], zoom, pitch, bearing }: Camera): boolean {
+  const here = map.getCenter();
+  return Math.abs(here.lng - lng) < 1e-5 && Math.abs(here.lat - lat) < 1e-5 && Math.abs(map.getZoom() - zoom) < 0.01
+    && Math.abs(map.getPitch() - pitch) < 1 && Math.abs(map.getBearing() - bearing) < 1;
 }
 
 /**
@@ -47,10 +61,12 @@ export class MapHistoryControl implements maplibregl.IControl {
     };
 
     this.unsubscribe = history.subscribe(({ action, location }) => {
-      if (action.type !== 'PUSH' && action.type !== 'REPLACE') {
-        const camera = cameraOf(location.search);
-        if (camera) this.easeTo(map, camera);
-      }
+      const camera = cameraOf(location.search);
+      const traversed = action.type !== 'PUSH' && action.type !== 'REPLACE';
+      // A push the map didn't write itself, like opening a shared tour stop. Never while the map
+      // moves, when the URL lags the gesture.
+      const pushedElsewhere = action.type === 'PUSH' && !map.isMoving() && camera && !sameCamera(map, camera);
+      if (camera && (traversed || pushedElsewhere)) this.easeTo(map, camera);
       // After the router's microtask writes the entry, so the Navigation API sees it
       queueMicrotask(updateButtons);
     });
@@ -60,7 +76,7 @@ export class MapHistoryControl implements maplibregl.IControl {
 
   // easeTo keeps the pixel anchor it started with, and the results panel opening or closing with the step
   // resizes the map mid-ease, which would land it half the width change off. Restart from each new size.
-  private easeTo(map: maplibregl.Map, camera: maplibregl.CameraOptions) {
+  private easeTo(map: maplibregl.Map, camera: Camera) {
     this.stopFollowingResize?.();
     const restart = () => map.easeTo(camera);
     const stop = () => {

@@ -291,7 +291,7 @@ export default function DataMap({
   exaggeration,
   clickBufferBounds,
   onClickBufferChange,
-  featureBbox,
+  initialBounds,
   onFeatureBboxChange,
   onClearSelection,
   pinCoords,
@@ -575,7 +575,7 @@ export default function DataMap({
     onDrawFinished: handleDrawFinished,
   })
 
-  // Calculate initial view - use feature_bbox if restoring, otherwise use props
+  // Initial view: the URL's camera, or a link's selection when it has no camera
   const initialViewRef = useRef<{
     longitude?: number
     latitude?: number
@@ -586,10 +586,9 @@ export default function DataMap({
     fitBoundsOptions?: { padding: number; maxZoom?: number }
   } | null>(null)
   if (!initialViewRef.current) {
-    const bbox = featureBbox || clickBufferBounds
-    if (bbox) {
+    if (initialBounds) {
       initialViewRef.current = {
-        bounds: [bbox.sw, bbox.ne],
+        bounds: [initialBounds.sw, initialBounds.ne],
         fitBoundsOptions: { padding: 50, maxZoom: 14 },
         pitch,
         bearing,
