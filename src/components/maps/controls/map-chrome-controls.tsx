@@ -1,8 +1,10 @@
 import { lazy, Suspense } from 'react'
+import { createPortal } from 'react-dom'
 import { GeolocateControl, useControl } from 'react-map-gl/maplibre'
 import { HomeControl } from './home-control'
 import { MapHistoryControl } from './map-history-control'
-import { appHistory } from '@/lib/map/app-history'
+import { appHistory, appSteps } from '@/lib/map/app-history'
+import { MapStepsPopover } from './map-steps-popover'
 import { DualScaleControl } from './dual-scale-control'
 import { NavigationMapControl } from './navigation-map-control'
 import type { GetLegendData } from './export-control'
@@ -16,8 +18,8 @@ function HomeMapControl() {
 }
 
 function MapHistoryMapControl() {
-  useControl(() => new MapHistoryControl(appHistory), { position: 'top-left' })
-  return null
+  const control = useControl(() => new MapHistoryControl(appHistory), { position: 'top-left' })
+  return createPortal(<MapStepsPopover steps={appSteps} />, control.container)
 }
 
 function ScaleMapControl() {

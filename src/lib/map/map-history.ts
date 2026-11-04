@@ -3,7 +3,7 @@ import { createBrowserHistory, type RouterHistory } from '@tanstack/react-router
 // Layout, preferences and the active tool: not steps, and Back/Forward leaves them as they are
 const STICKY_PARAMS = ['sidebar_collapsed', 'sidebar_width', 'coordinate_format', 'units', 'measure']
 // The phone sheet's height isn't a step either, but follows the entry so it drops with the results it showed
-const NON_STEP_PARAMS = [...STICKY_PARAMS, 'sheet']
+export const NON_STEP_PARAMS = [...STICKY_PARAMS, 'sheet']
 // Writes closer together than this are one step: a wheel burst, a slider drag, typing, or one action's cascade
 const QUIET_MS = 500
 const INPUT_EVENTS = ['pointerdown', 'keydown', 'wheel']
