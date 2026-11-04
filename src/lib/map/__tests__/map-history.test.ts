@@ -81,6 +81,14 @@ describe('createMapHistory', () => {
     expect(params.get('sheet')).toBeNull()
   })
 
+  it('folds the writes after following a link into the entry the link made', () => {
+    const { input, history, write, index } = setup()
+    input()
+    history.push('/hazards?zoom=6')
+    write('zoom=6&layers=a')
+    expect(index()).toBe(1)
+  })
+
   it('tracks whether a forward entry exists', () => {
     const { input, write, history, canGoForward } = setup()
     input()

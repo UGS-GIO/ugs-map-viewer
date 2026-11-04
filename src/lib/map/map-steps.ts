@@ -100,8 +100,11 @@ export function createMapSteps(history: RouterHistory, storage: Storage = sessio
   const rebuild = () => {
     snapshot = {
       current: indexOf(),
+      // Only map views: the landing page or a report in the same tab isn't a step to jump to or print
       steps: hrefs.flatMap((href, index) =>
-        href ? [{ index, href, summary: describeStep(hrefs[index - 1] ?? undefined, href), label: labels[index] }] : []),
+        href && cameraOf(new URL(href, 'http://local').search)
+          ? [{ index, href, summary: describeStep(hrefs[index - 1] ?? undefined, href), label: labels[index] }]
+          : []),
     }
     listeners.forEach((listener) => listener())
   }

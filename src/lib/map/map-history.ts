@@ -60,6 +60,8 @@ export function createMapHistory(history: RouterHistory = createBrowserHistory()
   history.subscribe(({ action }) => {
     if (action.type === 'PUSH') {
       maxIndex = indexOf(history)
+      // The click that followed a link made this entry; the app's first writes on arrival aren't another
+      userActed = false
     } else if (action.type !== 'REPLACE') {
       // The click or mouse button that went back isn't a change to record
       userActed = false
