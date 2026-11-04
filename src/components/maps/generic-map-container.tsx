@@ -658,10 +658,11 @@ export default function GenericMapContainer({
       peek()
       return Promise.resolve()
     }
-    if (!panelState.isSheetOpen) return Promise.resolve()
+    // A panel that shrinks the map doesn't cover it, so it stays open; closing left no way back to the results
+    if (!panelState.isSheetOpen || shouldShrinkMap) return Promise.resolve()
     popupSheetRef.current?.close()
     return new Promise((resolve) => setTimeout(resolve, 220))
-  }, [isMobile, panelState.isSheetOpen, peek])
+  }, [isMobile, panelState.isSheetOpen, shouldShrinkMap, peek])
 
   const mapElement = (
     <DataMap
