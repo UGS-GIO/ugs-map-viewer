@@ -822,6 +822,44 @@ const earthFissureWMSConfig: WMSLayerProps = {
     ],
 }
 
+const giantDesiccationCrackLayerName = 'hazards_giantdesiccationcrack_review';
+const giantDesiccationCrackWMSTitle = 'Giant Desiccation Cracks: Review';
+const giantDesiccationCrackWMSConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: giantDesiccationCrackWMSTitle,
+    visible: false,
+    crs: 'EPSG:4326',
+    sublayers: [
+        {
+            name: `${HAZARDS_WORKSPACE}:${giantDesiccationCrackLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Hazard': { field: 'hazard_symbology_text', type: 'string' },
+                'Mapped Scale': { field: 'gdcmappedscale', type: 'string' },
+            },
+            relatedTablesPosition: 'above',
+            relatedTables: [
+                {
+                    fieldLabel: '',
+                    matchingField: 'relate_id',
+                    targetField: 'gdchazardunit',
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
+                    headers: {
+                        "Accept-Profile": 'hazards',
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    displayFields: [
+                        { field: 'description' }
+                    ]
+                }
+            ]
+        },
+    ],
+}
+
 const erosionHazardZoneLayerName = 'erosionhazardzone_current';
 const erosionHazardZoneWMSTitle = 'J.E. Fuller Flood Erosion-Hazard Zones';
 const erosionHazardZoneWMSConfig: WMSLayerProps = {
@@ -1129,6 +1167,7 @@ const extraLayersConfig: LayerProps = {
     visible: false,
     layers: [
         earthFissureWMSConfig,
+        giantDesiccationCrackWMSConfig,
         aquifersCombinedConfig,
         displacementInsarGroup,
     ],
