@@ -101,7 +101,12 @@ export class MapExporter {
         private readonly settings: ExportSettings = DEFAULT_EXPORT_SETTINGS,
         private readonly filename = 'ugs-map',
         private readonly getLegendData?: GetLegendData,
+        /** Print what's drawn when the render outlasts the limit, rather than failing */
+        private readonly allowPartial = false,
     ) {}
+
+    /** Set when the last page was printed before every tile had drawn */
+    partial = false;
 
     /** The current view on a page-sized canvas, for callers assembling their own document. */
     async renderPage(map: maplibregl.Map): Promise<{ canvas: HTMLCanvasElement; widthMm: number; heightMm: number }> {
@@ -193,21 +198,8 @@ export class MapExporter {
 
         // A failed render or legend fetch still has to tear down the offscreen map.
         try {
-            // Wait for map to fully render
-            await new Promise<void>((resolve, reject) => {
-                const timeout = setTimeout(() => reject(new Error('Map render timeout')), 30000);
-                exportMap.once('idle', () => {
-                    clearTimeout(timeout);
-                    resolve();
-                });
-                exportMap.once('error', (e) => {
-                    clearTimeout(timeout);
-                    reject(e);
-                });
-            });
-
-            // Get canvas
-            const canvas = exportMap.getCanvas();
+            this.partial = false;
+            const canvas = await this.waitForRender(exportMap);
 
             // Fetch legend data if needed (with map bounds for content-dependent filtering)
             let legendData: LegendItem[] = [];
@@ -254,6 +246,42 @@ export class MapExporter {
             exportMap.remove();
             hiddenContainer.remove();
         }
+    }
+
+    /** The map's canvas once it's drawn, with a 30 s limit that restarts while the tab is in the background */
+    private waitForRender(exportMap: maplibregl.Map): Promise<HTMLCanvasElement> {
+        return new Promise((resolve, reject) => {
+            let timeout: ReturnType<typeof setTimeout>;
+            // A WebGL canvas is only readable in the frame that drew it, so copy it there
+            const snapshot = () => {
+                const copy = document.createElement('canvas');
+                const canvas = exportMap.getCanvas();
+                copy.width = canvas.width;
+                copy.height = canvas.height;
+                copy.getContext('2d')?.drawImage(canvas, 0, 0);
+                return copy;
+            };
+            const onTimeout = () => {
+                // Browsers stop drawing in a background tab; give it the full time again once it's back
+                if (document.hidden) {
+                    document.addEventListener('visibilitychange', () => { timeout = setTimeout(onTimeout, 30000); }, { once: true });
+                    return;
+                }
+                if (!this.allowPartial) return reject(new Error('Map render timeout'));
+                this.partial = true;
+                exportMap.once('render', () => resolve(snapshot()));
+                exportMap.triggerRepaint();
+            };
+            timeout = setTimeout(onTimeout, 30000);
+            exportMap.once('idle', () => {
+                clearTimeout(timeout);
+                resolve(snapshot());
+            });
+            exportMap.once('error', (e) => {
+                clearTimeout(timeout);
+                reject(e);
+            });
+        });
     }
 
     private drawNorthArrow(ctx: CanvasRenderingContext2D, canvasWidth: number, scale: number, bearing: number): void {
