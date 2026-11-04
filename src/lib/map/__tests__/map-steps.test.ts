@@ -29,7 +29,7 @@ describe('createMapSteps', () => {
 
   function setup() {
     const history = createMemoryHistory({ initialEntries: [at('zoom=6')] })
-    return { history, steps: createMapSteps(history, sessionStorage) }
+    return { history, steps: createMapSteps(history, sessionStorage, false) }
   }
 
   it('lists steps as they are pushed and replaced, and jumps between them', () => {
@@ -64,7 +64,15 @@ describe('createMapSteps', () => {
     history.push(at('zoom=7'))
     steps.setLabel(1, 'Parcel')
     steps.setLabel(0, '  ')
-    const reloaded = createMapSteps(history, sessionStorage)
+    const reloaded = createMapSteps(history, sessionStorage, false)
     expect(reloaded.getSnapshot().steps.map((s) => s.label)).toEqual([undefined, 'Parcel'])
+  })
+
+  it('starts over when a new page load restarts the steps', () => {
+    const { history, steps } = setup()
+    history.push(at('zoom=7'))
+    steps.setLabel(1, 'Parcel')
+    const fresh = createMapSteps(createMemoryHistory({ initialEntries: [at('zoom=9')] }), sessionStorage, true)
+    expect(fresh.getSnapshot().steps.map((s) => [s.href, s.label])).toEqual([[at('zoom=9'), undefined]])
   })
 })
