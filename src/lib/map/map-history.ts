@@ -30,7 +30,7 @@ export function createMapHistory(history: RouterHistory = createBrowserHistory()
   const replace = history.replace
   let userActed = false
   let lastWrite = 0
-  // Browsers don't say whether there's a forward entry, so track the furthest one this page pushed
+  // Without the Navigation API, track the furthest entry this page pushed (lost on reload)
   let maxIndex = indexOf(history)
 
   const markInput = () => { userActed = true }
@@ -60,5 +60,5 @@ export function createMapHistory(history: RouterHistory = createBrowserHistory()
     history.push(path, state, navigateOpts)
   }
 
-  return { history, canGoForward: () => indexOf(history) < maxIndex }
+  return { history, canGoForward: () => window.navigation?.canGoForward ?? indexOf(history) < maxIndex }
 }

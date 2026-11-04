@@ -43,7 +43,8 @@ export class MapHistoryControl implements maplibregl.IControl {
         const camera = cameraOf(location.search);
         if (camera) map.easeTo(camera);
       }
-      updateButtons();
+      // After the router's microtask writes the entry, so the Navigation API sees it
+      queueMicrotask(updateButtons);
     });
     updateButtons();
 
