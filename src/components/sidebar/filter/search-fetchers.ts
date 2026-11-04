@@ -1,6 +1,6 @@
-import type { FeatureCollection, Geometry, GeoJsonProperties, Feature } from 'geojson';
+import type { Geometry, GeoJsonProperties, Feature } from 'geojson';
 import { featureCollection } from '@turf/helpers';
-import type { MasqueradeConfig, ParquetSearchConfig, PostgRESTConfig, Suggestion } from './search-types';
+import type { MasqueradeConfig, ParquetSearchConfig, PostgRESTConfig, SearchFeature, SearchFeatureCollection, Suggestion } from './search-types';
 import { appendFunctionParams } from './search-utils';
 
 // Label words people type ("T43S R11W Sec 31"). Tokens are ANDed, so these match nothing
@@ -70,11 +70,29 @@ export function buildPostgrestSearchParams(fields: string[], searchTerm: string)
     return params;
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+    typeof value === 'object' && value !== null;
+
+// PostgREST returns whatever the view/function was written to return, so the shape is
+// checked rather than asserted.
+const isSearchFeature = (value: unknown): value is SearchFeature =>
+    isRecord(value) && value.type === 'Feature' &&
+    (value.geometry == null || isRecord(value.geometry));
+
+/** A geometry RPC answers with a collection or a bare feature array, depending on the function. */
+export const featuresFromPayload = (payload: unknown): SearchFeature[] => {
+    if (Array.isArray(payload)) return payload.filter(isSearchFeature);
+    if (isRecord(payload) && payload.type === 'FeatureCollection' && Array.isArray(payload.features)) {
+        return payload.features.filter(isSearchFeature);
+    }
+    return [];
+};
+
 export async function fetchPostgRESTResults(
     source: PostgRESTConfig,
     searchTerm: string,
     sourceIndex: number,
-): Promise<FeatureCollection<Geometry, GeoJsonProperties>> {
+): Promise<SearchFeatureCollection> {
     const params = source.params;
     const urlParams = new URLSearchParams();
     let apiUrl = '';
@@ -120,22 +138,23 @@ export async function fetchPostgRESTResults(
     if (!response.ok) {
         throw new Error(`PostgREST error (${response.status}) from ${apiUrl}`);
     }
-    const data = await response.json();
+    const data: unknown = await response.json();
 
-    if (data && Array.isArray(data)) {
-        if (data.length === 0 || data[0]?.type === 'Feature') {
-            return featureCollection(data as Feature<Geometry, GeoJsonProperties>[]);
+    if (Array.isArray(data)) {
+        if (data.every(isSearchFeature)) {
+            return { type: 'FeatureCollection', features: data };
         }
-        // Plain objects — convert to pseudo-features for display
-        const pseudoFeatures: Feature<Geometry, GeoJsonProperties>[] = data.map((item, idx) => ({
-            type: 'Feature' as const,
+        // Plain rows — wrap as pseudo-features so they can be listed.
+        const pseudoFeatures: SearchFeature[] = data.filter(isRecord).map((item, idx) => ({
+            type: 'Feature',
             id: idx,
-            geometry: null as unknown as Geometry,
-            properties: item
+            geometry: null,
+            properties: item,
         }));
-        return featureCollection(pseudoFeatures);
-    } else if (data?.type === 'FeatureCollection' && Array.isArray(data.features)) {
-        return data as FeatureCollection<Geometry, GeoJsonProperties>;
+        return { type: 'FeatureCollection', features: pseudoFeatures };
+    }
+    if (isRecord(data) && data.type === 'FeatureCollection' && Array.isArray(data.features)) {
+        return { type: 'FeatureCollection', features: data.features.filter(isSearchFeature) };
     }
 
     console.warn(`Unexpected API response from ${apiUrl}`, data);
@@ -204,7 +223,7 @@ export function prewarmParquetSources(sources: readonly ParquetSearchConfig[]): 
 export async function fetchParquetResults(
     source: ParquetSearchConfig,
     searchTerm: string,
-): Promise<FeatureCollection<Geometry, GeoJsonProperties>> {
+): Promise<SearchFeatureCollection> {
     const tokens = searchTokens(searchTerm);
     if (tokens.length === 0) return featureCollection([]);
 
@@ -246,16 +265,16 @@ export async function fetchParquetResults(
         return result.toArray().map(r => normalizeRow(r.toJSON() as Record<string, unknown>));
     });
 
-    const features: Feature<Geometry, GeoJsonProperties>[] = rows.map((row, idx) => ({
+    const features: SearchFeature[] = rows.map((row, idx) => ({
         type: 'Feature' as const,
         id: idx,
-        geometry: null as unknown as Geometry,
+        geometry: null,
         properties: source.groupByMatch
             ? { ...row, [source.groupByField ?? 'match_type']: matchGroup(row, source.groupByMatch, tokens) }
             : row,
     }));
 
-    return featureCollection(features);
+    return { type: 'FeatureCollection', features };
 }
 
 /**
@@ -363,17 +382,22 @@ export async function fetchParquetGeometries(
 /** Attach geometry to suggestion features, dropping any the parquet can't supply. */
 export async function withParquetGeometry(
     source: ParquetSearchConfig,
-    features: Feature<Geometry, GeoJsonProperties>[],
+    features: SearchFeature[],
 ): Promise<Feature<Geometry, GeoJsonProperties>[]> {
-    if (!source.idField) return features;
+    const located = features.filter((f): f is Feature<Geometry, GeoJsonProperties> => f.geometry != null);
     const idField = source.idField;
-    const ids = features.map(f => String(f.properties?.[idField] ?? '')).filter(Boolean);
+    const missing = idField ? features.filter(f => f.geometry == null) : [];
+    if (!idField || missing.length === 0) return located;
+
+    const ids = missing.map(f => String(f.properties?.[idField] ?? '')).filter(Boolean);
     const geometries = await fetchParquetGeometries(source, ids);
 
-    return features
+    const fetched = missing
         .map(feature => {
             const geometry = geometries.get(String(feature.properties?.[idField] ?? ''));
             return geometry ? { ...feature, geometry } : null;
         })
         .filter((f): f is Feature<Geometry, GeoJsonProperties> => f !== null);
+
+    return [...located, ...fetched];
 }
