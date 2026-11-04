@@ -92,6 +92,8 @@ export interface DataMapProps {
   onFeatureBboxChange?: (bbox: BoundsBox | null) => void
   /** Clears the selected features (map tools button); the context menu also drops the pin */
   onClearSelection?: () => void
+  /** Something is selected that Clear selection would clear; an empty click doesn't count */
+  hasSelection?: boolean
   /** Pin marker coordinates (from shared link or context menu) */
   pinCoords?: { lat: number; lon: number } | null
   /** Callback to set or clear the pin */

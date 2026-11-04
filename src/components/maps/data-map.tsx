@@ -287,6 +287,7 @@ export default function DataMap({
   featureBbox,
   onFeatureBboxChange,
   onClearSelection,
+  hasSelection = false,
   pinCoords,
   onPinChange,
   viewMode,
@@ -718,13 +719,11 @@ export default function DataMap({
   // Combine loading states
   const showLoading = isLoading || queryLoading
 
-  // A raster-only click has no highlight but still holds results, so the click box counts too.
-  const hasFeatureSelection = highlightFeatures.length > 0 || !!clickBufferBounds || !!boxSelectBounds
   // The context menu's clear also takes the pin; the toolbar keeps the two separate.
-  const clearSelectionAndPin = onClearSelection && (() => {
+  const clearSelectionAndPin = useMemo(() => onClearSelection && (() => {
     onClearSelection()
     onPinChange?.(null)
-  })
+  }), [onClearSelection, onPinChange])
 
   // MapLibre's contextmenu waits for mouseup and skips right-drags, so tilting/rotating doesn't open the menu
   const handleContextMenu = useCallback((e: MapLayerMouseEvent) => {
@@ -745,7 +744,7 @@ export default function DataMap({
         coords={contextMenuCoords}
         onClearSelection={clearSelectionAndPin}
         onPinLocation={onPinChange ? (coords) => onPinChange(coords) : undefined}
-        hasSelection={hasFeatureSelection || !!pinCoords}
+        hasSelection={hasSelection || !!pinCoords}
         currentZoom={currentZoomRef.current}
       />
       <div ref={containerRef} className="relative w-full h-full">
@@ -789,7 +788,7 @@ export default function DataMap({
           onClearFilter={onSpatialFilterChange ? () => onSpatialFilterChange(null) : undefined}
           hasPin={!!pinCoords}
           onClearPin={onPinChange ? () => onPinChange(null) : undefined}
-          hasSelection={hasFeatureSelection}
+          hasSelection={hasSelection}
           onClearSelection={onClearSelection}
           boxSelectActive={boxSelectMode}
           onBoxSelectToggle={onBoxSelectModeChange}

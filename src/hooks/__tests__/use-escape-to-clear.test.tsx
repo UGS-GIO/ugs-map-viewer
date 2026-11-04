@@ -6,7 +6,9 @@ import { useEscapeToClear } from '../use-escape-to-clear'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
+const mounted: (() => void)[] = []
 afterEach(() => {
+  mounted.splice(0).forEach((unmount) => unmount())
   document.body.innerHTML = ''
 })
 
@@ -18,7 +20,14 @@ function mount(enabled: boolean) {
   }
   const root = createRoot(document.body.appendChild(document.createElement('div')))
   act(() => root.render(<Probe />))
-  return { onClear, unmount: () => act(() => root.unmount()) }
+  let done = false
+  const unmount = () => {
+    if (done) return
+    done = true
+    act(() => root.unmount())
+  }
+  mounted.push(unmount)
+  return { onClear, unmount }
 }
 
 const press = (target: EventTarget, key = 'Escape', prevent = false) => {

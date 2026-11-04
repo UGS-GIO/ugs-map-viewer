@@ -594,10 +594,6 @@ export default function GenericMapContainer({
     setPopupCoords(null)
   }, [handleClearSelection, setPopupCoords])
 
-  const hasSelection = highlightedFeatures.length > 0 || selectedFeatures.length > 0 || !!clickBufferBounds || !!boxSelectBounds
-  const toolOwnsEscape = activeDrawShape !== 'off' || toolbarDrawShape !== 'off' || boxSelectMode || !!measure
-  useEscapeToClear(!isMobile && hasSelection && !toolOwnsEscape, handleClearSelection)
-
   // Derived: click point for raster queries (center of click buffer)
   const clickPoint = useMemo(() => {
     if (!clickBufferBounds) return null
@@ -626,6 +622,11 @@ export default function GenericMapContainer({
 
   // Derived: has results (includes raster-only layers)
   const hasResults = useMemo(() => popupContent.length > 0, [popupContent])
+  // A raster-only click holds results without a highlight; an empty click selects nothing
+  const hasSelection = hasResults || !!boxSelectBounds
+  const toolOwnsEscape = activeDrawShape !== 'off' || toolbarDrawShape !== 'off' || boxSelectMode || !!measure
+  // Table and split views close through their own ✕, which also returns to the map
+  useEscapeToClear(!isMobile && viewMode === 'map' && hasSelection && !toolOwnsEscape, handleClearSelection)
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode)
@@ -654,15 +655,10 @@ export default function GenericMapContainer({
   // Collapses the drawer covering the map so zoom-to-feature centers correctly; 220ms
   // covers the sheet's 200ms width transition before fitBounds reads the container.
   const collapseSheetBeforeZoom = useCallback((): Promise<void> => {
-    if (isMobile) {
-      peek()
-      return Promise.resolve()
-    }
-    // A panel that shrinks the map doesn't cover it, so it stays open; closing left no way back to the results
-    if (!panelState.isSheetOpen || shouldShrinkMap) return Promise.resolve()
-    popupSheetRef.current?.close()
-    return new Promise((resolve) => setTimeout(resolve, 220))
-  }, [isMobile, panelState.isSheetOpen, shouldShrinkMap, peek])
+    // The desktop panel shrinks the map rather than covering it, so it stays open
+    if (isMobile) peek()
+    return Promise.resolve()
+  }, [isMobile, peek])
 
   const mapElement = (
     <DataMap
@@ -703,6 +699,7 @@ export default function GenericMapContainer({
       isAdditiveMode={isAdditiveMode}
       onAdditiveModeToggle={() => additiveModeToggled ? setActiveMode('none') : setActiveMode('additive')}
       onClearSelection={handleClearSelection}
+      hasSelection={hasSelection}
       pinCoords={popupCoords}
       onPinChange={setPopupCoords}
       viewMode={isMobile ? undefined : viewMode}

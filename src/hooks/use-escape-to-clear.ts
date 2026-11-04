@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 // An open dialog, menu, popover, listbox or tour step owns Escape, even while it is closing.
 const LAYER = '[role=dialog], [role=alertdialog], [role=menu], [role=listbox], [data-radix-popper-content-wrapper], .driver-popover'
@@ -13,12 +13,15 @@ export function escapeClears(e: KeyboardEvent): boolean {
 
 /** Runs `onClear` on an unclaimed Escape while `enabled`; callers pass false while a map tool owns Escape. */
 export function useEscapeToClear(enabled: boolean, onClear: () => void) {
+  // Callers pass inline handlers; the ref keeps the listener bound once rather than every render
+  const latest = useRef(onClear)
+  useEffect(() => { latest.current = onClear })
   useEffect(() => {
     if (!enabled) return
     const onKeyDown = (e: KeyboardEvent) => {
-      if (escapeClears(e)) onClear()
+      if (escapeClears(e)) latest.current()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [enabled, onClear])
+  }, [enabled])
 }
