@@ -94,7 +94,18 @@ const LABELS_KEY = 'map-history-labels'
  * The steps in this tab's history, so they can be listed, jumped between and labelled. Kept in
  * sessionStorage alongside the browser's own history, which outlives a reload but can't be read back.
  */
-export function createMapSteps(history: RouterHistory, storage: Storage = sessionStorage): MapSteps {
+// A typed URL or a followed link starts a new document whose steps restart at index 0, so the stored
+// log describes entries that are gone. A reload or Back/Forward into the app keeps it.
+function isFreshNavigation(): boolean {
+  const [entry] = typeof performance === 'undefined' ? [] : performance.getEntriesByType('navigation')
+  return entry instanceof PerformanceNavigationTiming && entry.type === 'navigate'
+}
+
+export function createMapSteps(history: RouterHistory, storage: Storage = sessionStorage, fresh = isFreshNavigation()): MapSteps {
+  if (fresh) {
+    storage.removeItem(HREFS_KEY)
+    storage.removeItem(LABELS_KEY)
+  }
   const indexOf = () => history.location.state.__TSR_index
   // JSON turns gaps (steps from before this page's first visit) into null
   const hrefs: (string | null)[] = readJson(storage, HREFS_KEY, [])
