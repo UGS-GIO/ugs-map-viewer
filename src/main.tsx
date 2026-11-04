@@ -8,6 +8,7 @@ import ReactDOM from 'react-dom/client'
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from '@/context/theme-provider'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { appHistory } from '@/lib/map/app-history'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import proj4 from 'proj4'
 import { setupPMTilesProtocol } from '@/lib/map/pmtiles/setup'
@@ -36,7 +37,7 @@ proj4.defs("EPSG:3857", "+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_
 proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs +type=crs");
 
 // Create a new router instance
-const router = createRouter({ routeTree })
+const router = createRouter({ routeTree, history: appHistory.history })
 
 // Register the router instance for type safety
 declare module '@tanstack/react-router' {
