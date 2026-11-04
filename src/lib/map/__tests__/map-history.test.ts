@@ -51,11 +51,34 @@ describe('createMapHistory', () => {
     expect(index()).toBe(1)
   })
 
-  it('leaves panel-only changes as replaces', () => {
+  it('leaves layout and preference changes as replaces', () => {
     const { input, write, index } = setup()
     input()
-    write('zoom=6&sidebar_collapsed=true&tab=layers')
+    write('zoom=6&sidebar_collapsed=true&units=metric&sheet=half')
     expect(index()).toBe(0)
+  })
+
+  it('makes a panel change its own step', () => {
+    const { input, write, index } = setup()
+    input()
+    write('zoom=6&click_bbox=1,2,3,4')
+    input()
+    write('zoom=6&click_bbox=1,2,3,4&tab=layers')
+    expect(index()).toBe(2)
+  })
+
+  it('keeps layout and preferences as they are on Back, but not the sheet height', () => {
+    const { input, write, history } = setup()
+    input()
+    write('zoom=7&sheet=half')
+    input()
+    write('zoom=7&sheet=half&sidebar_collapsed=true&units=metric')
+    history.back()
+    const params = new URLSearchParams(history.location.search)
+    expect(params.get('zoom')).toBe('6')
+    expect(params.get('sidebar_collapsed')).toBe('true')
+    expect(params.get('units')).toBe('metric')
+    expect(params.get('sheet')).toBeNull()
   })
 
   it('tracks whether a forward entry exists', () => {

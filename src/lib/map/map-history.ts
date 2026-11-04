@@ -1,14 +1,16 @@
 import { createBrowserHistory, type RouterHistory } from '@tanstack/react-router'
 
-// Panel layout and display preferences: changing them alone shouldn't add a back step
-const UI_PARAMS = ['tab', 'sidebar_collapsed', 'sidebar_width', 'coordinate_format', 'units', 'sheet', 'results', 'detail', 'measure']
+// Layout, preferences and the active tool: not steps, and Back/Forward leaves them as they are
+const STICKY_PARAMS = ['sidebar_collapsed', 'sidebar_width', 'coordinate_format', 'units', 'measure']
+// The phone sheet's height isn't a step either, but follows the entry so it drops with the results it showed
+const NON_STEP_PARAMS = [...STICKY_PARAMS, 'sheet']
 // Writes closer together than this are one step: a wheel burst, a slider drag, typing, or one action's cascade
 const QUIET_MS = 500
 const INPUT_EVENTS = ['pointerdown', 'keydown', 'wheel']
 
 const mapState = (search: string) => {
   const params = new URLSearchParams(search)
-  UI_PARAMS.forEach((key) => params.delete(key))
+  NON_STEP_PARAMS.forEach((key) => params.delete(key))
   params.sort()
   return params.toString()
 }
@@ -23,8 +25,8 @@ export interface MapHistory {
 /**
  * The app writes map state to the URL with `replace`, so the browser had one entry per visit and Back
  * left the app. This turns a user's change to map state into a new entry, so Back and Forward (browser,
- * mouse buttons, map buttons) step through map states. Writes no one made, like URL normalization, and
- * writes that only touch panel layout stay replaces.
+ * mouse buttons, map buttons) step through map and panel states. Writes no one made, like URL
+ * normalization, and writes that only touch layout or preferences stay replaces.
  */
 export function createMapHistory(history: RouterHistory = createBrowserHistory(), target: EventTarget = window): MapHistory {
   const replace = history.replace
@@ -36,6 +38,21 @@ export function createMapHistory(history: RouterHistory = createBrowserHistory()
   const markInput = () => { userActed = true }
   INPUT_EVENTS.forEach((type) => target.addEventListener(type, markInput, { capture: true, passive: true }))
 
+  // Every entry also holds the layout of its moment; Back shouldn't undo a sidebar collapse alongside a map step
+  let previous = history.location
+  const keepSticky = () => {
+    const { pathname, search, state } = history.location
+    if (pathname !== previous.pathname) return
+    const params = new URLSearchParams(search)
+    const before = new URLSearchParams(previous.search)
+    STICKY_PARAMS.forEach((key) => {
+      const value = before.get(key)
+      if (value === null) params.delete(key)
+      else params.set(key, value)
+    })
+    if (params.toString() !== new URLSearchParams(search).toString()) replace(`${pathname}?${params}`, state)
+  }
+
   history.subscribe(({ action }) => {
     if (action.type === 'PUSH') {
       maxIndex = indexOf(history)
@@ -43,7 +60,9 @@ export function createMapHistory(history: RouterHistory = createBrowserHistory()
       // The click or mouse button that went back isn't a change to record
       userActed = false
       lastWrite = Date.now()
+      keepSticky()
     }
+    previous = history.location
   })
 
   history.replace = (path, state, navigateOpts) => {
