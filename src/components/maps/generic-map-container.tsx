@@ -639,7 +639,9 @@ export default function GenericMapContainer({
     setPanelState(prev => ({ ...prev, isSheetOpen: open }))
   }, [])
 
-  const shouldShrinkMap = !isMobile && viewMode === 'map' && panelState.isSheetOpen
+  // Shown only with results, so Back to an entry without a selection closes it and Forward reopens it
+  const isSheetOpen = panelState.isSheetOpen && hasResults
+  const shouldShrinkMap = !isMobile && viewMode === 'map' && isSheetOpen
 
   // Collapses the drawer covering the map so zoom-to-feature centers correctly; 220ms
   // covers the sheet's 200ms width transition before fitBounds reads the container.
@@ -648,10 +650,10 @@ export default function GenericMapContainer({
       peek()
       return Promise.resolve()
     }
-    if (!panelState.isSheetOpen) return Promise.resolve()
+    if (!isSheetOpen) return Promise.resolve()
     popupSheetRef.current?.close()
     return new Promise((resolve) => setTimeout(resolve, 220))
-  }, [isMobile, panelState.isSheetOpen, peek])
+  }, [isMobile, isSheetOpen, peek])
 
   const mapElement = (
     <DataMap
@@ -773,7 +775,7 @@ export default function GenericMapContainer({
         {!isMobile && viewMode === 'map' && (
           <div
             className="h-full border-l bg-background overflow-hidden transition-[width] duration-200 ease-linear"
-            style={{ width: panelState.isSheetOpen ? `${panelState.sheetWidth}px` : 0 }}
+            style={{ width: isSheetOpen ? `${panelState.sheetWidth}px` : 0 }}
           >
             <PopupSheet
               ref={popupSheetRef}
@@ -785,7 +787,7 @@ export default function GenericMapContainer({
               onHighlightChange={handleHighlightChange}
               width={panelState.sheetWidth}
               onWidthChange={(width) => setPanelState(prev => ({ ...prev, sheetWidth: width }))}
-              isOpen={panelState.isSheetOpen}
+              isOpen={isSheetOpen}
               clickPoint={clickPoint}
               headerExtras={popupHeaderRender?.(popupContent)}
               layerHeaderExtras={popupLayerHeaderRender}

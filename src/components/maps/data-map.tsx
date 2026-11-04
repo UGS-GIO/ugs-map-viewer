@@ -71,6 +71,10 @@ function CogLayerSource({ layer, beforeId, hidden, opacity }: { layer: COGLayerP
 }
 
 /** WMS layers that MapLibre draws at the map's current zoom and center. */
+// Micro-degrees, as the URL rounds them, so a bounds and its URL round-trip share a key
+const bboxKey = (b: { sw: [number, number]; ne: [number, number] } | null | undefined) =>
+  b ? [...b.sw, ...b.ne].map((n) => Math.round(n * 1e6)).join() : null
+
 function wmsLayersDrawnInView(map: maplibregl.Map, layers: WMSLayerProps[]): WMSLayerProps[] {
   const zoom = map.getZoom()
   const latitude = map.getCenter().lat
@@ -302,7 +306,8 @@ export default function DataMap({
   const currentZoomRef = useRef(zoom)
   const [isBoxSelectZoomValid, setIsBoxSelectZoomValid] = useState(zoom >= BOX_SELECT_MIN_ZOOM)
   const [styleLoaded, setStyleLoaded] = useState(false)
-  const hasRestoredRef = useRef(false)
+  // The click_bbox the selection was last queried for; a URL value that differs came from load or Back/Forward
+  const queriedBboxRef = useRef<string | null>(null)
 
   // Context menu state
   const [contextMenuCoords, setContextMenuCoords] = useState<ContextMenuCoords | null>(null)
@@ -624,7 +629,9 @@ export default function DataMap({
     if (spatialFilter) onSpatialFilterChange?.(null)
 
     // Calculate click buffer bbox for visualization
-    onClickBufferChange?.(polygonBounds(screenBoxToPolygon(map, [e.point.x - clickTolerance, e.point.y - clickTolerance], [e.point.x + clickTolerance, e.point.y + clickTolerance])))
+    const clickBounds = polygonBounds(screenBoxToPolygon(map, [e.point.x - clickTolerance, e.point.y - clickTolerance], [e.point.x + clickTolerance, e.point.y + clickTolerance]))
+    queriedBboxRef.current = bboxKey(clickBounds)
+    onClickBufferChange?.(clickBounds)
 
     const isAdditive = isAdditiveMode || (e.originalEvent?.shiftKey ?? false)
     queryAtPoint(map, e.point, clickTolerance, isAdditive, { extractBbox: true, clearOnEmpty: true })
@@ -697,23 +704,30 @@ export default function DataMap({
     if (map) {
       setStyleLoaded(true)
       onMapReady?.(map)
-
-      // Restore query from URL if clickBufferBounds exists
-      if (!hasRestoredRef.current && clickBufferBounds && onFeatureClick && hasClickableLayers) {
-        hasRestoredRef.current = true
-
-        const center = getBboxCenter(clickBufferBounds)
-        const centerPoint = map.project([center.lng, center.lat])
-        const swPoint = map.project([clickBufferBounds.sw[0], clickBufferBounds.sw[1]])
-        const nePoint = map.project([clickBufferBounds.ne[0], clickBufferBounds.ne[1]])
-        const tolerance = Math.abs(nePoint.x - swPoint.x) / 2
-
-        // Re-emit bounds so popup opens via handleClickBufferChange
-        onClickBufferChange?.(clickBufferBounds)
-        queryAtPoint(map, centerPoint, tolerance || clickTolerance, false)
-      }
     }
-  }, [onMapReady, clickBufferBounds, onFeatureClick, hasClickableLayers, clickTolerance, clickQuery, wmsUrl, layerFilters, onClickBufferChange])
+  }, [onMapReady])
+
+  // Selection follows the URL's click_bbox: re-query it on load and Back/Forward, or clear it when gone.
+  // Waits for idle so the camera Back/Forward moves to has settled and its tiles are drawn.
+  const urlBboxKey = bboxKey(clickBufferBounds)
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!styleLoaded || !map || !onFeatureClick || !hasClickableLayers || urlBboxKey === queriedBboxRef.current) return
+    queriedBboxRef.current = urlBboxKey
+    if (!clickBufferBounds) {
+      onFeatureClick([])
+      return
+    }
+    const bounds = clickBufferBounds
+    map.once('idle', () => {
+      const center = getBboxCenter(bounds)
+      const swPoint = map.project([bounds.sw[0], bounds.sw[1]])
+      const nePoint = map.project([bounds.ne[0], bounds.ne[1]])
+      // Re-emit bounds so popup opens via handleClickBufferChange
+      onClickBufferChange?.(bounds)
+      queryAtPoint(map, map.project([center.lng, center.lat]), Math.abs(nePoint.x - swPoint.x) / 2 || clickTolerance, false)
+    })
+  }, [styleLoaded, urlBboxKey, onFeatureClick, hasClickableLayers])
 
   // Combine loading states
   const showLoading = isLoading || queryLoading
