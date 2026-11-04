@@ -10,6 +10,7 @@ const APP_TERRAIN: Record<string, boolean> = {
   subsurface: DEFAULT_TERRAIN,
   wetlands: DEFAULT_TERRAIN,
   wetlandplants: DEFAULT_TERRAIN,
+  groundwater: DEFAULT_TERRAIN,
 };
 
 /** Resolve an app's 3D default from its route segment (e.g. 'hazards'). */

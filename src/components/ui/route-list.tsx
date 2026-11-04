@@ -69,6 +69,7 @@ export function RouteList() {
     const getRouteDescription = (path: string): string => {
         const descriptions: Record<string, string> = {
             '/ccs': 'Carbon Capture, Utilization & Storage mapping interface',
+            '/groundwater': 'Groundwater Monitoring Portal',
             '/about': 'Learn more about our platform',
             '/contact': 'Get in touch with us',
             // Add more descriptions as needed
@@ -147,6 +148,12 @@ export function SimpleRouteList() {
             fullPath: '/hazards/',
             title: 'Geologic Hazards portal',
             description: 'Information on the type, location, and relative susceptibility of mapped geologic hazards in Utah.'
+        },
+        {
+            path: '/groundwater',
+            fullPath: '/groundwater/',
+            title: 'Groundwater Monitoring Portal',
+            description: 'A tool for the public, scientists, and water managers interested in groundwater monitoring data across Utah.'
         }
     ];
 

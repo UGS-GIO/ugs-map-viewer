@@ -167,6 +167,7 @@ const APP_BASEMAPS: Record<string, AppBasemapConfig> = {
   subsurface: { default: 'liberty', short: STANDARD_SHORT },
   wetlands: { default: 'liberty', short: STANDARD_SHORT },
   wetlandplants: { default: 'liberty', short: STANDARD_SHORT },
+  groundwater: { default: 'liberty', short: STANDARD_SHORT },
 };
 
 export interface AppBasemaps {
