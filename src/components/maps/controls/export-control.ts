@@ -103,19 +103,26 @@ export class MapExporter {
         private readonly getLegendData?: GetLegendData,
     ) {}
 
-    async run(map: maplibregl.Map): Promise<void> {
+    /** The current view on a page-sized canvas, for callers assembling their own document. */
+    async renderPage(map: maplibregl.Map): Promise<{ canvas: HTMLCanvasElement; widthMm: number; heightMm: number }> {
         this.map = map;
 
         // Calculate dimensions based on page size and DPI
         const pageDims = PAGE_SIZES[this.settings.pageSize];
-        const width = this.settings.pageOrientation === 'landscape' ? pageDims.height : pageDims.width;
-        const height = this.settings.pageOrientation === 'landscape' ? pageDims.width : pageDims.height;
+        const widthMm = this.settings.pageOrientation === 'landscape' ? pageDims.height : pageDims.width;
+        const heightMm = this.settings.pageOrientation === 'landscape' ? pageDims.width : pageDims.height;
 
         // Convert mm to pixels at specified DPI
-        const pixelWidth = Math.round((width / 25.4) * this.settings.dpi);
-        const pixelHeight = Math.round((height / 25.4) * this.settings.dpi);
+        const pixelWidth = Math.round((widthMm / 25.4) * this.settings.dpi);
+        const pixelHeight = Math.round((heightMm / 25.4) * this.settings.dpi);
 
-        const canvas = await this.generateCanvas(pixelWidth, pixelHeight);
+        return { canvas: await this.generateCanvas(pixelWidth, pixelHeight), widthMm, heightMm };
+    }
+
+    async run(map: maplibregl.Map): Promise<void> {
+        const { canvas, widthMm: width, heightMm: height } = await this.renderPage(map);
+        const pixelWidth = canvas.width;
+        const pixelHeight = canvas.height;
 
         if (this.settings.format === 'pdf') {
             await this.exportAsPdf(canvas, width, height);

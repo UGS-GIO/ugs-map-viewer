@@ -1,11 +1,31 @@
 import { useState, useSyncExternalStore } from 'react'
 import { Popover } from '@base-ui/react/popover'
-import { useMutation } from '@tanstack/react-query'
-import { History, Link, Pencil, X } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMap } from 'react-map-gl/maplibre'
+import { FileDown, History, Link, Pencil, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { MapStep, MapSteps } from '@/lib/map/map-steps'
 import { buildStopsLink, toStopHref, type SharedStops } from '@/lib/map/shared-stops'
+import type { GetLegendData } from './export-control'
+
+/** Goes to a step and resolves once the browser has landed on it, or rejects if it never does. */
+function goToStep(store: MapSteps, step: MapStep): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (store.getSnapshot().current === step.index) return resolve()
+    const timeout = setTimeout(() => {
+      unsubscribe()
+      reject(new Error(`Step ${step.index + 1} is no longer in this tab's history`))
+    }, 5000)
+    const unsubscribe = store.subscribe(() => {
+      if (store.getSnapshot().current !== step.index) return
+      clearTimeout(timeout)
+      unsubscribe()
+      resolve()
+    })
+    store.go(step.index)
+  })
+}
 
 function StepLabelInput({ step, onDone }: { step: MapStep; onDone: (label?: string) => void }) {
   return (
@@ -33,7 +53,7 @@ function StepLabelInput({ step, onDone }: { step: MapStep; onDone: (label?: stri
  * browser history entries, so they can't be removed; a label is how you mark the ones that matter.
  * Labeled steps share as one link, which opens with them listed as stops.
  */
-export function MapStepsPopover({ steps: store, shared }: { steps: MapSteps; shared: SharedStops }) {
+export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps: MapSteps; shared: SharedStops; getLegendData?: GetLegendData }) {
   const { steps, current } = useSyncExternalStore(store.subscribe, store.getSnapshot)
   const { stops, unseen } = useSyncExternalStore(shared.subscribe, shared.getSnapshot)
   const [editing, setEditing] = useState<number>()
@@ -49,6 +69,37 @@ export function MapStepsPopover({ steps: store, shared }: { steps: MapSteps; sha
     onError: (error) => {
       console.error('Could not copy the share link:', error)
       toast.error('Could not copy the link. Please try again.')
+    },
+  })
+
+  const { current: mapRef } = useMap()
+  const queryClient = useQueryClient()
+  const downloadPdf = useMutation({
+    mutationFn: async () => {
+      const map = mapRef?.getMap()
+      if (!map) throw new Error('Map not available')
+      const returnTo = steps.find((step) => step.index === current)
+      const { exportStepsPdf } = await import('./steps-pdf')
+      const progress = toast.loading('Building PDF…')
+      try {
+        await exportStepsPdf({
+          map,
+          steps: labeled,
+          goTo: (step) => goToStep(store, step),
+          queryClient,
+          origin: window.location.origin,
+          getLegendData,
+          onProgress: (done, total) => toast.loading(`Building PDF… page ${Math.min(done + 1, total)} of ${total}`, { id: progress }),
+        })
+      } finally {
+        toast.dismiss(progress)
+        if (returnTo) await goToStep(store, returnTo)
+      }
+    },
+    onSuccess: () => toast.success('PDF downloaded'),
+    onError: (error) => {
+      console.error('Could not build the PDF:', error)
+      toast.error('Could not build the PDF. Please try again.')
     },
   })
 
@@ -132,16 +183,35 @@ export function MapStepsPopover({ steps: store, shared }: { steps: MapSteps; sha
                 </li>
               ))}
             </ol>
-            <button
-              type='button'
-              onClick={() => copyLink.mutate()}
-              disabled={labeled.length === 0 || copyLink.isPending}
-              title={labeled.length === 0 ? 'Label the steps to share first' : undefined}
-              className='mt-2 flex w-full items-center justify-center gap-1.5 rounded-sm bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50'
-            >
-              <Link size={12} aria-hidden />
-              {labeled.length === 0 ? 'Label steps to share them' : `Copy link to ${labeled.length} labeled ${labeled.length === 1 ? 'step' : 'steps'}`}
-            </button>
+            {labeled.length === 0 ? (
+              <p className='mt-2 text-center text-xs text-muted-foreground'>Label steps to share them as a link or PDF</p>
+            ) : (
+              <div className='mt-2 flex gap-1.5'>
+                <button
+                  type='button'
+                  onClick={() => copyLink.mutate()}
+                  disabled={copyLink.isPending}
+                  className='flex flex-1 items-center justify-center gap-1.5 rounded-sm bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50'
+                >
+                  <Link size={12} aria-hidden />
+                  Copy link
+                </button>
+                <button
+                  type='button'
+                  onClick={() => downloadPdf.mutate()}
+                  disabled={downloadPdf.isPending}
+                  className='flex flex-1 items-center justify-center gap-1.5 rounded-sm border border-border px-2 py-1.5 text-xs font-medium hover:bg-accent hover:text-accent-foreground disabled:opacity-50'
+                >
+                  <FileDown size={12} aria-hidden />
+                  {downloadPdf.isPending ? 'Building…' : 'PDF'}
+                </button>
+              </div>
+            )}
+            {labeled.length > 0 && (
+              <p className='mt-1 text-center text-xs text-muted-foreground'>
+                {`Shares the ${labeled.length} labeled ${labeled.length === 1 ? 'step' : 'steps'}`}
+              </p>
+            )}
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>

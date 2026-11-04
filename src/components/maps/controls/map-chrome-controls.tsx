@@ -17,9 +17,9 @@ function HomeMapControl() {
   return null
 }
 
-function MapHistoryMapControl() {
+function MapHistoryMapControl({ getLegendData }: { getLegendData?: GetLegendData }) {
   const control = useControl(() => new MapHistoryControl(appHistory), { position: 'top-left' })
-  return createPortal(<MapStepsPopover steps={appSteps} shared={appSharedStops} />, control.container)
+  return createPortal(<MapStepsPopover steps={appSteps} shared={appSharedStops} getLegendData={getLegendData} />, control.container)
 }
 
 function ScaleMapControl() {
@@ -37,7 +37,7 @@ export function MapChromeControls({ isMobile, getLegendData }: { isMobile: boole
     <>
       <NavigationMapControl />
       <HomeMapControl />
-      <MapHistoryMapControl />
+      <MapHistoryMapControl getLegendData={getLegendData} />
       {/* Keyed: react-map-gl reads a control's position only when it mounts. */}
       <GeolocateControl
         key={isMobile ? 'phone' : 'desktop'}
