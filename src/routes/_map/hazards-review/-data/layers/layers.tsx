@@ -845,7 +845,7 @@ const giantDesiccationCrackWMSConfig: WMSLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'gdchazardunit',
-                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current`,
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_review`,
                     headers: {
                         "Accept-Profile": 'hazards',
                         "Accept": "application/json",
