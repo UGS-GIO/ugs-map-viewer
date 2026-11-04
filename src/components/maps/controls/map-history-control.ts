@@ -24,6 +24,7 @@ function cameraOf(search: string): maplibregl.CameraOptions | undefined {
 export class MapHistoryControl implements maplibregl.IControl {
   private container?: HTMLElement;
   private unsubscribe?: () => void;
+  private stopFollowingResize?: () => void;
 
   constructor(private readonly nav: MapHistory) {}
 
@@ -41,9 +42,7 @@ export class MapHistoryControl implements maplibregl.IControl {
     this.unsubscribe = history.subscribe(({ action, location }) => {
       if (action.type !== 'PUSH' && action.type !== 'REPLACE') {
         const camera = cameraOf(location.search);
-        // Not easeTo: it fixes its pixel anchor at the start, so the results panel opening or closing
-        // with the step resizes the map mid-animation and lands it half the width change off
-        if (camera) map.jumpTo(camera);
+        if (camera) this.easeTo(map, camera);
       }
       // After the router's microtask writes the entry, so the Navigation API sees it
       queueMicrotask(updateButtons);
@@ -54,7 +53,23 @@ export class MapHistoryControl implements maplibregl.IControl {
     return container;
   }
 
+  // easeTo keeps the pixel anchor it started with, and the results panel opening or closing with the step
+  // resizes the map mid-ease, which would land it half the width change off. Restart from each new size.
+  private easeTo(map: maplibregl.Map, camera: maplibregl.CameraOptions) {
+    this.stopFollowingResize?.();
+    const restart = () => map.easeTo(camera);
+    const stop = () => {
+      map.off('resize', restart);
+      map.off('idle', stop);
+    };
+    map.on('resize', restart);
+    map.on('idle', stop);
+    this.stopFollowingResize = stop;
+    map.easeTo(camera);
+  }
+
   onRemove(): void {
+    this.stopFollowingResize?.();
     this.unsubscribe?.();
     this.container?.remove();
   }
