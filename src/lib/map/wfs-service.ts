@@ -368,9 +368,8 @@ export interface ClickQueryParams {
 
 export interface BoxSelectQueryParams {
   visibleLayers: WMSLayerProps[]
-  mapInstance: maplibregl.Map
-  containerRect: DOMRect
-  boxSize: number
+  /** Ground area of the box */
+  box: Polygon
   pageSize: number
   /** Base WMS URL - used to derive WFS endpoint */
   wmsUrl: string
@@ -466,14 +465,7 @@ export async function queryWFSFeatures(params: ClickQueryParams): Promise<WfsFea
  * Query features in box select area with pagination
  */
 export async function queryBoxSelectFeatures(params: BoxSelectQueryParams): Promise<VisibleLayersResult> {
-  const { visibleLayers, mapInstance, containerRect, boxSize, pageSize, wmsUrl, layerFilters } = params
-
-  const centerX = containerRect.width / 2
-  const centerY = containerRect.height / 2
-  const halfBox = boxSize / 2
-
-  const box = screenBoxToPolygon(mapInstance, [centerX - halfBox, centerY - halfBox], [centerX + halfBox, centerY + halfBox])
-
+  const { visibleLayers, box, pageSize, wmsUrl, layerFilters } = params
   return queryVisibleLayers(visibleLayers, box, wmsUrl, { paginate: true, pageSize }, layerFilters)
 }
 

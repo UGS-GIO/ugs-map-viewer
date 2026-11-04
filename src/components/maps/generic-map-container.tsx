@@ -316,7 +316,7 @@ export default function GenericMapContainer({
   const currentPage = useGetCurrentPage()
   const { defaultStyle: defaultBasemap } = useAppBasemaps()
   const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
-  const { viewMode, setViewMode, center, zoom, pitch, bearing, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
+  const { viewMode, setViewMode, center, zoom, pitch, bearing, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords, spatialFilter, setSpatialFilter, boxSelectBounds, setBoxSelectBounds } = useMapUrlSync()
   const { terrain, exaggeration } = useAppTerrain()
   // Phones select straight from the map, whatever a desktop link's `view` still says.
   const selectionView: ViewMode = isMobile ? 'map' : viewMode
@@ -475,9 +475,7 @@ export default function GenericMapContainer({
   }, [])
 
   // Independent interaction states (no longer bundled in mapInteraction)
-  const [spatialFilter, setSpatialFilter] = useState<SpatialFilter>(null)
   const [boxSelectMode, setBoxSelectMode] = useState(false)
-  const [boxSelectBounds, setBoxSelectBounds] = useState<{ sw: [number, number]; ne: [number, number] } | null>(null)
   const [toolbarDrawShape, setToolbarDrawShape] = useState<DrawMode>('off')
 
   // Additive mode only active when no other mode is active (shift-click disabled in draw/box modes)
@@ -489,7 +487,7 @@ export default function GenericMapContainer({
     setSpatialFilter(null)
     setBoxSelectBounds(null)
     setAdditiveModeToggled(false)
-  }, [])
+  }, [setSpatialFilter, setBoxSelectBounds])
 
   // Register callback so startDraw can clear conflicting container state
   const { measure, setMeasure } = useMeasureMode()
@@ -564,7 +562,7 @@ export default function GenericMapContainer({
       clearAllSelections()
       showResults('table')
     }
-  }, [clearAllSelections, showResults])
+  }, [clearAllSelections, showResults, setSpatialFilter])
 
   // Handler for box select toggle from toolbar
   const handleBoxSelectModeChange = useCallback((active: boolean) => {
@@ -576,7 +574,7 @@ export default function GenericMapContainer({
   const handleBoxSelectConfirm = useCallback((bounds: { sw: [number, number]; ne: [number, number] }) => {
     setBoxSelectBounds(bounds)
     showResults('table')
-  }, [showResults])
+  }, [showResults, setBoxSelectBounds])
 
   // Clear highlights when selections are cleared
   const handleClearAllSelections = useCallback(() => {
@@ -586,7 +584,7 @@ export default function GenericMapContainer({
     onClearSearch?.()
     setPanelState(prev => ({ ...prev, isSheetOpen: false }))
     setBoxSelectBounds(null)
-  }, [clearAllSelections, setPopupCoords, onClearSearch])
+  }, [clearAllSelections, setPopupCoords, onClearSearch, setBoxSelectBounds])
 
   // Derived: click point for raster queries (center of click buffer)
   const clickPoint = useMemo(() => {
@@ -628,12 +626,12 @@ export default function GenericMapContainer({
     handleClearAllSelections()
     setViewMode('map')
     setBoxSelectBounds(null)
-  }, [handleClearAllSelections, setViewMode])
+  }, [handleClearAllSelections, setViewMode, setBoxSelectBounds])
 
   const handleSheetClose = useCallback(() => {
     handleClearAllSelections()
     setBoxSelectBounds(null)
-  }, [handleClearAllSelections])
+  }, [handleClearAllSelections, setBoxSelectBounds])
 
   const handleSheetOpenChange = useCallback((open: boolean) => {
     setPanelState(prev => ({ ...prev, isSheetOpen: open }))
