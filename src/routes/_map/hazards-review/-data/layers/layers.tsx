@@ -845,6 +845,7 @@ const giantDesiccationCrackWMSConfig: WMSLayerProps = {
                     fieldLabel: '',
                     matchingField: 'relate_id',
                     targetField: 'gdchazardunit',
+                    // EFZgdc exists only in the review table; switch to _current once it is promoted.
                     url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_review`,
                     headers: {
                         "Accept-Profile": 'hazards',
