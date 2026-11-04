@@ -625,13 +625,7 @@ export default function GenericMapContainer({
   const handleCloseTable = useCallback(() => {
     handleClearAllSelections()
     setViewMode('map')
-    setBoxSelectBounds(null)
-  }, [handleClearAllSelections, setViewMode, setBoxSelectBounds])
-
-  const handleSheetClose = useCallback(() => {
-    handleClearAllSelections()
-    setBoxSelectBounds(null)
-  }, [handleClearAllSelections, setBoxSelectBounds])
+  }, [handleClearAllSelections, setViewMode])
 
   const handleSheetOpenChange = useCallback((open: boolean) => {
     setPanelState(prev => ({ ...prev, isSheetOpen: open }))
@@ -780,7 +774,7 @@ export default function GenericMapContainer({
               sheetTriggerRef={sheetTriggerRef}
               popupContent={popupContent}
               popupTitle={popupTitle}
-              onClose={handleSheetClose}
+              onClose={handleClearAllSelections}
               onOpenChange={handleSheetOpenChange}
               onHighlightChange={handleHighlightChange}
               width={panelState.sheetWidth}

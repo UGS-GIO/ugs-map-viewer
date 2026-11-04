@@ -10,7 +10,7 @@ const STOPS: SharedStop[] = [
 
 describe('shared stops links', () => {
   it('round-trips stops through the compressed param', async () => {
-    expect(await decodeStops(await encodeStops(STOPS))).toEqual(STOPS)
+    expect(decodeStops(encodeStops(STOPS))).toEqual(STOPS)
   })
 
   it('drops layout and preferences from a step, so the recipient keeps their own', () => {
@@ -19,15 +19,15 @@ describe('shared stops links', () => {
   })
 
   it('opens on the first stop', async () => {
-    const link = new URL(await buildStopsLink('https://maps.example', STOPS))
+    const link = new URL(buildStopsLink('https://maps.example', STOPS))
     expect(link.pathname).toBe('/hazards')
     expect(link.searchParams.get('zoom')).toBe('15')
     expect(link.searchParams.get('stops')).toBeTruthy()
   })
 
   it('ignores stops that are not paths in this app', async () => {
-    const bad = await encodeStops([{ label: 'x', href: 'https://evil.example' }, ...STOPS])
-    expect(await decodeStops(bad)).toEqual(STOPS)
+    const bad = encodeStops([{ label: 'x', href: 'https://evil.example' }, ...STOPS])
+    expect(decodeStops(bad)).toEqual(STOPS)
   })
 })
 
@@ -35,7 +35,7 @@ describe('createSharedStops', () => {
   beforeEach(() => sessionStorage.clear())
 
   it('reads a shared link, drops its param, and lists the stops as unseen', async () => {
-    const link = new URL(await buildStopsLink('https://maps.example', STOPS))
+    const link = new URL(buildStopsLink('https://maps.example', STOPS))
     const history = createMemoryHistory({ initialEntries: [`${link.pathname}${link.search}`] })
     const shared = createSharedStops(history, sessionStorage)
     expect(new URLSearchParams(history.location.search).get('stops')).toBeNull()

@@ -1,6 +1,8 @@
 import type { RouterHistory } from '@tanstack/react-router'
 import { BASEMAP_STYLES } from '@/lib/basemaps'
 import { NON_STEP_PARAMS } from './map-history'
+import { cameraChanges, cameraOf } from './url-camera'
+import { readJson, writeJson } from './session-json'
 
 export interface MapStep {
   /** Position in browser history; fixed for the step's life, unlike TanStack's key, which changes on every replace */
@@ -19,7 +21,8 @@ export interface MapSteps {
   subscribe: (onChange: () => void) => () => void
   getSnapshot: () => MapStepsSnapshot
   setLabel: (index: number, label: string) => void
-  go: (index: number) => void
+  /** Resolves once the browser lands on the step, or rejects if it never does */
+  go: (index: number) => Promise<void>
 }
 
 const CAMERA_PARAMS = ['lat', 'lon', 'zoom', 'pitch', 'bearing']
@@ -55,14 +58,15 @@ export function describeStep(previousHref: string | undefined, href: string): st
   if (changed('exaggeration')) phrases.push('Changed 3D exaggeration')
   if (changed('view')) phrases.push(`${titleCase(now.get('view') ?? 'map')} view`)
 
-  // The map writes its camera back after every move, so ignore rounding noise
-  const differs = (key: string, tolerance: number) => Math.abs(Number(was.get(key) ?? 0) - Number(now.get(key) ?? 0)) > tolerance
-  const zoomBefore = Number(was.get('zoom'))
-  const zoomAfter = Number(now.get('zoom'))
-  // Zooming around the cursor also shifts the center, so a zoom reads as a zoom
-  if (differs('zoom', 0.01)) phrases.push(zoomAfter > zoomBefore ? 'Zoomed in' : 'Zoomed out')
-  else if (differs('lat', 1e-5) || differs('lon', 1e-5)) phrases.push('Moved map')
-  else if (differs('pitch', 0.5) || differs('bearing', 0.5)) phrases.push('Tilted or rotated')
+  const from = cameraOf(before.search)
+  const to = cameraOf(after.search)
+  if (from && to) {
+    const { moved, zoomed, turned } = cameraChanges(from, to)
+    // Zooming around the cursor also shifts the center, so a zoom reads as a zoom
+    if (zoomed) phrases.push(to.zoom > from.zoom ? 'Zoomed in' : 'Zoomed out')
+    else if (moved) phrases.push('Moved map')
+    else if (turned) phrases.push('Tilted or rotated')
+  }
 
   const other = [...new Set([...was.keys(), ...now.keys()])]
     .filter((key) => changed(key) && !CAMERA_PARAMS.includes(key) && !NON_STEP_PARAMS.includes(key))
@@ -70,30 +74,9 @@ export function describeStep(previousHref: string | undefined, href: string): st
   return phrases.slice(0, 2).join(', ') || 'Map view'
 }
 
-function readJson<T>(storage: Storage, key: string, fallback: T): T {
-  try {
-    const raw = storage.getItem(key)
-    return raw ? JSON.parse(raw) : fallback
-  } catch {
-    return fallback
-  }
-}
-
-function writeJson(storage: Storage, key: string, value: unknown) {
-  try {
-    storage.setItem(key, JSON.stringify(value))
-  } catch {
-    // Private mode or full storage: steps still work for this page, just not across a reload
-  }
-}
-
 const HREFS_KEY = 'map-history-steps'
 const LABELS_KEY = 'map-history-labels'
 
-/**
- * The steps in this tab's history, so they can be listed, jumped between and labeled. Kept in
- * sessionStorage alongside the browser's own history, which outlives a reload but can't be read back.
- */
 // A typed URL or a followed link starts a new document whose steps restart at index 0, so the stored
 // log describes entries that are gone. A reload or Back/Forward into the app keeps it.
 function isFreshNavigation(): boolean {
@@ -101,6 +84,7 @@ function isFreshNavigation(): boolean {
   return entry instanceof PerformanceNavigationTiming && entry.type === 'navigate'
 }
 
+/** This tab's steps, logged in sessionStorage since the browser's own history can't be read back. */
 export function createMapSteps(history: RouterHistory, storage: Storage = sessionStorage, fresh = isFreshNavigation()): MapSteps {
   if (fresh) {
     storage.removeItem(HREFS_KEY)
@@ -155,9 +139,19 @@ export function createMapSteps(history: RouterHistory, storage: Storage = sessio
       writeJson(storage, LABELS_KEY, labels)
       rebuild()
     },
-    go: (index) => {
-      const delta = index - indexOf()
-      if (delta !== 0) history.go(delta)
-    },
+    go: (index) => new Promise((resolve, reject) => {
+      if (indexOf() === index) return resolve()
+      const timeout = setTimeout(() => {
+        unsubscribe()
+        reject(new Error(`Step ${index + 1} is no longer in this tab's history`))
+      }, 5000)
+      const unsubscribe = history.subscribe(() => {
+        if (indexOf() !== index) return
+        clearTimeout(timeout)
+        unsubscribe()
+        resolve()
+      })
+      history.go(index - indexOf())
+    }),
   }
 }

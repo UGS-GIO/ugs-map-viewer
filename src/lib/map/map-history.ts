@@ -1,7 +1,7 @@
 import { createBrowserHistory, type RouterHistory } from '@tanstack/react-router'
 
 // Layout, preferences and the active tool: not steps, and Back/Forward leaves them as they are
-export const STICKY_PARAMS = ['sidebar_collapsed', 'sidebar_width', 'coordinate_format', 'units', 'measure']
+const STICKY_PARAMS = ['sidebar_collapsed', 'sidebar_width', 'coordinate_format', 'units', 'measure']
 // The phone sheet's height isn't a step either, but follows the entry so it drops with the results it showed
 export const NON_STEP_PARAMS = [...STICKY_PARAMS, 'sheet']
 // Writes closer together than this are one step: a wheel burst, a slider drag, typing, or one action's cascade
@@ -15,6 +15,18 @@ const mapState = (search: string) => {
   return params.toString()
 }
 
+/** `href` with the layout and preference params as they are in `from` */
+export function withSticky(href: string, from: string): string {
+  const url = new URL(href, 'http://local')
+  const source = new URLSearchParams(from)
+  STICKY_PARAMS.forEach((key) => {
+    const value = source.get(key)
+    if (value === null) url.searchParams.delete(key)
+    else url.searchParams.set(key, value)
+  })
+  return `${url.pathname}${url.search}`
+}
+
 const indexOf = (history: RouterHistory) => history.location.state.__TSR_index
 
 export interface MapHistory {
@@ -23,10 +35,8 @@ export interface MapHistory {
 }
 
 /**
- * The app writes map state to the URL with `replace`, so the browser had one entry per visit and Back
- * left the app. This turns a user's change to map state into a new entry, so Back and Forward (browser,
- * mouse buttons, map buttons) step through map and panel states. Writes no one made, like URL
- * normalization, and writes that only touch layout or preferences stay replaces.
+ * Every URL write is a `replace`; this turns a user's change to map or panel state into a new entry,
+ * so Back and Forward step through map states instead of leaving the app.
  */
 export function createMapHistory(history: RouterHistory = createBrowserHistory(), target: EventTarget = window): MapHistory {
   const replace = history.replace
@@ -41,16 +51,10 @@ export function createMapHistory(history: RouterHistory = createBrowserHistory()
   // Every entry also holds the layout of its moment; Back shouldn't undo a sidebar collapse alongside a map step
   let previous = history.location
   const keepSticky = () => {
-    const { pathname, search, state } = history.location
+    const { pathname, search, href, state } = history.location
     if (pathname !== previous.pathname) return
-    const params = new URLSearchParams(search)
-    const before = new URLSearchParams(previous.search)
-    STICKY_PARAMS.forEach((key) => {
-      const value = before.get(key)
-      if (value === null) params.delete(key)
-      else params.set(key, value)
-    })
-    if (params.toString() !== new URLSearchParams(search).toString()) replace(`${pathname}?${params}`, state)
+    const kept = withSticky(href, previous.search)
+    if (kept !== withSticky(href, search)) replace(kept, state)
   }
 
   history.subscribe(({ action }) => {

@@ -1,5 +1,7 @@
 import type { RouterHistory } from '@tanstack/react-router'
-import { NON_STEP_PARAMS, STICKY_PARAMS } from './map-history'
+import { gunzipSync, gzipSync, strFromU8, strToU8 } from 'fflate'
+import { NON_STEP_PARAMS, withSticky } from './map-history'
+import { readJson, writeJson } from './session-json'
 
 export interface SharedStop {
   label: string
@@ -22,6 +24,10 @@ export interface SharedStops {
 }
 
 export const STOPS_PARAM = 'stops'
+
+/** A, B, C… then AA, AB… so stops past Z keep distinct letters */
+export const stopLetter = (i: number): string =>
+  (i >= 26 ? stopLetter(Math.floor(i / 26) - 1) : '') + String.fromCharCode(65 + (i % 26))
 const STORAGE_KEY = 'map-shared-stops'
 
 /** A step's URL as a shared stop: the recipient keeps their own layout and preferences. */
@@ -32,13 +38,6 @@ export function toStopHref(href: string): string {
   return `${url.pathname}${url.search}`
 }
 
-async function pipe(bytes: Uint8Array<ArrayBuffer>, stream: CompressionStream | DecompressionStream): Promise<Uint8Array<ArrayBuffer>> {
-  const writer = stream.writable.getWriter()
-  // Not awaited: the write waits for the reader below to drain it
-  void writer.write(bytes).then(() => writer.close()).catch(() => {})
-  return new Uint8Array(await new Response(stream.readable).arrayBuffer())
-}
-
 const toBase64Url = (bytes: Uint8Array) =>
   btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join('')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
@@ -46,14 +45,13 @@ const fromBase64Url = (text: string) =>
   Uint8Array.from(atob(text.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
 
 /** Stops gzipped into one URL-safe string, so a handful of map states fit in a link. */
-export async function encodeStops(stops: SharedStop[]): Promise<string> {
-  const json = JSON.stringify(stops.map(({ label, href }) => [label, href]))
-  return toBase64Url(await pipe(new TextEncoder().encode(json), new CompressionStream('gzip')))
+export function encodeStops(stops: SharedStop[]): string {
+  // mtime 0, so the same stops always make the same link
+  return toBase64Url(gzipSync(strToU8(JSON.stringify(stops.map(({ label, href }) => [label, href]))), { mtime: 0 }))
 }
 
-export async function decodeStops(text: string): Promise<SharedStop[]> {
-  const json = new TextDecoder().decode(await pipe(fromBase64Url(text), new DecompressionStream('gzip')))
-  const parsed: unknown = JSON.parse(json)
+export function decodeStops(text: string): SharedStop[] {
+  const parsed: unknown = JSON.parse(strFromU8(gunzipSync(fromBase64Url(text))))
   if (!Array.isArray(parsed)) throw new Error('Shared stops are not a list')
   return parsed.flatMap((entry) =>
     Array.isArray(entry) && typeof entry[0] === 'string' && typeof entry[1] === 'string' && entry[1].startsWith('/')
@@ -62,9 +60,9 @@ export async function decodeStops(text: string): Promise<SharedStop[]> {
 }
 
 /** A link that opens on the first stop with the stops attached. */
-export async function buildStopsLink(origin: string, stops: SharedStop[]): Promise<string> {
+export function buildStopsLink(origin: string, stops: SharedStop[]): string {
   const url = new URL(stops[0].href, origin)
-  url.searchParams.set(STOPS_PARAM, await encodeStops(stops))
+  url.searchParams.set(STOPS_PARAM, encodeStops(stops))
   return url.toString()
 }
 
@@ -74,20 +72,11 @@ export async function buildStopsLink(origin: string, stops: SharedStop[]): Promi
  */
 export function createSharedStops(history: RouterHistory, storage: Storage = sessionStorage): SharedStops {
   const listeners = new Set<() => void>()
-  let snapshot: SharedStopsSnapshot = { stops: [], unseen: false }
-  try {
-    snapshot = { stops: JSON.parse(storage.getItem(STORAGE_KEY) ?? '[]'), unseen: false }
-  } catch {
-    // None stored
-  }
+  let snapshot: SharedStopsSnapshot = { stops: readJson(storage, STORAGE_KEY, []), unseen: false }
 
   const set = (next: SharedStopsSnapshot) => {
     snapshot = next
-    try {
-      storage.setItem(STORAGE_KEY, JSON.stringify(next.stops))
-    } catch {
-      // Private mode: they last until reload
-    }
+    writeJson(storage, STORAGE_KEY, next.stops)
     listeners.forEach((listener) => listener())
   }
 
@@ -97,9 +86,12 @@ export function createSharedStops(history: RouterHistory, storage: Storage = ses
     const url = new URL(history.location.href, 'http://local')
     url.searchParams.delete(STOPS_PARAM)
     history.replace(`${url.pathname}${url.search}`, history.location.state)
-    decodeStops(encoded)
-      .then((stops) => { if (stops.length > 0) set({ stops, unseen: true }) })
-      .catch((error) => console.error('Could not read the shared map stops:', error))
+    try {
+      const stops = decodeStops(encoded)
+      if (stops.length > 0) set({ stops, unseen: true })
+    } catch (error) {
+      console.error('Could not read the shared map stops:', error)
+    }
   }
 
   return {
@@ -108,16 +100,8 @@ export function createSharedStops(history: RouterHistory, storage: Storage = ses
       return () => listeners.delete(onChange)
     },
     getSnapshot: () => snapshot,
-    open: (stop) => {
-      // Keep the recipient's own layout and preferences
-      const url = new URL(stop.href, 'http://local')
-      const current = new URLSearchParams(history.location.search)
-      STICKY_PARAMS.forEach((key) => {
-        const value = current.get(key)
-        if (value !== null) url.searchParams.set(key, value)
-      })
-      history.push(`${url.pathname}${url.search}`)
-    },
+    // Keep the recipient's own layout and preferences
+    open: (stop) => history.push(withSticky(stop.href, history.location.search)),
     markSeen: () => { if (snapshot.unseen) set({ ...snapshot, unseen: false }) },
     clear: () => set({ stops: [], unseen: false }),
   }

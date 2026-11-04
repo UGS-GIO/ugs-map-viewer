@@ -23,7 +23,7 @@ interface UseTerraDrawOptions {
   activeDrawShape: DrawMode
   onDrawReset?: () => void
   /** Called when a drawing is completed with the polygon geometry */
-  onDrawFinished?: (polygon: Polygon, mode: 'rectangle' | 'polygon') => void
+  onDrawFinished?: (polygon: Polygon) => void
 }
 
 /**
@@ -104,8 +104,7 @@ export function useTerraDraw({
       const snapshot = terraDraw.getSnapshot()
       const feature = snapshot.find(f => f.id === id)
       if (feature && isPolygon(feature.geometry)) {
-        const mode = feature.properties?.mode === 'rectangle' ? 'rectangle' : 'polygon'
-        onDrawFinishedRef.current?.(feature.geometry, mode)
+        onDrawFinishedRef.current?.(feature.geometry)
       }
 
       terraDraw.clear()
