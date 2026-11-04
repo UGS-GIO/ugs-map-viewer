@@ -1,4 +1,4 @@
-import { useState, useSyncExternalStore } from 'react'
+import { useRef, useState, useSyncExternalStore } from 'react'
 import { Popover } from '@base-ui/react/popover'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMap } from 'react-map-gl/maplibre'
@@ -13,6 +13,13 @@ const ROW = 'flex min-w-0 flex-1 items-baseline gap-1.5 rounded-sm px-1.5 py-1 t
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 function StepLabelInput({ step, onDone }: { step: MapStep; onDone: (label?: string) => void }) {
+  // Enter or Escape ends the edit; the blur that follows must not end it again with the typed value
+  const ended = useRef(false)
+  const end = (label?: string) => {
+    if (ended.current) return
+    ended.current = true
+    onDone(label)
+  }
   return (
     <input
       autoFocus
@@ -21,14 +28,14 @@ function StepLabelInput({ step, onDone }: { step: MapStep; onDone: (label?: stri
       aria-label={`Label for step ${step.index + 1}`}
       className='min-w-0 flex-1 rounded-sm border border-input bg-background px-1.5 py-0.5 text-xs text-foreground'
       onKeyDown={(e) => {
-        if (e.key === 'Enter') onDone(e.currentTarget.value)
+        if (e.key === 'Enter') end(e.currentTarget.value)
         if (e.key === 'Escape') {
           // Cancel the edit without closing the popover
           e.stopPropagation()
-          onDone()
+          end()
         }
       }}
-      onBlur={(e) => onDone(e.currentTarget.value)}
+      onBlur={(e) => end(e.currentTarget.value)}
     />
   )
 }
@@ -148,27 +155,29 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
                   {editing === step.index ? (
                     <StepLabelInput step={step} onDone={(label) => finishEditing(step.index, label)} />
                   ) : (
-                    <button
-                      type='button'
-                      aria-current={step.index === current ? 'step' : undefined}
-                      onClick={() => void store.go(step.index)}
-                      className={cn(ROW, step.index === current && 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground')}
-                    >
-                      <span className='w-4 shrink-0 text-right tabular-nums opacity-60'>{step.index + 1}</span>
-                      <span className='min-w-0 flex-1 truncate'>
-                        {step.label ? <><span className='font-medium'>{step.label}</span> <span className='opacity-70'>· {step.summary}</span></> : step.summary}
-                      </span>
-                    </button>
+                    <>
+                      <button
+                        type='button'
+                        aria-current={step.index === current ? 'step' : undefined}
+                        onClick={() => void store.go(step.index)}
+                        className={cn(ROW, step.index === current && 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground')}
+                      >
+                        <span className='w-4 shrink-0 text-right tabular-nums opacity-60'>{step.index + 1}</span>
+                        <span className='min-w-0 flex-1 truncate'>
+                          {step.label ? <><span className='font-medium'>{step.label}</span> <span className='opacity-70'>· {step.summary}</span></> : step.summary}
+                        </span>
+                      </button>
+                      <button
+                        type='button'
+                        title={step.label ? 'Rename step' : 'Label step'}
+                        aria-label={`${step.label ? 'Rename' : 'Label'} step ${step.index + 1}`}
+                        onClick={() => setEditing(step.index)}
+                        className='flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                      >
+                        <Pencil size={12} aria-hidden />
+                      </button>
+                    </>
                   )}
-                  <button
-                    type='button'
-                    title={step.label ? 'Rename step' : 'Label step'}
-                    aria-label={`${step.label ? 'Rename' : 'Label'} step ${step.index + 1}`}
-                    onClick={() => setEditing(step.index)}
-                    className='flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                  >
-                    <Pencil size={12} aria-hidden />
-                  </button>
                 </li>
               ))}
             </ol>

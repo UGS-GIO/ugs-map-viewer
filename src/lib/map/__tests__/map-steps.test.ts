@@ -84,3 +84,12 @@ describe('createMapSteps', () => {
     expect(fresh.getSnapshot().steps.map((s) => [s.href, s.label])).toEqual([[view('zoom=9'), undefined]])
   })
 })
+
+describe('readJson', () => {
+  it('falls back on a stored null', async () => {
+    const { readJson } = await import('../session-json')
+    sessionStorage.setItem('x', 'null')
+    expect(readJson(sessionStorage, 'x', [])).toEqual([])
+    expect(readJson(undefined, 'x', {})).toEqual({})
+  })
+})

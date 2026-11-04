@@ -1,7 +1,7 @@
 import type { RouterHistory } from '@tanstack/react-router'
 import { gunzipSync, gzipSync, strFromU8, strToU8 } from 'fflate'
 import { NON_STEP_PARAMS, withSticky } from './map-history'
-import { readJson, writeJson } from './session-json'
+import { readJson, sessionStorageIfAllowed, writeJson } from './session-json'
 
 export interface SharedStop {
   label: string
@@ -70,7 +70,7 @@ export function buildStopsLink(origin: string, stops: SharedStop[]): string {
  * Stops someone shared, read from a link's `stops` param and kept for this tab. Opening a stop is a
  * normal navigation, so Back and Forward still step through what the recipient did.
  */
-export function createSharedStops(history: RouterHistory, storage: Storage = sessionStorage): SharedStops {
+export function createSharedStops(history: RouterHistory, storage = sessionStorageIfAllowed()): SharedStops {
   const listeners = new Set<() => void>()
   let snapshot: SharedStopsSnapshot = { stops: readJson(storage, STORAGE_KEY, []), unseen: false }
 

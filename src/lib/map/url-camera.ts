@@ -10,7 +10,9 @@ export function cameraOf(search: string): Camera | undefined {
   const params = new URLSearchParams(search)
   const [lat, lon, zoom] = ['lat', 'lon', 'zoom'].map((key) => Number(params.get(key) ?? NaN))
   if ([lat, lon, zoom].some(Number.isNaN)) return undefined
-  return { center: [lon, lat], zoom, pitch: Number(params.get('pitch') ?? 0), bearing: Number(params.get('bearing') ?? 0) }
+  // Absent is flat and north-up; so is anything unreadable
+  const angle = (key: string) => Number(params.get(key) ?? 0) || 0
+  return { center: [lon, lat], zoom, pitch: angle('pitch'), bearing: angle('bearing') }
 }
 
 /** What differs between two cameras, beyond the rounding the URL applies */

@@ -83,15 +83,29 @@ function useFollowUrl<T>(
   clear: () => void,
   query: (map: maplibregl.Map, value: T) => void,
 ) {
-  const queried = useRef<string>(undefined)
+  // null: a pending query was cancelled, so whatever the URL holds next has to run
+  const queried = useRef<string | null | undefined>(undefined)
+  const latest = useRef({ value, clear, query })
+  latest.current = { value, clear, query }
   useEffect(() => {
     const map = mapRef.current?.getMap()
     if (!enabled || !map || key === queried.current) return
     queried.current = key
+    const { value, clear } = latest.current
     if (!value) return clear()
     // After idle, so the camera Back/Forward moves to has settled and its tiles are drawn
-    map.once('idle', () => query(map, value))
-  }, [mapRef, enabled, value, key, clear, query])
+    let ran = false
+    const run = () => {
+      ran = true
+      latest.current.query(map, value)
+    }
+    map.once('idle', run)
+    return () => {
+      if (ran) return
+      map.off('idle', run)
+      queried.current = null
+    }
+  }, [mapRef, enabled, key])
   return useCallback((written: string | undefined) => { queried.current = written }, [])
 }
 

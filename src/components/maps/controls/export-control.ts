@@ -251,7 +251,7 @@ export class MapExporter {
     /** The map's canvas once it's drawn, with a 30 s limit that restarts while the tab is in the background */
     private waitForRender(exportMap: maplibregl.Map): Promise<HTMLCanvasElement> {
         return new Promise((resolve, reject) => {
-            let timeout: ReturnType<typeof setTimeout>;
+            let timeout: ReturnType<typeof setTimeout> | undefined;
             // A WebGL canvas is only readable in the frame that drew it, so copy it there
             const snapshot = () => {
                 const copy = document.createElement('canvas');
@@ -261,26 +261,26 @@ export class MapExporter {
                 copy.getContext('2d')?.drawImage(canvas, 0, 0);
                 return copy;
             };
+            const arm = () => { timeout = setTimeout(onTimeout, 30000); };
+            const finish = (result: () => void) => {
+                clearTimeout(timeout);
+                document.removeEventListener('visibilitychange', arm);
+                result();
+            };
             const onTimeout = () => {
                 // Browsers stop drawing in a background tab; give it the full time again once it's back
                 if (document.hidden) {
-                    document.addEventListener('visibilitychange', () => { timeout = setTimeout(onTimeout, 30000); }, { once: true });
+                    document.addEventListener('visibilitychange', arm, { once: true });
                     return;
                 }
-                if (!this.allowPartial) return reject(new Error('Map render timeout'));
+                if (!this.allowPartial) return finish(() => reject(new Error('Map render timeout')));
                 this.partial = true;
-                exportMap.once('render', () => resolve(snapshot()));
+                exportMap.once('render', () => finish(() => resolve(snapshot())));
                 exportMap.triggerRepaint();
             };
-            timeout = setTimeout(onTimeout, 30000);
-            exportMap.once('idle', () => {
-                clearTimeout(timeout);
-                resolve(snapshot());
-            });
-            exportMap.once('error', (e) => {
-                clearTimeout(timeout);
-                reject(e);
-            });
+            arm();
+            exportMap.once('idle', () => finish(() => resolve(snapshot())));
+            exportMap.once('error', (e) => finish(() => reject(e)));
         });
     }
 

@@ -18,33 +18,36 @@ export interface PdfPage {
   visitFirst?: boolean
 }
 
-/** Resolves once TanStack Query has nothing fetching or mutating. */
-function queriesQuiet(queryClient: QueryClient): Promise<void> {
-  const quiet = () => queryClient.isFetching() === 0 && queryClient.isMutating() === 0
-  if (quiet()) return Promise.resolve()
+/** Resolves once TanStack Query has nothing fetching or mutating, or when `signal` aborts. */
+function queriesQuiet(queryClient: QueryClient, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
-    const check = () => {
-      if (!quiet()) return
-      unsubscribeQueries()
-      unsubscribeMutations()
+    const unsubscribers: (() => void)[] = []
+    const done = () => {
+      unsubscribers.forEach((unsubscribe) => unsubscribe())
       resolve()
     }
-    const unsubscribeQueries = queryClient.getQueryCache().subscribe(check)
-    const unsubscribeMutations = queryClient.getMutationCache().subscribe(check)
+    const check = () => { if (queryClient.isFetching() === 0 && queryClient.isMutating() === 0) done() }
+    unsubscribers.push(queryClient.getQueryCache().subscribe(check), queryClient.getMutationCache().subscribe(check))
+    signal.addEventListener('abort', done, { once: true })
+    check()
   })
 }
 
 /** The map stopped and drawn, its feature queries done, and drawn again with their results. */
 async function settled(map: maplibregl.Map, queryClient: QueryClient) {
-  const timeout = new Promise<void>((resolve) => setTimeout(resolve, SETTLE_TIMEOUT_MS))
+  const timeout = new AbortController()
+  const timer = setTimeout(() => timeout.abort(), SETTLE_TIMEOUT_MS)
+  const aborted = new Promise<void>((resolve) => timeout.signal.addEventListener('abort', () => resolve(), { once: true }))
   await Promise.race([
     (async () => {
       await map.once('idle')
-      await queriesQuiet(queryClient)
+      await queriesQuiet(queryClient, timeout.signal)
       await map.once('idle')
     })(),
-    timeout,
+    aborted,
   ])
+  clearTimeout(timer)
+  timeout.abort()
 }
 
 interface StepsPdfOptions {

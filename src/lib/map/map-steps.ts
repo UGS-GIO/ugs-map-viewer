@@ -2,7 +2,7 @@ import type { RouterHistory } from '@tanstack/react-router'
 import { BASEMAP_STYLES } from '@/lib/basemaps'
 import { NON_STEP_PARAMS } from './map-history'
 import { cameraChanges, cameraOf } from './url-camera'
-import { readJson, writeJson } from './session-json'
+import { readJson, sessionStorageIfAllowed, writeJson } from './session-json'
 
 export interface MapStep {
   /** Position in browser history; fixed for the step's life, unlike TanStack's key, which changes on every replace */
@@ -81,14 +81,14 @@ const LABELS_KEY = 'map-history-labels'
 // log describes entries that are gone. A reload or Back/Forward into the app keeps it.
 function isFreshNavigation(): boolean {
   const [entry] = typeof performance === 'undefined' ? [] : performance.getEntriesByType('navigation')
-  return entry instanceof PerformanceNavigationTiming && entry.type === 'navigate'
+  return typeof PerformanceNavigationTiming !== 'undefined' && entry instanceof PerformanceNavigationTiming && entry.type === 'navigate'
 }
 
 /** This tab's steps, logged in sessionStorage since the browser's own history can't be read back. */
-export function createMapSteps(history: RouterHistory, storage: Storage = sessionStorage, fresh = isFreshNavigation()): MapSteps {
+export function createMapSteps(history: RouterHistory, storage = sessionStorageIfAllowed(), fresh = isFreshNavigation()): MapSteps {
   if (fresh) {
-    storage.removeItem(HREFS_KEY)
-    storage.removeItem(LABELS_KEY)
+    writeJson(storage, HREFS_KEY, [])
+    writeJson(storage, LABELS_KEY, {})
   }
   const indexOf = () => history.location.state.__TSR_index
   // JSON turns gaps (steps from before this page's first visit) into null
@@ -144,11 +144,12 @@ export function createMapSteps(history: RouterHistory, storage: Storage = sessio
     },
     go: (index) => new Promise((resolve, reject) => {
       if (indexOf() === index) return resolve()
+      let unsubscribe = () => {}
       const timeout = setTimeout(() => {
         unsubscribe()
         reject(new Error(`Step ${index + 1} is no longer in this tab's history`))
       }, 5000)
-      const unsubscribe = history.subscribe(() => {
+      unsubscribe = history.subscribe(() => {
         if (indexOf() !== index) return
         clearTimeout(timeout)
         unsubscribe()
