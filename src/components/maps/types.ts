@@ -90,7 +90,7 @@ export interface DataMapProps {
   featureBbox?: BoundsBox | null
   /** Callback when feature bbox should update */
   onFeatureBboxChange?: (bbox: BoundsBox | null) => void
-  /** Callback when selection should be cleared (from context menu) */
+  /** Clears the selected features (map tools button); the context menu also drops the pin */
   onClearSelection?: () => void
   /** Pin marker coordinates (from shared link or context menu) */
   pinCoords?: { lat: number; lon: number } | null

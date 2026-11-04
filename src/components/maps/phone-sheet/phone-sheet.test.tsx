@@ -90,10 +90,22 @@ describe('PhoneSheet', () => {
     expect(document.body.textContent).not.toContain('3 layers on')
   })
 
-  it('has no close button, and shows a back control only when given', () => {
+  it('shows the clear control only when given, at every height', () => {
+    const clear = { label: 'Clear selection', onClick: vi.fn() }
+    const { rerender } = render(<PhoneSheet {...base()} />)
+    expect(q(document.body, 'button[aria-label="Clear selection"]')).toBeNull()
+    rerender(<PhoneSheet {...base({ detent: PEEK, clear, headerAction: <span>toggle</span> })} />)
+    expect(document.body.textContent).not.toContain('toggle')
+    click(q(document.body, 'button[aria-label="Clear selection"]'))
+    expect(clear.onClick).toHaveBeenCalled()
+    rerender(<PhoneSheet {...base({ clear, headerAction: <span>toggle</span> })} />)
+    expect(document.body.textContent).toContain('toggle')
+    expect(q(document.body, 'button[aria-label="Clear selection"]')).not.toBeNull()
+  })
+
+  it('shows a back control only when given', () => {
     const back = { label: 'More', onClick: vi.fn() }
     const { rerender } = render(<PhoneSheet {...base()} />)
-    expect(q(document.body, 'button[aria-label="Clear results"]')).toBeNull()
     rerender(<PhoneSheet {...base({ back })} />)
     const backButton = [...document.body.querySelectorAll('button')].find((b) => b.textContent === 'More' && !b.closest('nav'))!
     click(backButton)

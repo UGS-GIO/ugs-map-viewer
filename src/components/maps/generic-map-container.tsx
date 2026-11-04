@@ -27,6 +27,7 @@ import { useGetCurrentPage } from '@/hooks/use-get-current-page'
 import { useAppBasemaps } from '@/hooks/use-app-basemaps'
 import { useAppTerrain } from '@/hooks/use-app-terrain'
 import { useMeasureMode } from '@/hooks/use-measure'
+import { useEscapeToClear } from '@/hooks/use-escape-to-clear'
 import type { MeasureMode } from '@/lib/map/measure-store'
 import { MapChromeControls } from '@/components/maps/controls/map-chrome-controls'
 import type { LegendItem } from '@/components/maps/controls'
@@ -578,15 +579,24 @@ export default function GenericMapContainer({
     showResults('table')
   }, [showResults])
 
-  // Clear highlights when selections are cleared
-  const handleClearAllSelections = useCallback(() => {
+  // Features only: the pin has its own clear button. The emptied phone sheet drops to its peek.
+  const handleClearSelection = useCallback(() => {
     setHighlightedFeatures([])
     clearAllSelections()
-    setPopupCoords(null)
     onClearSearch?.()
     setPanelState(prev => ({ ...prev, isSheetOpen: false }))
     setBoxSelectBounds(null)
-  }, [clearAllSelections, setPopupCoords, onClearSearch])
+    peek()
+  }, [clearAllSelections, onClearSearch, peek])
+
+  const handleClearAllSelections = useCallback(() => {
+    handleClearSelection()
+    setPopupCoords(null)
+  }, [handleClearSelection, setPopupCoords])
+
+  const hasSelection = highlightedFeatures.length > 0 || selectedFeatures.length > 0 || !!clickBufferBounds || !!boxSelectBounds
+  const toolOwnsEscape = activeDrawShape !== 'off' || toolbarDrawShape !== 'off' || boxSelectMode || !!measure
+  useEscapeToClear(!isMobile && hasSelection && !toolOwnsEscape, handleClearSelection)
 
   // Derived: click point for raster queries (center of click buffer)
   const clickPoint = useMemo(() => {
@@ -691,7 +701,7 @@ export default function GenericMapContainer({
       onBoxSelectConfirm={handleBoxSelectConfirm}
       isAdditiveMode={isAdditiveMode}
       onAdditiveModeToggle={() => additiveModeToggled ? setActiveMode('none') : setActiveMode('additive')}
-      onClearSelection={handleClearAllSelections}
+      onClearSelection={handleClearSelection}
       pinCoords={popupCoords}
       onPinChange={setPopupCoords}
       viewMode={isMobile ? undefined : viewMode}
@@ -717,6 +727,7 @@ export default function GenericMapContainer({
   const phoneSheetHost = isMobile && (
       <PhoneSheetHost
         container={mapAreaRef}
+        onClearResults={handleSheetClose}
         resultsSummary={hasResults ? `${resultsCount} result${resultsCount === 1 ? '' : 's'}` : undefined}
         layersSummary={`${displayedTitles.size} layer${displayedTitles.size === 1 ? '' : 's'} on`}
         results={

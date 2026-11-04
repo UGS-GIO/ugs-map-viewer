@@ -2,7 +2,7 @@ import { createPortal } from 'react-dom'
 import { useControl } from 'react-map-gl/maplibre'
 import { PortalControl } from './portal-control'
 import { ControlButton } from './control-button'
-import { Square, Pentagon, X, SquareDashedMousePointer, CopyPlus } from 'lucide-react'
+import { Square, Pentagon, X, SquareDashedMousePointer, CopyPlus, MousePointerBan } from 'lucide-react'
 import type { DrawMode } from '../types'
 import { ActiveModeLabel } from './active-mode-label'
 
@@ -23,6 +23,9 @@ interface MapToolsControlProps {
   // Pin marker
   hasPin?: boolean
   onClearPin?: () => void
+  // Selected features
+  hasSelection?: boolean
+  onClearSelection?: () => void
   position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 }
 
@@ -38,6 +41,8 @@ export function MapToolsControl({
   onCancelMode,
   hasPin = false,
   onClearPin,
+  hasSelection = false,
+  onClearSelection,
   position = 'top-right',
 }: MapToolsControlProps) {
   const control = useControl<PortalControl>(
@@ -98,6 +103,16 @@ export function MapToolsControl({
               icon={X}
               title="Clear pin marker"
               onClick={onClearPin}
+              variant="danger"
+            />
+          )}
+
+          {/* Clear selected features */}
+          {hasSelection && onClearSelection && (
+            <ControlButton
+              icon={MousePointerBan}
+              title="Clear selection"
+              onClick={onClearSelection}
               variant="danger"
             />
           )}
