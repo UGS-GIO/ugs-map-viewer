@@ -9,7 +9,7 @@ type View = { center: [number, number]; zoom: number; pitch: number; bearing: nu
 function fakeMap(start: View) {
   let view = start;
   const listeners: Record<string, ((e: object) => void)[]> = {};
-  const fire = (type: string, data = {}) => listeners[type]?.forEach((fn) => fn(data));
+  const fire = (type: string, data = {}) => listeners[type]?.forEach((fn) => fn({ target: map, ...data }));
   const map = {
     on: (type: string, fn: (e: object) => void) => { (listeners[type] ??= []).push(fn); },
     off: () => {},

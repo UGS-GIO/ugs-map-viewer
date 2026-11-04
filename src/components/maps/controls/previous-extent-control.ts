@@ -19,8 +19,13 @@ const sameView = (a: View, b: View) =>
   Math.abs(a.center[0] - b.center[0]) < 1e-6 &&
   Math.abs(a.center[1] - b.center[1]) < 1e-6 &&
   Math.abs(a.zoom - b.zoom) < 0.01 &&
-  Math.round(a.pitch) === Math.round(b.pitch) &&
-  Math.round(a.bearing) === Math.round(b.bearing);
+  Math.abs(a.pitch - b.pitch) < 0.1 &&
+  Math.abs(a.bearing - b.bearing) < 0.1;
+
+function viewOf(map: maplibregl.Map): View {
+  const { lng, lat } = map.getCenter();
+  return { center: [lng, lat], zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() };
+}
 
 /** Steps the map back through the views it settled on. MapLibre keeps no view history of its own. */
 export class PreviousExtentControl implements maplibregl.IControl {
@@ -33,7 +38,7 @@ export class PreviousExtentControl implements maplibregl.IControl {
 
   onAdd(map: maplibregl.Map): HTMLElement {
     this.map = map;
-    this.current = this.snapshot();
+    this.current = viewOf(map);
 
     const { container, button } = createIconControlButton('Go to previous view', BACK_ICON, this.goBack);
     this.container = container;
@@ -53,19 +58,13 @@ export class PreviousExtentControl implements maplibregl.IControl {
     this.map = undefined;
   }
 
-  private snapshot(): View {
-    const map = this.map!;
-    const { lng, lat } = map.getCenter();
-    return { center: [lng, lat], zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() };
-  }
-
   private onMoveStart = () => clearTimeout(this.settleTimer);
 
   private onMoveEnd = (e: maplibregl.MapLibreEvent & { previousExtent?: boolean }) => {
     clearTimeout(this.settleTimer);
     // Our own step back lands on the restored view without recording the one we left
     if (e.previousExtent) {
-      this.current = this.snapshot();
+      this.current = viewOf(e.target);
       return;
     }
     this.settleTimer = setTimeout(this.commit, SETTLE_MS);
@@ -74,7 +73,8 @@ export class PreviousExtentControl implements maplibregl.IControl {
 
   private commit = () => {
     this.settleTimer = undefined;
-    const next = this.snapshot();
+    if (!this.map) return;
+    const next = viewOf(this.map);
     if (this.current && !sameView(this.current, next)) {
       this.history.push(this.current);
       if (this.history.length > MAX_HISTORY) this.history.shift();
