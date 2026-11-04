@@ -1,4 +1,5 @@
 import type * as maplibregl from 'maplibre-gl';
+import { createIconControlButton } from './icon-control-button';
 
 // Lucide's Undo2 icon, inlined like HomeControl's
 const BACK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></svg>';
@@ -34,22 +35,14 @@ export class PreviousExtentControl implements maplibregl.IControl {
     this.map = map;
     this.current = this.snapshot();
 
-    this.container = document.createElement('div');
-    this.container.className = 'maplibregl-ctrl maplibregl-ctrl-group';
-
-    this.button = document.createElement('button');
-    this.button.className = 'maplibregl-ctrl-icon';
-    this.button.type = 'button';
-    this.button.title = 'Go to previous view';
-    this.button.setAttribute('aria-label', 'Go to previous view');
-    this.button.innerHTML = BACK_ICON;
-    this.button.addEventListener('click', this.goBack);
-    this.container.appendChild(this.button);
+    const { container, button } = createIconControlButton('Go to previous view', BACK_ICON, this.goBack);
+    this.container = container;
+    this.button = button;
     this.updateButton();
 
     map.on('movestart', this.onMoveStart);
     map.on('moveend', this.onMoveEnd);
-    return this.container;
+    return container;
   }
 
   onRemove(): void {
