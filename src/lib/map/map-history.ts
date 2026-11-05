@@ -23,6 +23,8 @@ const indexOf = (history: RouterHistory) => history.location.state.__TSR_index
 export interface MapHistory {
   history: RouterHistory
   canGoForward: () => boolean
+  /** Call when a map move starts; the returned function, called when it ends, carries an input's credit past the window */
+  moveStarted: () => () => void
 }
 
 /**
@@ -82,5 +84,11 @@ export function createMapHistory(history: RouterHistory = createBrowserHistory()
     history.push(path, state, navigateOpts)
   }
 
-  return { history, canGoForward: () => window.navigation?.canGoForward ?? indexOf(history) < maxIndex }
+  // Home, zoom-to and a flick's glide land after the window; a move an input started still counts as it
+  const moveStarted = () => {
+    const fromInput = Date.now() - lastInput <= INPUT_WINDOW_MS
+    return () => { if (fromInput) markInput() }
+  }
+
+  return { history, canGoForward: () => window.navigation?.canGoForward ?? indexOf(history) < maxIndex, moveStarted }
 }
