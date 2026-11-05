@@ -2,6 +2,7 @@ import type { Feature, FeatureCollection, LineString, Point, Polygon } from 'geo
 import type { GeoJSONStoreFeatures } from 'terra-draw'
 import { area } from '@turf/area'
 import { length } from '@turf/length'
+import { coordAll } from '@turf/meta'
 import polylabel from 'polylabel'
 import { segmentLengthsM } from './dem-elevation'
 import { formatQuantity, isMeasureMode, measurementQuantity, type MeasureMode, type Measurement, type UnitSystem } from './measure-store'
@@ -100,10 +101,7 @@ export function shapesFromGeoJSON(json: unknown): LoadedShape[] {
 
 /** Whether every shape's coordinates fit longitude/latitude, rather than a projected CRS's meters. */
 export function inLngLat(shapes: LoadedShape[]) {
-  const coords = shapes.flatMap((s) =>
-    s.geometry.type === 'Point' ? [s.geometry.coordinates] : s.geometry.type === 'LineString' ? s.geometry.coordinates : s.geometry.coordinates[0],
-  )
-  return coords.every(([x, y]) => Math.abs(x) <= 180 && Math.abs(y) <= 90)
+  return coordAll({ type: 'GeometryCollection', geometries: shapes.map((s) => s.geometry) }).every(([x, y]) => Math.abs(x) <= 180 && Math.abs(y) <= 90)
 }
 
 const LAYER_BY_MODE = { linestring: 'lines', polygon: 'areas', point: 'points' } as const
