@@ -40,6 +40,8 @@ const indexOf = (history: RouterHistory) => history.location.state.__TSR_index
 export interface MapHistory {
   history: RouterHistory
   canGoForward: () => boolean
+  /** True while a push turns the map's own write into a step; its camera is where the map already is */
+  isPromoting: () => boolean
 }
 
 /**
@@ -50,6 +52,7 @@ export function createMapHistory(history: RouterHistory = createBrowserHistory()
   const replace = history.replace
   let lastInput = -Infinity
   let lastWrite = 0
+  let promoting = false
   // Without the Navigation API, track the furthest entry this page pushed (lost on reload)
   let maxIndex = indexOf(history)
 
@@ -90,8 +93,13 @@ export function createMapHistory(history: RouterHistory = createBrowserHistory()
     if (now - lastInput > INPUT_WINDOW_MS || !quiet) return replace(path, state, navigateOpts)
 
     lastInput = -Infinity
-    history.push(path, state, navigateOpts)
+    promoting = true
+    try {
+      history.push(path, state, navigateOpts)
+    } finally {
+      promoting = false
+    }
   }
 
-  return { history, canGoForward: () => window.navigation?.canGoForward ?? indexOf(history) < maxIndex }
+  return { history, canGoForward: () => window.navigation?.canGoForward ?? indexOf(history) < maxIndex, isPromoting: () => promoting }
 }

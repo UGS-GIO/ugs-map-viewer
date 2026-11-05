@@ -26,8 +26,23 @@ describe('shared stops links', () => {
   })
 
   it('ignores stops that are not paths in this app', async () => {
-    const bad = encodeStops([{ label: 'x', href: 'https://evil.example' }, ...STOPS])
+    const bad = encodeStops([{ label: 'x', href: 'https://evil.example' }, { label: 'y', href: '//evil.example/a' }, { label: 'z', href: '/\\evil.example' }, ...STOPS])
     expect(decodeStops(bad)).toEqual(STOPS)
+  })
+})
+
+describe('shared stops limits', () => {
+  it('caps the stop count and label length, and refuses an oversized link', () => {
+    const many = Array.from({ length: 80 }, (_, i) => ({ label: `${'L'.repeat(300)}${i}`, href: `/hazards?zoom=${i}` }))
+    const decoded = decodeStops(encodeStops(many))
+    expect(decoded).toHaveLength(50)
+    expect(decoded[0].label).toHaveLength(200)
+    expect(() => decodeStops('A'.repeat(16_001))).toThrow()
+  })
+
+  it('refuses a link that decompresses past the cap', () => {
+    const huge = encodeStops([{ label: 'x'.repeat(300_000), href: '/hazards' }])
+    expect(() => decodeStops(huge)).toThrow()
   })
 })
 
@@ -53,5 +68,12 @@ describe('createSharedStops', () => {
     const params = new URLSearchParams(history.location.search)
     expect(params.get('zoom')).toBe('12')
     expect(params.get('sidebar_collapsed')).toBe('true')
+  })
+})
+
+describe('printable', () => {
+  it('keeps what the PDF font draws and turns subscripts into digits', async () => {
+    const { printable } = await import('@/components/maps/controls/steps-pdf')
+    expect(printable('CO₂ storage — café 🙂')).toBe('CO2 storage  café ')
   })
 })

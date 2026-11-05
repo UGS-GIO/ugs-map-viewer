@@ -59,6 +59,16 @@ describe('createMapHistory', () => {
     expect(index()).toBe(0)
   })
 
+  it('flags the push that promotes a map write while its subscribers run', () => {
+    const { input, history, isPromoting } = setup()
+    const seen: boolean[] = []
+    history.subscribe(({ action }) => { if (action.type === 'PUSH') seen.push(isPromoting()) })
+    input()
+    history.replace('/hazards?zoom=7')
+    history.push('/hazards?zoom=9')
+    expect(seen).toEqual([true, false])
+  })
+
   it('leaves layout and preference changes as replaces', () => {
     const { input, write, index } = setup()
     input()
