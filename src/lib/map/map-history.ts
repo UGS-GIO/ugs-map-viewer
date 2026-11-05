@@ -43,6 +43,8 @@ export interface MapHistory {
   canGoForward: () => boolean
   /** True while a push turns the map's own write into a step; its camera is where the map already is */
   isPromoting: () => boolean
+  /** Call when a map move starts; the returned function, called when it ends, carries an input's credit past the window */
+  moveStarted: () => () => void
 }
 
 /**
@@ -102,5 +104,11 @@ export function createMapHistory(history: RouterHistory = createBrowserHistory()
     }
   }
 
-  return { history, canGoForward: () => window.navigation?.canGoForward ?? indexOf(history) < maxIndex, isPromoting: () => promoting }
+  // Home, zoom-to and a flick's glide land after the window; a move an input started still counts as it
+  const moveStarted = () => {
+    const fromInput = Date.now() - lastInput <= INPUT_WINDOW_MS
+    return () => { if (fromInput) markInput() }
+  }
+
+  return { history, canGoForward: () => window.navigation?.canGoForward ?? indexOf(history) < maxIndex, moveStarted, isPromoting: () => promoting }
 }

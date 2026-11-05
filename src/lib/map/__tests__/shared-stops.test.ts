@@ -109,7 +109,8 @@ describe('createSharedStops', () => {
 describe('printable', () => {
   it('keeps what the PDF font draws and turns subscripts into digits', async () => {
     const { printable } = await import('@/components/maps/controls/steps-pdf')
-    expect(printable('CO₂ storage — café 🙂')).toBe('CO2 storage  café ')
+    expect(printable('CO₂ storage — café 🙂')).toBe('CO2 storage — café ')
+    expect(printable('Smith’s “parcel” – 5…')).toBe('Smith’s “parcel” – 5...')
   })
 })
 
