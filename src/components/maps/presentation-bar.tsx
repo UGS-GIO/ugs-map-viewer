@@ -7,6 +7,8 @@ import { usePresentation } from '@/hooks/use-presentation'
 const NEXT_KEYS = ['ArrowRight', 'ArrowDown', 'PageDown', ' ']
 const PREVIOUS_KEYS = ['ArrowLeft', 'ArrowUp', 'PageUp']
 const EDITABLE = 'input, textarea, select, [contenteditable]:not([contenteditable=false])'
+// Space on these is a click, not "next"
+const PRESSABLE = 'button, a, [role=button]'
 
 /** Steps through shared stops over the map, like slides; arrow keys move and Escape leaves to explore. */
 export function PresentationBar() {
@@ -20,7 +22,7 @@ export function PresentationBar() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return
-      if (e.target instanceof Element && e.target.closest(EDITABLE)) return
+      if (e.target instanceof Element && (e.target.closest(EDITABLE) || (e.key === ' ' && e.target.closest(PRESSABLE)))) return
       const { index, go, exit } = keys.current
       const step = NEXT_KEYS.includes(e.key) ? 1 : PREVIOUS_KEYS.includes(e.key) ? -1 : 0
       if (!step && e.key !== 'Escape') return
