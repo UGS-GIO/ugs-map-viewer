@@ -5,6 +5,8 @@ import { readJson, sessionStorageIfAllowed, writeJson } from './session-json'
 
 export interface SharedStop {
   label: string
+  /** What to say about this stop; shown under the label when presenting */
+  note?: string
   /** Path and search of the map state, without layout or preferences */
   href: string
 }
@@ -51,7 +53,7 @@ const fromBase64Url = (text: string) =>
 /** Stops gzipped into one URL-safe string, so a handful of map states fit in a link. */
 export function encodeStops(stops: SharedStop[]): string {
   // mtime 0, so the same stops always make the same link
-  return toBase64Url(gzipSync(strToU8(JSON.stringify(stops.map(({ label, href }) => [label, href]))), { mtime: 0 }))
+  return toBase64Url(gzipSync(strToU8(JSON.stringify(stops.map(({ label, href, note }) => (note ? [label, href, note] : [label, href])))), { mtime: 0 }))
 }
 
 export function decodeStops(text: string): SharedStop[] {
@@ -59,7 +61,7 @@ export function decodeStops(text: string): SharedStop[] {
   if (!Array.isArray(parsed)) throw new Error('Shared stops are not a list')
   return parsed.flatMap((entry) =>
     Array.isArray(entry) && typeof entry[0] === 'string' && typeof entry[1] === 'string' && entry[1].startsWith('/')
-      ? [{ label: entry[0], href: entry[1] }]
+      ? [{ label: entry[0], href: entry[1], ...(typeof entry[2] === 'string' && entry[2] ? { note: entry[2] } : {}) }]
       : [])
 }
 

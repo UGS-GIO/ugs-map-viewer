@@ -13,6 +13,11 @@ describe('shared stops links', () => {
     expect(decodeStops(encodeStops(STOPS))).toEqual(STOPS)
   })
 
+  it('carries a stop\'s note, and leaves it off stops without one', () => {
+    const withNote = [{ ...STOPS[0], note: 'Your home is on the line\nCall us with questions' }, STOPS[1]]
+    expect(decodeStops(encodeStops(withNote))).toEqual(withNote)
+  })
+
   it('drops layout and preferences from a step, so the recipient keeps their own', () => {
     expect(toStopHref('/hazards?zoom=6&sidebar_collapsed=true&units=metric&sheet=half&tab=layers'))
       .toBe('/hazards?zoom=6&tab=layers')

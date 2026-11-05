@@ -6,11 +6,13 @@ import { DEFAULT_EXPORT_SETTINGS, MapExporter, type GetLegendData } from './expo
 const MARGIN_MM = 10
 const HEADER_MM = 14
 const FOOTER_MM = 8
+const NOTE_LINE_MM = 4.5
 // Selection and layer queries can take a while; past this, export what's drawn
 const SETTLE_TIMEOUT_MS = 15000
 
 export interface PdfPage {
   label: string
+  note?: string
   href: string
   /** Puts the map in this page's state; resolves once the URL is there */
   visit: () => Promise<void>
@@ -88,12 +90,16 @@ export async function exportStepsPdf({ map, pages, queryClient, origin, getLegen
 
     pdf.setFontSize(14)
     pdf.text(`${stopLetter(i)}. ${pages[i].label}`, MARGIN_MM, MARGIN_MM + 4)
+    pdf.setFontSize(10)
+    const noteLines: string[] = pages[i].note ? pdf.splitTextToSize(pages[i].note, widthMm - MARGIN_MM * 2) : []
+    pdf.text(noteLines, MARGIN_MM, MARGIN_MM + 10)
+    const headerMm = HEADER_MM + noteLines.length * NOTE_LINE_MM
 
     // Fit the rendered page between header and footer, keeping its shape
-    const scale = Math.min((widthMm - MARGIN_MM * 2) / widthMm, (heightMm - MARGIN_MM - HEADER_MM - FOOTER_MM) / heightMm)
+    const scale = Math.min((widthMm - MARGIN_MM * 2) / widthMm, (heightMm - MARGIN_MM - headerMm - FOOTER_MM) / heightMm)
     const imageWidth = widthMm * scale
     const imageHeight = heightMm * scale
-    pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', (widthMm - imageWidth) / 2, MARGIN_MM + HEADER_MM - 4, imageWidth, imageHeight)
+    pdf.addImage(canvas.toDataURL('image/jpeg', 0.9), 'JPEG', (widthMm - imageWidth) / 2, MARGIN_MM + headerMm - 4, imageWidth, imageHeight)
 
     pdf.setFontSize(9)
     pdf.textWithLink('Open this view in the interactive map', MARGIN_MM, heightMm - MARGIN_MM / 2 - 1, { url: new URL(toStopHref(pages[i].href), origin).toString() })

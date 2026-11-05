@@ -14,31 +14,46 @@ import { openStop, presentStops } from '@/lib/map/app-history'
 const ROW = 'flex min-w-0 flex-1 items-baseline gap-1.5 rounded-sm px-1.5 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground'
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
-function StepLabelInput({ step, onDone }: { step: MapStep; onDone: (label?: string) => void }) {
+const FIELD = 'min-w-0 rounded-sm border border-input bg-background px-1.5 py-0.5 text-xs text-foreground'
+
+/** A step's label, plus a note to show under it when presenting; Enter saves, Shift+Enter starts a new note line. */
+function StepLabelEditor({ step, onDone }: { step: MapStep; onDone: (edit?: { label: string; note: string }) => void }) {
   // Enter or Escape ends the edit; the blur that follows must not end it again with the typed value
   const ended = useRef(false)
-  const end = (label?: string) => {
+  const label = useRef<HTMLInputElement>(null)
+  const note = useRef<HTMLTextAreaElement>(null)
+  const end = (save: boolean) => {
     if (ended.current) return
     ended.current = true
-    onDone(label)
+    onDone(save ? { label: label.current?.value ?? '', note: note.current?.value ?? '' } : undefined)
   }
   return (
-    <input
-      autoFocus
-      defaultValue={step.label ?? ''}
-      placeholder={step.summary}
-      aria-label={`Label for step ${step.index + 1}`}
-      className='min-w-0 flex-1 rounded-sm border border-input bg-background px-1.5 py-0.5 text-xs text-foreground'
+    <div
+      className='flex min-w-0 flex-1 flex-col gap-1 py-0.5'
       onKeyDown={(e) => {
-        if (e.key === 'Enter') end(e.currentTarget.value)
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault()
+          end(true)
+        }
         if (e.key === 'Escape') {
           // Cancel the edit without closing the popover
           e.stopPropagation()
-          end()
+          end(false)
         }
       }}
-      onBlur={(e) => end(e.currentTarget.value)}
-    />
+      // Moving between the two fields isn't leaving the edit
+      onBlur={(e) => { if (!(e.relatedTarget instanceof Node && e.currentTarget.contains(e.relatedTarget))) end(true) }}
+    >
+      <input ref={label} autoFocus defaultValue={step.label ?? ''} placeholder={step.summary} aria-label={`Label for step ${step.index + 1}`} className={FIELD} />
+      <textarea
+        ref={note}
+        rows={2}
+        defaultValue={step.note ?? ''}
+        placeholder='Note to show when presenting (optional)'
+        aria-label={`Note for step ${step.index + 1}`}
+        className={cn(FIELD, 'resize-y')}
+      />
+    </div>
   )
 }
 
@@ -55,7 +70,7 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
   // Shared stops plus your own labeled steps; a visited stop carries its stop's label, so it isn't counted twice
   const stopLabels = new Set(stops.map((stop) => stop.label))
   const ownLabeled = steps.filter((step) => step.label && !stopLabels.has(step.label))
-  const sharing: SharedStop[] = [...stops, ...ownLabeled.map((step) => ({ label: step.label ?? '', href: toStopHref(step.href) }))]
+  const sharing: SharedStop[] = [...stops, ...ownLabeled.map((step) => ({ label: step.label ?? '', href: toStopHref(step.href), note: step.note }))]
   const sharingWhat = stops.length > 0 ? plural(sharing.length, 'stop') : plural(sharing.length, 'labeled step')
 
   const copyLink = useMutation({
@@ -75,7 +90,7 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
       const pages = [
         // Each stop is opened from where you started, so it never pushes over your forward history
         ...stops.map((stop) => ({ ...stop, visit: async () => { await store.go(returnTo); shared.open(stop) } })),
-        ...ownLabeled.map((step) => ({ label: step.label ?? '', href: step.href, visit: () => store.go(step.index), visitFirst: true })),
+        ...ownLabeled.map((step) => ({ label: step.label ?? '', note: step.note, href: step.href, visit: () => store.go(step.index), visitFirst: true })),
       ]
       const { exportStepsPdf } = await import('./steps-pdf')
       const progress = toast.loading('Building PDF…')
@@ -103,8 +118,8 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
     },
   })
 
-  const finishEditing = (index: number, label?: string) => {
-    if (label !== undefined) store.setLabel(index, label)
+  const finishEditing = (index: number, edit?: { label: string; note: string }) => {
+    if (edit) store.setLabel(index, edit.label, edit.note)
     setEditing(undefined)
   }
 
@@ -151,7 +166,7 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
               {[...steps].reverse().map((step) => (
                 <li key={step.index} className='flex items-center gap-1'>
                   {editing === step.index ? (
-                    <StepLabelInput step={step} onDone={(label) => finishEditing(step.index, label)} />
+                    <StepLabelEditor step={step} onDone={(edit) => finishEditing(step.index, edit)} />
                   ) : (
                     <>
                       <button
@@ -167,7 +182,7 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
                       </button>
                       <button
                         type='button'
-                        title={step.label ? 'Rename step' : 'Label step'}
+                        title={step.label ? 'Edit label and note' : 'Label step'}
                         aria-label={`${step.label ? 'Rename' : 'Label'} step ${step.index + 1}`}
                         onClick={() => setEditing(step.index)}
                         className='flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground'

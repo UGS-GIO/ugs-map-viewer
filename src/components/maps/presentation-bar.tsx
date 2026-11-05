@@ -41,13 +41,14 @@ export function PresentationBar() {
       <div
         role='region'
         aria-label='Presentation'
-        className='pointer-events-auto flex w-full max-w-xl items-center gap-1 rounded-lg border bg-background/95 p-2 text-foreground shadow-lg backdrop-blur'
+        className='pointer-events-auto flex w-full max-w-2xl items-center gap-1 rounded-lg border bg-background/95 p-2 text-foreground shadow-lg backdrop-blur'
       >
         <Button variant='ghost' size='icon' aria-label='Previous stop' disabled={index === 0} onClick={() => go(index - 1)}>
           <ChevronLeft className='size-5' />
         </Button>
         <div className='min-w-0 flex-1 text-center' aria-live='polite'>
           <p className='truncate text-sm font-medium'>{stopLetter(index)}. {stops[index].label}</p>
+          {stops[index].note && <p className='max-h-24 overflow-y-auto whitespace-pre-line py-0.5 text-sm text-muted-foreground'>{stops[index].note}</p>}
           <p className='text-xs text-muted-foreground'>{index + 1} of {stops.length}</p>
         </div>
         <Button variant='ghost' size='icon' aria-label='Next stop' disabled={last} onClick={() => go(index + 1)}>

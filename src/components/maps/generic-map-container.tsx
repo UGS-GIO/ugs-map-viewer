@@ -39,6 +39,8 @@ import { createSVGSymbol } from '@/lib/legend/symbol-generator'
 import { createRasterSymbol } from '@/lib/legend/symbolizers/raster'
 import { loadCogMetadata, deriveRange } from '@/hooks/use-cog-metadata'
 import type { Legend, Symbolizer } from '@/lib/types/geoserver-types'
+import { usePresentation } from '@/hooks/use-presentation'
+import { PresentationBar } from '@/components/maps/presentation-bar'
 
 interface MapBounds {
   west: number
@@ -314,6 +316,7 @@ export default function GenericMapContainer({
   popupFeatureFilter,
 }: GenericMapContainerProps) {
   const isMobile = useIsMobile()
+  const { presenting } = usePresentation()
   const currentPage = useGetCurrentPage()
   const { defaultStyle: defaultBasemap } = useAppBasemaps()
   const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
@@ -770,6 +773,8 @@ export default function GenericMapContainer({
           style={{ width: shouldShrinkMap ? `calc(100% - ${panelState.sheetWidth}px)` : '100%' }}
         >
           {mapElement}
+          {/* Over the map alone, so a selected feature's details beside it stay clear */}
+          {presenting && <PresentationBar />}
         </div>
 
         {/* Popup sheet - desktop */}

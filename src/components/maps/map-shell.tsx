@@ -6,7 +6,6 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { SIDEBAR_WIDTH_COLLAPSED } from '@/context/sidebar-provider'
 import { cn } from '@/lib/utils'
 import { usePresentation } from '@/hooks/use-presentation'
-import { PresentationBar } from '@/components/maps/presentation-bar'
 
 interface MapShellProps {
     /** Route-specific search control for the app bar. */
@@ -52,7 +51,6 @@ const MapShell = ({ search, actions, children }: MapShellProps) => {
                     style={{ marginLeft: `${sidebarWidth}px` }}
                 >
                     {children}
-                    {presenting && <PresentationBar />}
                 </main>
             </div>
             {!isMobile && showChrome && <MapFooterBar />}
