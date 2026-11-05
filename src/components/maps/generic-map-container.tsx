@@ -40,7 +40,7 @@ import { createRasterSymbol } from '@/lib/legend/symbolizers/raster'
 import { loadCogMetadata, deriveRange } from '@/hooks/use-cog-metadata'
 import type { Legend, Symbolizer } from '@/lib/types/geoserver-types'
 import { usePresentation } from '@/hooks/use-presentation'
-import { PresentationBar } from '@/components/maps/presentation-bar'
+import { PresentationBar, PresentationKeys } from '@/components/maps/presentation-bar'
 
 interface MapBounds {
   west: number
@@ -774,7 +774,7 @@ export default function GenericMapContainer({
         >
           {mapElement}
           {/* Over the map alone, so a selected feature's details beside it stay clear */}
-          {presenting && <PresentationBar />}
+          {presenting && (isMobile ? <PresentationKeys /> : <PresentationBar />)}
         </div>
 
         {/* Popup sheet - desktop */}

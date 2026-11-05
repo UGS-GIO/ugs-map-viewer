@@ -2,6 +2,7 @@ import type { RouterHistory } from '@tanstack/react-router'
 import { gunzipSync, gzipSync, strFromU8, strToU8 } from 'fflate'
 import { NON_STEP_PARAMS, withSticky } from './map-history'
 import { readJson, sessionStorageIfAllowed, writeJson } from './session-json'
+import { HALF } from '@/components/maps/phone-sheet/sheet-model'
 
 export interface SharedStop {
   label: string
@@ -69,6 +70,8 @@ const withPresent = (href: string, present: number | undefined) => {
   if (present === undefined) return href
   const url = new URL(href, 'http://local')
   url.searchParams.set(PRESENT_PARAM, String(present))
+  // On phones the stop's note and features are in the sheet, so it opens raised; desktop ignores it
+  url.searchParams.set('sheet', HALF)
   return `${url.pathname}${url.search}`
 }
 

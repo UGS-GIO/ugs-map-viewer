@@ -50,6 +50,8 @@ export interface PhoneSheetProps {
   /** A control at the end of the header row while the sheet is raised, such as Cards | Table. */
   headerAction?: ReactNode
   back?: { label: string; onClick: () => void }
+  /** Controls at the end of the header at every height, such as a presentation's previous and next */
+  controls?: ReactNode
   /** An ✕ at the end of the header, at every height, such as clearing the selected features. */
   clear?: { label: string; onClick: () => void }
   onSelectTab: (tab: PhoneTab) => void
@@ -58,7 +60,7 @@ export interface PhoneSheetProps {
 }
 
 /** One always-open non-modal drawer over the map, and the tab bar that picks what it holds. */
-export function PhoneSheet({ container, detent, activeTab, panelKey, title, summary, headerAction, back, clear, onSelectTab, onSetDetent, children }: PhoneSheetProps) {
+export function PhoneSheet({ container, detent, activeTab, panelKey, title, summary, headerAction, controls, back, clear, onSelectTab, onSetDetent, children }: PhoneSheetProps) {
   const collapsed = detent === PEEK
   const contentId = useId()
   const popupRef = useRef<HTMLDivElement>(null)
@@ -102,7 +104,7 @@ export function PhoneSheet({ container, detent, activeTab, panelKey, title, summ
       >
         <Drawer.VirtualKeyboardProvider>
           <Drawer.Portal container={container}>
-            <Drawer.Viewport data-phone-chrome className='pointer-events-none absolute inset-0 z-20 flex items-end'>
+            <Drawer.Viewport className='pointer-events-none absolute inset-0 z-20 flex items-end'>
               <Drawer.Popup
                 ref={popupRef}
                 initialFocus={false}
@@ -142,9 +144,10 @@ export function PhoneSheet({ container, detent, activeTab, panelKey, title, summ
                     </Drawer.Title>
                     {collapsed && summary && <span className='min-w-0 truncate text-sm text-muted-foreground'>{summary}</span>}
                     {/* Ignored by the drag, so a tap on it is never a swipe. */}
-                    {((!collapsed && headerAction) || clear) && (
+                    {((!collapsed && headerAction) || controls || clear) && (
                       <div data-base-ui-swipe-ignore className='-mr-2 ml-auto flex shrink-0 items-center gap-1'>
                         {!collapsed && headerAction}
+                        {controls}
                         {clear && (
                           <button
                             type='button'
