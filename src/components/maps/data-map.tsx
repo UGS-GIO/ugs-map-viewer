@@ -1,4 +1,4 @@
-import { useRef, useMemo, useCallback, useState, useEffect } from 'react'
+import { useRef, useMemo, useCallback, useState, useEffect, type RefObject } from 'react'
 import { useWfsLayerData, getWfsSourceId, queryWfsLayersInScreenBbox, queryWfsLayersAtPoint, type WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
 import Map, { AttributionControl, Source, Layer, Marker, MapLayerMouseEvent } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
@@ -25,6 +25,7 @@ import { useCogRange } from '@/hooks/use-cog-metadata'
 import { CogPixelHighlight } from '@/components/maps/cog-pixel-highlight'
 import { buildCogProtocolUrl } from '@/lib/map/cog/setup'
 import { boundsToPolygon, calculateBboxFromGeometry, polygonBounds, screenBoxToPolygon } from '@/lib/map/geometry-utils'
+import { formatArea, formatBbox } from '@/lib/map/url-geometry'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
 import { useTerraDraw } from '@/hooks/use-terra-draw'
 import type { Polygon } from 'geojson'
@@ -70,14 +71,45 @@ function CogLayerSource({ layer, beforeId, hidden, opacity }: { layer: COGLayerP
   )
 }
 
+/**
+ * Keeps a selection in step with its URL value: re-queries it on load and Back/Forward, clears it when
+ * gone. Local actions call the returned mark with the value they write, so it isn't re-run.
+ */
+function useFollowUrl<T>(
+  mapRef: RefObject<MapRef | null>,
+  enabled: boolean,
+  value: T | null | undefined,
+  key: string | undefined,
+  clear: () => void,
+  query: (map: maplibregl.Map, value: T) => void,
+) {
+  // null: a pending query was cancelled, so whatever the URL holds next has to run
+  const queried = useRef<string | null | undefined>(undefined)
+  const latest = useRef({ value, clear, query })
+  latest.current = { value, clear, query }
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!enabled || !map || key === queried.current) return
+    queried.current = key
+    const { value, clear } = latest.current
+    if (!value) return clear()
+    // After idle, so the camera Back/Forward moves to has settled and its tiles are drawn
+    let ran = false
+    const run = () => {
+      ran = true
+      latest.current.query(map, value)
+    }
+    map.once('idle', run)
+    return () => {
+      if (ran) return
+      map.off('idle', run)
+      queried.current = null
+    }
+  }, [mapRef, enabled, key])
+  return useCallback((written: string | undefined) => { queried.current = written }, [])
+}
+
 /** WMS layers that MapLibre draws at the map's current zoom and center. */
-// Micro-degrees, as the URL rounds them, so a bounds and its URL round-trip share a key
-const bboxKey = (b: { sw: [number, number]; ne: [number, number] } | null | undefined) =>
-  b ? [...b.sw, ...b.ne].map((n) => Math.round(n * 1e6)).join() : null
-
-const areaKey = (polygon: Polygon | null | undefined) =>
-  polygon ? polygon.coordinates[0].flat().map((n) => Math.round(n * 1e6)).join() : null
-
 function wmsLayersDrawnInView(map: maplibregl.Map, layers: WMSLayerProps[]): WMSLayerProps[] {
   const zoom = map.getZoom()
   const latitude = map.getCenter().lat
@@ -291,7 +323,7 @@ export default function DataMap({
   exaggeration,
   clickBufferBounds,
   onClickBufferChange,
-  featureBbox,
+  initialBounds,
   onFeatureBboxChange,
   onClearSelection,
   hasSelection = false,
@@ -310,8 +342,6 @@ export default function DataMap({
   const currentZoomRef = useRef(zoom)
   const [isBoxSelectZoomValid, setIsBoxSelectZoomValid] = useState(zoom >= BOX_SELECT_MIN_ZOOM)
   const [styleLoaded, setStyleLoaded] = useState(false)
-  // The click_bbox the selection was last queried for; a URL value that differs came from load or Back/Forward
-  const queriedBboxRef = useRef<string | null>(null)
 
   // Context menu state
   const [contextMenuCoords, setContextMenuCoords] = useState<ContextMenuCoords | null>(null)
@@ -553,16 +583,31 @@ export default function DataMap({
     polygonQueryRef.current.mutate({ polygon, visibleLayers: wmsLayers, wmsUrl, layerFilters })
   }, [wmsUrl, onFeatureClick, layerFilters])
 
-  // The area the selection was last queried for; a URL value that differs came from load or Back/Forward
-  const queriedAreaRef = useRef<string | null>(null)
+  const clearSelection = useCallback(() => onFeatureClick?.([]), [onFeatureClick])
+  const followReady = styleLoaded && !!onFeatureClick
+  const markClickQueried = useFollowUrl(mapRef, followReady && hasClickableLayers, clickBufferBounds, formatBbox(clickBufferBounds), clearSelection, (map, bounds) => {
+    const center = getBboxCenter(bounds)
+    const swPoint = map.project([bounds.sw[0], bounds.sw[1]])
+    const nePoint = map.project([bounds.ne[0], bounds.ne[1]])
+    // Re-emit bounds so popup opens via handleClickBufferChange
+    onClickBufferChange?.(bounds)
+    queryAtPoint(map, map.project([center.lng, center.lat]), Math.abs(nePoint.x - swPoint.x) / 2 || clickTolerance, false)
+  })
+  const markAreaQueried = useFollowUrl(mapRef, followReady, spatialFilter, formatArea(spatialFilter), clearSelection, queryArea)
+  const markBoxQueried = useFollowUrl(mapRef, followReady, boxSelectBounds, formatBbox(boxSelectBounds), clearSelection, (map, bounds) => {
+    const sw = map.project(bounds.sw)
+    const ne = map.project(bounds.ne)
+    queryBox(map, boundsToPolygon(bounds), [[sw.x, ne.y], [ne.x, sw.y]], false)
+  })
+
   const setArea = useCallback((polygon: Polygon | null) => {
-    queriedAreaRef.current = areaKey(polygon)
+    markAreaQueried(formatArea(polygon))
     // A new area drops click_bbox with the old selection; the click follower mustn't clear the area's results
-    if (polygon) queriedBboxRef.current = null
+    if (polygon) markClickQueried(formatBbox(null))
     onSpatialFilterChange?.(polygon)
     const map = mapRef.current?.getMap()
     if (polygon && map) queryArea(map, polygon)
-  }, [onSpatialFilterChange, queryArea])
+  }, [markAreaQueried, markClickQueried, onSpatialFilterChange, queryArea])
 
   // Route drawn polygons: external caller consumes (returns true), otherwise spatial filter
   const handleDrawFinished = useCallback((polygon: Polygon) => {
@@ -578,7 +623,7 @@ export default function DataMap({
     onDrawFinished: handleDrawFinished,
   })
 
-  // Calculate initial view - use feature_bbox if restoring, otherwise use props
+  // Initial view: the URL's camera, or a link's selection when it has no camera
   const initialViewRef = useRef<{
     longitude?: number
     latitude?: number
@@ -589,10 +634,9 @@ export default function DataMap({
     fitBoundsOptions?: { padding: number; maxZoom?: number }
   } | null>(null)
   if (!initialViewRef.current) {
-    const bbox = featureBbox || clickBufferBounds
-    if (bbox) {
+    if (initialBounds) {
       initialViewRef.current = {
-        bounds: [bbox.sw, bbox.ne],
+        bounds: [initialBounds.sw, initialBounds.ne],
         fitBoundsOptions: { padding: 50, maxZoom: 14 },
         pitch,
         bearing,
@@ -628,12 +672,12 @@ export default function DataMap({
 
     // Calculate click buffer bbox for visualization
     const clickBounds = polygonBounds(screenBoxToPolygon(map, [e.point.x - clickTolerance, e.point.y - clickTolerance], [e.point.x + clickTolerance, e.point.y + clickTolerance]))
-    queriedBboxRef.current = bboxKey(clickBounds)
+    markClickQueried(formatBbox(clickBounds))
     onClickBufferChange?.(clickBounds)
 
     const isAdditive = isAdditiveMode || (e.originalEvent?.shiftKey ?? false)
     queryAtPoint(map, e.point, clickTolerance, isAdditive, { extractBbox: true, clearOnEmpty: true })
-  }, [onFeatureClick, hasClickableLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, activeDrawShape, measureMode, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, setArea, layerFilters])
+  }, [markClickQueried, onFeatureClick, hasClickableLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, activeDrawShape, measureMode, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, setArea, layerFilters])
 
   // Handle map move end - track zoom only (box select now uses click-to-confirm)
   const handleMoveEnd = useCallback(() => {
@@ -671,9 +715,6 @@ export default function DataMap({
     )
   }
 
-  // The box the selection was last queried for; a URL value that differs came from load or Back/Forward
-  const queriedBoxRef = useRef<string | null>(null)
-
   // Handle box select confirmation - query the centered box and store its bounds
   const handleBoxSelectConfirm = useCallback(() => {
     if (!mapRef.current || !containerRef.current) return
@@ -686,13 +727,13 @@ export default function DataMap({
     const box = screenBoxToPolygon(map, [centerX - halfBox, centerY - halfBox], [centerX + halfBox, centerY + halfBox])
     const bounds = polygonBounds(box)
 
-    queriedBoxRef.current = bboxKey(bounds)
+    markBoxQueried(formatBbox(bounds))
     // The box replaces a click selection, so its step mustn't carry the click's bbox too
-    queriedBboxRef.current = null
+    markClickQueried(formatBbox(null))
     onClickBufferChange?.(null)
     onBoxSelectConfirm?.(bounds)
     queryBox(map, box, [[centerX - halfBox, centerY - halfBox], [centerX + halfBox, centerY + halfBox]], isAdditiveMode)
-  }, [onBoxSelectConfirm, onClickBufferChange, visibleWmsLayers, visibleWfsLayers, visiblePmtilesLayers, boxSelectQuery, wmsUrl, onFeatureClick, isAdditiveMode, layerFilters])
+  }, [markBoxQueried, markClickQueried, onBoxSelectConfirm, onClickBufferChange, visibleWmsLayers, visibleWfsLayers, visiblePmtilesLayers, boxSelectQuery, wmsUrl, onFeatureClick, isAdditiveMode, layerFilters])
 
   // Handle map load
   const handleLoad = useCallback(() => {
@@ -702,59 +743,6 @@ export default function DataMap({
       onMapReady?.(map)
     }
   }, [onMapReady])
-
-  // Selection follows the URL's click_bbox: re-query it on load and Back/Forward, or clear it when gone.
-  // Waits for idle so the camera Back/Forward moves to has settled and its tiles are drawn.
-  const urlBboxKey = bboxKey(clickBufferBounds)
-  useEffect(() => {
-    const map = mapRef.current?.getMap()
-    if (!styleLoaded || !map || !onFeatureClick || !hasClickableLayers || urlBboxKey === queriedBboxRef.current) return
-    queriedBboxRef.current = urlBboxKey
-    if (!clickBufferBounds) {
-      onFeatureClick([])
-      return
-    }
-    const bounds = clickBufferBounds
-    map.once('idle', () => {
-      const center = getBboxCenter(bounds)
-      const swPoint = map.project([bounds.sw[0], bounds.sw[1]])
-      const nePoint = map.project([bounds.ne[0], bounds.ne[1]])
-      // Re-emit bounds so popup opens via handleClickBufferChange
-      onClickBufferChange?.(bounds)
-      queryAtPoint(map, map.project([center.lng, center.lat]), Math.abs(nePoint.x - swPoint.x) / 2 || clickTolerance, false)
-    })
-  }, [styleLoaded, urlBboxKey, clickBufferBounds, clickTolerance, onClickBufferChange, onFeatureClick, hasClickableLayers])
-
-  // Drawn area and box select follow the URL the same way
-  const urlAreaKey = areaKey(spatialFilter)
-  useEffect(() => {
-    const map = mapRef.current?.getMap()
-    if (!styleLoaded || !map || !onFeatureClick || urlAreaKey === queriedAreaRef.current) return
-    queriedAreaRef.current = urlAreaKey
-    if (!spatialFilter) {
-      onFeatureClick([])
-      return
-    }
-    const polygon = spatialFilter
-    map.once('idle', () => queryArea(map, polygon))
-  }, [styleLoaded, urlAreaKey, spatialFilter, onFeatureClick, queryArea])
-
-  const urlBoxKey = bboxKey(boxSelectBounds)
-  useEffect(() => {
-    const map = mapRef.current?.getMap()
-    if (!styleLoaded || !map || !onFeatureClick || urlBoxKey === queriedBoxRef.current) return
-    queriedBoxRef.current = urlBoxKey
-    if (!boxSelectBounds) {
-      onFeatureClick([])
-      return
-    }
-    const bounds = boxSelectBounds
-    map.once('idle', () => {
-      const sw = map.project(bounds.sw)
-      const ne = map.project(bounds.ne)
-      queryBox(map, boundsToPolygon(bounds), [[sw.x, ne.y], [ne.x, sw.y]], false)
-    })
-  }, [styleLoaded, urlBoxKey, boxSelectBounds, onFeatureClick])
 
   // Combine loading states
   const showLoading = isLoading || queryLoading

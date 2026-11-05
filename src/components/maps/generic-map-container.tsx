@@ -317,7 +317,7 @@ export default function GenericMapContainer({
   const currentPage = useGetCurrentPage()
   const { defaultStyle: defaultBasemap } = useAppBasemaps()
   const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
-  const { viewMode, setViewMode, center, zoom, pitch, bearing, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords, spatialFilter, setSpatialFilter, boxSelectBounds, setBoxSelectBounds } = useMapUrlSync()
+  const { viewMode, setViewMode, center, zoom, pitch, bearing, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords, initialBounds, spatialFilter, setSpatialFilter, boxSelectBounds, setBoxSelectBounds } = useMapUrlSync()
   const { terrain, exaggeration } = useAppTerrain()
   // Phones select straight from the map, whatever a desktop link's `view` still says.
   const selectionView: ViewMode = isMobile ? 'map' : viewMode
@@ -636,13 +636,7 @@ export default function GenericMapContainer({
   const handleCloseTable = useCallback(() => {
     handleClearAllSelections()
     setViewMode('map')
-    setBoxSelectBounds(null)
-  }, [handleClearAllSelections, setViewMode, setBoxSelectBounds])
-
-  const handleSheetClose = useCallback(() => {
-    handleClearAllSelections()
-    setBoxSelectBounds(null)
-  }, [handleClearAllSelections, setBoxSelectBounds])
+  }, [handleClearAllSelections, setViewMode])
 
   const handleSheetOpenChange = useCallback((open: boolean) => {
     setPanelState(prev => ({ ...prev, isSheetOpen: open }))
@@ -682,7 +676,7 @@ export default function GenericMapContainer({
       exaggeration={exaggeration}
       clickBufferBounds={clickBufferBounds}
       onClickBufferChange={handleClickBufferChange}
-      featureBbox={featureBbox}
+      initialBounds={initialBounds}
       onFeatureBboxChange={setFeatureBbox}
       activeDrawShape={activeDrawShape}
       onDrawReset={handleDrawReset}
@@ -725,7 +719,7 @@ export default function GenericMapContainer({
   const phoneSheetHost = isMobile && (
       <PhoneSheetHost
         container={mapAreaRef}
-        onClearResults={handleSheetClose}
+        onClearResults={handleClearAllSelections}
         resultsSummary={hasResults ? `${resultsCount} result${resultsCount === 1 ? '' : 's'}` : undefined}
         layersSummary={`${displayedTitles.size} layer${displayedTitles.size === 1 ? '' : 's'} on`}
         results={
@@ -789,7 +783,7 @@ export default function GenericMapContainer({
               sheetTriggerRef={sheetTriggerRef}
               popupContent={popupContent}
               popupTitle={popupTitle}
-              onClose={handleSheetClose}
+              onClose={handleClearAllSelections}
               onOpenChange={handleSheetOpenChange}
               onHighlightChange={handleHighlightChange}
               width={panelState.sheetWidth}

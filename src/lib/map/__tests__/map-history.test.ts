@@ -59,6 +59,16 @@ describe('createMapHistory', () => {
     expect(index()).toBe(0)
   })
 
+  it('flags the push that promotes a map write while its subscribers run', () => {
+    const { input, history, isPromoting } = setup()
+    const seen: boolean[] = []
+    history.subscribe(({ action }) => { if (action.type === 'PUSH') seen.push(isPromoting()) })
+    input()
+    history.replace('/hazards?zoom=7')
+    history.push('/hazards?zoom=9')
+    expect(seen).toEqual([true, false])
+  })
+
   it('steps for a move an input started, even when it lands after the window', () => {
     const { input, history, index, moveStarted } = setup()
     input()
@@ -97,6 +107,14 @@ describe('createMapHistory', () => {
     expect(params.get('sidebar_collapsed')).toBe('true')
     expect(params.get('units')).toBe('metric')
     expect(params.get('sheet')).toBeNull()
+  })
+
+  it('folds the writes after following a link into the entry the link made', () => {
+    const { input, history, write, index } = setup()
+    input()
+    history.push('/hazards?zoom=6')
+    write('zoom=6&layers=a')
+    expect(index()).toBe(1)
   })
 
   it('tracks whether a forward entry exists', () => {

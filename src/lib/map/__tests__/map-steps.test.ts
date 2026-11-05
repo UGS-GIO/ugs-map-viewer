@@ -4,6 +4,7 @@ import { createMemoryHistory } from '@tanstack/react-router'
 import { createMapSteps, describeStep } from '../map-steps'
 
 const at = (search: string) => `/hazards?${search}`
+const view = (search: string) => at(`lat=1&lon=1&${search}`)
 
 describe('describeStep', () => {
   it('names what changed between two steps', () => {
@@ -28,51 +29,67 @@ describe('createMapSteps', () => {
   beforeEach(() => sessionStorage.clear())
 
   function setup() {
-    const history = createMemoryHistory({ initialEntries: [at('zoom=6')] })
+    const history = createMemoryHistory({ initialEntries: [view('zoom=6')] })
     return { history, steps: createMapSteps(history, sessionStorage, false) }
   }
 
   it('lists steps as they are pushed and replaced, and jumps between them', () => {
     const { history, steps } = setup()
-    history.push(at('zoom=7'))
-    history.replace(at('zoom=7.5'))
-    history.push(at('zoom=8'))
-    expect(steps.getSnapshot().steps.map((s) => s.href)).toEqual([at('zoom=6'), at('zoom=7.5'), at('zoom=8')])
+    history.push(view('zoom=7'))
+    history.replace(view('zoom=7.5'))
+    history.push(view('zoom=8'))
+    expect(steps.getSnapshot().steps.map((s) => s.href)).toEqual([view('zoom=6'), view('zoom=7.5'), view('zoom=8')])
     expect(steps.getSnapshot().current).toBe(2)
 
     steps.go(0)
-    expect(history.location.search).toBe('?zoom=6')
+    expect(history.location.search).toBe('?lat=1&lon=1&zoom=6')
     expect(steps.getSnapshot().current).toBe(0)
   })
 
   it('labels a step and drops labels for steps a new push replaces', () => {
     const { history, steps } = setup()
-    history.push(at('zoom=7'))
-    history.push(at('zoom=8'))
+    history.push(view('zoom=7'))
+    history.push(view('zoom=8'))
     steps.setLabel(0, 'A')
     steps.setLabel(2, 'B')
     expect(steps.getSnapshot().steps.map((s) => s.label)).toEqual(['A', undefined, 'B'])
 
     steps.go(1)
-    history.push(at('zoom=9'))
+    history.push(view('zoom=9'))
     expect(steps.getSnapshot().steps.map((s) => s.label)).toEqual(['A', undefined, undefined])
     expect(steps.getSnapshot().steps).toHaveLength(3)
   })
 
   it('clears a label set to blank, and keeps steps and labels across a reload', () => {
     const { history, steps } = setup()
-    history.push(at('zoom=7'))
+    history.push(view('zoom=7'))
     steps.setLabel(1, 'Parcel')
     steps.setLabel(0, '  ')
     const reloaded = createMapSteps(history, sessionStorage, false)
     expect(reloaded.getSnapshot().steps.map((s) => s.label)).toEqual([undefined, 'Parcel'])
   })
 
+  it('lists only map views', () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const steps = createMapSteps(history, sessionStorage, false)
+    history.push(view('zoom=6'))
+    expect(steps.getSnapshot().steps.map((s) => s.index)).toEqual([1])
+  })
+
   it('starts over when a new page load restarts the steps', () => {
     const { history, steps } = setup()
-    history.push(at('zoom=7'))
+    history.push(view('zoom=7'))
     steps.setLabel(1, 'Parcel')
-    const fresh = createMapSteps(createMemoryHistory({ initialEntries: [at('zoom=9')] }), sessionStorage, true)
-    expect(fresh.getSnapshot().steps.map((s) => [s.href, s.label])).toEqual([[at('zoom=9'), undefined]])
+    const fresh = createMapSteps(createMemoryHistory({ initialEntries: [view('zoom=9')] }), sessionStorage, true)
+    expect(fresh.getSnapshot().steps.map((s) => [s.href, s.label])).toEqual([[view('zoom=9'), undefined]])
+  })
+})
+
+describe('readJson', () => {
+  it('falls back on a stored null', async () => {
+    const { readJson } = await import('../session-json')
+    sessionStorage.setItem('x', 'null')
+    expect(readJson(sessionStorage, 'x', [])).toEqual([])
+    expect(readJson(undefined, 'x', {})).toEqual({})
   })
 })

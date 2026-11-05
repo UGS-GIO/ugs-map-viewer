@@ -1,9 +1,8 @@
 import { lazy, Suspense } from 'react'
-import { createPortal } from 'react-dom'
 import { GeolocateControl, useControl } from 'react-map-gl/maplibre'
 import { HomeControl } from './home-control'
 import { MapHistoryControl } from './map-history-control'
-import { appHistory, appSteps } from '@/lib/map/app-history'
+import { appHistory, appSteps, appSharedStops } from '@/lib/map/app-history'
 import { MapStepsPopover } from './map-steps-popover'
 import { DualScaleControl } from './dual-scale-control'
 import { NavigationMapControl } from './navigation-map-control'
@@ -15,11 +14,6 @@ const MeasureMapControl = lazy(() => import('./measure-map-control'))
 function HomeMapControl() {
   useControl(() => new HomeControl(), { position: 'top-left' })
   return null
-}
-
-function MapHistoryMapControl() {
-  const control = useControl(() => new MapHistoryControl(appHistory), { position: 'top-left' })
-  return createPortal(<MapStepsPopover steps={appSteps} />, control.container)
 }
 
 function ScaleMapControl() {
@@ -37,7 +31,9 @@ export function MapChromeControls({ isMobile, getLegendData }: { isMobile: boole
     <>
       <NavigationMapControl />
       <HomeMapControl />
-      <MapHistoryMapControl />
+      <MapHistoryControl nav={appHistory}>
+        <MapStepsPopover steps={appSteps} shared={appSharedStops} getLegendData={getLegendData} />
+      </MapHistoryControl>
       {/* Keyed: react-map-gl reads a control's position only when it mounts. */}
       <GeolocateControl
         key={isMobile ? 'phone' : 'desktop'}

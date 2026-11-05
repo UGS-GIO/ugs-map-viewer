@@ -18,25 +18,43 @@ const mapState = (search: string) => {
   return params.toString()
 }
 
+/** An app path and search with its params changed by `edit` */
+export function editHref(href: string, edit: (params: URLSearchParams) => void): string {
+  const url = new URL(href, 'http://local')
+  edit(url.searchParams)
+  return `${url.pathname}${url.search}`
+}
+
+/** `href` with the layout and preference params as they are in `from` */
+export function withSticky(href: string, from: string): string {
+  const source = new URLSearchParams(from)
+  return editHref(href, (params) => STICKY_PARAMS.forEach((key) => {
+    const value = source.get(key)
+    if (value === null) params.delete(key)
+    else params.set(key, value)
+  }))
+}
+
 const indexOf = (history: RouterHistory) => history.location.state.__TSR_index
 
 export interface MapHistory {
   history: RouterHistory
   canGoForward: () => boolean
+  /** True while a push turns the map's own write into a step; its camera is where the map already is */
+  isPromoting: () => boolean
   /** Call when a map move starts; the returned function, called when it ends, carries an input's credit past the window */
   moveStarted: () => () => void
 }
 
 /**
- * The app writes map state to the URL with `replace`, so the browser had one entry per visit and Back
- * left the app. This turns a user's change to map state into a new entry, so Back and Forward (browser,
- * mouse buttons, map buttons) step through map and panel states. Writes no one made, like URL
- * normalization, and writes that only touch layout or preferences stay replaces.
+ * Every URL write is a `replace`; this turns a user's change to map or panel state into a new entry,
+ * so Back and Forward step through map states instead of leaving the app.
  */
 export function createMapHistory(history: RouterHistory = createBrowserHistory(), target: EventTarget = window): MapHistory {
   const replace = history.replace
   let lastInput = -Infinity
   let lastWrite = 0
+  let promoting = false
   // Without the Navigation API, track the furthest entry this page pushed (lost on reload)
   let maxIndex = indexOf(history)
 
@@ -46,21 +64,17 @@ export function createMapHistory(history: RouterHistory = createBrowserHistory()
   // Every entry also holds the layout of its moment; Back shouldn't undo a sidebar collapse alongside a map step
   let previous = history.location
   const keepSticky = () => {
-    const { pathname, search, state } = history.location
+    const { pathname, search, href, state } = history.location
     if (pathname !== previous.pathname) return
-    const params = new URLSearchParams(search)
-    const before = new URLSearchParams(previous.search)
-    STICKY_PARAMS.forEach((key) => {
-      const value = before.get(key)
-      if (value === null) params.delete(key)
-      else params.set(key, value)
-    })
-    if (params.toString() !== new URLSearchParams(search).toString()) replace(`${pathname}?${params}`, state)
+    const kept = withSticky(href, previous.search)
+    if (kept !== withSticky(href, search)) replace(kept, state)
   }
 
   history.subscribe(({ action }) => {
     if (action.type === 'PUSH') {
       maxIndex = indexOf(history)
+      // The click that followed a link made this entry; the app's first writes on arrival aren't another
+      lastInput = -Infinity
     } else if (action.type !== 'REPLACE') {
       // The click or mouse button that went back isn't a change to record
       lastInput = -Infinity
@@ -81,7 +95,12 @@ export function createMapHistory(history: RouterHistory = createBrowserHistory()
     if (now - lastInput > INPUT_WINDOW_MS || !quiet) return replace(path, state, navigateOpts)
 
     lastInput = -Infinity
-    history.push(path, state, navigateOpts)
+    promoting = true
+    try {
+      history.push(path, state, navigateOpts)
+    } finally {
+      promoting = false
+    }
   }
 
   // Home, zoom-to and a flick's glide land after the window; a move an input started still counts as it
@@ -90,5 +109,5 @@ export function createMapHistory(history: RouterHistory = createBrowserHistory()
     return () => { if (fromInput) markInput() }
   }
 
-  return { history, canGoForward: () => window.navigation?.canGoForward ?? indexOf(history) < maxIndex, moveStarted }
+  return { history, canGoForward: () => window.navigation?.canGoForward ?? indexOf(history) < maxIndex, moveStarted, isPromoting: () => promoting }
 }
