@@ -24,6 +24,8 @@ const MapCarbonstorageIndexLazyRouteImport = createFileRoute(
   '/_map/carbonstorage/',
 )()
 const MapGeophysicsIndexLazyRouteImport = createFileRoute('/_map/geophysics/')()
+const MapGroundwaterIndexLazyRouteImport =
+  createFileRoute('/_map/groundwater/')()
 const MapHazardsReviewIndexLazyRouteImport = createFileRoute(
   '/_map/hazards-review/',
 )()
@@ -90,6 +92,13 @@ const MapGeophysicsIndexLazyRoute = MapGeophysicsIndexLazyRouteImport.update({
 } as any).lazy(() =>
   import('./routes/_map/geophysics/index.lazy').then((d) => d.Route),
 )
+const MapGroundwaterIndexLazyRoute = MapGroundwaterIndexLazyRouteImport.update({
+  id: '/groundwater/',
+  path: '/groundwater/',
+  getParentRoute: () => MapRoute,
+} as any).lazy(() =>
+  import('./routes/_map/groundwater/index.lazy').then((d) => d.Route),
+)
 const MapHazardsReviewIndexLazyRoute =
   MapHazardsReviewIndexLazyRouteImport.update({
     id: '/',
@@ -151,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/hazards/report': typeof ReportHazardsReportLazyRoute
   '/carbonstorage/': typeof MapCarbonstorageIndexLazyRoute
   '/geophysics/': typeof MapGeophysicsIndexLazyRoute
+  '/groundwater/': typeof MapGroundwaterIndexLazyRoute
   '/hazards-review/': typeof MapHazardsReviewIndexLazyRoute
   '/hazards/': typeof MapHazardsIndexLazyRoute
   '/minerals/': typeof MapMineralsIndexLazyRoute
@@ -166,6 +176,7 @@ export interface FileRoutesByTo {
   '/hazards/report': typeof ReportHazardsReportLazyRoute
   '/carbonstorage': typeof MapCarbonstorageIndexLazyRoute
   '/geophysics': typeof MapGeophysicsIndexLazyRoute
+  '/groundwater': typeof MapGroundwaterIndexLazyRoute
   '/hazards-review': typeof MapHazardsReviewIndexLazyRoute
   '/minerals': typeof MapMineralsIndexLazyRoute
   '/subsurface': typeof MapSubsurfaceIndexLazyRoute
@@ -185,6 +196,7 @@ export interface FileRoutesById {
   '/_report/hazards/report': typeof ReportHazardsReportLazyRoute
   '/_map/carbonstorage/': typeof MapCarbonstorageIndexLazyRoute
   '/_map/geophysics/': typeof MapGeophysicsIndexLazyRoute
+  '/_map/groundwater/': typeof MapGroundwaterIndexLazyRoute
   '/_map/hazards-review/': typeof MapHazardsReviewIndexLazyRoute
   '/_map/hazards/': typeof MapHazardsIndexLazyRoute
   '/_map/minerals/': typeof MapMineralsIndexLazyRoute
@@ -203,6 +215,7 @@ export interface FileRouteTypes {
     | '/hazards/report'
     | '/carbonstorage/'
     | '/geophysics/'
+    | '/groundwater/'
     | '/hazards-review/'
     | '/hazards/'
     | '/minerals/'
@@ -218,6 +231,7 @@ export interface FileRouteTypes {
     | '/hazards/report'
     | '/carbonstorage'
     | '/geophysics'
+    | '/groundwater'
     | '/hazards-review'
     | '/minerals'
     | '/subsurface'
@@ -236,6 +250,7 @@ export interface FileRouteTypes {
     | '/_report/hazards/report'
     | '/_map/carbonstorage/'
     | '/_map/geophysics/'
+    | '/_map/groundwater/'
     | '/_map/hazards-review/'
     | '/_map/hazards/'
     | '/_map/minerals/'
@@ -322,6 +337,13 @@ declare module '@tanstack/react-router' {
       path: '/geophysics'
       fullPath: '/geophysics/'
       preLoaderRoute: typeof MapGeophysicsIndexLazyRouteImport
+      parentRoute: typeof MapRoute
+    }
+    '/_map/groundwater/': {
+      id: '/_map/groundwater/'
+      path: '/groundwater'
+      fullPath: '/groundwater/'
+      preLoaderRoute: typeof MapGroundwaterIndexLazyRouteImport
       parentRoute: typeof MapRoute
     }
     '/_map/hazards-review/': {
@@ -426,6 +448,7 @@ interface MapRouteChildren {
   MapHazardsReviewRouteRoute: typeof MapHazardsReviewRouteRouteWithChildren
   MapCarbonstorageIndexLazyRoute: typeof MapCarbonstorageIndexLazyRoute
   MapGeophysicsIndexLazyRoute: typeof MapGeophysicsIndexLazyRoute
+  MapGroundwaterIndexLazyRoute: typeof MapGroundwaterIndexLazyRoute
   MapHazardsIndexLazyRoute: typeof MapHazardsIndexLazyRoute
   MapMineralsIndexLazyRoute: typeof MapMineralsIndexLazyRoute
   MapSubsurfaceIndexLazyRoute: typeof MapSubsurfaceIndexLazyRoute
@@ -437,6 +460,7 @@ const MapRouteChildren: MapRouteChildren = {
   MapHazardsReviewRouteRoute: MapHazardsReviewRouteRouteWithChildren,
   MapCarbonstorageIndexLazyRoute: MapCarbonstorageIndexLazyRoute,
   MapGeophysicsIndexLazyRoute: MapGeophysicsIndexLazyRoute,
+  MapGroundwaterIndexLazyRoute: MapGroundwaterIndexLazyRoute,
   MapHazardsIndexLazyRoute: MapHazardsIndexLazyRoute,
   MapMineralsIndexLazyRoute: MapMineralsIndexLazyRoute,
   MapSubsurfaceIndexLazyRoute: MapSubsurfaceIndexLazyRoute,
