@@ -8,8 +8,9 @@ const HEADER_MM = 14
 const FOOTER_MM = 8
 const TITLE_LINE_MM = 6
 
-// jsPDF's built-in Helvetica only draws WinAnsi; NFKC first turns the likes of CO₂ into CO2
-export const printable = (text: string) => text.normalize('NFKC').replace(/[^\x20-\x7E\xA0-\xFF]/g, '')
+// jsPDF's built-in Helvetica only draws WinAnsi (Latin-1 plus curly quotes, dashes and the like);
+// NFKC first turns the likes of CO₂ into CO2
+export const printable = (text: string) => text.normalize('NFKC').replace(/[^\x20-\x7E\xA0-\xFF€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]/g, '')
 // Selection and layer queries can take a while; past this, export what's drawn
 const SETTLE_TIMEOUT_MS = 15000
 
