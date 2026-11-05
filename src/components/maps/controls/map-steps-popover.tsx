@@ -16,7 +16,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 const FIELD = 'min-w-0 rounded-sm border border-input bg-background px-1.5 py-0.5 text-xs text-foreground'
 
-/** A step's label, plus a note to show under it when presenting; Enter saves, Shift+Enter starts a new note line. */
+/** A step's label, plus a note to show under it when presenting. Save, Enter in the label or Ctrl+Enter saves. */
 function StepLabelEditor({ step, onDone }: { step: MapStep; onDone: (edit?: { label: string; note: string }) => void }) {
   // Enter or Escape ends the edit; the blur that follows must not end it again with the typed value
   const ended = useRef(false)
@@ -31,7 +31,8 @@ function StepLabelEditor({ step, onDone }: { step: MapStep; onDone: (edit?: { la
     <div
       className='flex min-w-0 flex-1 flex-col gap-1 py-0.5'
       onKeyDown={(e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        // Enter in the note is a new line; phones have no Shift to ask for one
+        if (e.key === 'Enter' && (e.target === label.current || e.ctrlKey || e.metaKey)) {
           e.preventDefault()
           end(true)
         }
@@ -53,6 +54,15 @@ function StepLabelEditor({ step, onDone }: { step: MapStep; onDone: (edit?: { la
         aria-label={`Note for step ${step.index + 1}`}
         className={cn(FIELD, 'resize-y')}
       />
+      {/* Pointer down would blur the fields first, and the blur saves; Cancel must get there before it */}
+      <div className='flex justify-end gap-1' onPointerDown={(e) => e.preventDefault()}>
+        <button type='button' onClick={() => end(false)} className='rounded-sm px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground'>
+          Cancel
+        </button>
+        <button type='button' onClick={() => end(true)} className='rounded-sm bg-primary px-2 py-1 text-xs font-medium text-primary-foreground hover:opacity-90'>
+          Save
+        </button>
+      </div>
     </div>
   )
 }
