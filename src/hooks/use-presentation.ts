@@ -13,7 +13,7 @@ export function usePresentation() {
   // Each stop is a new step, so Back in the browser or on a mouse goes back a stop
   const go = useCallback((i: number) => { if (stops[i]) openStop(stops[i], i + 1) }, [stops])
   const exit = useCallback(
-    () => navigate({ to: '.', search: (prev) => ({ ...prev, present: undefined }), replace: true }),
+    () => navigate({ to: '.', search: (prev) => ({ ...prev, present: undefined, stops: undefined }), replace: true }),
     [navigate],
   )
 

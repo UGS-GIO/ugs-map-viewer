@@ -39,7 +39,7 @@ const STORAGE_KEY = 'map-shared-stops'
 
 /** A step's URL as a shared stop: the recipient keeps their own layout and preferences. */
 export function toStopHref(href: string): string {
-  return editHref(href, (params) => [...NON_STEP_PARAMS, STOPS_PARAM].forEach((key) => params.delete(key)))
+  return editHref(href, (params) => NON_STEP_PARAMS.forEach((key) => params.delete(key)))
 }
 
 // fflate's latin1 mode maps each byte to one character, which is what btoa and atob take
@@ -61,17 +61,17 @@ export function decodeStops(text: string): SharedStop[] {
       : [])
 }
 
-const withPresent = (href: string, present: number | undefined) => present === undefined ? href : editHref(href, (params) => {
+// The stops ride along while presenting, so the address bar can be reloaded or shared from any stop
+const withPresent = (href: string, present: number | undefined, stops: SharedStop[]) => present === undefined ? href : editHref(href, (params) => {
   params.set(PRESENT_PARAM, String(present))
+  params.set(STOPS_PARAM, encodeStops(stops))
   // On phones the stop's note and features are in the sheet, so it opens raised; desktop ignores it
   params.set('sheet', HALF)
 })
 
 /** A link that presents the stops, from the first, with the stops attached. */
 export function buildStopsLink(origin: string, stops: SharedStop[]): string {
-  const url = new URL(withPresent(stops[0].href, 1), origin)
-  url.searchParams.set(STOPS_PARAM, encodeStops(stops))
-  return url.toString()
+  return new URL(withPresent(stops[0].href, 1, stops), origin).toString()
 }
 
 /**
@@ -88,10 +88,11 @@ export function createSharedStops(history: RouterHistory, storage = sessionStora
     listeners.forEach((listener) => listener())
   }
 
-  const encoded = new URLSearchParams(history.location.search).get(STOPS_PARAM)
+  const launch = new URLSearchParams(history.location.search)
+  const encoded = launch.get(STOPS_PARAM)
   if (encoded) {
-    // Drop the param either way, so a reload or a copied URL doesn't re-import it
-    history.replace(editHref(history.location.href, (params) => params.delete(STOPS_PARAM)), history.location.state)
+    // Outside a presentation, drop it either way, so a reload or a copied URL doesn't re-import it
+    if (!launch.has(PRESENT_PARAM)) history.replace(editHref(history.location.href, (params) => params.delete(STOPS_PARAM)), history.location.state)
     try {
       const stops = decodeStops(encoded)
       if (stops.length > 0) set({ stops, unseen: true })
@@ -100,7 +101,7 @@ export function createSharedStops(history: RouterHistory, storage = sessionStora
     }
   }
 
-  const open = (stop: SharedStop, present?: number) => history.push(withPresent(withSticky(stop.href, history.location.search), present))
+  const open = (stop: SharedStop, present?: number) => history.push(withPresent(withSticky(stop.href, history.location.search), present, snapshot.stops))
 
   return {
     subscribe: (onChange) => {

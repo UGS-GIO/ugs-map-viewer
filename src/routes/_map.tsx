@@ -54,6 +54,8 @@ const mapSearchSchema = z.object({
     sheet: z.enum(SHEET_PARAMS).optional().catch(undefined),
     // Presenting shared stops: the stop shown, from 1
     present: z.coerce.number().int().min(1).optional().catch(undefined),
+    // The stops being presented, compressed; shared-stops.ts reads them
+    stops: z.string().optional().catch(undefined),
     results: z.enum(RESULTS_PARAMS).optional().catch(undefined),
     detail: z.enum(INFO_DETAILS).optional().catch(undefined),
     // Click buffer bounds for selection visualization (sw_lng,sw_lat,ne_lng,ne_lat)

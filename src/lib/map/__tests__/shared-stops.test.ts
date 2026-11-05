@@ -44,8 +44,20 @@ describe('shared stops links', () => {
 describe('createSharedStops', () => {
   beforeEach(() => sessionStorage.clear())
 
+  it('keeps the stops in a presenting URL, so it reloads and shares from any stop', async () => {
+    const link = new URL(buildStopsLink('https://maps.example', STOPS))
+    const history = createMemoryHistory({ initialEntries: [`${link.pathname}${link.search}`] })
+    const shared = createSharedStops(history, sessionStorage)
+    expect(shared.getSnapshot().stops).toEqual(STOPS)
+    shared.open(STOPS[1], 2)
+    const params = new URLSearchParams(history.location.search)
+    expect(params.get('present')).toBe('2')
+    expect(decodeStops(params.get('stops') ?? '')).toEqual(STOPS)
+  })
+
   it('reads a shared link, drops its param, and lists the stops as unseen', async () => {
     const link = new URL(buildStopsLink('https://maps.example', STOPS))
+    link.searchParams.delete('present')
     const history = createMemoryHistory({ initialEntries: [`${link.pathname}${link.search}`] })
     const shared = createSharedStops(history, sessionStorage)
     expect(new URLSearchParams(history.location.search).get('stops')).toBeNull()
