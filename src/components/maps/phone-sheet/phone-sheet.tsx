@@ -2,7 +2,7 @@ import { useCallback, useId, useRef, type KeyboardEvent, type ReactNode, type Re
 import { Drawer } from '@base-ui/react/drawer'
 import { Toggle } from '@base-ui/react/toggle'
 import { ToggleGroup } from '@base-ui/react/toggle-group'
-import { ChevronLeft, Ellipsis, Info, Layers, List, type LucideIcon } from 'lucide-react'
+import { ChevronLeft, Ellipsis, Info, Layers, List, X, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DETENTS, FULL, HALF, PEEK, SHEET_FRACTION, type Detent, type PhoneTab } from './sheet-model'
 
@@ -50,13 +50,15 @@ export interface PhoneSheetProps {
   /** A control at the end of the header row while the sheet is raised, such as Cards | Table. */
   headerAction?: ReactNode
   back?: { label: string; onClick: () => void }
+  /** An ✕ at the end of the header, at every height, such as clearing the selected features. */
+  clear?: { label: string; onClick: () => void }
   onSelectTab: (tab: PhoneTab) => void
   onSetDetent: (detent: Detent) => void
   children: ReactNode
 }
 
 /** One always-open non-modal drawer over the map, and the tab bar that picks what it holds. */
-export function PhoneSheet({ container, detent, activeTab, panelKey, title, summary, headerAction, back, onSelectTab, onSetDetent, children }: PhoneSheetProps) {
+export function PhoneSheet({ container, detent, activeTab, panelKey, title, summary, headerAction, back, clear, onSelectTab, onSetDetent, children }: PhoneSheetProps) {
   const collapsed = detent === PEEK
   const contentId = useId()
   const popupRef = useRef<HTMLDivElement>(null)
@@ -140,7 +142,22 @@ export function PhoneSheet({ container, detent, activeTab, panelKey, title, summ
                     </Drawer.Title>
                     {collapsed && summary && <span className='min-w-0 truncate text-sm text-muted-foreground'>{summary}</span>}
                     {/* Ignored by the drag, so a tap on it is never a swipe. */}
-                    {!collapsed && headerAction && <div data-base-ui-swipe-ignore className='ml-auto shrink-0'>{headerAction}</div>}
+                    {((!collapsed && headerAction) || clear) && (
+                      <div data-base-ui-swipe-ignore className='-mr-2 ml-auto flex shrink-0 items-center gap-1'>
+                        {!collapsed && headerAction}
+                        {clear && (
+                          <button
+                            type='button'
+                            aria-label={clear.label}
+                            title={clear.label}
+                            onClick={clear.onClick}
+                            className='flex size-11 items-center justify-center rounded-full text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+                          >
+                            <X className='size-5' aria-hidden='true' />
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <Drawer.Content
