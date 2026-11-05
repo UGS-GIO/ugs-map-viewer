@@ -317,7 +317,7 @@ export default function GenericMapContainer({
   const currentPage = useGetCurrentPage()
   const { defaultStyle: defaultBasemap } = useAppBasemaps()
   const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
-  const { viewMode, setViewMode, center, zoom, pitch, bearing, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
+  const { viewMode, setViewMode, center, zoom, pitch, bearing, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords, spatialFilter, setSpatialFilter, boxSelectBounds, setBoxSelectBounds } = useMapUrlSync()
   const { terrain, exaggeration } = useAppTerrain()
   // Phones select straight from the map, whatever a desktop link's `view` still says.
   const selectionView: ViewMode = isMobile ? 'map' : viewMode
@@ -476,9 +476,7 @@ export default function GenericMapContainer({
   }, [])
 
   // Independent interaction states (no longer bundled in mapInteraction)
-  const [spatialFilter, setSpatialFilter] = useState<SpatialFilter>(null)
   const [boxSelectMode, setBoxSelectMode] = useState(false)
-  const [boxSelectBounds, setBoxSelectBounds] = useState<{ sw: [number, number]; ne: [number, number] } | null>(null)
   const [toolbarDrawShape, setToolbarDrawShape] = useState<DrawMode>('off')
 
   // Additive mode only active when no other mode is active (shift-click disabled in draw/box modes)
@@ -490,7 +488,7 @@ export default function GenericMapContainer({
     setSpatialFilter(null)
     setBoxSelectBounds(null)
     setAdditiveModeToggled(false)
-  }, [])
+  }, [setSpatialFilter, setBoxSelectBounds])
 
   // Register callback so startDraw can clear conflicting container state
   const { measure, setMeasure } = useMeasureMode()
@@ -565,7 +563,7 @@ export default function GenericMapContainer({
       clearAllSelections()
       showResults('table')
     }
-  }, [clearAllSelections, showResults])
+  }, [clearAllSelections, showResults, setSpatialFilter])
 
   // Handler for box select toggle from toolbar
   const handleBoxSelectModeChange = useCallback((active: boolean) => {
@@ -577,7 +575,7 @@ export default function GenericMapContainer({
   const handleBoxSelectConfirm = useCallback((bounds: { sw: [number, number]; ne: [number, number] }) => {
     setBoxSelectBounds(bounds)
     showResults('table')
-  }, [showResults])
+  }, [showResults, setBoxSelectBounds])
 
   // Features only: the pin has its own clear button. The emptied phone sheet drops to its peek.
   const handleClearSelection = useCallback(() => {
@@ -587,7 +585,7 @@ export default function GenericMapContainer({
     setPanelState(prev => ({ ...prev, isSheetOpen: false }))
     setBoxSelectBounds(null)
     peek()
-  }, [clearAllSelections, onClearSearch, peek])
+  }, [clearAllSelections, onClearSearch, peek, setBoxSelectBounds])
 
   const handleClearAllSelections = useCallback(() => {
     handleClearSelection()
@@ -639,18 +637,20 @@ export default function GenericMapContainer({
     handleClearAllSelections()
     setViewMode('map')
     setBoxSelectBounds(null)
-  }, [handleClearAllSelections, setViewMode])
+  }, [handleClearAllSelections, setViewMode, setBoxSelectBounds])
 
   const handleSheetClose = useCallback(() => {
     handleClearAllSelections()
     setBoxSelectBounds(null)
-  }, [handleClearAllSelections])
+  }, [handleClearAllSelections, setBoxSelectBounds])
 
   const handleSheetOpenChange = useCallback((open: boolean) => {
     setPanelState(prev => ({ ...prev, isSheetOpen: open }))
   }, [])
 
-  const shouldShrinkMap = !isMobile && viewMode === 'map' && panelState.isSheetOpen
+  // Shown only with results, so Back to an entry without a selection closes it and Forward reopens it
+  const isSheetOpen = panelState.isSheetOpen && hasResults
+  const shouldShrinkMap = !isMobile && viewMode === 'map' && isSheetOpen
 
   // Collapses the drawer covering the map so zoom-to-feature centers correctly; 220ms
   // covers the sheet's 200ms width transition before fitBounds reads the container.
@@ -782,7 +782,7 @@ export default function GenericMapContainer({
         {!isMobile && viewMode === 'map' && (
           <div
             className="h-full border-l bg-background overflow-hidden transition-[width] duration-200 ease-linear"
-            style={{ width: panelState.isSheetOpen ? `${panelState.sheetWidth}px` : 0 }}
+            style={{ width: isSheetOpen ? `${panelState.sheetWidth}px` : 0 }}
           >
             <PopupSheet
               ref={popupSheetRef}
@@ -794,7 +794,7 @@ export default function GenericMapContainer({
               onHighlightChange={handleHighlightChange}
               width={panelState.sheetWidth}
               onWidthChange={(width) => setPanelState(prev => ({ ...prev, sheetWidth: width }))}
-              isOpen={panelState.isSheetOpen}
+              isOpen={isSheetOpen}
               clickPoint={clickPoint}
               headerExtras={popupHeaderRender?.(popupContent)}
               layerHeaderExtras={popupLayerHeaderRender}

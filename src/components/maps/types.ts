@@ -11,11 +11,7 @@ export type ClickedFeature = WfsFeature
 
 export type DrawMode = 'off' | 'rectangle' | 'polygon'
 
-export type SpatialFilter = {
-  type: 'bbox' | 'polygon'
-  bbox?: [number, number, number, number]
-  polygon?: Polygon
-} | null
+export type SpatialFilter = Polygon | null
 
 export interface HighlightFeature {
   id: string | number

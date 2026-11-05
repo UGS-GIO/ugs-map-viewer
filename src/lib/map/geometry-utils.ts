@@ -27,6 +27,11 @@ export function screenBoxToPolygon(
   }
 }
 
+/** sw/ne corners as a ground rectangle, the inverse of polygonBounds. */
+export function boundsToPolygon({ sw, ne }: { sw: [number, number]; ne: [number, number] }): Polygon {
+  return { type: 'Polygon', coordinates: [[sw, [ne[0], sw[1]], ne, [sw[0], ne[1]], sw]] }
+}
+
 /** A polygon's bounding box as sw/ne corners, for outlining it on the map. */
 export function polygonBounds(polygon: Polygon): { sw: [number, number]; ne: [number, number] } {
   const [minLng, minLat, maxLng, maxLat] = turfBbox(polygon)

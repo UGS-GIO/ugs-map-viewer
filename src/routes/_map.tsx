@@ -58,6 +58,10 @@ const mapSearchSchema = z.object({
     click_bbox: z.string().optional(),
     // Feature geometry bounds for zoom (sw_lng,sw_lat,ne_lng,ne_lat)
     feature_bbox: z.string().optional(),
+    // Box select bounds (same format as click_bbox)
+    box_bbox: z.string().optional(),
+    // Drawn filter polygon's outer ring (lng,lat;lng,lat;...)
+    area: z.string().optional(),
     // Selected features for sharing (format: layer:id,layer:id,...)
     features: z.string().optional(),
     // Visibility state overrides for group layers (format: Group Title: boolean)
