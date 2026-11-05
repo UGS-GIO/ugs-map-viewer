@@ -61,14 +61,11 @@ export function decodeStops(text: string): SharedStop[] {
       : [])
 }
 
-const withPresent = (href: string, present: number | undefined) => {
-  if (present === undefined) return href
-  const url = new URL(href, 'http://local')
-  url.searchParams.set(PRESENT_PARAM, String(present))
+const withPresent = (href: string, present: number | undefined) => present === undefined ? href : editHref(href, (params) => {
+  params.set(PRESENT_PARAM, String(present))
   // On phones the stop's note and features are in the sheet, so it opens raised; desktop ignores it
-  url.searchParams.set('sheet', HALF)
-  return `${url.pathname}${url.search}`
-}
+  params.set('sheet', HALF)
+})
 
 /** A link that presents the stops, from the first, with the stops attached. */
 export function buildStopsLink(origin: string, stops: SharedStop[]): string {
