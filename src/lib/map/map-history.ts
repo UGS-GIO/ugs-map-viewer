@@ -6,7 +6,10 @@ const STICKY_PARAMS = ['sidebar_collapsed', 'sidebar_width', 'coordinate_format'
 export const NON_STEP_PARAMS = [...STICKY_PARAMS, 'sheet']
 // Writes closer together than this are one step: a wheel burst, a slider drag, typing, or one action's cascade
 const QUIET_MS = 500
-const INPUT_EVENTS = ['pointerdown', 'keydown', 'wheel']
+// A write this long after the last input isn't that input's doing, e.g. a slow query's derived bbox
+const INPUT_WINDOW_MS = 1000
+// pointerup ends a drag, so the camera write after a long pan still follows an input
+const INPUT_EVENTS = ['pointerdown', 'pointerup', 'keydown', 'wheel']
 
 const mapState = (search: string) => {
   const params = new URLSearchParams(search)
@@ -45,12 +48,12 @@ export interface MapHistory {
  */
 export function createMapHistory(history: RouterHistory = createBrowserHistory(), target: EventTarget = window): MapHistory {
   const replace = history.replace
-  let userActed = false
+  let lastInput = -Infinity
   let lastWrite = 0
   // Without the Navigation API, track the furthest entry this page pushed (lost on reload)
   let maxIndex = indexOf(history)
 
-  const markInput = () => { userActed = true }
+  const markInput = () => { lastInput = Date.now() }
   INPUT_EVENTS.forEach((type) => target.addEventListener(type, markInput, { capture: true, passive: true }))
 
   // Every entry also holds the layout of its moment; Back shouldn't undo a sidebar collapse alongside a map step
@@ -66,10 +69,10 @@ export function createMapHistory(history: RouterHistory = createBrowserHistory()
     if (action.type === 'PUSH') {
       maxIndex = indexOf(history)
       // The click that followed a link made this entry; the app's first writes on arrival aren't another
-      userActed = false
+      lastInput = -Infinity
     } else if (action.type !== 'REPLACE') {
       // The click or mouse button that went back isn't a change to record
-      userActed = false
+      lastInput = -Infinity
       lastWrite = Date.now()
       keepSticky()
     }
@@ -84,9 +87,9 @@ export function createMapHistory(history: RouterHistory = createBrowserHistory()
     const now = Date.now()
     const quiet = now - lastWrite > QUIET_MS
     lastWrite = now
-    if (!userActed || !quiet) return replace(path, state, navigateOpts)
+    if (now - lastInput > INPUT_WINDOW_MS || !quiet) return replace(path, state, navigateOpts)
 
-    userActed = false
+    lastInput = -Infinity
     history.push(path, state, navigateOpts)
   }
 

@@ -51,6 +51,14 @@ describe('createMapHistory', () => {
     expect(index()).toBe(1)
   })
 
+  it('keeps a write long after the last input as a replace, such as a slow query\'s derived bbox', () => {
+    const { input, history, index } = setup()
+    input()
+    vi.advanceTimersByTime(1500)
+    history.replace('/hazards?zoom=6&feature_bbox=1,2,3,4')
+    expect(index()).toBe(0)
+  })
+
   it('leaves layout and preference changes as replaces', () => {
     const { input, write, index } = setup()
     input()
