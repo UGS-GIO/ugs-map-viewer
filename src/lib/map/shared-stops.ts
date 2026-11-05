@@ -1,6 +1,6 @@
 import type { RouterHistory } from '@tanstack/react-router'
 import { gunzipSync, gzipSync, strFromU8, strToU8 } from 'fflate'
-import { NON_STEP_PARAMS, withSticky } from './map-history'
+import { editHref, NON_STEP_PARAMS, withSticky } from './map-history'
 import { readJson, sessionStorageIfAllowed, writeJson } from './session-json'
 
 export interface SharedStop {
@@ -32,17 +32,12 @@ const STORAGE_KEY = 'map-shared-stops'
 
 /** A step's URL as a shared stop: the recipient keeps their own layout and preferences. */
 export function toStopHref(href: string): string {
-  const url = new URL(href, 'http://local')
-  NON_STEP_PARAMS.forEach((key) => url.searchParams.delete(key))
-  url.searchParams.delete(STOPS_PARAM)
-  return `${url.pathname}${url.search}`
+  return editHref(href, (params) => [...NON_STEP_PARAMS, STOPS_PARAM].forEach((key) => params.delete(key)))
 }
 
-const toBase64Url = (bytes: Uint8Array) =>
-  btoa(Array.from(bytes, (b) => String.fromCharCode(b)).join('')).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-
-const fromBase64Url = (text: string) =>
-  Uint8Array.from(atob(text.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))
+// fflate's latin1 mode maps each byte to one character, which is what btoa and atob take
+const toBase64Url = (bytes: Uint8Array) => btoa(strFromU8(bytes, true)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+const fromBase64Url = (text: string) => strToU8(atob(text.replace(/-/g, '+').replace(/_/g, '/')), true)
 
 /** Stops gzipped into one URL-safe string, so a handful of map states fit in a link. */
 export function encodeStops(stops: SharedStop[]): string {
@@ -83,9 +78,7 @@ export function createSharedStops(history: RouterHistory, storage = sessionStora
   const encoded = new URLSearchParams(history.location.search).get(STOPS_PARAM)
   if (encoded) {
     // Drop the param either way, so a reload or a copied URL doesn't re-import it
-    const url = new URL(history.location.href, 'http://local')
-    url.searchParams.delete(STOPS_PARAM)
-    history.replace(`${url.pathname}${url.search}`, history.location.state)
+    history.replace(editHref(history.location.href, (params) => params.delete(STOPS_PARAM)), history.location.state)
     try {
       const stops = decodeStops(encoded)
       if (stops.length > 0) set({ stops, unseen: true })
