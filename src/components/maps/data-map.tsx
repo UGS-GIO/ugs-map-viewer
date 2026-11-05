@@ -287,6 +287,7 @@ export default function DataMap({
   featureBbox,
   onFeatureBboxChange,
   onClearSelection,
+  hasSelection = false,
   pinCoords,
   onPinChange,
   viewMode,
@@ -718,6 +719,12 @@ export default function DataMap({
   // Combine loading states
   const showLoading = isLoading || queryLoading
 
+  // The context menu's clear also takes the pin; the toolbar keeps the two separate.
+  const clearSelectionAndPin = useMemo(() => onClearSelection && (() => {
+    onClearSelection()
+    onPinChange?.(null)
+  }), [onClearSelection, onPinChange])
+
   // MapLibre's contextmenu waits for mouseup and skips right-drags, so tilting/rotating doesn't open the menu
   const handleContextMenu = useCallback((e: MapLayerMouseEvent) => {
     setContextMenuCoords({
@@ -735,9 +742,9 @@ export default function DataMap({
         open={contextMenuOpen}
         onOpenChange={setContextMenuOpen}
         coords={contextMenuCoords}
-        onClearSelection={onClearSelection}
+        onClearSelection={clearSelectionAndPin}
         onPinLocation={onPinChange ? (coords) => onPinChange(coords) : undefined}
-        hasSelection={highlightFeatures.length > 0 || !!pinCoords}
+        hasSelection={hasSelection || !!pinCoords}
         currentZoom={currentZoomRef.current}
       />
       <div ref={containerRef} className="relative w-full h-full">
@@ -781,6 +788,8 @@ export default function DataMap({
           onClearFilter={onSpatialFilterChange ? () => onSpatialFilterChange(null) : undefined}
           hasPin={!!pinCoords}
           onClearPin={onPinChange ? () => onPinChange(null) : undefined}
+          hasSelection={hasSelection}
+          onClearSelection={onClearSelection}
           boxSelectActive={boxSelectMode}
           onBoxSelectToggle={onBoxSelectModeChange}
           isAdditiveMode={isAdditiveMode}
