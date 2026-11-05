@@ -557,6 +557,8 @@ export default function DataMap({
   const queriedAreaRef = useRef<string | null>(null)
   const setArea = useCallback((polygon: Polygon | null) => {
     queriedAreaRef.current = areaKey(polygon)
+    // A new area drops click_bbox with the old selection; the click follower mustn't clear the area's results
+    if (polygon) queriedBboxRef.current = null
     onSpatialFilterChange?.(polygon)
     const map = mapRef.current?.getMap()
     if (polygon && map) queryArea(map, polygon)
@@ -685,9 +687,12 @@ export default function DataMap({
     const bounds = polygonBounds(box)
 
     queriedBoxRef.current = bboxKey(bounds)
+    // The box replaces a click selection, so its step mustn't carry the click's bbox too
+    queriedBboxRef.current = null
+    onClickBufferChange?.(null)
     onBoxSelectConfirm?.(bounds)
     queryBox(map, box, [[centerX - halfBox, centerY - halfBox], [centerX + halfBox, centerY + halfBox]], isAdditiveMode)
-  }, [onBoxSelectConfirm, visibleWmsLayers, visibleWfsLayers, visiblePmtilesLayers, boxSelectQuery, wmsUrl, onFeatureClick, isAdditiveMode, layerFilters])
+  }, [onBoxSelectConfirm, onClickBufferChange, visibleWmsLayers, visibleWfsLayers, visiblePmtilesLayers, boxSelectQuery, wmsUrl, onFeatureClick, isAdditiveMode, layerFilters])
 
   // Handle map load
   const handleLoad = useCallback(() => {
