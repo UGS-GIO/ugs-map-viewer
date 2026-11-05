@@ -628,6 +628,8 @@ export default function GenericMapContainer({
   const toolOwnsEscape = activeDrawShape !== 'off' || toolbarDrawShape !== 'off' || boxSelectMode || !!measure
   // Table and split views close through their own ✕, which also returns to the map
   useEscapeToClear(!isMobile && viewMode === 'map' && hasSelection && !toolOwnsEscape, handleClearSelection)
+  // Box select has no Escape of its own, unlike drawing and measuring
+  useEscapeToClear(boxSelectMode, () => handleBoxSelectModeChange(false))
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode)

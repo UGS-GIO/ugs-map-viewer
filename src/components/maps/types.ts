@@ -30,7 +30,8 @@ export interface DataMapProps {
   center?: [number, number]
   zoom?: number
   highlightFeatures?: HighlightFeature[]
-  onFeatureClick?: (features: ClickedFeature[], options?: { additive?: boolean }) => void
+  /** `highlightAll` highlights every result, for box and area selections; a click highlights the first */
+  onFeatureClick?: (features: ClickedFeature[], options?: { additive?: boolean; highlightAll?: boolean }) => void
   pitch?: number
   bearing?: number
   onMoveEnd?: (lat: number, lng: number, zoom: number, pitch: number, bearing: number) => void
