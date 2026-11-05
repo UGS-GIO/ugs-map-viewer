@@ -11,7 +11,7 @@ const monitoringLocationsWMSConfig: WMSLayerProps = {
     title: monitoringLocationsWMSTitle,
     opacity: 1,
     visible: true,
-    crs: 'EPSG:26912',
+    crs: 'EPSG:3857',
     sourceAgency: 'Utah Geological Survey',
     sourceUrl: 'https://gwportal.geology.utah.gov/',
     customLayerParameters: { cql_filter: "display = '1'" },

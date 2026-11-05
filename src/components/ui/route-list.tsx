@@ -69,6 +69,7 @@ export function RouteList() {
     const getRouteDescription = (path: string): string => {
         const descriptions: Record<string, string> = {
             '/ccs': 'Carbon Capture, Utilization & Storage mapping interface',
+            '/groundwater/': 'Groundwater Monitoring Portal',
             '/groundwater': 'Groundwater Monitoring Portal',
             '/about': 'Learn more about our platform',
             '/contact': 'Get in touch with us',
