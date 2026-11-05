@@ -13,12 +13,14 @@ import { usePhoneSheet } from './use-phone-sheet'
 interface PhoneSheetHostProps {
   container: RefObject<HTMLElement | null>
   results: ReactNode
+  /** Clears the selection behind the results and drops the sheet, as the desktop panel's ✕ does. */
+  onClearResults: () => void
   resultsSummary?: string
   layersSummary?: string
 }
 
 /** Puts the route's panels, the More list and the results into the phone sheet. */
-export function PhoneSheetHost({ container, results, resultsSummary, layersSummary }: PhoneSheetHostProps) {
+export function PhoneSheetHost({ container, results, onClearResults, resultsSummary, layersSummary }: PhoneSheetHostProps) {
   const sheet = usePhoneSheet()
   const { currentContent } = useSidebar()
   const { data: links = [], isSuccess: linksLoaded, isError: linksFailed } = useGetSidebarLinks()
@@ -33,12 +35,16 @@ export function PhoneSheetHost({ container, results, resultsSummary, layersSumma
   let summary: string | undefined
   let headerAction: ReactNode
   let back: { label: string; onClick: () => void } | undefined
+  let clear: { label: string; onClick: () => void } | undefined
   let body: ReactNode
   if (active === 'results') {
     title = 'Results'
     summary = resultsSummary
     // Only once there are results to switch between.
-    if (resultsSummary) headerAction = <ResultsViewToggle value={sheet.state.results ?? 'cards'} onChange={sheet.setResultsView} />
+    if (resultsSummary) {
+      headerAction = <ResultsViewToggle value={sheet.state.results ?? 'cards'} onChange={sheet.setResultsView} />
+      clear = { label: 'Clear selection', onClick: onClearResults }
+    }
     body = results
   } else if (wantsPanel && Panel && currentContent) {
     title = detail ? INFO_DETAIL_TITLE[detail] : currentContent.title
@@ -64,6 +70,7 @@ export function PhoneSheetHost({ container, results, resultsSummary, layersSumma
       summary={summary}
       headerAction={headerAction}
       back={back}
+      clear={clear}
       onSelectTab={sheet.tapTab}
       onSetDetent={sheet.setDetent}
     >

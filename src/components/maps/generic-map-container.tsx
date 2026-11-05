@@ -27,6 +27,7 @@ import { useGetCurrentPage } from '@/hooks/use-get-current-page'
 import { useAppBasemaps } from '@/hooks/use-app-basemaps'
 import { useAppTerrain } from '@/hooks/use-app-terrain'
 import { useMeasureMode } from '@/hooks/use-measure'
+import { useEscapeToClear } from '@/hooks/use-escape-to-clear'
 import type { MeasureMode } from '@/lib/map/measure-store'
 import { MapChromeControls } from '@/components/maps/controls/map-chrome-controls'
 import type { LegendItem } from '@/components/maps/controls'
@@ -576,15 +577,20 @@ export default function GenericMapContainer({
     showResults('table')
   }, [showResults, setBoxSelectBounds])
 
-  // Clear highlights when selections are cleared
-  const handleClearAllSelections = useCallback(() => {
+  // Features only: the pin has its own clear button. The emptied phone sheet drops to its peek.
+  const handleClearSelection = useCallback(() => {
     setHighlightedFeatures([])
     clearAllSelections()
-    setPopupCoords(null)
     onClearSearch?.()
     setPanelState(prev => ({ ...prev, isSheetOpen: false }))
     setBoxSelectBounds(null)
-  }, [clearAllSelections, setPopupCoords, onClearSearch, setBoxSelectBounds])
+    peek()
+  }, [clearAllSelections, onClearSearch, peek, setBoxSelectBounds])
+
+  const handleClearAllSelections = useCallback(() => {
+    handleClearSelection()
+    setPopupCoords(null)
+  }, [handleClearSelection, setPopupCoords])
 
   // Derived: click point for raster queries (center of click buffer)
   const clickPoint = useMemo(() => {
@@ -614,6 +620,11 @@ export default function GenericMapContainer({
 
   // Derived: has results (includes raster-only layers)
   const hasResults = useMemo(() => popupContent.length > 0, [popupContent])
+  // A raster-only click holds results without a highlight; an empty click selects nothing
+  const hasSelection = hasResults || !!boxSelectBounds
+  const toolOwnsEscape = activeDrawShape !== 'off' || toolbarDrawShape !== 'off' || boxSelectMode || !!measure
+  // Table and split views close through their own ✕, which also returns to the map
+  useEscapeToClear(!isMobile && viewMode === 'map' && hasSelection && !toolOwnsEscape, handleClearSelection)
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode)
@@ -644,14 +655,10 @@ export default function GenericMapContainer({
   // Collapses the drawer covering the map so zoom-to-feature centers correctly; 220ms
   // covers the sheet's 200ms width transition before fitBounds reads the container.
   const collapseSheetBeforeZoom = useCallback((): Promise<void> => {
-    if (isMobile) {
-      peek()
-      return Promise.resolve()
-    }
-    if (!isSheetOpen) return Promise.resolve()
-    popupSheetRef.current?.close()
-    return new Promise((resolve) => setTimeout(resolve, 220))
-  }, [isMobile, isSheetOpen, peek])
+    // The desktop panel shrinks the map rather than covering it, so it stays open
+    if (isMobile) peek()
+    return Promise.resolve()
+  }, [isMobile, peek])
 
   const mapElement = (
     <DataMap
@@ -691,7 +698,8 @@ export default function GenericMapContainer({
       onBoxSelectConfirm={handleBoxSelectConfirm}
       isAdditiveMode={isAdditiveMode}
       onAdditiveModeToggle={() => additiveModeToggled ? setActiveMode('none') : setActiveMode('additive')}
-      onClearSelection={handleClearAllSelections}
+      onClearSelection={handleClearSelection}
+      hasSelection={hasSelection}
       pinCoords={popupCoords}
       onPinChange={setPopupCoords}
       viewMode={isMobile ? undefined : viewMode}
@@ -717,6 +725,7 @@ export default function GenericMapContainer({
   const phoneSheetHost = isMobile && (
       <PhoneSheetHost
         container={mapAreaRef}
+        onClearResults={handleSheetClose}
         resultsSummary={hasResults ? `${resultsCount} result${resultsCount === 1 ? '' : 's'}` : undefined}
         layersSummary={`${displayedTitles.size} layer${displayedTitles.size === 1 ? '' : 's'} on`}
         results={
