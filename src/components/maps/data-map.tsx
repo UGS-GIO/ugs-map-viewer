@@ -602,10 +602,12 @@ export default function DataMap({
 
   const setArea = useCallback((polygon: Polygon | null) => {
     markAreaQueried(formatArea(polygon))
+    // A new area drops click_bbox with the old selection; the click follower mustn't clear the area's results
+    if (polygon) markClickQueried(formatBbox(null))
     onSpatialFilterChange?.(polygon)
     const map = mapRef.current?.getMap()
     if (polygon && map) queryArea(map, polygon)
-  }, [markAreaQueried, onSpatialFilterChange, queryArea])
+  }, [markAreaQueried, markClickQueried, onSpatialFilterChange, queryArea])
 
   // Route drawn polygons: external caller consumes (returns true), otherwise spatial filter
   const handleDrawFinished = useCallback((polygon: Polygon) => {
@@ -726,9 +728,12 @@ export default function DataMap({
     const bounds = polygonBounds(box)
 
     markBoxQueried(formatBbox(bounds))
+    // The box replaces a click selection, so its step mustn't carry the click's bbox too
+    markClickQueried(formatBbox(null))
+    onClickBufferChange?.(null)
     onBoxSelectConfirm?.(bounds)
     queryBox(map, box, [[centerX - halfBox, centerY - halfBox], [centerX + halfBox, centerY + halfBox]], isAdditiveMode)
-  }, [markBoxQueried, onBoxSelectConfirm, visibleWmsLayers, visibleWfsLayers, visiblePmtilesLayers, boxSelectQuery, wmsUrl, onFeatureClick, isAdditiveMode, layerFilters])
+  }, [markBoxQueried, markClickQueried, onBoxSelectConfirm, onClickBufferChange, visibleWmsLayers, visibleWfsLayers, visiblePmtilesLayers, boxSelectQuery, wmsUrl, onFeatureClick, isAdditiveMode, layerFilters])
 
   // Handle map load
   const handleLoad = useCallback(() => {

@@ -14,7 +14,7 @@ const cameraOfMap = (map: maplibregl.Map): Camera => {
 }
 
 /** The map reads the URL's camera only when it mounts, so move it when history lands somewhere new. */
-function useCameraFollowsHistory({ history }: MapHistory) {
+function useCameraFollowsHistory({ history, isPromoting }: MapHistory) {
   const { current: mapRef } = useMap()
   useEffect(() => {
     const map = mapRef?.getMap()
@@ -38,15 +38,16 @@ function useCameraFollowsHistory({ history }: MapHistory) {
       const camera = cameraOf(location.search)
       if (!camera) return
       const traversed = action.type !== 'PUSH' && action.type !== 'REPLACE'
-      // A push the map didn't write itself, like a shared stop. Never mid-gesture, when the URL lags.
-      const pushedElsewhere = action.type === 'PUSH' && !map.isMoving() && Object.values(cameraChanges(cameraOfMap(map), camera)).some(Boolean)
+      // A push the map didn't write itself, like a shared stop. Never mid-gesture or for the map's own
+      // write, whose camera can lag the map by the URL's debounce.
+      const pushedElsewhere = action.type === 'PUSH' && !isPromoting() && !map.isMoving() && Object.values(cameraChanges(cameraOfMap(map), camera)).some(Boolean)
       if (traversed || pushedElsewhere) easeTo(camera)
     })
     return () => {
       stopFollowingResize?.()
       unsubscribe()
     }
-  }, [mapRef, history])
+  }, [mapRef, history, isPromoting])
 }
 
 /** Back and Forward through the map's browser history, plus whatever else belongs in the group. */

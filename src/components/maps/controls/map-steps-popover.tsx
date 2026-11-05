@@ -12,6 +12,8 @@ import { usePresentation } from '@/hooks/use-presentation'
 import { openStop, presentStops } from '@/lib/map/app-history'
 
 const ROW = 'flex min-w-0 flex-1 items-baseline gap-1.5 rounded-sm px-1.5 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground'
+const CURRENT = 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground'
+const PDF_MUTATION_KEY = ['steps-pdf']
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 const FIELD = 'min-w-0 rounded-sm border border-input bg-background px-1.5 py-0.5 text-xs text-foreground'
@@ -70,6 +72,8 @@ function StepLabelEditor({ step, onDone }: { step: MapStep; onDone: (edit?: { la
 /** Jump to any step, label the ones that matter, and share them as a link or PDF. */
 export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps: MapSteps; shared: SharedStops; getLegendData?: GetLegendData }) {
   const { steps, current } = useSyncExternalStore(store.subscribe, store.getSnapshot)
+  // A step opened from a stop carries its label, so that's the stop you're on
+  const currentLabel = steps.find((step) => step.index === current)?.label
   const { stops, unseen } = useSyncExternalStore(shared.subscribe, shared.getSnapshot)
   const [editing, setEditing] = useState<number>()
   const [open, setOpen] = useState(false)
@@ -93,13 +97,15 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
   })
 
   const downloadPdf = useMutation({
+    mutationKey: PDF_MUTATION_KEY,
     mutationFn: async () => {
       const map = mapRef?.getMap()
       if (!map) throw new Error('Map not available')
       const returnTo = current
+      // Stops open from the newest step, so the push drops no step you made, only the last stop's
+      const newest = steps[steps.length - 1]?.index ?? current
       const pages = [
-        // Each stop is opened from where you started, so it never pushes over your forward history
-        ...stops.map((stop) => ({ ...stop, visit: async () => { await store.go(returnTo); shared.open(stop) } })),
+        ...stops.map((stop) => ({ ...stop, visit: async () => { await store.go(newest); shared.open(stop) } })),
         ...ownLabeled.map((step) => ({ label: step.label ?? '', note: step.note, href: step.href, visit: () => store.go(step.index), visitFirst: true })),
       ]
       const { exportStepsPdf } = await import('./steps-pdf')
@@ -111,6 +117,7 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
           queryClient,
           origin: window.location.origin,
           getLegendData,
+          mutationKey: PDF_MUTATION_KEY,
           onProgress: (done, total) => toast.loading(`Building PDF… page ${Math.min(done + 1, total)} of ${total}`, { id: progress }),
         })
       } finally {
@@ -163,7 +170,12 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
                 <ol>
                   {stops.map((stop, i) => (
                     <li key={`${i}-${stop.href}`} className='flex'>
-                      <button type='button' onClick={() => openStop(stop, undefined, shared, store)} className={ROW}>
+                      <button
+                        type='button'
+                        onClick={() => openStop(stop, undefined, shared, store)}
+                        aria-current={stop.label === currentLabel ? 'step' : undefined}
+                        className={cn(ROW, stop.label === currentLabel && CURRENT)}
+                      >
                         <span className='w-4 shrink-0 text-right tabular-nums opacity-60'>{stopLetter(i)}</span>
                         <span className='min-w-0 flex-1 truncate font-medium'>{stop.label}</span>
                       </button>
@@ -183,7 +195,7 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
                         type='button'
                         aria-current={step.index === current ? 'step' : undefined}
                         onClick={() => void store.go(step.index)}
-                        className={cn(ROW, step.index === current && 'bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground')}
+                        className={cn(ROW, step.index === current && CURRENT)}
                       >
                         <span className='w-4 shrink-0 text-right tabular-nums opacity-60'>{step.index + 1}</span>
                         <span className='min-w-0 flex-1 truncate'>

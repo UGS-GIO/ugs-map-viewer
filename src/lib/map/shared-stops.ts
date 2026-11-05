@@ -52,12 +52,24 @@ export function encodeStops(stops: SharedStop[]): string {
   return toBase64Url(gzipSync(strToU8(JSON.stringify(stops.map(({ label, href, note }) => (note ? [label, href, note] : [label, href])))), { mtime: 0 }))
 }
 
+// A link comes from outside: cap what it can make the recipient's tab decompress, list and print
+const MAX_ENCODED_LENGTH = 16_000
+const MAX_DECODED_BYTES = 256_000
+const MAX_STOPS = 50
+const MAX_LABEL_LENGTH = 200
+const MAX_NOTE_LENGTH = 2000
+
+/** A path in this app; `//host` and `/\host` start with a slash but leave it */
+const isAppPath = (href: string) => href.startsWith('/') && new URL(href, 'http://local').origin === 'http://local'
+
 export function decodeStops(text: string): SharedStop[] {
-  const parsed: unknown = JSON.parse(strFromU8(gunzipSync(fromBase64Url(text))))
+  if (text.length > MAX_ENCODED_LENGTH) throw new Error('Shared stops are too long')
+  // gunzip truncates to `out`, and truncated JSON fails to parse
+  const parsed: unknown = JSON.parse(strFromU8(gunzipSync(fromBase64Url(text), { out: new Uint8Array(MAX_DECODED_BYTES) })))
   if (!Array.isArray(parsed)) throw new Error('Shared stops are not a list')
-  return parsed.flatMap((entry) =>
-    Array.isArray(entry) && typeof entry[0] === 'string' && typeof entry[1] === 'string' && entry[1].startsWith('/')
-      ? [{ label: entry[0], href: entry[1], ...(typeof entry[2] === 'string' && entry[2] ? { note: entry[2] } : {}) }]
+  return parsed.slice(0, MAX_STOPS).flatMap((entry) =>
+    Array.isArray(entry) && typeof entry[0] === 'string' && typeof entry[1] === 'string' && isAppPath(entry[1])
+      ? [{ label: entry[0].slice(0, MAX_LABEL_LENGTH), href: entry[1], ...(typeof entry[2] === 'string' && entry[2] ? { note: entry[2].slice(0, MAX_NOTE_LENGTH) } : {}) }]
       : [])
 }
 
