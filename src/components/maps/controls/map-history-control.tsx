@@ -52,7 +52,7 @@ function useCameraFollowsHistory({ history, isPromoting }: MapHistory) {
 
 /** Back and Forward through the map's browser history, plus whatever else belongs in the group. */
 export function MapHistoryControl({ nav, children }: { nav: MapHistory; children?: ReactNode }) {
-  const control = useControl(() => new PortalControl(), { position: 'top-left' })
+  const control = useControl(() => new PortalControl('maplibregl-ctrl maplibregl-ctrl-group map-history-group'), { position: 'top-left' })
   const canGoBack = useCanGoBack()
   // Re-read on every router state change, which follows the browser writing the entry
   const canGoForward = useRouterState({ select: () => nav.canGoForward() })
