@@ -18,12 +18,16 @@ export interface SharedStopsSnapshot {
 export interface SharedStops {
   subscribe: (onChange: () => void) => () => void
   getSnapshot: () => SharedStopsSnapshot
-  open: (stop: SharedStop) => void
+  /** Opens a stop as a new step; `present` (from 1) shows it in the presentation */
+  open: (stop: SharedStop, present?: number) => void
+  /** Lists these stops and opens the first in the presentation */
+  present: (stops: SharedStop[]) => void
   markSeen: () => void
   clear: () => void
 }
 
 export const STOPS_PARAM = 'stops'
+export const PRESENT_PARAM = 'present'
 
 /** A, B, C… then AA, AB… so stops past Z keep distinct letters */
 export const stopLetter = (i: number): string =>
@@ -59,9 +63,16 @@ export function decodeStops(text: string): SharedStop[] {
       : [])
 }
 
-/** A link that opens on the first stop with the stops attached. */
+const withPresent = (href: string, present: number | undefined) => {
+  if (present === undefined) return href
+  const url = new URL(href, 'http://local')
+  url.searchParams.set(PRESENT_PARAM, String(present))
+  return `${url.pathname}${url.search}`
+}
+
+/** A link that presents the stops, from the first, with the stops attached. */
 export function buildStopsLink(origin: string, stops: SharedStop[]): string {
-  const url = new URL(stops[0].href, origin)
+  const url = new URL(withPresent(stops[0].href, 1), origin)
   url.searchParams.set(STOPS_PARAM, encodeStops(stops))
   return url.toString()
 }
@@ -94,6 +105,8 @@ export function createSharedStops(history: RouterHistory, storage = sessionStora
     }
   }
 
+  const open = (stop: SharedStop, present?: number) => history.push(withPresent(withSticky(stop.href, history.location.search), present))
+
   return {
     subscribe: (onChange) => {
       listeners.add(onChange)
@@ -101,7 +114,11 @@ export function createSharedStops(history: RouterHistory, storage = sessionStora
     },
     getSnapshot: () => snapshot,
     // Keep the recipient's own layout and preferences
-    open: (stop) => history.push(withSticky(stop.href, history.location.search)),
+    open,
+    present: (stops) => {
+      set({ stops, unseen: false })
+      open(stops[0], 1)
+    },
     markSeen: () => { if (snapshot.unseen) set({ ...snapshot, unseen: false }) },
     clear: () => set({ stops: [], unseen: false }),
   }

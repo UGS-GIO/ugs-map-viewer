@@ -100,7 +100,7 @@ export function PhoneSheet({ container, detent, activeTab, panelKey, title, summ
       >
         <Drawer.VirtualKeyboardProvider>
           <Drawer.Portal container={container}>
-            <Drawer.Viewport className='pointer-events-none absolute inset-0 z-20 flex items-end'>
+            <Drawer.Viewport data-phone-chrome className='pointer-events-none absolute inset-0 z-20 flex items-end'>
               <Drawer.Popup
                 ref={popupRef}
                 initialFocus={false}
@@ -155,7 +155,7 @@ export function PhoneSheet({ container, detent, activeTab, panelKey, title, summ
           </Drawer.Portal>
         </Drawer.VirtualKeyboardProvider>
       </Drawer.Root>
-      <nav aria-label='Map views' data-tour='phone-tabs' className={cn('z-30 shrink-0 touch-manipulation border-t bg-background pb-[env(safe-area-inset-bottom)]', TOUCH_CHROME)}>
+      <nav aria-label='Map views' data-phone-chrome data-tour='phone-tabs' className={cn('z-30 shrink-0 touch-manipulation border-t bg-background pb-[env(safe-area-inset-bottom)]', TOUCH_CHROME)}>
         {/* The showing tab is pressed; pressing it again unpresses it, which drops the sheet to the peek. */}
         <ToggleGroup
           value={collapsed ? [] : [activeTab]}

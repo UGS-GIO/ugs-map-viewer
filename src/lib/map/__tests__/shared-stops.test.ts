@@ -18,11 +18,16 @@ describe('shared stops links', () => {
       .toBe('/hazards?zoom=6&tab=layers')
   })
 
-  it('opens on the first stop', async () => {
+  it('presents from the first stop', async () => {
     const link = new URL(buildStopsLink('https://maps.example', STOPS))
     expect(link.pathname).toBe('/hazards')
     expect(link.searchParams.get('zoom')).toBe('15')
+    expect(link.searchParams.get('present')).toBe('1')
     expect(link.searchParams.get('stops')).toBeTruthy()
+  })
+
+  it('keeps the presentation out of a stop', () => {
+    expect(toStopHref('/hazards?zoom=6&present=2')).toBe('/hazards?zoom=6')
   })
 
   it('ignores stops that are not paths in this app', async () => {
@@ -53,5 +58,18 @@ describe('createSharedStops', () => {
     const params = new URLSearchParams(history.location.search)
     expect(params.get('zoom')).toBe('12')
     expect(params.get('sidebar_collapsed')).toBe('true')
+    expect(params.get('present')).toBeNull()
+  })
+
+  it('presents stops: lists them and opens the first in the presentation', () => {
+    const history = createMemoryHistory({ initialEntries: ['/hazards?zoom=6'] })
+    const shared = createSharedStops(history, sessionStorage)
+    shared.present(STOPS)
+    expect(shared.getSnapshot()).toEqual({ stops: STOPS, unseen: false })
+    const params = new URLSearchParams(history.location.search)
+    expect(params.get('zoom')).toBe('15')
+    expect(params.get('present')).toBe('1')
+    shared.open(STOPS[1], 2)
+    expect(new URLSearchParams(history.location.search).get('present')).toBe('2')
   })
 })

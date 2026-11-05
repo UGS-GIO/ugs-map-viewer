@@ -256,6 +256,13 @@ body > #root {
   color: hsl(var(--accent-foreground));
 }
 
+/* A presentation shows the map alone: no tool buttons, phone sheet or phone tabs */
+[data-presenting] .maplibregl-ctrl-top-left,
+[data-presenting] .maplibregl-ctrl-top-right,
+[data-presenting] [data-phone-chrome] {
+  display: none;
+}
+
 /* MapLibre dims a nested .maplibregl-ctrl-icon; our inline-SVG buttons have none */
 .maplibregl-ctrl.maplibregl-ctrl-group button:disabled > svg {
   opacity: 0.25;

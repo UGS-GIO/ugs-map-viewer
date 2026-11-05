@@ -2,12 +2,14 @@ import { useRef, useState, useSyncExternalStore } from 'react'
 import { Popover } from '@base-ui/react/popover'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMap } from 'react-map-gl/maplibre'
-import { FileDown, History, Link, Pencil, X } from 'lucide-react'
+import { FileDown, History, Link, Pencil, Presentation, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { MapStep, MapSteps } from '@/lib/map/map-steps'
 import { buildStopsLink, stopLetter, toStopHref, type SharedStop, type SharedStops } from '@/lib/map/shared-stops'
 import type { GetLegendData } from './export-control'
+import { usePresentation } from '@/hooks/use-presentation'
+import { openStop, presentStops } from '@/lib/map/app-history'
 
 const ROW = 'flex min-w-0 flex-1 items-baseline gap-1.5 rounded-sm px-1.5 py-1 text-left text-xs hover:bg-accent hover:text-accent-foreground'
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
@@ -48,12 +50,7 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
   const [open, setOpen] = useState(false)
   const { current: mapRef } = useMap()
   const queryClient = useQueryClient()
-
-  // Opening a shared stop is a new step, so it carries the stop's label into this history
-  const openStop = (stop: SharedStop) => {
-    shared.open(stop)
-    store.setLabel(store.getSnapshot().current, stop.label)
-  }
+  const { presenting } = usePresentation()
 
   // Shared stops plus your own labeled steps; a visited stop carries its stop's label, so it isn't counted twice
   const stopLabels = new Set(stops.map((stop) => stop.label))
@@ -113,7 +110,8 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
 
   return (
     <Popover.Root
-      open={open || unseen}
+      // A shared link presents its stops first; the list opens once the presentation is left
+      open={open || (unseen && !presenting)}
       onOpenChange={(next) => {
         setOpen(next)
         if (!next) shared.markSeen()
@@ -140,7 +138,7 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
                 <ol>
                   {stops.map((stop, i) => (
                     <li key={`${i}-${stop.href}`} className='flex'>
-                      <button type='button' onClick={() => openStop(stop)} className={ROW}>
+                      <button type='button' onClick={() => openStop(stop, undefined, shared, store)} className={ROW}>
                         <span className='w-4 shrink-0 text-right tabular-nums opacity-60'>{stopLetter(i)}</span>
                         <span className='min-w-0 flex-1 truncate font-medium'>{stop.label}</span>
                       </button>
@@ -182,10 +180,21 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
               ))}
             </ol>
             {sharing.length === 0 ? (
-              <p className='mt-2 text-center text-xs text-muted-foreground'>Label steps to share them as a link or PDF</p>
+              <p className='mt-2 text-center text-xs text-muted-foreground'>Label steps to present or share them</p>
             ) : (
               <>
                 <div className='mt-2 flex gap-1.5'>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      setOpen(false)
+                      presentStops(sharing, shared, store)
+                    }}
+                    className='flex flex-1 items-center justify-center gap-1.5 rounded-sm border border-border px-2 py-1.5 text-xs font-medium hover:bg-accent hover:text-accent-foreground'
+                  >
+                    <Presentation size={12} aria-hidden />
+                    Present
+                  </button>
                   <button
                     type='button'
                     onClick={() => copyLink.mutate()}
