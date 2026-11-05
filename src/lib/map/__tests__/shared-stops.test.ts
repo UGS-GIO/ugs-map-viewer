@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/react-router'
-import { buildStopsLink, createSharedStops, decodeStops, encodeStops, toStopHref, type SharedStop } from '../shared-stops'
+import { buildStopsLink, createSharedStops, decodeStops, encodeStops, fitsInLink, MAX_LINK_LENGTH, stopsFromFile, stopsToFile, toStopHref, type SharedStop } from '../shared-stops'
 
 const STOPS: SharedStop[] = [
   { label: 'Your parcel', href: '/hazards?zoom=15&lat=40.6&lon=-111.85&click_bbox=1,2,3,4' },
@@ -110,5 +110,35 @@ describe('printable', () => {
   it('keeps what the PDF font draws and turns subscripts into digits', async () => {
     const { printable } = await import('@/components/maps/controls/steps-pdf')
     expect(printable('CO₂ storage — café 🙂')).toBe('CO2 storage  café ')
+  })
+})
+
+describe('shared stops files', () => {
+  const file = (body: unknown) => JSON.stringify(body)
+
+  it('round-trips stops, notes included', () => {
+    const withNote = [{ ...STOPS[0], note: 'Your home is on the line' }, STOPS[1]]
+    expect(stopsFromFile(stopsToFile(withNote))).toEqual(withNote)
+    expect(JSON.parse(stopsToFile(STOPS))).toMatchObject({ type: 'ugs-map-stops', version: 1 })
+  })
+
+  it('drops stops that a link would drop', () => {
+    const text = file({ type: 'ugs-map-stops', version: 1, stops: [STOPS[0], { label: 'Off site', href: 'https://evil.example' }, { label: 3, href: '/x' }, 'nope', { ...STOPS[1], note: '' }] })
+    expect(stopsFromFile(text)).toEqual(STOPS)
+  })
+
+  it('rejects files that are not stops files', () => {
+    expect(() => stopsFromFile('not json')).toThrow()
+    expect(() => stopsFromFile(file([STOPS]))).toThrow()
+    expect(() => stopsFromFile(file({ type: 'FeatureCollection', features: [] }))).toThrow()
+    expect(() => stopsFromFile(file({ type: 'ugs-map-stops', version: 2, stops: STOPS }))).toThrow()
+    expect(() => stopsFromFile(file({ type: 'ugs-map-stops', version: 1, stops: {} }))).toThrow()
+    expect(() => stopsFromFile(file({ type: 'ugs-map-stops', version: 1, stops: [{ label: 'x', href: 'x' }] }))).toThrow()
+  })
+
+  it('fits a link only up to the limit', () => {
+    expect(fitsInLink('a'.repeat(MAX_LINK_LENGTH))).toBe(true)
+    expect(fitsInLink('a'.repeat(MAX_LINK_LENGTH + 1))).toBe(false)
+    expect(fitsInLink(buildStopsLink('https://maps.example', STOPS))).toBe(true)
   })
 })

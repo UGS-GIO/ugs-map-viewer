@@ -52,7 +52,7 @@ export function encodeStops(stops: SharedStop[]): string {
   return toBase64Url(gzipSync(strToU8(JSON.stringify(stops.map(({ label, href, note }) => (note ? [label, href, note] : [label, href])))), { mtime: 0 }))
 }
 
-// A link comes from outside: cap what it can make the recipient's tab decompress, list and print
+// Stops come from outside: cap what they can make the recipient's tab decompress, list and print
 const MAX_ENCODED_LENGTH = 16_000
 const MAX_DECODED_BYTES = 256_000
 const MAX_STOPS = 50
@@ -62,15 +62,42 @@ const MAX_NOTE_LENGTH = 2000
 /** A path in this app; `//host` and `/\host` start with a slash but leave it */
 const isAppPath = (href: string) => href.startsWith('/') && new URL(href, 'http://local').origin === 'http://local'
 
+/** One stop from untrusted fields, or none: the same rules for links and files. */
+const validStop = (label: unknown, href: unknown, note: unknown): SharedStop[] =>
+  typeof label === 'string' && typeof href === 'string' && isAppPath(href)
+    ? [{ label: label.slice(0, MAX_LABEL_LENGTH), href, ...(typeof note === 'string' && note ? { note: note.slice(0, MAX_NOTE_LENGTH) } : {}) }]
+    : []
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
+
 export function decodeStops(text: string): SharedStop[] {
   if (text.length > MAX_ENCODED_LENGTH) throw new Error('Shared stops are too long')
   // gunzip truncates to `out`, and truncated JSON fails to parse
   const parsed: unknown = JSON.parse(strFromU8(gunzipSync(fromBase64Url(text), { out: new Uint8Array(MAX_DECODED_BYTES) })))
   if (!Array.isArray(parsed)) throw new Error('Shared stops are not a list')
-  return parsed.slice(0, MAX_STOPS).flatMap((entry) =>
-    Array.isArray(entry) && typeof entry[0] === 'string' && typeof entry[1] === 'string' && isAppPath(entry[1])
-      ? [{ label: entry[0].slice(0, MAX_LABEL_LENGTH), href: entry[1], ...(typeof entry[2] === 'string' && entry[2] ? { note: entry[2].slice(0, MAX_NOTE_LENGTH) } : {}) }]
-      : [])
+  return parsed.slice(0, MAX_STOPS).flatMap((entry) => Array.isArray(entry) ? validStop(entry[0], entry[1], entry[2]) : [])
+}
+
+// Email and chat apps break links much past this
+export const MAX_LINK_LENGTH = 2000
+export const fitsInLink = (link: string) => link.length <= MAX_LINK_LENGTH
+
+export const STOPS_FILE_NAME = 'ugs-map-stops.json'
+const STOPS_FILE_TYPE = 'ugs-map-stops'
+
+/** Stops as a file, for sets too long to send as a link. */
+export function stopsToFile(stops: SharedStop[]): string {
+  return JSON.stringify({ type: STOPS_FILE_TYPE, version: 1, stops: stops.map(({ label, href, note }) => ({ label, href, ...(note ? { note } : {}) })) }, null, 2)
+}
+
+export function stopsFromFile(text: string): SharedStop[] {
+  const parsed: unknown = JSON.parse(text)
+  if (!isRecord(parsed) || parsed.type !== STOPS_FILE_TYPE) throw new Error('Not a map stops file')
+  if (parsed.version !== 1) throw new Error(`Unsupported map stops file version: ${String(parsed.version)}`)
+  if (!Array.isArray(parsed.stops)) throw new Error('Map stops file has no list of stops')
+  const stops = parsed.stops.slice(0, MAX_STOPS).flatMap((entry: unknown) => isRecord(entry) ? validStop(entry.label, entry.href, entry.note) : [])
+  if (stops.length === 0) throw new Error('Map stops file has no valid stops')
+  return stops
 }
 
 // The stops ride along while presenting, so the address bar can be reloaded or shared from any stop

@@ -2,11 +2,13 @@ import { useRef, useState, useSyncExternalStore } from 'react'
 import { Popover } from '@base-ui/react/popover'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMap } from 'react-map-gl/maplibre'
-import { FileDown, History, Link, Pencil, Presentation, X } from 'lucide-react'
+import { strToU8 } from 'fflate'
+import { FileDown, FolderOpen, History, Link, Pencil, Presentation, Save, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { MapStep, MapSteps } from '@/lib/map/map-steps'
-import { buildStopsLink, stopLetter, toStopHref, type SharedStop, type SharedStops } from '@/lib/map/shared-stops'
+import { buildStopsLink, fitsInLink, stopLetter, stopsFromFile, stopsToFile, STOPS_FILE_NAME, toStopHref, type SharedStop, type SharedStops } from '@/lib/map/shared-stops'
+import { downloadBytes } from '@/lib/download-utils'
 import type { GetLegendData } from './export-control'
 import { usePresentation } from '@/hooks/use-presentation'
 import { openStop, presentStops } from '@/lib/map/app-history'
@@ -87,12 +89,33 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
   const sharing: SharedStop[] = [...stops, ...ownLabeled.map((step) => ({ label: step.label ?? '', href: toStopHref(step.href), note: step.note }))]
   const sharingWhat = stops.length > 0 ? plural(sharing.length, 'stop') : plural(sharing.length, 'labeled step')
 
+  const link = sharing.length > 0 ? buildStopsLink(window.location.origin, sharing) : ''
+  const asLink = fitsInLink(link)
+
   const copyLink = useMutation({
-    mutationFn: async () => navigator.clipboard.writeText(buildStopsLink(window.location.origin, sharing)),
-    onSuccess: () => toast.success(`Link to ${sharingWhat} copied`),
+    mutationFn: async () => {
+      if (asLink) return navigator.clipboard.writeText(link)
+      downloadBytes(strToU8(stopsToFile(sharing)), STOPS_FILE_NAME, 'application/json')
+    },
+    onSuccess: () => {
+      if (asLink) toast.success(`Link to ${sharingWhat} copied`)
+      else toast.success('Too long for a link; saved as a file you can send. Open it from Map history.')
+    },
     onError: (error) => {
-      console.error('Could not copy the share link:', error)
-      toast.error('Could not copy the link. Please try again.')
+      console.error('Could not share the stops:', error)
+      toast.error(asLink ? 'Could not copy the link. Please try again.' : 'Could not save the file. Please try again.')
+    },
+  })
+
+  const openFile = useMutation({
+    mutationFn: async (file: File) => stopsFromFile(await file.text()),
+    onSuccess: (opened) => {
+      setOpen(false)
+      presentStops(opened, shared, store)
+    },
+    onError: (error) => {
+      console.error('Could not open the map stops file:', error)
+      toast.error('That file isn\'t a map stops file saved from Map history.')
     },
   })
 
@@ -157,6 +180,25 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
           <Popover.Popup className='w-72 rounded-md border border-border bg-popover p-2 text-popover-foreground shadow-md outline-none'>
             <div className='mb-1.5 flex items-center justify-between border-b border-border pb-1'>
               <Popover.Title className='text-xs font-medium leading-none text-foreground'>Map history</Popover.Title>
+              <label
+                title='Open a saved presentation file'
+                className='ml-auto mr-1.5 flex cursor-pointer items-center gap-1 rounded-sm px-1 text-xs text-muted-foreground hover:text-foreground focus-within:ring-2 focus-within:ring-ring'
+              >
+                <FolderOpen size={12} aria-hidden />
+                Open
+                <input
+                  type='file'
+                  accept='.json,application/json'
+                  className='sr-only'
+                  disabled={openFile.isPending}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0]
+                    // Clear so picking the same file again still fires
+                    e.target.value = ''
+                    if (file) openFile.mutate(file)
+                  }}
+                />
+              </label>
               <Popover.Close aria-label='Close' className='flex size-4 items-center justify-center text-muted-foreground hover:text-foreground'>
                 <X size={14} />
               </Popover.Close>
@@ -238,8 +280,8 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
                     disabled={copyLink.isPending}
                     className='flex flex-1 items-center justify-center gap-1.5 rounded-sm bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50'
                   >
-                    <Link size={12} aria-hidden />
-                    Copy link
+                    {asLink ? <Link size={12} aria-hidden /> : <Save size={12} aria-hidden />}
+                    {asLink ? 'Copy link' : 'Save file'}
                   </button>
                   <button
                     type='button'
