@@ -69,6 +69,16 @@ describe('createMapHistory', () => {
     expect(seen).toEqual([true, false])
   })
 
+  it('steps for a move an input started, even when it lands after the window', () => {
+    const { input, history, index, moveStarted } = setup()
+    input()
+    const moveEnded = moveStarted()
+    vi.advanceTimersByTime(2000)
+    moveEnded()
+    history.replace('/hazards?zoom=6.5')
+    expect(index()).toBe(1)
+  })
+
   it('leaves layout and preference changes as replaces', () => {
     const { input, write, index } = setup()
     input()
