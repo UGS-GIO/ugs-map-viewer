@@ -50,6 +50,8 @@ export interface PhoneSheetProps {
   /** A control at the end of the header row while the sheet is raised, such as Cards | Table. */
   headerAction?: ReactNode
   back?: { label: string; onClick: () => void }
+  /** Controls at the end of the header at every height, such as a presentation's previous and next */
+  controls?: ReactNode
   /** An ✕ at the end of the header, at every height, such as clearing the selected features. */
   clear?: { label: string; onClick: () => void }
   onSelectTab: (tab: PhoneTab) => void
@@ -58,7 +60,7 @@ export interface PhoneSheetProps {
 }
 
 /** One always-open non-modal drawer over the map, and the tab bar that picks what it holds. */
-export function PhoneSheet({ container, detent, activeTab, panelKey, title, summary, headerAction, back, clear, onSelectTab, onSetDetent, children }: PhoneSheetProps) {
+export function PhoneSheet({ container, detent, activeTab, panelKey, title, summary, headerAction, controls, back, clear, onSelectTab, onSetDetent, children }: PhoneSheetProps) {
   const collapsed = detent === PEEK
   const contentId = useId()
   const popupRef = useRef<HTMLDivElement>(null)
@@ -142,9 +144,10 @@ export function PhoneSheet({ container, detent, activeTab, panelKey, title, summ
                     </Drawer.Title>
                     {collapsed && summary && <span className='min-w-0 truncate text-sm text-muted-foreground'>{summary}</span>}
                     {/* Ignored by the drag, so a tap on it is never a swipe. */}
-                    {((!collapsed && headerAction) || clear) && (
+                    {((!collapsed && headerAction) || controls || clear) && (
                       <div data-base-ui-swipe-ignore className='-mr-2 ml-auto flex shrink-0 items-center gap-1'>
                         {!collapsed && headerAction}
+                        {controls}
                         {clear && (
                           <button
                             type='button'
@@ -172,7 +175,7 @@ export function PhoneSheet({ container, detent, activeTab, panelKey, title, summ
           </Drawer.Portal>
         </Drawer.VirtualKeyboardProvider>
       </Drawer.Root>
-      <nav aria-label='Map views' data-tour='phone-tabs' className={cn('z-30 shrink-0 touch-manipulation border-t bg-background pb-[env(safe-area-inset-bottom)]', TOUCH_CHROME)}>
+      <nav aria-label='Map views' data-phone-chrome data-tour='phone-tabs' className={cn('z-30 shrink-0 touch-manipulation border-t bg-background pb-[env(safe-area-inset-bottom)]', TOUCH_CHROME)}>
         {/* The showing tab is pressed; pressing it again unpresses it, which drops the sheet to the peek. */}
         <ToggleGroup
           value={collapsed ? [] : [activeTab]}

@@ -256,6 +256,13 @@ body > #root {
   color: hsl(var(--accent-foreground));
 }
 
+/* A presentation shows the map alone: no tool buttons, phone sheet or phone tabs */
+[data-presenting] .maplibregl-ctrl-top-left,
+[data-presenting] .maplibregl-ctrl-top-right,
+[data-presenting] [data-phone-chrome] {
+  display: none;
+}
+
 /* MapLibre dims a nested .maplibregl-ctrl-icon; our inline-SVG buttons have none */
 .maplibregl-ctrl.maplibregl-ctrl-group button:disabled > svg {
   opacity: 0.25;
@@ -359,6 +366,14 @@ body > #root {
   .phone-map[data-sheet="full"] .maplibregl-ctrl-bottom-right {
     opacity: 0;
     pointer-events: none;
+  }
+  /* Back, Forward and Map history in a row, so the half-height sheet doesn't cover them on short phones */
+  .phone-map .map-history-group {
+    display: flex;
+  }
+  .phone-map .map-history-group button + button {
+    border-top: 0;
+    border-left: 1px solid hsl(var(--border));
   }
   /* Preview builds render the router devtools toggle bottom-left, over the Layers tab. */
   button[aria-label="Open TanStack Router Devtools"] {

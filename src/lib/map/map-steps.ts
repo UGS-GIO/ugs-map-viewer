@@ -10,6 +10,7 @@ export interface MapStep {
   href: string
   summary: string
   label?: string
+  note?: string
 }
 
 export interface MapStepsSnapshot {
@@ -20,7 +21,8 @@ export interface MapStepsSnapshot {
 export interface MapSteps {
   subscribe: (onChange: () => void) => () => void
   getSnapshot: () => MapStepsSnapshot
-  setLabel: (index: number, label: string) => void
+  /** An empty label clears the step's note too */
+  setLabel: (index: number, label: string, note?: string) => void
   /** Resolves once the browser lands on the step, or rejects if it never does */
   go: (index: number) => Promise<void>
 }
@@ -76,6 +78,7 @@ export function describeStep(previousHref: string | undefined, href: string): st
 
 const HREFS_KEY = 'map-history-steps'
 const LABELS_KEY = 'map-history-labels'
+const NOTES_KEY = 'map-history-notes'
 
 // A typed URL or a followed link starts a new document whose steps restart at index 0, so the stored
 // log describes entries that are gone. A reload or Back/Forward into the app keeps it.
@@ -89,11 +92,13 @@ export function createMapSteps(history: RouterHistory, storage = sessionStorageI
   if (fresh) {
     writeJson(storage, HREFS_KEY, [])
     writeJson(storage, LABELS_KEY, {})
+    writeJson(storage, NOTES_KEY, {})
   }
   const indexOf = () => history.location.state.__TSR_index
   // JSON turns gaps (steps from before this page's first visit) into null
   const hrefs: (string | null)[] = readJson(storage, HREFS_KEY, [])
   const labels: Record<number, string> = readJson(storage, LABELS_KEY, {})
+  const notes: Record<number, string> = readJson(storage, NOTES_KEY, {})
   const listeners = new Set<() => void>()
   let snapshot: MapStepsSnapshot = { steps: [], current: 0 }
 
@@ -103,19 +108,24 @@ export function createMapSteps(history: RouterHistory, storage = sessionStorageI
       // Only map views: the landing page or a report in the same tab isn't a step to jump to or print
       steps: hrefs.flatMap((href, index) =>
         href && cameraOf(new URL(href, 'http://local').search)
-          ? [{ index, href, summary: describeStep(hrefs[index - 1] ?? undefined, href), label: labels[index] }]
+          ? [{ index, href, summary: describeStep(hrefs[index - 1] ?? undefined, href), label: labels[index], note: notes[index] }]
           : []),
     }
     listeners.forEach((listener) => listener())
   }
 
+  const dropFrom = (index: number, key: string, byIndex: Record<number, string>) => {
+    Object.keys(byIndex).map(Number).filter((i) => i >= index).forEach((i) => delete byIndex[i])
+    writeJson(storage, key, byIndex)
+  }
+
   const record = (pushed: boolean) => {
     const index = indexOf()
     if (pushed) {
-      // A new step drops the ones after it, and their labels with them
+      // A new step drops the ones after it, and their labels and notes with them
       hrefs.length = index
-      Object.keys(labels).map(Number).filter((i) => i >= index).forEach((i) => delete labels[i])
-      writeJson(storage, LABELS_KEY, labels)
+      dropFrom(index, LABELS_KEY, labels)
+      dropFrom(index, NOTES_KEY, notes)
     }
     hrefs[index] = history.location.href
     writeJson(storage, HREFS_KEY, hrefs)
@@ -135,11 +145,15 @@ export function createMapSteps(history: RouterHistory, storage = sessionStorageI
       return () => listeners.delete(onChange)
     },
     getSnapshot: () => snapshot,
-    setLabel: (index, label) => {
+    setLabel: (index, label, note = '') => {
       const trimmed = label.trim()
+      const trimmedNote = note.trim()
       if (trimmed) labels[index] = trimmed
       else delete labels[index]
+      if (trimmed && trimmedNote) notes[index] = trimmedNote
+      else delete notes[index]
       writeJson(storage, LABELS_KEY, labels)
+      writeJson(storage, NOTES_KEY, notes)
       rebuild()
     },
     go: (index) => new Promise((resolve, reject) => {

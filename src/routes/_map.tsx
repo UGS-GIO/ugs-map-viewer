@@ -52,6 +52,10 @@ const mapSearchSchema = z.object({
     bearing: z.coerce.number().min(-180).max(180).optional().catch(undefined),
     // Phone sheet: how high it is, whether it shows results, and the Info detail. Unknown values drop.
     sheet: z.enum(SHEET_PARAMS).optional().catch(undefined),
+    // Presenting shared stops: the stop shown, from 1
+    present: z.coerce.number().int().min(1).optional().catch(undefined),
+    // The stops being presented, compressed; shared-stops.ts reads them
+    stops: z.string().optional().catch(undefined),
     results: z.enum(RESULTS_PARAMS).optional().catch(undefined),
     detail: z.enum(INFO_DETAILS).optional().catch(undefined),
     // Click buffer bounds for selection visualization (sw_lng,sw_lat,ne_lng,ne_lat)

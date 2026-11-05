@@ -69,6 +69,23 @@ describe('createMapSteps', () => {
     expect(reloaded.getSnapshot().steps.map((s) => s.label)).toEqual([undefined, 'Parcel'])
   })
 
+  it('keeps a labeled step\'s note, drops it with the label, and drops it for replaced steps', () => {
+    const { history, steps } = setup()
+    history.push(view('zoom=7'))
+    steps.setLabel(0, 'A', '  Look here  ')
+    steps.setLabel(1, '', 'Unlabeled')
+    expect(steps.getSnapshot().steps.map((s) => s.note)).toEqual(['Look here', undefined])
+    expect(createMapSteps(history, sessionStorage, false).getSnapshot().steps[0].note).toBe('Look here')
+
+    steps.setLabel(0, '')
+    expect(steps.getSnapshot().steps[0].note).toBeUndefined()
+
+    steps.setLabel(1, 'B', 'Gone soon')
+    steps.go(0)
+    history.push(view('zoom=9'))
+    expect(steps.getSnapshot().steps.map((s) => s.note)).toEqual([undefined, undefined])
+  })
+
   it('lists only map views', () => {
     const history = createMemoryHistory({ initialEntries: ['/'] })
     const steps = createMapSteps(history, sessionStorage, false)

@@ -7,15 +7,17 @@ const MARGIN_MM = 10
 const HEADER_MM = 14
 const FOOTER_MM = 8
 const TITLE_LINE_MM = 6
+const NOTE_LINE_MM = 4.5
 
 // jsPDF's built-in Helvetica only draws WinAnsi (Latin-1 plus curly quotes, dashes and the like);
-// NFKC first turns the likes of CO₂ into CO2
-export const printable = (text: string) => text.normalize('NFKC').replace(/[^\x20-\x7E\xA0-\xFF€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ]/g, '')
+// NFKC first turns the likes of CO₂ into CO2. Newlines stay for notes.
+export const printable = (text: string) => text.normalize('NFKC').replace(/[^\x20-\x7E\xA0-\xFF€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ\n]/g, '')
 // Selection and layer queries can take a while; past this, export what's drawn
 const SETTLE_TIMEOUT_MS = 15000
 
 export interface PdfPage {
   label: string
+  note?: string
   href: string
   /** Puts the map in this page's state; resolves once the URL is there */
   visit: () => Promise<void>
@@ -97,7 +99,10 @@ export async function exportStepsPdf({ map, pages, queryClient, origin, getLegen
     pdf.setFontSize(14)
     const titleLines: string[] = pdf.splitTextToSize(printable(`${stopLetter(i)}. ${pages[i].label}`), widthMm - MARGIN_MM * 2)
     pdf.text(titleLines, MARGIN_MM, MARGIN_MM + 4)
-    const headerMm = HEADER_MM + (titleLines.length - 1) * TITLE_LINE_MM
+    pdf.setFontSize(10)
+    const noteLines: string[] = pages[i].note ? pdf.splitTextToSize(printable(pages[i].note), widthMm - MARGIN_MM * 2) : []
+    pdf.text(noteLines, MARGIN_MM, MARGIN_MM + 4 + titleLines.length * TITLE_LINE_MM)
+    const headerMm = HEADER_MM + (titleLines.length - 1) * TITLE_LINE_MM + noteLines.length * NOTE_LINE_MM
 
     // Fit the rendered page between header and footer, keeping its shape
     const scale = Math.min((widthMm - MARGIN_MM * 2) / widthMm, (heightMm - MARGIN_MM - headerMm - FOOTER_MM) / heightMm)
