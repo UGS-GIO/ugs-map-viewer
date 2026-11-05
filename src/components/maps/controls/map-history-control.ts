@@ -22,22 +22,29 @@ function cameraOf(search: string): maplibregl.CameraOptions | undefined {
  * Back or Forward lands on, from these buttons, the browser's, or the mouse's.
  */
 export class MapHistoryControl implements maplibregl.IControl {
-  private container?: HTMLElement;
+  // Built up front so React can portal the steps list into the same button group
+  readonly container: HTMLElement;
+  private readonly back: HTMLButtonElement;
+  private readonly forward: HTMLButtonElement;
   private unsubscribe?: () => void;
   private stopTrackingMoves?: () => void;
   private stopFollowingResize?: () => void;
 
-  constructor(private readonly nav: MapHistory) {}
+  constructor(private readonly nav: MapHistory) {
+    const { container, buttons: [back, forward] } = createIconControlGroup([
+      { title: 'Back to previous map view', icon: BACK_ICON, onClick: () => nav.history.back() },
+      { title: 'Forward to next map view', icon: FORWARD_ICON, onClick: () => nav.history.forward() },
+    ]);
+    this.container = container;
+    this.back = back;
+    this.forward = forward;
+  }
 
   onAdd(map: maplibregl.Map): HTMLElement {
     const { history, canGoForward } = this.nav;
-    const { container, buttons: [back, forward] } = createIconControlGroup([
-      { title: 'Back to previous map view', icon: BACK_ICON, onClick: () => history.back() },
-      { title: 'Forward to next map view', icon: FORWARD_ICON, onClick: () => history.forward() },
-    ]);
     const updateButtons = () => {
-      back.disabled = !history.canGoBack();
-      forward.disabled = !canGoForward();
+      this.back.disabled = !history.canGoBack();
+      this.forward.disabled = !canGoForward();
     };
 
     this.unsubscribe = history.subscribe(({ action, location }) => {
@@ -59,9 +66,7 @@ export class MapHistoryControl implements maplibregl.IControl {
       map.off('movestart', onMoveStart);
       map.off('moveend', onMoveEnd);
     };
-
-    this.container = container;
-    return container;
+    return this.container;
   }
 
   // easeTo keeps the pixel anchor it started with, and the results panel opening or closing with the step
@@ -83,6 +88,6 @@ export class MapHistoryControl implements maplibregl.IControl {
     this.stopFollowingResize?.();
     this.stopTrackingMoves?.();
     this.unsubscribe?.();
-    this.container?.remove();
+    this.container.remove();
   }
 }
