@@ -24,6 +24,7 @@ function cameraOf(search: string): maplibregl.CameraOptions | undefined {
 export class MapHistoryControl implements maplibregl.IControl {
   private container?: HTMLElement;
   private unsubscribe?: () => void;
+  private stopTrackingMoves?: () => void;
   private stopFollowingResize?: () => void;
 
   constructor(private readonly nav: MapHistory) {}
@@ -49,6 +50,16 @@ export class MapHistoryControl implements maplibregl.IControl {
     });
     updateButtons();
 
+    let moveEnded = () => {};
+    const onMoveStart = () => { moveEnded = this.nav.moveStarted() };
+    const onMoveEnd = () => moveEnded();
+    map.on('movestart', onMoveStart);
+    map.on('moveend', onMoveEnd);
+    this.stopTrackingMoves = () => {
+      map.off('movestart', onMoveStart);
+      map.off('moveend', onMoveEnd);
+    };
+
     this.container = container;
     return container;
   }
@@ -70,6 +81,7 @@ export class MapHistoryControl implements maplibregl.IControl {
 
   onRemove(): void {
     this.stopFollowingResize?.();
+    this.stopTrackingMoves?.();
     this.unsubscribe?.();
     this.container?.remove();
   }
