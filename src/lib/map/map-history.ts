@@ -16,16 +16,21 @@ const mapState = (search: string) => {
   return params.toString()
 }
 
+/** An app path and search with its params changed by `edit` */
+export function editHref(href: string, edit: (params: URLSearchParams) => void): string {
+  const url = new URL(href, 'http://local')
+  edit(url.searchParams)
+  return `${url.pathname}${url.search}`
+}
+
 /** `href` with the layout and preference params as they are in `from` */
 export function withSticky(href: string, from: string): string {
-  const url = new URL(href, 'http://local')
   const source = new URLSearchParams(from)
-  STICKY_PARAMS.forEach((key) => {
+  return editHref(href, (params) => STICKY_PARAMS.forEach((key) => {
     const value = source.get(key)
-    if (value === null) url.searchParams.delete(key)
-    else url.searchParams.set(key, value)
-  })
-  return `${url.pathname}${url.search}`
+    if (value === null) params.delete(key)
+    else params.set(key, value)
+  }))
 }
 
 const indexOf = (history: RouterHistory) => history.location.state.__TSR_index
