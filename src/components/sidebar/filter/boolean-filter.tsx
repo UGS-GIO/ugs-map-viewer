@@ -37,7 +37,7 @@ const BooleanFilter = ({
             className={cn("grid grid-cols-3 gap-2", disabled && "opacity-50 pointer-events-none")}
         >
             {(['yes', 'no', 'all'] as const).map(val => (
-                <div key={val}>
+                <div key={val} className="relative">
                     <RadioGroupItem
                         value={val}
                         id={`${groupId}-${val}`}

@@ -343,7 +343,7 @@ const WellCoreFilter = React.memo(({
             className="grid grid-cols-3 gap-2"
         >
             {wellsHasCoreFilterConfig.options.map(option => (
-                <div key={option.value}>
+                <div key={option.value} className="relative">
                     <RadioGroupItem
                         value={option.value}
                         id={`hascore-filter-${option.value}`}
@@ -381,7 +381,7 @@ const WellLasFilter = React.memo(({
             className="grid grid-cols-3 gap-2"
         >
             {wellsHasLasFilterConfig.options.map(option => (
-                <div key={option.value}>
+                <div key={option.value} className="relative">
                     <RadioGroupItem
                         value={option.value}
                         id={`haslas-filter-${option.value}`}
