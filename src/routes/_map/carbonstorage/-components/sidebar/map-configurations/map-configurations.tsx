@@ -6,7 +6,7 @@ import { useState, useMemo, useEffect, useCallback, useId, useRef } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/query-keys';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { BooleanFilter, type YesNoAll } from '@/components/sidebar/filter/boolean-filter';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,6 @@ import { wellWithTopsWMSTitle } from '../../../-data/layers/layers';
 import { Badge } from '@/components/ui/badge';
 import { applyLayerFilter } from '@/lib/sidebar/filter/util';
 
-type YesNoAll = "yes" | "no" | "all";
 
 interface FilterState {
     core: YesNoAll;
@@ -35,24 +34,6 @@ interface FilterState {
     formations: string[];
     formation_operator?: 'and';
 }
-
-const wellsHasCoreFilterConfig = {
-    label: "Cores/Cuttings Available?",
-    options: [
-        { value: "yes", label: "Yes" },
-        { value: "no", label: "No" },
-        { value: "all", label: "All" }
-    ] as const,
-};
-
-const wellsHasLasFilterConfig = {
-    label: "LAS Data Available?",
-    options: [
-        { value: "yes", label: "Yes" },
-        { value: "no", label: "No" },
-        { value: "all", label: "All" }
-    ] as const,
-};
 
 const formationNameMappingConfig = {
     label: "Formation Present",
@@ -292,14 +273,14 @@ const MapConfigurations = () => {
                         <CardTitle className="text-base">Filter Wells Database</CardTitle>
                     </CardHeader>
                     <CardContent className="p-4 space-y-4">
-                        <WellCoreFilter
-                            disabled={false}
+                        <BooleanFilter
+                            label="Cores/Cuttings Available?"
                             value={core}
                             onChange={handleHasCoreChange}
                         />
 
-                        <WellLasFilter
-                            disabled={false}
+                        <BooleanFilter
+                            label="LAS Data Available?"
                             value={las}
                             onChange={handleHasLasChange}
                         />
@@ -323,82 +304,6 @@ const MapConfigurations = () => {
 }
 
 // --- SUB-COMPONENTS ---
-const WellCoreFilter = React.memo(({
-    value,
-    onChange,
-    disabled
-}: {
-    value: YesNoAll,
-    onChange: (value: YesNoAll) => void,
-    disabled: boolean
-}) => (
-    <div>
-        <Label className="text-sm font-medium text-muted-foreground mb-2 block">
-            {wellsHasCoreFilterConfig.label}
-        </Label>
-        <RadioGroup
-            disabled={disabled}
-            value={value}
-            onValueChange={onChange}
-            className="grid grid-cols-3 gap-2"
-        >
-            {wellsHasCoreFilterConfig.options.map(option => (
-                <div key={option.value} className="relative">
-                    <RadioGroupItem
-                        value={option.value}
-                        id={`hascore-filter-${option.value}`}
-                        className="peer sr-only"
-                    />
-                    <Label
-                        htmlFor={`hascore-filter-${option.value}`}
-                        className="flex flex-1 items-center justify-center rounded-md border-2 border-transparent bg-popover p-2 text-xs text-center cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground"
-                    >
-                        {option.label}
-                    </Label>
-                </div>
-            ))}
-        </RadioGroup>
-    </div>
-));
-
-const WellLasFilter = React.memo(({
-    value,
-    onChange,
-    disabled
-}: {
-    value: YesNoAll,
-    onChange: (value: YesNoAll) => void,
-    disabled: boolean
-}) => (
-    <div>
-        <Label className="text-sm font-medium text-muted-foreground mb-2 block">
-            {wellsHasLasFilterConfig.label}
-        </Label>
-        <RadioGroup
-            disabled={disabled}
-            value={value}
-            onValueChange={onChange}
-            className="grid grid-cols-3 gap-2"
-        >
-            {wellsHasLasFilterConfig.options.map(option => (
-                <div key={option.value} className="relative">
-                    <RadioGroupItem
-                        value={option.value}
-                        id={`haslas-filter-${option.value}`}
-                        className="peer sr-only"
-                    />
-                    <Label
-                        htmlFor={`haslas-filter-${option.value}`}
-                        className="flex flex-1 items-center justify-center rounded-md border-2 border-transparent bg-popover p-2 text-xs text-center cursor-pointer transition-colors hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary peer-data-[state=checked]:bg-primary peer-data-[state=checked]:text-primary-foreground"
-                    >
-                        {option.label}
-                    </Label>
-                </div>
-            ))}
-        </RadioGroup>
-    </div>
-));
-
 interface WellFormationFilterProps {
     disabled: boolean;
     value: string[];
@@ -578,8 +483,6 @@ const WellFormationFilter = React.memo(({
     );
 });
 
-WellCoreFilter.displayName = 'WellCoreFilter';
-WellLasFilter.displayName = 'WellLasFilter';
 WellFormationFilter.displayName = 'WellFormationFilter';
 
 export default React.memo(MapConfigurations);
