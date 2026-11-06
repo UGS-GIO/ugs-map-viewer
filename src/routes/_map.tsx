@@ -7,6 +7,8 @@ import { INFO_DETAILS, RESULTS_PARAMS, SHEET_PARAMS } from '@/components/maps/ph
 import { RouteErrorBoundary } from '@/components/route-error-boundary'
 import { resolveBasemapId, BASEMAP_STYLES } from '@/lib/basemaps'
 import { COORDINATE_FORMATS } from '@/lib/map/conversion-utils'
+import { MEASURE_MODES, UNIT_SYSTEMS } from '@/lib/map/measure-store'
+import { EXAGGERATION } from '@/lib/terrain'
 
 // Get responsive default sidebar width based on screen size
 const getDefaultSidebarWidth = () => {
@@ -25,6 +27,7 @@ const mapSearchSchema = z.object({
     sidebar_collapsed: z.coerce.boolean().optional().default(false),
     sidebar_width: z.enum(['icon', 'wide', 'narrow']).optional().default(getDefaultSidebarWidth),
     coordinate_format: z.enum(COORDINATE_FORMATS).optional().catch(undefined),
+    units: z.enum(UNIT_SYSTEMS).optional().catch(undefined),
     basemap: z.string().transform(resolveBasemapId).refine((id) => BASEMAP_STYLES.some((b) => b.id === id)).optional().catch(undefined),
     layers: z.preprocess((val) => {
         if (typeof val === 'string') {
@@ -41,16 +44,28 @@ const mapSearchSchema = z.object({
     view: z.enum(['map', 'split', 'table']).optional(),
     // 3D (terrain + hillshade) on/off, plus camera tilt and rotation in degrees
     terrain: z.boolean().optional().catch(undefined),
+    exaggeration: z.coerce.number().min(EXAGGERATION.min).max(EXAGGERATION.max)
+        .refine((v) => Number.isInteger((v - EXAGGERATION.min) / EXAGGERATION.step)).optional().catch(undefined),
+    // Active measure tool
+    measure: z.enum(MEASURE_MODES).optional().catch(undefined),
     pitch: z.coerce.number().min(0).max(85).optional().catch(undefined),
     bearing: z.coerce.number().min(-180).max(180).optional().catch(undefined),
     // Phone sheet: how high it is, whether it shows results, and the Info detail. Unknown values drop.
     sheet: z.enum(SHEET_PARAMS).optional().catch(undefined),
+    // Presenting shared stops: the stop shown, from 1
+    present: z.coerce.number().int().min(1).optional().catch(undefined),
+    // The stops being presented, compressed; shared-stops.ts reads them
+    stops: z.string().optional().catch(undefined),
     results: z.enum(RESULTS_PARAMS).optional().catch(undefined),
     detail: z.enum(INFO_DETAILS).optional().catch(undefined),
     // Click buffer bounds for selection visualization (sw_lng,sw_lat,ne_lng,ne_lat)
     click_bbox: z.string().optional(),
     // Feature geometry bounds for zoom (sw_lng,sw_lat,ne_lng,ne_lat)
     feature_bbox: z.string().optional(),
+    // Box select bounds (same format as click_bbox)
+    box_bbox: z.string().optional(),
+    // Drawn filter polygon's outer ring (lng,lat;lng,lat;...)
+    area: z.string().optional(),
     // Selected features for sharing (format: layer:id,layer:id,...)
     features: z.string().optional(),
     // Visibility state overrides for group layers (format: Group Title: boolean)
@@ -69,7 +84,7 @@ export type MapSearch = z.infer<typeof mapSearchSchema>
 
 export const Route = createFileRoute('/_map')({
     validateSearch: mapSearchSchema,
-    search: { middlewares: [stripSearchParams({ coordinate_format: 'dd' })] },
+    search: { middlewares: [stripSearchParams({ coordinate_format: 'dd', units: 'us' })] },
     errorComponent: RouteErrorBoundary,
     component: () => (
         <MapInstanceProvider>

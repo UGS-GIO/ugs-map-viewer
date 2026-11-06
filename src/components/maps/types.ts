@@ -11,11 +11,7 @@ export type ClickedFeature = WfsFeature
 
 export type DrawMode = 'off' | 'rectangle' | 'polygon'
 
-export type SpatialFilter = {
-  type: 'bbox' | 'polygon'
-  bbox?: [number, number, number, number]
-  polygon?: Polygon
-} | null
+export type SpatialFilter = Polygon | null
 
 export interface HighlightFeature {
   id: string | number
@@ -81,16 +77,19 @@ export interface DataMapProps {
   /** Basemap ID from URL */
   basemapId?: string
   terrain?: boolean
+  exaggeration: number
   /** Click buffer bounds for visualization (controlled by parent) */
   clickBufferBounds?: BoundsBox | null
   /** Callback when click buffer should update */
   onClickBufferChange?: (bounds: BoundsBox | null) => void
-  /** Feature geometry bounds for zoom extent (controlled by parent) */
-  featureBbox?: BoundsBox | null
+  /** Bounds to fit on load instead of the center/zoom props */
+  initialBounds?: BoundsBox | null
   /** Callback when feature bbox should update */
   onFeatureBboxChange?: (bbox: BoundsBox | null) => void
-  /** Callback when selection should be cleared (from context menu) */
+  /** Clears the selected features (map tools button); the context menu also drops the pin */
   onClearSelection?: () => void
+  /** Something is selected that Clear selection would clear; an empty click doesn't count */
+  hasSelection?: boolean
   /** Pin marker coordinates (from shared link or context menu) */
   pinCoords?: { lat: number; lon: number } | null
   /** Callback to set or clear the pin */

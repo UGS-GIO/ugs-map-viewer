@@ -11,6 +11,7 @@ export const APP_TITLES: Record<string, string> = {
   'geophysics': 'Geophysical & Geothermal Data Portal',
   'carbonstorage': 'Carbon Storage Portal',
   'subsurface': 'Utah Core Research Center Data Portal (Beta)',
+  'groundwater': 'Groundwater Monitoring Portal',
 };
 
 export function getAppTitle(page: string): string {

@@ -1,4 +1,5 @@
 import { CoordinateFormatCard } from '@/components/sidebar/coordinate-format-card';
+import { UnitsCard } from '@/components/sidebar/units-card';
 import { TerrainCard } from '@/components/sidebar/terrain-card';
 
 function MapConfigurations() {
@@ -8,6 +9,7 @@ function MapConfigurations() {
                 <h2 className="text-lg font-medium mb-2">Map Configurations</h2>
             </div>
             <CoordinateFormatCard />
+            <UnitsCard />
             <TerrainCard />
         </div>
     );

@@ -1,4 +1,5 @@
 import { useTour, type TourRoute } from '@/lib/tour';
+import { linkHasSharedStops } from '@/lib/map/app-history';
 
 interface TourAutoStartProps {
   route?: TourRoute;
@@ -9,6 +10,7 @@ interface TourAutoStartProps {
  * Place this in your layout to enable automatic tour triggering.
  */
 export function TourAutoStart({ route }: TourAutoStartProps) {
-  useTour({ route, autoStart: true });
+  // Someone opening shared stops came for those, not a walkthrough; it's still in the sidebar
+  useTour({ route, autoStart: !linkHasSharedStops });
   return null;
 }

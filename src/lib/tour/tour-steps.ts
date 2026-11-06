@@ -273,6 +273,7 @@ export const TOUR_ROUTE_BY_PAGE: Partial<Record<string, TourRoute>> = {
   carbonstorage: 'ccs',
   subsurface: 'ccs',
   wetlands: 'wetlands',
+  groundwater: 'groundwater',
 };
 
 const routeSteps: Record<TourRoute, DriveStep[]> = {

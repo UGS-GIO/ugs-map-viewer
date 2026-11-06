@@ -101,21 +101,33 @@ export class MapExporter {
         private readonly settings: ExportSettings = DEFAULT_EXPORT_SETTINGS,
         private readonly filename = 'ugs-map',
         private readonly getLegendData?: GetLegendData,
+        /** Print what's drawn when the render outlasts the limit, rather than failing */
+        private readonly allowPartial = false,
     ) {}
 
-    async run(map: maplibregl.Map): Promise<void> {
+    /** Set when the last page was printed before every tile had drawn */
+    partial = false;
+
+    /** The current view on a page-sized canvas, for callers assembling their own document. */
+    async renderPage(map: maplibregl.Map): Promise<{ canvas: HTMLCanvasElement; widthMm: number; heightMm: number }> {
         this.map = map;
 
         // Calculate dimensions based on page size and DPI
         const pageDims = PAGE_SIZES[this.settings.pageSize];
-        const width = this.settings.pageOrientation === 'landscape' ? pageDims.height : pageDims.width;
-        const height = this.settings.pageOrientation === 'landscape' ? pageDims.width : pageDims.height;
+        const widthMm = this.settings.pageOrientation === 'landscape' ? pageDims.height : pageDims.width;
+        const heightMm = this.settings.pageOrientation === 'landscape' ? pageDims.width : pageDims.height;
 
         // Convert mm to pixels at specified DPI
-        const pixelWidth = Math.round((width / 25.4) * this.settings.dpi);
-        const pixelHeight = Math.round((height / 25.4) * this.settings.dpi);
+        const pixelWidth = Math.round((widthMm / 25.4) * this.settings.dpi);
+        const pixelHeight = Math.round((heightMm / 25.4) * this.settings.dpi);
 
-        const canvas = await this.generateCanvas(pixelWidth, pixelHeight);
+        return { canvas: await this.generateCanvas(pixelWidth, pixelHeight), widthMm, heightMm };
+    }
+
+    async run(map: maplibregl.Map): Promise<void> {
+        const { canvas, widthMm: width, heightMm: height } = await this.renderPage(map);
+        const pixelWidth = canvas.width;
+        const pixelHeight = canvas.height;
 
         if (this.settings.format === 'pdf') {
             await this.exportAsPdf(canvas, width, height);
@@ -186,21 +198,8 @@ export class MapExporter {
 
         // A failed render or legend fetch still has to tear down the offscreen map.
         try {
-            // Wait for map to fully render
-            await new Promise<void>((resolve, reject) => {
-                const timeout = setTimeout(() => reject(new Error('Map render timeout')), 30000);
-                exportMap.once('idle', () => {
-                    clearTimeout(timeout);
-                    resolve();
-                });
-                exportMap.once('error', (e) => {
-                    clearTimeout(timeout);
-                    reject(e);
-                });
-            });
-
-            // Get canvas
-            const canvas = exportMap.getCanvas();
+            this.partial = false;
+            const canvas = await this.waitForRender(exportMap);
 
             // Fetch legend data if needed (with map bounds for content-dependent filtering)
             let legendData: LegendItem[] = [];
@@ -247,6 +246,42 @@ export class MapExporter {
             exportMap.remove();
             hiddenContainer.remove();
         }
+    }
+
+    /** The map's canvas once it's drawn, with a 30 s limit that restarts while the tab is in the background */
+    private waitForRender(exportMap: maplibregl.Map): Promise<HTMLCanvasElement> {
+        return new Promise((resolve, reject) => {
+            let timeout: ReturnType<typeof setTimeout> | undefined;
+            // A WebGL canvas is only readable in the frame that drew it, so copy it there
+            const snapshot = () => {
+                const copy = document.createElement('canvas');
+                const canvas = exportMap.getCanvas();
+                copy.width = canvas.width;
+                copy.height = canvas.height;
+                copy.getContext('2d')?.drawImage(canvas, 0, 0);
+                return copy;
+            };
+            const arm = () => { timeout = setTimeout(onTimeout, 30000); };
+            const finish = (result: () => void) => {
+                clearTimeout(timeout);
+                document.removeEventListener('visibilitychange', arm);
+                result();
+            };
+            const onTimeout = () => {
+                // Browsers stop drawing in a background tab; give it the full time again once it's back
+                if (document.hidden) {
+                    document.addEventListener('visibilitychange', arm, { once: true });
+                    return;
+                }
+                if (!this.allowPartial) return finish(() => reject(new Error('Map render timeout')));
+                this.partial = true;
+                exportMap.once('render', () => finish(() => resolve(snapshot())));
+                exportMap.triggerRepaint();
+            };
+            arm();
+            exportMap.once('idle', () => finish(() => resolve(snapshot())));
+            exportMap.once('error', (e) => finish(() => reject(e)));
+        });
     }
 
     private drawNorthArrow(ctx: CanvasRenderingContext2D, canvasWidth: number, scale: number, bearing: number): void {

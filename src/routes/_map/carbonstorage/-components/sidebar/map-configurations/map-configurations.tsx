@@ -1,6 +1,7 @@
 import React from 'react';
 import { TerrainCard } from '@/components/sidebar/terrain-card';
 import { CoordinateFormatCard } from '@/components/sidebar/coordinate-format-card';
+import { UnitsCard } from '@/components/sidebar/units-card';
 import { useState, useMemo, useEffect, useCallback, useId, useRef } from 'react';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { useQuery } from '@tanstack/react-query';
@@ -282,6 +283,8 @@ const MapConfigurations = () => {
                 </div>
 
                 <CoordinateFormatCard />
+
+                <UnitsCard />
 
                 {/* Card for Wells Database Filter */}
                 <Card>

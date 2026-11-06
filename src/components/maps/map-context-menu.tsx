@@ -88,7 +88,7 @@ export function MapContextMenu({
     url.searchParams.set('popup_lat', coords.lat.toFixed(6))
     url.searchParams.set('popup_lon', coords.lng.toFixed(6))
     // Remove transient selection state from shared link
-    for (const key of ['click_bbox', 'feature_bbox', 'features', 'view']) {
+    for (const key of ['click_bbox', 'feature_bbox', 'box_bbox', 'area', 'features', 'view']) {
       url.searchParams.delete(key)
     }
     navigator.clipboard.writeText(url.toString())

@@ -1,12 +1,13 @@
-import { useRef } from 'react'
-import { Source, useControl } from 'react-map-gl/maplibre'
+import { useEffect, useRef } from 'react'
+import { Source, useControl, useMap } from 'react-map-gl/maplibre'
 import type * as maplibregl from 'maplibre-gl'
 import type { RasterDEMSourceSpecification } from 'maplibre-gl'
+import { applyTerrain, TERRAIN_SOURCE_ID, TERRARIUM_TILES } from '@/lib/terrain'
 
 // Spike: free AWS Terrarium DEM; swap for a USGS 3DEP tileset if this ships.
 const DEM_SOURCE: RasterDEMSourceSpecification = {
   type: 'raster-dem',
-  tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+  tiles: [TERRARIUM_TILES],
   encoding: 'terrarium',
   tileSize: 256,
   maxzoom: 15,
@@ -14,7 +15,6 @@ const DEM_SOURCE: RasterDEMSourceSpecification = {
   attribution: '<a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Terrain: USGS 3DEP, SRTM, GMTED2010 · Mapzen</a>',
 }
 
-const TERRAIN = { source: 'terrain-dem', exaggeration: 1.5 }
 
 // MapLibre's default is 60; 85 allows near-horizon views, which need a sky above the horizon
 export const MAX_PITCH = 85
@@ -58,14 +58,24 @@ function useMapLifecycle(apply: (map: maplibregl.Map) => void, clear: (map: mapl
   })
 }
 
-// react-map-gl's terrain prop can't turn terrain off (undefined is a no-op), so set it here.
-export function Terrain3D() {
+// react-map-gl's terrain prop turns terrain off only with null, which its types forbid, so set it here.
+export function Terrain3D({ exaggeration }: { exaggeration: number }) {
+  const exaggerationRef = useRef(exaggeration)
+  exaggerationRef.current = exaggeration
+
   useMapLifecycle(
-    (map) => { if (map.getSource(TERRAIN.source) && !map.getTerrain()) map.setTerrain(TERRAIN) },
+    (map) => applyTerrain(map, exaggerationRef.current),
     // Unmounting before the style loads (StrictMode) leaves nothing to clear, and setTerrain would throw
     (map) => { if (map.getTerrain()) map.setTerrain(null) },
   )
-  return <Source id={TERRAIN.source} {...DEM_SOURCE} />
+  // The lifecycle only re-applies on sourcedata; URL changes need their own sync
+  const { current } = useMap()
+  useEffect(() => {
+    const map = current?.getMap()
+    if (map) applyTerrain(map, exaggeration)
+  }, [current, exaggeration])
+
+  return <Source id={TERRAIN_SOURCE_ID} {...DEM_SOURCE} />
 }
 
 // Under the basemap's labels; raster basemaps have none, so under the bottom data layer.
