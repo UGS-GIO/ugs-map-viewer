@@ -6,6 +6,8 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { SIDEBAR_WIDTH_COLLAPSED } from '@/context/sidebar-provider'
 import { cn } from '@/lib/utils'
 import { usePresentation } from '@/hooks/use-presentation'
+import { useLockLayoutScroll } from '@/hooks/use-lock-layout-scroll'
+import { useRef } from 'react'
 
 interface MapShellProps {
     /** Route-specific search control for the app bar. */
@@ -25,12 +27,15 @@ const MapShell = ({ search, actions, children }: MapShellProps) => {
     // Phones have no sidebar.
     const sidebarWidth = isMobile || presenting ? 0 : isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : sidebarWidthPx
 
-    // The shell is fixed chrome and must never scroll: overflow-clip keeps it non-scrollable even
-    // to focus()/scrollIntoView (e.g. focusing a below-fold filter radio), which would otherwise
-    // jerk the whole shell and strand the footer. The minmax(0,1fr) column stops a long app-bar
-    // title from widening the grid past the viewport and pushing the map's right edge off-screen.
+    // The shell is fixed chrome and must never scroll. overflow-clip boxes can't be scrolled even by
+    // focus()/scrollIntoView; useLockLayoutScroll puts back any overflow-hidden box inside that
+    // still gets scrolled. The minmax(0,1fr) column stops a long app-bar title from widening the
+    // grid past the viewport and pushing the map's right edge off-screen.
+    const shellRef = useRef<HTMLDivElement>(null)
+    useLockLayoutScroll(shellRef)
+
     return (
-        <div className={cn('grid h-full grid-cols-[minmax(0,1fr)] overflow-clip bg-background', showChrome ? 'grid-rows-[auto_1fr_auto]' : 'grid-rows-[minmax(0,1fr)]')}>
+        <div ref={shellRef} className={cn('grid h-full grid-cols-[minmax(0,1fr)] overflow-clip bg-background', showChrome ? 'grid-rows-[auto_1fr_auto]' : 'grid-rows-[minmax(0,1fr)]')}>
             <a
                 href="#content"
                 className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-[100] focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:ring-2 focus:ring-ring"
@@ -38,7 +43,7 @@ const MapShell = ({ search, actions, children }: MapShellProps) => {
                 Skip to map
             </a>
             {showChrome && <AppBar search={isMobile ? undefined : search} actions={actions} />}
-            <div className="relative min-h-0 min-w-0 overflow-hidden">
+            <div className="relative min-h-0 min-w-0 overflow-clip">
                 {/* Phones put every panel in the map's sheet, and have no room for the footer bar. */}
                 {!isMobile && showChrome && <Sidebar />}
                 {/* isolate: the map's own overlays stack inside main, below the app chrome. */}

@@ -110,7 +110,9 @@ export default function Nav({
       >
         <TooltipProvider delayDuration={0}>
           {currentContent ? (
-            <div id={TOOL_PANEL_ID} role="region" aria-label={currentContent.title} className="h-full min-h-0 overflow-y-auto">
+            // relative: visually hidden (sr-only) controls position inside this scroller, so
+            // focusing one scrolls the panel rather than the shell around it.
+            <div id={TOOL_PANEL_ID} role="region" aria-label={currentContent.title} className="relative h-full min-h-0 overflow-y-auto">
               <div className="px-4 pb-4">
                 <CurrentPanel />
               </div>
