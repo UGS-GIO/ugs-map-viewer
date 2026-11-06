@@ -28,7 +28,11 @@ function mount() {
   const root = createRoot(document.body.appendChild(document.createElement('div')))
   act(() => root.render(<Shell />))
   mounted.push(() => act(() => root.unmount()))
-  return (id: string) => document.querySelector<HTMLElement>(`[data-testid="${id}"]`)!
+  return (id: string) => {
+    const el = document.querySelector<HTMLElement>(`[data-testid="${id}"]`)
+    if (!el) throw new Error(`missing test element: ${id}`)
+    return el
+  }
 }
 
 // jsdom has no layout, so give the element a writable scroll offset and fire the event by hand.

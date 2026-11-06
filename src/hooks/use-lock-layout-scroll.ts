@@ -21,6 +21,7 @@ export function useLockLayoutScroll(ref: RefObject<HTMLElement | null>) {
     const onScroll = (event: Event) => {
       const el = event.target
       if (!(el instanceof HTMLElement) || isTextControl(el)) return
+      if (el.scrollTop === 0 && el.scrollLeft === 0) return
       const style = getComputedStyle(el)
       const resetY = el.scrollTop !== 0 && !SCROLLERS.has(style.overflowY)
       const resetX = el.scrollLeft !== 0 && !SCROLLERS.has(style.overflowX)
