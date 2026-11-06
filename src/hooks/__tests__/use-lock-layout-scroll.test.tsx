@@ -62,6 +62,18 @@ describe('useLockLayoutScroll', () => {
     expect(warn).not.toHaveBeenCalled()
   })
 
+  it('re-reads overflow when an element changes class', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const get = mount()
+    const box = get('scroller')
+    scroll(box, 100)
+    expect(box.scrollTop).toBe(100)
+    box.className = 'now-hidden'
+    box.style.overflowY = 'hidden'
+    scroll(box, 100)
+    expect(box.scrollTop).toBe(0)
+  })
+
   it('stops listening on unmount', () => {
     const get = mount()
     const hidden = get('hidden')

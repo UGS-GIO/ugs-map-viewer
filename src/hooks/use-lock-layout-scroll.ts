@@ -2,6 +2,25 @@ import { useEffect, type RefObject } from 'react'
 
 const SCROLLERS = new Set(['auto', 'scroll'])
 
+interface OverflowEntry {
+  className: string
+  overflowX: string
+  overflowY: string
+}
+
+// Scroll events fire every frame, and getComputedStyle forces a style recalc when styles are
+// dirty (e.g. mid sheet-drag). Cache per element, re-reading when its classes change.
+const overflowCache = new WeakMap<HTMLElement, OverflowEntry>()
+
+function overflowOf(el: HTMLElement): OverflowEntry {
+  const cached = overflowCache.get(el)
+  if (cached && cached.className === el.className) return cached
+  const style = getComputedStyle(el)
+  const entry = { className: el.className, overflowX: style.overflowX, overflowY: style.overflowY }
+  overflowCache.set(el, entry)
+  return entry
+}
+
 const isTextControl = (el: HTMLElement) =>
   el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement || el.isContentEditable
 
@@ -22,7 +41,7 @@ export function useLockLayoutScroll(ref: RefObject<HTMLElement | null>) {
       const el = event.target
       if (!(el instanceof HTMLElement) || isTextControl(el)) return
       if (el.scrollTop === 0 && el.scrollLeft === 0) return
-      const style = getComputedStyle(el)
+      const style = overflowOf(el)
       const resetY = el.scrollTop !== 0 && !SCROLLERS.has(style.overflowY)
       const resetX = el.scrollLeft !== 0 && !SCROLLERS.has(style.overflowX)
       if (!resetY && !resetX) return
