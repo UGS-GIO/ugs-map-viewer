@@ -163,10 +163,11 @@ export function PhoneSheet({ container, detent, activeTab, panelKey, title, summ
                     )}
                   </div>
                 </div>
+                {/* relative: sr-only controls position inside this scroller, so focusing one scrolls the sheet. */}
                 <Drawer.Content
                   id={contentId}
                   inert={collapsed}
-                  className='phone-sheet-content min-h-0 flex-1 overflow-y-auto overscroll-contain touch-auto px-4 pb-4'
+                  className='phone-sheet-content relative min-h-0 flex-1 overflow-y-auto overscroll-contain touch-auto px-4 pb-4'
                 >
                   {children}
                 </Drawer.Content>
