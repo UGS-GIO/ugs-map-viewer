@@ -112,7 +112,7 @@ export function createMapSteps(history: RouterHistory, storage = sessionStorageI
     return { index, href, summary: describeStep(hrefs[index - 1] ?? undefined, href), label: labels[index], note: notes[index] }
   }
   const refresh = (...indexes: number[]) => indexes
-    .filter((index) => index < hrefs.length)
+    .filter((index) => index >= 0 && index < hrefs.length)
     .forEach((index) => { entries[index] = entryAt(index) })
 
   const publish = (stepsChanged: boolean) => {

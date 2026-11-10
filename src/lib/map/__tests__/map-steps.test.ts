@@ -100,6 +100,13 @@ describe('createMapSteps', () => {
     const fresh = createMapSteps(createMemoryHistory({ initialEntries: [view('zoom=9')] }), sessionStorage, true)
     expect(fresh.getSnapshot().steps.map((s) => [s.href, s.label])).toEqual([[view('zoom=9'), undefined]])
   })
+
+  it('leaves a presentation\'s stops out of the logged steps', () => {
+    const history = createMemoryHistory({ initialEntries: [view('zoom=6&present=1&stops=H4sIbig')] })
+    const steps = createMapSteps(history, sessionStorage, false)
+    expect(steps.getSnapshot().steps[0].href).toBe(view('zoom=6&present=1'))
+    expect(sessionStorage.getItem('map-history-steps')).not.toContain('H4sIbig')
+  })
 })
 
 describe('readJson', () => {
@@ -127,12 +134,4 @@ describe('createMapSteps with a long history', () => {
     expect(changed).toEqual([3, 4])
     expect(after.map((step) => step.summary)).toEqual(before.map((step) => step.summary))
   })
-})
-
-it('leaves a presentation\'s stops out of the logged steps', () => {
-  sessionStorage.clear()
-  const history = createMemoryHistory({ initialEntries: [view('zoom=6&present=1&stops=H4sIbig')] })
-  const steps = createMapSteps(history, sessionStorage, false)
-  expect(steps.getSnapshot().steps[0].href).toBe(view('zoom=6&present=1'))
-  expect(sessionStorage.getItem('map-history-steps')).not.toContain('H4sIbig')
 })
