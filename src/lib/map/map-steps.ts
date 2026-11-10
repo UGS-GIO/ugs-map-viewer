@@ -1,8 +1,9 @@
 import type { RouterHistory } from '@tanstack/react-router'
 import { BASEMAP_STYLES } from '@/lib/basemaps'
-import { NON_STEP_PARAMS } from './map-history'
+import { editHref, NON_STEP_PARAMS } from './map-history'
 import { cameraChanges, cameraOf } from './url-camera'
 import { readJson, sessionStorageIfAllowed, writeJson } from './session-json'
+import { STOPS_PARAM } from './shared-stops'
 
 export interface MapStep {
   /** Position in browser history; fixed for the step's life, unlike TanStack's key, which changes on every replace */
@@ -100,16 +101,24 @@ export function createMapSteps(history: RouterHistory, storage = sessionStorageI
   const labels: Record<number, string> = readJson(storage, LABELS_KEY, {})
   const notes: Record<number, string> = readJson(storage, NOTES_KEY, {})
   const listeners = new Set<() => void>()
+  // Each step's entry, built once: a write reworks only its own step and the next one's summary
+  const entries: (MapStep | null)[] = []
   let snapshot: MapStepsSnapshot = { steps: [], current: 0 }
 
-  const rebuild = () => {
+  // Only map views: the landing page or a report in the same tab isn't a step to jump to or print
+  const entryAt = (index: number): MapStep | null => {
+    const href = hrefs[index]
+    if (!href || !cameraOf(new URL(href, 'http://local').search)) return null
+    return { index, href, summary: describeStep(hrefs[index - 1] ?? undefined, href), label: labels[index], note: notes[index] }
+  }
+  const refresh = (...indexes: number[]) => indexes
+    .filter((index) => index < hrefs.length)
+    .forEach((index) => { entries[index] = entryAt(index) })
+
+  const publish = (stepsChanged: boolean) => {
     snapshot = {
       current: indexOf(),
-      // Only map views: the landing page or a report in the same tab isn't a step to jump to or print
-      steps: hrefs.flatMap((href, index) =>
-        href && cameraOf(new URL(href, 'http://local').search)
-          ? [{ index, href, summary: describeStep(hrefs[index - 1] ?? undefined, href), label: labels[index], note: notes[index] }]
-          : []),
+      steps: stepsChanged ? entries.filter((entry) => entry !== null) : snapshot.steps,
     }
     listeners.forEach((listener) => listener())
   }
@@ -124,19 +133,23 @@ export function createMapSteps(history: RouterHistory, storage = sessionStorageI
     if (pushed) {
       // A new step drops the ones after it, and their labels and notes with them
       hrefs.length = index
+      entries.length = index
       dropFrom(index, LABELS_KEY, labels)
       dropFrom(index, NOTES_KEY, notes)
     }
-    hrefs[index] = history.location.href
+    // A presentation's URL carries every stop; logged on each step, that grows into megabytes to parse and store
+    hrefs[index] = editHref(history.location.href, (params) => params.delete(STOPS_PARAM))
     writeJson(storage, HREFS_KEY, hrefs)
-    rebuild()
+    refresh(index, index + 1)
+    publish(true)
   }
 
+  hrefs.forEach((_, index) => refresh(index))
   record(false)
   history.subscribe(({ action }) => {
     if (action.type === 'PUSH') record(true)
     else if (action.type === 'REPLACE') record(false)
-    else rebuild()
+    else publish(false)
   })
 
   return {
@@ -154,7 +167,8 @@ export function createMapSteps(history: RouterHistory, storage = sessionStorageI
       else delete notes[index]
       writeJson(storage, LABELS_KEY, labels)
       writeJson(storage, NOTES_KEY, notes)
-      rebuild()
+      refresh(index)
+      publish(true)
     },
     go: (index) => new Promise((resolve, reject) => {
       if (indexOf() === index) return resolve()

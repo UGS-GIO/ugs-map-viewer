@@ -1,4 +1,4 @@
-import { useRef, useState, useSyncExternalStore } from 'react'
+import { memo, useRef, useState, useSyncExternalStore } from 'react'
 import { Popover } from '@base-ui/react/popover'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useMap } from 'react-map-gl/maplibre'
@@ -71,6 +71,55 @@ function StepLabelEditor({ step, onDone }: { step: MapStep; onDone: (edit?: { la
   )
 }
 
+/**
+ * One step in the list. Memoized: every map move publishes new steps, and a long history re-rendering
+ * every row each time froze the map for seconds. Unchanged steps keep their object, so only changed rows render.
+ */
+const StepRow = memo(function StepRow({ step, current, editing, store, setEditing }: {
+  step: MapStep
+  current: boolean
+  editing: boolean
+  store: MapSteps
+  setEditing: (index: number | undefined) => void
+}) {
+  return (
+    <li className='flex items-center gap-1'>
+      {editing ? (
+        <StepLabelEditor
+          step={step}
+          onDone={(edit) => {
+            if (edit) store.setLabel(step.index, edit.label, edit.note)
+            setEditing(undefined)
+          }}
+        />
+      ) : (
+        <>
+          <button
+            type='button'
+            aria-current={current ? 'step' : undefined}
+            onClick={() => void store.go(step.index)}
+            className={cn(ROW, current && CURRENT)}
+          >
+            <span className='w-4 shrink-0 text-right tabular-nums opacity-60'>{step.index + 1}</span>
+            <span className='min-w-0 flex-1 truncate'>
+              {step.label ? <><span className='font-medium'>{step.label}</span> <span className='opacity-70'>· {step.summary}</span></> : step.summary}
+            </span>
+          </button>
+          <button
+            type='button'
+            title={step.label ? 'Edit label and note' : 'Label step'}
+            aria-label={`${step.label ? 'Rename' : 'Label'} step ${step.index + 1}`}
+            onClick={() => setEditing(step.index)}
+            className='flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+          >
+            <Pencil size={12} aria-hidden />
+          </button>
+        </>
+      )}
+    </li>
+  )
+})
+
 /** Jump to any step, label the ones that matter, and share them as a link or PDF. */
 export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps: MapSteps; shared: SharedStops; getLegendData?: GetLegendData }) {
   const { steps, current } = useSyncExternalStore(store.subscribe, store.getSnapshot)
@@ -82,6 +131,8 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
   const { current: mapRef } = useMap()
   const queryClient = useQueryClient()
   const { presenting } = usePresentation()
+  // A shared link presents its stops first; the list opens once the presentation is left
+  const isOpen = open || (unseen && !presenting)
 
   // Shared stops plus your own labeled steps; a visited stop carries its stop's label, so it isn't counted twice
   const stopLabels = new Set(stops.map((stop) => stop.label))
@@ -89,7 +140,8 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
   const sharing: SharedStop[] = [...stops, ...ownLabeled.map((step) => ({ label: step.label ?? '', href: toStopHref(step.href), note: step.note }))]
   const sharingWhat = stops.length > 0 ? plural(sharing.length, 'stop') : plural(sharing.length, 'labeled step')
 
-  const link = sharing.length > 0 ? buildStopsLink(window.location.origin, sharing) : ''
+  // Every map move re-renders this; only gzip the link while the list is showing it
+  const link = isOpen && sharing.length > 0 ? buildStopsLink(window.location.origin, sharing) : ''
   const asLink = fitsInLink(link)
 
   const copyLink = useMutation({
@@ -158,15 +210,9 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
     },
   })
 
-  const finishEditing = (index: number, edit?: { label: string; note: string }) => {
-    if (edit) store.setLabel(index, edit.label, edit.note)
-    setEditing(undefined)
-  }
-
   return (
     <Popover.Root
-      // A shared link presents its stops first; the list opens once the presentation is left
-      open={open || (unseen && !presenting)}
+      open={isOpen}
       onOpenChange={(next) => {
         setOpen(next)
         if (!next) shared.markSeen()
@@ -228,34 +274,7 @@ export function MapStepsPopover({ steps: store, shared, getLegendData }: { steps
             )}
             <ol className='max-h-80 overflow-y-auto' aria-label='Map history steps'>
               {[...steps].reverse().map((step) => (
-                <li key={step.index} className='flex items-center gap-1'>
-                  {editing === step.index ? (
-                    <StepLabelEditor step={step} onDone={(edit) => finishEditing(step.index, edit)} />
-                  ) : (
-                    <>
-                      <button
-                        type='button'
-                        aria-current={step.index === current ? 'step' : undefined}
-                        onClick={() => void store.go(step.index)}
-                        className={cn(ROW, step.index === current && CURRENT)}
-                      >
-                        <span className='w-4 shrink-0 text-right tabular-nums opacity-60'>{step.index + 1}</span>
-                        <span className='min-w-0 flex-1 truncate'>
-                          {step.label ? <><span className='font-medium'>{step.label}</span> <span className='opacity-70'>· {step.summary}</span></> : step.summary}
-                        </span>
-                      </button>
-                      <button
-                        type='button'
-                        title={step.label ? 'Edit label and note' : 'Label step'}
-                        aria-label={`${step.label ? 'Rename' : 'Label'} step ${step.index + 1}`}
-                        onClick={() => setEditing(step.index)}
-                        className='flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                      >
-                        <Pencil size={12} aria-hidden />
-                      </button>
-                    </>
-                  )}
-                </li>
+                <StepRow key={step.index} step={step} current={step.index === current} editing={editing === step.index} store={store} setEditing={setEditing} />
               ))}
             </ol>
             {sharing.length === 0 ? (
