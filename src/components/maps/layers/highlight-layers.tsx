@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { Source, Layer } from 'react-map-gl/maplibre'
 import type { FeatureCollection } from 'geojson'
-import { HIGHLIGHT_STYLES } from '../constants'
+import { HIGHLIGHT_STYLES, HOVER_HIGHLIGHT_STYLES } from '../constants'
+import { useHoveredFeature } from '@/lib/map/hovered-feature'
 import type { HighlightFeature } from '../types'
 
 interface HighlightLayersProps {
@@ -61,6 +62,26 @@ export function HighlightLayers({ features }: HighlightLayersProps) {
       {hasPoints && (
         <Layer id="highlight-point-main" type="circle" source="highlight-source" filter={['==', '$type', 'Point']} paint={HIGHLIGHT_STYLES.circle.main} />
       )}
+    </Source>
+  )
+}
+
+/** The result card under the pointer, drawn over the selection */
+export function HoverHighlightLayer() {
+  const hovered = useHoveredFeature()
+  const data: FeatureCollection = useMemo(() => ({
+    type: 'FeatureCollection',
+    features: hovered
+      ? [{ type: 'Feature', id: hovered.id, geometry: hovered.geometry, properties: {} }]
+      : [],
+  }), [hovered])
+
+  return (
+    <Source id="hover-highlight-source" type="geojson" data={data}>
+      <Layer id="hover-highlight-fill" type="fill" filter={['==', '$type', 'Polygon']} paint={HOVER_HIGHLIGHT_STYLES.fill} />
+      <Layer id="hover-highlight-fill-stroke" type="line" filter={['==', '$type', 'Polygon']} paint={HOVER_HIGHLIGHT_STYLES.stroke} />
+      <Layer id="hover-highlight-line" type="line" filter={['==', '$type', 'LineString']} paint={HOVER_HIGHLIGHT_STYLES.line} />
+      <Layer id="hover-highlight-point" type="circle" filter={['==', '$type', 'Point']} paint={HOVER_HIGHLIGHT_STYLES.circle} />
     </Source>
   )
 }

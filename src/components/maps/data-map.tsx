@@ -13,7 +13,7 @@ import {
 } from './constants'
 import { BASEMAP_STYLES, DEFAULT_BASEMAP, buildBasemapStyle } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl, MeasureToolsControl } from './controls'
-import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
+import { HighlightLayers, HoverHighlightLayer, SpatialFilterLayer, ClickBufferLayer } from './layers'
 import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds, isWithinZoomRange, effectiveZoomRange } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
@@ -902,6 +902,7 @@ export default function DataMap({
 
         {/* Highlight layers */}
         <HighlightLayers features={highlightFeatures} />
+        <HoverHighlightLayer />
 
         {/* Spatial filter visualization */}
         <SpatialFilterLayer filter={spatialFilter} />

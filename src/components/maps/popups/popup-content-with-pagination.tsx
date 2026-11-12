@@ -1,4 +1,4 @@
-import { useMemo, useState, memo, useCallback, useRef } from "react"
+import { useMemo, useState, memo, useCallback, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Shrink } from "lucide-react"
 import { Pager } from "@/components/ui/pager"
@@ -8,6 +8,7 @@ import { useZoomToFeature } from "@/hooks/use-zoom-to-feature"
 import { loadCogMetadata, computeCogPixelPolygon } from "@/hooks/use-cog-metadata"
 import { HIGHLIGHT_COLORS } from "@/lib/map/cog/setup"
 import type { HighlightFeature } from "@/components/maps/types"
+import { setHoveredFeature } from "@/lib/map/hovered-feature"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { useBulkRelatedTable, RelatedDataMap } from "@/hooks/use-bulk-related-table"
@@ -65,8 +66,19 @@ const FeatureCard = memo(({
     relatedLoading?: boolean,
     featureExtras?: (feature: ExtendedFeature, layer: LayerContentProps) => React.ReactNode,
 }) => {
+    const hoverTarget = useMemo<HighlightFeature | null>(() => feature.geometry
+        ? { id: feature.id ?? '', geometry: feature.geometry }
+        : null, [feature])
+    const clearHover = () => setHoveredFeature(null)
+    // Paging or closing the popup unmounts the card under the pointer without a pointerleave
+    useEffect(() => clearHover, [])
+
     return (
-        <div className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
+        <div
+            className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm"
+            onPointerEnter={() => setHoveredFeature(hoverTarget)}
+            onPointerLeave={clearHover}
+        >
             <PopupButtons
                 feature={feature}
                 sourceCRS={layer.sourceCRS}

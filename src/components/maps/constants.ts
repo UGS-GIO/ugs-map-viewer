@@ -17,6 +17,14 @@ export const HIGHLIGHT_STYLES = {
   },
 }
 
+// Cyan reads apart from the yellow selection on every basemap
+export const HOVER_HIGHLIGHT_STYLES = {
+  line: { 'line-color': '#00E5FF', 'line-width': 5 },
+  fill: { 'fill-color': 'rgba(0, 229, 255, 0.25)' },
+  stroke: { 'line-color': '#00E5FF', 'line-width': 3 },
+  circle: { 'circle-radius': 11, 'circle-color': 'rgba(0, 229, 255, 0.5)', 'circle-stroke-width': 3, 'circle-stroke-color': '#00E5FF' },
+}
+
 /**
  * Box select configuration
  */
