@@ -77,7 +77,7 @@ export function useFeatureSelection({
   }, [setSelectedFeatureRefs, setFeatureBbox, onHighlightChange])
 
   // Handle feature click
-  const handleFeatureClick = useCallback((features: ClickedFeature[], options?: { additive?: boolean }) => {
+  const handleFeatureClick = useCallback((features: ClickedFeature[], options?: { additive?: boolean; highlightAll?: boolean }) => {
     // Clear highlights when clearing selection (non-additive with no features)
     if (!options?.additive && features.length === 0) {
       onHighlightChange?.([])
@@ -109,10 +109,10 @@ export function useFeatureSelection({
 
       // Only update highlights when selection actually changed
       if (selectionChanged && newSelection.length > 0) {
-        if (options?.additive) {
+        if (options?.additive || options?.highlightAll) {
           onHighlightChange?.(toHighlightFeatures(newSelection))
         } else {
-          // Highlight first feature with geometry
+          // A click highlights the feature under the cursor, the first with geometry
           const firstWithGeometry = newSelection.find(f => f.geometry)
           onHighlightChange?.(firstWithGeometry ? toHighlightFeatures([firstWithGeometry]) : [])
         }

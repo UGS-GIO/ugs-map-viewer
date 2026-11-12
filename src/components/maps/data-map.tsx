@@ -13,7 +13,7 @@ import {
 } from './constants'
 import { BASEMAP_STYLES, DEFAULT_BASEMAP, buildBasemapStyle } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl, MeasureToolsControl } from './controls'
-import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
+import { HighlightLayers, HoverHighlightLayer, SpatialFilterLayer, ClickBufferLayer } from './layers'
 import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds, isWithinZoomRange, effectiveZoomRange } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
@@ -485,7 +485,7 @@ export default function DataMap({
       const allFeatures = [...wmsFeatures, ...polygonWfsLayerFeaturesRef.current]
       polygonWfsLayerFeaturesRef.current = []
       if (onFeatureClick && allFeatures.length > 0) {
-        onFeatureClick(allFeatures, { additive: false })
+        onFeatureClick(allFeatures, { additive: false, highlightAll: true })
       }
       if (truncated) notifyTruncated()
     },
@@ -499,10 +499,10 @@ export default function DataMap({
   function dispatchFeatures(
     features: ClickedFeature[],
     additive: boolean,
-    options: { extractBbox?: boolean; clearOnEmpty?: boolean } = {}
+    options: { extractBbox?: boolean; clearOnEmpty?: boolean; highlightAll?: boolean } = {}
   ) {
     if (features.length > 0) {
-      onFeatureClick?.(features, { additive })
+      onFeatureClick?.(features, { additive, highlightAll: options.highlightAll })
       if (options.extractBbox) {
         const first = features.find(f => f.geometry)
         if (first?.geometry && onFeatureBboxChange) {
@@ -573,7 +573,7 @@ export default function DataMap({
     // If no WMS layers, just use the vector results directly
     if (wmsLayers.length === 0) {
       if (vectorFeatures.length > 0 && onFeatureClick) {
-        onFeatureClick(vectorFeatures, { additive: false })
+        onFeatureClick(vectorFeatures, { additive: false, highlightAll: true })
       }
       return
     }
@@ -701,14 +701,14 @@ export default function DataMap({
     ]
     const wmsLayersAtZoom = wmsLayersDrawnInView(map, visibleWmsLayersRef.current)
     if (wmsLayersAtZoom.length === 0) {
-      dispatchFeatures(vectorFeatures, additive)
+      dispatchFeatures(vectorFeatures, additive, { highlightAll: true })
       return
     }
     boxSelectQuery.mutate(
       { visibleLayers: wmsLayersAtZoom, box, pageSize: BOX_SELECT_PAGE_SIZE, wmsUrl, layerFilters },
       {
         onSuccess: ({ features: wmsFeatures, truncated }) => {
-          dispatchFeatures([...wmsFeatures, ...vectorFeatures], additive)
+          dispatchFeatures([...wmsFeatures, ...vectorFeatures], additive, { highlightAll: true })
           if (truncated) notifyTruncated()
         },
       }
@@ -902,6 +902,7 @@ export default function DataMap({
 
         {/* Highlight layers */}
         <HighlightLayers features={highlightFeatures} />
+        <HoverHighlightLayer />
 
         {/* Spatial filter visualization */}
         <SpatialFilterLayer filter={spatialFilter} />
