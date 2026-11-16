@@ -23,6 +23,8 @@ import { useDisplacementFilterOverride, FeatureCommentsForPopup } from './-compo
 import { useReviewDisplacementParquetUrl, useReviewDisplacementGlStyleUrls } from './-components/use-review-displacement';
 import { DisplacementSourceProvider } from '@/routes/_map/hazards-review/-components/popups/displacement-data-source';
 import { DisplacementFilterProvider } from '@/routes/_map/hazards-review/-components/popups/displacement-filter-context';
+import { DisplacementAnalysisProvider } from '@/routes/_map/hazards-review/-components/popups/displacement-analysis-context';
+import { DisplacementAnalysisHost } from '@/routes/_map/hazards-review/-components/popups/displacement-analysis-host';
 
 export default function ReviewStacMap() {
   // Displacement stats/filters/bins read the review geoparquet + review GL styles (never GeoServer). All
@@ -37,7 +39,10 @@ export default function ReviewStacMap() {
     <ReviewFilterProvider>
       <DisplacementSourceProvider value={source}>
         <DisplacementFilterProvider>
-          <ReviewStacMapContent />
+          {/* The displacement panel's "Expand" opens a single pop-out owned by this provider + host. */}
+          <DisplacementAnalysisProvider>
+            <ReviewStacMapContent />
+          </DisplacementAnalysisProvider>
         </DisplacementFilterProvider>
       </DisplacementSourceProvider>
     </ReviewFilterProvider>
@@ -96,6 +101,8 @@ function ReviewStacMapContent() {
           </Layout>
         </main>
       </div>
+      {/* Inside MapContext: the pop-out's basin clicks zoom the map. */}
+      <DisplacementAnalysisHost />
     </MapContext.Provider>
   );
 }
