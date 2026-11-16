@@ -73,25 +73,41 @@ const FeatureCard = memo(({
     active: boolean,
     onSelect: (feature: HighlightFeature) => void,
 }) => {
+    const [isHovered, setIsHovered] = useState(false)
     const hoverTarget = useMemo<HighlightFeature | null>(() => feature.geometry
         ? { id: feature.id ?? '', geometry: feature.geometry, properties: feature.properties ?? {}, layerTitle: feature.namespace }
         : null, [feature])
-    const clearHover = () => setHoveredFeature(null)
+    const clearHover = useCallback(() => {
+        setIsHovered(false)
+        setHoveredFeature(null)
+    }, [])
     // Paging or closing the popup unmounts the card under the pointer without a pointerleave
-    useEffect(() => clearHover, [])
+    useEffect(() => clearHover, [clearHover])
+
+    const showActive = active
+    const showHover = !active && isHovered
 
     return (
         <div
             className={cn(
-                "space-y-2 p-3 rounded-lg border bg-card shadow-sm transition-colors",
+                "relative space-y-2 p-3 pl-3.5 rounded-lg border bg-card shadow-sm transition-colors",
                 hoverTarget && "cursor-pointer",
-                // No map colors here: yellow and blue on a card read as legend swatches
-                active ? "border-foreground/40 bg-accent" : "border-border",
+                // Left accent bar reflects map state: gold when active, utah-blue when hover previewing
+                showActive
+                    ? "border-gold/50 bg-accent"
+                    : showHover
+                    ? "border-utah-blue/40 bg-accent/30"
+                    : "border-border",
             )}
             aria-current={active || undefined}
             // Touch fires enter then leave on every tap, so only a mouse previews.
             // The selected card doesn't preview: blue would cover its yellow.
-            onPointerEnter={(e) => { if (e.pointerType === 'mouse' && !active) setHoveredFeature(hoverTarget) }}
+            onPointerEnter={(e) => {
+                if (e.pointerType === 'mouse' && !active) {
+                    setIsHovered(true)
+                    setHoveredFeature(hoverTarget)
+                }
+            }}
             onPointerLeave={clearHover}
             onClick={(e) => {
                 // Buttons, links and selected text keep their own behavior
@@ -100,6 +116,17 @@ const FeatureCard = memo(({
                 onSelect(hoverTarget)
             }}
         >
+            <span
+                aria-hidden="true"
+                className={cn(
+                    "absolute inset-y-0 left-0 w-1 rounded-l-[calc(var(--radius)-1px)] transition-colors",
+                    showActive
+                        ? "bg-gold"
+                        : showHover
+                        ? "bg-utah-blue"
+                        : "bg-transparent",
+                )}
+            />
             <PopupButtons
                 feature={feature}
                 sourceCRS={layer.sourceCRS}
