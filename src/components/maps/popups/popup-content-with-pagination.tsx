@@ -74,7 +74,7 @@ const FeatureCard = memo(({
     onSelect: (feature: HighlightFeature) => void,
 }) => {
     const hoverTarget = useMemo<HighlightFeature | null>(() => feature.geometry
-        ? { id: feature.id ?? '', geometry: feature.geometry }
+        ? { id: feature.id ?? '', geometry: feature.geometry, properties: feature.properties ?? {}, layerTitle: feature.namespace }
         : null, [feature])
     const clearHover = () => setHoveredFeature(null)
     // Paging or closing the popup unmounts the card under the pointer without a pointerleave
@@ -260,7 +260,8 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, acti
                 onHighlightChange?.([{
                     id: firstFeature.id as string | number,
                     geometry: firstFeature.geometry,
-                    properties: firstFeature.properties || {}
+                    properties: firstFeature.properties || {},
+                    layerTitle: firstFeature.namespace,
                 }])
             }
         }
@@ -324,7 +325,8 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, acti
             onHighlightChange?.([{
                 id: targetLayer.features[0].id as string | number,
                 geometry: targetLayer.features[0].geometry,
-                properties: targetLayer.features[0].properties || {}
+                properties: targetLayer.features[0].properties || {},
+                layerTitle: targetLayer.features[0].namespace,
             }])
         }
     }, [layerContent, onHighlightChange])

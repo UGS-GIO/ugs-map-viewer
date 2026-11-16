@@ -68,7 +68,7 @@ export function HighlightLayers({ features }: HighlightLayersProps) {
 
 const ACTIVE_LAYER_IDS = ['highlight-line-shadow', 'highlight-line-main', 'highlight-fill', 'highlight-fill-stroke', 'highlight-point-shadow', 'highlight-point-main']
 
-/** Every result of a multi-result selection, drawn under the active one */
+/** Every result of a multi-result selection, drawn under the active one; the caller gates on more than one */
 export function ResultHighlightLayers({ features }: HighlightLayersProps) {
   const { current: map } = useMap()
   const data: FeatureCollection = useMemo(() => ({
@@ -76,7 +76,7 @@ export function ResultHighlightLayers({ features }: HighlightLayersProps) {
     features: features.map((f) => ({ type: 'Feature', id: f.id, geometry: f.geometry, properties: {} })),
   }), [features])
 
-  if (features.length < 2) return null
+  if (features.length === 0) return null
   // New layers land on top, so slot under an active highlight that's already drawn
   const beforeId = ACTIVE_LAYER_IDS.find((id) => map?.getLayer(id))
 
@@ -90,10 +90,10 @@ export function ResultHighlightLayers({ features }: HighlightLayersProps) {
 }
 
 /** The result card under the pointer, drawn over the selection */
-export function HoverHighlightLayer() {
+export function HoverHighlightLayer({ skip }: { skip: (f: HighlightFeature) => boolean }) {
   const hovered = useHoveredFeature()
   // Mounting only while hovered adds these layers last, above the selection
-  if (!hovered) return null
+  if (!hovered || skip(hovered)) return null
   const data: FeatureCollection = {
     type: 'FeatureCollection',
     features: [{ type: 'Feature', id: hovered.id, geometry: hovered.geometry, properties: {} }],

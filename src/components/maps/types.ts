@@ -17,6 +17,8 @@ export interface HighlightFeature {
   id: string | number
   geometry: Geometry
   properties?: Record<string, unknown>
+  /** Lets a PMTiles result highlight in its own tiles, whole, instead of as one tile's clipped piece */
+  layerTitle?: string
 }
 
 export type BoundsBox = {

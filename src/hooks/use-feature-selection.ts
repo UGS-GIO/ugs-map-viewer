@@ -25,7 +25,8 @@ export function toHighlightFeatures(features: ClickedFeature[]): HighlightFeatur
     .map(f => ({
       id: f.id as string | number,
       geometry: f.geometry!,
-      properties: f.properties || {}
+      properties: f.properties || {},
+      layerTitle: f.layerTitle,
     }))
 }
 

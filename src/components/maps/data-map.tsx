@@ -13,10 +13,11 @@ import {
 } from './constants'
 import { BASEMAP_STYLES, DEFAULT_BASEMAP, buildBasemapStyle } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl, MeasureToolsControl } from './controls'
-import { HighlightLayers, HoverHighlightLayer, ResultHighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
+import { HighlightLayers, HoverHighlightLayer, ResultHighlightLayers, PmtilesHighlightLayers, pmtilesTileKey, SpatialFilterLayer, ClickBufferLayer } from './layers'
 import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds, isWithinZoomRange, effectiveZoomRange } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
+import type { HighlightFeature } from './types'
 import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
 import type * as maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
@@ -436,6 +437,27 @@ export default function DataMap({
       (!isPMTilesLayer(e.layer) || pmtilesFragments.get(e.layer.title || '') !== undefined)
     )
   }, [mountedLayers, wfsLayerData, pmtilesFragments])
+
+  // PMTiles results highlight in their own tiles, keyed like their source so they remount with it.
+  // Everything else, and PMTiles features with no id to find them by, draws as GeoJSON copies.
+  const pmtilesHighlightLayers = useMemo(() => renderableEntries.flatMap(({ layer }) => {
+    if (!isPMTilesLayer(layer)) return []
+    const title = layer.title || ''
+    return [{ layer, key: `${title}-${vectorLayerSymbology[title] || ''}-highlight` }]
+  }), [renderableEntries, vectorLayerSymbology])
+  const onTiles = useCallback((f: HighlightFeature) =>
+    !!f.layerTitle && pmtilesHighlightLayers.some(({ layer }) => layer.title === f.layerTitle) && pmtilesTileKey(f) !== null,
+  [pmtilesHighlightLayers])
+  // One result is already the selection, so the faint tier draws only for two or more
+  const results = useMemo(() => resultFeatures.length > 1 ? resultFeatures : [], [resultFeatures])
+  const tileHighlights = useMemo(() => ({
+    results: results.filter(onTiles),
+    active: highlightFeatures.filter(onTiles),
+  }), [results, highlightFeatures, onTiles])
+  const geojsonHighlights = useMemo(() => ({
+    results: results.filter(f => !onTiles(f)),
+    active: highlightFeatures.filter(f => !onTiles(f)),
+  }), [results, highlightFeatures, onTiles])
 
   // After data lands and the map style is loaded, run any per-layer sprite registration hooks.
   // Idempotent: each hook checks map.hasImage before adding.
@@ -902,9 +924,17 @@ export default function DataMap({
         {terrain && <Hillshade bottomDataLayerId={renderableEntries.length ? getLayerId(renderableEntries[renderableEntries.length - 1].layer) : undefined} />}
 
         {/* Highlight layers */}
-        <ResultHighlightLayers features={resultFeatures} />
-        <HighlightLayers features={highlightFeatures} />
-        <HoverHighlightLayer />
+        <ResultHighlightLayers features={geojsonHighlights.results} />
+        <HighlightLayers features={geojsonHighlights.active} />
+        <HoverHighlightLayer skip={onTiles} />
+        {pmtilesHighlightLayers.map(({ layer, key }) => (
+          <PmtilesHighlightLayers
+            key={key}
+            layer={layer}
+            results={tileHighlights.results.filter(f => f.layerTitle === layer.title)}
+            active={tileHighlights.active.filter(f => f.layerTitle === layer.title)}
+          />
+        ))}
 
         {/* Spatial filter visualization */}
         <SpatialFilterLayer filter={spatialFilter} />

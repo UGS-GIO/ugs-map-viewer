@@ -22,7 +22,8 @@ export function useZoomToFeature({ onHighlightChange }: UseZoomToFeatureOptions 
             onHighlightChange?.([{
                 id: feature.id as string | number,
                 geometry: feature.geometry,
-                properties: feature.properties || {}
+                properties: feature.properties || {},
+                layerTitle: feature.namespace,
             }]);
         }
 
@@ -41,7 +42,8 @@ export function useZoomToFeature({ onHighlightChange }: UseZoomToFeatureOptions 
             .map(f => ({
                 id: f.id as string | number,
                 geometry: f.geometry!,
-                properties: f.properties || {}
+                properties: f.properties || {},
+                layerTitle: f.namespace,
             }));
         onHighlightChange?.(highlights);
 
