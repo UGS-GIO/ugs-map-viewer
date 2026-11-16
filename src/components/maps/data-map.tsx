@@ -1,6 +1,6 @@
-import { useRef, useMemo, useCallback, useState, useEffect } from 'react'
+import { useRef, useMemo, useCallback, useState, useEffect, type RefObject } from 'react'
 import { useWfsLayerData, getWfsSourceId, queryWfsLayersInScreenBbox, queryWfsLayersAtPoint, type WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
-import Map, { AttributionControl, NavigationControl, Source, Layer, Marker, MapLayerMouseEvent } from 'react-map-gl/maplibre'
+import Map, { AttributionControl, Source, Layer, Marker, MapLayerMouseEvent } from 'react-map-gl/maplibre'
 import type { MapRef } from 'react-map-gl/maplibre'
 import { useIsMobile } from '@/hooks/use-mobile'
 import 'maplibre-gl/dist/maplibre-gl.css'
@@ -11,20 +11,21 @@ import {
   BOX_SELECT_PAGE_SIZE,
   BOX_SELECT_MIN_ZOOM,
 } from './constants'
-import { BASEMAP_STYLES, DEFAULT_BASEMAP } from '@/lib/basemaps'
-import { BoxSelectOverlay, ViewModeControl, MapToolsControl } from './controls'
+import { BASEMAP_STYLES, DEFAULT_BASEMAP, buildBasemapStyle } from '@/lib/basemaps'
+import { BoxSelectOverlay, ViewModeControl, MapToolsControl, MeasureToolsControl } from './controls'
 import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
-import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds } from '@/lib/map/layer-utils'
+import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds, isWithinZoomRange, effectiveZoomRange } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
 import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
-import type maplibregl from 'maplibre-gl'
+import type * as maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
 
 import { useCogRange } from '@/hooks/use-cog-metadata'
 import { CogPixelHighlight } from '@/components/maps/cog-pixel-highlight'
 import { buildCogProtocolUrl } from '@/lib/map/cog/setup'
-import { calculateBboxFromGeometry } from '@/lib/map/geometry-utils'
+import { boundsToPolygon, calculateBboxFromGeometry, polygonBounds, screenBoxToPolygon } from '@/lib/map/geometry-utils'
+import { formatArea, formatBbox } from '@/lib/map/url-geometry'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
 import { useTerraDraw } from '@/hooks/use-terra-draw'
 import type { Polygon } from 'geojson'
@@ -34,9 +35,11 @@ import type { ClickedFeature, DataMapProps } from './types'
 import { LoadingOverlay } from '@/components/ui/loading-spinner'
 import { MapContextMenu, type ContextMenuCoords } from './map-context-menu'
 import { toast } from 'sonner'
+import { Terrain3D, Hillshade, MAX_PITCH, SKY } from './terrain-layers'
+import { useMeasureMode } from '@/hooks/use-measure'
 
 // Re-export types for consumers
-export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps } from './types'
+export type { DrawMode, SpatialFilter, HighlightFeature, ClickedFeature, DataMapProps, PMTilesStyleOverride } from './types'
 
 type DataLayer = WMSLayerProps | WFSLayerProps | ArcGISMapServerLayerProps | COGLayerProps | PMTilesLayerProps
 
@@ -68,13 +71,59 @@ function CogLayerSource({ layer, beforeId, hidden, opacity }: { layer: COGLayerP
   )
 }
 
+/**
+ * Keeps a selection in step with its URL value: re-queries it on load and Back/Forward, clears it when
+ * gone. Local actions call the returned mark with the value they write, so it isn't re-run.
+ */
+function useFollowUrl<T>(
+  mapRef: RefObject<MapRef | null>,
+  enabled: boolean,
+  value: T | null | undefined,
+  key: string | undefined,
+  clear: () => void,
+  query: (map: maplibregl.Map, value: T) => void,
+) {
+  // null: a pending query was cancelled, so whatever the URL holds next has to run
+  const queried = useRef<string | null | undefined>(undefined)
+  const latest = useRef({ value, clear, query })
+  latest.current = { value, clear, query }
+  useEffect(() => {
+    const map = mapRef.current?.getMap()
+    if (!enabled || !map || key === queried.current) return
+    queried.current = key
+    const { value, clear } = latest.current
+    if (!value) return clear()
+    // After idle, so the camera Back/Forward moves to has settled and its tiles are drawn
+    let ran = false
+    const run = () => {
+      ran = true
+      latest.current.query(map, value)
+    }
+    map.once('idle', run)
+    return () => {
+      if (ran) return
+      map.off('idle', run)
+      queried.current = null
+    }
+  }, [mapRef, enabled, key])
+  return useCallback((written: string | undefined) => { queried.current = written }, [])
+}
+
+/** WMS layers that MapLibre draws at the map's current zoom and center. */
+function wmsLayersDrawnInView(map: maplibregl.Map, layers: WMSLayerProps[]): WMSLayerProps[] {
+  const zoom = map.getZoom()
+  const latitude = map.getCenter().lat
+  return layers.filter(l => isWithinZoomRange(effectiveZoomRange(l, latitude), zoom))
+}
+
 function WmsLayerSource({
-  layer, wmsUrl, cqlFilter, styleName, beforeId, hidden, opacity,
+  layer, wmsUrl, cqlFilter, styleName, zoomRange, beforeId, hidden, opacity,
 }: {
   layer: WMSLayerProps
   wmsUrl: string
   cqlFilter: string | undefined
   styleName: string | undefined
+  zoomRange: [number, number] | undefined
   beforeId: string | undefined
   hidden?: boolean
   opacity?: number
@@ -82,7 +131,7 @@ function WmsLayerSource({
   const layerName = getWmsLayerName(layer)
   const layerWmsUrl = layer.url || wmsUrl
   const tileUrl = buildWmsTileUrl(layerWmsUrl, layerName, cqlFilter, layer.customLayerParameters, styleName)
-  // A config `visibleZoomRange` gates the raster the same way it gates PMTiles,
+  // The zoom range gates the raster the same way `visibleZoomRange` gates PMTiles,
   // so Township & Range (WMS) comes in at the zoom its Sections sibling does.
   return (
     <Source id={`wms-${layer.title}`} type="raster" tiles={[tileUrl]} tileSize={512}>
@@ -90,7 +139,7 @@ function WmsLayerSource({
         id={`wms-layer-${layer.title}`}
         beforeId={beforeId}
         type="raster"
-        {...zoomRangeToBounds(layer.visibleZoomRange)}
+        {...zoomRangeToBounds(zoomRange)}
         layout={{ visibility: hidden ? 'none' : 'visible' }}
         paint={{ 'raster-opacity': opacity ?? layer.opacity ?? 0.8 }}
         metadata={{ title: layer.title, 'wms-url': layerWmsUrl, 'wms-layer': layerName }}
@@ -244,6 +293,8 @@ export default function DataMap({
   highlightFeatures = [],
   onFeatureClick,
   onMoveEnd,
+  pitch,
+  bearing,
   clickTolerance = DEFAULT_CLICK_TOLERANCE,
   isLoading = false,
   isAdditiveMode = false,
@@ -265,13 +316,17 @@ export default function DataMap({
   layerStyles = {},
   vectorLayerFilters = {},
   vectorLayerSymbology = {},
+  pmtilesStyleOverrides = {},
   onMapReady,
   basemapId,
+  terrain,
+  exaggeration,
   clickBufferBounds,
   onClickBufferChange,
-  featureBbox,
+  initialBounds,
   onFeatureBboxChange,
   onClearSelection,
+  hasSelection = false,
   pinCoords,
   onPinChange,
   viewMode,
@@ -279,6 +334,7 @@ export default function DataMap({
   hasResults = false,
 }: DataMapProps) {
   const mapRef = useRef<MapRef>(null)
+  const { measure: measureMode } = useMeasureMode()
   const isMobile = useIsMobile()
   const containerRef = useRef<HTMLDivElement>(null)
 
@@ -286,10 +342,11 @@ export default function DataMap({
   const currentZoomRef = useRef(zoom)
   const [isBoxSelectZoomValid, setIsBoxSelectZoomValid] = useState(zoom >= BOX_SELECT_MIN_ZOOM)
   const [styleLoaded, setStyleLoaded] = useState(false)
-  const hasRestoredRef = useRef(false)
 
   // Context menu state
   const [contextMenuCoords, setContextMenuCoords] = useState<ContextMenuCoords | null>(null)
+  // Scale-capped layers (`maxScale`) need the center latitude to place their maxzoom.
+  const [viewLatitude, setViewLatitude] = useState(center[1])
   const [contextMenuOpen, setContextMenuOpen] = useState(false)
 
   // isBoxSelectZoomValid is tracked as state above (only re-renders when threshold is crossed)
@@ -397,6 +454,17 @@ export default function DataMap({
   // Refs for stable access to layers in callbacks (prevents TerraDraw reinit)
   const visibleWmsLayersRef = useRef(visibleWmsLayers)
   visibleWmsLayersRef.current = visibleWmsLayers
+
+  // Only scale-capped layers depend on latitude, so skip the re-render otherwise.
+  // Rounded to 0.001 degrees, well under one unit of the footer's 1:X readout.
+  const syncViewLatitude = useCallback(() => {
+    const map = mapRef.current?.getMap()
+    if (!map || !visibleWmsLayersRef.current.some(l => l.maxScale !== undefined)) return
+    setViewLatitude(Math.round(map.getCenter().lat * 1000) / 1000)
+  }, [])
+  useEffect(() => {
+    if (styleLoaded) syncViewLatitude()
+  }, [styleLoaded, visibleWmsLayers, syncViewLatitude])
   const visibleWfsLayersRef = useRef(visibleWfsLayers)
   visibleWfsLayersRef.current = visibleWfsLayers
   const visiblePmtilesLayersRef = useRef(visiblePmtilesLayers)
@@ -459,8 +527,10 @@ export default function DataMap({
     const wfsFeatures = queryWfsLayersAtPoint(map, point, tolerance, visibleWfsLayersRef.current)
     const pmtilesFeatures = queryPmtilesLayersAtPoint(map, point, tolerance, visiblePmtilesLayersRef.current)
     const vectorFeatures = [...pmtilesFeatures, ...wfsFeatures]
+    // A WMS layer outside its zoom range isn't drawn, so it isn't clickable either.
+    const wmsLayersAtZoom = wmsLayersDrawnInView(map, visibleWmsLayersRef.current)
 
-    if (visibleWmsLayersRef.current.length === 0) {
+    if (wmsLayersAtZoom.length === 0) {
       dispatchFeatures(vectorFeatures, additive, options)
       return
     }
@@ -468,7 +538,7 @@ export default function DataMap({
     clickQuery.mutate(
       {
         point,
-        visibleLayers: visibleWmsLayersRef.current,
+        visibleLayers: wmsLayersAtZoom,
         tolerance,
         mapInstance: map,
         wmsUrl,
@@ -482,30 +552,23 @@ export default function DataMap({
     )
   }
 
-  // Wrap onSpatialFilterChange to also trigger polygon query
-  // Uses refs for visibleWmsLayers/visibleWfsLayers and polygonQuery to keep callback stable (prevents TerraDraw reinit)
-  const handleSpatialFilterChange = useCallback((filter: NonNullable<typeof spatialFilter> | null) => {
-    onSpatialFilterChange?.(filter)
+  // Client-side vector features inside a ground polygon's bounding box, as it's drawn now
+  function vectorFeaturesIn(map: maplibregl.Map, polygon: Polygon): WfsLayerFeature[] {
+    const [minX, minY, maxX, maxY] = turfBbox(polygon)
+    const sw = map.project([minX, minY])
+    const ne = map.project([maxX, maxY])
+    const screenBbox: [maplibregl.PointLike, maplibregl.PointLike] = [[sw.x, ne.y], [ne.x, sw.y]]
+    return [
+      ...queryPmtilesLayersInScreenBbox(map, screenBbox, visiblePmtilesLayersRef.current),
+      ...queryWfsLayersInScreenBbox(map, screenBbox, visibleWfsLayersRef.current),
+    ]
+  }
 
-    if (!filter?.polygon) return
-
-    const map = mapRef.current?.getMap()
-    const wmsLayers = visibleWmsLayersRef.current
-    const wfsLayers = visibleWfsLayersRef.current
-    const pmtilesLayers = visiblePmtilesLayersRef.current
-
-    // Query client-side vector layers within polygon bbox
-    let vectorFeatures: WfsLayerFeature[] = []
-    if (map && (wfsLayers.length > 0 || pmtilesLayers.length > 0)) {
-      const [minX, minY, maxX, maxY] = turfBbox(filter.polygon)
-      const sw = map.project([minX, minY])
-      const ne = map.project([maxX, maxY])
-      const screenBbox: [maplibregl.PointLike, maplibregl.PointLike] = [[sw.x, ne.y], [ne.x, sw.y]]
-      vectorFeatures = [
-        ...queryPmtilesLayersInScreenBbox(map, screenBbox, pmtilesLayers),
-        ...queryWfsLayersInScreenBbox(map, screenBbox, wfsLayers),
-      ]
-    }
+  // Query vector + WMS features inside a drawn area.
+  // Uses refs for visible layers and polygonQuery to keep callbacks stable (prevents TerraDraw reinit)
+  const queryArea = useCallback((map: maplibregl.Map, polygon: Polygon) => {
+    const wmsLayers = wmsLayersDrawnInView(map, visibleWmsLayersRef.current)
+    const vectorFeatures = vectorFeaturesIn(map, polygon)
 
     // If no WMS layers, just use the vector results directly
     if (wmsLayers.length === 0) {
@@ -517,22 +580,40 @@ export default function DataMap({
 
     // Store vector features for merging when WMS query completes
     polygonWfsLayerFeaturesRef.current = vectorFeatures
+    polygonQueryRef.current.mutate({ polygon, visibleLayers: wmsLayers, wmsUrl, layerFilters })
+  }, [wmsUrl, onFeatureClick, layerFilters])
 
-    // Trigger WMS polygon query
-    polygonQueryRef.current.mutate({
-      polygon: filter.polygon,
-      visibleLayers: wmsLayers,
-      wmsUrl,
-      layerFilters,
-    })
-  }, [onSpatialFilterChange, wmsUrl, onFeatureClick, layerFilters])
+  const clearSelection = useCallback(() => onFeatureClick?.([]), [onFeatureClick])
+  const followReady = styleLoaded && !!onFeatureClick
+  const markClickQueried = useFollowUrl(mapRef, followReady && hasClickableLayers, clickBufferBounds, formatBbox(clickBufferBounds), clearSelection, (map, bounds) => {
+    const center = getBboxCenter(bounds)
+    const swPoint = map.project([bounds.sw[0], bounds.sw[1]])
+    const nePoint = map.project([bounds.ne[0], bounds.ne[1]])
+    // Re-emit bounds so popup opens via handleClickBufferChange
+    onClickBufferChange?.(bounds)
+    queryAtPoint(map, map.project([center.lng, center.lat]), Math.abs(nePoint.x - swPoint.x) / 2 || clickTolerance, false)
+  })
+  const markAreaQueried = useFollowUrl(mapRef, followReady, spatialFilter, formatArea(spatialFilter), clearSelection, queryArea)
+  const markBoxQueried = useFollowUrl(mapRef, followReady, boxSelectBounds, formatBbox(boxSelectBounds), clearSelection, (map, bounds) => {
+    const sw = map.project(bounds.sw)
+    const ne = map.project(bounds.ne)
+    queryBox(map, boundsToPolygon(bounds), [[sw.x, ne.y], [ne.x, sw.y]], false)
+  })
+
+  const setArea = useCallback((polygon: Polygon | null) => {
+    markAreaQueried(formatArea(polygon))
+    // A new area drops click_bbox with the old selection; the click follower mustn't clear the area's results
+    if (polygon) markClickQueried(formatBbox(null))
+    onSpatialFilterChange?.(polygon)
+    const map = mapRef.current?.getMap()
+    if (polygon && map) queryArea(map, polygon)
+  }, [markAreaQueried, markClickQueried, onSpatialFilterChange, queryArea])
 
   // Route drawn polygons: external caller consumes (returns true), otherwise spatial filter
-  const handleDrawFinished = useCallback((polygon: Polygon, mode: 'rectangle' | 'polygon') => {
+  const handleDrawFinished = useCallback((polygon: Polygon) => {
     if (onDrawComplete && onDrawComplete(polygon)) return
-    const [w, s, e, n] = turfBbox(polygon)
-    handleSpatialFilterChange({ type: mode === 'rectangle' ? 'bbox' : 'polygon', bbox: [w, s, e, n], polygon })
-  }, [onDrawComplete, handleSpatialFilterChange])
+    setArea(polygon)
+  }, [onDrawComplete, setArea])
 
   const { justFinishedDrawingRef } = useTerraDraw({
     map: mapInstance,
@@ -542,23 +623,26 @@ export default function DataMap({
     onDrawFinished: handleDrawFinished,
   })
 
-  // Calculate initial view - use feature_bbox if restoring, otherwise use props
+  // Initial view: the URL's camera, or a link's selection when it has no camera
   const initialViewRef = useRef<{
     longitude?: number
     latitude?: number
     zoom?: number
+    pitch?: number
+    bearing?: number
     bounds?: [[number, number], [number, number]]
     fitBoundsOptions?: { padding: number; maxZoom?: number }
   } | null>(null)
   if (!initialViewRef.current) {
-    const bbox = featureBbox || clickBufferBounds
-    if (bbox) {
+    if (initialBounds) {
       initialViewRef.current = {
-        bounds: [bbox.sw, bbox.ne],
-        fitBoundsOptions: { padding: 50, maxZoom: 14 }
+        bounds: [initialBounds.sw, initialBounds.ne],
+        fitBoundsOptions: { padding: 50, maxZoom: 14 },
+        pitch,
+        bearing,
       }
     } else {
-      initialViewRef.current = { longitude: center[0], latitude: center[1], zoom }
+      initialViewRef.current = { longitude: center[0], latitude: center[1], zoom, pitch, bearing }
     }
   }
   const initialView = initialViewRef.current
@@ -569,38 +653,11 @@ export default function DataMap({
     [basemapId]
   )
 
-  // Build map style - handle raster tiles vs vector style URLs
-  const mapStyle = useMemo((): string | maplibregl.StyleSpecification => {
-    if (!currentBasemap.url) {
-      return {
-        version: 8,
-        sources: {},
-        layers: [{ id: 'background', type: 'background', paint: { 'background-color': '#f0f0f0' } }],
-      } as maplibregl.StyleSpecification
-    }
-
-    if (currentBasemap.url.includes('{z}') && currentBasemap.url.includes('{x}') && currentBasemap.url.includes('{y}')) {
-      const isUGRC = currentBasemap.url.includes('discover.agrc.utah.gov')
-      return {
-        version: 8,
-        sources: {
-          'raster-tiles': {
-            type: 'raster',
-            tiles: [currentBasemap.url],
-            tileSize: 256,
-            attribution: isUGRC ? '© <a href="https://gis.utah.gov">UGRC</a>' : '© Sentinel-2 by EOX',
-          },
-        },
-        layers: [{ id: 'raster-layer', type: 'raster', source: 'raster-tiles' }],
-      } as maplibregl.StyleSpecification
-    }
-
-    return currentBasemap.url
-  }, [currentBasemap])
+  const mapStyle = useMemo(() => buildBasemapStyle(currentBasemap), [currentBasemap])
 
   // Handle map click - triggers mutation instead of direct fetch
   const handleMapClick = useCallback((e: MapLayerMouseEvent) => {
-    if (boxSelectMode || activeDrawShape !== 'off') return
+    if (boxSelectMode || activeDrawShape !== 'off' || measureMode) return
     if (justFinishedDrawingRef.current) {
       justFinishedDrawingRef.current = false
       return
@@ -611,16 +668,16 @@ export default function DataMap({
     if (!map) return
 
     // Clear any existing spatial filter when doing a regular click
-    if (spatialFilter) onSpatialFilterChange?.(null)
+    if (spatialFilter) setArea(null)
 
     // Calculate click buffer bbox for visualization
-    const sw = map.unproject([e.point.x - clickTolerance, e.point.y + clickTolerance])
-    const ne = map.unproject([e.point.x + clickTolerance, e.point.y - clickTolerance])
-    onClickBufferChange?.({ sw: [sw.lng, sw.lat], ne: [ne.lng, ne.lat] })
+    const clickBounds = polygonBounds(screenBoxToPolygon(map, [e.point.x - clickTolerance, e.point.y - clickTolerance], [e.point.x + clickTolerance, e.point.y + clickTolerance]))
+    markClickQueried(formatBbox(clickBounds))
+    onClickBufferChange?.(clickBounds)
 
     const isAdditive = isAdditiveMode || (e.originalEvent?.shiftKey ?? false)
     queryAtPoint(map, e.point, clickTolerance, isAdditive, { extractBbox: true, clearOnEmpty: true })
-  }, [onFeatureClick, hasClickableLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, activeDrawShape, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, onSpatialFilterChange, layerFilters])
+  }, [markClickQueried, onFeatureClick, hasClickableLayers, clickTolerance, isAdditiveMode, clickQuery, boxSelectMode, activeDrawShape, measureMode, onClickBufferChange, onFeatureBboxChange, justFinishedDrawingRef, wmsUrl, spatialFilter, setArea, layerFilters])
 
   // Handle map move end - track zoom only (box select now uses click-to-confirm)
   const handleMoveEnd = useCallback(() => {
@@ -630,12 +687,35 @@ export default function DataMap({
     const mapZoom = map.getZoom()
 
     currentZoomRef.current = mapZoom
+    syncViewLatitude()
     // Only trigger re-render when the box-select validity threshold is crossed
     setIsBoxSelectZoomValid(mapZoom >= BOX_SELECT_MIN_ZOOM)
-    onMoveEnd?.(mapCenter.lat, mapCenter.lng, mapZoom)
-  }, [onMoveEnd])
+    onMoveEnd?.(mapCenter.lat, mapCenter.lng, mapZoom, map.getPitch(), map.getBearing())
+  }, [onMoveEnd, syncViewLatitude])
 
-  // Handle box select confirmation - calculate geographic bbox, store it, and trigger query
+  // Query vector + WMS features in a box. The vector query takes the box on screen, the WMS one on the ground.
+  function queryBox(map: maplibregl.Map, box: Polygon, screenBbox: [maplibregl.PointLike, maplibregl.PointLike], additive: boolean) {
+    const vectorFeatures = [
+      ...queryPmtilesLayersInScreenBbox(map, screenBbox, visiblePmtilesLayersRef.current),
+      ...queryWfsLayersInScreenBbox(map, screenBbox, visibleWfsLayersRef.current),
+    ]
+    const wmsLayersAtZoom = wmsLayersDrawnInView(map, visibleWmsLayersRef.current)
+    if (wmsLayersAtZoom.length === 0) {
+      dispatchFeatures(vectorFeatures, additive)
+      return
+    }
+    boxSelectQuery.mutate(
+      { visibleLayers: wmsLayersAtZoom, box, pageSize: BOX_SELECT_PAGE_SIZE, wmsUrl, layerFilters },
+      {
+        onSuccess: ({ features: wmsFeatures, truncated }) => {
+          dispatchFeatures([...wmsFeatures, ...vectorFeatures], additive)
+          if (truncated) notifyTruncated()
+        },
+      }
+    )
+  }
+
+  // Handle box select confirmation - query the centered box and store its bounds
   const handleBoxSelectConfirm = useCallback(() => {
     if (!mapRef.current || !containerRef.current) return
 
@@ -644,48 +724,16 @@ export default function DataMap({
     const centerX = containerRect.width / 2
     const centerY = containerRect.height / 2
     const halfBox = BOX_SELECT_SIZE / 2
+    const box = screenBoxToPolygon(map, [centerX - halfBox, centerY - halfBox], [centerX + halfBox, centerY + halfBox])
+    const bounds = polygonBounds(box)
 
-    // Convert screen box corners to geographic coordinates
-    const sw = map.unproject([centerX - halfBox, centerY + halfBox])
-    const ne = map.unproject([centerX + halfBox, centerY - halfBox])
-    onBoxSelectConfirm?.({
-      sw: [sw.lng, sw.lat] as [number, number],
-      ne: [ne.lng, ne.lat] as [number, number]
-    })
-
-    // Query client-side vector layers in the box area, then merge with WMS results
-    const screenBbox: [maplibregl.PointLike, maplibregl.PointLike] = [
-      [centerX - halfBox, centerY - halfBox],
-      [centerX + halfBox, centerY + halfBox]
-    ]
-    const vectorFeatures = [
-      ...queryPmtilesLayersInScreenBbox(map, screenBbox, visiblePmtilesLayers),
-      ...queryWfsLayersInScreenBbox(map, screenBbox, visibleWfsLayers),
-    ]
-
-    if (visibleWmsLayers.length === 0) {
-      dispatchFeatures(vectorFeatures, isAdditiveMode)
-      return
-    }
-
-    boxSelectQuery.mutate(
-      {
-        visibleLayers: visibleWmsLayers,
-        mapInstance: map,
-        containerRect,
-        boxSize: BOX_SELECT_SIZE,
-        pageSize: BOX_SELECT_PAGE_SIZE,
-        wmsUrl,
-        layerFilters,
-      },
-      {
-        onSuccess: ({ features: wmsFeatures, truncated }) => {
-          dispatchFeatures([...wmsFeatures, ...vectorFeatures], isAdditiveMode)
-          if (truncated) notifyTruncated()
-        },
-      }
-    )
-  }, [onBoxSelectConfirm, visibleWmsLayers, visibleWfsLayers, visiblePmtilesLayers, boxSelectQuery, wmsUrl, onFeatureClick, isAdditiveMode, layerFilters])
+    markBoxQueried(formatBbox(bounds))
+    // The box replaces a click selection, so its step mustn't carry the click's bbox too
+    markClickQueried(formatBbox(null))
+    onClickBufferChange?.(null)
+    onBoxSelectConfirm?.(bounds)
+    queryBox(map, box, [[centerX - halfBox, centerY - halfBox], [centerX + halfBox, centerY + halfBox]], isAdditiveMode)
+  }, [markBoxQueried, markClickQueried, onBoxSelectConfirm, onClickBufferChange, visibleWmsLayers, visibleWfsLayers, visiblePmtilesLayers, boxSelectQuery, wmsUrl, onFeatureClick, isAdditiveMode, layerFilters])
 
   // Handle map load
   const handleLoad = useCallback(() => {
@@ -693,57 +741,28 @@ export default function DataMap({
     if (map) {
       setStyleLoaded(true)
       onMapReady?.(map)
-
-      // Restore query from URL if clickBufferBounds exists
-      if (!hasRestoredRef.current && clickBufferBounds && onFeatureClick && hasClickableLayers) {
-        hasRestoredRef.current = true
-
-        const center = getBboxCenter(clickBufferBounds)
-        const centerPoint = map.project([center.lng, center.lat])
-        const swPoint = map.project([clickBufferBounds.sw[0], clickBufferBounds.sw[1]])
-        const nePoint = map.project([clickBufferBounds.ne[0], clickBufferBounds.ne[1]])
-        const tolerance = Math.abs(nePoint.x - swPoint.x) / 2
-
-        // Re-emit bounds so popup opens via handleClickBufferChange
-        onClickBufferChange?.(clickBufferBounds)
-        queryAtPoint(map, centerPoint, tolerance || clickTolerance, false)
-      }
     }
-  }, [onMapReady, clickBufferBounds, onFeatureClick, hasClickableLayers, clickTolerance, clickQuery, wmsUrl, layerFilters, onClickBufferChange])
+  }, [onMapReady])
 
   // Combine loading states
   const showLoading = isLoading || queryLoading
 
-  // Listen for contextmenu events on the map canvas
-  useEffect(() => {
-    const map = mapRef.current?.getMap()
-    if (!map) return
+  // The context menu's clear also takes the pin; the toolbar keeps the two separate.
+  const clearSelectionAndPin = useMemo(() => onClearSelection && (() => {
+    onClearSelection()
+    onPinChange?.(null)
+  }), [onClearSelection, onPinChange])
 
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault()
-      const rect = containerRef.current?.getBoundingClientRect()
-      if (!rect) return
-
-      const x = e.clientX - rect.left
-      const y = e.clientY - rect.top
-      const lngLat = map.unproject([x, y])
-
-      setContextMenuCoords({
-        lng: lngLat.lng,
-        lat: lngLat.lat,
-        screenX: e.clientX,
-        screenY: e.clientY,
-      })
-      setContextMenuOpen(true)
-    }
-
-    const canvas = map.getCanvas()
-    canvas.addEventListener('contextmenu', handleContextMenu)
-
-    return () => {
-      canvas.removeEventListener('contextmenu', handleContextMenu)
-    }
-  }, [styleLoaded]) // Re-run when style loads (map is ready)
+  // MapLibre's contextmenu waits for mouseup and skips right-drags, so tilting/rotating doesn't open the menu
+  const handleContextMenu = useCallback((e: MapLayerMouseEvent) => {
+    setContextMenuCoords({
+      lng: e.lngLat.lng,
+      lat: e.lngLat.lat,
+      screenX: e.originalEvent.clientX,
+      screenY: e.originalEvent.clientY,
+    })
+    setContextMenuOpen(true)
+  }, [])
 
   return (
     <>
@@ -751,9 +770,9 @@ export default function DataMap({
         open={contextMenuOpen}
         onOpenChange={setContextMenuOpen}
         coords={contextMenuCoords}
-        onClearSelection={onClearSelection}
+        onClearSelection={clearSelectionAndPin}
         onPinLocation={onPinChange ? (coords) => onPinChange(coords) : undefined}
-        hasSelection={highlightFeatures.length > 0 || !!pinCoords}
+        hasSelection={hasSelection || !!pinCoords}
         currentZoom={currentZoomRef.current}
       />
       <div ref={containerRef} className="relative w-full h-full">
@@ -767,12 +786,14 @@ export default function DataMap({
         refreshExpiredTiles={false}
         onMoveEnd={handleMoveEnd}
         onClick={boxSelectMode ? undefined : handleMapClick}
-        cursor={activeDrawShape !== 'off' ? 'crosshair' : boxSelectMode ? 'move' : onFeatureClick ? (isAdditiveMode ? 'copy' : 'pointer') : 'grab'}
+        cursor={activeDrawShape !== 'off' || measureMode ? 'crosshair' : boxSelectMode ? 'move' : onFeatureClick ? (isAdditiveMode ? 'copy' : 'pointer') : 'grab'}
         boxZoom={false}
         attributionControl={false}
+        maxPitch={MAX_PITCH}
+        sky={SKY}
         onLoad={handleLoad}
+        onContextMenu={handleContextMenu}
       >
-        <NavigationControl position="top-left" />
         {/* Phones keep bottom-right for locate-me, in thumb reach, as Google Maps does. */}
         <AttributionControl compact={isMobile || undefined} position={isMobile ? 'bottom-left' : 'bottom-right'} />
 
@@ -792,15 +813,20 @@ export default function DataMap({
           onDrawModeChange={onToolbarDrawToggle}
           onCancelMode={onCancelMode}
           hasFilter={!!spatialFilter}
-          onClearFilter={onSpatialFilterChange ? () => onSpatialFilterChange(null) : undefined}
+          onClearFilter={onSpatialFilterChange ? () => setArea(null) : undefined}
           hasPin={!!pinCoords}
           onClearPin={onPinChange ? () => onPinChange(null) : undefined}
+          hasSelection={hasSelection}
+          onClearSelection={onClearSelection}
           boxSelectActive={boxSelectMode}
           onBoxSelectToggle={onBoxSelectModeChange}
           isAdditiveMode={isAdditiveMode}
           onAdditiveModeToggle={onAdditiveModeToggle}
           position="top-right"
         />
+
+        {/* Rendered after MapToolsControl so it stacks below as its own group */}
+        <MeasureToolsControl />
 
         {/* Data layers in sidebar/config order. First = top of stack.
             Render order = top → bottom so each `beforeId` references an already-mounted layer. */}
@@ -819,6 +845,7 @@ export default function DataMap({
                 wmsUrl={wmsUrl}
                 cqlFilter={cqlFilter}
                 styleName={styleName}
+                zoomRange={effectiveZoomRange(layer, viewLatitude)}
                 beforeId={beforeId}
                 hidden={hidden}
                 opacity={opacity}
@@ -849,22 +876,29 @@ export default function DataMap({
           }
           if (isPMTilesLayer(layer)) {
             const fragment = pmtilesFragments.get(layer.title || '')!
-            const activeSymbology = vectorLayerSymbology[layer.title] || ''
+            const title = layer.title || ''
+            const activeSymbology = title ? vectorLayerSymbology[title] || '' : ''
+            const styleOverride = title ? pmtilesStyleOverrides[title] : undefined
             return (
               <PMTilesLayerSource
-                key={`${layer.title}-${activeSymbology}`}
+                key={`${title}-${activeSymbology}`}
                 layer={layer}
                 fragment={fragment}
                 activeSymbology={activeSymbology}
                 beforeId={beforeId}
-                layerFilter={vectorLayerFilters[layer.title]}
+                layerFilter={title ? vectorLayerFilters[title] : undefined}
                 hidden={hidden}
                 opacity={opacity}
+                styleOverride={styleOverride}
               />
             )
           }
           return null
         })}
+
+        {terrain && <Terrain3D exaggeration={exaggeration} />}
+        {/* After the data layers so they're mounted when the hillshade looks for the bottom one */}
+        {terrain && <Hillshade bottomDataLayerId={renderableEntries.length ? getLayerId(renderableEntries[renderableEntries.length - 1].layer) : undefined} />}
 
         {/* Highlight layers */}
         <HighlightLayers features={highlightFeatures} />

@@ -5,12 +5,13 @@ import {
     DISPLACEMENT_LAYER_TYPES,
     CHARTED_TYPES,
     DEFAULT_EXCLUDED_DATA_QUALS,
-    LOW_DATA_QUALS,
     isChartedType,
     type ChartedType,
     type DisplacementLayerTitle,
     type DisplacementType,
 } from './displacement-layers'
+import { dataQualityCql, quoteCqlLiteral } from './displacement-quality'
+import { bandAtLeastCql } from './displacement-thresholds'
 import { useDisplacementDefaultThresholdForType, useDisplacementLatestYearByType, useDisplacementSldZeroBound } from './use-displacement-queries'
 
 // Re-export the type predicates + token sets so existing call sites keep
@@ -58,7 +59,7 @@ interface DisplacementFilterState {
     clearBasins: (type: DisplacementType) => void
     toggleDataQual: (type: DisplacementType, qual: string) => void
     /** Show/hide several data_qual categories at once (e.g. low + very-low as one
-     * "unconfirmed low quality" toggle). */
+     * unconfirmed "Low quality" toggle). */
     setDataQualsVisible: (type: DisplacementType, quals: readonly string[], visible: boolean) => void
     clearDataQuals: (type: DisplacementType) => void
 }
@@ -210,7 +211,7 @@ export function DisplacementFilterProvider({ children }: { children: ReactNode }
     }, [update])
 
     // Show/hide a group of categories together (the low + very-low pair behind
-    // the single "unconfirmed low quality" toggle). visible=true un-excludes them,
+    // the single unconfirmed "Low quality" toggle). visible=true un-excludes them,
     // false excludes them; prunes back to the default key when they land there.
     const setDataQualsVisible = useCallback((type: DisplacementType, quals: readonly string[], visible: boolean) => {
         update(cur => {
@@ -313,22 +314,23 @@ export function useEffectiveThresholdsIn(): Record<ChartedType, number> {
  * Translate filter state into per-layer cql_filter strings keyed by displacement
  * layer title. Combines with each layer's static `type='...'` cql via AND in
  * customLayerParameters — GeoServer concatenates these clauses. Only charted
- * types get a threshold clause (others have no threshold UI to tune it from).
+ * types get a threshold clause (Rate has no threshold UI); every type hides its
+ * within-error band.
  */
-// Escape single quotes per the SQL/CQL string-literal convention so basin names
-// containing apostrophes don't break the filter (e.g. "O'Brien Valley").
-function quoteCqlLiteral(value: string): string {
-    return `'${value.replace(/'/g, "''")}'`
-}
 
 export function useDisplacementLayerFilters(): Record<string, string> {
     const { yearOverridesByType, basinsByType, excludedDataQualsByType } = useDisplacementFilters()
     const effective = useEffectiveThresholdsIn()
     const cumulativeSld = useDisplacementSldZeroBound('Cumulative')
     const yearlySld = useDisplacementSldZeroBound('Yearly')
+    const rateSld = useDisplacementSldZeroBound('Vertical Displacement Rate')
     const { byType: latestByType, isPending: latestYearPending } = useDisplacementLatestYearByType()
     return useMemo(() => {
-        const zeroBoundByType: Record<ChartedType, number | null> = { 'Cumulative': cumulativeSld, 'Yearly': yearlySld }
+        const zeroBoundByType: Record<DisplacementType, number | null> = {
+            'Cumulative': cumulativeSld,
+            'Yearly': yearlySld,
+            'Vertical Displacement Rate': rateSld,
+        }
         const out: Record<DisplacementLayerTitle, string> = {} as Record<DisplacementLayerTitle, string>
         for (const [title, typeValue] of Object.entries(DISPLACEMENT_LAYER_TYPES) as [DisplacementLayerTitle, DisplacementType][]) {
             const clauses: string[] = []
@@ -349,40 +351,28 @@ export function useDisplacementLayerFilters(): Record<string, string> {
             if (isChartedType(typeValue)) {
                 const thresholdIn = effective[typeValue]
                 if (thresholdIn > 0) {
-                    clauses.push(`(value_inches_min >= ${thresholdIn} OR value_inches_min <= ${-thresholdIn})`)
+                    clauses.push(bandAtLeastCql(thresholdIn))
                 }
-                // Exclude the SLD "within uncertainty" deadband so the map matches
-                // the chart (which never plots deadband features) — including during
-                // the load window before the data-driven default tightens past the
-                // bound, otherwise the ±deadband contours flash in and back out.
-                const zeroBound = zeroBoundByType[typeValue]
-                if (zeroBound != null && zeroBound > 0) {
-                    clauses.push(`(value_inches_min > ${zeroBound} OR value_inches_min < ${-zeroBound})`)
-                }
+            }
+            // Exclude the SLD "within error" band so the map matches the stats
+            // (which never count it) — including during the load window before a
+            // charted type's data-driven default tightens past the bound, otherwise
+            // the within-error contours flash in and back out.
+            const zeroBound = zeroBoundByType[typeValue]
+            if (zeroBound != null && zeroBound > 0) {
+                clauses.push(bandAtLeastCql(zeroBound))
             }
             const basins = basinsByType[typeValue]
             if (basins && basins.size > 0) {
                 const list = Array.from(basins).map(quoteCqlLiteral).join(', ')
                 clauses.push(`location IN (${list})`)
             }
-            // Data-quality: exclude unchecked categories. Empty exclusion set =
-            // no clause (all qualities shown). NOT IN keeps unknown future
-            // categories visible by default. Exception (Tara's rule): a low/very-low
-            // contour that is independently confirmed is ALWAYS shown — the SLD
-            // hatches it — even when its quality is excluded; only the UNCONFIRMED
-            // low/very-low are dropped. Scoped to low/very-low so excluding
-            // high/medium still hides their confirmed members.
-            const excludedQuals = excludedDataQualsByType[typeValue]
-            if (excludedQuals && excludedQuals.size > 0) {
-                const list = Array.from(excludedQuals).map(quoteCqlLiteral).join(', ')
-                // Build the confirmed-low override list from LOW_DATA_QUALS (single
-                // source of truth) rather than a hardcoded literal, so it stays in
-                // sync with the tiers the filter UI + SLD hatch key on.
-                const lowList = LOW_DATA_QUALS.map(quoteCqlLiteral).join(', ')
-                clauses.push(`(data_qual NOT IN (${list}) OR (independent_confirmation = true AND data_qual IN (${lowList})))`)
-            }
+            // Data-quality: unchecked categories are dropped; confirmed low/very-low
+            // (hatched) has its own toggle. Same rule the charts apply client-side.
+            const qualityClause = dataQualityCql(excludedDataQualsByType[typeValue])
+            if (qualityClause) clauses.push(qualityClause)
             if (clauses.length > 0) out[title] = clauses.join(' AND ')
         }
         return out
-    }, [yearOverridesByType, latestByType, latestYearPending, effective, cumulativeSld, yearlySld, basinsByType, excludedDataQualsByType])
+    }, [yearOverridesByType, latestByType, latestYearPending, effective, cumulativeSld, yearlySld, rateSld, basinsByType, excludedDataQualsByType])
 }

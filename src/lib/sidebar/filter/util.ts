@@ -1,6 +1,6 @@
 import { ExtendedGeometry } from "@/components/sidebar/filter/search-combobox";
 import { Feature, GeoJsonProperties } from "geojson";
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 import type {
     RasterLayerSpecification,
     RasterSourceSpecification,

@@ -5,27 +5,22 @@ import type { IControl } from 'maplibre-gl'
  * Use with react-map-gl's useControl hook to add React components as map controls.
  */
 export class PortalControl implements IControl {
-  private container: HTMLDivElement | null = null
-  private className: string
+  // Made up front, so a portal can render into it before MapLibre adds the control
+  private readonly container = document.createElement('div')
 
   constructor(className = 'maplibregl-ctrl maplibregl-ctrl-group') {
-    this.className = className
+    this.container.className = className
   }
 
   onAdd(): HTMLDivElement {
-    this.container = document.createElement('div')
-    this.container.className = this.className
     return this.container
   }
 
   onRemove(): void {
-    if (this.container && this.container.parentNode) {
-      this.container.parentNode.removeChild(this.container)
-    }
-    this.container = null
+    this.container.remove()
   }
 
-  getContainer(): HTMLDivElement | null {
+  getContainer(): HTMLDivElement {
     return this.container
   }
 }

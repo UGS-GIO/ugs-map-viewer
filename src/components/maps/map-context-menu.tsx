@@ -9,7 +9,7 @@ import {
   DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useToast } from '@/hooks/use-toast'
-import { convertDDToDMS } from '@/lib/map/conversion-utils'
+import { convertDDToDMS, convertDDToUTM } from '@/lib/map/conversion-utils'
 import { Link, Trash2, MapPin, Navigation } from 'lucide-react'
 
 // Half Esri's LOD 0 scale: their world is 256px at zoom 0, MapLibre's is 512px, so zoom z is Esri level z+1.
@@ -59,17 +59,19 @@ export function MapContextMenu({
   const formattedCoords = useMemo(() => {
     if (!coords) return null
     const { lng, lat } = coords
+    const { easting, northing } = convertDDToUTM(lng, lat)
     return {
       decimal: `${lat.toFixed(6)}, ${lng.toFixed(6)}`,
       dms: `${convertDDToDMS(lat, false)}, ${convertDDToDMS(lng, true)}`,
+      utm: `${easting.toFixed(0)}, ${northing.toFixed(0)}`,
       latLng: { lat, lng },
     }
   }, [coords])
 
   // Copy coordinates to clipboard
-  const handleCopyCoords = useCallback((format: 'decimal' | 'dms') => {
+  const handleCopyCoords = useCallback((format: 'decimal' | 'dms' | 'utm') => {
     if (!formattedCoords) return
-    const text = format === 'decimal' ? formattedCoords.decimal : formattedCoords.dms
+    const text = formattedCoords[format]
     navigator.clipboard.writeText(text)
     toast({ description: 'Coordinates copied to clipboard' })
     onOpenChange(false)
@@ -86,7 +88,7 @@ export function MapContextMenu({
     url.searchParams.set('popup_lat', coords.lat.toFixed(6))
     url.searchParams.set('popup_lon', coords.lng.toFixed(6))
     // Remove transient selection state from shared link
-    for (const key of ['click_bbox', 'feature_bbox', 'features', 'view']) {
+    for (const key of ['click_bbox', 'feature_bbox', 'box_bbox', 'area', 'features', 'view']) {
       url.searchParams.delete(key)
     }
     navigator.clipboard.writeText(url.toString())
@@ -146,6 +148,10 @@ export function MapContextMenu({
                 <DropdownMenuItem onClick={() => handleCopyCoords('dms')}>
                   <span className="font-mono text-xs">{formattedCoords.dms}</span>
                   <span className="ml-auto text-xs text-muted-foreground">DMS</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCopyCoords('utm')}>
+                  <span className="font-mono text-xs">{formattedCoords.utm}</span>
+                  <span className="ml-auto text-xs text-muted-foreground">UTM 12N</span>
                 </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>

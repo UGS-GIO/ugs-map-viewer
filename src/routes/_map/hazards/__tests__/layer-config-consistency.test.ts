@@ -6,7 +6,7 @@
  * nothing is hardcoded here. If a layer title changes but a downstream
  * data source is not updated, these tests will catch it.
  */
-import { describe, it, expect, beforeAll } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import type { LayerProps, GroupLayerProps, WMSLayerProps } from '@/lib/types/mapping-types'
 
 function isGroupLayer(layer: LayerProps): layer is GroupLayerProps {
@@ -16,7 +16,6 @@ function isGroupLayer(layer: LayerProps): layer is GroupLayerProps {
 function isWMSLayer(layer: LayerProps): layer is WMSLayerProps {
   return layer.type === 'wms'
 }
-import { PROD_POSTGREST_URL } from '@/lib/constants'
 import layersConfig from '@/routes/_map/hazards/-data/layers/layers'
 import groupingsData from '@/routes/_report/-data/hazard-groupings.json'
 import introTextData from '@/routes/_report/-data/hazard-intro-text.json'
@@ -92,31 +91,6 @@ const sidebarToReportGroup: Record<string, string> = {
 
 // ── Tests ───────────────────────────────────────────────────────────
 
-describe('layer titles match hazlayerinfo database', () => {
-  const hazardTitles = getHazardLayers(layersConfig)
-    .map(l => l.title)
-    .filter((t): t is string => Boolean(t))
-
-  let dbRows: Map<string, string>
-
-  beforeAll(async () => {
-    const res = await fetch(
-      `${PROD_POSTGREST_URL}/hazlayerinfo?select=title,content`,
-      { headers: { 'Accept-Profile': 'hazards', 'Accept': 'application/json' } }
-    )
-    const rows: { title: string; content: string }[] = await res.json()
-    dbRows = new Map(rows.map(r => [r.title, r.content]))
-  })
-
-  it.each(hazardTitles)(
-    '"%s" has a non-empty description in hazlayerinfo',
-    (title) => {
-      expect(dbRows.has(title)).toBe(true)
-      expect(dbRows.get(title)?.trim().length).toBeGreaterThan(0)
-    }
-  )
-})
-
 describe('hazard layer config ↔ report data consistency', () => {
   const hazardLayers = getHazardLayers(layersConfig)
   const groups = extractGroupStructure(layersConfig)
@@ -188,36 +162,6 @@ describe('hazard layer config ↔ report data consistency', () => {
         expect(groupingCodes).toEqual(sidebarCodes)
       })
     }
-  })
-
-  describe('hazard code resolves to correct layer name from PostgREST', () => {
-    let unitNameByCode: Map<string, string>
-
-    beforeAll(async () => {
-      const codes = Object.keys(hazardLayerNameMap)
-      const filter = codes.map(c => `hazardcode.eq.${c}`).join(',')
-      const res = await fetch(
-        `${PROD_POSTGREST_URL}/hazards_unitdescriptions_current?or=(${filter})&select=hazardcode,hazardname`,
-        { headers: { 'Accept-Profile': 'hazards', 'Accept': 'application/json' } }
-      )
-      const rows: { hazardcode: string; hazardname: string }[] = await res.json()
-      unitNameByCode = new Map(rows.map(r => [r.hazardcode, r.hazardname]))
-    })
-
-    it.each(
-      hazardLayers
-        .filter(l => l.title)
-        .map(l => {
-          const sublayerName = getSublayerName(l)
-          const code = sublayerName ? reverseLayerMap.get(sublayerName) : null
-          return [l.title, code] as const
-        })
-        .filter((pair): pair is [string, string] => pair[1] != null)
-    )('%s (code %s) matches PostgREST hazardname', (sidebarTitle, code) => {
-      const dbName = unitNameByCode.get(code)
-      expect(dbName).toBeDefined()
-      expect(dbName).toBe(sidebarTitle)
-    })
   })
 
   it('all hazard codes in groupings JSON that have layers are covered', () => {

@@ -10,13 +10,13 @@ interface SpatialFilterLayerProps {
  * Renders the spatial filter polygon (from draw mode)
  */
 export function SpatialFilterLayer({ filter }: SpatialFilterLayerProps) {
-  if (!filter?.polygon) return null
+  if (!filter) return null
 
   return (
     <Source
       id="spatial-filter-source"
       type="geojson"
-      data={{ type: 'Feature', properties: {}, geometry: filter.polygon }}
+      data={{ type: 'Feature', properties: {}, geometry: filter }}
     >
       <Layer
         id="spatial-filter-fill"

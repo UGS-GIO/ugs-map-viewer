@@ -317,7 +317,7 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
                                 const title = layer.layerTitle || layer.groupLayerTitle;
                                 const count = layer.features?.length || 0;
                                 return (
-                                    <SelectItem key={title} value={String(index)}>
+                                    <SelectItem key={index} value={String(index)}>
                                         {title} ({count})
                                     </SelectItem>
                                 );

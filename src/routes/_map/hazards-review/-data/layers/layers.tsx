@@ -822,6 +822,45 @@ const earthFissureWMSConfig: WMSLayerProps = {
     ],
 }
 
+const giantDesiccationCrackLayerName = 'hazards_giantdesiccationcrack_review';
+const giantDesiccationCrackWMSTitle = 'Giant Desiccation Cracks: Review';
+const giantDesiccationCrackWMSConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: giantDesiccationCrackWMSTitle,
+    visible: false,
+    crs: 'EPSG:4326',
+    sublayers: [
+        {
+            name: `${HAZARDS_WORKSPACE}:${giantDesiccationCrackLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Hazard': { field: 'hazard_symbology_text', type: 'string' },
+                'Mapped Scale': { field: 'gdcmappedscale', type: 'string' },
+            },
+            relatedTablesPosition: 'above',
+            relatedTables: [
+                {
+                    fieldLabel: '',
+                    matchingField: 'relate_id',
+                    targetField: 'gdchazardunit',
+                    // EFZgdc exists only in the review table; switch to _current once it is promoted.
+                    url: `${PROD_POSTGREST_URL}/hazards_unitdescriptions_review`,
+                    headers: {
+                        "Accept-Profile": 'hazards',
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache",
+                    },
+                    displayFields: [
+                        { field: 'description' }
+                    ]
+                }
+            ]
+        },
+    ],
+}
+
 const erosionHazardZoneLayerName = 'erosionhazardzone_current';
 const erosionHazardZoneWMSTitle = 'J.E. Fuller Flood Erosion-Hazard Zones';
 const erosionHazardZoneWMSConfig: WMSLayerProps = {
@@ -1059,17 +1098,18 @@ function displacementVariantLabel(typeValue: DisplacementType): string {
 function displacementVariantDescription(typeValue: DisplacementType): string {
     switch (typeValue) {
         case 'Yearly':
-            return 'Subsidence during the selected year only — years stand alone and don’t add up to the cumulative total.';
+            return 'Subsidence during the selected year only. Years stand alone and don’t add up to the cumulative total.';
         case 'Vertical Displacement Rate':
-            return 'How fast the ground is sinking now, in inches per year — a speed, not a total.';
+            return 'How fast the ground moved vertically, in inches per year: a speed, not a total.';
         default: // Cumulative
-            return 'Total subsidence since monitoring began — the map shows the running total through the selected year, so it only grows.';
+            return 'Total subsidence since monitoring began. The map shows the running total through the selected year.';
     }
 }
 
 // `visible` seeds the default map selection (getDefaultSelected). Inside the
 // variant group only ONE surface should default on, so callers opt a single
 // surface in and leave the rest off.
+
 function makeDisplacementContoursConfig(title: DisplacementLayerTitle, visible = false): WMSLayerProps {
     const { type: typeValue, styleName } = DISPLACEMENT_LAYERS[title];
     return {
@@ -1082,6 +1122,8 @@ function makeDisplacementContoursConfig(title: DisplacementLayerTitle, visible =
         styleName,
         legendUnit: getUnitsLabelForType(typeValue),
         customLayerParameters: { cql_filter: `type='${typeValue}'` },
+        // Contours are not meaningful at scales larger than 1:62,500.
+        maxScale: 62_500,
         sublayers: [
             {
                 name: DISPLACEMENT_CONTOURS_LAYER,
@@ -1106,7 +1148,7 @@ const displacementVerticalDisplacementRateConfig = makeDisplacementContoursConfi
 const displacementInsarGroup: LayerProps = {
     type: 'group',
     title: 'Displacement (InSAR)',
-    subtitle: 'Cumulative, yearly & rate surfaces',
+    subtitle: 'Cumulative, yearly & rate contours',
     variantSelector: true,
     // No explicit `visible`: let getDefaultGroupVisibility derive it from the
     // selected surface. A hard `false` here would be a phantom map-visibility gate
@@ -1126,6 +1168,7 @@ const extraLayersConfig: LayerProps = {
     visible: false,
     layers: [
         earthFissureWMSConfig,
+        giantDesiccationCrackWMSConfig,
         aquifersCombinedConfig,
         displacementInsarGroup,
     ],

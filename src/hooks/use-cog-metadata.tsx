@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { fromUrl, GeoTIFF } from 'geotiff'
+import type { GeoTIFF } from 'geotiff'
 import type { Polygon } from 'geojson'
 import type { COGLayerProps } from '@/lib/types/mapping-types'
 import { convertCoordinate } from '@/lib/map/conversion-utils'
@@ -52,7 +52,8 @@ const tiffCache = new Map<string, Promise<GeoTIFF>>()
 function getTiff(cogUrl: string): Promise<GeoTIFF> {
     let p = tiffCache.get(cogUrl)
     if (!p) {
-        p = fromUrl(cogUrl).catch(err => { tiffCache.delete(cogUrl); throw err })
+        // geotiff loads with the first COG layer, not on every page
+        p = import('geotiff').then(({ fromUrl }) => fromUrl(cogUrl)).catch(err => { tiffCache.delete(cogUrl); throw err })
         tiffCache.set(cogUrl, p)
     }
     return p
@@ -70,12 +71,12 @@ async function readCogMetadata(cogUrl: string): Promise<CogMetadata | null> {
     try {
         const tiff = await getTiff(cogUrl)
         const image = await tiff.getImage(0)
-        const md = image.getGDALMetadata(0) as Record<string, string> | null
+        const md = await image.getGDALMetadata(0)
         if (!md) return null
-        const min = parseFloat(md.STATISTICS_MINIMUM)
-        const max = parseFloat(md.STATISTICS_MAXIMUM)
-        const mean = parseFloat(md.STATISTICS_MEAN)
-        const stddev = parseFloat(md.STATISTICS_STDDEV)
+        const min = parseFloat(String(md.STATISTICS_MINIMUM))
+        const max = parseFloat(String(md.STATISTICS_MAXIMUM))
+        const mean = parseFloat(String(md.STATISTICS_MEAN))
+        const stddev = parseFloat(String(md.STATISTICS_STDDEV))
         if ([min, max, mean, stddev].some(v => !Number.isFinite(v))) return null
 
         // Grid info — used to snap click to pixel cell for highlighting

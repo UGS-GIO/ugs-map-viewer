@@ -84,6 +84,14 @@ export const queryKeys = {
       [...queryKeys.cog.all, 'value', layerName, Math.round(lng * 1e5) / 1e5, Math.round(lat * 1e5) / 1e5] as const,
   },
 
+  // Terrarium DEM reads for the measure tool
+  dem: {
+    all: ['dem'] as const,
+    tile: (z: number, x: number, y: number) => [...queryKeys.dem.all, 'tile', z, x, y] as const,
+    profile: (path: [number, number][]) => [...queryKeys.dem.all, 'profile', path] as const,
+    surfaceStats: (ring: [number, number][]) => [...queryKeys.dem.all, 'surface-stats', ring] as const,
+  },
+
   // Hazards queries
   hazards: {
     all: ['hazards'] as const,

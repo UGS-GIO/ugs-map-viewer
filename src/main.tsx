@@ -1,11 +1,14 @@
 import '@fontsource-variable/source-sans-3'
 import '@/index.css'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import { setWorkerUrl } from 'maplibre-gl'
+import maplibreWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'
 import { StrictMode } from 'react'
 import ReactDOM from 'react-dom/client'
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from '@/context/theme-provider'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
+import { appHistory } from '@/lib/map/app-history'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import proj4 from 'proj4'
 import { setupPMTilesProtocol } from '@/lib/map/pmtiles/setup'
@@ -21,6 +24,8 @@ document.documentElement.classList.add(
 )
 
 // Initialize PMTiles protocol (runs once at app start)
+// MapLibre 6 can't find its worker from inside a bundle
+setWorkerUrl(maplibreWorkerUrl)
 setupPMTilesProtocol()
 setupCOGProtocol()
 
@@ -33,27 +38,7 @@ proj4.defs("EPSG:4326", "+proj=longlat +datum=WGS84 +no_defs +type=crs");
 
 // Create a new router instance. basepath matches the Vite base (`/` normally, `/review/app/` for the
 // IAP review build) so route matching works when the app is served under a sub-path.
-const router = createRouter({ routeTree, basepath: import.meta.env.BASE_URL })
-
-// Lazy load Firebase Analytics - only initialize when user navigates
-let analyticsInitialized = false;
-const initAnalyticsOnce = async () => {
-  if (analyticsInitialized) return;
-  analyticsInitialized = true;
-
-  try {
-    const { getAnalytics, logEvent } = await import('firebase/analytics');
-    const analytics = getAnalytics();
-    logEvent(analytics, 'app_initialized');
-  } catch (error) {
-    console.warn('Analytics not available:', error);
-  }
-};
-
-// Initialize analytics on first navigation
-router.subscribe('onResolved', () => {
-  initAnalyticsOnce();
-});
+const router = createRouter({ routeTree, basepath: import.meta.env.BASE_URL, history: appHistory.history })
 
 // Register the router instance for type safety
 declare module '@tanstack/react-router' {

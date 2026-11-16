@@ -1,5 +1,6 @@
 import { RelatedTable } from "@/lib/types/mapping-types";
 import type { PostgRESTRow } from '@/lib/types/postgrest-types';
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from '@/lib/query-keys';
 import { fetchRelatedRows, groupRelatedRows } from '@/lib/related-table-fetch';
@@ -64,8 +65,11 @@ export function useBulkRelatedTable(
         enabled: configs.length > 0 && uniqueValues.length > 0,
     });
 
+    // Stable while loading so consumers' memos don't recompute every render.
+    const emptyByTable = useMemo(() => (relatedTables ?? []).map((): RelatedDataMap => new Map()), [relatedTables]);
+
     return {
-        dataByTable: data || configs.map(() => new Map()),
+        dataByTable: data ?? emptyByTable,
         isLoading,
         error: error as Error | null,
     };

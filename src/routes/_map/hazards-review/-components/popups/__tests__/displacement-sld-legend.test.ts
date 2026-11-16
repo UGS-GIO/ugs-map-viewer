@@ -93,3 +93,28 @@ describe('getZeroBound', () => {
         expect(getZeroBound([zb(-Infinity, Infinity, true)])).toBeNull()
     })
 })
+
+describe('binMatches with [lo, hi) ranged styles', () => {
+    // The ranged layer keys classes on value_inches_min: a subsidence band [-3, -1]
+    // stores -3, its uplift twin [1, 3] stores 1, the within-error band [-1, 1]
+    // stores -1. Every class is [lo, hi), so each of those lands in one class.
+    const HALF_OPEN_DEADBAND = "NOT (value_inches_min >= '-1' AND value_inches_min < '1')"
+    const fromFilter = (filter: string): SldBin => {
+        const { include, exclude } = parseRuleFilter(filter)
+        return bin(include, exclude)
+    }
+    const upliftOneToThree = fromFilter(`[value_inches_min >= '1' AND value_inches_min < '3' AND ${HALF_OPEN_DEADBAND}]`)
+    const subsidenceOneToThree = fromFilter(`[value_inches_min >= '-3' AND value_inches_min < '-1' AND ${HALF_OPEN_DEADBAND}]`)
+    const withinError = fromFilter("[value_inches_min >= '-1' AND value_inches_min < '1']")
+
+    it('puts the 1-3 in uplift band in its colored class, not within error', () => {
+        expect(binMatches(upliftOneToThree, 1)).toBe(true)
+        expect(binMatches(withinError, 1)).toBe(false)
+    })
+
+    it('keeps the within-error band and the 1-3 in subsidence band apart', () => {
+        expect(binMatches(withinError, -1)).toBe(true)
+        expect(binMatches(subsidenceOneToThree, -1)).toBe(false)
+        expect(binMatches(subsidenceOneToThree, -3)).toBe(true)
+    })
+})

@@ -6,8 +6,8 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import maplibregl from 'maplibre-gl'
-import DataMap, { HighlightFeature, DrawMode, SpatialFilter } from '@/components/maps/data-map'
+import * as maplibregl from 'maplibre-gl'
+import DataMap, { HighlightFeature, DrawMode, SpatialFilter, type PMTilesStyleOverride } from '@/components/maps/data-map'
 import { PopupSheet, PopupSheetRef } from '@/components/maps/popups/popup-sheet'
 import type { LayerContentProps, ExtendedFeature } from '@/components/maps/popups/types'
 import { QueryResultsTable } from '@/components/data-table/query-results-table'
@@ -25,6 +25,10 @@ import { PROD_GEOSERVER_URL, POPUP_TITLES } from '@/lib/constants'
 import { useMap } from '@/hooks/use-map'
 import { useGetCurrentPage } from '@/hooks/use-get-current-page'
 import { useAppBasemaps } from '@/hooks/use-app-basemaps'
+import { useAppTerrain } from '@/hooks/use-app-terrain'
+import { useMeasureMode } from '@/hooks/use-measure'
+import { useEscapeToClear } from '@/hooks/use-escape-to-clear'
+import type { MeasureMode } from '@/lib/map/measure-store'
 import { MapChromeControls } from '@/components/maps/controls/map-chrome-controls'
 import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
@@ -35,6 +39,8 @@ import { createSVGSymbol } from '@/lib/legend/symbol-generator'
 import { createRasterSymbol } from '@/lib/legend/symbolizers/raster'
 import { loadCogMetadata, deriveRange } from '@/hooks/use-cog-metadata'
 import type { Legend, Symbolizer } from '@/lib/types/geoserver-types'
+import { usePresentation } from '@/hooks/use-presentation'
+import { PresentationBar, PresentationKeys } from '@/components/maps/presentation-bar'
 
 interface MapBounds {
   west: number
@@ -277,6 +283,8 @@ interface GenericMapContainerProps {
   vectorLayerFilters?: Record<string, maplibregl.FilterSpecification>
   /** Optional active symbology mode key for vector layers, keyed by layer title */
   vectorLayerSymbology?: Record<string, string>
+  /** Optional style overrides for PMTiles layers (e.g. choropleth fill-color), keyed by layer title */
+  pmtilesStyleOverrides?: Record<string, PMTilesStyleOverride>
   /** Layer config key (default: 'layers') */
   layerConfigKey?: string
   /** Called when all selections are cleared (context menu, popup close, etc.) */
@@ -298,6 +306,7 @@ export default function GenericMapContainer({
   layerStyles = {},
   vectorLayerFilters = {},
   vectorLayerSymbology = {},
+  pmtilesStyleOverrides = {},
   layerConfigKey = 'layers',
   onClearSearch,
   disableExport = false,
@@ -307,10 +316,12 @@ export default function GenericMapContainer({
   popupFeatureFilter,
 }: GenericMapContainerProps) {
   const isMobile = useIsMobile()
+  const { presenting } = usePresentation()
   const currentPage = useGetCurrentPage()
   const { defaultStyle: defaultBasemap } = useAppBasemaps()
   const popupTitle = POPUP_TITLES[currentPage] ?? 'Results'
-  const { viewMode, setViewMode, center, zoom, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, featureBbox, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords } = useMapUrlSync()
+  const { viewMode, setViewMode, center, zoom, pitch, bearing, setMapPosition, basemap, clickBufferBounds, setClickBufferBounds, setFeatureBbox, selectedFeatureRefs, setSelectedFeatureRefs, popupCoords, setPopupCoords, initialBounds, spatialFilter, setSpatialFilter, boxSelectBounds, setBoxSelectBounds } = useMapUrlSync()
+  const { terrain, exaggeration } = useAppTerrain()
   // Phones select straight from the map, whatever a desktop link's `view` still says.
   const selectionView: ViewMode = isMobile ? 'map' : viewMode
   const phoneSheet = usePhoneSheet()
@@ -350,6 +361,7 @@ export default function GenericMapContainer({
     cancelDraw,
     handleDrawComplete,
     registerPrepareForDraw,
+    registerSetMeasureMode,
     registerLayerTurnedOff,
     registerSelectFeatures,
     registerClearSelections,
@@ -467,9 +479,7 @@ export default function GenericMapContainer({
   }, [])
 
   // Independent interaction states (no longer bundled in mapInteraction)
-  const [spatialFilter, setSpatialFilter] = useState<SpatialFilter>(null)
   const [boxSelectMode, setBoxSelectMode] = useState(false)
-  const [boxSelectBounds, setBoxSelectBounds] = useState<{ sw: [number, number]; ne: [number, number] } | null>(null)
   const [toolbarDrawShape, setToolbarDrawShape] = useState<DrawMode>('off')
 
   // Additive mode only active when no other mode is active (shift-click disabled in draw/box modes)
@@ -481,29 +491,46 @@ export default function GenericMapContainer({
     setSpatialFilter(null)
     setBoxSelectBounds(null)
     setAdditiveModeToggled(false)
-  }, [])
+  }, [setSpatialFilter, setBoxSelectBounds])
 
   // Register callback so startDraw can clear conflicting container state
+  const { measure, setMeasure } = useMeasureMode()
+
   const prepareForDraw = useCallback(() => {
     clearSelectionState()
     setBoxSelectMode(false)
     setToolbarDrawShape('off')
-  }, [clearSelectionState])
+    if (measure) setMeasure(undefined)
+  }, [clearSelectionState, measure, setMeasure])
 
   useEffect(() => {
     registerPrepareForDraw(prepareForDraw)
   }, [registerPrepareForDraw, prepareForDraw])
 
-  // Centralized mode setter - handles mutual exclusivity (non-draw modes)
-  const setActiveMode = useCallback((
-    mode: 'boxSelect' | 'additive' | 'none'
-  ) => {
+  // Centralized mode setter - handles mutual exclusivity (non-draw modes; ends measuring too)
+  const setActiveMode = useCallback((mode: 'boxSelect' | 'additive' | 'none') => {
     cancelDraw()
     setToolbarDrawShape('off')
     clearSelectionState()
     setBoxSelectMode(mode === 'boxSelect')
     setAdditiveModeToggled(mode === 'additive')
-  }, [cancelDraw, clearSelectionState])
+    if (measure) setMeasure(undefined)
+  }, [cancelDraw, clearSelectionState, measure, setMeasure])
+
+  // Ends the other modes but keeps their results: people measure while looking at a filter or selection
+  const handleMeasureModeChange = useCallback((mode: MeasureMode | undefined) => {
+    cancelDraw()
+    setToolbarDrawShape('off')
+    setBoxSelectMode(false)
+    setAdditiveModeToggled(false)
+    if (mode !== measure) setMeasure(mode)
+    if (mode) peek()
+  }, [cancelDraw, measure, setMeasure, peek])
+
+  // The sidebar's measure panel goes through here too, so it cancels the other modes
+  useEffect(() => {
+    registerSetMeasureMode(handleMeasureModeChange)
+  }, [registerSetMeasureMode, handleMeasureModeChange])
 
   // Toolbar draw toggle — starts draw via context, tracks highlight locally
   const handleToolbarDrawToggle = useCallback((mode: DrawMode) => {
@@ -539,7 +566,7 @@ export default function GenericMapContainer({
       clearAllSelections()
       showResults('table')
     }
-  }, [clearAllSelections, showResults])
+  }, [clearAllSelections, showResults, setSpatialFilter])
 
   // Handler for box select toggle from toolbar
   const handleBoxSelectModeChange = useCallback((active: boolean) => {
@@ -551,17 +578,22 @@ export default function GenericMapContainer({
   const handleBoxSelectConfirm = useCallback((bounds: { sw: [number, number]; ne: [number, number] }) => {
     setBoxSelectBounds(bounds)
     showResults('table')
-  }, [showResults])
+  }, [showResults, setBoxSelectBounds])
 
-  // Clear highlights when selections are cleared
-  const handleClearAllSelections = useCallback(() => {
+  // Features only: the pin has its own clear button. The emptied phone sheet drops to its peek.
+  const handleClearSelection = useCallback(() => {
     setHighlightedFeatures([])
     clearAllSelections()
-    setPopupCoords(null)
     onClearSearch?.()
     setPanelState(prev => ({ ...prev, isSheetOpen: false }))
     setBoxSelectBounds(null)
-  }, [clearAllSelections, setPopupCoords, onClearSearch])
+    peek()
+  }, [clearAllSelections, onClearSearch, peek, setBoxSelectBounds])
+
+  const handleClearAllSelections = useCallback(() => {
+    handleClearSelection()
+    setPopupCoords(null)
+  }, [handleClearSelection, setPopupCoords])
 
   // Derived: click point for raster queries (center of click buffer)
   const clickPoint = useMemo(() => {
@@ -591,6 +623,11 @@ export default function GenericMapContainer({
 
   // Derived: has results (includes raster-only layers)
   const hasResults = useMemo(() => popupContent.length > 0, [popupContent])
+  // A raster-only click holds results without a highlight; an empty click selects nothing
+  const hasSelection = hasResults || !!boxSelectBounds
+  const toolOwnsEscape = activeDrawShape !== 'off' || toolbarDrawShape !== 'off' || boxSelectMode || !!measure
+  // Table and split views close through their own ✕, which also returns to the map
+  useEscapeToClear(!isMobile && viewMode === 'map' && hasSelection && !toolOwnsEscape, handleClearSelection)
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode)
@@ -602,19 +639,23 @@ export default function GenericMapContainer({
   const handleCloseTable = useCallback(() => {
     handleClearAllSelections()
     setViewMode('map')
-    setBoxSelectBounds(null)
   }, [handleClearAllSelections, setViewMode])
-
-  const handleSheetClose = useCallback(() => {
-    handleClearAllSelections()
-    setBoxSelectBounds(null)
-  }, [handleClearAllSelections])
 
   const handleSheetOpenChange = useCallback((open: boolean) => {
     setPanelState(prev => ({ ...prev, isSheetOpen: open }))
   }, [])
 
-  const shouldShrinkMap = !isMobile && viewMode === 'map' && panelState.isSheetOpen
+  // Shown only with results, so Back to an entry without a selection closes it and Forward reopens it
+  const isSheetOpen = panelState.isSheetOpen && hasResults
+  const shouldShrinkMap = !isMobile && viewMode === 'map' && isSheetOpen
+
+  // Collapses the drawer covering the map so zoom-to-feature centers correctly; 220ms
+  // covers the sheet's 200ms width transition before fitBounds reads the container.
+  const collapseSheetBeforeZoom = useCallback((): Promise<void> => {
+    // The desktop panel shrinks the map rather than covering it, so it stays open
+    if (isMobile) peek()
+    return Promise.resolve()
+  }, [isMobile, peek])
 
   const mapElement = (
     <DataMap
@@ -622,6 +663,8 @@ export default function GenericMapContainer({
       layers={layersConfig}
       center={center}
       zoom={zoom}
+      pitch={pitch}
+      bearing={bearing}
       highlightFeatures={highlightedFeatures}
       onFeatureClick={(...args) => { setPopupCoords(null); handleFeatureClick(...args) }}
       onMoveEnd={setMapPosition}
@@ -629,11 +672,14 @@ export default function GenericMapContainer({
       layerStyles={layerStyles}
       vectorLayerFilters={vectorLayerFilters}
       vectorLayerSymbology={vectorLayerSymbology}
+      pmtilesStyleOverrides={pmtilesStyleOverrides}
       onMapReady={handleMapReady}
       basemapId={basemap ?? defaultBasemap.id}
+      terrain={terrain}
+      exaggeration={exaggeration}
       clickBufferBounds={clickBufferBounds}
       onClickBufferChange={handleClickBufferChange}
-      featureBbox={featureBbox}
+      initialBounds={initialBounds}
       onFeatureBboxChange={setFeatureBbox}
       activeDrawShape={activeDrawShape}
       onDrawReset={handleDrawReset}
@@ -649,7 +695,8 @@ export default function GenericMapContainer({
       onBoxSelectConfirm={handleBoxSelectConfirm}
       isAdditiveMode={isAdditiveMode}
       onAdditiveModeToggle={() => additiveModeToggled ? setActiveMode('none') : setActiveMode('additive')}
-      onClearSelection={handleClearAllSelections}
+      onClearSelection={handleClearSelection}
+      hasSelection={hasSelection}
       pinCoords={popupCoords}
       onPinChange={setPopupCoords}
       viewMode={isMobile ? undefined : viewMode}
@@ -675,6 +722,7 @@ export default function GenericMapContainer({
   const phoneSheetHost = isMobile && (
       <PhoneSheetHost
         container={mapAreaRef}
+        onClearResults={handleClearAllSelections}
         resultsSummary={hasResults ? `${resultsCount} result${resultsCount === 1 ? '' : 's'}` : undefined}
         layersSummary={`${displayedTitles.size} layer${displayedTitles.size === 1 ? '' : 's'} on`}
         results={
@@ -688,6 +736,7 @@ export default function GenericMapContainer({
                   clickPoint={clickPoint}
                   layerHeaderExtras={popupLayerHeaderRender}
                   featureExtras={popupFeatureRender}
+                  onBeforeZoom={collapseSheetBeforeZoom}
                 />
               ) : (
                 <div className="min-h-[18rem] flex-1">
@@ -724,29 +773,32 @@ export default function GenericMapContainer({
           style={{ width: shouldShrinkMap ? `calc(100% - ${panelState.sheetWidth}px)` : '100%' }}
         >
           {mapElement}
+          {/* Over the map alone, so a selected feature's details beside it stay clear */}
+          {presenting && (isMobile ? <PresentationKeys /> : <PresentationBar />)}
         </div>
 
         {/* Popup sheet - desktop */}
         {!isMobile && viewMode === 'map' && (
           <div
             className="h-full border-l bg-background overflow-hidden transition-[width] duration-200 ease-linear"
-            style={{ width: panelState.isSheetOpen ? `${panelState.sheetWidth}px` : 0 }}
+            style={{ width: isSheetOpen ? `${panelState.sheetWidth}px` : 0 }}
           >
             <PopupSheet
               ref={popupSheetRef}
               sheetTriggerRef={sheetTriggerRef}
               popupContent={popupContent}
               popupTitle={popupTitle}
-              onClose={handleSheetClose}
+              onClose={handleClearAllSelections}
               onOpenChange={handleSheetOpenChange}
               onHighlightChange={handleHighlightChange}
               width={panelState.sheetWidth}
               onWidthChange={(width) => setPanelState(prev => ({ ...prev, sheetWidth: width }))}
-              isOpen={panelState.isSheetOpen}
+              isOpen={isSheetOpen}
               clickPoint={clickPoint}
               headerExtras={popupHeaderRender?.(popupContent)}
               layerHeaderExtras={popupLayerHeaderRender}
               featureExtras={popupFeatureRender}
+              onBeforeZoom={collapseSheetBeforeZoom}
             />
           </div>
         )}

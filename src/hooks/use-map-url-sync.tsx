@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearch, useNavigate } from '@tanstack/react-router';
+import { linkHasCamera } from '@/lib/map/app-history';
+import type { Polygon } from 'geojson';
+import { formatArea, formatBbox, parseArea, parseBbox, round6 } from '@/lib/map/url-geometry';
+import type { BoundsBox } from '@/components/maps/types';
+import type { MapSearch } from '@/routes/_map';
 
 interface PopupCoords {
     lat: number;
@@ -8,25 +13,17 @@ interface PopupCoords {
 
 export type ViewMode = 'map' | 'split' | 'table';
 
-export interface ClickBufferBounds {
-    sw: [number, number];
-    ne: [number, number];
-}
-
 export interface SelectedFeatureRef {
     layer: string;
     id: string;
 }
 
-export interface FeatureBbox {
-    sw: [number, number];
-    ne: [number, number];
-}
-
 interface MapUrlState {
     center: [number, number];
     zoom: number;
-    setMapPosition: (lat: number, lon: number, zoom: number) => void;
+    pitch: number;
+    bearing: number;
+    setMapPosition: (lat: number, lon: number, zoom: number, pitch?: number, bearing?: number) => void;
     filters?: Record<string, string>;
     popupCoords: PopupCoords | null;
     setPopupCoords: (coords: PopupCoords | null) => void;
@@ -34,10 +31,15 @@ interface MapUrlState {
     setViewMode: (mode: ViewMode) => void;
     basemap: string | undefined;
     setBasemap: (id: string) => void;
-    clickBufferBounds: ClickBufferBounds | null;
-    setClickBufferBounds: (bounds: ClickBufferBounds | null) => void;
-    featureBbox: FeatureBbox | null;
-    setFeatureBbox: (bbox: FeatureBbox | null) => void;
+    clickBufferBounds: BoundsBox | null;
+    setClickBufferBounds: (bounds: BoundsBox | null) => void;
+    /** What the map fits on load: a link's selection, only when the link carries no camera of its own */
+    initialBounds: BoundsBox | null;
+    setFeatureBbox: (bbox: BoundsBox | null) => void;
+    boxSelectBounds: BoundsBox | null;
+    setBoxSelectBounds: (bounds: BoundsBox | null) => void;
+    spatialFilter: Polygon | null;
+    setSpatialFilter: (polygon: Polygon | null) => void;
     selectedFeatureRefs: SelectedFeatureRef[];
     setSelectedFeatureRefs: (refs: SelectedFeatureRef[]) => void;
 }
@@ -54,8 +56,6 @@ interface UseMapUrlSyncProps {
  * @param onFiltersChange - Optional callback when filters change in URL
  * @returns Current map state derived from URL parameters
  */
-// Round to 6 decimal places (~0.1m precision) for cleaner URLs
-const round6 = (n: number) => Math.round(n * 1e6) / 1e6
 
 export function useMapUrlSync({ onFiltersChange }: UseMapUrlSyncProps = {}): MapUrlState {
     const search = useSearch({ from: '/_map' });
@@ -132,7 +132,7 @@ export function useMapUrlSync({ onFiltersChange }: UseMapUrlSyncProps = {}): Map
         };
     }, []);
 
-    const setMapPosition = useCallback((lat: number, lon: number, zoom: number) => {
+    const setMapPosition = useCallback((lat: number, lon: number, zoom: number, pitch = 0, bearing = 0) => {
         if (positionTimeoutRef.current) clearTimeout(positionTimeoutRef.current);
         positionTimeoutRef.current = setTimeout(() => {
             navigate({
@@ -142,61 +142,32 @@ export function useMapUrlSync({ onFiltersChange }: UseMapUrlSyncProps = {}): Map
                     lat: round6(lat),
                     lon: round6(lon),
                     zoom: Math.round(zoom * 100) / 100,
+                    // Flat, north-up is the default, so keep it out of the URL
+                    pitch: Math.round(pitch) || undefined,
+                    bearing: Math.round(bearing) || undefined,
                 }),
                 replace: true,
             });
         }, 150);
     }, [navigate]);
 
-    // Parse click buffer bounds from URL (format: sw_lng,sw_lat,ne_lng,ne_lat)
-    const clickBufferBounds = useMemo((): ClickBufferBounds | null => {
-        if (!search.click_bbox) return null;
-        const parts = search.click_bbox.split(',').map(Number);
-        if (parts.length !== 4 || parts.some(isNaN)) return null;
-        return {
-            sw: [parts[0], parts[1]],
-            ne: [parts[2], parts[3]],
-        };
-    }, [search.click_bbox]);
-
-    // Update click buffer bounds in URL
-    const setClickBufferBounds = useCallback((bounds: ClickBufferBounds | null) => {
-        navigate({
-            to: ".",
-            search: (prev) => ({
-                ...prev,
-                click_bbox: bounds
-                    ? `${round6(bounds.sw[0])},${round6(bounds.sw[1])},${round6(bounds.ne[0])},${round6(bounds.ne[1])}`
-                    : undefined,
-            }),
-            replace: true,
-        });
+    const setParams = useCallback((patch: Partial<MapSearch>) => {
+        navigate({ to: ".", search: (prev) => ({ ...prev, ...patch }), replace: true });
     }, [navigate]);
 
-    // Parse feature bbox from URL (format: sw_lng,sw_lat,ne_lng,ne_lat)
-    const featureBbox = useMemo((): FeatureBbox | null => {
-        if (!search.feature_bbox) return null;
-        const parts = search.feature_bbox.split(',').map(Number);
-        if (parts.length !== 4 || parts.some(isNaN)) return null;
-        return {
-            sw: [parts[0], parts[1]],
-            ne: [parts[2], parts[3]],
-        };
-    }, [search.feature_bbox]);
+    const clickBufferBounds = useMemo(() => parseBbox(search.click_bbox), [search.click_bbox]);
+    const setClickBufferBounds = useCallback((bounds: BoundsBox | null) => setParams({ click_bbox: formatBbox(bounds) }), [setParams]);
 
-    // Update feature bbox in URL
-    const setFeatureBbox = useCallback((bbox: FeatureBbox | null) => {
-        navigate({
-            to: ".",
-            search: (prev) => ({
-                ...prev,
-                feature_bbox: bbox
-                    ? `${round6(bbox.sw[0])},${round6(bbox.sw[1])},${round6(bbox.ne[0])},${round6(bbox.ne[1])}`
-                    : undefined,
-            }),
-            replace: true,
-        });
-    }, [navigate]);
+    const featureBbox = useMemo(() => parseBbox(search.feature_bbox), [search.feature_bbox]);
+    const initialBounds = linkHasCamera ? null : featureBbox ?? clickBufferBounds;
+    const setFeatureBbox = useCallback((bbox: BoundsBox | null) => setParams({ feature_bbox: formatBbox(bbox) }), [setParams]);
+
+    // Box select and drawn-area results, so Back/Forward and shared links bring them back
+    const boxSelectBounds = useMemo(() => parseBbox(search.box_bbox), [search.box_bbox]);
+    const setBoxSelectBounds = useCallback((bounds: BoundsBox | null) => setParams({ box_bbox: formatBbox(bounds) }), [setParams]);
+
+    const spatialFilter = useMemo(() => parseArea(search.area), [search.area]);
+    const setSpatialFilter = useCallback((polygon: Polygon | null) => setParams({ area: formatArea(polygon) }), [setParams]);
 
     // Parse selected features from URL (format: layer:id,layer:id,...)
     const selectedFeatureRefs = useMemo((): SelectedFeatureRef[] => {
@@ -228,6 +199,8 @@ export function useMapUrlSync({ onFiltersChange }: UseMapUrlSyncProps = {}): Map
     return {
         center,
         zoom: search.zoom,
+        pitch: search.pitch ?? 0,
+        bearing: search.bearing ?? 0,
         setMapPosition,
         filters: search.filters,
         popupCoords,
@@ -238,8 +211,12 @@ export function useMapUrlSync({ onFiltersChange }: UseMapUrlSyncProps = {}): Map
         setBasemap,
         clickBufferBounds,
         setClickBufferBounds,
-        featureBbox,
+        initialBounds,
         setFeatureBbox,
+        boxSelectBounds,
+        setBoxSelectBounds,
+        spatialFilter,
+        setSpatialFilter,
         selectedFeatureRefs,
         setSelectedFeatureRefs,
     };

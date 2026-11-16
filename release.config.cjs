@@ -54,23 +54,10 @@ module.exports = {
       }
     ],
     [
-      '@semantic-release/changelog',
-      {
-        changelogFile: 'CHANGELOG.md'
-      }
-    ],
-    [
       '@semantic-release/github',
       {
         successComment: '🎉 This PR is included in version ${nextRelease.version}',
         failComment: false
-      }
-    ],
-    [
-      '@semantic-release/git',
-      {
-        assets: ['CHANGELOG.md', 'package.json'],
-        message: 'chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}'
       }
     ]
   ]

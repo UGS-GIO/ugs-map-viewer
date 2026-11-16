@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { deepestSubsidenceByYear, subsidedAreaByYear } from './displacement-analytics'
 import { binMatches, type SldBin } from './displacement-sld-legend'
-import { getBinBoundaries } from './displacement-thresholds'
+import { bandShallowMagnitude, getBinBoundaries } from './displacement-thresholds'
 import type { ChartedType } from './displacement-layers'
 import type { DisplacementFeature } from './use-displacement-queries'
 import { ChartHoverReadout, HoveredChartLabelReporter, renderNoChartTooltip, type ChartReadoutItem } from './displacement-chart-hover'
@@ -86,8 +86,9 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
 
     const rows = useMemo<DetailRow[]>(() => {
         const measured = scoped.filter(f => {
-            const v = f.properties.value_inches_min
-            return v < 0 && Math.abs(v) >= threshold && findBinLocal(plotBins, v) !== undefined
+            const { value_inches_min: v, value_inches_max: hi } = f.properties
+            const shallow = bandShallowMagnitude(v, hi)
+            return v < 0 && shallow > 0 && shallow >= threshold && findBinLocal(plotBins, v) !== undefined
         })
         const areaMi2Of = (f: DisplacementFeature) => area(f) * SQM_TO_SQMI
         const depthMap = deepestSubsidenceByYear(measured)
@@ -123,22 +124,9 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
             : exceedance.map(x => ({ label: x.label, value: `${fmt1(Number(hoveredRow[x.key] ?? 0))} mi²`, color: x.color })))
         : []
 
-    // Flag the Yearly seed epoch (the deepest point — it carries the multi-year
-    // baseline, so it's the max, not necessarily the first) as a baseline.
-    const seedIndex = (typeValue === 'Yearly' && depthKey === 'cumulativeDepth' && rows.length > 0)
-        ? rows.reduce((mi, r, i, arr) => ((r.cumulativeDepth ?? -Infinity) > (arr[mi].cumulativeDepth ?? -Infinity) ? i : mi), 0)
-        : -1
-    const renderDepthDot = (props: { cx?: number; cy?: number; index?: number; key?: string | number | bigint | null }) => {
-        const { cx, cy, index, key } = props
+    const renderDepthDot = (props: { cx?: number; cy?: number; key?: string | number | bigint | null }) => {
+        const { cx, cy, key } = props
         if (cx == null || cy == null) return <g key={key} />
-        if (index === seedIndex) {
-            return (
-                <g key={key}>
-                    <circle cx={cx} cy={cy} r={4} fill="hsl(var(--background))" stroke={lineColor} strokeWidth={2} />
-                    <text x={cx + 7} y={cy + 3} fontSize={9} fill="currentColor" fillOpacity={0.7}>baseline</text>
-                </g>
-            )
-        }
         return <circle key={key} cx={cx} cy={cy} r={2} fill={lineColor} />
     }
 
@@ -177,7 +165,7 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
                 </div>
                 <ChartHoverReadout activeLabel={activeYear} items={depthItems} />
                 {depthKey === 'yearlyChange' && (
-                    <p className="text-xs text-muted-foreground">Year-over-year change in cumulative depth (this year minus last year). The first year is blank — it carries the multi-year baseline, not a single-year change. Negative values mean a shallower cumulative reading than the year before.</p>
+                    <p className="text-xs text-muted-foreground">Year-over-year change in cumulative depth (this year minus last year). The first year is blank because there is no prior year to compare. Negative values mean a shallower cumulative reading than the year before.</p>
                 )}
             </section>
 
@@ -238,15 +226,6 @@ export const DisplacementDetailCharts = memo(function DisplacementDetailCharts({
                     </div>
                 )}
             </section>
-
-            {/* Yearly-only footnote about the seed epoch. The general reading caveats
-                (disjoint bands / unmeasured blanks / motion-not-cause) moved to the
-                panel's Units fine-print so they read as panel-wide, not chart captions. */}
-            {typeValue === 'Yearly' && (
-                <div className="flex flex-col gap-1.5 border-t border-dashed border-border pt-3 text-xs text-muted-foreground">
-                    <p>The first year carries the multi-year baseline, not a single-year change.</p>
-                </div>
-            )}
         </div>
     )
 })

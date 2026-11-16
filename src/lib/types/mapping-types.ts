@@ -1,4 +1,5 @@
 import { FeatureCollection, GeoJsonProperties } from "geojson"
+import type { FilterSpecification } from "maplibre-gl"
 
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -146,6 +147,10 @@ interface BaseLayerProps {
     variantLabel?: string;
     /** One-line plain-language description of this variant, shown under the surface switch to explain what it means and how it relates to the map. */
     variantDescription?: string;
+    /** Heading shown above this layer in the layer list; consecutive layers sharing it show it once. */
+    sectionHeading?: string;
+    /** Titles this layer had before a rename, so old links and description rows still find it. */
+    formerTitles?: string[];
 }
 
 export interface WMSLayerProps extends BaseLayerProps {
@@ -157,6 +162,8 @@ export interface WMSLayerProps extends BaseLayerProps {
     legendUnit?: string;
     /** GeoServer SLD style name. When set, both map tiles and the layer-list legend request this style instead of the layer's default. */
     styleName?: string;
+    /** Most zoomed-in ratio scale (the X in 1:X) the layer draws at, measured at the view center like the footer readout. Caps `visibleZoomRange`. */
+    maxScale?: number;
 }
 
 export interface ArcGISMapServerLayerProps extends BaseLayerProps {
@@ -200,6 +207,8 @@ export interface COGLayerProps extends BaseLayerProps {
 export interface LegendEntry {
     label: string;
     color: string;
+    /** Raw data/filter token when it differs from human `label`. Falls back to `label`. */
+    value?: string;
     values?: readonly { value: string; color: string; label?: string }[];
     stroke?: string;
 }
@@ -243,6 +252,8 @@ export interface PMTilesLayerProps extends BaseLayerProps {
     defaultRenderId?: string;
     /** Source layer name within the PMTiles file */
     sourceLayer: string;
+    /** Filter ANDed onto every render; kept off the style so STAC renders can't drop it. */
+    featureFilter?: FilterSpecification;
     /** Optional sublayer config for popups/queries */
     sublayers?: ExtendedSublayerProperties[];
     /**
@@ -256,6 +267,8 @@ export interface PMTilesLayerProps extends BaseLayerProps {
      *  anchor to it; without one they stay disabled, since positional ids (feature_id/objectid) can
      *  re-number on reingest and would silently re-anchor a comment to a different feature. */
     stableKey?: string;
+    /** Polygon layers only: draw the style's point-placed text once per polygon, inside its visible part, instead of once per tile. On a point layer its icons would disappear. */
+    polygonLabels?: boolean;
 }
 
 /** A single declarative filter control on a vector layer's feature property. */

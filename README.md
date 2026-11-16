@@ -71,6 +71,10 @@ npm run build
 npm test
 ```
 
+## Releases
+
+Merging to `master` deploys production and runs semantic-release, which tags the commit and publishes notes to [GitHub Releases](https://github.com/UGS-GIO/ugs-map-viewer/releases). Nothing is committed back to `master` or synced to `develop`, so after merging a hotfix straight to `master`, open a `master` → `develop` PR to bring it back.
+
 ## Author
 
 Created with 🤍 by the [Utah Geological Survey](https://github.com/UGS-GIO/)

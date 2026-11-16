@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { findAndApplyMapLibreWMSFilter } from '@/lib/sidebar/filter/util';
-import maplibregl from 'maplibre-gl';
+import * as maplibregl from 'maplibre-gl';
 
 interface FilterMapping {
     [filterKey: string]: {

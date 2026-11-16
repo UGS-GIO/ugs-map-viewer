@@ -1,6 +1,6 @@
 import { House, Info as InfoIcon, Layers as LayersIcon, Settings } from 'lucide-react'
 import Info from '@/components/sidebar/info'
-import Layers from '@/components/sidebar/layers'
+import WetlandsLayers from '../-components/sidebar/wetlands-layers'
 import MapConfigurations from '../-components/sidebar/map-configurations/map-configurations'
 
 export interface NavLink {
@@ -33,7 +33,7 @@ export const sidelinks: SideLink[] = [
     title: 'Layers',
     label: '',
     icon: <LayersIcon className='stroke-foreground' />,
-    component: Layers, // Direct component reference
+    component: WetlandsLayers,
   },
   {
     title: 'Map Configurations',

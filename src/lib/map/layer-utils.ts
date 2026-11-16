@@ -2,6 +2,7 @@
  * Layer type guards, traversal, and URL parsing utilities
  */
 import type { LayerProps, WMSLayerProps, WFSLayerProps, PMTilesLayerProps, COGLayerProps, GroupLayerProps, ArcGISMapServerLayerProps } from '@/lib/types/mapping-types'
+import { zoomForScale } from '@/lib/map/map-scale'
 
 // ── Type guards ──────────────────────────────────────────────────────
 
@@ -232,6 +233,24 @@ export function zoomRangeToBounds(
   return visibleZoomRange
     ? { minzoom: visibleZoomRange[0], maxzoom: visibleZoomRange[1] }
     : {}
+}
+
+/**
+ * Zoom range a layer draws in with the view centered at `latitude`. A WMS
+ * `maxScale` caps the top at the zoom where the map reaches 1:`maxScale`, which
+ * shifts with latitude, so callers pass the current view center.
+ */
+export function effectiveZoomRange(layer: LayerProps, latitude: number): [number, number] | undefined {
+  const maxScale = isWMSLayer(layer) ? layer.maxScale : undefined
+  if (maxScale === undefined) return layer.visibleZoomRange
+  const [min, max] = layer.visibleZoomRange ?? [0, 24]
+  return [min, Math.min(max, zoomForScale(maxScale, latitude))]
+}
+
+/** Whether a layer with this `visibleZoomRange` draws at `zoom` (MapLibre: minzoom inclusive, maxzoom exclusive). */
+export function isWithinZoomRange(visibleZoomRange: [number, number] | undefined, zoom: number): boolean {
+  if (!visibleZoomRange) return true
+  return zoom >= visibleZoomRange[0] && zoom < visibleZoomRange[1]
 }
 
 /** The fields the viewer injects when turning a style fragment into a layer. */

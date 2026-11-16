@@ -3,6 +3,8 @@ name: Commitlint
 on:
   pull_request:
     branches: [develop, master]
+    # edited re-runs the title check when the title changes
+    types: [opened, edited, synchronize, reopened]
 
 jobs:
   commitlint:
@@ -23,3 +25,11 @@ jobs:
 
       - name: Validate PR commits
         run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+
+      # Feature PRs are squash-merged, so the PR title becomes the commit semantic-release reads.
+      # develop -> master is a merge commit, so its title never reaches the history.
+      - name: Validate PR title
+        if: github.head_ref != 'develop'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: echo "$PR_TITLE" | npx commitlint --verbose

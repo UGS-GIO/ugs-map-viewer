@@ -1,6 +1,12 @@
 import { useCallback, useId, useMemo } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { Checkbox } from '@/components/ui/checkbox'
+import { LegendSwatch, LegendSwatchGrid } from '@/components/maps/legend-swatch-grid'
+import { LEGEND_ROW_CLASS } from '@/lib/legend/legend-layout'
+import { swatchShapeOf, type SwatchShape } from '@/lib/legend/swatch-shape'
+import { legendLookups } from '@/lib/legend/legend-lookups'
+import { styleFragmentQueryOptions } from '@/components/maps/pmtiles-layer-source'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -41,12 +47,12 @@ const countLabel = (shown: number, total: number) =>
 interface LegendGroup { key: string; label: string; color: string; values: readonly { value: string; color: string }[] }
 
 // One symbology option, derived from a STAC render.
-interface Mode { id: string; label: string; field: string; entries: readonly LegendEntry[] }
+interface Mode { id: string; label: string; field: string; entries: readonly LegendEntry[]; styleUrl?: string }
 
 const modesFromRenders = (renders: readonly PMTilesRender[]): Mode[] =>
     renders
         .filter(r => r.field)
-        .map(r => ({ id: r.id, label: r.title ?? r.id, field: r.field ?? '', entries: r.legend ?? [] }))
+        .map(r => ({ id: r.id, label: r.title ?? r.id, field: r.field ?? '', entries: r.legend ?? [], styleUrl: r.styleUrl }))
 
 /** Generic symbology read/write on the route's `vector_symbology` search param. */
 export function useVectorSymbology(layerTitle: string) {
@@ -103,6 +109,7 @@ export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
         ?? modes.find(m => m.id === layer.defaultRenderId)
         ?? modes[0]
     const field = mode ? schema.fields.find(f => f.field === mode.field) : undefined
+    const { data: fragment } = useQuery(styleFragmentQueryOptions(mode?.styleUrl))
     const layerTitle = layer.title ?? ''
 
     // Switching renders resets the outgoing field, so an all-off legend can't leave the map
@@ -148,14 +155,14 @@ export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
                     </Select>
                 </div>
             )}
-            <CategoryLegendGrid schema={schema} field={field} entries={mode.entries} />
+            <CategoryLegendGrid schema={schema} field={field} entries={mode.entries} shape={swatchShapeOf(fragment?.layers?.map(l => l.type) ?? [])} />
         </div>
     )
 }
 
 function CategoryLegendGrid(
-    { schema, field, entries }:
-        { schema: FilterSchema; field: FilterFieldKind; entries: readonly LegendEntry[] },
+    { schema, field, entries, shape }:
+        { schema: FilterSchema; field: FilterFieldKind; entries: readonly LegendEntry[]; shape: SwatchShape },
 ) {
     const mgr = useLayerFilter(schema)
     const isContains = field.kind === 'containsAny'
@@ -165,18 +172,7 @@ function CategoryLegendGrid(
     const totals = data?.totals ?? {}
     const options = useMemo(() => orderedCategories(data?.totals, data?.counts), [data])
 
-    // Colour per value, derived from the render's legend. Flat renders: entry label == value.
-    // Grouped renders: each group's `values` carry per-item shades. `stroke` is a flat-render
-    // swatch outline. Item shade wins, then flat swatch, then default.
-    const swatch = useMemo(() => new Map(entries.map(e => [e.label, e.color])), [entries])
-    const stroke = useMemo(() => new Map(entries.map(e => [e.label, e.stroke])), [entries])
-    const itemColor = useMemo(() => new Map(entries.flatMap(e => (e.values ?? []).map(v => [v.value, v.color] as const))), [entries])
-    const colorFor = (value: string) => itemColor.get(value) ?? swatch.get(value) ?? '#bdbdbd'
-    // Display text per raw value — grouped renders may carry a friendlier `label` for a shouty-case
-    // managed code (e.g. 'CORESAMPLES' -> 'Core Samples'); flat renders have no per-item labels, so
-    // this is a no-op there and the raw field value (already fit to show) is used as-is.
-    const itemLabel = useMemo(() => new Map(entries.flatMap(e => (e.values ?? []).map(v => [v.value, v.label] as const))), [entries])
-    const displayLabel = (value: string) => itemLabel.get(value) ?? value
+    const { colorFor, strokeFor, labelFor } = useMemo(() => legendLookups(entries), [entries])
     // Grouped render when any legend entry carries `values`; each entry becomes a colour group.
     const groups = useMemo<LegendGroup[] | null>(() =>
         entries.some(e => e.values && e.values.length)
@@ -216,42 +212,21 @@ function CategoryLegendGrid(
     if (isLoading || isPlaceholderData) return <p className="text-xs text-muted-foreground px-1">Loading…</p>
     if (options.length === 0) return null
 
-    // Auto-fit: 2 columns when the sidebar is wide enough, 1 on narrow screens.
     const renderRows = (items: string[], showSwatch = true) => (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(8rem,1fr))] gap-x-6 gap-y-1.5">
-            {items.map(value => {
-                const count = counts[value] ?? 0
-                const isZero = count === 0
-                const isChecked = onSet.has(value) && !isZero
-                return (
-                    <label
-                        key={value}
-                        className={cn(
-                            "flex min-w-0 items-start gap-1.5 pr-1 text-xs cursor-pointer",
-                            isZero && "opacity-40 cursor-not-allowed",
-                        )}
-                    >
-                        <Checkbox
-                            className="mt-0.5 shrink-0"
-                            checked={isChecked}
-                            disabled={isZero}
-                            onCheckedChange={() => !isZero && toggle(value)}
-                            aria-label={`Toggle ${displayLabel(value)}`}
-                        />
-                        {showSwatch && (
-                            <span
-                                className="mt-0.5 inline-block w-3 h-3 rounded-full shrink-0 border"
-                                style={{ backgroundColor: colorFor(value), borderColor: stroke.get(value) ?? 'rgba(0,0,0,0.3)' }}
-                            />
-                        )}
-                        <span className="min-w-0 break-words leading-tight">
-                            {displayLabel(value)}
-                            <span className="ml-1 text-muted-foreground">({countLabel(count, totals[value] ?? 0)})</span>
-                        </span>
-                    </label>
-                )
-            })}
-        </div>
+        <LegendSwatchGrid
+            showSwatch={showSwatch}
+            shape={shape}
+            isChecked={value => onSet.has(value) && (counts[value] ?? 0) > 0}
+            onToggle={toggle}
+            items={items.map(value => ({
+                key: value,
+                label: labelFor(value),
+                color: colorFor(value),
+                stroke: strokeFor(value),
+                count: countLabel(counts[value] ?? 0, totals[value] ?? 0),
+                disabled: (counts[value] ?? 0) === 0,
+            }))}
+        />
     )
 
     const controls = (
@@ -310,7 +285,7 @@ function CategoryLegendGrid(
                     }
                     return (
                         <div key={g.key} className={cn("flex flex-col gap-1", groupDisabled && "opacity-40")}>
-                            <label className={cn("flex items-center gap-1.5 border-t border-border pt-1.5 mt-0.5 cursor-pointer", groupDisabled && "cursor-not-allowed")}>
+                            <label className={cn(LEGEND_ROW_CLASS, "border-t border-border pt-1.5 mt-0.5 cursor-pointer", groupDisabled && "cursor-not-allowed")}>
                                 <Checkbox
                                     className="shrink-0"
                                     checked={groupChecked}
@@ -318,8 +293,8 @@ function CategoryLegendGrid(
                                     onCheckedChange={() => !groupDisabled && toggleGroup()}
                                     aria-label={`Toggle ${g.label} group`}
                                 />
-                                <span className="inline-block w-3 h-3 rounded-full shrink-0 border" style={{ backgroundColor: g.color, borderColor: 'rgba(0,0,0,0.3)' }} />
-                                <Label className={cn("text-xs font-semibold cursor-pointer", groupDisabled && "cursor-not-allowed")}>
+                                <LegendSwatch shape={shape} color={g.color} />
+                                <Label className={cn("text-sm font-semibold cursor-pointer", groupDisabled && "cursor-not-allowed")}>
                                     {g.label}
                                     <span className="ml-1 font-normal text-muted-foreground">
                                         ({countLabel(shown, total)})

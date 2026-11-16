@@ -3,6 +3,7 @@ import { ChevronRight, CircleHelp, ExternalLink, Moon } from 'lucide-react'
 import type { SideLink } from '@/lib/types/sidelink-types'
 import { useDarkTheme } from '@/hooks/use-dark-theme'
 import { TOUR_ROUTE_BY_PAGE, useTour } from '@/lib/tour'
+import { usePhoneSheetActions } from './use-phone-sheet'
 
 // Covered by their own tabs, or by the map itself.
 const ON_TABS = new Set(['Home', 'Info', 'Layers'])
@@ -13,6 +14,7 @@ const icon = 'shrink-0 text-muted-foreground [&_svg]:h-5 [&_svg]:w-5'
 /** The More tab, as an iOS list: the route's other panels and links, the tour, and the theme. */
 export function MoreList({ links, page, onOpen }: { links: SideLink[]; page: string; onOpen: (tab: string) => void }) {
   const { startTour } = useTour({ route: TOUR_ROUTE_BY_PAGE[page] })
+  const { peek } = usePhoneSheetActions()
   const { isDark, setDark } = useDarkTheme()
   const items = links.filter((l) => !ON_TABS.has(l.title))
   return (
@@ -36,7 +38,7 @@ export function MoreList({ links, page, onOpen }: { links: SideLink[]; page: str
         </li>
       ))}
       <li>
-        <button type='button' onClick={startTour} className={row}>
+        <button type='button' onClick={() => { peek(); startTour() }} className={row}>
           <CircleHelp className='h-5 w-5 shrink-0 text-muted-foreground' aria-hidden='true' />
           Take the tour
           <ChevronRight className='ml-auto h-5 w-5 text-muted-foreground' aria-hidden='true' />

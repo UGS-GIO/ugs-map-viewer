@@ -23,7 +23,6 @@ export interface CoordinateAdapter {
     screenToMap(screenPoint: ScreenPoint, map: MapLibreMap): MapPoint;
     mapToScreen(mapPoint: MapPoint, map: MapLibreMap): ScreenPoint;
     /** Create a bounding box around a point with pixel buffer - uses map projection for accuracy */
-    createBoundingBox(params: { mapPoint: MapPoint; buffer: number; map: MapLibreMap }): BoundingBox;
     toJSON(point: MapPoint | null): Record<string, unknown> | null;
     getViewBounds(map: MapLibreMap): BoundingBox;
     getResolution(map: MapLibreMap): number;

@@ -1,18 +1,17 @@
 import type { Geometry, Polygon } from 'geojson'
-import type maplibregl from 'maplibre-gl'
+import type * as maplibregl from 'maplibre-gl'
 import type { LayerProps } from '@/lib/types/mapping-types'
 import type { WfsFeature } from '@/lib/map/wfs-service'
+import type { PMTilesStyleOverride } from './pmtiles-layer-source'
+
+export type { PMTilesStyleOverride }
 
 // Re-export for convenience
 export type ClickedFeature = WfsFeature
 
 export type DrawMode = 'off' | 'rectangle' | 'polygon'
 
-export type SpatialFilter = {
-  type: 'bbox' | 'polygon'
-  bbox?: [number, number, number, number]
-  polygon?: Polygon
-} | null
+export type SpatialFilter = Polygon | null
 
 export interface HighlightFeature {
   id: string | number
@@ -32,7 +31,9 @@ export interface DataMapProps {
   zoom?: number
   highlightFeatures?: HighlightFeature[]
   onFeatureClick?: (features: ClickedFeature[], options?: { additive?: boolean }) => void
-  onMoveEnd?: (lat: number, lng: number, zoom: number) => void
+  pitch?: number
+  bearing?: number
+  onMoveEnd?: (lat: number, lng: number, zoom: number, pitch: number, bearing: number) => void
   clickTolerance?: number
   isLoading?: boolean
   children?: React.ReactNode
@@ -69,20 +70,26 @@ export interface DataMapProps {
   vectorLayerFilters?: Record<string, maplibregl.FilterSpecification>
   /** Active symbology mode key for vector layers (e.g. 'box-type'); empty/undefined = default circle styling. */
   vectorLayerSymbology?: Record<string, string>
+  /** Dynamic style overrides for PMTiles layers (e.g. choropleth fill-color), keyed by layer title */
+  pmtilesStyleOverrides?: Record<string, PMTilesStyleOverride>
   /** Callback when map is ready - exposes raw MapLibre map instance */
   onMapReady?: (map: maplibregl.Map) => void
   /** Basemap ID from URL */
   basemapId?: string
+  terrain?: boolean
+  exaggeration: number
   /** Click buffer bounds for visualization (controlled by parent) */
   clickBufferBounds?: BoundsBox | null
   /** Callback when click buffer should update */
   onClickBufferChange?: (bounds: BoundsBox | null) => void
-  /** Feature geometry bounds for zoom extent (controlled by parent) */
-  featureBbox?: BoundsBox | null
+  /** Bounds to fit on load instead of the center/zoom props */
+  initialBounds?: BoundsBox | null
   /** Callback when feature bbox should update */
   onFeatureBboxChange?: (bbox: BoundsBox | null) => void
-  /** Callback when selection should be cleared (from context menu) */
+  /** Clears the selected features (map tools button); the context menu also drops the pin */
   onClearSelection?: () => void
+  /** Something is selected that Clear selection would clear; an empty click doesn't count */
+  hasSelection?: boolean
   /** Pin marker coordinates (from shared link or context menu) */
   pinCoords?: { lat: number; lon: number } | null
   /** Callback to set or clear the pin */

@@ -1,0 +1,160 @@
+import type { RouterHistory } from '@tanstack/react-router'
+import { gunzipSync, gzipSync, strFromU8, strToU8 } from 'fflate'
+import { editHref, NON_STEP_PARAMS, withSticky } from './map-history'
+import { readJson, sessionStorageIfAllowed, writeJson } from './session-json'
+import { HALF } from '@/components/maps/phone-sheet/sheet-model'
+
+export interface SharedStop {
+  label: string
+  /** What to say about this stop; shown under the label when presenting */
+  note?: string
+  /** Path and search of the map state, without layout or preferences */
+  href: string
+}
+
+export interface SharedStopsSnapshot {
+  stops: SharedStop[]
+  /** Arrived from a link and not yet looked at, so the list opens itself */
+  unseen: boolean
+}
+
+export interface SharedStops {
+  subscribe: (onChange: () => void) => () => void
+  getSnapshot: () => SharedStopsSnapshot
+  /** Opens a stop as a new step; `present` (from 1) shows it in the presentation */
+  open: (stop: SharedStop, present?: number) => void
+  /** Lists these stops and opens the first in the presentation */
+  present: (stops: SharedStop[]) => void
+  markSeen: () => void
+  clear: () => void
+}
+
+export const STOPS_PARAM = 'stops'
+export const PRESENT_PARAM = 'present'
+
+/** A, B, C… then AA, AB… so stops past Z keep distinct letters */
+export const stopLetter = (i: number): string =>
+  (i >= 26 ? stopLetter(Math.floor(i / 26) - 1) : '') + String.fromCharCode(65 + (i % 26))
+const STORAGE_KEY = 'map-shared-stops'
+
+/** A step's URL as a shared stop: the recipient keeps their own layout and preferences. */
+export function toStopHref(href: string): string {
+  return editHref(href, (params) => NON_STEP_PARAMS.forEach((key) => params.delete(key)))
+}
+
+// fflate's latin1 mode maps each byte to one character, which is what btoa and atob take
+const toBase64Url = (bytes: Uint8Array) => btoa(strFromU8(bytes, true)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+const fromBase64Url = (text: string) => strToU8(atob(text.replace(/-/g, '+').replace(/_/g, '/')), true)
+
+/** Stops gzipped into one URL-safe string, so a handful of map states fit in a link. */
+export function encodeStops(stops: SharedStop[]): string {
+  // mtime 0, so the same stops always make the same link
+  return toBase64Url(gzipSync(strToU8(JSON.stringify(stops.map(({ label, href, note }) => (note ? [label, href, note] : [label, href])))), { mtime: 0 }))
+}
+
+// Stops come from outside: cap what they can make the recipient's tab decompress, list and print
+const MAX_ENCODED_LENGTH = 16_000
+const MAX_DECODED_BYTES = 256_000
+const MAX_STOPS = 50
+const MAX_LABEL_LENGTH = 200
+const MAX_NOTE_LENGTH = 2000
+
+/** A path in this app; `//host` and `/\host` start with a slash but leave it */
+const isAppPath = (href: string) => href.startsWith('/') && new URL(href, 'http://local').origin === 'http://local'
+
+/** One stop from untrusted fields, or none: the same rules for links and files. */
+const validStop = (label: unknown, href: unknown, note: unknown): SharedStop[] =>
+  typeof label === 'string' && typeof href === 'string' && isAppPath(href)
+    ? [{ label: label.slice(0, MAX_LABEL_LENGTH), href, ...(typeof note === 'string' && note ? { note: note.slice(0, MAX_NOTE_LENGTH) } : {}) }]
+    : []
+
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value)
+
+export function decodeStops(text: string): SharedStop[] {
+  if (text.length > MAX_ENCODED_LENGTH) throw new Error('Shared stops are too long')
+  // gunzip truncates to `out`, and truncated JSON fails to parse
+  const parsed: unknown = JSON.parse(strFromU8(gunzipSync(fromBase64Url(text), { out: new Uint8Array(MAX_DECODED_BYTES) })))
+  if (!Array.isArray(parsed)) throw new Error('Shared stops are not a list')
+  return parsed.slice(0, MAX_STOPS).flatMap((entry) => Array.isArray(entry) ? validStop(entry[0], entry[1], entry[2]) : [])
+}
+
+// Email and chat apps break links much past this
+export const MAX_LINK_LENGTH = 2000
+export const fitsInLink = (link: string) => link.length <= MAX_LINK_LENGTH
+
+export const STOPS_FILE_NAME = 'ugs-map-stops.json'
+const STOPS_FILE_TYPE = 'ugs-map-stops'
+
+/** Stops as a file, for sets too long to send as a link. */
+export function stopsToFile(stops: SharedStop[]): string {
+  return JSON.stringify({ type: STOPS_FILE_TYPE, version: 1, stops: stops.map(({ label, href, note }) => ({ label, href, ...(note ? { note } : {}) })) }, null, 2)
+}
+
+export function stopsFromFile(text: string): SharedStop[] {
+  const parsed: unknown = JSON.parse(text)
+  if (!isRecord(parsed) || parsed.type !== STOPS_FILE_TYPE) throw new Error('Not a map stops file')
+  if (parsed.version !== 1) throw new Error(`Unsupported map stops file version: ${String(parsed.version)}`)
+  if (!Array.isArray(parsed.stops)) throw new Error('Map stops file has no list of stops')
+  const stops = parsed.stops.slice(0, MAX_STOPS).flatMap((entry: unknown) => isRecord(entry) ? validStop(entry.label, entry.href, entry.note) : [])
+  if (stops.length === 0) throw new Error('Map stops file has no valid stops')
+  return stops
+}
+
+// The stops ride along while presenting, so the address bar can be reloaded or shared from any stop
+const withPresent = (href: string, present: number | undefined, stops: SharedStop[]) => present === undefined ? href : editHref(href, (params) => {
+  params.set(PRESENT_PARAM, String(present))
+  params.set(STOPS_PARAM, encodeStops(stops))
+  // On phones the stop's note and features are in the sheet, so it opens raised; desktop ignores it
+  params.set('sheet', HALF)
+})
+
+/** A link that presents the stops, from the first, with the stops attached. */
+export function buildStopsLink(origin: string, stops: SharedStop[]): string {
+  return new URL(withPresent(stops[0].href, 1, stops), origin).toString()
+}
+
+/**
+ * Stops someone shared, read from a link's `stops` param and kept for this tab. Opening a stop is a
+ * normal navigation, so Back and Forward still step through what the recipient did.
+ */
+export function createSharedStops(history: RouterHistory, storage = sessionStorageIfAllowed()): SharedStops {
+  const listeners = new Set<() => void>()
+  let snapshot: SharedStopsSnapshot = { stops: readJson(storage, STORAGE_KEY, []), unseen: false }
+
+  const set = (next: SharedStopsSnapshot) => {
+    snapshot = next
+    writeJson(storage, STORAGE_KEY, next.stops)
+    listeners.forEach((listener) => listener())
+  }
+
+  const launch = new URLSearchParams(history.location.search)
+  const encoded = launch.get(STOPS_PARAM)
+  if (encoded) {
+    // Outside a presentation, drop it either way, so a reload or a copied URL doesn't re-import it
+    if (!launch.has(PRESENT_PARAM)) history.replace(editHref(history.location.href, (params) => params.delete(STOPS_PARAM)), history.location.state)
+    try {
+      const stops = decodeStops(encoded)
+      if (stops.length > 0) set({ stops, unseen: true })
+    } catch (error) {
+      console.error('Could not read the shared map stops:', error)
+    }
+  }
+
+  const open = (stop: SharedStop, present?: number) => history.push(withPresent(withSticky(stop.href, history.location.search), present, snapshot.stops))
+
+  return {
+    subscribe: (onChange) => {
+      listeners.add(onChange)
+      return () => listeners.delete(onChange)
+    },
+    getSnapshot: () => snapshot,
+    // Keep the recipient's own layout and preferences
+    open,
+    present: (stops) => {
+      set({ stops, unseen: false })
+      open(stops[0], 1)
+    },
+    markSeen: () => { if (snapshot.unseen) set({ ...snapshot, unseen: false }) },
+    clear: () => set({ stops: [], unseen: false }),
+  }
+}

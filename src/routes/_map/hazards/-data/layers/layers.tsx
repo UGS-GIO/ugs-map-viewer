@@ -1,5 +1,5 @@
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE, parquetUrl, PROD_POSTGREST_URL, GEN_GIS_WORKSPACE } from "@/lib/constants";
-import { LayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
+import { LayerProps, PMTilesLayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { GeoJsonProperties } from "geojson";
 import GeoJSON from "geojson";
 
@@ -953,6 +953,26 @@ const quads24kWMSConfig: WMSLayerProps = {
     ],
 }
 
+// STAC-driven: pmtilesUrl, sourceLayer, and renders come from the warehouse item `enmin_ut_counties`.
+const utCountiesLayerName = 'enmin_ut_counties';
+const utCountiesConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: utCountiesLayerName,
+    pmtilesUrl: '',
+    sourceLayer: utCountiesLayerName,
+    title: 'Utah Counties',
+    visible: false,
+    opacity: 1,
+    sourceAgency: 'UGRC',
+    sourceUrl: 'https://gis.utah.gov/products/sgid/boundaries/county/',
+    polygonLabels: true,
+    sublayers: [{
+        name: utCountiesLayerName,
+        popupEnabled: false,
+        queryable: false,
+    }],
+};
+
 const studyAreasLayerName = 'studyareas_current';
 const studyAreasWMSTitle = 'Mapped Areas';
 const studyAreasWMSConfig: WMSLayerProps = {
@@ -1029,6 +1049,7 @@ const layersConfig: LayerProps[] = [
     soilHazardsConfig,
     studyAreasWMSConfig,
     quads24kWMSConfig,
+    utCountiesConfig,
 ];
 
 export default layersConfig;

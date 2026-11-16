@@ -2,8 +2,9 @@ import { createPortal } from 'react-dom'
 import { useControl } from 'react-map-gl/maplibre'
 import { PortalControl } from './portal-control'
 import { ControlButton } from './control-button'
-import { Square, Pentagon, X, SquareDashedMousePointer, CopyPlus } from 'lucide-react'
+import { Square, Pentagon, X, SquareDashedMousePointer, CopyPlus, MousePointerBan } from 'lucide-react'
 import type { DrawMode } from '../types'
+import { ActiveModeLabel } from './active-mode-label'
 
 interface MapToolsControlProps {
   // Draw mode
@@ -22,6 +23,9 @@ interface MapToolsControlProps {
   // Pin marker
   hasPin?: boolean
   onClearPin?: () => void
+  // Selected features
+  hasSelection?: boolean
+  onClearSelection?: () => void
   position?: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
 }
 
@@ -37,6 +41,8 @@ export function MapToolsControl({
   onCancelMode,
   hasPin = false,
   onClearPin,
+  hasSelection = false,
+  onClearSelection,
   position = 'top-right',
 }: MapToolsControlProps) {
   const control = useControl<PortalControl>(
@@ -101,6 +107,16 @@ export function MapToolsControl({
             />
           )}
 
+          {/* Clear selected features */}
+          {hasSelection && onClearSelection && (
+            <ControlButton
+              icon={MousePointerBan}
+              title="Clear selection"
+              onClick={onClearSelection}
+              variant="danger"
+            />
+          )}
+
           {/* Box select */}
           {onBoxSelectToggle && (
             <ControlButton
@@ -132,11 +148,7 @@ export function MapToolsControl({
           )}
 
           {/* Active mode indicator */}
-          {activeModeLabel && (
-            <div className="absolute top-1/2 right-full mr-1.5 -translate-y-1/2 whitespace-nowrap rounded-md bg-primary px-2 py-0.5 text-[11px] font-medium text-primary-foreground shadow-sm">
-              {activeModeLabel}
-            </div>
-          )}
+          {activeModeLabel && <ActiveModeLabel>{activeModeLabel}</ActiveModeLabel>}
         </div>,
         container
       )
