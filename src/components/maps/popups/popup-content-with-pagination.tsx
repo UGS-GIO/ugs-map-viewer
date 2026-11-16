@@ -90,11 +90,11 @@ const FeatureCard = memo(({
     return (
         <div
             className={cn(
-                "relative space-y-2 p-3 pl-3.5 rounded-lg border bg-card shadow-sm transition-colors",
+                "relative space-y-2 p-3 pl-4 rounded-lg border bg-card shadow-sm transition-colors",
                 hoverTarget && "cursor-pointer",
-                // Left accent bar reflects map state: gold when active, utah-blue when hover previewing
+                // Left accent bar reflects map state: yellow when active, utah-blue when hover previewing
                 showActive
-                    ? "border-gold/50 bg-accent"
+                    ? "border-foreground/40 bg-accent"
                     : showHover
                     ? "border-utah-blue/40 bg-accent/30"
                     : "border-border",
@@ -119,9 +119,9 @@ const FeatureCard = memo(({
             <span
                 aria-hidden="true"
                 className={cn(
-                    "absolute inset-y-0 left-0 w-1 rounded-l-[calc(var(--radius)-1px)] transition-colors",
+                    "absolute inset-y-0 left-0 w-1.5 rounded-l-[calc(var(--radius)-1px)] transition-colors",
                     showActive
-                        ? "bg-gold"
+                        ? "bg-yellow-400 dark:bg-yellow-300 border-r border-black/25 dark:border-black/50"
                         : showHover
                         ? "bg-utah-blue"
                         : "bg-transparent",
