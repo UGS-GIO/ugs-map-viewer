@@ -89,12 +89,14 @@ const FeatureCard = memo(({
                 active ? "border-foreground/40 bg-accent" : "border-border",
             )}
             aria-current={active || undefined}
-            // Touch fires enter then leave on every tap, so only a mouse previews
-            onPointerEnter={(e) => { if (e.pointerType === 'mouse') setHoveredFeature(hoverTarget) }}
+            // Touch fires enter then leave on every tap, so only a mouse previews.
+            // The selected card doesn't preview: blue would cover its yellow.
+            onPointerEnter={(e) => { if (e.pointerType === 'mouse' && !active) setHoveredFeature(hoverTarget) }}
             onPointerLeave={clearHover}
             onClick={(e) => {
                 // Buttons, links and selected text keep their own behavior
                 if (!hoverTarget || (e.target instanceof Element && e.target.closest('a, button')) || window.getSelection()?.toString()) return
+                clearHover()
                 onSelect(hoverTarget)
             }}
         >
