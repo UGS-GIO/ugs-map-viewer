@@ -16,6 +16,8 @@ interface PopupSheetProps {
     onOpenChange?: (open: boolean) => void;
     /** Callback when highlighted features change (declarative highlighting) */
     onHighlightChange?: (features: HighlightFeature[]) => void;
+    /** The highlighted results, marked on their cards */
+    activeFeatures?: HighlightFeature[];
     /** Current width in pixels (controlled by parent) */
     width?: number;
     /** Callback when width changes via resize handle */
@@ -50,6 +52,7 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
     onClose,
     onOpenChange,
     onHighlightChange,
+    activeFeatures,
     width = DEFAULT_WIDTH,
     onWidthChange,
     isOpen: controlledOpen,
@@ -202,6 +205,7 @@ const PopupSheet = forwardRef<PopupSheetRef, PopupSheetProps>(({
                             <PopupContentWithPagination
                                 layerContent={popupContent}
                                 onHighlightChange={onHighlightChange}
+                                activeFeatures={activeFeatures}
                                 clickPoint={clickPoint}
                                 layerHeaderExtras={layerHeaderExtras}
                                 featureExtras={featureExtras}

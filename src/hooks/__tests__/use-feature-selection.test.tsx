@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import type { ClickedFeature } from '@/components/maps/types'
-import { useFeatureSelection } from '../use-feature-selection'
+import { toHighlightFeatures, useFeatureSelection } from '../use-feature-selection'
 
 Reflect.set(globalThis, 'IS_REACT_ACT_ENVIRONMENT', true)
 
@@ -51,16 +51,14 @@ describe('useFeatureSelection highlights', () => {
     expect(highlighted()).toEqual([1])
   })
 
-  it('highlights every result of a box or drawn area', () => {
+  it('activates none of a box or drawn area, leaving every result to the results tier', () => {
     const { current, highlighted } = setup()
     act(() => current().handleFeatureClick(FEATURES, { highlightAll: true }))
-    expect(highlighted()).toEqual([1, 2, 3])
+    expect(highlighted()).toEqual([])
     expect(current().selectedFeatures).toHaveLength(3)
   })
 
-  it('skips results without geometry', () => {
-    const { current, highlighted } = setup()
-    act(() => current().handleFeatureClick([{ id: 9, properties: {} }, ...FEATURES], { highlightAll: true }))
-    expect(highlighted()).toEqual([1, 2, 3])
+  it('results tier skips results without geometry', () => {
+    expect(toHighlightFeatures([{ id: 9, properties: {} }, ...FEATURES]).map((f) => f.id)).toEqual([1, 2, 3])
   })
 })

@@ -13,7 +13,7 @@ import {
 } from './constants'
 import { BASEMAP_STYLES, DEFAULT_BASEMAP, buildBasemapStyle } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl, MeasureToolsControl } from './controls'
-import { HighlightLayers, HoverHighlightLayer, SpatialFilterLayer, ClickBufferLayer } from './layers'
+import { HighlightLayers, HoverHighlightLayer, ResultHighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
 import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds, isWithinZoomRange, effectiveZoomRange } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
@@ -291,6 +291,7 @@ export default function DataMap({
   center = [-111.5, 39.3],
   zoom = 7,
   highlightFeatures = [],
+  resultFeatures = [],
   onFeatureClick,
   onMoveEnd,
   pitch,
@@ -901,6 +902,7 @@ export default function DataMap({
         {terrain && <Hillshade bottomDataLayerId={renderableEntries.length ? getLayerId(renderableEntries[renderableEntries.length - 1].layer) : undefined} />}
 
         {/* Highlight layers */}
+        <ResultHighlightLayers features={resultFeatures} />
         <HighlightLayers features={highlightFeatures} />
         <HoverHighlightLayer />
 

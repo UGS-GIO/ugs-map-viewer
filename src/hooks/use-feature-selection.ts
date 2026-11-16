@@ -19,7 +19,7 @@ interface UseFeatureSelectionOptions {
 }
 
 // Helper to convert ClickedFeatures to HighlightFeatures
-function toHighlightFeatures(features: ClickedFeature[]): HighlightFeature[] {
+export function toHighlightFeatures(features: ClickedFeature[]): HighlightFeature[] {
   return features
     .filter(f => f.geometry)
     .map(f => ({
@@ -110,7 +110,8 @@ export function useFeatureSelection({
       // Only update highlights when selection actually changed
       if (selectionChanged && newSelection.length > 0) {
         if (options?.additive || options?.highlightAll) {
-          onHighlightChange?.(toHighlightFeatures(newSelection))
+          // Every result already draws as the faint results tier; a card click picks one
+          onHighlightChange?.([])
         } else {
           // A click highlights the feature under the cursor, the first with geometry
           const firstWithGeometry = newSelection.find(f => f.geometry)
