@@ -22,11 +22,18 @@ export function pmtilesTileKey(f: HighlightFeature): TileKey | null {
 const NOTHING: FilterSpecification = ['boolean', false]
 
 function matchFilter(features: HighlightFeature[]): ExpressionSpecification | null {
-  const keys = features.map(pmtilesTileKey).filter((k) => k !== null)
+  const keys = features.map(pmtilesTileKey).filter((k): k is TileKey => k !== null)
   if (keys.length === 0) return null
   const ids = keys.filter((k) => k.by === 'id').map((k) => k.value)
   const fids = keys.filter((k) => k.by === 'ogc_fid').map((k) => k.value)
-  return ['any', ['in', ['id'], ['literal', ids]], ['in', ['get', 'ogc_fid'], ['literal', fids]]]
+
+  const expressions: ExpressionSpecification[] = []
+  if (ids.length > 0) expressions.push(['in', ['id'], ['literal', ids]])
+  if (fids.length > 0) expressions.push(['in', ['get', 'ogc_fid'], ['literal', fids]])
+
+  if (expressions.length === 0) return null
+  if (expressions.length === 1) return expressions[0]
+  return ['any', ...expressions]
 }
 
 const ofType = (types: string[], match: ExpressionSpecification | null): FilterSpecification =>

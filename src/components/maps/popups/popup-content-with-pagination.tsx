@@ -77,10 +77,21 @@ const FeatureCard = memo(({
     const hoverTarget = useMemo<HighlightFeature | null>(() => feature.geometry
         ? { id: feature.id ?? '', geometry: feature.geometry, properties: feature.properties ?? {}, layerTitle: feature.namespace }
         : null, [feature])
-    const hovered = useHoveredFeature()?.geometry === feature.geometry && !!feature.geometry
-    const clearHover = () => setHoveredFeature(null)
+    const hoveredFeature = useHoveredFeature()
+    const hovered = !!hoveredFeature && (
+        (feature.id != null && feature.id !== '' && hoveredFeature.id === feature.id && hoveredFeature.layerTitle === feature.namespace) ||
+        (hoveredFeature.geometry === feature.geometry && !!feature.geometry)
+    )
+    const hoveredRef = useRef(hovered)
+    hoveredRef.current = hovered
+
+    const clearHover = useCallback(() => {
+        if (hoveredRef.current) {
+            setHoveredFeature(null)
+        }
+    }, [])
     // Paging or closing the popup unmounts the card under the pointer without a pointerleave
-    useEffect(() => clearHover, [])
+    useEffect(() => clearHover, [clearHover])
 
     return (
         <div
@@ -184,8 +195,11 @@ const PaginatedFeatureList = memo(({
                     bulkRelatedData={bulkRelatedData}
                     relatedLoading={relatedLoading}
                     featureExtras={featureExtras}
-                    // Geometry identity: ids repeat across layers
-                    active={!!feature.geometry && !!activeFeatures?.some((a) => a.geometry === feature.geometry)}
+                    // Match by id + layer namespace, falling back to geometry identity
+                    active={!!feature.geometry && !!activeFeatures?.some((a) =>
+                        (feature.id != null && feature.id !== '' && a.id === feature.id && (a.layerTitle === feature.namespace || a.layerTitle === layer.layerTitle)) ||
+                        a.geometry === feature.geometry
+                    )}
                     onSelect={onSelect}
                 />
             ))}
