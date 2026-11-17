@@ -15,7 +15,7 @@ type TileKey = { by: 'id' | 'ogc_fid'; value: string | number }
 export function pmtilesTileKey(f: HighlightFeature): TileKey | null {
   const fid = f.properties?.ogc_fid
   if ((typeof fid === 'number' || typeof fid === 'string') && fid === f.id) return { by: 'ogc_fid', value: fid }
-  if (f.id === '' || f.id === 0) return null
+  if (f.id == null || f.id === '' || f.id === 0) return null
   return { by: 'id', value: f.id }
 }
 

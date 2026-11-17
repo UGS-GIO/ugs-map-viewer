@@ -15,5 +15,7 @@ describe('pmtilesTileKey', () => {
   it('gives up on a feature with no id, leaving it to the GeoJSON highlight', () => {
     expect(pmtilesTileKey({ id: 0, geometry: point, properties: {} })).toBeNull()
     expect(pmtilesTileKey({ id: '', geometry: point })).toBeNull()
+    // Ids are cast from WFS data and can be missing at runtime
+    expect(pmtilesTileKey({ id: undefined as unknown as string, geometry: point })).toBeNull()
   })
 })
