@@ -1,9 +1,7 @@
-/**
- * Highlight styles for selected features (yellow with shadow)
- */
 /** Also marks the selected result card, so the card and map agree */
 export const HIGHLIGHT_COLOR = '#FFFF00'
 
+/** Highlight styles for selected features (yellow with shadow) */
 export const HIGHLIGHT_STYLES = {
   line: {
     shadow: { 'line-color': 'rgba(0, 0, 0, 0.5)', 'line-width': 6 },

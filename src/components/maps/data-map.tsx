@@ -449,15 +449,14 @@ export default function DataMap({
     !!f.layerTitle && pmtilesHighlightLayers.some(({ layer }) => layer.title === f.layerTitle) && pmtilesTileKey(f) !== null,
   [pmtilesHighlightLayers])
   // One result is already the selection, so the faint tier draws only for two or more
-  const results = useMemo(() => resultFeatures.length > 1 ? resultFeatures : [], [resultFeatures])
-  const tileHighlights = useMemo(() => ({
-    results: results.filter(onTiles),
-    active: highlightFeatures.filter(onTiles),
-  }), [results, highlightFeatures, onTiles])
-  const geojsonHighlights = useMemo(() => ({
-    results: results.filter(f => !onTiles(f)),
-    active: highlightFeatures.filter(f => !onTiles(f)),
-  }), [results, highlightFeatures, onTiles])
+  const { tileHighlights, geojsonHighlights } = useMemo(() => {
+    const results = resultFeatures.length > 1 ? resultFeatures : []
+    const split = (onTile: boolean) => ({
+      results: results.filter(f => onTiles(f) === onTile),
+      active: highlightFeatures.filter(f => onTiles(f) === onTile),
+    })
+    return { tileHighlights: split(true), geojsonHighlights: split(false) }
+  }, [resultFeatures, highlightFeatures, onTiles])
 
   // After data lands and the map style is loaded, run any per-layer sprite registration hooks.
   // Idempotent: each hook checks map.hasImage before adding.

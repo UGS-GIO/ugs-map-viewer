@@ -11,6 +11,10 @@ export function setHoveredFeature(feature: HighlightFeature | null) {
   listeners.forEach((listener) => listener())
 }
 
+export function clearHoveredFeature(feature: HighlightFeature | null) {
+  if (feature === hovered) setHoveredFeature(null)
+}
+
 const subscribe = (listener: () => void) => {
   listeners.add(listener)
   return () => { listeners.delete(listener) }

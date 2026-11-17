@@ -8,7 +8,7 @@ import { useZoomToFeature } from "@/hooks/use-zoom-to-feature"
 import { loadCogMetadata, computeCogPixelPolygon } from "@/hooks/use-cog-metadata"
 import { HIGHLIGHT_COLORS } from "@/lib/map/cog/setup"
 import type { HighlightFeature } from "@/components/maps/types"
-import { setHoveredFeature, useHoveredFeature } from "@/lib/map/hovered-feature"
+import { clearHoveredFeature, setHoveredFeature, useHoveredFeature } from "@/lib/map/hovered-feature"
 import { HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR } from "@/components/maps/constants"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -77,21 +77,11 @@ const FeatureCard = memo(({
     const hoverTarget = useMemo<HighlightFeature | null>(() => feature.geometry
         ? { id: feature.id ?? '', geometry: feature.geometry, properties: feature.properties ?? {}, layerTitle: feature.namespace }
         : null, [feature])
-    const hoveredFeature = useHoveredFeature()
-    const hovered = !!hoveredFeature && (
-        (feature.id != null && feature.id !== '' && hoveredFeature.id === feature.id && hoveredFeature.layerTitle === feature.namespace) ||
-        (hoveredFeature.geometry === feature.geometry && !!feature.geometry)
-    )
-    const hoveredRef = useRef(hovered)
-    hoveredRef.current = hovered
-
-    const clearHover = useCallback(() => {
-        if (hoveredRef.current) {
-            setHoveredFeature(null)
-        }
-    }, [])
+    const hovered = useHoveredFeature() === hoverTarget && !!hoverTarget
+    // Only this card's preview: another card may already own the hover
+    const clearHover = () => clearHoveredFeature(hoverTarget)
     // Paging or closing the popup unmounts the card under the pointer without a pointerleave
-    useEffect(() => clearHover, [clearHover])
+    useEffect(() => () => clearHoveredFeature(hoverTarget), [hoverTarget])
 
     return (
         <div
@@ -195,11 +185,8 @@ const PaginatedFeatureList = memo(({
                     bulkRelatedData={bulkRelatedData}
                     relatedLoading={relatedLoading}
                     featureExtras={featureExtras}
-                    // Match by id + layer namespace, falling back to geometry identity
-                    active={!!feature.geometry && !!activeFeatures?.some((a) =>
-                        (feature.id != null && feature.id !== '' && a.id === feature.id && (a.layerTitle === feature.namespace || a.layerTitle === layer.layerTitle)) ||
-                        a.geometry === feature.geometry
-                    )}
+                    // Geometry identity: ids repeat across layers and default to 0
+                    active={!!feature.geometry && !!activeFeatures?.some((a) => a.geometry === feature.geometry)}
                     onSelect={onSelect}
                 />
             ))}
