@@ -8,7 +8,8 @@ import { useZoomToFeature } from "@/hooks/use-zoom-to-feature"
 import { loadCogMetadata, computeCogPixelPolygon } from "@/hooks/use-cog-metadata"
 import { HIGHLIGHT_COLORS } from "@/lib/map/cog/setup"
 import type { HighlightFeature } from "@/components/maps/types"
-import { setHoveredFeature } from "@/lib/map/hovered-feature"
+import { setHoveredFeature, useHoveredFeature } from "@/lib/map/hovered-feature"
+import { HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR } from "@/components/maps/constants"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
@@ -73,41 +74,26 @@ const FeatureCard = memo(({
     active: boolean,
     onSelect: (feature: HighlightFeature) => void,
 }) => {
-    const [isHovered, setIsHovered] = useState(false)
     const hoverTarget = useMemo<HighlightFeature | null>(() => feature.geometry
         ? { id: feature.id ?? '', geometry: feature.geometry, properties: feature.properties ?? {}, layerTitle: feature.namespace }
         : null, [feature])
-    const clearHover = useCallback(() => {
-        setIsHovered(false)
-        setHoveredFeature(null)
-    }, [])
+    const hovered = useHoveredFeature()?.geometry === feature.geometry && !!feature.geometry
+    const clearHover = () => setHoveredFeature(null)
     // Paging or closing the popup unmounts the card under the pointer without a pointerleave
-    useEffect(() => clearHover, [clearHover])
-
-    const showActive = active
-    const showHover = !active && isHovered
+    useEffect(() => clearHover, [])
 
     return (
         <div
             className={cn(
                 "relative space-y-2 p-3 pl-4 rounded-lg border bg-card shadow-sm transition-colors",
                 hoverTarget && "cursor-pointer",
-                // Left accent bar reflects map state: yellow when active, utah-blue when hover previewing
-                showActive
-                    ? "border-foreground/40 bg-accent"
-                    : showHover
-                    ? "border-utah-blue/40 bg-accent/30"
-                    : "border-border",
+                // Hover skips the tint: blue on a tinted dark card falls under 3:1
+                active ? "border-foreground/40 bg-accent" : "border-border",
             )}
             aria-current={active || undefined}
             // Touch fires enter then leave on every tap, so only a mouse previews.
             // The selected card doesn't preview: blue would cover its yellow.
-            onPointerEnter={(e) => {
-                if (e.pointerType === 'mouse' && !active) {
-                    setIsHovered(true)
-                    setHoveredFeature(hoverTarget)
-                }
-            }}
+            onPointerEnter={(e) => { if (e.pointerType === 'mouse' && !active) setHoveredFeature(hoverTarget) }}
             onPointerLeave={clearHover}
             onClick={(e) => {
                 // Buttons, links and selected text keep their own behavior
@@ -116,17 +102,18 @@ const FeatureCard = memo(({
                 onSelect(hoverTarget)
             }}
         >
-            <span
-                aria-hidden="true"
-                className={cn(
-                    "absolute inset-y-0 left-0 w-1.5 rounded-l-[calc(var(--radius)-1px)] transition-colors",
-                    showActive
-                        ? "bg-yellow-400 dark:bg-yellow-300 border-r border-black/25 dark:border-black/50"
-                        : showHover
-                        ? "bg-utah-blue"
-                        : "bg-transparent",
-                )}
-            />
+            {/* Bar in the map's colors: yellow selected, blue previewing. In light mode the yellow
+                needs its dark edges for 3:1 against the card; on dark it clears that alone */}
+            {(active || hovered) && (
+                <span
+                    aria-hidden="true"
+                    className={cn(
+                        "absolute inset-y-0 left-0 w-1.5 rounded-l-md",
+                        active && "border-x border-black/50 dark:border-transparent",
+                    )}
+                    style={{ backgroundColor: active ? HIGHLIGHT_COLOR : HOVER_HIGHLIGHT_COLOR }}
+                />
+            )}
             <PopupButtons
                 feature={feature}
                 sourceCRS={layer.sourceCRS}

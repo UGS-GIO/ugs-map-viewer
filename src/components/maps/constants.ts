@@ -1,7 +1,8 @@
 /**
  * Highlight styles for selected features (yellow with shadow)
  */
-const HIGHLIGHT_COLOR = '#FFFF00'
+/** Also marks the selected result card, so the card and map agree */
+export const HIGHLIGHT_COLOR = '#FFFF00'
 
 export const HIGHLIGHT_STYLES = {
   line: {
@@ -27,7 +28,7 @@ export const RESULT_HIGHLIGHT_STYLES = {
 }
 
 // Blue reads apart from the yellow selection on every basemap
-const HOVER_HIGHLIGHT_COLOR = '#1E6BFF'
+export const HOVER_HIGHLIGHT_COLOR = '#1E6BFF'
 export const HOVER_HIGHLIGHT_STYLES = {
   line: { 'line-color': HOVER_HIGHLIGHT_COLOR, 'line-width': 5 },
   fill: { 'fill-color': 'rgba(30, 107, 255, 0.25)' },
