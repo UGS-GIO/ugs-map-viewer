@@ -10,8 +10,10 @@ import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/
 // RELATED TABLES:
 // - Plant Species: STAC-backed (`wetlands_plants_species`) joined on `surveyeventid`.
 // - Project Information: Parquet-backed (`wetlands_plants_projects`) joined on `project` -> `projectcode`.
+// - Site Photos: STAC-backed (`wetlands_plants_photos`) joined on `surveyeventid`.
 const wetlandSurveySitesLayerName = 'wetlands_plants_site';
 export const wetlandSurveySitesTitle = 'Wetland Survey Sites';
+const WETLAND_PLANTS_PHOTO_BASE_URL = 'https://storage.googleapis.com/ut-dnr-ugs-maps-prod.firebasestorage.app/wetlandplants';
 const wetlandSurveySitesConfig: PMTilesLayerProps = {
     type: 'pmtiles',
     stacItemId: wetlandSurveySitesLayerName,
@@ -106,6 +108,16 @@ const wetlandSurveySitesConfig: PMTilesLayerProps = {
                     ],
                     sortBy: 'projectcode',
                     sortDirection: 'asc',
+                },
+                {
+                    // STAC-backed: url + surveyeventid join filled from the
+                    // wetlands_plants_photos related asset's ugs:foreign_keys.
+                    fieldLabel: 'Site Photos',
+                    stacAsset: 'wetlands_plants_photos',
+                    displayAs: 'gallery',
+                    galleryUrlField: 'att_name',
+                    galleryBaseUrl: WETLAND_PLANTS_PHOTO_BASE_URL,
+                    galleryLabelField: 'att_name',
                 },
             ],
         },

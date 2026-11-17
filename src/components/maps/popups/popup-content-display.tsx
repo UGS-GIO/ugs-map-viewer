@@ -461,6 +461,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
 
     // Handle Related Tables
     (relatedTables || []).forEach((table, tableIndex) => {
+        if (table.displayAs === 'gallery') return;
         const groupedValues = getRelatedTableValues(tableIndex, data, relatedTables, properties);
         const flatValues = groupedValues.flat();
 
@@ -656,7 +657,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
     const regularCount = orderedItems.filter(item => !item.isLongContent).length;
     const useGridLayout = layout === "grid" || regularCount > 5;
 
-    const galleryId = properties?.id ?? properties?.pk ?? properties?.ogc_fid ?? feature?.id ?? 'photos'
+    const galleryId = properties?.sitecode ?? properties?.id ?? properties?.pk ?? properties?.ogc_fid ?? feature?.id ?? 'photos'
     const galleryDownloadName = `${sanitizeFilename(`${layer.layerTitle ?? 'feature'}-${galleryId}`)}-photos.zip`
 
     return (

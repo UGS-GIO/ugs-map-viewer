@@ -54,8 +54,26 @@ export function ExpandedRelatedTable({ relatedTable, rows, colSpan }: ExpandedRe
         </p>
     ) : null;
 
-    // Gallery display — group by box_id, sorted by box_pk
+    // Gallery display — group by box_id if present, sorted by box_pk
     if (relatedTable.displayAs === 'gallery' && relatedTable.galleryUrlField) {
+        const hasBoxId = rows.some(r => r.box_id != null && r.box_id !== '')
+        if (!hasBoxId) {
+            const images = rows
+                .map(r => relatedRowToGalleryImage(r, relatedTable))
+                .filter((img): img is GalleryImage => img !== null)
+            if (images.length === 0) return null
+            return (
+                <TableRow className="bg-muted/30">
+                    <TableCell colSpan={colSpan} className="px-3 py-2">
+                        {sectionHeader}
+                        {isOpen && (
+                            <PopupImageGallery images={images} compact downloadName={`${sanitizeFilename(relatedTable.fieldLabel || 'photos')}-photos.zip`} />
+                        )}
+                    </TableCell>
+                </TableRow>
+            )
+        }
+
         const grouped = new Map<string, { boxPk: number; rows: PostgRESTRow[] }>();
         for (const row of rows) {
             const boxId = String(row.box_id || 'Unassigned')

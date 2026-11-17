@@ -6,8 +6,10 @@ export const encodePathSegments = (p: string): string =>
     p.split('/').map(encodeURIComponent).join('/')
 
 /** Build a fully qualified URL by joining an optional base with an (already encoded) path. */
-const joinBaseAndPath = (base: string | undefined, path: string): string =>
-    base ? `${base}/${encodePathSegments(path)}` : path
+const joinBaseAndPath = (base: string | undefined, path: string): string => {
+    if (!base || path.startsWith('http://') || path.startsWith('https://')) return path
+    return `${base}/${encodePathSegments(path)}`
+}
 
 /**
  * Convert a related-table row into a GalleryImage using the table's gallery* config fields.
@@ -21,14 +23,15 @@ export function relatedRowToGalleryImage(
     const rawUrl = row[table.galleryUrlField]
     if (!rawUrl) return null
     const urlStr = String(rawUrl)
-    const url = joinBaseAndPath(table.galleryBaseUrl, urlStr)
+    const baseUrl = table.galleryBaseUrl ?? (typeof row.bucket_url === 'string' ? row.bucket_url : undefined)
+    const url = joinBaseAndPath(baseUrl, urlStr)
 
     const rawThumb = table.galleryThumbnailTransform
         ? table.galleryThumbnailTransform(urlStr)
         : table.galleryThumbnailField
             ? String(row[table.galleryThumbnailField] ?? '')
             : undefined
-    const thumbnailUrl = rawThumb ? joinBaseAndPath(table.galleryBaseUrl, rawThumb) : undefined
+    const thumbnailUrl = rawThumb ? joinBaseAndPath(baseUrl, rawThumb) : undefined
 
     const label = table.galleryLabelField ? String(row[table.galleryLabelField] ?? '') : undefined
 

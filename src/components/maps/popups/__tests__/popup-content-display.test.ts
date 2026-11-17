@@ -62,6 +62,20 @@ describe('buildGalleryImages', () => {
         expect(result[0].thumbnailUrl).toBe('https://cdn.example.com/thumb%201.jpg')
     })
 
+    it('falls back to row.bucket_url when galleryBaseUrl is absent', () => {
+        const table: RelatedTable = { ...galleryTable, galleryBaseUrl: undefined }
+        const rows = [{ api: '1', medium_url: 'plant.jpg', bucket_url: 'https://storage.googleapis.com/bucket/wetland' }]
+        const result = buildGalleryImages(undefined, { api: '1' }, [table], [rows])
+        expect(result[0].url).toBe('https://storage.googleapis.com/bucket/wetland/plant.jpg')
+    })
+
+    it('does not prepend galleryBaseUrl if url is already absolute', () => {
+        const table: RelatedTable = { ...galleryTable, galleryBaseUrl: 'https://cdn.example.com' }
+        const rows = [{ api: '1', medium_url: 'https://other.com/photo.jpg' }]
+        const result = buildGalleryImages(undefined, { api: '1' }, [table], [rows])
+        expect(result[0].url).toBe('https://other.com/photo.jpg')
+    })
+
     it('omits thumbnailUrl when galleryThumbnailField is absent', () => {
         const table: RelatedTable = { ...galleryTable, galleryThumbnailField: undefined }
         const rows = [{ api: '1', medium_url: 'https://img/1.jpg' }]
