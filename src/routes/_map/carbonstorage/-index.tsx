@@ -8,7 +8,7 @@ import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, type SearchComboboxHandle } from '@/components/sidebar/filter/search-combobox'
-import { PROD_POSTGREST_URL, parquetUrl } from '@/lib/constants'
+import { parquetUrl } from '@/lib/constants'
 import { powerplantsFilterSchema } from './-data/layers/powerplants-schema'
 import { toMaplibreFilter } from '@/lib/filter/generators'
 import { fromCql } from '@/lib/filter/parse'
@@ -22,19 +22,15 @@ const CCS_FILTER_MAPPING: Record<string, string> = {
 const searchConfig: SearchSourceConfig[] = [
   defaultMasqueradeConfig,
   {
-    type: 'postgREST',
-    url: `${PROD_POSTGREST_URL}/wellswithtops_hascore`,
+    type: 'parquet',
+    parquetUrl: parquetUrl('enmin_ccs_wells_formation'),
     sourceName: 'Wells Database',
     layerName: wellWithTopsWMSTitle,
     displayField: 'api',
     secondaryDisplayField: 'wellname',
+    idField: 'api',
     params: {
-      targetFields: ['api', 'wellname'],
-      select: 'api,wellname,shape',
-    },
-    headers: {
-      'Accept-Profile': 'emp',
-      'Accept': 'application/geo+json',
+      targetFields: ['api', 'wellname', 'operator'],
     },
   },
   {
