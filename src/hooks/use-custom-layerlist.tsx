@@ -18,6 +18,8 @@ import { usePhoneSheetActions } from '@/components/maps/phone-sheet/use-phone-sh
 import LayerControls from '@/components/maps/layer-controls';
 import { WfsVectorLegend } from '@/components/maps/wfs-vector-legend';
 import { StacRenderLegend } from '@/components/maps/stac-render-legend';
+import { activeRenderOf } from '@/components/maps/pmtiles-layer-source';
+import { useSearch } from '@tanstack/react-router';
 import { ZoomHintPill } from '@/components/maps/zoom-hint-pill';
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from '@/lib/constants';
 import { useLayerUrl } from '@/context/layer-url-provider';
@@ -548,10 +550,15 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
         // PMTiles layers have no GetLegendGraphic; swatches come from the STAC render.
         ?? (isPMTilesLayer(layerConfig) ? <StacRenderLegend layer={layerConfig} /> : undefined);
 
+    const searchSymbology = (useSearch({ strict: false }) as { vector_symbology?: Record<string, string> }).vector_symbology;
+    const pmtilesLegend = isPMTilesLayer(layerConfig)
+        ? activeRenderOf(layerConfig, searchSymbology?.[layerConfig.title || ''])?.legend
+        : undefined;
+
     // --- Single Layer Rendering ---
     const layerControls = (
         <LayerControls
-            layerOpacity={isSelected ? (layerOpacityMap.get(layerConfig.title || '') ?? layerConfig.opacity ?? 0.8) : null}
+            layerOpacity={isSelected ? (layerOpacityMap.get(layerConfig.title || '') ?? layerConfig.opacity ?? (isPMTilesLayer(layerConfig) ? 1 : 0.8)) : null}
             handleOpacityChange={handleOpacityChange}
             handleOpacityCommit={handleOpacityCommit}
             title={layerConfig.title || ''}
@@ -562,6 +569,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
             layerName={extentOptions.type === 'wms' ? extentOptions.layerName : null}
             customLegend={resolvedCustomLegend}
             bivariateLegend={layerConfig.bivariateLegend}
+            pmtilesLegend={pmtilesLegend}
             arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
             legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}
             downloadParquetUrl={layerConfig.downloadParquetUrl}

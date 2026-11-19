@@ -23,6 +23,7 @@ interface LayerControlsProps {
     layerName?: string | null;
     customLegend?: React.ReactNode;
     bivariateLegend?: { xLabel: string; yLabel: string };
+    pmtilesLegend?: import('@/lib/types/mapping-types').PMTilesRender['legend'];
     arcgisUrl?: string;
     legendUnit?: string;
     /** GeoParquet URL for client-side export. When set, download dropdown is enabled. */
@@ -71,6 +72,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     layerName,
     customLegend,
     bivariateLegend,
+    pmtilesLegend,
     arcgisUrl,
     legendUnit,
     downloadParquetUrl,
@@ -246,6 +248,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     layerName={layerName}
                     customLegend={customLegend}
                     bivariateLegend={bivariateLegend}
+                    pmtilesLegend={pmtilesLegend}
                     arcgisUrl={arcgisUrl}
                     legendUnit={legendUnit}
                     styleName={styleName}

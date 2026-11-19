@@ -22,10 +22,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMap } from '@/hooks/use-map';
 import { wellWithTopsWMSTitle } from '../../../-data/layers/layers';
 import { Badge } from '@/components/ui/badge';
-import { applyLayerFilter } from '@/lib/sidebar/filter/util';
 
 type YesNoAll = "yes" | "no" | "all";
 
@@ -56,61 +54,34 @@ const wellsHasLasFilterConfig = {
 
 const formationNameMappingConfig = {
     label: "Formation Present",
-    postgrestUrl: "https://postgrest-seamlessgeolmap-734948684426.us-central1.run.app",
-    tableName: "view_wellswithtops_hascore",
-    fieldsToSelect: "formation_alias,formation_name",
-    displayField: "formation_alias",
-    columnNameField: "formation_name",
-    acceptProfile: "emp"
 };
 
+const FORMATION_TOPS_PARQUET_URL =
+    "https://maps-assets.geology.utah.gov/warehouse/geoparquet/enmin_ccs_wells_formation/related/enmin_ccs_wells_formationdepths.parquet";
+
 interface FormationMapping {
-    value: string; // GeoServer column name (e.g., 'fm_greenriver')
+    value: string; // Column name (e.g., 'fm_greenriver')
     label: string; // user-friendly alias (e.g., 'Green River')
 }
 
 const fetchFormationData = async (): Promise<FormationMapping[]> => {
-    const {
-        postgrestUrl,
-        tableName,
-        fieldsToSelect,
-        displayField,
-        columnNameField,
-        acceptProfile
-    } = formationNameMappingConfig;
-
-    const url = `${postgrestUrl}/${tableName}?select=${fieldsToSelect}`;
-    const response = await fetch(url, {
-        headers: {
-            "Accept-Profile": acceptProfile,
-            "Accept": "application/json"
-        }
+    const { withConnection, escapeSql } = await import('@/lib/duckdb/client');
+    return withConnection(async (conn) => {
+        const query = `
+            SELECT DISTINCT formation_alias AS label, formation_name AS value
+            FROM read_parquet('${escapeSql(FORMATION_TOPS_PARQUET_URL)}')
+            WHERE formation_alias IS NOT NULL AND formation_name IS NOT NULL
+            ORDER BY formation_alias ASC
+        `;
+        const result = await conn.query(query);
+        return result.toArray().map((r) => {
+            const json = r.toJSON() as { label: unknown; value: unknown };
+            return {
+                label: String(json.label),
+                value: String(json.value),
+            };
+        });
     });
-
-    if (!response.ok) {
-        throw new Error(`HTTP error fetching formation mappings! status: ${response.status}`);
-    }
-
-    const data: unknown = await response.json();
-    if (!Array.isArray(data)) {
-        throw new Error('Expected array response from formation data endpoint');
-    }
-
-    const uniqueMappings = new Map<string, string>();
-
-    for (const item of data) {
-        if (typeof item !== 'object' || item === null) continue;
-
-        const alias = displayField in item ? item[displayField] : undefined;
-        const columnName = columnNameField in item ? item[columnNameField] : undefined;
-
-        if (typeof alias === 'string' && typeof columnName === 'string' && !uniqueMappings.has(alias)) {
-            uniqueMappings.set(alias, columnName);
-        }
-    }
-
-    return Array.from(uniqueMappings, ([label, value]) => ({ label, value }))
-        .sort((a, b) => a.label.localeCompare(b.label));
 };
 
 /**
@@ -232,9 +203,6 @@ const useWellFilterManager = () => {
 };
 
 const MapConfigurations = () => {
-    const { map } = useMap();
-    const search = useSearch({ from: '/_map/carbonstorage/' });
-
     const { simpleState, updateFilters } = useWellFilterManager();
     const { core, las, formations, formation_operator } = simpleState;
 
@@ -247,17 +215,6 @@ const MapConfigurations = () => {
         queryFn: fetchFormationData,
         staleTime: 1000 * 60 * 60,
     });
-
-    // Apply filter to map when it changes
-    useEffect(() => {
-        if (!map) {
-            return;
-        }
-
-        const filterFromUrl = search.filters?.[wellWithTopsWMSTitle] ?? null;
-
-        applyLayerFilter(map, wellWithTopsWMSTitle, filterFromUrl);
-    }, [map, search.filters]);
 
     const handleHasCoreChange = useCallback((value: YesNoAll) => {
         updateFilters({ core: value });

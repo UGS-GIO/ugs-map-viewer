@@ -1,0 +1,32 @@
+{
+  "layers": [
+    {
+      "id": "enmin_plss_townshiprange-0",
+      "minzoom": 10.126916814491269,
+      "type": "line",
+      "paint": {
+        "line-color": "#FF0000",
+        "line-width": 1
+      }
+    },
+    {
+      "id": "enmin_plss_townshiprange-1",
+      "minzoom": 10.126916814491269,
+      "type": "symbol",
+      "paint": {
+        "text-opacity": 1,
+        "text-color": "#E60000",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1.2
+      },
+      "layout": {
+        "text-field": "{twnshplab}",
+        "text-font": [
+          "Noto Sans Regular"
+        ],
+        "text-size": 11,
+        "symbol-placement": "point"
+      }
+    }
+  ]
+}

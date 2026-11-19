@@ -1,9 +1,10 @@
 import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/accordion';
-import { BivariateLegend } from '@/components/maps/bivariate-legend';
+import { BivariateLegend, parseStacBivariateLegend } from '@/components/maps/bivariate-legend';
 import useLegendPreview, { type PreviewItem } from '@/hooks/use-legend-preview';
 import { useArcGisLegend } from '@/hooks/use-arcgis-legend';
 import { mountDomNode } from '@/lib/legend/mount-dom-node';
 import { LEGEND_ROW_CLASS, LEGEND_SWATCH_SLOT_CLASS } from '@/lib/legend/legend-layout';
+import type { PMTilesRender } from '@/lib/types/mapping-types';
 
 interface LegendAccordionProps {
     url: string;
@@ -11,6 +12,7 @@ interface LegendAccordionProps {
     layerName?: string | null;
     customLegend?: React.ReactNode;
     bivariateLegend?: { xLabel: string; yLabel: string };
+    pmtilesLegend?: PMTilesRender['legend'];
     arcgisUrl?: string;
     legendUnit?: string;
     /** Optional SLD style name appended to GetLegendGraphic so the legend matches what the map renders. */
@@ -38,19 +40,22 @@ function LegendItem({ item }: { item: PreviewItem }) {
     );
 }
 
-const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend, arcgisUrl, legendUnit, styleName }: LegendAccordionProps) => {
+const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend, pmtilesLegend, arcgisUrl, legendUnit, styleName }: LegendAccordionProps) => {
     const skipFetch = !!customLegend || !!bivariateLegend || !!arcgisUrl;
     const { preview, isLoading, error } = useLegendPreview(url, layerName ?? undefined, skipFetch, legendUnit, styleName);
     const { data: arcgisLegendItems, isLoading: arcgisLoading, error: arcgisError } = useArcGisLegend(arcgisUrl);
     // Use empty string instead of undefined to keep accordion controlled
     const accordionValue = isOpen ? "legend-accordion" : "";
 
+    const hasBivariateStac = Boolean(pmtilesLegend?.length && parseStacBivariateLegend(pmtilesLegend));
+
     const renderContent = () => {
-        if (bivariateLegend && url && layerName) {
+        if (bivariateLegend && (hasBivariateStac || (url && layerName))) {
             return (
                 <BivariateLegend
                     wmsUrl={url}
-                    layerName={layerName}
+                    layerName={layerName ?? undefined}
+                    stacLegend={hasBivariateStac ? pmtilesLegend : undefined}
                     xLabel={bivariateLegend.xLabel}
                     yLabel={bivariateLegend.yLabel}
                 />

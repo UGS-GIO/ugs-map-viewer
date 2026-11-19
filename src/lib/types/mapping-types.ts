@@ -1,5 +1,6 @@
 import { FeatureCollection, GeoJsonProperties } from "geojson"
 import type { FilterSpecification } from "maplibre-gl"
+import type { SwatchShape } from "@/lib/legend/swatch-shape"
 
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -258,6 +259,8 @@ export interface PMTilesLayerProps extends BaseLayerProps {
     sublayers?: ExtendedSublayerProperties[];
     /** Polygon layers only: draw the style's point-placed text once per polygon, inside its visible part, instead of once per tile. On a point layer its icons would disappear. */
     polygonLabels?: boolean;
+    /** Optional legend swatch shape override (e.g., 'triangle' for sprite-backed triangle markers). */
+    swatchShape?: SwatchShape;
 }
 
 export interface WFSLayerProps extends BaseLayerProps {
