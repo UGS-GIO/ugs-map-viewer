@@ -122,6 +122,12 @@ const sco2GridSummaryConfig: PMTilesLayerProps = {
     visible: false,
     opacity: 0.75,
     bivariateLegend: { xLabel: 'Cost', yLabel: 'Capacity' },
+    renders: [
+        {
+            id: 'default',
+            styleUrl: '/styles/enmin_ccs_sco2_gridsummaries/default.json',
+        },
+    ],
     sublayers: [
         {
             name: sco2GridSummaryLayerName,
@@ -198,6 +204,7 @@ const riversConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-major-rivers-polygons/about',
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_rivers/default.json' }],
     sublayers: [
         {
             name: riversLayerName,
@@ -224,6 +231,7 @@ const roadsConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'Local data stewards, UDOT, and UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-roads/about',
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_majorroads/default.json' }],
     sublayers: [
         {
             name: roadsLayerName,
@@ -249,6 +257,7 @@ const railroadsConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-railroads/about',
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_railroads/default.json' }],
     sublayers: [
         {
             name: railroadsLayerName,
@@ -345,6 +354,7 @@ const wellWithTopsConfig: PMTilesLayerProps = {
     title: wellWithTopsTitle,
     visible: true,
     sourceAgency: 'Utah Division of Oil, Gas and Mining',
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_wells_formation/default.json' }],
     sublayers: [
         {
             name: wellWithTopsLayerName,
@@ -459,6 +469,7 @@ const co2SourcesConfig: PMTilesLayerProps = {
     visible: false,
     opacity: 0.8,
     sourceAgency: 'EPA FLIGHT Data, 2023',
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_co2_sources/default.json' }],
     sublayers: [
         {
             name: co2SourcesLayerName,
@@ -513,6 +524,7 @@ const wildernessStudyAreasConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'U.S. Bureau of Land Management',
     sourceUrl: 'https://gbp-blm-egis.hub.arcgis.com/maps/0ae90ebbc1f54f77b80b76a6148ab83d/about',
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_wsa/default.json' }],
     sublayers: [
         {
             name: wildernessStudyAreasLayerName,
@@ -542,6 +554,7 @@ const sitlaReportsConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'Utah Geological Survey',
     sourceUrl: 'https://ugspub.nr.utah.gov/publications/non_lib_pubs/contract_deliverables/EMP-1.pdf',
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_sitlareports/default.json' }],
     sublayers: [
         {
             name: sitlaReportsLayerName,
@@ -590,6 +603,7 @@ const ccsExclusionAreasConfig: PMTilesLayerProps = {
     title: ccsExclusionAreasTitle,
     visible: false,
     sourceAgency: 'Utah Geological Survey',
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_exclusionzones/default.json' }],
     sublayers: [
         {
             name: ccsExclusionAreasLayerName,
@@ -832,6 +846,7 @@ const geothermalWellsJoinsConfig: PMTilesLayerProps = {
     formerTitles: ['Geothermal Wells'],
     visible: false,
     sourceAgency: 'INGENIOUS Project, 2022',
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_geothermal_ingenious_wellfeatures/default.json' }],
     sublayers: [
         {
             name: geothermalWellsJoinsName,
@@ -894,6 +909,7 @@ const geothermalSpringsJoinsConfig: PMTilesLayerProps = {
     formerTitles: ['Geothermal Springs'],
     visible: false,
     sourceAgency: 'INGENIOUS Project, 2022',
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_geothermal_ingenious_springfeatures/default.json' }],
     sublayers: [
         {
             name: geothermalSpringsJoinsName,
@@ -951,6 +967,7 @@ const geothermalWellsConfig: PMTilesLayerProps = {
     title: geothermalWellsTitle,
     visible: false,
     sourceAgency: 'Utah Geological Survey',
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_geothermal_wellsandsprings/default.json' }],
     sublayers: [
         {
             name: geothermalWellsLayerName,
@@ -1175,6 +1192,7 @@ export const natCarbLocationsConfig: PMTilesLayerProps = {
     opacity: 1,
     sourceAgency: 'National Energy Technology Laboratory (NETL)',
     sourceUrl: 'https://edx.netl.doe.gov/dataset/natcarb-atlas-2015',
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_natcarb_location/default.json' }],
     sublayers: [
         {
             name: natCarbLocationsLayerName,
