@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { fetchStacItem, fetchStacItemIndex, stacItemHref, type StacItem } from '../stac-layer'
+import { fetchStacItem, fetchStacItemIndex, resolveStacLayerTree, stacItemHref, type StacItem } from '../stac-layer'
+import type { PMTilesLayerProps } from '@/lib/types/mapping-types'
 
 const entry: StacItem = {
     id: 'enmin_ucrc_wells',
@@ -78,5 +79,36 @@ describe('fetchStacItem', () => {
         expect(await fetchStacItem(noSchema)).toEqual(noSchema)
         expect(fetchSpy).not.toHaveBeenCalled()
         err.mockRestore()
+    })
+})
+
+describe('resolveStacLayerTree sourceAgency precedence', () => {
+    it('preserves app-authored sourceAgency over STAC point_of_contact', async () => {
+        const stacDoc = {
+            id: 'enmin_ccs_wells_formation',
+            properties: {
+                'ugs:dbt_schema': 'emp',
+                'ugs:point_of_contact': 'Utah Geological Survey',
+            },
+            assets: {
+                pmtiles: { href: 'https://x/wells.pmtiles', type: 'application/vnd.pmtiles' },
+            },
+        }
+        mockFetch((url) => ({
+            ok: true,
+            json: () => Promise.resolve(url.endsWith('items.json') ? { items: [stacDoc] } : stacDoc),
+        }))
+
+        const layer: PMTilesLayerProps = {
+            type: 'pmtiles',
+            stacItemId: 'enmin_ccs_wells_formation',
+            pmtilesUrl: '',
+            sourceLayer: 'enmin_ccs_wells_formation',
+            title: 'Wells Database',
+            sourceAgency: 'Utah Division of Oil, Gas and Mining',
+        }
+        const [resolved] = await resolveStacLayerTree([layer]) as PMTilesLayerProps[]
+        expect(resolved.sourceAgency).toBe('Utah Division of Oil, Gas and Mining')
+        expect(resolved.subtitle).toBeUndefined()
     })
 })

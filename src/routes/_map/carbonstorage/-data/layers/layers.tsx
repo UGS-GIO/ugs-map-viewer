@@ -66,6 +66,16 @@ const oilGasFieldsConfig: PMTilesLayerProps = {
     title: oilGasFieldsTitle,
     visible: false,
     sourceAgency: 'Utah Division of Oil, Gas and Mining',
+    renders: [{
+        id: 'default',
+        styleUrl: '/styles/enmin_oilgasfields_ogm/default.json',
+        legend: [
+            { label: 'Gas Field', value: 'Gas', color: '#e31a1c', stroke: '#232323' },
+            { label: 'Oil Field', value: 'Oil', color: '#33a02c', stroke: '#232323' },
+            { label: 'Coalbed Methane Field', value: 'Coalbed Methane', color: '#ad42f5', stroke: '#232323' },
+            { label: 'CO2 Field', value: 'CO2', color: '#fdbf6f', stroke: '#232323' },
+        ],
+    }],
     sublayers: [
         {
             name: oilGasFieldsLayerName,
@@ -75,7 +85,7 @@ const oilGasFieldsConfig: PMTilesLayerProps = {
                 'Field Name': { field: 'fieldname', type: 'string' },
                 'Field Type': { field: 'type', type: 'string' },
                 'Producing Formations': { field: 'prodformations', type: 'string' },
-                'Reservoir Age': { field: 'reservoirrocks', type: 'string' },
+                'Reservoir Age': { field: 'reservoir_rocks', type: 'string' },
                 'Status': { field: 'status_1', type: 'string' }
             },
         },
@@ -103,7 +113,7 @@ const pipelinesConfig: PMTilesLayerProps = {
                 'Operator': { field: 'operator', type: 'string' },
                 'Commodity': { field: 'commodity', type: 'string' },
                 'Acronym': { field: 'acronym', type: 'string' },
-                'Code Remarks': { field: 'coderemarks', type: 'string' }
+                'Code Remarks': { field: 'code_rmrks', type: 'string' }
             },
         },
     ],
@@ -127,6 +137,18 @@ const sco2GridSummaryConfig: PMTilesLayerProps = {
         {
             id: 'default',
             styleUrl: '/styles/enmin_ccs_sco2_gridsummaries/default.json',
+            legend: [
+                { label: 'High Cap / Low Cost', value: 'bivariate_0_0', color: '#64acbe' },
+                { label: 'High Cap / Mid Cost', value: 'bivariate_0_1', color: '#627f8c' },
+                { label: 'High Cap / High Cost', value: 'bivariate_0_2', color: '#574249' },
+                { label: 'Mid Cap / Low Cost', value: 'bivariate_1_0', color: '#b0d5df' },
+                { label: 'Mid Cap / Mid Cost', value: 'bivariate_1_1', color: '#ad9ea5' },
+                { label: 'Mid Cap / High Cost', value: 'bivariate_1_2', color: '#985356' },
+                { label: 'Low Cap / Low Cost', value: 'bivariate_2_0', color: '#e8e8e8' },
+                { label: 'Low Cap / Mid Cost', value: 'bivariate_2_1', color: '#e4acac' },
+                { label: 'Low Cap / High Cost', value: 'bivariate_2_2', color: '#c85a5a' },
+                { label: 'Not Evaluated', value: 'bivariate_nodata', color: '#ffffff', stroke: '#999999' },
+            ],
         },
     ],
     sublayers: [
@@ -205,7 +227,7 @@ const riversConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-major-rivers-polygons/about',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_rivers/default.json' }],
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_rivers/default.json', legend: [{ label: 'Major River', color: '#6498d2' }] }],
     sublayers: [
         {
             name: riversLayerName,
@@ -232,7 +254,7 @@ const roadsConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'Local data stewards, UDOT, and UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-roads/about',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_majorroads/default.json' }],
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_majorroads/default.json', legend: [{ label: 'Major Roads', color: '#000000' }] }],
     sublayers: [
         {
             name: roadsLayerName,
@@ -258,7 +280,7 @@ const railroadsConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-railroads/about',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_railroads/default.json' }],
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_railroads/default.json', legend: [{ label: 'Railroads', color: '#9f4b00' }] }],
     sublayers: [
         {
             name: railroadsLayerName,
@@ -284,13 +306,18 @@ const transmissionLinesConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah::utah-transmission-lines/about',
+    renders: [{
+        id: 'default',
+        styleUrl: '/styles/enmin_transmissionlines/default.json',
+        legend: [{ label: 'Transmission Lines', color: '#ffdd00', stroke: '#000000' }],
+    }],
     sublayers: [
         {
             name: transmissionLinesLayerName,
             popupEnabled: false,
             queryable: false,
             popupFields: {
-                'Voltage': { field: 'layer', type: 'string' },
+                'Voltage': { field: 'voltage', type: 'string' },
             },
         },
     ],
@@ -326,10 +353,10 @@ const seamlessGeolunitsConfig: PMTilesLayerProps = {
                     }
                 },
                 'Unit Description': { field: 'notes', type: 'string' },
-                'Source': { field: 'series_id', type: 'string' },
+                'Source': { field: 'metadata_publication_id', type: 'string' },
             },
             linkFields: {
-                'series_id': {
+                'metadata_publication_id': {
                     baseUrl: '',
                     transform: (value: string) => {
                         return [{
@@ -355,7 +382,24 @@ const wellWithTopsConfig: PMTilesLayerProps = {
     title: wellWithTopsTitle,
     visible: true,
     sourceAgency: 'Utah Division of Oil, Gas and Mining',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_wells_formation/default.json' }],
+    renders: [{
+        id: 'default',
+        styleUrl: '/styles/enmin_ccs_wells_formation/default.json',
+        legend: [
+            { label: 'Carbon Dioxide Well', color: '#e54baa', stroke: '#232323' },
+            { label: 'Dry Hole', color: '#aced8d', stroke: '#232323' },
+            { label: 'Gas Injection Well', color: '#fbff10', stroke: '#232323' },
+            { label: 'Gas Storage Well', color: '#12d82c', stroke: '#232323' },
+            { label: 'Gas Well', color: '#c960d2', stroke: '#232323' },
+            { label: 'Helium Well', color: '#afd03a', stroke: '#232323' },
+            { label: 'Oil Well', color: '#7a7add', stroke: '#232323' },
+            { label: 'Test Well', color: '#8e5ccb', stroke: '#232323' },
+            { label: 'Unknown', color: '#d14b11', stroke: '#232323' },
+            { label: 'Water Disposal Well', color: '#3fccd6', stroke: '#232323' },
+            { label: 'Water Injection Well', color: '#4388d6', stroke: '#232323' },
+            { label: 'Water Source Well', color: '#c84b5f', stroke: '#232323' },
+        ],
+    }],
     sublayers: [
         {
             name: wellWithTopsLayerName,
@@ -517,7 +561,24 @@ const co2SourcesConfig: PMTilesLayerProps = {
     visible: false,
     opacity: 0.8,
     sourceAgency: 'EPA FLIGHT Data, 2023',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_co2_sources/default.json' }],
+    renders: [{
+        id: 'default',
+        styleUrl: '/styles/enmin_ccs_co2_sources/default.json',
+        legend: [
+            { label: 'Agriculture', color: '#7F1D1D' },
+            { label: 'Cement/lime plant', color: '#0B6623' },
+            { label: 'Coal power plant', color: '#5B2C6F' },
+            { label: 'Landfill', color: '#FFEB3B' },
+            { label: 'Manufacturing', color: '#000000' },
+            { label: 'Military', color: '#1F77B4' },
+            { label: 'Natural resources extraction', color: '#F39C12' },
+            { label: 'NG pipeline compressor station', color: '#7F8C8D' },
+            { label: 'NG power plant', color: '#F5F5F5' },
+            { label: 'NG processing', color: '#F5F5F5' },
+            { label: 'Refinery', color: '#5DADE2' },
+            { label: 'University', color: '#52BE80' },
+        ],
+    }],
     sublayers: [
         {
             name: co2SourcesLayerName,
@@ -527,7 +588,7 @@ const co2SourcesConfig: PMTilesLayerProps = {
                 'Facility Name': { field: 'facility_name', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
                 'Description': { field: 'description', type: 'string' },
                 'Greenhouse Gas Emissions': {
-                    field: 'ghg_quantity__metric_tons_co2e_',
+                    field: 'ghg_quantity_metric_tons_co2e',
                     type: 'string',
                     transform: (value: string | null) => {
                         if (value === null) {
@@ -572,7 +633,7 @@ const wildernessStudyAreasConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'U.S. Bureau of Land Management',
     sourceUrl: 'https://gbp-blm-egis.hub.arcgis.com/maps/0ae90ebbc1f54f77b80b76a6148ab83d/about',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_wsa/default.json' }],
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_wsa/default.json', legend: [{ label: 'Wilderness Study Areas', color: '#fdff00' }] }],
     sublayers: [
         {
             name: wildernessStudyAreasLayerName,
@@ -602,14 +663,24 @@ const sitlaReportsConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'Utah Geological Survey',
     sourceUrl: 'https://ugspub.nr.utah.gov/publications/non_lib_pubs/contract_deliverables/EMP-1.pdf',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_sitlareports/default.json' }],
+    renders: [{
+        id: 'default',
+        styleUrl: '/styles/enmin_ccs_sitlareports/default.json',
+        legend: [
+            { label: 'Limited Potential', color: '#ff7e00', stroke: '#232323' },
+            { label: 'Some Potential', color: '#ffe700', stroke: '#232323' },
+            { label: 'Good Potential', color: '#cfff00', stroke: '#232323' },
+            { label: 'Excellent Potential', color: '#3dc200', stroke: '#232323' },
+            { label: 'Not Evaluated', color: '#cdcdcd', stroke: '#232323' },
+        ],
+    }],
     sublayers: [
         {
             name: sitlaReportsLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'new_block_', type: 'string' },
+                'Name': { field: 'new_block', type: 'string' },
                 'Ranking': {
                     field: 'ranking', type: 'string',
                     transform: (value: string | null) => {
@@ -619,22 +690,29 @@ const sitlaReportsConfig: PMTilesLayerProps = {
                         return value.replace(/^\d+(\.\d+)?\s*/, '');
                     }
                 },
-                'CO2 Storage Potential': { field: 'co2_storag', type: 'string' },
-                'Link to Report': { field: 'hyperlink_', type: 'string', transform: (value: string | null) => value }
+                'Description': { field: 'description', type: 'string' },
+                'Report': { field: 'linktoreport', type: 'string' },
             },
             linkFields: {
-                'hyperlink_': {
-                    baseUrl: '',
-                    transform: (value: string | null) => {
-                        return [
-                            {
-                                label: 'Link to Report',
-                                href: `${value}`
-                            }
-                        ];
-                    }
+                'linktoreport': {
+                    transform: (value: unknown) => {
+                        const str = String(value ?? '');
+                        if (!str || !str.startsWith('http')) return [];
+                        return [{ label: 'View Report', href: str }];
+                    },
+                },
+            },
+            colorCodingMap: {
+                'ranking': (value: string | number) => {
+                    const strValue = String(value).toLowerCase();
+                    if (strValue.includes("excellent")) return "#3DC200";
+                    if (strValue.includes("good")) return "#CFFF00";
+                    if (strValue.includes("some")) return "#FFE700";
+                    if (strValue.includes("limited")) return "#FF7E00";
+                    return "#CDCDCD";
                 }
-            }
+            },
+            colorCodingMode: 'background',
         }
     ],
 };
@@ -651,14 +729,21 @@ const ccsExclusionAreasConfig: PMTilesLayerProps = {
     title: ccsExclusionAreasTitle,
     visible: false,
     sourceAgency: 'Utah Geological Survey',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_exclusionzones/default.json' }],
+    renders: [{
+        id: 'default',
+        styleUrl: '/styles/enmin_ccs_exclusionzones/default.json',
+        legend: [
+            { label: 'Exclusion Zones - Land Management', value: 'No-CCUS-Zone', color: '#ff0000', stroke: '#000000' },
+            { label: 'Exclusion Zones - Geology', value: 'No-CCUS-Zone-Geo', color: '#000000', stroke: '#000000' },
+        ],
+    }],
     sublayers: [
         {
             name: ccsExclusionAreasLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'name', type: 'string' },
+                'Notes': { field: 'notes', type: 'string' },
                 'Type': {
                     field: 'grade',
                     type: 'string',
@@ -894,7 +979,7 @@ const geothermalWellsJoinsConfig: PMTilesLayerProps = {
     formerTitles: ['Geothermal Wells'],
     visible: false,
     sourceAgency: 'INGENIOUS Project, 2022',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_geothermal_ingenious_wellfeatures/default.json' }],
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_geothermal_ingenious_wellfeatures/default.json', legend: [{ label: 'Ingenious Well', color: '#7ab8d9', stroke: '#232323' }] }],
     sublayers: [
         {
             name: geothermalWellsJoinsName,
@@ -957,7 +1042,7 @@ const geothermalSpringsJoinsConfig: PMTilesLayerProps = {
     formerTitles: ['Geothermal Springs'],
     visible: false,
     sourceAgency: 'INGENIOUS Project, 2022',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_geothermal_ingenious_springfeatures/default.json' }],
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_geothermal_ingenious_springfeatures/default.json', legend: [{ label: 'Ingenious Spring', color: '#8aed8c', stroke: '#232323' }] }],
     sublayers: [
         {
             name: geothermalSpringsJoinsName,
@@ -967,7 +1052,7 @@ const geothermalSpringsJoinsConfig: PMTilesLayerProps = {
                 'Feature URI': { field: 'featureuri', type: 'string' },
                 'Spring Name': { field: 'springname', type: 'string' },
                 'Thermal Class': { field: 'thermalclass', type: 'string' },
-                'Max Measured Temperature (°C)': { field: 'maxmeasured_temp_c', type: 'number' },
+                'Max Measured Temperature (°C)': { field: 'maxmeasuredtemp_c', type: 'number' },
                 'Latitude': { field: 'latdegree', type: 'number' },
                 'Longitude': { field: 'longdegree', type: 'number' },
                 'Elevation Ground Level (m)': { field: 'elevationgl_m', type: 'number' },
@@ -1015,24 +1100,83 @@ const geothermalWellsConfig: PMTilesLayerProps = {
     title: geothermalWellsTitle,
     visible: false,
     sourceAgency: 'Utah Geological Survey',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_geothermal_wellsandsprings/default.json' }],
+    renders: [{
+        id: 'default',
+        styleUrl: '/styles/enmin_geothermal_wellsandsprings/default.json',
+        legend: [
+            { label: 'Mine', value: 'M', color: '#989898', stroke: '#232323' },
+            { label: 'Spring', value: 'S', color: '#32df36', stroke: '#232323' },
+            { label: 'Well', value: 'W', color: '#1f78b4', stroke: '#232323' },
+        ],
+    }],
     sublayers: [
         {
             name: geothermalWellsLayerName,
-            popupEnabled: true,
+            popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Identification': { field: 'idname', type: 'string' },
-                'Location': { field: 'location', type: 'string' },
-                'Type': { field: 'type', type: 'string' },
-                'Flow (gpm)': { field: 'flow', type: 'number' },
-                'Temperature (°C)': { field: 'temp', type: 'number' },
-                'Specific Conductance (µS/cm)': { field: 'cond', type: 'number' },
-                'Total Dissolved Solids (mg/L)': { field: 'tdsc', type: 'number' },
-                'pH': { field: 'ph', type: 'number' },
-                'Date Sampled': { field: 'date', type: 'string' },
-                'Source': { field: 'source', type: 'string' },
+                'Type': {
+                    field: 'type',
+                    type: 'string',
+                    transform: (value) => {
+                        if (value === 'W' || value === 'W?') return 'Well';
+                        if (value === 'S' || value === 'S?') return 'Spring';
+                        if (value === 'M') return 'Mine';
+                        return value;
+                    }
+                },
+                'Map Number': { field: 'mapno', type: 'string' },
+                'Region': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const regionl = props?.['region_loc'];
+                        const countyl = props?.['county'];
+                        const formattedStart = typeof regionl === 'string' ? toTitleCase(regionl) : regionl;
+                        const formattedEnd = typeof countyl === 'string' ? toTitleCase(countyl) : countyl;
+                        return `${formattedStart}, ${formattedEnd}`;
+                    }
+                },
+                'Well/Spring Name': { field: 'source', type: 'string' },
+                'UGS Name': { field: 'idname', type: 'string' },
+                'Temperature': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const bht = props?.['temp'];
+                        return `${bht} °C`;
+                    }
+                },
+                'Class': { field: 'class', type: 'string' },
+                'Depth of Well': { field: 'depth', type: 'number' },
+                'Flow': { field: 'flow', type: 'number' },
+                'Rate': { field: 'rate', type: 'string' },
+                'Location': { field: 'lat', type: 'string' },
+                'UTM (Easting/Northing)': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props) => {
+                        const utmStart = props?.['utme'];
+                        const utmEnd = props?.['utmn'];
+                        return `${utmStart} - ${utmEnd}`;
+                    }
+                },
+                'Date': { field: 'date', type: 'string' },
                 'Reference': { field: 'reference', type: 'string' },
+                'PH': { field: 'ph', type: 'string' },
+                'Conductivity (microsiemens)': { field: 'cond', type: 'string' },
+                'Sodium': { field: 'na', type: 'string' },
+                'Calcium (mg/l)': { field: 'ca', type: 'string' },
+                'Magnesium (mg/l)': { field: 'mg', type: 'string' },
+                'Silica (mg/l)': { field: 'sio2', type: 'string' },
+                'Boron (mg/l)': { field: 'b', type: 'string' },
+                'Lithium (mg/l)': { field: 'li', type: 'string' },
+                'Bicarbonate (mg/l)': { field: 'hco3', type: 'string' },
+                'Sulfer (mg/l)': { field: 'so4', type: 'string' },
+                'Chlorine (mg/l)': { field: 'cl', type: 'string' },
+                'TDS Measured (mg/l)': { field: 'tdsm', type: 'string' },
+                'TDS Calculated (mg/l)': { field: 'tdsc', type: 'string' },
+                'Cat/Anion Charge Balance': { field: 'chgbal', type: 'string' },
             },
         },
     ],
@@ -1069,6 +1213,7 @@ const utTownshipRangesConfig: PMTilesLayerProps = {
     sourceLayer: utTownshipRangesLayerName,
     title: utTownshipRangesTitle,
     visible: false,
+    visibleZoomRange: [11, 22],
     sourceAgency: 'UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-township-and-ranges/about',
     sublayers: [{
@@ -1238,34 +1383,36 @@ export const natCarbLocationsConfig: PMTilesLayerProps = {
     sectionHeading: 'Statewide',
     visible: false,
     opacity: 1,
-    sourceAgency: 'National Energy Technology Laboratory (NETL)',
-    sourceUrl: 'https://edx.netl.doe.gov/dataset/natcarb-atlas-2015',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_natcarb_location/default.json' }],
+    sourceAgency: 'Utah Geological Survey',
+    renders: [{
+        id: 'default',
+        styleUrl: '/styles/enmin_ccs_natcarb_location/default.json',
+        legend: [{ label: 'NATCARB Grid Cell', color: '#d2b48c', stroke: '#8b6d47' }],
+    }],
     sublayers: [
         {
             name: natCarbLocationsLayerName,
             popupEnabled: true,
             queryable: true,
-            popupFields: {
-                'Location': { field: 'col_row_label', type: 'string' },
-                'Depth to Base of Fresh Water (ft)': { field: 'freshwater_depth_ft', type: 'number' },
-            },
+            popupFields: {},
             relatedTables: [
                 {
-                    fieldLabel: 'CO₂ Storage Resource by Formation',
+                    fieldLabel: 'Project Data',
                     stacAsset: 'enmin_ccs_natcarb_measurement',
-                    matchingField: 'col_row_id',
-                    targetField: 'col_row_label',
+                    displayAs: 'table',
                     displayFields: [
-                        { field: 'formation', label: 'Formation' },
-                        { field: 'depth_top_interval_ft', label: 'Depth (ft)', format: 'number' },
-                        { field: 'thickness_net_ft', label: 'Net Thickness (ft)', format: 'number' },
-                        { field: 'salinity_ppm', label: 'Salinity (ppm)', format: 'number' },
-                        { field: 'storage_resource_p10_tonnes', label: 'Low Estimate, P10 (tonnes)', format: 'number' },
-                        { field: 'storage_resource_p50_tonnes', label: 'Medium Estimate, P50 (tonnes)', format: 'number' },
-                        { field: 'storage_resource_p90_tonnes', label: 'High Estimate, P90 (tonnes)', format: 'number' },
+                        { field: 'resource_n', label: 'Resource Name' },
+                        { field: 'vol_low', label: 'Vol Low (Mt)', format: 'number' },
+                        { field: 'vol_med', label: 'Vol Med (Mt)', format: 'number' },
+                        { field: 'vol_high', label: 'Vol High (Mt)', format: 'number' },
+                        { field: 'depth_ft', label: 'Depth (ft)', format: 'number' },
+                        { field: 'thickness', label: 'Thickness (ft)', format: 'number' },
+                        { field: 'temperatur', label: 'Temp (°F)', format: 'number' },
+                        { field: 'pressure_p', label: 'Pressure (psi)', format: 'number' },
+                        { field: 'porosity_p', label: 'Porosity (%)', format: 'number' },
+                        { field: 'permeabili', label: 'Permeability (mD)', format: 'number' },
                     ],
-                    sortBy: 'depth_top_interval_ft',
+                    sortBy: 'depth_ft',
                     sortDirection: 'asc',
                 },
             ],

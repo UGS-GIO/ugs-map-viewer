@@ -1,0 +1,63 @@
+{
+  "layers": [
+    {
+      "id": "enmin_ccs_exclusionzones-fill",
+      "type": "fill",
+      "paint": {
+        "fill-color": [
+          "match",
+          [
+            "get",
+            "grade"
+          ],
+          "No-CCUS-Zone",
+          "#ff0000",
+          "No-CCUS-Zone-Geo",
+          "#000000",
+          "#95a5a6"
+        ],
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.15,
+          10,
+          0.25,
+          14,
+          0.35
+        ]
+      }
+    },
+    {
+      "id": "enmin_ccs_exclusionzones-outline",
+      "type": "line",
+      "paint": {
+        "line-color": "#000000",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.8,
+          10,
+          1.5,
+          14,
+          2.2
+        ]
+      },
+      "layout": {
+        "line-cap": "square",
+        "line-join": "bevel"
+      }
+    }
+  ]
+}

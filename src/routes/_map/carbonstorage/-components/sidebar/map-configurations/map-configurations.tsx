@@ -22,10 +22,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMap } from '@/hooks/use-map';
 import { wellWithTopsWMSTitle } from '../../../-data/layers/layers';
 import { Badge } from '@/components/ui/badge';
-import { applyLayerFilter } from '@/lib/sidebar/filter/util';
 
 type YesNoAll = "yes" | "no" | "all";
 
@@ -205,9 +203,6 @@ const useWellFilterManager = () => {
 };
 
 const MapConfigurations = () => {
-    const { map } = useMap();
-    const search = useSearch({ from: '/_map/carbonstorage/' });
-
     const { simpleState, updateFilters } = useWellFilterManager();
     const { core, las, formations, formation_operator } = simpleState;
 
@@ -220,17 +215,6 @@ const MapConfigurations = () => {
         queryFn: fetchFormationData,
         staleTime: 1000 * 60 * 60,
     });
-
-    // Apply filter to map when it changes
-    useEffect(() => {
-        if (!map) {
-            return;
-        }
-
-        const filterFromUrl = search.filters?.[wellWithTopsWMSTitle] ?? null;
-
-        applyLayerFilter(map, wellWithTopsWMSTitle, filterFromUrl);
-    }, [map, search.filters]);
 
     const handleHasCoreChange = useCallback((value: YesNoAll) => {
         updateFilters({ core: value });

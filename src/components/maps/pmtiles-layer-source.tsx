@@ -216,14 +216,30 @@ const OPACITY_PROP: Record<string, string> = {
     'fill-extrusion': 'fill-extrusion-opacity',
 }
 
-/** Apply the layer's opacity-slider override onto a fragment layer's paint. */
+// Authored paint properties per mounted sublayer id, used by live slider drags
+// (MapLibreLayerProxy) so dragging scales proportionally rather than overwriting
+// authored opacity values or zoom expressions.
+const pmtilesBasePaint = new Map<string, Record<string, unknown>>()
+
+export function getPmtilesBasePaint(layerId: string): Record<string, unknown> | undefined {
+    return pmtilesBasePaint.get(layerId)
+}
+
+export function scaleOpacityValue(base: unknown, opacity: number): number | maplibregl.ExpressionSpecification {
+    if (base == null) return opacity
+    if (typeof base === 'number') return base * opacity
+    if (Array.isArray(base)) return (opacity === 1 ? base : ['*', base, opacity]) as maplibregl.ExpressionSpecification
+    return opacity
+}
+
+/** Apply the layer's opacity-slider override proportionally onto a fragment layer's paint. */
 function withOpacity(paint: Record<string, unknown> | undefined, type: string, opacity: number | undefined): Record<string, unknown> {
     const out = { ...(paint ?? {}) }
     if (opacity == null) return out
     const key = OPACITY_PROP[type]
-    if (key) out[key] = opacity
-    if (type === 'circle') out['circle-stroke-opacity'] = opacity
-    if (type === 'symbol') out['text-opacity'] = opacity
+    if (key) out[key] = scaleOpacityValue(paint?.[key], opacity)
+    if (type === 'circle') out['circle-stroke-opacity'] = scaleOpacityValue(paint?.['circle-stroke-opacity'], opacity)
+    if (type === 'symbol') out['text-opacity'] = scaleOpacityValue(paint?.['text-opacity'], opacity)
     return out
 }
 
@@ -374,6 +390,25 @@ export function PMTilesLayerSource({
     const specs = buildPmtilesLayerSpecs({ layer, fragment, layerFilter, hidden, opacity, styleOverride })
     const isLabel = (spec: LayerProps) => 'source' in spec && spec.source === labelSourceId
     const labelSpecs = specs.filter(isLabel)
+
+    // Register each sublayer's authored base paint so live slider drags scale
+    // proportionally against fragment opacity values/expressions.
+    useEffect(() => {
+        const primaryId = getPmtilesLayerId(layer)
+        const rawLayers = (fragment.layers ?? []).filter(
+            l => l['source-layer'] == null || l['source-layer'] === layer.sourceLayer,
+        )
+        const registeredIds: string[] = []
+        rawLayers.forEach((raw, i) => {
+            const id = i === 0 ? primaryId : `${primaryId}-${i}`
+            const merged = styleOverride?.paint ? { ...(raw.paint ?? {}), ...styleOverride.paint } : (raw.paint ?? {})
+            pmtilesBasePaint.set(id, merged)
+            registeredIds.push(id)
+        })
+        return () => {
+            for (const id of registeredIds) pmtilesBasePaint.delete(id)
+        }
+    }, [layer, fragment, styleOverride])
 
     return (
         <>

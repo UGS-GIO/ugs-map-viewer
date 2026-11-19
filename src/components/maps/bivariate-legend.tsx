@@ -1,17 +1,19 @@
 import { useQuery } from '@tanstack/react-query';
 import { Legend, LegendRule } from '@/lib/types/geoserver-types';
+import { PMTilesRender } from '@/lib/types/mapping-types';
 import { queryKeys } from '@/lib/query-keys';
 
 interface BivariateLegendProps {
-    wmsUrl: string;
-    layerName: string;
+    wmsUrl?: string;
+    layerName?: string;
+    stacLegend?: PMTilesRender['legend'];
     xLabel: string;
     yLabel: string;
 }
 
 const CELL_RE = /^bivariate_(\d+)_(\d+)$/;
 
-interface ParsedGrid {
+export interface BivariateGrid {
     colors: string[][];
     rows: number;
     cols: number;
@@ -26,9 +28,31 @@ function shortLabel(title: string, index: 0 | 1): string {
     return part.split(' ')[0] ?? '';
 }
 
-function parseRules(rules: LegendRule[]): ParsedGrid | null {
+function buildGrid(
+    cells: { row: number; col: number; color: string; title: string }[],
+    noData: BivariateGrid['noData'],
+): BivariateGrid | null {
+    if (!cells.length) return null;
+
+    const rows = Math.max(...cells.map(c => c.row)) + 1;
+    const cols = Math.max(...cells.map(c => c.col)) + 1;
+
+    const colors = Array.from({ length: rows }, () => Array.from({ length: cols }, () => '#000'));
+    const yTicks = Array.from({ length: rows }, () => '');
+    const xTicks = Array.from({ length: cols }, () => '');
+
+    for (const c of cells) {
+        colors[c.row][c.col] = c.color;
+        if (!yTicks[c.row]) yTicks[c.row] = shortLabel(c.title, 0);
+        if (!xTicks[c.col]) xTicks[c.col] = shortLabel(c.title, 1);
+    }
+
+    return { colors, rows, cols, yTicks, xTicks, noData };
+}
+
+function parseRules(rules: LegendRule[]): BivariateGrid | null {
     const cells: { row: number; col: number; color: string; title: string }[] = [];
-    let noData: ParsedGrid['noData'] = null;
+    let noData: BivariateGrid['noData'] = null;
 
     for (const rule of rules) {
         const poly = rule.symbolizers?.[0]?.Polygon;
@@ -49,27 +73,37 @@ function parseRules(rules: LegendRule[]): ParsedGrid | null {
         }
     }
 
-    if (!cells.length) return null;
-
-    const rows = Math.max(...cells.map(c => c.row)) + 1;
-    const cols = Math.max(...cells.map(c => c.col)) + 1;
-
-    const colors = Array.from({ length: rows }, () => Array.from({ length: cols }, () => '#000'));
-    const yTicks = Array.from({ length: rows }, () => '');
-    const xTicks = Array.from({ length: cols }, () => '');
-
-    for (const c of cells) {
-        colors[c.row][c.col] = c.color;
-        if (!yTicks[c.row]) yTicks[c.row] = shortLabel(c.title, 0);
-        if (!xTicks[c.col]) xTicks[c.col] = shortLabel(c.title, 1);
-    }
-
-    return { colors, rows, cols, yTicks, xTicks, noData };
+    return buildGrid(cells, noData);
 }
 
-export function BivariateLegend({ wmsUrl, layerName, xLabel, yLabel }: BivariateLegendProps) {
-    const { data: grid, isLoading, error } = useQuery({
-        queryKey: queryKeys.layers.wmsLegend(layerName, wmsUrl),
+export function parseStacBivariateLegend(entries: NonNullable<PMTilesRender['legend']>): BivariateGrid | null {
+    const cells: { row: number; col: number; color: string; title: string }[] = [];
+    let noData: BivariateGrid['noData'] = null;
+
+    for (const entry of entries) {
+        const key = entry.value ?? '';
+        if (key === 'bivariate_nodata') {
+            noData = {
+                color: entry.color,
+                opacity: 0.3,
+                label: entry.label || 'Not Evaluated',
+            };
+            continue;
+        }
+
+        const m = key.match(CELL_RE);
+        if (m) {
+            cells.push({ row: +m[1], col: +m[2], color: entry.color, title: entry.label || '' });
+        }
+    }
+
+    return buildGrid(cells, noData);
+}
+
+export function BivariateLegend({ wmsUrl, layerName, stacLegend, xLabel, yLabel }: BivariateLegendProps) {
+    const stacGrid = stacLegend ? parseStacBivariateLegend(stacLegend) : null;
+    const { data: wmsGrid, isLoading, error } = useQuery({
+        queryKey: queryKeys.layers.wmsLegend(layerName ?? '', wmsUrl ?? ''),
         queryFn: async () => {
             const url = `${wmsUrl}?service=WMS&request=GetLegendGraphic&format=application/json&layer=${layerName}&version=1.3.0`;
             const res = await fetch(url, { headers: { Accept: 'application/json' } });
@@ -78,11 +112,13 @@ export function BivariateLegend({ wmsUrl, layerName, xLabel, yLabel }: Bivariate
             return parseRules(legend?.Legend?.[0]?.rules ?? []);
         },
         staleTime: 1000 * 60 * 60,
-        enabled: !!wmsUrl && !!layerName,
+        enabled: !stacGrid && !!wmsUrl && !!layerName,
     });
 
-    if (isLoading) return <div className="text-xs text-muted-foreground">Loading legend...</div>;
-    if (error) return <div className="text-xs text-destructive">Error loading legend</div>;
+    const grid = stacGrid ?? wmsGrid;
+
+    if (!stacGrid && isLoading) return <div className="text-xs text-muted-foreground">Loading legend...</div>;
+    if (!stacGrid && error) return <div className="text-xs text-destructive">Error loading legend</div>;
     if (!grid) return null;
 
     // Single CSS grid: [y-label] [y-ticks] [color cols...]

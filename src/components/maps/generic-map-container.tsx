@@ -34,7 +34,8 @@ import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection } from '@/hooks/use-feature-selection'
 import { rasterQueries, usePopupData } from '@/hooks/use-popup-data'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
-import type { LayerProps, WMSLayerProps, COGLayerProps } from '@/lib/types/mapping-types'
+import type { LayerProps, WMSLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
+import { parseStacBivariateLegend } from '@/components/maps/bivariate-legend'
 import { createSVGSymbol } from '@/lib/legend/symbol-generator'
 import { createRasterSymbol } from '@/lib/legend/symbolizers/raster'
 import { loadCogMetadata, deriveRange } from '@/hooks/use-cog-metadata'
@@ -114,8 +115,40 @@ async function fetchLegendDataForVisibleLayers(
     return visible
   }
 
+  const getVisiblePmtilesBivariateLayers = (layerArray: LayerProps[]): PMTilesLayerProps[] => {
+    const visible: PMTilesLayerProps[] = []
+    for (const layer of layerArray) {
+      if (layer.type === 'group' && 'layers' in layer) {
+        visible.push(...getVisiblePmtilesBivariateLayers(layer.layers || []))
+      } else if (layer.type === 'pmtiles' && displayedTitles.has(layer.title || '') && layer.bivariateLegend) {
+        visible.push(layer as PMTilesLayerProps)
+      }
+    }
+    return visible
+  }
+
   const visibleLayers = getVisibleWmsLayers(layers)
   const visibleCogLayers = getVisibleCogLayers(layers)
+  const visiblePmtilesBivariate = getVisiblePmtilesBivariateLayers(layers)
+
+  for (const pmLayer of visiblePmtilesBivariate) {
+    const render = pmLayer.renders?.find(r => r.id === pmLayer.defaultRenderId) ?? pmLayer.renders?.[0]
+    const grid = render?.legend ? parseStacBivariateLegend(render.legend) : null
+    if (grid && pmLayer.bivariateLegend) {
+      results.push({
+        layerTitle: pmLayer.title || pmLayer.sourceLayer,
+        symbols: [],
+        bivariate: {
+          colors: grid.colors,
+          xLabel: pmLayer.bivariateLegend.xLabel,
+          yLabel: pmLayer.bivariateLegend.yLabel,
+          xTicks: grid.xTicks,
+          yTicks: grid.yTicks,
+          noData: grid.noData ?? undefined,
+        },
+      })
+    }
+  }
 
   // Fetch legend for each visible layer
   for (const layer of visibleLayers) {

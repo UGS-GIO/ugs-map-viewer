@@ -1,0 +1,292 @@
+{
+  "layers": [
+    {
+      "id": "enmin_ccs_sco2_gridsummaries-nodata-fill",
+      "type": "fill",
+      "filter": [
+        "any",
+        [
+          "!",
+          [
+            "has",
+            "capacity_percentile"
+          ]
+        ],
+        [
+          "!",
+          [
+            "has",
+            "cost_percentile"
+          ]
+        ]
+      ],
+      "paint": {
+        "fill-color": "#ffffff",
+        "fill-opacity": 0.3
+      }
+    },
+    {
+      "id": "enmin_ccs_sco2_gridsummaries-nodata-outline",
+      "type": "line",
+      "filter": [
+        "any",
+        [
+          "!",
+          [
+            "has",
+            "capacity_percentile"
+          ]
+        ],
+        [
+          "!",
+          [
+            "has",
+            "cost_percentile"
+          ]
+        ]
+      ],
+      "paint": {
+        "line-color": "#999999",
+        "line-width": 0.5,
+        "line-dasharray": [
+          4,
+          2
+        ]
+      }
+    },
+    {
+      "id": "enmin_ccs_sco2_gridsummaries-fill",
+      "type": "fill",
+      "filter": [
+        "all",
+        [
+          "has",
+          "capacity_percentile"
+        ],
+        [
+          "has",
+          "cost_percentile"
+        ]
+      ],
+      "paint": {
+        "fill-color": [
+          "case",
+          [
+            "all",
+            [
+              ">=",
+              [
+                "to-number",
+                [
+                  "get",
+                  "capacity_percentile"
+                ]
+              ],
+              0.67
+            ],
+            [
+              ">=",
+              [
+                "to-number",
+                [
+                  "get",
+                  "cost_percentile"
+                ]
+              ],
+              0.67
+            ]
+          ],
+          "#64acbe",
+          [
+            "all",
+            [
+              ">=",
+              [
+                "to-number",
+                [
+                  "get",
+                  "capacity_percentile"
+                ]
+              ],
+              0.67
+            ],
+            [
+              ">=",
+              [
+                "to-number",
+                [
+                  "get",
+                  "cost_percentile"
+                ]
+              ],
+              0.33
+            ]
+          ],
+          "#627f8c",
+          [
+            ">=",
+            [
+              "to-number",
+              [
+                "get",
+                "capacity_percentile"
+              ]
+            ],
+            0.67
+          ],
+          "#574249",
+          [
+            "all",
+            [
+              ">=",
+              [
+                "to-number",
+                [
+                  "get",
+                  "capacity_percentile"
+                ]
+              ],
+              0.33
+            ],
+            [
+              ">=",
+              [
+                "to-number",
+                [
+                  "get",
+                  "cost_percentile"
+                ]
+              ],
+              0.67
+            ]
+          ],
+          "#b0d5df",
+          [
+            "all",
+            [
+              ">=",
+              [
+                "to-number",
+                [
+                  "get",
+                  "capacity_percentile"
+                ]
+              ],
+              0.33
+            ],
+            [
+              ">=",
+              [
+                "to-number",
+                [
+                  "get",
+                  "cost_percentile"
+                ]
+              ],
+              0.33
+            ]
+          ],
+          "#ad9ea5",
+          [
+            ">=",
+            [
+              "to-number",
+              [
+                "get",
+                "capacity_percentile"
+              ]
+            ],
+            0.33
+          ],
+          "#985356",
+          [
+            ">=",
+            [
+              "to-number",
+              [
+                "get",
+                "cost_percentile"
+              ]
+            ],
+            0.67
+          ],
+          "#e8e8e8",
+          [
+            ">=",
+            [
+              "to-number",
+              [
+                "get",
+                "cost_percentile"
+              ]
+            ],
+            0.33
+          ],
+          "#e4acac",
+          "#c85a5a"
+        ],
+        "fill-opacity": 0.8
+      }
+    },
+    {
+      "id": "enmin_ccs_sco2_gridsummaries-outline",
+      "type": "line",
+      "filter": [
+        "all",
+        [
+          "has",
+          "capacity_percentile"
+        ],
+        [
+          "has",
+          "cost_percentile"
+        ]
+      ],
+      "paint": {
+        "line-color": "#444444",
+        "line-width": 0.5
+      }
+    },
+    {
+      "id": "enmin_ccs_sco2_gridsummaries-label",
+      "type": "symbol",
+      "filter": [
+        ">",
+        [
+          "coalesce",
+          [
+            "to-number",
+            [
+              "get",
+              "formation_count"
+            ]
+          ],
+          0
+        ],
+        0
+      ],
+      "layout": {
+        "text-field": [
+          "concat",
+          [
+            "to-string",
+            [
+              "get",
+              "formation_count"
+            ]
+          ],
+          " Fms"
+        ],
+        "text-font": [
+          "Noto Sans Bold"
+        ],
+        "text-size": 13
+      },
+      "paint": {
+        "text-color": "#ffffff",
+        "text-halo-color": "#000000",
+        "text-halo-width": 2.5
+      }
+    }
+  ]
+}

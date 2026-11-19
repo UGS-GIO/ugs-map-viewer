@@ -548,10 +548,14 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
         // PMTiles layers have no GetLegendGraphic; swatches come from the STAC render.
         ?? (isPMTilesLayer(layerConfig) ? <StacRenderLegend layer={layerConfig} /> : undefined);
 
+    const pmtilesLegend = isPMTilesLayer(layerConfig)
+        ? (layerConfig.renders?.find(r => r.id === layerConfig.defaultRenderId) ?? layerConfig.renders?.[0])?.legend
+        : undefined;
+
     // --- Single Layer Rendering ---
     const layerControls = (
         <LayerControls
-            layerOpacity={isSelected ? (layerOpacityMap.get(layerConfig.title || '') ?? layerConfig.opacity ?? 0.8) : null}
+            layerOpacity={isSelected ? (layerOpacityMap.get(layerConfig.title || '') ?? layerConfig.opacity ?? (isPMTilesLayer(layerConfig) ? 1 : 0.8)) : null}
             handleOpacityChange={handleOpacityChange}
             handleOpacityCommit={handleOpacityCommit}
             title={layerConfig.title || ''}
@@ -562,6 +566,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
             layerName={extentOptions.type === 'wms' ? extentOptions.layerName : null}
             customLegend={resolvedCustomLegend}
             bivariateLegend={layerConfig.bivariateLegend}
+            pmtilesLegend={pmtilesLegend}
             arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
             legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}
             downloadParquetUrl={layerConfig.downloadParquetUrl}

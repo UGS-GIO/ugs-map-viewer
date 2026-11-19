@@ -4,6 +4,7 @@ import useLegendPreview, { type PreviewItem } from '@/hooks/use-legend-preview';
 import { useArcGisLegend } from '@/hooks/use-arcgis-legend';
 import { mountDomNode } from '@/lib/legend/mount-dom-node';
 import { LEGEND_ROW_CLASS, LEGEND_SWATCH_SLOT_CLASS } from '@/lib/legend/legend-layout';
+import type { PMTilesRender } from '@/lib/types/mapping-types';
 
 interface LegendAccordionProps {
     url: string;
@@ -11,6 +12,7 @@ interface LegendAccordionProps {
     layerName?: string | null;
     customLegend?: React.ReactNode;
     bivariateLegend?: { xLabel: string; yLabel: string };
+    pmtilesLegend?: PMTilesRender['legend'];
     arcgisUrl?: string;
     legendUnit?: string;
     /** Optional SLD style name appended to GetLegendGraphic so the legend matches what the map renders. */
@@ -38,7 +40,7 @@ function LegendItem({ item }: { item: PreviewItem }) {
     );
 }
 
-const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend, arcgisUrl, legendUnit, styleName }: LegendAccordionProps) => {
+const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend, pmtilesLegend, arcgisUrl, legendUnit, styleName }: LegendAccordionProps) => {
     const skipFetch = !!customLegend || !!bivariateLegend || !!arcgisUrl;
     const { preview, isLoading, error } = useLegendPreview(url, layerName ?? undefined, skipFetch, legendUnit, styleName);
     const { data: arcgisLegendItems, isLoading: arcgisLoading, error: arcgisError } = useArcGisLegend(arcgisUrl);
@@ -46,11 +48,12 @@ const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend
     const accordionValue = isOpen ? "legend-accordion" : "";
 
     const renderContent = () => {
-        if (bivariateLegend && url && layerName) {
+        if (bivariateLegend && (pmtilesLegend?.length || (url && layerName))) {
             return (
                 <BivariateLegend
                     wmsUrl={url}
-                    layerName={layerName}
+                    layerName={layerName ?? undefined}
+                    stacLegend={pmtilesLegend}
                     xLabel={bivariateLegend.xLabel}
                     yLabel={bivariateLegend.yLabel}
                 />

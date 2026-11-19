@@ -301,7 +301,12 @@ function collectStacItemIds(layers: LayerProps[], into: Set<string>): void {
 function mergeStacIntoLayer(layer: PMTilesLayerProps, item: StacItem): PMTilesLayerProps {
     const pmtilesUrl = pmtilesHref(item);
     if (!pmtilesUrl) throw new Error(`STAC item '${item.id}' has no PMTiles asset`);
-    const renders = stacRendersToPMTiles(item.properties['ugs:renders'] ?? item.properties.renders);
+    const renders = stacRendersToPMTiles(item.properties['ugs:renders'] ?? item.properties.renders)
+        .map(r => {
+            if (r.legend?.length) return r;
+            const appLegend = layer.renders?.find(lr => lr.id === r.id)?.legend;
+            return appLegend?.length ? { ...r, legend: appLegend } : r;
+        });
     return {
         ...layer,
         pmtilesUrl,
@@ -311,9 +316,9 @@ function mergeStacIntoLayer(layer: PMTilesLayerProps, item: StacItem): PMTilesLa
         renders: renders.length > 0 ? renders : layer.renders,
         defaultRenderId: layer.defaultRenderId ?? renders[0]?.id,
         downloadParquetUrl: layer.downloadParquetUrl ?? parquetHref(item),
-        // Credit line under the layer title. STAC is the source of truth; an
-        // app-authored `subtitle` still wins so a layer can override it.
-        subtitle: layer.subtitle ?? item.properties['ugs:point_of_contact'],
+        // Credit line under the layer title. An explicit `subtitle` or `sourceAgency`
+        // authored on the layer config takes precedence over STAC `ugs:point_of_contact`.
+        subtitle: layer.subtitle ?? (layer.sourceAgency ? undefined : item.properties['ugs:point_of_contact']),
         sublayers: resolveSublayerRelatedTables(layer.sublayers, item),
     };
 }

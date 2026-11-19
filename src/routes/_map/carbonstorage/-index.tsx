@@ -74,6 +74,61 @@ const searchConfig: SearchSourceConfig[] = [
   },
 ]
 
+/**
+ * Translate the CQL filter produced by MapConfigurations (hascore, has_las, and
+ * formation presence with AND/OR) into a MapLibre filter expression for the
+ * Wells Database PMTiles layer.
+ */
+function wellsCqlToMaplibreFilter(cql: string): FilterSpecification | null {
+  const parts: string[] = []
+  let depth = 0
+  let start = 0
+  for (let i = 0; i < cql.length; i++) {
+    if (cql[i] === '(') depth++
+    else if (cql[i] === ')') depth--
+    else if (depth === 0 && cql.slice(i, i + 5).toUpperCase() === ' AND ') {
+      parts.push(cql.slice(start, i).trim())
+      i += 4
+      start = i + 1
+    }
+  }
+  parts.push(cql.slice(start).trim())
+
+  const parseClause = (clause: string): ExpressionSpecification | null => {
+    const trimmed = clause.replace(/^\(+|\)+$/g, '').trim()
+    const isNotNull = trimmed.match(/^([a-zA-Z0-9_]+)\s+IS\s+NOT\s+NULL$/i)
+    if (isNotNull) return ['has', isNotNull[1]]
+
+    const eqMatch = trimmed.match(/^([a-zA-Z0-9_]+)\s*=\s*'([^']+)'$/)
+    if (eqMatch) {
+      const [, field, value] = eqMatch
+      if (field === 'has_las') return ['==', ['get', field], value === 'True']
+      return ['==', ['get', field], value]
+    }
+    return null
+  }
+
+  const conditions: ExpressionSpecification[] = []
+  for (const rawPart of parts) {
+    const inner = rawPart.replace(/^\(+|\)+$/g, '').trim()
+    if (/\s+OR\s+/i.test(inner)) {
+      const orExprs = inner.split(/\s+OR\s+/i).map(parseClause).filter((e): e is ExpressionSpecification => e !== null)
+      if (orExprs.length === 1) conditions.push(orExprs[0])
+      else if (orExprs.length > 1) conditions.push(['any', ...orExprs] as ExpressionSpecification)
+    } else if (/\s+AND\s+/i.test(inner)) {
+      const andExprs = inner.split(/\s+AND\s+/i).map(parseClause).filter((e): e is ExpressionSpecification => e !== null)
+      conditions.push(...andExprs)
+    } else {
+      const expr = parseClause(inner)
+      if (expr) conditions.push(expr)
+    }
+  }
+
+  if (conditions.length === 0) return null
+  if (conditions.length === 1) return conditions[0]
+  return ['all', ...conditions] as FilterSpecification
+}
+
 export default function Map() {
   const { updateLayerSelection } = useLayerUrl()
   const { contextValue } = useMapContextState();
@@ -83,23 +138,16 @@ export default function Map() {
   const searchParams = useSearch({ from: '/_map/carbonstorage/' })
   const filtersFromUrl = searchParams.filters ?? {}
 
-  // Build CQL filters for layers
-  const layerFilters = useMemo(() => {
-    const filters: Record<string, string> = {}
-    for (const [filterKey, layerTitle] of Object.entries(CCS_FILTER_MAPPING)) {
-      const filterValue = filtersFromUrl[filterKey]
-      if (filterValue) {
-        filters[layerTitle] = filterValue
-      }
-    }
-    return filters
-  }, [filtersFromUrl])
-
-  // Translate Power Plants' stored CQL filter (from its checkbox legend) into a maplibre
-  // filter expression for the PMTiles layer.
+  // Translate stored CQL filters (Wells Database + Power Plants) into MapLibre
+  // filter expressions for their PMTiles layers.
   const vectorLayerFilters = useMemo(() => {
-    const powerplantsCql = filtersFromUrl[powerplantsFilterSchema.recordKey]
     const result: Record<string, FilterSpecification> = {}
+    const wellsCql = filtersFromUrl[wellWithTopsWMSTitle]
+    if (wellsCql) {
+      const wellsExpr = wellsCqlToMaplibreFilter(wellsCql)
+      if (wellsExpr) result[wellWithTopsWMSTitle] = wellsExpr
+    }
+    const powerplantsCql = filtersFromUrl[powerplantsFilterSchema.recordKey]
     if (powerplantsCql) {
       const expr: ExpressionSpecification | null = toMaplibreFilter(powerplantsFilterSchema, fromCql(powerplantsFilterSchema, powerplantsCql))
       if (expr) result[powerplantsTitle] = expr
@@ -133,7 +181,6 @@ export default function Map() {
         }
       >
         <GenericMapContainer
-          layerFilters={layerFilters}
           vectorLayerFilters={vectorLayerFilters}
           onClearSearch={() => searchRef.current?.clear()}
         />
