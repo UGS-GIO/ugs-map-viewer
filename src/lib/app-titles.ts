@@ -5,6 +5,7 @@
 export const APP_TITLES: Record<string, string> = {
   'hazards': 'Geologic Hazards Portal',
   'hazards-review': 'Hazards Data Review (Internal Use Only)',
+  'review-stac': 'Review STAC Catalog (Internal Use Only)',
   'minerals': 'Utah Mineral Resources: Metals and Industrial Minerals',
   'wetlands': 'Utah Wetlands Portal',
   'wetlandplants': 'Wetland and Riparian Plants of Utah',

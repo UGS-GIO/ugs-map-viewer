@@ -18,6 +18,7 @@ import { Route as MapRouteImport } from './routes/_map'
 import { Route as ReportRouteRouteImport } from './routes/_report/route'
 import { Route as AuthLoginRouteImport } from './routes/_auth/login'
 import { Route as MapHazardsReviewRouteRouteImport } from './routes/_map/hazards-review/route'
+import { Route as MapReviewStacRouteRouteImport } from './routes/_map/review-stac/route'
 import { Route as ReportHazardsRouteRouteImport } from './routes/_report/hazards/route'
 
 const MapCarbonstorageIndexLazyRouteImport = createFileRoute(
@@ -31,6 +32,8 @@ const MapHazardsReviewIndexLazyRouteImport = createFileRoute(
 )()
 const MapHazardsIndexLazyRouteImport = createFileRoute('/_map/hazards/')()
 const MapMineralsIndexLazyRouteImport = createFileRoute('/_map/minerals/')()
+const MapReviewStacIndexLazyRouteImport =
+  createFileRoute('/_map/review-stac/')()
 const MapSubsurfaceIndexLazyRouteImport = createFileRoute('/_map/subsurface/')()
 const MapWetlandplantsIndexLazyRouteImport = createFileRoute(
   '/_map/wetlandplants/',
@@ -70,6 +73,11 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
 const MapHazardsReviewRouteRoute = MapHazardsReviewRouteRouteImport.update({
   id: '/hazards-review',
   path: '/hazards-review',
+  getParentRoute: () => MapRoute,
+} as any)
+const MapReviewStacRouteRoute = MapReviewStacRouteRouteImport.update({
+  id: '/review-stac',
+  path: '/review-stac',
   getParentRoute: () => MapRoute,
 } as any)
 const ReportHazardsRouteRoute = ReportHazardsRouteRouteImport.update({
@@ -121,6 +129,13 @@ const MapMineralsIndexLazyRoute = MapMineralsIndexLazyRouteImport.update({
 } as any).lazy(() =>
   import('./routes/_map/minerals/index.lazy').then((d) => d.Route),
 )
+const MapReviewStacIndexLazyRoute = MapReviewStacIndexLazyRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => MapReviewStacRouteRoute,
+} as any).lazy(() =>
+  import('./routes/_map/review-stac/index.lazy').then((d) => d.Route),
+)
 const MapSubsurfaceIndexLazyRoute = MapSubsurfaceIndexLazyRouteImport.update({
   id: '/subsurface/',
   path: '/subsurface/',
@@ -155,6 +170,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
   '/hazards-review': typeof MapHazardsReviewRouteRouteWithChildren
+  '/review-stac': typeof MapReviewStacRouteRouteWithChildren
   '/hazards': typeof ReportHazardsRouteRouteWithChildren
   '/login': typeof AuthLoginRoute
   '/hazards/report': typeof ReportHazardsReportLazyRoute
@@ -164,6 +180,7 @@ export interface FileRoutesByFullPath {
   '/hazards-review/': typeof MapHazardsReviewIndexLazyRoute
   '/hazards/': typeof MapHazardsIndexLazyRoute
   '/minerals/': typeof MapMineralsIndexLazyRoute
+  '/review-stac/': typeof MapReviewStacIndexLazyRoute
   '/subsurface/': typeof MapSubsurfaceIndexLazyRoute
   '/wetlandplants/': typeof MapWetlandplantsIndexLazyRoute
   '/wetlands/': typeof MapWetlandsIndexLazyRoute
@@ -179,6 +196,7 @@ export interface FileRoutesByTo {
   '/groundwater': typeof MapGroundwaterIndexLazyRoute
   '/hazards-review': typeof MapHazardsReviewIndexLazyRoute
   '/minerals': typeof MapMineralsIndexLazyRoute
+  '/review-stac': typeof MapReviewStacIndexLazyRoute
   '/subsurface': typeof MapSubsurfaceIndexLazyRoute
   '/wetlandplants': typeof MapWetlandplantsIndexLazyRoute
   '/wetlands': typeof MapWetlandsIndexLazyRoute
@@ -191,6 +209,7 @@ export interface FileRoutesById {
   '/_auth': typeof AuthRouteWithChildren
   '/_map': typeof MapRouteWithChildren
   '/_map/hazards-review': typeof MapHazardsReviewRouteRouteWithChildren
+  '/_map/review-stac': typeof MapReviewStacRouteRouteWithChildren
   '/_report/hazards': typeof ReportHazardsRouteRouteWithChildren
   '/_auth/login': typeof AuthLoginRoute
   '/_report/hazards/report': typeof ReportHazardsReportLazyRoute
@@ -200,6 +219,7 @@ export interface FileRoutesById {
   '/_map/hazards-review/': typeof MapHazardsReviewIndexLazyRoute
   '/_map/hazards/': typeof MapHazardsIndexLazyRoute
   '/_map/minerals/': typeof MapMineralsIndexLazyRoute
+  '/_map/review-stac/': typeof MapReviewStacIndexLazyRoute
   '/_map/subsurface/': typeof MapSubsurfaceIndexLazyRoute
   '/_map/wetlandplants/': typeof MapWetlandplantsIndexLazyRoute
   '/_map/wetlands/': typeof MapWetlandsIndexLazyRoute
@@ -210,6 +230,7 @@ export interface FileRouteTypes {
     | '/'
     | '/$'
     | '/hazards-review'
+    | '/review-stac'
     | '/hazards'
     | '/login'
     | '/hazards/report'
@@ -219,6 +240,7 @@ export interface FileRouteTypes {
     | '/hazards-review/'
     | '/hazards/'
     | '/minerals/'
+    | '/review-stac/'
     | '/subsurface/'
     | '/wetlandplants/'
     | '/wetlands/'
@@ -234,6 +256,7 @@ export interface FileRouteTypes {
     | '/groundwater'
     | '/hazards-review'
     | '/minerals'
+    | '/review-stac'
     | '/subsurface'
     | '/wetlandplants'
     | '/wetlands'
@@ -245,6 +268,7 @@ export interface FileRouteTypes {
     | '/_auth'
     | '/_map'
     | '/_map/hazards-review'
+    | '/_map/review-stac'
     | '/_report/hazards'
     | '/_auth/login'
     | '/_report/hazards/report'
@@ -254,6 +278,7 @@ export interface FileRouteTypes {
     | '/_map/hazards-review/'
     | '/_map/hazards/'
     | '/_map/minerals/'
+    | '/_map/review-stac/'
     | '/_map/subsurface/'
     | '/_map/wetlandplants/'
     | '/_map/wetlands/'
@@ -318,6 +343,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MapHazardsReviewRouteRouteImport
       parentRoute: typeof MapRoute
     }
+    '/_map/review-stac': {
+      id: '/_map/review-stac'
+      path: '/review-stac'
+      fullPath: '/review-stac'
+      preLoaderRoute: typeof MapReviewStacRouteRouteImport
+      parentRoute: typeof MapRoute
+    }
     '/_report/hazards': {
       id: '/_report/hazards'
       path: '/hazards'
@@ -366,6 +398,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/minerals/'
       preLoaderRoute: typeof MapMineralsIndexLazyRouteImport
       parentRoute: typeof MapRoute
+    }
+    '/_map/review-stac/': {
+      id: '/_map/review-stac/'
+      path: '/'
+      fullPath: '/review-stac/'
+      preLoaderRoute: typeof MapReviewStacIndexLazyRouteImport
+      parentRoute: typeof MapReviewStacRouteRoute
     }
     '/_map/subsurface/': {
       id: '/_map/subsurface/'
@@ -444,8 +483,20 @@ const MapHazardsReviewRouteRouteWithChildren =
     MapHazardsReviewRouteRouteChildren,
   )
 
+interface MapReviewStacRouteRouteChildren {
+  MapReviewStacIndexLazyRoute: typeof MapReviewStacIndexLazyRoute
+}
+
+const MapReviewStacRouteRouteChildren: MapReviewStacRouteRouteChildren = {
+  MapReviewStacIndexLazyRoute: MapReviewStacIndexLazyRoute,
+}
+
+const MapReviewStacRouteRouteWithChildren =
+  MapReviewStacRouteRoute._addFileChildren(MapReviewStacRouteRouteChildren)
+
 interface MapRouteChildren {
   MapHazardsReviewRouteRoute: typeof MapHazardsReviewRouteRouteWithChildren
+  MapReviewStacRouteRoute: typeof MapReviewStacRouteRouteWithChildren
   MapCarbonstorageIndexLazyRoute: typeof MapCarbonstorageIndexLazyRoute
   MapGeophysicsIndexLazyRoute: typeof MapGeophysicsIndexLazyRoute
   MapGroundwaterIndexLazyRoute: typeof MapGroundwaterIndexLazyRoute
@@ -458,6 +509,7 @@ interface MapRouteChildren {
 
 const MapRouteChildren: MapRouteChildren = {
   MapHazardsReviewRouteRoute: MapHazardsReviewRouteRouteWithChildren,
+  MapReviewStacRouteRoute: MapReviewStacRouteRouteWithChildren,
   MapCarbonstorageIndexLazyRoute: MapCarbonstorageIndexLazyRoute,
   MapGeophysicsIndexLazyRoute: MapGeophysicsIndexLazyRoute,
   MapGroundwaterIndexLazyRoute: MapGroundwaterIndexLazyRoute,
