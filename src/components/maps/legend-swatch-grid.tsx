@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
 import type { SwatchShape } from '@/lib/legend/swatch-shape'
@@ -53,6 +54,7 @@ interface LegendSwatchGridProps {
  * part-transparent colour reads as see-through rather than as the panel.
  */
 export function LegendSwatch({ shape = 'circle', color, stroke }: { shape?: SwatchShape; color: string; stroke?: string }) {
+    const patternId = useId()
     const paint = { backgroundImage: `linear-gradient(${color}, ${color})`, borderColor: stroke ?? 'rgba(0,0,0,0.3)' }
     return (
         <span className={LEGEND_SWATCH_SLOT_CLASS} aria-hidden>
@@ -64,6 +66,20 @@ export function LegendSwatch({ shape = 'circle', color, stroke }: { shape?: Swat
             )}
             {shape === 'circle' && <span className="legend-swatch size-2.5 rounded-full border" style={paint} />}
             {shape === 'fill' && <span className="legend-swatch h-3.5 w-7 rounded-sm border" style={paint} />}
+            {shape === 'hatch' && (
+                <span className="legend-swatch h-3.5 w-7 overflow-hidden rounded-sm border" style={{ borderColor: stroke ?? 'rgba(0,0,0,0.3)' }}>
+                    <svg viewBox="0 0 28 14" preserveAspectRatio="xMidYMid slice" className="block size-full">
+                        <defs>
+                            <pattern id={patternId} width="6" height="6" patternUnits="userSpaceOnUse">
+                                <line x1="-1" y1="1" x2="1" y2="-1" stroke={color} strokeWidth="1.5" />
+                                <line x1="0" y1="6" x2="6" y2="0" stroke={color} strokeWidth="1.5" />
+                                <line x1="5" y1="7" x2="7" y2="5" stroke={color} strokeWidth="1.5" />
+                            </pattern>
+                        </defs>
+                        <rect width="28" height="14" fill={`url(#${patternId})`} />
+                    </svg>
+                </span>
+            )}
             {shape === 'triangle' && (
                 <svg viewBox="0 0 12 12" className="size-3 shrink-0">
                     <polygon points="6,1.5 11,10.5 1,10.5" fill={color} stroke={stroke ?? 'rgba(0,0,0,0.4)'} strokeWidth="1" strokeLinejoin="round" />

@@ -27,7 +27,7 @@ export function StacRenderLegend({ layer }: { layer: PMTilesLayerProps }) {
         return <div className="px-1 py-1 text-xs text-muted-foreground">Loading legend...</div>
     }
 
-    const shape = layer.swatchShape ?? swatchShapeOf(fragment?.layers?.map(l => l.type) ?? [])
+    const shape = layer.swatchShape ?? swatchShapeOf(fragment?.layers ?? [])
 
     return (
         <LegendSwatchGrid

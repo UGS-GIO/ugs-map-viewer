@@ -304,8 +304,8 @@ const transmissionLinesConfig: PMTilesLayerProps = {
     sourceLayer: transmissionLinesLayerName,
     title: transmissionLinesTitle,
     visible: false,
-    sourceAgency: 'UGRC',
-    sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah::utah-transmission-lines/about',
+    sourceAgency: 'HIFLD / U.S. Government',
+    sourceUrl: 'https://www.arcgis.com/home/item.html?id=d4090758322c4d32a4cd002ffaa0aa12',
     renders: [{
         id: 'default',
         styleUrl: '/styles/enmin_transmissionlines/default.json',
@@ -337,6 +337,7 @@ const seamlessGeolunitsConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'Utah Geological Survey',
     sourceUrl: 'https://geology.utah.gov/publication-details/?pub=M-179dm',
+    customLegend: <div className="px-1 py-1 text-xs text-muted-foreground italic">No Legend Provided</div>,
     sublayers: [
         {
             name: seamlessGeolunitsLayerName,

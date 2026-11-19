@@ -70,14 +70,31 @@ export function activeRenderOf(layer: PMTilesLayerProps, activeSymbology?: strin
     return renders.find(r => r.id === id) ?? renders[0]
 }
 
+const styleFragmentCache = new Map<string, Promise<StyleFragment>>()
+
+export function fetchStyleFragment(styleUrl: string): Promise<StyleFragment> {
+    let pending = styleFragmentCache.get(styleUrl)
+    if (!pending) {
+        pending = fetch(styleUrl)
+            .then(res => {
+                if (!res.ok) throw new Error(`PMTiles style fetch failed: ${res.status}`)
+                return res.json() as Promise<StyleFragment>
+            })
+            .catch(err => {
+                styleFragmentCache.delete(styleUrl)
+                throw err
+            })
+        styleFragmentCache.set(styleUrl, pending)
+    }
+    return pending
+}
+
 /** A render's style fragment. Shared so the legend reads the same cached fragment the map draws. */
 export const styleFragmentQueryOptions = (styleUrl: string | undefined) => queryOptions({
     queryKey: ['pmtiles-style-fragment', styleUrl ?? ''],
     queryFn: async (): Promise<StyleFragment> => {
         if (!styleUrl) throw new Error('PMTiles render has no styleUrl')
-        const res = await fetch(styleUrl)
-        if (!res.ok) throw new Error(`PMTiles style fetch failed: ${res.status}`)
-        return res.json()
+        return fetchStyleFragment(styleUrl)
     },
     enabled: !!styleUrl,
     staleTime: Infinity,
@@ -112,6 +129,47 @@ function spriteUrl(sprite: string): string {
 }
 
 interface SpriteEntry { x: number; y: number; width: number; height: number; pixelRatio?: number }
+interface DecodedSpriteSlice { name: string; imageData: ImageData; pixelRatio: number }
+
+const spriteSheetCache = new Map<string, Promise<DecodedSpriteSlice[]>>()
+
+function fetchDecodedSpriteSheet(url: string): Promise<DecodedSpriteSlice[]> {
+    let pending = spriteSheetCache.get(url)
+    if (!pending) {
+        pending = (async () => {
+            const [json, blob] = await Promise.all([
+                fetch(`${url}.json`).then(r => { if (!r.ok) throw new Error(`sprite json ${r.status}`); return r.json() as Promise<Record<string, SpriteEntry>> }),
+                fetch(`${url}.png`).then(r => { if (!r.ok) throw new Error(`sprite png ${r.status}`); return r.blob() }),
+            ])
+            const bitmap = await createImageBitmap(blob)
+            try {
+                const canvas = document.createElement('canvas')
+                const ctx = canvas.getContext('2d')
+                if (!ctx) return []
+                const slices: DecodedSpriteSlice[] = []
+                for (const [name, s] of Object.entries(json)) {
+                    canvas.width = s.width
+                    canvas.height = s.height
+                    ctx.clearRect(0, 0, s.width, s.height)
+                    ctx.drawImage(bitmap, s.x, s.y, s.width, s.height, 0, 0, s.width, s.height)
+                    slices.push({
+                        name,
+                        imageData: ctx.getImageData(0, 0, s.width, s.height),
+                        pixelRatio: s.pixelRatio ?? 1,
+                    })
+                }
+                return slices
+            } finally {
+                bitmap.close()
+            }
+        })().catch(err => {
+            spriteSheetCache.delete(url)
+            throw err
+        })
+        spriteSheetCache.set(url, pending)
+    }
+    return pending
+}
 
 /**
  * Load a baked sprite sheet (`<base>.json` + `<base>.png`) and register each
@@ -120,29 +178,14 @@ interface SpriteEntry { x: number; y: number; width: number; height: number; pix
  * `addSprite` (which namespaces as `id:icon`) can't satisfy them — we slice the
  * sheet ourselves. Idempotent: existing images are skipped.
  */
-async function loadSpriteSheet(map: maplibregl.Map, base: string): Promise<void> {
-    const url = spriteUrl(base)
-    const [json, blob] = await Promise.all([
-        fetch(`${url}.json`).then(r => { if (!r.ok) throw new Error(`sprite json ${r.status}`); return r.json() as Promise<Record<string, SpriteEntry>> }),
-        fetch(`${url}.png`).then(r => { if (!r.ok) throw new Error(`sprite png ${r.status}`); return r.blob() }),
-    ])
-    const bitmap = await createImageBitmap(blob)
-    try {
-        const canvas = document.createElement('canvas')
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-        for (const [name, s] of Object.entries(json)) {
-            if (map.hasImage(name)) continue
-            canvas.width = s.width
-            canvas.height = s.height
-            ctx.clearRect(0, 0, s.width, s.height)
-            ctx.drawImage(bitmap, s.x, s.y, s.width, s.height, 0, 0, s.width, s.height)
-            try {
-                map.addImage(name, ctx.getImageData(0, 0, s.width, s.height), { pixelRatio: s.pixelRatio ?? 1 })
-            } catch { /* concurrent add — ignore */ }
-        }
-    } finally {
-        bitmap.close()
+async function loadSpriteSheet(map: maplibregl.Map, base: string, isCancelled?: () => boolean): Promise<void> {
+    const slices = await fetchDecodedSpriteSheet(spriteUrl(base))
+    if (isCancelled?.()) return
+    for (const s of slices) {
+        if (map.hasImage(s.name)) continue
+        try {
+            map.addImage(s.name, s.imageData, { pixelRatio: s.pixelRatio })
+        } catch { /* concurrent add — ignore */ }
     }
 }
 
@@ -357,14 +400,24 @@ export function PMTilesLayerSource({
         ? `pmtiles://${layer.pmtilesUrl}`
         : `pmtiles://${window.location.origin}${layer.pmtilesUrl}`
 
-    // Icon renders ship a baked sprite sheet the base style lacks; slice it and
-    // register each icon under its bare name so `icon-image` resolves.
+    // Icon and fill-pattern renders ship a baked sprite sheet the base style lacks;
+    // slice it and register each image under its bare name, re-applying after basemap swaps.
     useEffect(() => {
         if (!render?.sprite || !mapRef) return
         const map = mapRef.getMap()
-        loadSpriteSheet(map, render.sprite).catch(err =>
-            console.warn(`[PMTilesLayerSource] sprite load failed for ${layer.title}/${render.id}:`, err),
-        )
+        const spriteBase = render.sprite
+        let cancelled = false
+        const register = () => {
+            loadSpriteSheet(map, spriteBase, () => cancelled).catch(err =>
+                console.warn(`[PMTilesLayerSource] sprite load failed for ${layer.title}/${render.id}:`, err),
+            )
+        }
+        register()
+        map.on('styledata', register)
+        return () => {
+            cancelled = true
+            map.off('styledata', register)
+        }
     }, [render, mapRef, layer.title])
 
     const labelSourceId = getPmtilesLabelSourceId(layer)

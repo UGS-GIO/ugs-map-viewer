@@ -109,7 +109,9 @@ export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
         ?? modes.find(m => m.id === layer.defaultRenderId)
         ?? modes[0]
     const field = mode ? schema.fields.find(f => f.field === mode.field) : undefined
-    const { data: fragment } = useQuery(styleFragmentQueryOptions(mode?.styleUrl))
+    const { data: fragment, isLoading: fragmentLoading } = useQuery(
+        styleFragmentQueryOptions(!layer.swatchShape ? mode?.styleUrl : undefined),
+    )
     const layerTitle = layer.title ?? ''
 
     // Switching renders resets the outgoing field, so an all-off legend can't leave the map
@@ -155,7 +157,16 @@ export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
                     </Select>
                 </div>
             )}
-            <CategoryLegendGrid schema={schema} field={field} entries={mode.entries} shape={swatchShapeOf(fragment?.layers?.map(l => l.type) ?? [])} />
+            {!layer.swatchShape && fragmentLoading ? (
+                <div className="px-1 py-1 text-xs text-muted-foreground">Loading legend...</div>
+            ) : (
+                <CategoryLegendGrid
+                    schema={schema}
+                    field={field}
+                    entries={mode.entries}
+                    shape={layer.swatchShape ?? swatchShapeOf(fragment?.layers ?? [])}
+                />
+            )}
         </div>
     )
 }

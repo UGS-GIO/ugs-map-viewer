@@ -36,7 +36,8 @@ import { rasterQueries, usePopupData } from '@/hooks/use-popup-data'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
 import type { LayerProps, WMSLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
 import { parseStacBivariateLegend } from '@/components/maps/bivariate-legend'
-import { activeRenderOf } from '@/components/maps/pmtiles-layer-source'
+import { activeRenderOf, fetchStyleFragment } from '@/components/maps/pmtiles-layer-source'
+import { swatchShapeOf, swatchSvgHtml } from '@/lib/legend/swatch-shape'
 import { createSVGSymbol } from '@/lib/legend/symbol-generator'
 import { createRasterSymbol } from '@/lib/legend/symbolizers/raster'
 import { loadCogMetadata, deriveRange } from '@/hooks/use-cog-metadata'
@@ -117,12 +118,12 @@ async function fetchLegendDataForVisibleLayers(
     return visible
   }
 
-  const getVisiblePmtilesBivariateLayers = (layerArray: LayerProps[]): PMTilesLayerProps[] => {
+  const getVisiblePmtilesLayers = (layerArray: LayerProps[]): PMTilesLayerProps[] => {
     const visible: PMTilesLayerProps[] = []
     for (const layer of layerArray) {
       if (layer.type === 'group' && 'layers' in layer) {
-        visible.push(...getVisiblePmtilesBivariateLayers(layer.layers || []))
-      } else if (layer.type === 'pmtiles' && displayedTitles.has(layer.title || '') && layer.bivariateLegend) {
+        visible.push(...getVisiblePmtilesLayers(layer.layers || []))
+      } else if (layer.type === 'pmtiles' && displayedTitles.has(layer.title || '')) {
         visible.push(layer as PMTilesLayerProps)
       }
     }
@@ -131,25 +132,49 @@ async function fetchLegendDataForVisibleLayers(
 
   const visibleLayers = getVisibleWmsLayers(layers)
   const visibleCogLayers = getVisibleCogLayers(layers)
-  const visiblePmtilesBivariate = getVisiblePmtilesBivariateLayers(layers)
+  const visiblePmtilesLayers = getVisiblePmtilesLayers(layers)
 
-  for (const pmLayer of visiblePmtilesBivariate) {
+  for (const pmLayer of visiblePmtilesLayers) {
     const render = activeRenderOf(pmLayer, vectorLayerSymbology[pmLayer.title || ''])
-    const grid = render?.legend ? parseStacBivariateLegend(render.legend) : null
-    if (grid && pmLayer.bivariateLegend) {
-      results.push({
-        layerTitle: pmLayer.title || pmLayer.sourceLayer,
-        symbols: [],
-        bivariate: {
-          colors: grid.colors,
-          xLabel: pmLayer.bivariateLegend.xLabel,
-          yLabel: pmLayer.bivariateLegend.yLabel,
-          xTicks: grid.xTicks,
-          yTicks: grid.yTicks,
-          noData: grid.noData ?? undefined,
-        },
-      })
+    const layerTitle = pmLayer.title || pmLayer.sourceLayer
+    if (pmLayer.bivariateLegend) {
+      const grid = render?.legend ? parseStacBivariateLegend(render.legend) : null
+      if (grid) {
+        results.push({
+          layerTitle,
+          symbols: [],
+          bivariate: {
+            colors: grid.colors,
+            xLabel: pmLayer.bivariateLegend.xLabel,
+            yLabel: pmLayer.bivariateLegend.yLabel,
+            xTicks: grid.xTicks,
+            yTicks: grid.yTicks,
+            noData: grid.noData ?? undefined,
+          },
+        })
+      }
+      continue
     }
+
+    if (pmLayer.customLegend || !render?.legend?.length) continue
+
+    let shape = pmLayer.swatchShape
+    if (!shape && render.styleUrl) {
+      try {
+        const fragment = await fetchStyleFragment(render.styleUrl)
+        shape = swatchShapeOf(fragment.layers ?? [])
+      } catch (e) {
+        console.warn(`Failed to fetch style fragment for ${layerTitle}:`, e)
+      }
+    }
+    const resolvedShape = shape ?? 'circle'
+    results.push({
+      layerTitle,
+      symbols: render.legend.map(entry => ({
+        label: entry.label,
+        svgHtml: swatchSvgHtml(resolvedShape, entry.color, entry.stroke),
+      })),
+    })
   }
 
   // Fetch legend for each visible layer
