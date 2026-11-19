@@ -1,4 +1,4 @@
-export type SwatchShape = 'fill' | 'line' | 'circle'
+export type SwatchShape = 'fill' | 'line' | 'circle' | 'triangle'
 
 /** The geometry a render draws, from its first non-label layer; labels alone read as points. */
 export function swatchShapeOf(layerTypes: readonly string[]): SwatchShape {

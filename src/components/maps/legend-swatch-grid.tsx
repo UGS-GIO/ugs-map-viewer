@@ -56,9 +56,19 @@ export function LegendSwatch({ shape = 'circle', color, stroke }: { shape?: Swat
     const paint = { backgroundImage: `linear-gradient(${color}, ${color})`, borderColor: stroke ?? 'rgba(0,0,0,0.3)' }
     return (
         <span className={LEGEND_SWATCH_SLOT_CLASS} aria-hidden>
-            {shape === 'line' && <span className="h-0.5 w-7 rounded-full" style={{ backgroundColor: color }} />}
+            {shape === 'line' && (
+                <span
+                    className="h-0.5 w-7 rounded-full"
+                    style={{ backgroundColor: color, boxShadow: stroke ? `0 0 0 1px ${stroke}` : undefined }}
+                />
+            )}
             {shape === 'circle' && <span className="legend-swatch size-2.5 rounded-full border" style={paint} />}
             {shape === 'fill' && <span className="legend-swatch h-3.5 w-7 rounded-sm border" style={paint} />}
+            {shape === 'triangle' && (
+                <svg viewBox="0 0 12 12" className="size-3 shrink-0">
+                    <polygon points="6,1.5 11,10.5 1,10.5" fill={color} stroke={stroke ?? 'rgba(0,0,0,0.4)'} strokeWidth="1" strokeLinejoin="round" />
+                </svg>
+            )}
         </span>
     )
 }

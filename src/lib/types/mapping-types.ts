@@ -258,6 +258,8 @@ export interface PMTilesLayerProps extends BaseLayerProps {
     sublayers?: ExtendedSublayerProperties[];
     /** Polygon layers only: draw the style's point-placed text once per polygon, inside its visible part, instead of once per tile. On a point layer its icons would disappear. */
     polygonLabels?: boolean;
+    /** Optional legend swatch shape override (e.g., 'triangle' for sprite-backed triangle markers). */
+    swatchShape?: 'fill' | 'line' | 'circle' | 'triangle';
 }
 
 export interface WFSLayerProps extends BaseLayerProps {

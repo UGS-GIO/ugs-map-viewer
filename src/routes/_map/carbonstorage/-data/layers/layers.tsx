@@ -1,4 +1,4 @@
-import { Link, linkIfUrl } from "@/components/ui/link";
+import { isHttpUrl, Link, linkIfUrl } from "@/components/ui/link";
 import { MAPS_ASSETS_CDN_URL, parquetUrl, PROD_GEOSERVER_URL } from "@/lib/constants";
 import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator, toTitleCase } from "@/lib/utils";
@@ -381,6 +381,7 @@ const wellWithTopsConfig: PMTilesLayerProps = {
     sourceLayer: wellWithTopsLayerName,
     title: wellWithTopsTitle,
     visible: true,
+    opacity: 0.8,
     sourceAgency: 'Utah Division of Oil, Gas and Mining',
     renders: [{
         id: 'default',
@@ -543,6 +544,40 @@ const qFaultsConfig: PMTilesLayerProps = {
                 'Slip Rate': { field: 'sliprate', type: 'string' },
                 'Structure Class': { field: 'faultclass', type: 'string' },
                 'Structure Age': { field: 'faultage', type: 'string' },
+                'UGS Source Report': {
+                    field: 'notes',
+                    type: 'custom',
+                    transform: (props: GeoJsonProperties | null | undefined) => {
+                        return props?.['notes'] || 'No UGS link available';
+                    }
+                },
+                ' ': {
+                    field: 'usgs_link',
+                    type: 'custom',
+                    transform: (props: GeoJsonProperties | null | undefined) => {
+                        return props?.['usgs_link'] || 'No USGS link available';
+                    }
+                },
+            },
+            linkFields: {
+                'notes': {
+                    transform: (value: unknown) => {
+                        const str = String(value ?? '');
+                        if (!str || !isHttpUrl(str)) {
+                            return [{ label: 'Detailed report not currently available', href: '' }];
+                        }
+                        return [{ label: str, href: str }];
+                    }
+                },
+                'usgs_link': {
+                    transform: (value: unknown) => {
+                        const str = String(value ?? '');
+                        if (!str || !isHttpUrl(str)) {
+                            return [{ label: str || 'No USGS link available', href: '' }];
+                        }
+                        return [{ label: 'USGS Reference', href: str }];
+                    }
+                },
             },
         },
     ],
@@ -633,7 +668,7 @@ const wildernessStudyAreasConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'U.S. Bureau of Land Management',
     sourceUrl: 'https://gbp-blm-egis.hub.arcgis.com/maps/0ae90ebbc1f54f77b80b76a6148ab83d/about',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_wsa/default.json', legend: [{ label: 'Wilderness Study Areas', color: '#fdff00' }] }],
+    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_wsa/default.json', legend: [{ label: 'Wilderness Study Areas', color: '#fdff00', stroke: '#232323' }] }],
     sublayers: [
         {
             name: wildernessStudyAreasLayerName,
@@ -732,6 +767,7 @@ const ccsExclusionAreasConfig: PMTilesLayerProps = {
     renders: [{
         id: 'default',
         styleUrl: '/styles/enmin_ccs_exclusionzones/default.json',
+        sprite: '/styles/enmin_ccs_exclusionzones/sprite',
         legend: [
             { label: 'Exclusion Zones - Land Management', value: 'No-CCUS-Zone', color: '#ff0000', stroke: '#000000' },
             { label: 'Exclusion Zones - Geology', value: 'No-CCUS-Zone-Geo', color: '#000000', stroke: '#000000' },
@@ -748,8 +784,9 @@ const ccsExclusionAreasConfig: PMTilesLayerProps = {
                     field: 'grade',
                     type: 'string',
                     transform: (value: string | null) => {
-                        if (value === 'No-CCUS-Zone') return 'Exclusion Zones - Land Management';
-                        if (value === 'No-CCUS-Zone-Geo') return 'Exclusion Zones - Geology';
+                        const normalized = value?.toLowerCase();
+                        if (normalized === 'no-ccus-zone') return 'Exclusion Zones - Land Management';
+                        if (normalized === 'no-ccus-zone-geo') return 'Exclusion Zones - Geology';
                         return value;
                     }
                 },
@@ -930,7 +967,6 @@ const geochemFieldsConfig: PMTilesLayerProps = {
     sourceLayer: geochemFieldsLayerName,
     title: geochemFieldsTitle,
     visible: false,
-    opacity: 0.5,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
@@ -1214,8 +1250,14 @@ const utTownshipRangesConfig: PMTilesLayerProps = {
     title: utTownshipRangesTitle,
     visible: false,
     visibleZoomRange: [11, 22],
+    polygonLabels: true,
     sourceAgency: 'UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-township-and-ranges/about',
+    renders: [{
+        id: 'default',
+        styleUrl: '/styles/enmin_plss_townshiprange/default.json',
+        legend: [{ label: 'Township & Range', color: '#FF0000' }],
+    }],
     sublayers: [{
         name: utTownshipRangesLayerName,
         popupEnabled: false,
@@ -1256,6 +1298,7 @@ const nonpetrolWellsConfig: PMTilesLayerProps = {
   title: nonpetrolWellsTitle,
   visible: false,
   opacity: 1,
+  swatchShape: 'triangle',
   sourceAgency: 'Utah Geological Survey',
   sublayers: [
     {
@@ -1330,38 +1373,40 @@ const nonpetrolWellsConfig: PMTilesLayerProps = {
         {
             fieldLabel: 'Well Log Files',
             stacAsset: 'enmin_nwpd_wellogs',
+            matchingField: 'well_id',
+            targetField: 'uwi',
             displayFields: [
-                { field: 'log_type', label: 'Log Type' },
-                { field: 'top_depth', label: 'Top Depth (ft)' },
-                { field: 'bottom_depth', label: 'Bottom Depth (ft)' },
-                { field: 'service_company', label: 'Service Company' },
-                { field: 'log_date', label: 'Log Date' },
                 {
-                    field: 'file_url',
-                    label: 'View',
-                    transform: (value: string | null) => {
-                        return value ? <Link to={value}>PDF</Link> : 'No Link';
+                    field: 'filename',
+                    label: '',
+                    transform: (value: string | null, row) => {
+                        const path = row?.['full_path'];
+                        if (!path) return value || 'No link available';
+                        const href = `${MAPS_ASSETS_CDN_URL}/${String(path).replace(/^\/+/, '')}`;
+                        return isHttpUrl(href) ? <Link to={href}>{value || 'View File'}</Link> : (value || 'No link available');
                     }
-                }
+                },
             ],
+            sortBy: 'filename',
+            sortDirection: 'asc',
             displayAs: 'table'
         },
         {
-            fieldLabel: 'Analyses and Reports',
+            fieldLabel: 'Well Analyses Files',
             stacAsset: 'enmin_nwpd_analyses',
+            matchingField: 'well_id',
+            targetField: 'uwi',
             displayFields: [
-                { field: 'report_type', label: 'Report Type' },
-                { field: 'sample_type', label: 'Sample Type' },
-                { field: 'top_depth', label: 'Top Depth (ft)' },
-                { field: 'bottom_depth', label: 'Bottom Depth (ft)' },
-                { field: 'formation', label: 'Formation' },
                 {
-                    field: 'file_url',
-                    label: 'View',
-                    transform: (value: string | null) => {
-                        return value ? <Link to={value}>PDF</Link> : 'No Link';
+                    field: 'filename',
+                    label: '',
+                    transform: (value: string | null, row) => {
+                        const path = row?.['full_path'];
+                        if (!path) return value || 'No link available';
+                        const href = `${MAPS_ASSETS_CDN_URL}/${String(path).replace(/^\/+/, '')}`;
+                        return isHttpUrl(href) ? <Link to={href}>{value || 'View File'}</Link> : (value || 'No link available');
                     }
-                }
+                },
             ],
             displayAs: 'table'
         },

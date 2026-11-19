@@ -44,7 +44,8 @@
           "#a0a0a0"
         ],
         "circle-stroke-width": 0.5,
-        "circle-stroke-color": "#232323"
+        "circle-stroke-color": "#232323",
+        "circle-stroke-opacity": 0.65
       }
     }
   ]

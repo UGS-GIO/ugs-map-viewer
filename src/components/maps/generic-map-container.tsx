@@ -36,6 +36,7 @@ import { rasterQueries, usePopupData } from '@/hooks/use-popup-data'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
 import type { LayerProps, WMSLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
 import { parseStacBivariateLegend } from '@/components/maps/bivariate-legend'
+import { activeRenderOf } from '@/components/maps/pmtiles-layer-source'
 import { createSVGSymbol } from '@/lib/legend/symbol-generator'
 import { createRasterSymbol } from '@/lib/legend/symbolizers/raster'
 import { loadCogMetadata, deriveRange } from '@/hooks/use-cog-metadata'
@@ -78,7 +79,8 @@ const NO_LAYERS: LayerProps[] = []
 async function fetchLegendDataForVisibleLayers(
   layers: LayerProps[],
   displayedTitles: Set<string>,
-  bounds?: MapBounds
+  bounds?: MapBounds,
+  vectorLayerSymbology: Record<string, string> = {},
 ): Promise<LegendItem[]> {
   const results: LegendItem[] = []
 
@@ -132,7 +134,7 @@ async function fetchLegendDataForVisibleLayers(
   const visiblePmtilesBivariate = getVisiblePmtilesBivariateLayers(layers)
 
   for (const pmLayer of visiblePmtilesBivariate) {
-    const render = pmLayer.renders?.find(r => r.id === pmLayer.defaultRenderId) ?? pmLayer.renders?.[0]
+    const render = activeRenderOf(pmLayer, vectorLayerSymbology[pmLayer.title || ''])
     const grid = render?.legend ? parseStacBivariateLegend(render.legend) : null
     if (grid && pmLayer.bivariateLegend) {
       results.push({
@@ -479,9 +481,12 @@ export default function GenericMapContainer({
     clearAllSelections,
   ])
 
+  const vectorSymbologyRef = useRef(vectorLayerSymbology)
+  vectorSymbologyRef.current = vectorLayerSymbology
+
   // Legend data for the export control; reads the refs so the control never needs re-creating.
   const getLegendData = useCallback(
-    (bounds: MapBounds) => fetchLegendDataForVisibleLayers(layersConfigRef.current, displayedTitlesRef.current, bounds),
+    (bounds: MapBounds) => fetchLegendDataForVisibleLayers(layersConfigRef.current, displayedTitlesRef.current, bounds, vectorSymbologyRef.current),
     [],
   )
 

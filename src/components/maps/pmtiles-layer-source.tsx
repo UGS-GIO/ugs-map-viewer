@@ -127,18 +127,22 @@ async function loadSpriteSheet(map: maplibregl.Map, base: string): Promise<void>
         fetch(`${url}.png`).then(r => { if (!r.ok) throw new Error(`sprite png ${r.status}`); return r.blob() }),
     ])
     const bitmap = await createImageBitmap(blob)
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    for (const [name, s] of Object.entries(json)) {
-        if (map.hasImage(name)) continue
-        canvas.width = s.width
-        canvas.height = s.height
-        ctx.clearRect(0, 0, s.width, s.height)
-        ctx.drawImage(bitmap, s.x, s.y, s.width, s.height, 0, 0, s.width, s.height)
-        try {
-            map.addImage(name, ctx.getImageData(0, 0, s.width, s.height), { pixelRatio: s.pixelRatio ?? 1 })
-        } catch { /* concurrent add — ignore */ }
+    try {
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        for (const [name, s] of Object.entries(json)) {
+            if (map.hasImage(name)) continue
+            canvas.width = s.width
+            canvas.height = s.height
+            ctx.clearRect(0, 0, s.width, s.height)
+            ctx.drawImage(bitmap, s.x, s.y, s.width, s.height, 0, 0, s.width, s.height)
+            try {
+                map.addImage(name, ctx.getImageData(0, 0, s.width, s.height), { pixelRatio: s.pixelRatio ?? 1 })
+            } catch { /* concurrent add — ignore */ }
+        }
+    } finally {
+        bitmap.close()
     }
 }
 
@@ -248,25 +252,11 @@ export interface PMTilesStyleOverride {
     paint?: Record<string, unknown>
 }
 
-/**
- * Build the MapLibre layer specs for one PMTiles layer's active style fragment.
- *
- * Every fragment property survives — notably the `minzoom`/`maxzoom` ugs-styles
- * authors (PLSS sections are gated to ~z11); only viewer-owned fields are
- * overridden. A config `visibleZoomRange` wins over the fragment's own zoom.
- * Kept separate from the JSX so the mapping is unit-testable. [ALL-5727]
- */
-export function buildPmtilesLayerSpecs({
-    layer, fragment, layerFilter, hidden, opacity, styleOverride,
-}: {
-    layer: PMTilesLayerProps
-    fragment: StyleFragment
-    layerFilter?: maplibregl.FilterSpecification
-    hidden?: boolean
-    opacity?: number
-    styleOverride?: PMTilesStyleOverride
-}): LayerProps[] {
-    const sourceId = getPmtilesSourceId(layer)
+function resolveLayersToRender(
+    layer: PMTilesLayerProps,
+    fragment: StyleFragment,
+    styleOverride?: PMTilesStyleOverride,
+): StyleFragmentLayer[] {
     const primaryId = getPmtilesLayerId(layer)
     const rawLayers = fragment.layers ?? []
     const styleLayers = rawLayers.filter(
@@ -290,11 +280,7 @@ export function buildPmtilesLayerSpecs({
         }
     }
 
-    return layersToRender.map((l, i) => {
-        const fragmentFilter = l.filter as maplibregl.FilterSpecification | undefined
-        const filters = [fragmentFilter, layer.featureFilter, layerFilter].filter(Boolean) as maplibregl.FilterSpecification[]
-        const filter = filters.length > 1 ? (['all', ...filters] as unknown as maplibregl.FilterSpecification) : filters[0]
-
+    return layersToRender.map(l => {
         let paint = l.paint
         if (styleOverride?.fillColor && l.type === 'fill') {
             paint = { ...paint, 'fill-color': styleOverride.fillColor }
@@ -302,12 +288,43 @@ export function buildPmtilesLayerSpecs({
         if (styleOverride?.paint) {
             paint = { ...paint, ...styleOverride.paint }
         }
+        return paint === l.paint ? l : { ...l, paint }
+    })
+}
+
+/**
+ * Build the MapLibre layer specs for one PMTiles layer's active style fragment.
+ *
+ * Every fragment property survives — notably the `minzoom`/`maxzoom` ugs-styles
+ * authors (PLSS sections are gated to ~z11); only viewer-owned fields are
+ * overridden. A config `visibleZoomRange` wins over the fragment's own zoom.
+ * Kept separate from the JSX so the mapping is unit-testable. [ALL-5727]
+ */
+export function buildPmtilesLayerSpecs({
+    layer, fragment, layerFilter, hidden, opacity, styleOverride,
+}: {
+    layer: PMTilesLayerProps
+    fragment: StyleFragment
+    layerFilter?: maplibregl.FilterSpecification
+    hidden?: boolean
+    opacity?: number
+    styleOverride?: PMTilesStyleOverride
+}): LayerProps[] {
+    const sourceId = getPmtilesSourceId(layer)
+    const primaryId = getPmtilesLayerId(layer)
+    const layersToRender = resolveLayersToRender(layer, fragment, styleOverride)
+
+    return layersToRender.map((l, i) => {
+        const fragmentFilter = l.filter as maplibregl.FilterSpecification | undefined
+        const filters = [fragmentFilter, layer.featureFilter, layerFilter].filter(Boolean) as maplibregl.FilterSpecification[]
+        const filter = filters.length > 1 ? (['all', ...filters] as unknown as maplibregl.FilterSpecification) : filters[0]
+
         const spec = buildFragmentLayerSpec(l, {
             layerId: i === 0 ? primaryId : `${primaryId}-${i}`,
             sourceId,
             sourceLayer: layer.sourceLayer,
             visible: !hidden,
-            paint: withOpacity(paint, l.type, opacity ?? layer.opacity),
+            paint: withOpacity(l.paint, l.type, opacity ?? layer.opacity),
             filter,
             metadata: { title: layer.title, pmtilesLayer: true, pmtilesSourceId: sourceId },
             visibleZoomRange: layer.visibleZoomRange,
@@ -362,7 +379,7 @@ export function PMTilesLayerSource({
             cancelAnimationFrame(raf)
             raf = requestAnimationFrame(() => {
                 const source = map.getSource<maplibregl.GeoJSONSource>(labelSourceId)
-                if (!source) return
+                if (!source || !map.getSource(sourceId)) return
                 const b = map.getBounds()
                 const pieces = map.querySourceFeatures(sourceId, { sourceLayer: layer.sourceLayer })
                 const next = viewportLabelPoints(pieces, [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], labels)
@@ -395,14 +412,11 @@ export function PMTilesLayerSource({
     // proportionally against fragment opacity values/expressions.
     useEffect(() => {
         const primaryId = getPmtilesLayerId(layer)
-        const rawLayers = (fragment.layers ?? []).filter(
-            l => l['source-layer'] == null || l['source-layer'] === layer.sourceLayer,
-        )
+        const layersToRender = resolveLayersToRender(layer, fragment, styleOverride)
         const registeredIds: string[] = []
-        rawLayers.forEach((raw, i) => {
+        layersToRender.forEach((resolved, i) => {
             const id = i === 0 ? primaryId : `${primaryId}-${i}`
-            const merged = styleOverride?.paint ? { ...(raw.paint ?? {}), ...styleOverride.paint } : (raw.paint ?? {})
-            pmtilesBasePaint.set(id, merged)
+            pmtilesBasePaint.set(id, resolved.paint ?? {})
             registeredIds.push(id)
         })
         return () => {

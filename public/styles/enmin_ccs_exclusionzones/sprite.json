@@ -1,0 +1,16 @@
+{
+  "slash-no-ccus-zone": {
+    "x": 0,
+    "y": 0,
+    "width": 40,
+    "height": 40,
+    "pixelRatio": 1
+  },
+  "slash-no-ccus-zone-geo": {
+    "x": 40,
+    "y": 0,
+    "width": 40,
+    "height": 40,
+    "pixelRatio": 1
+  }
+}

@@ -76,57 +76,121 @@ const searchConfig: SearchSourceConfig[] = [
 
 /**
  * Translate the CQL filter produced by MapConfigurations (hascore, has_las, and
- * formation presence with AND/OR) into a MapLibre filter expression for the
- * Wells Database PMTiles layer.
+ * formation presence with nested/grouped AND/OR) into a MapLibre filter expression
+ * for the Wells Database PMTiles layer. Logs and aborts on malformed expressions
+ * rather than silently dropping clauses.
  */
 function wellsCqlToMaplibreFilter(cql: string): FilterSpecification | null {
-  const parts: string[] = []
-  let depth = 0
-  let start = 0
-  for (let i = 0; i < cql.length; i++) {
-    if (cql[i] === '(') depth++
-    else if (cql[i] === ')') depth--
-    else if (depth === 0 && cql.slice(i, i + 5).toUpperCase() === ' AND ') {
-      parts.push(cql.slice(start, i).trim())
-      i += 4
-      start = i + 1
+  type Token = { type: 'lparen' | 'rparen' | 'and' | 'or' | 'clause'; value: string }
+  const tokens: Token[] = []
+  let i = 0
+  while (i < cql.length) {
+    if (/\s/.test(cql[i])) { i++; continue }
+    if (cql[i] === '(') { tokens.push({ type: 'lparen', value: '(' }); i++; continue }
+    if (cql[i] === ')') { tokens.push({ type: 'rparen', value: ')' }); i++; continue }
+
+    const rest = cql.slice(i)
+    const opMatch = rest.match(/^(AND|OR)(?=[\s(]|$)/i)
+    if (opMatch) {
+      tokens.push({ type: opMatch[1].toUpperCase() === 'AND' ? 'and' : 'or', value: opMatch[1] })
+      i += opMatch[1].length
+      continue
     }
+
+    const isNullMatch = rest.match(/^([a-zA-Z0-9_]+)\s+IS\s+NOT\s+NULL(?=[\s)]|$)/i)
+    if (isNullMatch) {
+      tokens.push({ type: 'clause', value: isNullMatch[0] })
+      i += isNullMatch[0].length
+      continue
+    }
+
+    const eqMatch = rest.match(/^([a-zA-Z0-9_]+)\s*=\s*'([^']*)'/)
+    if (eqMatch) {
+      tokens.push({ type: 'clause', value: eqMatch[0] })
+      i += eqMatch[0].length
+      continue
+    }
+
+    console.error(`[wellsCqlToMaplibreFilter] Unparseable CQL near: ${rest.slice(0, 40)}`)
+    return null
   }
-  parts.push(cql.slice(start).trim())
 
-  const parseClause = (clause: string): ExpressionSpecification | null => {
-    const trimmed = clause.replace(/^\(+|\)+$/g, '').trim()
-    const isNotNull = trimmed.match(/^([a-zA-Z0-9_]+)\s+IS\s+NOT\s+NULL$/i)
-    if (isNotNull) return ['has', isNotNull[1]]
-
-    const eqMatch = trimmed.match(/^([a-zA-Z0-9_]+)\s*=\s*'([^']+)'$/)
+  let pos = 0
+  const parseClause = (raw: string): ExpressionSpecification | null => {
+    const isNotNull = raw.match(/^([a-zA-Z0-9_]+)\s+IS\s+NOT\s+NULL$/i)
+    if (isNotNull) {
+      const col = isNotNull[1]
+      return ['all', ['has', col], ['!=', ['get', col], null]]
+    }
+    const eqMatch = raw.match(/^([a-zA-Z0-9_]+)\s*=\s*'([^']*)'$/)
     if (eqMatch) {
       const [, field, value] = eqMatch
       if (field === 'has_las') return ['==', ['get', field], value === 'True']
       return ['==', ['get', field], value]
     }
+    console.error(`[wellsCqlToMaplibreFilter] Invalid clause: ${raw}`)
     return null
   }
 
-  const conditions: ExpressionSpecification[] = []
-  for (const rawPart of parts) {
-    const inner = rawPart.replace(/^\(+|\)+$/g, '').trim()
-    if (/\s+OR\s+/i.test(inner)) {
-      const orExprs = inner.split(/\s+OR\s+/i).map(parseClause).filter((e): e is ExpressionSpecification => e !== null)
-      if (orExprs.length === 1) conditions.push(orExprs[0])
-      else if (orExprs.length > 1) conditions.push(['any', ...orExprs] as ExpressionSpecification)
-    } else if (/\s+AND\s+/i.test(inner)) {
-      const andExprs = inner.split(/\s+AND\s+/i).map(parseClause).filter((e): e is ExpressionSpecification => e !== null)
-      conditions.push(...andExprs)
-    } else {
-      const expr = parseClause(inner)
-      if (expr) conditions.push(expr)
+  const parseOr = (): ExpressionSpecification | null => {
+    const left = parseAnd()
+    if (!left) return null
+    const items: ExpressionSpecification[] = [left]
+    while (pos < tokens.length && tokens[pos].type === 'or') {
+      pos++
+      const right = parseAnd()
+      if (!right) return null
+      items.push(right)
     }
+    return items.length === 1 ? items[0] : (['any', ...items] as ExpressionSpecification)
   }
 
-  if (conditions.length === 0) return null
-  if (conditions.length === 1) return conditions[0]
-  return ['all', ...conditions] as FilterSpecification
+  const parseAnd = (): ExpressionSpecification | null => {
+    const left = parsePrimary()
+    if (!left) return null
+    const items: ExpressionSpecification[] = [left]
+    while (pos < tokens.length && tokens[pos].type === 'and') {
+      pos++
+      const right = parsePrimary()
+      if (!right) return null
+      items.push(right)
+    }
+    return items.length === 1 ? items[0] : (['all', ...items] as ExpressionSpecification)
+  }
+
+  const parsePrimary = (): ExpressionSpecification | null => {
+    const tok = tokens[pos]
+    if (!tok) {
+      console.error('[wellsCqlToMaplibreFilter] Unexpected end of CQL expression')
+      return null
+    }
+    if (tok.type === 'lparen') {
+      pos++
+      const expr = parseOr()
+      if (!expr || tokens[pos]?.type !== 'rparen') {
+        console.error('[wellsCqlToMaplibreFilter] Unmatched parenthesis in CQL')
+        return null
+      }
+      pos++
+      return expr
+    }
+    if (tok.type === 'clause') {
+      pos++
+      return parseClause(tok.value)
+    }
+    console.error(`[wellsCqlToMaplibreFilter] Unexpected token '${tok.value}'`)
+    return null
+  }
+
+  if (tokens.length === 0) return null
+  const result = parseOr()
+  if (!result || pos < tokens.length) {
+    if (pos < tokens.length) {
+      console.error(`[wellsCqlToMaplibreFilter] Unexpected trailing token '${tokens[pos].value}'`)
+    }
+    return null
+  }
+  return result as FilterSpecification
 }
 
 export default function Map() {

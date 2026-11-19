@@ -1,5 +1,5 @@
 import { Accordion, AccordionContent, AccordionItem } from '@/components/ui/accordion';
-import { BivariateLegend } from '@/components/maps/bivariate-legend';
+import { BivariateLegend, parseStacBivariateLegend } from '@/components/maps/bivariate-legend';
 import useLegendPreview, { type PreviewItem } from '@/hooks/use-legend-preview';
 import { useArcGisLegend } from '@/hooks/use-arcgis-legend';
 import { mountDomNode } from '@/lib/legend/mount-dom-node';
@@ -47,13 +47,15 @@ const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend
     // Use empty string instead of undefined to keep accordion controlled
     const accordionValue = isOpen ? "legend-accordion" : "";
 
+    const hasBivariateStac = Boolean(pmtilesLegend?.length && parseStacBivariateLegend(pmtilesLegend));
+
     const renderContent = () => {
-        if (bivariateLegend && (pmtilesLegend?.length || (url && layerName))) {
+        if (bivariateLegend && (hasBivariateStac || (url && layerName))) {
             return (
                 <BivariateLegend
                     wmsUrl={url}
                     layerName={layerName ?? undefined}
-                    stacLegend={pmtilesLegend}
+                    stacLegend={hasBivariateStac ? pmtilesLegend : undefined}
                     xLabel={bivariateLegend.xLabel}
                     yLabel={bivariateLegend.yLabel}
                 />

@@ -48,15 +48,15 @@
             "linear"
           ],
           [
-            "coalesce",
+            "to-number",
             [
-              "to-number",
+              "coalesce",
               [
                 "get",
                 "ghg_quantity_metric_tons_co2e"
-              ]
-            ],
-            400
+              ],
+              400
+            ]
           ],
           400,
           3,

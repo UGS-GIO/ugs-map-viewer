@@ -5,8 +5,7 @@
       "type": "fill",
       "paint": {
         "fill-color": "#fdff00",
-        "fill-opacity": 0.4,
-        "fill-outline-color": "#232323"
+        "fill-opacity": 0.8
       }
     },
     {

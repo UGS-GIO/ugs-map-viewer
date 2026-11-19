@@ -18,6 +18,22 @@
             "has",
             "cost_percentile"
           ]
+        ],
+        [
+          "==",
+          [
+            "get",
+            "capacity_percentile"
+          ],
+          null
+        ],
+        [
+          "==",
+          [
+            "get",
+            "cost_percentile"
+          ],
+          null
         ]
       ],
       "paint": {
@@ -43,6 +59,22 @@
             "has",
             "cost_percentile"
           ]
+        ],
+        [
+          "==",
+          [
+            "get",
+            "capacity_percentile"
+          ],
+          null
+        ],
+        [
+          "==",
+          [
+            "get",
+            "cost_percentile"
+          ],
+          null
         ]
       ],
       "paint": {
@@ -66,6 +98,22 @@
         [
           "has",
           "cost_percentile"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "capacity_percentile"
+          ],
+          null
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "cost_percentile"
+          ],
+          null
         ]
       ],
       "paint": {
@@ -240,6 +288,22 @@
         [
           "has",
           "cost_percentile"
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "capacity_percentile"
+          ],
+          null
+        ],
+        [
+          "!=",
+          [
+            "get",
+            "cost_percentile"
+          ],
+          null
         ]
       ],
       "paint": {
