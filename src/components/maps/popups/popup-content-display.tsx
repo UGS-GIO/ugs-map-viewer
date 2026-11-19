@@ -307,7 +307,7 @@ function PopupTable({ headers, rows }: { headers?: ReactNode[]; rows: ReactNode[
 
 // --- Main Component ---
 const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, relatedLoading }: PopupContentDisplayProps) => {
-    const { relatedTables, relatedTablesPosition, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource, popupFooterLink } = layer;
+    const { relatedTables, relatedTablesPosition, galleryPosition, popupFields, linkFields, imageFields, colorCodingMap, colorCodingMode, rasterSource, popupFooterLink } = layer;
 
     // Convert bulk data to the format expected by getRelatedTableValues
     const data = useMemo((): ProcessedRelatedData[][] => {
@@ -461,6 +461,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
 
     // Handle Related Tables
     (relatedTables || []).forEach((table, tableIndex) => {
+        if (table.displayAs === 'gallery') return;
         const groupedValues = getRelatedTableValues(tableIndex, data, relatedTables, properties);
         const flatValues = groupedValues.flat();
 
@@ -656,12 +657,16 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
     const regularCount = orderedItems.filter(item => !item.isLongContent).length;
     const useGridLayout = layout === "grid" || regularCount > 5;
 
-    const galleryId = properties?.id ?? properties?.pk ?? properties?.ogc_fid ?? feature?.id ?? 'photos'
+    const galleryId = properties?.sitecode ?? properties?.id ?? properties?.pk ?? properties?.ogc_fid ?? feature?.id ?? 'photos'
     const galleryDownloadName = `${sanitizeFilename(`${layer.layerTitle ?? 'feature'}-${galleryId}`)}-photos.zip`
+    const galleryElement = galleryImages.length > 0 ? (
+        <PopupImageGallery images={galleryImages} downloadName={galleryDownloadName} />
+    ) : null;
+    const showGalleryAbove = galleryPosition === 'above';
 
     return (
         <div className="space-y-2">
-            {galleryImages.length > 0 && <PopupImageGallery images={galleryImages} downloadName={galleryDownloadName} />}
+            {showGalleryAbove && galleryElement}
             <div className={useGridLayout ? "grid grid-cols-2 gap-2" : "space-y-2"}>
                 {orderedItems.map((item, idx) =>
                     useGridLayout && item.isLongContent ? (
@@ -671,6 +676,7 @@ const PopupContentDisplayInner = ({ feature, layout, layer, bulkRelatedData, rel
                     )
                 )}
             </div>
+            {!showGalleryAbove && galleryElement}
         </div>
     );
 };
