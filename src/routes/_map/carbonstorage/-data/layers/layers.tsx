@@ -1,11 +1,12 @@
 import { Link, linkIfUrl } from "@/components/ui/link";
-import { MAPS_ASSETS_CDN_URL, parquetUrl } from "@/lib/constants";
-import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
+import { MAPS_ASSETS_CDN_URL, parquetUrl, PROD_GEOSERVER_URL } from "@/lib/constants";
+import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
 import { addThousandsSeparator, toTitleCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
 import { ucrcWellsConfig } from "@/routes/_map/-shared/layers/ucrc-wells";
 
 const CCUS_IMAGE_BASE_URL = `${MAPS_ASSETS_CDN_URL}/ccus/png`;
+const MAPPING_WORKSPACE = 'mapping';
 
 // Geo-Region Carbon Storage Ranking
 const georegionsLayerName = 'enmin_ccs_georegions';
@@ -419,6 +420,53 @@ const SITLAConfig: ArcGISMapServerLayerProps = {
     opacity: 0.5,
     visible: false,
     sourceAgency: 'Utah School and Institutional Trust Lands Administration (SITLA)',
+};
+
+// Utah Faults (M-179dm)
+const faultsLayerName = 'faults_m-179dm';
+export const faultsWMSTitle = 'Utah Faults';
+const faultsWMSConfig: WMSLayerProps = {
+    type: 'wms',
+    url: `${PROD_GEOSERVER_URL}/wms`,
+    title: faultsWMSTitle,
+    visible: false,
+    crs: 'EPSG:26912',
+    sourceAgency: 'Utah Geological Survey',
+    sourceUrl: 'https://geology.utah.gov/publication-details/?pub=M-179dm',
+    sublayers: [
+        {
+            name: `${MAPPING_WORKSPACE}:${faultsLayerName}`,
+            popupEnabled: false,
+            queryable: true,
+            popupFields: {
+                'Description': {
+                    field: 'custom',
+                    type: 'custom',
+                    transform: (props: GeoJsonProperties | null | undefined) => {
+                        const subtype = props?.['subtype'];
+                        const type = props?.['type'];
+                        const modifier = props?.['modifier'];
+                        return `${subtype || ''} ${type || ''}, ${modifier || ''}`.trim();
+                    }
+                },
+                'Scale': {
+                    field: 'scale',
+                    type: 'string',
+                    transform: (value: string | null) => value === 'small' ? '1:500,000' : ''
+                },
+                'Source': { field: 'series_id', type: 'string' },
+            },
+            linkFields: {
+                'series_id': {
+                    baseUrl: '',
+                    transform: (value: string) => [{
+                        href: `https://doi.org/10.34191/${value}`,
+                        label: `${value}`
+                    }]
+                }
+            }
+        },
+    ],
 };
 
 // Utah Faults (Quaternary Faults)
@@ -1267,6 +1315,7 @@ const geologicalInformationConfig: LayerProps = {
     visible: false,
     layers: [
         qFaultsConfig,
+        faultsWMSConfig,
         seamlessGeolunitsConfig,
     ]
 };
