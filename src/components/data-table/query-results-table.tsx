@@ -201,7 +201,8 @@ export function QueryResultsTable({ layerContent, onClose, viewMode, onViewModeC
             .map(row => ({
                 id: row.feature.id as string | number,
                 geometry: row.feature.geometry!,
-                properties: row.feature.properties || {}
+                properties: row.feature.properties || {},
+                layerTitle: row.layerTitle,
             }));
         onHighlightChange?.(highlights);
     }, [rowSelection, rowData, rowIndicesToFeatureRefs, onSelectedFeaturesChange, onHighlightChange]);

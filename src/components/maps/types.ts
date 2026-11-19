@@ -17,6 +17,8 @@ export interface HighlightFeature {
   id: string | number
   geometry: Geometry
   properties?: Record<string, unknown>
+  /** Lets a PMTiles result highlight in its own tiles, whole, instead of as one tile's clipped piece */
+  layerTitle?: string
 }
 
 export type BoundsBox = {
@@ -30,7 +32,10 @@ export interface DataMapProps {
   center?: [number, number]
   zoom?: number
   highlightFeatures?: HighlightFeature[]
-  onFeatureClick?: (features: ClickedFeature[], options?: { additive?: boolean }) => void
+  /** Every result of the selection, drawn faintly when there's more than one */
+  resultFeatures?: HighlightFeature[]
+  /** `highlightAll` highlights every result, for box and area selections; a click highlights the first */
+  onFeatureClick?: (features: ClickedFeature[], options?: { additive?: boolean; highlightAll?: boolean }) => void
   pitch?: number
   bearing?: number
   onMoveEnd?: (lat: number, lng: number, zoom: number, pitch: number, bearing: number) => void

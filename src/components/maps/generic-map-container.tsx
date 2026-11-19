@@ -31,7 +31,7 @@ import { useEscapeToClear } from '@/hooks/use-escape-to-clear'
 import type { MeasureMode } from '@/lib/map/measure-store'
 import { MapChromeControls } from '@/components/maps/controls/map-chrome-controls'
 import type { LegendItem } from '@/components/maps/controls'
-import { useFeatureSelection } from '@/hooks/use-feature-selection'
+import { useFeatureSelection, toHighlightFeatures } from '@/hooks/use-feature-selection'
 import { rasterQueries, usePopupData } from '@/hooks/use-popup-data'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
 import type { LayerProps, WMSLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
@@ -448,6 +448,7 @@ export default function GenericMapContainer({
     openResults,
     onHighlightChange: handleHighlightChange,
   })
+  const resultFeatures = useMemo(() => toHighlightFeatures(selectedFeatures), [selectedFeatures])
 
   // Raster-only layers are sampled async (not part of the vector/WMS click features), so their
   // results can't open at click time. The click waits on the same queries usePopupData reads and
@@ -666,6 +667,8 @@ export default function GenericMapContainer({
   const toolOwnsEscape = activeDrawShape !== 'off' || toolbarDrawShape !== 'off' || boxSelectMode || !!measure
   // Table and split views close through their own ✕, which also returns to the map
   useEscapeToClear(!isMobile && viewMode === 'map' && hasSelection && !toolOwnsEscape, handleClearSelection)
+  // Box select has no Escape of its own, unlike drawing and measuring
+  useEscapeToClear(boxSelectMode, () => handleBoxSelectModeChange(false))
 
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode)
@@ -704,6 +707,7 @@ export default function GenericMapContainer({
       pitch={pitch}
       bearing={bearing}
       highlightFeatures={highlightedFeatures}
+      resultFeatures={resultFeatures}
       onFeatureClick={(...args) => { setPopupCoords(null); handleFeatureClick(...args) }}
       onMoveEnd={setMapPosition}
       layerFilters={layerFilters}
@@ -771,6 +775,7 @@ export default function GenericMapContainer({
                 <PopupContentWithPagination
                   layerContent={popupContent}
                   onHighlightChange={handleHighlightChange}
+                  activeFeatures={highlightedFeatures}
                   clickPoint={clickPoint}
                   layerHeaderExtras={popupLayerHeaderRender}
                   featureExtras={popupFeatureRender}
@@ -829,6 +834,7 @@ export default function GenericMapContainer({
               onClose={handleClearAllSelections}
               onOpenChange={handleSheetOpenChange}
               onHighlightChange={handleHighlightChange}
+              activeFeatures={highlightedFeatures}
               width={panelState.sheetWidth}
               onWidthChange={(width) => setPanelState(prev => ({ ...prev, sheetWidth: width }))}
               isOpen={isSheetOpen}

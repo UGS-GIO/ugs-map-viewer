@@ -13,10 +13,11 @@ import {
 } from './constants'
 import { BASEMAP_STYLES, DEFAULT_BASEMAP, buildBasemapStyle } from '@/lib/basemaps'
 import { BoxSelectOverlay, ViewModeControl, MapToolsControl, MeasureToolsControl } from './controls'
-import { HighlightLayers, SpatialFilterLayer, ClickBufferLayer } from './layers'
+import { HighlightLayers, HoverHighlightLayer, ResultHighlightLayers, PmtilesHighlightLayers, pmtilesTileKey, SpatialFilterLayer, ClickBufferLayer } from './layers'
 import { flattenDataLayersWithAncestors, resolveLeafVisibility, isWMSLayer, isWFSLayer, isArcGISMapServerLayer, isCOGLayer, isPMTilesLayer, buildWmsTileUrl, buildArcGisExportUrl, getWmsLayerName, zoomRangeToBounds, isWithinZoomRange, effectiveZoomRange } from '@/lib/map/layer-utils'
 import { useLayerUrl } from '@/context/layer-url-provider'
 import { PMTilesLayerSource, usePMTilesStyleFragments, getPmtilesLayerId, queryPmtilesLayersAtPoint, queryPmtilesLayersInScreenBbox } from '@/components/maps/pmtiles-layer-source'
+import type { HighlightFeature } from './types'
 import type { WMSLayerProps, WFSLayerProps, ArcGISMapServerLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
 import type * as maplibregl from 'maplibre-gl'
 import type { FeatureCollection } from 'geojson'
@@ -291,6 +292,7 @@ export default function DataMap({
   center = [-111.5, 39.3],
   zoom = 7,
   highlightFeatures = [],
+  resultFeatures = [],
   onFeatureClick,
   onMoveEnd,
   pitch,
@@ -436,6 +438,26 @@ export default function DataMap({
     )
   }, [mountedLayers, wfsLayerData, pmtilesFragments])
 
+  // PMTiles results highlight in their own tiles, keyed like their source so they remount with it.
+  // Everything else, and PMTiles features with no id to find them by, draws as GeoJSON copies.
+  const pmtilesHighlightLayers = useMemo(() => renderableEntries.flatMap(({ layer }) => {
+    if (!isPMTilesLayer(layer)) return []
+    const title = layer.title || ''
+    return [{ layer, key: `${title}-${vectorLayerSymbology[title] || ''}-highlight` }]
+  }), [renderableEntries, vectorLayerSymbology])
+  const onTiles = useCallback((f: HighlightFeature) =>
+    !!f.layerTitle && pmtilesHighlightLayers.some(({ layer }) => layer.title === f.layerTitle) && pmtilesTileKey(f) !== null,
+  [pmtilesHighlightLayers])
+  // One result is already the selection, so the faint tier draws only for two or more
+  const { tileHighlights, geojsonHighlights } = useMemo(() => {
+    const results = resultFeatures.length > 1 ? resultFeatures : []
+    const split = (onTile: boolean) => ({
+      results: results.filter(f => onTiles(f) === onTile),
+      active: highlightFeatures.filter(f => onTiles(f) === onTile),
+    })
+    return { tileHighlights: split(true), geojsonHighlights: split(false) }
+  }, [resultFeatures, highlightFeatures, onTiles])
+
   // After data lands and the map style is loaded, run any per-layer sprite registration hooks.
   // Idempotent: each hook checks map.hasImage before adding.
   useEffect(() => {
@@ -485,7 +507,7 @@ export default function DataMap({
       const allFeatures = [...wmsFeatures, ...polygonWfsLayerFeaturesRef.current]
       polygonWfsLayerFeaturesRef.current = []
       if (onFeatureClick && allFeatures.length > 0) {
-        onFeatureClick(allFeatures, { additive: false })
+        onFeatureClick(allFeatures, { additive: false, highlightAll: true })
       }
       if (truncated) notifyTruncated()
     },
@@ -499,10 +521,10 @@ export default function DataMap({
   function dispatchFeatures(
     features: ClickedFeature[],
     additive: boolean,
-    options: { extractBbox?: boolean; clearOnEmpty?: boolean } = {}
+    options: { extractBbox?: boolean; clearOnEmpty?: boolean; highlightAll?: boolean } = {}
   ) {
     if (features.length > 0) {
-      onFeatureClick?.(features, { additive })
+      onFeatureClick?.(features, { additive, highlightAll: options.highlightAll })
       if (options.extractBbox) {
         const first = features.find(f => f.geometry)
         if (first?.geometry && onFeatureBboxChange) {
@@ -573,7 +595,7 @@ export default function DataMap({
     // If no WMS layers, just use the vector results directly
     if (wmsLayers.length === 0) {
       if (vectorFeatures.length > 0 && onFeatureClick) {
-        onFeatureClick(vectorFeatures, { additive: false })
+        onFeatureClick(vectorFeatures, { additive: false, highlightAll: true })
       }
       return
     }
@@ -701,14 +723,14 @@ export default function DataMap({
     ]
     const wmsLayersAtZoom = wmsLayersDrawnInView(map, visibleWmsLayersRef.current)
     if (wmsLayersAtZoom.length === 0) {
-      dispatchFeatures(vectorFeatures, additive)
+      dispatchFeatures(vectorFeatures, additive, { highlightAll: true })
       return
     }
     boxSelectQuery.mutate(
       { visibleLayers: wmsLayersAtZoom, box, pageSize: BOX_SELECT_PAGE_SIZE, wmsUrl, layerFilters },
       {
         onSuccess: ({ features: wmsFeatures, truncated }) => {
-          dispatchFeatures([...wmsFeatures, ...vectorFeatures], additive)
+          dispatchFeatures([...wmsFeatures, ...vectorFeatures], additive, { highlightAll: true })
           if (truncated) notifyTruncated()
         },
       }
@@ -901,7 +923,17 @@ export default function DataMap({
         {terrain && <Hillshade bottomDataLayerId={renderableEntries.length ? getLayerId(renderableEntries[renderableEntries.length - 1].layer) : undefined} />}
 
         {/* Highlight layers */}
-        <HighlightLayers features={highlightFeatures} />
+        <ResultHighlightLayers features={geojsonHighlights.results} />
+        <HighlightLayers features={geojsonHighlights.active} />
+        <HoverHighlightLayer skip={onTiles} />
+        {pmtilesHighlightLayers.map(({ layer, key }) => (
+          <PmtilesHighlightLayers
+            key={key}
+            layer={layer}
+            results={tileHighlights.results.filter(f => f.layerTitle === layer.title)}
+            active={tileHighlights.active.filter(f => f.layerTitle === layer.title)}
+          />
+        ))}
 
         {/* Spatial filter visualization */}
         <SpatialFilterLayer filter={spatialFilter} />
