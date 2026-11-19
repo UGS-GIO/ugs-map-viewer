@@ -25,7 +25,7 @@ describe('wetlandplants layer configuration', () => {
         expect(photosTable?.galleryUrlField).toBe('att_name');
         expect(photosTable?.galleryLabelField).toBe('att_name');
         expect(photosTable?.galleryBaseUrl).toBe(
-            'https://storage.googleapis.com/ut-dnr-ugs-maps-prod.firebasestorage.app/wetlandplants'
+            'https://maps-assets.geology.utah.gov/wetlands/plantphotos'
         );
         expect(photosTable?.fieldLabel).toBe('Site Photos');
     });
@@ -46,7 +46,7 @@ describe('wetlandplants layer configuration', () => {
         const galleryImage = relatedRowToGalleryImage(row, photosTable);
         expect(galleryImage).toBeDefined();
         expect(galleryImage?.url).toBe(
-            'https://storage.googleapis.com/ut-dnr-ugs-maps-prod.firebasestorage.app/wetlandplants/UWC-30E.jpg'
+            'https://maps-assets.geology.utah.gov/wetlands/plantphotos/UWC-30E.jpg'
         );
         expect(galleryImage?.label).toBe('UWC-30E.jpg');
         expect(galleryImage?.thumbnailUrl).toBeUndefined();
@@ -69,7 +69,7 @@ describe('wetlandplants layer configuration', () => {
 
         const galleryImage = relatedRowToGalleryImage(row, photosTable);
         expect(galleryImage?.url).toBe(
-            'https://storage.googleapis.com/ut-dnr-ugs-maps-prod.firebasestorage.app/wetlandplants/BR-010_1.jpg'
+            'https://maps-assets.geology.utah.gov/wetlands/plantphotos/BR-010_1.jpg'
         );
         expect(galleryImage?.label).toBe('BR-010_1.jpg');
     });

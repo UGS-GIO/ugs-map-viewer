@@ -1,5 +1,5 @@
 import { linkIfUrl } from "@/components/ui/link";
-import { parquetUrl } from "@/lib/constants";
+import { MAPS_ASSETS_CDN_URL, parquetUrl } from "@/lib/constants";
 import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
 
 // Wetland Survey Sites — from warehouse item `wetlands_plants_site`.
@@ -13,7 +13,7 @@ import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/
 // - Site Photos: STAC-backed (`wetlands_plants_photos`) joined on `surveyeventid`.
 const wetlandSurveySitesLayerName = 'wetlands_plants_site';
 export const wetlandSurveySitesTitle = 'Wetland Survey Sites';
-const WETLAND_PLANTS_PHOTO_BASE_URL = 'https://storage.googleapis.com/ut-dnr-ugs-maps-prod.firebasestorage.app/wetlandplants';
+const WETLAND_PLANTS_PHOTO_BASE_URL = `${MAPS_ASSETS_CDN_URL}/wetlands/plantphotos`;
 const wetlandSurveySitesConfig: PMTilesLayerProps = {
     type: 'pmtiles',
     stacItemId: wetlandSurveySitesLayerName,
