@@ -1392,7 +1392,6 @@ const nonpetrolWellsConfig: PMTilesLayerProps = {
             ],
             sortBy: 'filename',
             sortDirection: 'asc',
-            displayAs: 'table'
         },
         {
             fieldLabel: 'Well Analyses Files',
@@ -1411,7 +1410,6 @@ const nonpetrolWellsConfig: PMTilesLayerProps = {
                     }
                 },
             ],
-            displayAs: 'table'
         },
       ]
     },
