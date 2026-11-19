@@ -666,6 +666,7 @@ const wildernessStudyAreasConfig: PMTilesLayerProps = {
     sourceLayer: wildernessStudyAreasLayerName,
     title: wildernessStudyAreasTitle,
     visible: false,
+    opacity: 0.8,
     sourceAgency: 'U.S. Bureau of Land Management',
     sourceUrl: 'https://gbp-blm-egis.hub.arcgis.com/maps/0ae90ebbc1f54f77b80b76a6148ab83d/about',
     renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_wsa/default.json', legend: [{ label: 'Wilderness Study Areas', color: '#fdff00', stroke: '#232323' }] }],
@@ -696,6 +697,7 @@ const sitlaReportsConfig: PMTilesLayerProps = {
     title: sitlaReportsTitle,
     sectionHeading: 'Statewide',
     visible: false,
+    opacity: 0.8,
     sourceAgency: 'Utah Geological Survey',
     sourceUrl: 'https://ugspub.nr.utah.gov/publications/non_lib_pubs/contract_deliverables/EMP-1.pdf',
     renders: [{
@@ -967,6 +969,7 @@ const geochemFieldsConfig: PMTilesLayerProps = {
     sourceLayer: geochemFieldsLayerName,
     title: geochemFieldsTitle,
     visible: false,
+    opacity: 0.5,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
@@ -1427,7 +1430,7 @@ export const natCarbLocationsConfig: PMTilesLayerProps = {
     title: natCarbLocationsTitle,
     sectionHeading: 'Statewide',
     visible: false,
-    opacity: 1,
+    opacity: 0.3,
     sourceAgency: 'Utah Geological Survey',
     renders: [{
         id: 'default',
