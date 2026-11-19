@@ -19,13 +19,14 @@ interface UseFeatureSelectionOptions {
 }
 
 // Helper to convert ClickedFeatures to HighlightFeatures
-function toHighlightFeatures(features: ClickedFeature[]): HighlightFeature[] {
+export function toHighlightFeatures(features: ClickedFeature[]): HighlightFeature[] {
   return features
     .filter(f => f.geometry)
     .map(f => ({
       id: f.id as string | number,
       geometry: f.geometry!,
-      properties: f.properties || {}
+      properties: f.properties || {},
+      layerTitle: f.layerTitle,
     }))
 }
 
@@ -77,7 +78,7 @@ export function useFeatureSelection({
   }, [setSelectedFeatureRefs, setFeatureBbox, onHighlightChange])
 
   // Handle feature click
-  const handleFeatureClick = useCallback((features: ClickedFeature[], options?: { additive?: boolean }) => {
+  const handleFeatureClick = useCallback((features: ClickedFeature[], options?: { additive?: boolean; highlightAll?: boolean }) => {
     // Clear highlights when clearing selection (non-additive with no features)
     if (!options?.additive && features.length === 0) {
       onHighlightChange?.([])
@@ -109,10 +110,11 @@ export function useFeatureSelection({
 
       // Only update highlights when selection actually changed
       if (selectionChanged && newSelection.length > 0) {
-        if (options?.additive) {
-          onHighlightChange?.(toHighlightFeatures(newSelection))
+        if (options?.additive || options?.highlightAll) {
+          // Every result already draws as the faint results tier; a card click picks one
+          onHighlightChange?.([])
         } else {
-          // Highlight first feature with geometry
+          // A click highlights the feature under the cursor, the first with geometry
           const firstWithGeometry = newSelection.find(f => f.geometry)
           onHighlightChange?.(firstWithGeometry ? toHighlightFeatures([firstWithGeometry]) : [])
         }

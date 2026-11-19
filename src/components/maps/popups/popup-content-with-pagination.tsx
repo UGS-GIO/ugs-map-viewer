@@ -1,4 +1,4 @@
-import { useMemo, useState, memo, useCallback, useRef } from "react"
+import { useMemo, useState, memo, useCallback, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Shrink } from "lucide-react"
 import { Pager } from "@/components/ui/pager"
@@ -8,6 +8,9 @@ import { useZoomToFeature } from "@/hooks/use-zoom-to-feature"
 import { loadCogMetadata, computeCogPixelPolygon } from "@/hooks/use-cog-metadata"
 import { HIGHLIGHT_COLORS } from "@/lib/map/cog/setup"
 import type { HighlightFeature } from "@/components/maps/types"
+import { clearHoveredFeature, setHoveredFeature, useHoveredFeature } from "@/lib/map/hovered-feature"
+import { HIGHLIGHT_COLOR, HOVER_HIGHLIGHT_COLOR } from "@/components/maps/constants"
+import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip"
 import { useBulkRelatedTable, RelatedDataMap } from "@/hooks/use-bulk-related-table"
@@ -39,6 +42,8 @@ PopupButtons.displayName = 'PopupButtons';
 interface PopupContentWithPaginationProps {
     layerContent: LayerContentProps[]
     onHighlightChange?: (features: HighlightFeature[]) => void
+    /** The highlighted results, marked on their cards */
+    activeFeatures?: HighlightFeature[]
     clickPoint?: { lng: number; lat: number } | null
     /** Optional render-prop for content shown under each layer's heading */
     layerHeaderExtras?: (layer: LayerContentProps) => React.ReactNode
@@ -56,6 +61,8 @@ const FeatureCard = memo(({
     bulkRelatedData,
     relatedLoading,
     featureExtras,
+    active,
+    onSelect,
 }: {
     layer: LayerContentProps,
     feature: ExtendedFeature,
@@ -64,9 +71,50 @@ const FeatureCard = memo(({
     bulkRelatedData?: RelatedDataMap[],
     relatedLoading?: boolean,
     featureExtras?: (feature: ExtendedFeature, layer: LayerContentProps) => React.ReactNode,
+    active: boolean,
+    onSelect: (feature: HighlightFeature) => void,
 }) => {
+    const hoverTarget = useMemo<HighlightFeature | null>(() => feature.geometry
+        ? { id: feature.id ?? '', geometry: feature.geometry, properties: feature.properties ?? {}, layerTitle: feature.namespace }
+        : null, [feature])
+    const hovered = useHoveredFeature() === hoverTarget && !!hoverTarget
+    // Only this card's preview: another card may already own the hover
+    const clearHover = () => clearHoveredFeature(hoverTarget)
+    // Paging or closing the popup unmounts the card under the pointer without a pointerleave
+    useEffect(() => () => clearHoveredFeature(hoverTarget), [hoverTarget])
+
     return (
-        <div className="space-y-2 p-3 rounded-lg border border-border bg-card shadow-sm">
+        <div
+            className={cn(
+                "relative space-y-2 p-3 pl-4 rounded-lg border bg-card shadow-sm transition-colors",
+                hoverTarget && "cursor-pointer",
+                // Hover skips the tint: blue on a tinted dark card falls under 3:1
+                active ? "border-foreground/40 bg-accent" : "border-border",
+            )}
+            aria-current={active || undefined}
+            // Touch fires enter then leave on every tap, so only a mouse previews.
+            // The selected card doesn't preview: blue would cover its yellow.
+            onPointerEnter={(e) => { if (e.pointerType === 'mouse' && !active) setHoveredFeature(hoverTarget) }}
+            onPointerLeave={clearHover}
+            onClick={(e) => {
+                // Buttons, links and selected text keep their own behavior
+                if (!hoverTarget || (e.target instanceof Element && e.target.closest('a, button')) || window.getSelection()?.toString()) return
+                clearHover()
+                onSelect(hoverTarget)
+            }}
+        >
+            {/* Bar in the map's colors: yellow selected, blue previewing. In light mode the yellow
+                needs its dark edges for 3:1 against the card; on dark it clears that alone */}
+            {(active || hovered) && (
+                <span
+                    aria-hidden="true"
+                    className={cn(
+                        "absolute inset-y-0 left-0 w-1.5 rounded-l-md",
+                        active && "border-x border-black/50 dark:border-transparent",
+                    )}
+                    style={{ backgroundColor: active ? HIGHLIGHT_COLOR : HOVER_HIGHLIGHT_COLOR }}
+                />
+            )}
             <PopupButtons
                 feature={feature}
                 sourceCRS={layer.sourceCRS}
@@ -97,6 +145,8 @@ const PaginatedFeatureList = memo(({
     bulkRelatedData,
     relatedLoading,
     featureExtras,
+    activeFeatures,
+    onSelect,
 }: {
     layer: LayerContentProps,
     buttons: React.ReactNode[] | null,
@@ -104,6 +154,8 @@ const PaginatedFeatureList = memo(({
     bulkRelatedData?: RelatedDataMap[],
     relatedLoading?: boolean,
     featureExtras?: (feature: ExtendedFeature, layer: LayerContentProps) => React.ReactNode,
+    activeFeatures?: HighlightFeature[],
+    onSelect: (feature: HighlightFeature) => void,
 }) => {
     const [page, setPage] = useState(0)
     const total = layer.features.length
@@ -133,6 +185,9 @@ const PaginatedFeatureList = memo(({
                     bulkRelatedData={bulkRelatedData}
                     relatedLoading={relatedLoading}
                     featureExtras={featureExtras}
+                    // Geometry identity: ids repeat across layers and default to 0
+                    active={!!feature.geometry && !!activeFeatures?.some((a) => a.geometry === feature.geometry)}
+                    onSelect={onSelect}
                 />
             ))}
         </>
@@ -169,7 +224,7 @@ const RasterOnlyCard = memo(({
 });
 RasterOnlyCard.displayName = 'RasterOnlyCard';
 
-const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clickPoint, layerHeaderExtras, featureExtras, onBeforeZoom }: PopupContentWithPaginationProps) => {
+const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, activeFeatures, clickPoint, layerHeaderExtras, featureExtras, onBeforeZoom }: PopupContentWithPaginationProps) => {
     const { zoomTo: zoomToFeatureRaw } = useZoomToFeature({ onHighlightChange })
 
     // Awaits onBeforeZoom (drawer collapse) before fitBounds runs.
@@ -197,6 +252,7 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
             namespace: layer.layerTitle,
         }, 'EPSG:4326', { maxZoom: 16 })
     }, [zoomTo])
+    const handleSelect = useCallback((feature: HighlightFeature) => onHighlightChange?.([feature]), [onHighlightChange])
     const buttons = useGetPopupButtons()
     // -1 = "All", 0+ = specific layer index
     const [selectedLayerIndex, setSelectedLayerIndex] = useState(-1)
@@ -219,7 +275,8 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                 onHighlightChange?.([{
                     id: firstFeature.id as string | number,
                     geometry: firstFeature.geometry,
-                    properties: firstFeature.properties || {}
+                    properties: firstFeature.properties || {},
+                    layerTitle: firstFeature.namespace,
                 }])
             }
         }
@@ -283,7 +340,8 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
             onHighlightChange?.([{
                 id: targetLayer.features[0].id as string | number,
                 geometry: targetLayer.features[0].geometry,
-                properties: targetLayer.features[0].properties || {}
+                properties: targetLayer.features[0].properties || {},
+                layerTitle: targetLayer.features[0].namespace,
             }])
         }
     }, [layerContent, onHighlightChange])
@@ -374,6 +432,8 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                                             bulkRelatedData={relatedDataByLayer.get(layer)}
                                             relatedLoading={layer.relatedTables?.length ? relatedLoading : false}
                                             featureExtras={featureExtras}
+                                            activeFeatures={activeFeatures}
+                                            onSelect={handleSelect}
                                         />
                                     ) : hasRaster ? (
                                         <RasterOnlyCard layer={layer} clickPoint={clickPoint} onZoomToPixel={handleZoomToPixel} />
@@ -393,6 +453,8 @@ const PopupContentWithPaginationInner = ({ layerContent, onHighlightChange, clic
                                 bulkRelatedData={relatedDataByLayer.get(selectedLayer)}
                                 relatedLoading={selectedLayer.relatedTables?.length ? relatedLoading : false}
                                 featureExtras={featureExtras}
+                                activeFeatures={activeFeatures}
+                                onSelect={handleSelect}
                             />
                         ) : hasRasterData(selectedLayer) ? (
                             <RasterOnlyCard layer={selectedLayer} clickPoint={clickPoint} onZoomToPixel={handleZoomToPixel} />
