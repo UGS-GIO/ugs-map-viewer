@@ -196,6 +196,26 @@ export class MapExporter {
             attributionControl: false,
         });
 
+        // Runtime sprites (fill-pattern hatches, icon sprites) are registered via addImage
+        // rather than the base style's `sprite` URL, so forward them onto the offscreen map.
+        const sourceMap = this.map;
+        const copyMissingImage = (id: string) => {
+            const img = sourceMap.getImage(id);
+            if (img && !exportMap.hasImage(id)) {
+                exportMap.addImage(id, img.data, {
+                    pixelRatio: img.pixelRatio,
+                    sdf: img.sdf,
+                    stretchX: img.stretchX,
+                    stretchY: img.stretchY,
+                    content: img.content,
+                });
+            }
+        };
+        exportMap.on('styleimagemissing', (e) => copyMissingImage(e.id));
+        exportMap.once('styledata', () => {
+            for (const id of sourceMap.listImages()) copyMissingImage(id);
+        });
+
         // A failed render or legend fetch still has to tear down the offscreen map.
         try {
             this.partial = false;

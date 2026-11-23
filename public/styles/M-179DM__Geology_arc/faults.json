@@ -1,0 +1,385 @@
+{
+  "layers": [
+    {
+      "id": "M-179DM__Geology_arc-normal-well",
+      "type": "line",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "TYPE"
+              ]
+            ]
+          ],
+          "fault"
+        ],
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "SUBTYPE"
+              ]
+            ]
+          ],
+          "normal"
+        ],
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "MODIFIER"
+              ]
+            ]
+          ],
+          "well located"
+        ]
+      ],
+      "paint": {
+        "line-color": "#000000",
+        "line-width": 1
+      }
+    },
+    {
+      "id": "M-179DM__Geology_arc-normal-approx",
+      "type": "line",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "TYPE"
+              ]
+            ]
+          ],
+          "fault"
+        ],
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "SUBTYPE"
+              ]
+            ]
+          ],
+          "normal"
+        ],
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "MODIFIER"
+              ]
+            ]
+          ],
+          "approximately located"
+        ]
+      ],
+      "paint": {
+        "line-color": "#000000",
+        "line-width": 1,
+        "line-dasharray": [
+          4,
+          3
+        ]
+      }
+    },
+    {
+      "id": "M-179DM__Geology_arc-normal-concealed",
+      "type": "line",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "TYPE"
+              ]
+            ]
+          ],
+          "fault"
+        ],
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "SUBTYPE"
+              ]
+            ]
+          ],
+          "normal"
+        ],
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "MODIFIER"
+              ]
+            ]
+          ],
+          "concealed"
+        ]
+      ],
+      "paint": {
+        "line-color": "#000000",
+        "line-width": 1,
+        "line-dasharray": [
+          1,
+          2
+        ]
+      }
+    },
+    {
+      "id": "M-179DM__Geology_arc-thrust-well",
+      "type": "line",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "TYPE"
+              ]
+            ]
+          ],
+          "fault"
+        ],
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "SUBTYPE"
+              ]
+            ]
+          ],
+          "thrust"
+        ],
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "MODIFIER"
+              ]
+            ]
+          ],
+          "well located"
+        ]
+      ],
+      "paint": {
+        "line-color": "#000000",
+        "line-width": 1
+      }
+    },
+    {
+      "id": "M-179DM__Geology_arc-thrust-approx",
+      "type": "line",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "TYPE"
+              ]
+            ]
+          ],
+          "fault"
+        ],
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "SUBTYPE"
+              ]
+            ]
+          ],
+          "thrust"
+        ],
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "MODIFIER"
+              ]
+            ]
+          ],
+          "approximately located"
+        ]
+      ],
+      "paint": {
+        "line-color": "#000000",
+        "line-width": 1,
+        "line-dasharray": [
+          4,
+          3
+        ]
+      }
+    },
+    {
+      "id": "M-179DM__Geology_arc-thrust-concealed",
+      "type": "line",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "TYPE"
+              ]
+            ]
+          ],
+          "fault"
+        ],
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "SUBTYPE"
+              ]
+            ]
+          ],
+          "thrust"
+        ],
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "MODIFIER"
+              ]
+            ]
+          ],
+          "concealed"
+        ]
+      ],
+      "paint": {
+        "line-color": "#000000",
+        "line-width": 1,
+        "line-dasharray": [
+          1,
+          2
+        ]
+      }
+    },
+    {
+      "id": "M-179DM__Geology_arc-thrust-teeth",
+      "type": "symbol",
+      "filter": [
+        "all",
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "TYPE"
+              ]
+            ]
+          ],
+          "fault"
+        ],
+        [
+          "==",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "SUBTYPE"
+              ]
+            ]
+          ],
+          "thrust"
+        ]
+      ],
+      "layout": {
+        "symbol-placement": "line",
+        "symbol-spacing": 28,
+        "icon-image": "thrust-tooth",
+        "icon-size": 0.16,
+        "icon-offset": [
+          0,
+          -14
+        ],
+        "icon-allow-overlap": true,
+        "icon-ignore-placement": true
+      }
+    }
+  ]
+}

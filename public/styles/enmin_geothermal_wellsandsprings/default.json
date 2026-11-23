@@ -1,0 +1,39 @@
+{
+  "layers": [
+    {
+      "id": "enmin_geothermal_wellsandsprings-circle",
+      "type": "circle",
+      "paint": {
+        "circle-color": [
+          "match",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "type"
+              ]
+            ]
+          ],
+          "m",
+          "#989898",
+          [
+            "s",
+            "s?"
+          ],
+          "#32df36",
+          [
+            "w",
+            "w?"
+          ],
+          "#1f78b4",
+          "#95a5a6"
+        ],
+        "circle-radius": 3.5,
+        "circle-stroke-color": "#232323",
+        "circle-stroke-width": 0.5
+      }
+    }
+  ]
+}

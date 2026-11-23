@@ -1,0 +1,52 @@
+{
+  "layers": [
+    {
+      "id": "enmin_ccs_wells_formation-circle",
+      "type": "circle",
+      "paint": {
+        "circle-radius": 3.5,
+        "circle-color": [
+          "match",
+          [
+            "downcase",
+            [
+              "to-string",
+              [
+                "get",
+                "welltype_name"
+              ]
+            ]
+          ],
+          "carbon dioxide well",
+          "#e54baa",
+          "dry hole",
+          "#aced8d",
+          "gas injection well",
+          "#fbff10",
+          "gas storage well",
+          "#12d82c",
+          "gas well",
+          "#c960d2",
+          "helium well",
+          "#afd03a",
+          "oil well",
+          "#7a7add",
+          "test well",
+          "#8e5ccb",
+          "unknown",
+          "#d14b11",
+          "water disposal well",
+          "#3fccd6",
+          "water injection well",
+          "#4388d6",
+          "water source well",
+          "#c84b5f",
+          "#a0a0a0"
+        ],
+        "circle-stroke-width": 0.5,
+        "circle-stroke-color": "#232323",
+        "circle-stroke-opacity": 0.65
+      }
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "layers": [
+    {
+      "id": "enmin_ccs_majorroads-line",
+      "type": "line",
+      "paint": {
+        "line-color": "#000000",
+        "line-width": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          1.6,
+          10,
+          2.2,
+          14,
+          3
+        ]
+      },
+      "layout": {
+        "line-join": "bevel",
+        "line-cap": "butt"
+      }
+    }
+  ]
+}

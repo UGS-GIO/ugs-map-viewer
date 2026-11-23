@@ -34,7 +34,10 @@ import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection, toHighlightFeatures } from '@/hooks/use-feature-selection'
 import { rasterQueries, usePopupData } from '@/hooks/use-popup-data'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
-import type { LayerProps, WMSLayerProps, COGLayerProps } from '@/lib/types/mapping-types'
+import type { LayerProps, WMSLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
+import { parseStacBivariateLegend } from '@/components/maps/bivariate-legend'
+import { activeRenderOf, fetchStyleFragment } from '@/components/maps/pmtiles-layer-source'
+import { swatchShapeOf, swatchSvgHtml, type SwatchShape } from '@/lib/legend/swatch-shape'
 import { createSVGSymbol } from '@/lib/legend/symbol-generator'
 import { createRasterSymbol } from '@/lib/legend/symbolizers/raster'
 import { loadCogMetadata, deriveRange } from '@/hooks/use-cog-metadata'
@@ -77,7 +80,8 @@ const NO_LAYERS: LayerProps[] = []
 async function fetchLegendDataForVisibleLayers(
   layers: LayerProps[],
   displayedTitles: Set<string>,
-  bounds?: MapBounds
+  bounds?: MapBounds,
+  vectorLayerSymbology: Record<string, string> = {},
 ): Promise<LegendItem[]> {
   const results: LegendItem[] = []
 
@@ -114,8 +118,64 @@ async function fetchLegendDataForVisibleLayers(
     return visible
   }
 
+  const getVisiblePmtilesLayers = (layerArray: LayerProps[]): PMTilesLayerProps[] => {
+    const visible: PMTilesLayerProps[] = []
+    for (const layer of layerArray) {
+      if (layer.type === 'group' && 'layers' in layer) {
+        visible.push(...getVisiblePmtilesLayers(layer.layers || []))
+      } else if (layer.type === 'pmtiles' && displayedTitles.has(layer.title || '')) {
+        visible.push(layer as PMTilesLayerProps)
+      }
+    }
+    return visible
+  }
+
   const visibleLayers = getVisibleWmsLayers(layers)
   const visibleCogLayers = getVisibleCogLayers(layers)
+  const visiblePmtilesLayers = getVisiblePmtilesLayers(layers)
+
+  for (const pmLayer of visiblePmtilesLayers) {
+    const render = activeRenderOf(pmLayer, vectorLayerSymbology[pmLayer.title || ''])
+    const layerTitle = pmLayer.title || pmLayer.sourceLayer
+    if (pmLayer.bivariateLegend) {
+      const grid = render?.legend ? parseStacBivariateLegend(render.legend) : null
+      if (grid) {
+        results.push({
+          layerTitle,
+          symbols: [],
+          bivariate: {
+            colors: grid.colors,
+            xLabel: pmLayer.bivariateLegend.xLabel,
+            yLabel: pmLayer.bivariateLegend.yLabel,
+            xTicks: grid.xTicks,
+            yTicks: grid.yTicks,
+            noData: grid.noData ?? undefined,
+          },
+        })
+      }
+      continue
+    }
+
+    if (pmLayer.customLegend || !render?.legend?.length) continue
+
+    const allShaped = render.legend.every(entry => entry.shape != null)
+    let fallbackShape: SwatchShape = 'circle'
+    if (!allShaped && render.styleUrl) {
+      try {
+        const fragment = await fetchStyleFragment(render.styleUrl)
+        fallbackShape = swatchShapeOf(fragment.layers?.map(l => l.type) ?? [])
+      } catch (e) {
+        console.warn(`Failed to fetch style fragment for ${layerTitle}:`, e)
+      }
+    }
+    results.push({
+      layerTitle,
+      symbols: render.legend.map(entry => ({
+        label: entry.label,
+        svgHtml: swatchSvgHtml(entry.shape ?? fallbackShape, entry.color, entry.stroke),
+      })),
+    })
+  }
 
   // Fetch legend for each visible layer
   for (const layer of visibleLayers) {
@@ -447,9 +507,12 @@ export default function GenericMapContainer({
     clearAllSelections,
   ])
 
+  const vectorSymbologyRef = useRef(vectorLayerSymbology)
+  vectorSymbologyRef.current = vectorLayerSymbology
+
   // Legend data for the export control; reads the refs so the control never needs re-creating.
   const getLegendData = useCallback(
-    (bounds: MapBounds) => fetchLegendDataForVisibleLayers(layersConfigRef.current, displayedTitlesRef.current, bounds),
+    (bounds: MapBounds) => fetchLegendDataForVisibleLayers(layersConfigRef.current, displayedTitlesRef.current, bounds, vectorSymbologyRef.current),
     [],
   )
 

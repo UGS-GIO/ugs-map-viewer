@@ -143,4 +143,22 @@ describe('buildPmtilesLayerSpecs', () => {
         })
         expect(specs[0].filter).toEqual(['all', ['==', 'a', 1], ['==', 'c', 3], ['==', 'b', 2]])
     })
+
+    it('scales authored numeric and expression opacities proportionally', () => {
+        const specs = specsOf({
+            layer: { title: 'Test', sourceLayer: 'test' } as PMTilesLayerProps,
+            fragment: {
+                layers: [
+                    { id: 'f', type: 'fill' as const, paint: { 'fill-opacity': 0.4 } },
+                    { id: 'e', type: 'fill' as const, paint: { 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 6, 0.2, 14, 0.6] } },
+                    { id: 'c', type: 'circle' as const, paint: { 'circle-opacity': 0.8, 'circle-stroke-opacity': 0.5 } },
+                ],
+            },
+            opacity: 0.5,
+        })
+        expect(sub(specs[0], 'paint')['fill-opacity']).toBeCloseTo(0.2)
+        expect(sub(specs[1], 'paint')['fill-opacity']).toEqual(['*', ['interpolate', ['linear'], ['zoom'], 6, 0.2, 14, 0.6], 0.5])
+        expect(sub(specs[2], 'paint')['circle-opacity']).toBeCloseTo(0.4)
+        expect(sub(specs[2], 'paint')['circle-stroke-opacity']).toBeCloseTo(0.25)
+    })
 })

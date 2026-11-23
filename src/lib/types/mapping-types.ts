@@ -1,5 +1,6 @@
 import { FeatureCollection, GeoJsonProperties } from "geojson"
 import type { FilterSpecification } from "maplibre-gl"
+import type { SwatchShape } from "@/lib/legend/swatch-shape"
 
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -211,6 +212,12 @@ export interface LegendEntry {
     value?: string;
     values?: readonly { value: string; color: string; label?: string }[];
     stroke?: string;
+    /** Explicit swatch geometry authored on the STAC legend entry (e.g. 'triangle', 'hatch'). */
+    shape?: SwatchShape;
+    /** Bivariate matrix coordinates (0-indexed) or NoData flag authored on the STAC legend entry. */
+    row?: number;
+    col?: number;
+    noData?: boolean;
 }
 
 export interface PMTilesRender {

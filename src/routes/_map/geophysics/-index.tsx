@@ -9,7 +9,7 @@ import { TourAutoStart } from '@/components/tour-auto-start'
 import { PROD_POSTGREST_URL, parquetUrl } from '@/lib/constants';
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox';
 import { geothermalTEMLayerTitle, gravityStationsLayeTitle, powerplantsTitle } from './-data/layers/layers';
-import { powerplantsFilterSchema } from './-data/layers/powerplants-schema'
+import { powerplantsFilterSchema } from '@/routes/_map/-shared/layers/powerplants-schema'
 import { toMaplibreFilter } from '@/lib/filter/generators'
 import { fromCql } from '@/lib/filter/parse'
 import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'

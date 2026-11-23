@@ -1,0 +1,88 @@
+{
+  "layers": [
+    {
+      "id": "enmin_ccs_exclusionzones-land-fill",
+      "type": "fill",
+      "filter": [
+        "==",
+        [
+          "downcase",
+          [
+            "to-string",
+            [
+              "get",
+              "grade"
+            ]
+          ]
+        ],
+        "no-ccus-zone"
+      ],
+      "paint": {
+        "fill-pattern": "slash-no-ccus-zone",
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.55,
+          10,
+          0.85,
+          14,
+          1
+        ]
+      }
+    },
+    {
+      "id": "enmin_ccs_exclusionzones-geo-fill",
+      "type": "fill",
+      "filter": [
+        "==",
+        [
+          "downcase",
+          [
+            "to-string",
+            [
+              "get",
+              "grade"
+            ]
+          ]
+        ],
+        "no-ccus-zone-geo"
+      ],
+      "paint": {
+        "fill-pattern": "slash-no-ccus-zone-geo",
+        "fill-opacity": [
+          "interpolate",
+          [
+            "linear"
+          ],
+          [
+            "zoom"
+          ],
+          6,
+          0.55,
+          10,
+          0.85,
+          14,
+          1
+        ]
+      }
+    },
+    {
+      "id": "enmin_ccs_exclusionzones-outline",
+      "type": "line",
+      "paint": {
+        "line-color": "#000000",
+        "line-width": 1.2
+      },
+      "layout": {
+        "line-cap": "square",
+        "line-join": "bevel"
+      }
+    }
+  ]
+}
