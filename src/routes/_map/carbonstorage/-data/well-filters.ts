@@ -1,4 +1,5 @@
 import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
+import { z } from 'zod'
 
 export type YesNoAll = 'yes' | 'no' | 'all'
 
@@ -16,8 +17,23 @@ export const EMPTY_WELL_FILTER: WellFilterState = {
     formation_operator: undefined,
 }
 
-const isYesNoAll = (v: unknown): v is YesNoAll => v === 'yes' || v === 'no' || v === 'all'
 const VALID_COL = /^[a-zA-Z0-9_]+$/
+
+const yesNoAllSchema = z.enum(['yes', 'no', 'all'])
+const wellFilterSchema = z.object({
+    core: yesNoAllSchema.catch('all').default('all'),
+    las: yesNoAllSchema.catch('all').default('all'),
+    formations: z.array(z.unknown()).catch([]).default([]).transform(arr =>
+        arr.filter((f): f is string => typeof f === 'string' && VALID_COL.test(f)),
+    ),
+    formation_operator: z.literal('and').optional().catch(undefined),
+})
+
+const parseCqlBoolean = (raw: string, field: string): YesNoAll => {
+    if (new RegExp(`\\b${field}\\s*=\\s*['"]?true['"]?(?=[\\s)]|$)`, 'i').test(raw)) return 'yes'
+    if (new RegExp(`\\b${field}\\s*=\\s*['"]?false['"]?(?=[\\s)]|$)`, 'i').test(raw)) return 'no'
+    return 'all'
+}
 
 /** Serialize well filter state into a compact JSON string for URL `filters[Wells Database]`, or '' when empty. */
 export function serializeWellFilter(state: WellFilterState): string {
@@ -39,38 +55,32 @@ export function serializeWellFilter(state: WellFilterState): string {
  * emitted by {@link serializeWellFilter} as well as legacy CQL bookmarks.
  */
 export function parseWellFilter(raw: string | null | undefined): WellFilterState {
-    if (!raw) return EMPTY_WELL_FILTER
+    const trimmed = raw?.trim()
+    if (!trimmed) return EMPTY_WELL_FILTER
 
-    if (raw.startsWith('{')) {
+    if (trimmed.startsWith('{')) {
         try {
-            const parsed = JSON.parse(raw) as Record<string, unknown>
-            const core = isYesNoAll(parsed.core) ? parsed.core : 'all'
-            const las = isYesNoAll(parsed.las) ? parsed.las : 'all'
-            const formations = Array.isArray(parsed.formations)
-                ? parsed.formations.filter((f): f is string => typeof f === 'string' && VALID_COL.test(f))
-                : []
-            const formation_operator = formations.length > 1 && parsed.formation_operator === 'and' ? 'and' : undefined
-            return { core, las, formations, formation_operator }
+            const validated = wellFilterSchema.safeParse(JSON.parse(trimmed))
+            if (!validated.success) return EMPTY_WELL_FILTER
+            const { core, las, formations, formation_operator } = validated.data
+            return {
+                core,
+                las,
+                formations,
+                formation_operator: formations.length > 1 ? formation_operator : undefined,
+            }
         } catch {
             return EMPTY_WELL_FILTER
         }
     }
 
     // One-way fallback for legacy CQL bookmarks (e.g. `hascore = 'True' AND (fm_x IS NOT NULL)`).
-    const core: YesNoAll = raw.includes(`hascore = 'True'`)
-        ? 'yes'
-        : raw.includes(`hascore = 'False'`)
-            ? 'no'
-            : 'all'
-    const las: YesNoAll = raw.includes(`has_las = 'True'`)
-        ? 'yes'
-        : raw.includes(`has_las = 'False'`)
-            ? 'no'
-            : 'all'
-    const formationMatches = raw.match(/\b([a-zA-Z0-9_]+)\s+IS NOT NULL/gi) || []
+    const core = parseCqlBoolean(trimmed, 'hascore')
+    const las = parseCqlBoolean(trimmed, 'has_las')
+    const formationMatches = trimmed.match(/\b([a-zA-Z0-9_]+)\s+IS\s+NOT\s+NULL/gi) || []
     const formations = formationMatches.map(m => m.split(/\s+/)[0]).filter(f => VALID_COL.test(f))
     const formation_operator = formations.length > 1 &&
-        /IS\s+NOT\s+NULL\s*\)?\s*AND\s*\(?\s*[a-zA-Z0-9_]+\s+IS\s+NOT\s+NULL/i.test(raw)
+        /IS\s+NOT\s+NULL\s*\)?\s*AND\s*\(?\s*[a-zA-Z0-9_]+\s+IS\s+NOT\s+NULL/i.test(trimmed)
         ? 'and'
         : undefined
     return { core, las, formations, formation_operator }

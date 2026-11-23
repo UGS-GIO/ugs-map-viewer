@@ -106,6 +106,7 @@ export function BivariateLegend({ wmsUrl, layerName, stacLegend, xLabel, yLabel 
     const { data: wmsGrid, isLoading, error } = useQuery({
         queryKey: queryKeys.layers.wmsLegend(layerName ?? '', wmsUrl ?? ''),
         queryFn: async () => {
+            if (!wmsUrl || !layerName) return null;
             const url = `${wmsUrl}?service=WMS&request=GetLegendGraphic&format=application/json&layer=${layerName}&version=1.3.0`;
             const res = await fetch(url, { headers: { Accept: 'application/json' } });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);

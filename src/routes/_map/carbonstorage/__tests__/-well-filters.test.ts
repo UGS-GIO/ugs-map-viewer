@@ -43,5 +43,21 @@ describe('well-filters', () => {
             formations: ['fm_a', 'fm_b'],
             formation_operator: 'and',
         })
+        expect(parseWellFilter(`  hascore=TRUE and has_las = false  `)).toEqual({
+            core: 'yes',
+            las: 'no',
+            formations: [],
+            formation_operator: undefined,
+        })
+    })
+
+    it('trims whitespace before JSON parsing and handles malformed inputs safely', () => {
+        expect(parseWellFilter('  {"core":"yes","formations":["fm_ok","bad col"]}  ')).toEqual({
+            core: 'yes',
+            las: 'all',
+            formations: ['fm_ok'],
+            formation_operator: undefined,
+        })
+        expect(parseWellFilter('  {not-json')).toEqual(EMPTY_WELL_FILTER)
     })
 })
