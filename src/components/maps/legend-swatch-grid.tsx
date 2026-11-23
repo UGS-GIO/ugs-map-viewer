@@ -61,12 +61,13 @@ export function LegendSwatch({ shape = 'circle', color, stroke }: { shape?: Swat
     return (
         <span className={LEGEND_SWATCH_SLOT_CLASS} aria-hidden>
             {shape === 'line' && (
-                <span className="legend-swatch flex h-3.5 w-7 items-center justify-center rounded-sm border border-black/30 px-0.5">
-                    <span
-                        className="h-0.5 w-full rounded-full"
-                        style={{ backgroundColor: color, boxShadow: stroke ? `0 0 0 1px ${stroke}` : undefined }}
-                    />
-                </span>
+                <span
+                    className={cn(
+                        'h-0.5 w-7 rounded-full',
+                        !stroke && 'dark:shadow-[0_0_0_0.75px_rgba(255,255,255,0.45)]',
+                    )}
+                    style={{ backgroundColor: color, boxShadow: stroke ? `0 0 0 1px ${stroke}` : undefined }}
+                />
             )}
             {shape === 'circle' && <span className="legend-swatch size-2.5 rounded-full border" style={paint} />}
             {shape === 'fill' && <span className="legend-swatch h-3.5 w-7 rounded-sm border" style={paint} />}
