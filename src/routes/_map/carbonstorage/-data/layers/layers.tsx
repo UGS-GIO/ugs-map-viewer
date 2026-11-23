@@ -24,6 +24,7 @@ const georegionsConfig: PMTilesLayerProps = {
     sectionHeading: 'Statewide',
     visible: true,
     opacity: 0.3,
+    polygonLabels: true,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
@@ -67,6 +68,7 @@ const oilGasFieldsConfig: PMTilesLayerProps = {
     sourceLayer: oilGasFieldsLayerName,
     title: oilGasFieldsTitle,
     visible: false,
+    opacity: 0.8,
     sourceAgency: 'Utah Division of Oil, Gas and Mining',
     sublayers: [
         {
@@ -95,6 +97,7 @@ const pipelinesConfig: PMTilesLayerProps = {
     sourceLayer: pipelinesLayerName,
     title: pipelinesTitle,
     visible: false,
+    opacity: 0.8,
     sourceAgency: 'UGRC',
     sublayers: [
         {
@@ -124,6 +127,7 @@ const sco2GridSummaryConfig: PMTilesLayerProps = {
     sectionHeading: 'Statewide',
     visible: false,
     opacity: 0.75,
+    polygonLabels: true,
     bivariateLegend: { xLabel: 'Cost', yLabel: 'Capacity' },
     sublayers: [
         {
@@ -199,6 +203,7 @@ const riversConfig: PMTilesLayerProps = {
     sourceLayer: riversLayerName,
     title: riversTitle,
     visible: false,
+    opacity: 0.8,
     sourceAgency: 'UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-major-rivers-polygons/about',
     sublayers: [
@@ -225,6 +230,7 @@ const roadsConfig: PMTilesLayerProps = {
     sourceLayer: roadsLayerName,
     title: roadsTitle,
     visible: false,
+    opacity: 0.8,
     sourceAgency: 'Local data stewards, UDOT, and UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-roads/about',
     sublayers: [
@@ -250,6 +256,7 @@ const railroadsConfig: PMTilesLayerProps = {
     sourceLayer: railroadsLayerName,
     title: railroadsTitle,
     visible: false,
+    opacity: 0.8,
     sourceAgency: 'UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-railroads/about',
     sublayers: [
@@ -275,6 +282,7 @@ const transmissionLinesConfig: PMTilesLayerProps = {
     sourceLayer: transmissionLinesLayerName,
     title: transmissionLinesTitle,
     visible: false,
+    opacity: 0.8,
     sourceAgency: 'HIFLD / U.S. Government',
     sourceUrl: 'https://www.arcgis.com/home/item.html?id=d4090758322c4d32a4cd002ffaa0aa12',
     sublayers: [
@@ -431,6 +439,7 @@ const faultsConfig: PMTilesLayerProps = {
     title: faultsTitle,
     featureFilter: ['==', ['downcase', ['to-string', ['get', 'TYPE']]], 'fault'],
     visible: false,
+    opacity: 0.8,
     sourceAgency: 'Utah Geological Survey',
     sourceUrl: 'https://geology.utah.gov/publication-details/?pub=M-179dm',
     // Publication STAC items are not yet rebound by `ugs-warehouse.restyle`; point directly at the published CDN render.
@@ -498,6 +507,7 @@ const qFaultsConfig: PMTilesLayerProps = {
     sourceLayer: qFaultsLayerName,
     title: qFaultsTitle,
     visible: false,
+    opacity: 0.8,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
@@ -708,6 +718,7 @@ const ccsExclusionAreasConfig: PMTilesLayerProps = {
     sourceLayer: ccsExclusionAreasLayerName,
     title: ccsExclusionAreasTitle,
     visible: false,
+    opacity: 0.8,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
@@ -951,6 +962,7 @@ const geothermalWellsJoinsConfig: PMTilesLayerProps = {
     title: geothermalWellsJoinsTitle,
     formerTitles: ['Geothermal Wells'],
     visible: false,
+    opacity: 0.8,
     sourceAgency: 'INGENIOUS Project, 2022',
     sublayers: [
         {
@@ -1013,6 +1025,7 @@ const geothermalSpringsJoinsConfig: PMTilesLayerProps = {
     title: geothermalSpringsJoinsTitle,
     formerTitles: ['Geothermal Springs'],
     visible: false,
+    opacity: 0.8,
     sourceAgency: 'INGENIOUS Project, 2022',
     sublayers: [
         {
@@ -1070,6 +1083,7 @@ const geothermalWellsConfig: PMTilesLayerProps = {
     sourceLayer: geothermalWellsLayerName,
     title: geothermalWellsTitle,
     visible: false,
+    opacity: 0.8,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
@@ -1155,6 +1169,8 @@ const utCountiesConfig: PMTilesLayerProps = {
     sourceLayer: utCountiesLayerName,
     title: utCountiesTitle,
     visible: false,
+    opacity: 0.8,
+    polygonLabels: true,
     sourceAgency: 'UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-county-boundaries/about',
     sublayers: [{
@@ -1175,6 +1191,7 @@ const utTownshipRangesConfig: PMTilesLayerProps = {
     sourceLayer: utTownshipRangesLayerName,
     title: utTownshipRangesTitle,
     visible: false,
+    opacity: 0.8,
     visibleZoomRange: [11, 22],
     polygonLabels: true,
     sourceAgency: 'UGRC',
@@ -1241,7 +1258,7 @@ export const natCarbLocationsConfig: PMTilesLayerProps = {
                         { field: 'vol_med', label: 'Vol Med (Mt)', format: 'number' },
                         { field: 'vol_high', label: 'Vol High (Mt)', format: 'number' },
                         { field: 'depth_ft', label: 'Depth (ft)', format: 'number' },
-                        { field: 'thickness', label: 'Thickness (ft)', format: 'number' },
+                        { field: 'thickness_', label: 'Thickness (ft)', format: 'number' },
                         { field: 'temperatur', label: 'Temp (°F)', format: 'number' },
                         { field: 'pressure_p', label: 'Pressure (psi)', format: 'number' },
                         { field: 'porosity_p', label: 'Porosity (%)', format: 'number' },
