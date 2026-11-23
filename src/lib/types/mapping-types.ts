@@ -97,6 +97,7 @@ export type CustomSublayerProps = {
     popupFieldsTable?: PopupFieldsTableConfig[]; // Subsets of popupFields rendered as tables in collapsible dropdowns
     relatedTables?: RelatedTable[];
     relatedTablesPosition?: 'above' | 'below'; // Render related tables above or below the popup fields (default 'below')
+    galleryPosition?: 'above' | 'below'; // Render image gallery above or below the popup fields (default 'below')
     linkFields?: LinkFields;
     imageFields?: ImageFieldConfig[];
     colorCodingMap?: ColorCodingRecordFunction; // Maps field names to color coding functions
