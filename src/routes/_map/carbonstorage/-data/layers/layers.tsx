@@ -68,16 +68,6 @@ const oilGasFieldsConfig: PMTilesLayerProps = {
     title: oilGasFieldsTitle,
     visible: false,
     sourceAgency: 'Utah Division of Oil, Gas and Mining',
-    renders: [{
-        id: 'default',
-        styleUrl: '/styles/enmin_oilgasfields_ogm/default.json',
-        legend: [
-            { label: 'Gas Field', value: 'Gas', color: '#e31a1c', stroke: '#232323' },
-            { label: 'Oil Field', value: 'Oil', color: '#33a02c', stroke: '#232323' },
-            { label: 'Coalbed Methane Field', value: 'Coalbed Methane', color: '#ad42f5', stroke: '#232323' },
-            { label: 'CO2 Field', value: 'CO2', color: '#fdbf6f', stroke: '#232323' },
-        ],
-    }],
     sublayers: [
         {
             name: oilGasFieldsLayerName,
@@ -135,24 +125,6 @@ const sco2GridSummaryConfig: PMTilesLayerProps = {
     visible: false,
     opacity: 0.75,
     bivariateLegend: { xLabel: 'Cost', yLabel: 'Capacity' },
-    renders: [
-        {
-            id: 'default',
-            styleUrl: '/styles/enmin_ccs_sco2_gridsummaries/default.json',
-            legend: [
-                { label: 'High Cap / Low Cost', row: 0, col: 0, color: '#64acbe' },
-                { label: 'High Cap / Mid Cost', row: 0, col: 1, color: '#627f8c' },
-                { label: 'High Cap / High Cost', row: 0, col: 2, color: '#574249' },
-                { label: 'Mid Cap / Low Cost', row: 1, col: 0, color: '#b0d5df' },
-                { label: 'Mid Cap / Mid Cost', row: 1, col: 1, color: '#ad9ea5' },
-                { label: 'Mid Cap / High Cost', row: 1, col: 2, color: '#985356' },
-                { label: 'Low Cap / Low Cost', row: 2, col: 0, color: '#e8e8e8' },
-                { label: 'Low Cap / Mid Cost', row: 2, col: 1, color: '#e4acac' },
-                { label: 'Low Cap / High Cost', row: 2, col: 2, color: '#c85a5a' },
-                { label: 'Not Evaluated', noData: true, color: '#ffffff', stroke: '#999999' },
-            ],
-        },
-    ],
     sublayers: [
         {
             name: sco2GridSummaryLayerName,
@@ -229,7 +201,6 @@ const riversConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-major-rivers-polygons/about',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_rivers/default.json', legend: [{ label: 'Major River', color: '#6498d2' }] }],
     sublayers: [
         {
             name: riversLayerName,
@@ -256,7 +227,6 @@ const roadsConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'Local data stewards, UDOT, and UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-roads/about',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_majorroads/default.json', legend: [{ label: 'Major Roads', color: '#000000' }] }],
     sublayers: [
         {
             name: roadsLayerName,
@@ -282,7 +252,6 @@ const railroadsConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-railroads/about',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_railroads/default.json', legend: [{ label: 'Railroads', color: '#9f4b00' }] }],
     sublayers: [
         {
             name: railroadsLayerName,
@@ -308,11 +277,6 @@ const transmissionLinesConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'HIFLD / U.S. Government',
     sourceUrl: 'https://www.arcgis.com/home/item.html?id=d4090758322c4d32a4cd002ffaa0aa12',
-    renders: [{
-        id: 'default',
-        styleUrl: '/styles/enmin_transmissionlines/default.json',
-        legend: [{ label: 'Transmission Lines', color: '#ffdd00', stroke: '#000000' }],
-    }],
     sublayers: [
         {
             name: transmissionLinesLayerName,
@@ -386,24 +350,6 @@ const wellWithTopsConfig: PMTilesLayerProps = {
     visible: true,
     opacity: 0.8,
     sourceAgency: 'Utah Division of Oil, Gas and Mining',
-    renders: [{
-        id: 'default',
-        styleUrl: '/styles/enmin_ccs_wells_formation/default.json',
-        legend: [
-            { label: 'Carbon Dioxide Well', color: '#e54baa', stroke: '#232323' },
-            { label: 'Dry Hole', color: '#aced8d', stroke: '#232323' },
-            { label: 'Gas Injection Well', color: '#fbff10', stroke: '#232323' },
-            { label: 'Gas Storage Well', color: '#12d82c', stroke: '#232323' },
-            { label: 'Gas Well', color: '#c960d2', stroke: '#232323' },
-            { label: 'Helium Well', color: '#afd03a', stroke: '#232323' },
-            { label: 'Oil Well', color: '#7a7add', stroke: '#232323' },
-            { label: 'Test Well', color: '#8e5ccb', stroke: '#232323' },
-            { label: 'Unknown', color: '#d14b11', stroke: '#232323' },
-            { label: 'Water Disposal Well', color: '#3fccd6', stroke: '#232323' },
-            { label: 'Water Injection Well', color: '#4388d6', stroke: '#232323' },
-            { label: 'Water Source Well', color: '#c84b5f', stroke: '#232323' },
-        ],
-    }],
     sublayers: [
         {
             name: wellWithTopsLayerName,
@@ -487,10 +433,11 @@ const faultsConfig: PMTilesLayerProps = {
     visible: false,
     sourceAgency: 'Utah Geological Survey',
     sourceUrl: 'https://geology.utah.gov/publication-details/?pub=M-179dm',
+    // Publication STAC items are not yet rebound by `ugs-warehouse.restyle`; point directly at the published CDN render.
     renders: [{
         id: 'faults',
-        styleUrl: '/styles/M-179DM__Geology_arc/faults.json',
-        sprite: '/styles/M-179DM__Geology_arc/sprite',
+        styleUrl: `${MAPS_ASSETS_CDN_URL}/styles/styles/M-179DM__Geology_arc/faults.json`,
+        sprite: `${MAPS_ASSETS_CDN_URL}/styles/styles/M-179DM__Geology_arc/sprite`,
         legend: [
             { label: 'Fault, Normal, Well Located', color: '#000000', shape: 'line' },
             { label: 'Fault, Normal, Approximately Located', color: '#000000', shape: 'line' },
@@ -622,24 +569,6 @@ const co2SourcesConfig: PMTilesLayerProps = {
     visible: false,
     opacity: 0.8,
     sourceAgency: 'EPA FLIGHT Data, 2023',
-    renders: [{
-        id: 'default',
-        styleUrl: '/styles/enmin_ccs_co2_sources/default.json',
-        legend: [
-            { label: 'Agriculture', color: '#7F1D1D' },
-            { label: 'Cement/lime plant', color: '#0B6623' },
-            { label: 'Coal power plant', color: '#5B2C6F' },
-            { label: 'Landfill', color: '#FFEB3B' },
-            { label: 'Manufacturing', color: '#000000' },
-            { label: 'Military', color: '#1F77B4' },
-            { label: 'Natural resources extraction', color: '#F39C12' },
-            { label: 'NG pipeline compressor station', color: '#7F8C8D' },
-            { label: 'NG power plant', color: '#F5F5F5' },
-            { label: 'NG processing', color: '#F5F5F5' },
-            { label: 'Refinery', color: '#5DADE2' },
-            { label: 'University', color: '#52BE80' },
-        ],
-    }],
     sublayers: [
         {
             name: co2SourcesLayerName,
@@ -695,7 +624,6 @@ const wildernessStudyAreasConfig: PMTilesLayerProps = {
     opacity: 0.8,
     sourceAgency: 'U.S. Bureau of Land Management',
     sourceUrl: 'https://gbp-blm-egis.hub.arcgis.com/maps/0ae90ebbc1f54f77b80b76a6148ab83d/about',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_ccs_wsa/default.json', legend: [{ label: 'Wilderness Study Areas', color: '#fdff00', stroke: '#232323' }] }],
     sublayers: [
         {
             name: wildernessStudyAreasLayerName,
@@ -726,17 +654,6 @@ const sitlaReportsConfig: PMTilesLayerProps = {
     opacity: 0.8,
     sourceAgency: 'Utah Geological Survey',
     sourceUrl: 'https://ugspub.nr.utah.gov/publications/non_lib_pubs/contract_deliverables/EMP-1.pdf',
-    renders: [{
-        id: 'default',
-        styleUrl: '/styles/enmin_ccs_sitlareports/default.json',
-        legend: [
-            { label: 'Limited Potential', color: '#ff7e00', stroke: '#232323' },
-            { label: 'Some Potential', color: '#ffe700', stroke: '#232323' },
-            { label: 'Good Potential', color: '#cfff00', stroke: '#232323' },
-            { label: 'Excellent Potential', color: '#3dc200', stroke: '#232323' },
-            { label: 'Not Evaluated', color: '#cdcdcd', stroke: '#232323' },
-        ],
-    }],
     sublayers: [
         {
             name: sitlaReportsLayerName,
@@ -792,15 +709,6 @@ const ccsExclusionAreasConfig: PMTilesLayerProps = {
     title: ccsExclusionAreasTitle,
     visible: false,
     sourceAgency: 'Utah Geological Survey',
-    renders: [{
-        id: 'default',
-        styleUrl: '/styles/enmin_ccs_exclusionzones/default.json',
-        sprite: '/styles/enmin_ccs_exclusionzones/sprite',
-        legend: [
-            { label: 'Exclusion Zones - Land Management', value: 'No-CCUS-Zone', color: '#ff0000', stroke: '#000000', shape: 'hatch' },
-            { label: 'Exclusion Zones - Geology', value: 'No-CCUS-Zone-Geo', color: '#000000', stroke: '#000000', shape: 'hatch' },
-        ],
-    }],
     sublayers: [
         {
             name: ccsExclusionAreasLayerName,
@@ -1044,7 +952,6 @@ const geothermalWellsJoinsConfig: PMTilesLayerProps = {
     formerTitles: ['Geothermal Wells'],
     visible: false,
     sourceAgency: 'INGENIOUS Project, 2022',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_geothermal_ingenious_wellfeatures/default.json', legend: [{ label: 'Ingenious Well', color: '#7ab8d9', stroke: '#232323' }] }],
     sublayers: [
         {
             name: geothermalWellsJoinsName,
@@ -1107,7 +1014,6 @@ const geothermalSpringsJoinsConfig: PMTilesLayerProps = {
     formerTitles: ['Geothermal Springs'],
     visible: false,
     sourceAgency: 'INGENIOUS Project, 2022',
-    renders: [{ id: 'default', styleUrl: '/styles/enmin_geothermal_ingenious_springfeatures/default.json', legend: [{ label: 'Ingenious Spring', color: '#8aed8c', stroke: '#232323' }] }],
     sublayers: [
         {
             name: geothermalSpringsJoinsName,
@@ -1165,15 +1071,6 @@ const geothermalWellsConfig: PMTilesLayerProps = {
     title: geothermalWellsTitle,
     visible: false,
     sourceAgency: 'Utah Geological Survey',
-    renders: [{
-        id: 'default',
-        styleUrl: '/styles/enmin_geothermal_wellsandsprings/default.json',
-        legend: [
-            { label: 'Mine', value: 'M', color: '#989898', stroke: '#232323' },
-            { label: 'Spring', value: 'S', color: '#32df36', stroke: '#232323' },
-            { label: 'Well', value: 'W', color: '#1f78b4', stroke: '#232323' },
-        ],
-    }],
     sublayers: [
         {
             name: geothermalWellsLayerName,
@@ -1282,11 +1179,6 @@ const utTownshipRangesConfig: PMTilesLayerProps = {
     polygonLabels: true,
     sourceAgency: 'UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-township-and-ranges/about',
-    renders: [{
-        id: 'default',
-        styleUrl: '/styles/enmin_plss_townshiprange/default.json',
-        legend: [{ label: 'Township & Range', color: '#FF0000' }],
-    }],
     sublayers: [{
         name: utTownshipRangesLayerName,
         popupEnabled: false,
@@ -1332,11 +1224,6 @@ export const natCarbLocationsConfig: PMTilesLayerProps = {
     visible: false,
     opacity: 0.3,
     sourceAgency: 'Utah Geological Survey',
-    renders: [{
-        id: 'default',
-        styleUrl: '/styles/enmin_ccs_natcarb_location/default.json',
-        legend: [{ label: 'NATCARB Grid Cell', color: '#d2b48c', stroke: '#8b6d47' }],
-    }],
     sublayers: [
         {
             name: natCarbLocationsLayerName,

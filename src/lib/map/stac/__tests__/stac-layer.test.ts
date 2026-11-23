@@ -144,7 +144,7 @@ describe('resolveStacLayerTree sourceAgency precedence', () => {
             sourceLayer: '',
             downloadParquetUrl: '',
             title: 'Utah Faults',
-            renders: [{ id: 'faults', styleUrl: '/styles/M-179DM__Geology_arc/faults.json' }],
+            renders: [{ id: 'faults', styleUrl: 'https://x/faults.json' }],
         }
         const [resolved] = await resolveStacLayerTree([layer]) as PMTilesLayerProps[]
         expect(fetchSpy).toHaveBeenCalledTimes(1)
