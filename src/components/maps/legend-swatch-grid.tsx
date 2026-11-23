@@ -1,7 +1,7 @@
 import { useId } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
-import type { SwatchShape } from '@/lib/legend/swatch-shape'
+import type { LineStyle, SwatchShape } from '@/lib/legend/swatch-shape'
 import { LEGEND_ROW_CLASS, LEGEND_SWATCH_SLOT_CLASS } from '@/lib/legend/legend-layout'
 
 export interface LegendSwatchItem {
@@ -11,6 +11,10 @@ export interface LegendSwatchItem {
     stroke?: string
     /** Per-item swatch geometry from the STAC legend entry; overrides grid-level `shape`. */
     shape?: SwatchShape
+    /** Dash pattern for line swatches (defaults to 'solid'). */
+    lineStyle?: LineStyle
+    /** Draw thrust-fault triangle teeth along a line swatch. */
+    teeth?: boolean
     /** Shown in parentheses after the label; a string is shown as-is (e.g. "12 of 40"). */
     count?: number | string
     /** Greyed out and not toggleable, e.g. a category with no features in view. */
@@ -55,12 +59,25 @@ interface LegendSwatchGridProps {
  * One legend swatch. Painted over the paper tone the map shows, so a transparent or
  * part-transparent colour reads as see-through rather than as the panel.
  */
-export function LegendSwatch({ shape = 'circle', color, stroke }: { shape?: SwatchShape; color: string; stroke?: string }) {
+export function LegendSwatch({
+    shape = 'circle',
+    color,
+    stroke,
+    lineStyle,
+    teeth,
+}: {
+    shape?: SwatchShape
+    color: string
+    stroke?: string
+    lineStyle?: LineStyle
+    teeth?: boolean
+}) {
     const patternId = useId()
     const paint = { backgroundImage: `linear-gradient(${color}, ${color})`, borderColor: stroke ?? 'rgba(0,0,0,0.3)' }
+    const needsLineSvg = shape === 'line' && (teeth || (lineStyle && lineStyle !== 'solid'))
     return (
         <span className={LEGEND_SWATCH_SLOT_CLASS} aria-hidden>
-            {shape === 'line' && (
+            {shape === 'line' && !needsLineSvg && (
                 <span
                     className={cn(
                         'h-0.5 w-7 rounded-full',
@@ -68,6 +85,32 @@ export function LegendSwatch({ shape = 'circle', color, stroke }: { shape?: Swat
                     )}
                     style={{ backgroundColor: color, boxShadow: stroke ? `0 0 0 1px ${stroke}` : undefined }}
                 />
+            )}
+            {needsLineSvg && (
+                <svg
+                    viewBox="0 0 28 14"
+                    className={cn(
+                        'h-3.5 w-7 shrink-0 overflow-visible',
+                        !stroke && 'dark:drop-shadow-[0_0_0.75px_rgba(255,255,255,0.65)]',
+                    )}
+                >
+                    <line
+                        x1="1"
+                        y1={teeth ? 10.5 : 7}
+                        x2="27"
+                        y2={teeth ? 10.5 : 7}
+                        stroke={color}
+                        strokeWidth="1.75"
+                        strokeDasharray={lineStyle === 'dashed' ? '5.5 3.5' : lineStyle === 'dotted' ? '1.6 3' : undefined}
+                        strokeLinecap={lineStyle === 'dashed' ? 'butt' : 'round'}
+                    />
+                    {teeth && (
+                        <>
+                            <polygon points="6,10.5 9,4.5 12,10.5" fill={color} />
+                            <polygon points="16,10.5 19,4.5 22,10.5" fill={color} />
+                        </>
+                    )}
+                </svg>
             )}
             {shape === 'circle' && <span className="legend-swatch size-2.5 rounded-full border" style={paint} />}
             {shape === 'fill' && <span className="legend-swatch h-3.5 w-7 rounded-sm border" style={paint} />}
@@ -110,7 +153,15 @@ export function LegendSwatchGrid({ items, isChecked, onToggle, columns = 'auto',
     return (
         <div className={containerClassName}>
             {items.map(item => {
-                const swatch = showSwatch && <LegendSwatch shape={item.shape ?? shape} color={item.color} stroke={item.stroke} />
+                const swatch = showSwatch && (
+                    <LegendSwatch
+                        shape={item.shape ?? shape}
+                        color={item.color}
+                        stroke={item.stroke}
+                        lineStyle={item.lineStyle}
+                        teeth={item.teeth}
+                    />
+                )
                 const label = (
                     <span className="min-w-0 break-words">
                         {item.label}

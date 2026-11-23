@@ -449,11 +449,11 @@ const faultsConfig: PMTilesLayerProps = {
         sprite: `${MAPS_ASSETS_CDN_URL}/styles/styles/M-179DM__Geology_arc/sprite`,
         legend: [
             { label: 'Fault, Normal, Well Located', color: '#000000', shape: 'line' },
-            { label: 'Fault, Normal, Approximately Located', color: '#000000', shape: 'line' },
-            { label: 'Fault, Normal, Concealed', color: '#000000', shape: 'line' },
-            { label: 'Fault, Thrust, Well Located', color: '#000000', shape: 'line' },
-            { label: 'Fault, Thrust, Approximately Located', color: '#000000', shape: 'line' },
-            { label: 'Fault, Thrust, Concealed', color: '#000000', shape: 'line' },
+            { label: 'Fault, Normal, Approximately Located', color: '#000000', shape: 'line', lineStyle: 'dashed' },
+            { label: 'Fault, Normal, Concealed', color: '#000000', shape: 'line', lineStyle: 'dotted' },
+            { label: 'Fault, Thrust, Well Located', color: '#000000', shape: 'line', teeth: true },
+            { label: 'Fault, Thrust, Approximately Located', color: '#000000', shape: 'line', lineStyle: 'dashed', teeth: true },
+            { label: 'Fault, Thrust, Concealed', color: '#000000', shape: 'line', lineStyle: 'dotted', teeth: true },
         ],
     }],
     sublayers: [

@@ -172,7 +172,10 @@ async function fetchLegendDataForVisibleLayers(
       layerTitle,
       symbols: render.legend.map(entry => ({
         label: entry.label,
-        svgHtml: swatchSvgHtml(entry.shape ?? fallbackShape, entry.color, entry.stroke),
+        svgHtml: swatchSvgHtml(entry.shape ?? fallbackShape, entry.color, entry.stroke, {
+          lineStyle: entry.lineStyle,
+          teeth: entry.teeth,
+        }),
       })),
     })
   }

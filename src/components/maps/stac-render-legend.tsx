@@ -35,7 +35,15 @@ export function StacRenderLegend({ layer }: { layer: PMTilesLayerProps }) {
         <LegendSwatchGrid
             columns="single"
             shape={shape}
-            items={entries.map(e => ({ key: e.value ?? e.label, label: e.label, color: e.color, stroke: e.stroke, shape: e.shape }))}
+            items={entries.map(e => ({
+                key: e.value ?? e.label,
+                label: e.label,
+                color: e.color,
+                stroke: e.stroke,
+                shape: e.shape,
+                lineStyle: e.lineStyle,
+                teeth: e.teeth,
+            }))}
         />
     )
 }

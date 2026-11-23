@@ -19,6 +19,8 @@ describe('swatchSvgHtml', () => {
         expect(swatchSvgHtml('fill', '#ff0000', '#000000')).toContain('<rect')
         expect(swatchSvgHtml('hatch', '#ff0000', '#000000')).toContain('<pattern')
         expect(swatchSvgHtml('line', '#0000ff')).toContain('<line')
+        expect(swatchSvgHtml('line', '#000000', undefined, { lineStyle: 'dashed', teeth: true })).toContain('stroke-dasharray=')
+        expect(swatchSvgHtml('line', '#000000', undefined, { lineStyle: 'dashed', teeth: true })).toContain('<polygon')
         expect(swatchSvgHtml('circle', '#00ff00')).toContain('<circle')
         expect(swatchSvgHtml('triangle', '#ffaa00')).toContain('<polygon')
     })

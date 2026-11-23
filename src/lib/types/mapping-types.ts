@@ -216,6 +216,10 @@ export interface LegendEntry {
     stroke?: string;
     /** Explicit swatch geometry authored on the STAC legend entry (e.g. 'triangle', 'hatch'). */
     shape?: SwatchShape;
+    /** Dash pattern for `shape: 'line'` swatches (defaults to 'solid'). */
+    lineStyle?: 'solid' | 'dashed' | 'dotted';
+    /** Draw thrust-fault triangle teeth along a `shape: 'line'` swatch. */
+    teeth?: boolean;
     /** Bivariate matrix coordinates (0-indexed) or NoData flag authored on the STAC legend entry. */
     row?: number;
     col?: number;
