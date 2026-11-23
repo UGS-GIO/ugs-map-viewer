@@ -235,6 +235,7 @@ export function resolveStacPMTilesLayer(item: StacItem, app: StacLayerAppConfig)
         visible: app.visible ?? false,
         opacity: app.opacity ?? 0.85,
         downloadParquetUrl: parquetHref(item),
+        downloadSourceCrs: item.properties['proj:code'],
         sublayers: resolveSublayerRelatedTables(app.sublayers, item),
     };
 }

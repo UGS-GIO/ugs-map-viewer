@@ -50,6 +50,21 @@ const EPSG_RE = /^EPSG:\d+$/i;
 const WGS84_CODES = new Set(['EPSG:4326', 'OGC:CRS84', 'CRS:84']);
 
 /**
+ * Warehouse CRS metadata makes spatial's GeoParquet reader throw "stoi: no conversion".
+ * Disable it whenever spatial is loaded in the shared DuckDB instance; ignore when spatial
+ * has not been loaded yet (parameter does not exist).
+ */
+const disableGeoParquetRead = async (conn: duckdb.AsyncDuckDBConnection): Promise<void> => {
+    try {
+        await conn.query(`SET enable_geoparquet_conversion = false`);
+    } catch {
+        // Spatial extension not loaded in this session — nothing to disable.
+    }
+};
+
+let tempTableCounter = 0;
+
+/**
  * Resolve the source CRS to reproject from, or null when already WGS84.
  * Prefers authoritative STAC `proj:code`; falls back to probing easting magnitude
  * for legacy Web Mercator parquets without CRS metadata.
@@ -85,6 +100,19 @@ const sqlLiteral = (val: unknown): string => {
     throw new Error(`Unsupported MapLibre filter literal: ${JSON.stringify(val)}`);
 };
 
+const isNullExpr = (expr: unknown): boolean =>
+    expr === null ||
+    expr === undefined ||
+    (Array.isArray(expr) && expr[0] === 'literal' && (expr[1] === null || expr[1] === undefined));
+
+const assertNotLegacyBareProp = (op: string, lhs: unknown, expr: unknown): void => {
+    if (typeof lhs === 'string') {
+        throw new Error(
+            `Legacy MapLibre filter syntax with bare property string in '${op}' is not supported in export; use ['get', '${lhs}']: ${JSON.stringify(expr)}`,
+        );
+    }
+};
+
 const compileExpr = (expr: unknown): string => {
     if (!Array.isArray(expr)) return sqlLiteral(expr);
     const [op, ...args] = expr;
@@ -115,7 +143,7 @@ const compileExpr = (expr: unknown): string => {
             return `(${quoteIdent(args[0])} IS NOT NULL)`;
         case '!':
             if (args.length !== 1) throw new Error(`Invalid '!' expression: ${JSON.stringify(expr)}`);
-            return `(NOT (${compileExpr(args[0])}))`;
+            return `(NOT COALESCE((${compileExpr(args[0])}), FALSE))`;
         case 'all':
             if (args.length === 0) return 'TRUE';
             return `(${args.map(compileExpr).join(' AND ')})`;
@@ -126,8 +154,9 @@ const compileExpr = (expr: unknown): string => {
         case '!=': {
             if (args.length !== 2) throw new Error(`Invalid '${op}' expression: ${JSON.stringify(expr)}`);
             const [lhs, rhs] = args;
-            if (rhs === null) return `(${compileExpr(lhs)} ${op === '==' ? 'IS NULL' : 'IS NOT NULL'})`;
-            if (lhs === null) return `(${compileExpr(rhs)} ${op === '==' ? 'IS NULL' : 'IS NOT NULL'})`;
+            assertNotLegacyBareProp(op, lhs, expr);
+            if (isNullExpr(rhs)) return `(${compileExpr(lhs)} ${op === '==' ? 'IS NULL' : 'IS NOT NULL'})`;
+            if (isNullExpr(lhs)) return `(${compileExpr(rhs)} ${op === '==' ? 'IS NULL' : 'IS NOT NULL'})`;
             return `(${compileExpr(lhs)} ${op === '==' ? '=' : 'IS DISTINCT FROM'} ${compileExpr(rhs)})`;
         }
         case '<':
@@ -135,10 +164,12 @@ const compileExpr = (expr: unknown): string => {
         case '>':
         case '>=':
             if (args.length !== 2) throw new Error(`Invalid '${op}' expression: ${JSON.stringify(expr)}`);
+            assertNotLegacyBareProp(op, args[0], expr);
             return `(${compileExpr(args[0])} ${op} ${compileExpr(args[1])})`;
         case 'in': {
             if (args.length !== 2) throw new Error(`Invalid 'in' expression: ${JSON.stringify(expr)}`);
             const [needle, haystack] = args;
+            assertNotLegacyBareProp(op, needle, expr);
             if (Array.isArray(haystack) && haystack[0] === 'literal' && Array.isArray(haystack[1])) {
                 const items = haystack[1];
                 if (items.length === 0) return 'FALSE';
@@ -302,8 +333,9 @@ const buildGeoJSON = (opts: ExportOptions): Promise<GeoJSONBuild> => withConnect
         cols.push(col);
         if (/DOUBLE|FLOAT|REAL|DECIMAL|NUMERIC/.test(colType)) floatCols.push(col);
     }
-    const geom = geomIsBlob ? `ST_GeomFromWKB(${geomCol})` : geomCol;
-    const transformFrom = await resolveTransformFrom(conn, opts, geom, geomCol);
+    const quotedGeomCol = quoteIdent(geomCol);
+    const geom = geomIsBlob ? `ST_GeomFromWKB(${quotedGeomCol})` : quotedGeomCol;
+    const transformFrom = await resolveTransformFrom(conn, opts, geom, quotedGeomCol);
     // always_xy keeps lon/lat order; Force2D drops the spurious Z=0 some sources carry.
     const geom4326 = transformFrom
         ? `ST_Force2D(ST_Transform(${geom}, '${transformFrom}', 'EPSG:4326', true))`
@@ -358,25 +390,38 @@ const handlers: Record<ExportFormat, Handler> = {
             return res.blob();
         }
         return withConnection(async (conn, db) => {
-            if (opts.geometryColumn) await loadSpatial(conn);
             opts.onProgress?.({ stage: 'converting', message: opts.featureFilter !== undefined ? 'Filtering features…' : 'Combining tables…' });
-            const source = await exportSource(conn, opts);
-            let selectSql = `SELECT * FROM ${source}`;
-            if (opts.geometryColumn) {
-                const geomCol = quoteIdent(opts.geometryColumn);
-                const described = await conn.query(`DESCRIBE SELECT ${geomCol} FROM ${source}`);
-                const geomType = String((described.toArray()[0]?.toJSON() as Record<string, unknown>)?.column_type ?? '');
-                const geomExpr = geomType === 'BLOB' ? `ST_GeomFromWKB(${geomCol})` : geomCol;
-                const transformFrom = await resolveTransformFrom(conn, opts, geomExpr, geomCol);
-                if (transformFrom) {
-                    // DuckDB COPY FORMAT PARQUET omits source projected CRS metadata; reproject to
-                    // GeoParquet's default WGS84 so exported files align in GIS clients.
-                    selectSql = `SELECT * REPLACE (ST_Force2D(ST_Transform(${geomExpr}, '${transformFrom}', 'EPSG:4326', true)) AS ${geomCol}) FROM ${source}`;
-                }
-            }
             const virtualPath = virtualExportPath('parquet');
-            await conn.query(`COPY (${selectSql}) TO '${virtualPath}' (FORMAT PARQUET)`);
-            return bufferToBlob(db, virtualPath, EXPORT_FORMATS.parquet.mimeType);
+            if (!opts.geometryColumn) {
+                await disableGeoParquetRead(conn);
+                const source = await exportSource(conn, opts);
+                await conn.query(`COPY (SELECT * FROM ${source}) TO '${virtualPath}' (FORMAT PARQUET)`);
+                return bufferToBlob(db, virtualPath, EXPORT_FORMATS.parquet.mimeType);
+            }
+
+            await loadSpatial(conn);
+            await conn.query(`SET enable_geoparquet_conversion = false`);
+            const source = await exportSource(conn, opts);
+            const geomCol = quoteIdent(opts.geometryColumn);
+            const described = await conn.query(`DESCRIBE SELECT ${geomCol} FROM ${source}`);
+            const geomType = String((described.toArray()[0]?.toJSON() as Record<string, unknown>)?.column_type ?? '').toUpperCase();
+            const geomExpr = geomType.includes('BLOB') ? `ST_GeomFromWKB(${geomCol})` : geomCol;
+            const transformFrom = await resolveTransformFrom(conn, opts, geomExpr, geomCol);
+            const outGeom = transformFrom
+                ? `ST_Force2D(ST_Transform(${geomExpr}, '${transformFrom}', 'EPSG:4326', true))`
+                : `ST_Force2D(${geomExpr})`;
+            const tmpTable = `_parquet_export_${++tempTableCounter}`;
+            try {
+                // Read with conversion off (avoids "stoi: no conversion" on warehouse CRS metadata),
+                // then re-enable it for COPY so the output carries GeoParquet `geo` metadata in WGS84.
+                await conn.query(`CREATE TEMP TABLE ${tmpTable} AS SELECT * REPLACE (${outGeom} AS ${geomCol}) FROM ${source}`);
+                await conn.query(`SET enable_geoparquet_conversion = true`);
+                await conn.query(`COPY ${tmpTable} TO '${virtualPath}' (FORMAT PARQUET)`);
+                return await bufferToBlob(db, virtualPath, EXPORT_FORMATS.parquet.mimeType);
+            } finally {
+                await conn.query(`DROP TABLE IF EXISTS ${tmpTable}`).catch(() => {});
+                await disableGeoParquetRead(conn);
+            }
         });
     },
 
@@ -387,6 +432,7 @@ const handlers: Record<ExportFormat, Handler> = {
     },
 
     csv: (opts) => withConnection(async (conn, db) => {
+        await disableGeoParquetRead(conn);
         opts.onProgress?.({ stage: 'downloading', message: 'Fetching parquet…' });
         const source = await exportSource(conn, opts);
         const dropped = (await columnNames(conn, source))
@@ -464,6 +510,7 @@ const buildRelatedCsvFiles = async (
                 if (!targetField) return; // STAC-backed entry not yet resolved
                 if (whereSql) {
                     values = await withConnection(async (conn) => {
+                        await disableGeoParquetRead(conn);
                         const col = quoteIdent(targetField);
                         const res = await conn.query(
                             `SELECT DISTINCT CAST(${col} AS VARCHAR) AS v FROM read_parquet('${escapeSql(parquetUrl)}') WHERE (${whereSql}) AND ${col} IS NOT NULL`,

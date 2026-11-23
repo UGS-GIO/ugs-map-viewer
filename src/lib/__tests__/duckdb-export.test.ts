@@ -106,17 +106,19 @@ describe('maplibreFilterToSql', () => {
             .toBe(`(LOWER(COALESCE(CAST(COALESCE(CAST("TYPE" AS VARCHAR), '') AS VARCHAR), '')) = 'fault')`)
     })
 
-    it('compiles compound all/any/in/null/not-equal predicates and escapes quotes', () => {
+    it('compiles compound all/any/in/null/not-equal/negation predicates and escapes quotes', () => {
         expect(maplibreFilterToSql([
             'all',
             ['has', 'name'],
             ['!=', ['get', 'status'], 'archived'],
-            ['!=', ['get', 'code'], null],
+            ['!=', ['get', 'code'], ['literal', null]],
+            ['!', ['==', ['get', 'flag'], 'x']],
             ['in', ['get', 'kind'], ['literal', ["o'neill", 'other']]],
-        ])).toBe(`(("name" IS NOT NULL) AND ("status" IS DISTINCT FROM 'archived') AND ("code" IS NOT NULL) AND ("kind" IN ('o''neill', 'other')))`)
+        ])).toBe(`(("name" IS NOT NULL) AND ("status" IS DISTINCT FROM 'archived') AND ("code" IS NOT NULL) AND (NOT COALESCE((("flag" = 'x')), FALSE)) AND ("kind" IN ('o''neill', 'other')))`)
     })
 
-    it('throws on unsupported operators rather than silently exporting unfiltered rows', () => {
+    it('throws on unsupported operators or legacy bare-property filters rather than silently mis-filtering', () => {
         expect(() => maplibreFilterToSql(['match', ['get', 'x'], 'a', true, false] as never)).toThrow(/Unsupported MapLibre filter operator/)
+        expect(() => maplibreFilterToSql(['==', 'projectscale', 'Regional'] as never)).toThrow(/Legacy MapLibre filter syntax/)
     })
 })
