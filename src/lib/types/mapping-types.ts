@@ -244,6 +244,12 @@ export interface PMTilesLayerProps extends BaseLayerProps {
      * (title, sublayers/popups, visibility). See `resolveStacLayerTree`.
      */
     stacItemId?: string;
+    /**
+     * Direct URL to a STAC item JSON outside `ugs-serving-topics` (e.g., a
+     * `ugs-publications` item). Resolved directly by `resolveStacLayerTree`,
+     * reading `sourceLayer` from the item's `pmtiles` link (`pmtiles:layers[0]`).
+     */
+    stacItemUrl?: string;
     /** URL to the PMTiles file (can be relative like '/pmtiles/layer.pmtiles' or absolute). Filled from STAC when `stacItemId` is set. */
     pmtilesUrl: string;
     /** URL to the style JSON file, or inline style layers */

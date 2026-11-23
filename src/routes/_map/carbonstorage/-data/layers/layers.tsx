@@ -472,12 +472,18 @@ const SITLAConfig: ArcGISMapServerLayerProps = {
 
 // Utah Faults (M-179DM publication Geology_arc filtered to TYPE='fault')
 const faultsSourceLayer = 'Geology_arc';
+const M179DM_GEOLOGY_ARC_STAC_URL =
+    `${MAPS_ASSETS_CDN_URL}/warehouse/stac/ugs-publications/M/M-179DM/M-179DM__Geology_arc/M-179DM__Geology_arc.json`;
 export const faultsTitle = 'Utah Faults';
 export const faultsWMSTitle = faultsTitle;
 const faultsConfig: PMTilesLayerProps = {
     type: 'pmtiles',
-    pmtilesUrl: `${MAPS_ASSETS_CDN_URL}/geolmap/vectors/M-179DM/Geology_arc.pmtiles`,
+    stacItemUrl: M179DM_GEOLOGY_ARC_STAC_URL,
+    defaultRenderId: 'faults',
+    pmtilesUrl: '',
     sourceLayer: faultsSourceLayer,
+    // Omit unfiltered download until Parquet exports honor featureFilter.
+    downloadParquetUrl: '',
     title: faultsTitle,
     featureFilter: ['==', ['downcase', ['to-string', ['get', 'TYPE']]], 'fault'],
     visible: false,

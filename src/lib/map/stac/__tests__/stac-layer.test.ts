@@ -111,4 +111,46 @@ describe('resolveStacLayerTree sourceAgency precedence', () => {
         expect(resolved.sourceAgency).toBe('Utah Division of Oil, Gas and Mining')
         expect(resolved.subtitle).toBeUndefined()
     })
+
+    it('resolves stacItemUrl directly using pmtiles:layers[0] and keeps missing fallback renders', async () => {
+        const pubUrl = 'https://maps-assets.geology.utah.gov/warehouse/stac/ugs-publications/M/M-179DM/M-179DM__Geology_arc/M-179DM__Geology_arc.json'
+        const pubDoc = {
+            id: 'M-179DM__Geology_arc',
+            properties: {
+                'ugs:renders': {
+                    default: { title: 'Publication layer style', assets: ['pmtiles'], style_url: 'https://x/default.json' },
+                },
+            },
+            assets: {
+                pmtiles: { href: 'https://x/Geology_arc.pmtiles', type: 'application/vnd.pmtiles' },
+                data: { href: 'https://x/Geology_arc.parquet', type: 'application/vnd.apache.parquet' },
+            },
+            links: [
+                { rel: 'pmtiles', href: 'https://x/Geology_arc.pmtiles', 'pmtiles:layers': ['Geology_arc'] },
+            ],
+        }
+        const fetchSpy = vi.fn((url: string) => Promise.resolve({
+            ok: url === pubUrl,
+            json: () => Promise.resolve(pubDoc),
+        } as Response))
+        vi.stubGlobal('fetch', fetchSpy)
+
+        const layer: PMTilesLayerProps = {
+            type: 'pmtiles',
+            stacItemUrl: pubUrl,
+            defaultRenderId: 'faults',
+            pmtilesUrl: '',
+            sourceLayer: '',
+            downloadParquetUrl: '',
+            title: 'Utah Faults',
+            renders: [{ id: 'faults', styleUrl: '/styles/M-179DM__Geology_arc/faults.json' }],
+        }
+        const [resolved] = await resolveStacLayerTree([layer]) as PMTilesLayerProps[]
+        expect(fetchSpy).toHaveBeenCalledTimes(1)
+        expect(fetchSpy).toHaveBeenCalledWith(pubUrl)
+        expect(resolved.pmtilesUrl).toBe('https://x/Geology_arc.pmtiles')
+        expect(resolved.sourceLayer).toBe('Geology_arc')
+        expect(resolved.downloadParquetUrl).toBe('')
+        expect(resolved.renders?.map(r => r.id)).toEqual(['default', 'faults'])
+    })
 })
