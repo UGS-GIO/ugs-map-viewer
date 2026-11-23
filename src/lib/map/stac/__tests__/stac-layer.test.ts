@@ -117,6 +117,7 @@ describe('resolveStacLayerTree sourceAgency precedence', () => {
         const pubDoc = {
             id: 'M-179DM__Geology_arc',
             properties: {
+                'proj:code': 'EPSG:26712',
                 'ugs:renders': {
                     default: { title: 'Publication layer style', assets: ['pmtiles'], style_url: 'https://x/default.json' },
                 },
@@ -151,6 +152,7 @@ describe('resolveStacLayerTree sourceAgency precedence', () => {
         expect(resolved.pmtilesUrl).toBe('https://x/Geology_arc.pmtiles')
         expect(resolved.sourceLayer).toBe('Geology_arc')
         expect(resolved.downloadParquetUrl).toBe('')
+        expect(resolved.downloadSourceCrs).toBe('EPSG:26712')
         expect(resolved.renders?.map(r => r.id)).toEqual(['default', 'faults'])
     })
 })

@@ -482,8 +482,6 @@ const faultsConfig: PMTilesLayerProps = {
     defaultRenderId: 'faults',
     pmtilesUrl: '',
     sourceLayer: faultsSourceLayer,
-    // Omit unfiltered download until Parquet exports honor featureFilter.
-    downloadParquetUrl: '',
     title: faultsTitle,
     featureFilter: ['==', ['downcase', ['to-string', ['get', 'TYPE']]], 'fault'],
     visible: false,

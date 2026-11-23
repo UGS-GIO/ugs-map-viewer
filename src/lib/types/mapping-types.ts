@@ -138,6 +138,8 @@ interface BaseLayerProps {
     bivariateLegend?: { xLabel: string; yLabel: string };
     /** GeoParquet URL for client-side export. When set, download button in layer controls is enabled. */
     downloadParquetUrl?: string;
+    /** Source CRS of `downloadParquetUrl` (e.g. "EPSG:26712"), populated from STAC `proj:code`. */
+    downloadSourceCrs?: string;
     /** Agency/organization that sources this layer's data, shown in the Data Sources download list (e.g. "Utah Geological Survey", "UGRC"). */
     sourceAgency?: string;
     /** Hard-coded external link to the data's home (e.g. a UGRC open-data page or a UGS publication), shown in place of a download button when there's no `downloadParquetUrl`. */

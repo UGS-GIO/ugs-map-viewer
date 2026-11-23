@@ -11,6 +11,7 @@
  */
 
 import * as duckdb from '@duckdb/duckdb-wasm';
+import type { FilterSpecification } from 'maplibre-gl';
 import { EXPORT_FORMATS, isCombinedTable, uniqueColumnName, type ExportFormat } from '@/lib/export-formats';
 import { withConnection, loadSpatial, escapeSql, quoteIdent, queryParquetDistinctValues } from '@/lib/duckdb/client';
 import { downloadZip } from '@/lib/download-utils';
@@ -35,11 +36,129 @@ export interface ExportOptions {
     geometryColumn: string | null;
     /** Output CRS for the gdal formats (shp/gpkg/gdb/fgb). Defaults to 4326. */
     epsg?: number;
+    /** Source CRS of the GeoParquet (e.g. "EPSG:26712") when not WGS84; populated from STAC `proj:code`. */
+    sourceCrs?: string;
+    /** Optional MapLibre layer `featureFilter` applied as a SQL WHERE clause so derivative layers export only matching rows. */
+    featureFilter?: FilterSpecification;
     /** Related tables configured on the layer (formation tops, geochemistry, etc). When
      * present + non-empty, `exportParquet` bundles them alongside the main file as a zip. */
     relatedTables?: RelatedTable[];
     onProgress?: (stage: ExportStage) => void;
 }
+
+const EPSG_RE = /^EPSG:\d+$/i;
+const WGS84_CODES = new Set(['EPSG:4326', 'OGC:CRS84', 'CRS:84']);
+
+/**
+ * Resolve the source CRS to reproject from, or null when already WGS84.
+ * Prefers authoritative STAC `proj:code`; falls back to probing easting magnitude
+ * for legacy Web Mercator parquets without CRS metadata.
+ */
+const resolveTransformFrom = async (
+    conn: duckdb.AsyncDuckDBConnection,
+    opts: ExportOptions,
+    geomExpr: string,
+    geomCol: string,
+): Promise<string | null> => {
+    const explicitCrs = opts.sourceCrs?.trim().toUpperCase();
+    if (explicitCrs) {
+        if (WGS84_CODES.has(explicitCrs)) return null;
+        if (EPSG_RE.test(explicitCrs)) return explicitCrs;
+        console.warn(`[exportParquet] unrecognized sourceCrs '${opts.sourceCrs}', falling back to coordinate probe`);
+    }
+    const probe = await conn.query(`
+        SELECT max(abs(ST_X(ST_Centroid(${geomExpr})))) AS max_x
+        FROM (SELECT ${geomCol} FROM read_parquet('${escapeSql(opts.parquetUrl)}') WHERE ${geomCol} IS NOT NULL LIMIT 100)
+    `);
+    const maxX = Number((probe.toArray()[0]?.toJSON() as Record<string, unknown>)?.max_x ?? 0);
+    return maxX > 180 ? 'EPSG:3857' : null;
+};
+
+const sqlLiteral = (val: unknown): string => {
+    if (val === null || val === undefined) return 'NULL';
+    if (typeof val === 'string') return `'${escapeSql(val)}'`;
+    if (typeof val === 'number') {
+        if (!Number.isFinite(val)) throw new Error(`Unsupported non-finite numeric filter literal: ${val}`);
+        return String(val);
+    }
+    if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+    throw new Error(`Unsupported MapLibre filter literal: ${JSON.stringify(val)}`);
+};
+
+const compileExpr = (expr: unknown): string => {
+    if (!Array.isArray(expr)) return sqlLiteral(expr);
+    const [op, ...args] = expr;
+    if (typeof op !== 'string') throw new Error(`Invalid MapLibre filter expression: ${JSON.stringify(expr)}`);
+
+    switch (op) {
+        case 'get':
+            if (typeof args[0] !== 'string' || args.length !== 1) {
+                throw new Error(`Unsupported 'get' expression in export filter: ${JSON.stringify(expr)}`);
+            }
+            return quoteIdent(args[0]);
+        case 'literal':
+            if (args.length !== 1) throw new Error(`Invalid 'literal' expression: ${JSON.stringify(expr)}`);
+            return sqlLiteral(args[0]);
+        case 'to-string':
+            if (args.length !== 1) throw new Error(`Invalid 'to-string' expression: ${JSON.stringify(expr)}`);
+            return `COALESCE(CAST(${compileExpr(args[0])} AS VARCHAR), '')`;
+        case 'downcase':
+            if (args.length !== 1) throw new Error(`Invalid 'downcase' expression: ${JSON.stringify(expr)}`);
+            return `LOWER(COALESCE(CAST(${compileExpr(args[0])} AS VARCHAR), ''))`;
+        case 'upcase':
+            if (args.length !== 1) throw new Error(`Invalid 'upcase' expression: ${JSON.stringify(expr)}`);
+            return `UPPER(COALESCE(CAST(${compileExpr(args[0])} AS VARCHAR), ''))`;
+        case 'has':
+            if (typeof args[0] !== 'string' || args.length !== 1) {
+                throw new Error(`Unsupported 'has' expression in export filter: ${JSON.stringify(expr)}`);
+            }
+            return `(${quoteIdent(args[0])} IS NOT NULL)`;
+        case '!':
+            if (args.length !== 1) throw new Error(`Invalid '!' expression: ${JSON.stringify(expr)}`);
+            return `(NOT (${compileExpr(args[0])}))`;
+        case 'all':
+            if (args.length === 0) return 'TRUE';
+            return `(${args.map(compileExpr).join(' AND ')})`;
+        case 'any':
+            if (args.length === 0) return 'FALSE';
+            return `(${args.map(compileExpr).join(' OR ')})`;
+        case '==':
+        case '!=': {
+            if (args.length !== 2) throw new Error(`Invalid '${op}' expression: ${JSON.stringify(expr)}`);
+            const [lhs, rhs] = args;
+            if (rhs === null) return `(${compileExpr(lhs)} ${op === '==' ? 'IS NULL' : 'IS NOT NULL'})`;
+            if (lhs === null) return `(${compileExpr(rhs)} ${op === '==' ? 'IS NULL' : 'IS NOT NULL'})`;
+            return `(${compileExpr(lhs)} ${op === '==' ? '=' : 'IS DISTINCT FROM'} ${compileExpr(rhs)})`;
+        }
+        case '<':
+        case '<=':
+        case '>':
+        case '>=':
+            if (args.length !== 2) throw new Error(`Invalid '${op}' expression: ${JSON.stringify(expr)}`);
+            return `(${compileExpr(args[0])} ${op} ${compileExpr(args[1])})`;
+        case 'in': {
+            if (args.length !== 2) throw new Error(`Invalid 'in' expression: ${JSON.stringify(expr)}`);
+            const [needle, haystack] = args;
+            if (Array.isArray(haystack) && haystack[0] === 'literal' && Array.isArray(haystack[1])) {
+                const items = haystack[1];
+                if (items.length === 0) return 'FALSE';
+                return `(${compileExpr(needle)} IN (${items.map(sqlLiteral).join(', ')}))`;
+            }
+            throw new Error(`Unsupported 'in' haystack in export filter: ${JSON.stringify(expr)}`);
+        }
+        default:
+            throw new Error(`Unsupported MapLibre filter operator '${op}' in export`);
+    }
+};
+
+/**
+ * Compile a MapLibre `FilterSpecification` into a DuckDB SQL `WHERE` predicate.
+ * Fails loud on unsupported operators so a filtered layer never silently exports unfiltered rows.
+ */
+export const maplibreFilterToSql = (filter: FilterSpecification): string => {
+    if (typeof filter === 'boolean') return filter ? 'TRUE' : 'FALSE';
+    return compileExpr(filter);
+};
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -123,7 +242,10 @@ export const joinedRelationSql = (
 };
 
 const exportSource = async (conn: duckdb.AsyncDuckDBConnection, opts: ExportOptions): Promise<string> => {
-    const main = `read_parquet('${escapeSql(opts.parquetUrl)}')`;
+    let main = `read_parquet('${escapeSql(opts.parquetUrl)}')`;
+    if (opts.featureFilter !== undefined) {
+        main = `(SELECT * FROM ${main} WHERE ${maplibreFilterToSql(opts.featureFilter)})`;
+    }
     const tables = combinedTables(opts);
     if (tables.length === 0) return main;
     return joinedRelationSql(main, await columnNames(conn, main), tables);
@@ -181,18 +303,10 @@ const buildGeoJSON = (opts: ExportOptions): Promise<GeoJSONBuild> => withConnect
         if (/DOUBLE|FLOAT|REAL|DECIMAL|NUMERIC/.test(colType)) floatCols.push(col);
     }
     const geom = geomIsBlob ? `ST_GeomFromWKB(${geomCol})` : geomCol;
-
-    // CDN parquets are 3857, warehouse ones already 4326 — transforming the latter
-    // double-projects. Longitude caps at 180; Mercator easting is ~1e7, so magnitude tells.
-    const probe = await conn.query(`
-        SELECT max(abs(ST_X(ST_Centroid(${geom})))) AS max_x
-        FROM (SELECT ${geomCol} FROM read_parquet('${escapeSql(opts.parquetUrl)}') WHERE ${geomCol} IS NOT NULL LIMIT 100)
-    `);
-    const maxX = Number((probe.toArray()[0]?.toJSON() as Record<string, unknown>)?.max_x ?? 0);
-    const needsTransform = maxX > 180;
+    const transformFrom = await resolveTransformFrom(conn, opts, geom, geomCol);
     // always_xy keeps lon/lat order; Force2D drops the spurious Z=0 some sources carry.
-    const geom4326 = needsTransform
-        ? `ST_Force2D(ST_Transform(${geom}, 'EPSG:3857', 'EPSG:4326', true))`
+    const geom4326 = transformFrom
+        ? `ST_Force2D(ST_Transform(${geom}, '${transformFrom}', 'EPSG:4326', true))`
         : `ST_Force2D(${geom})`;
 
     const result = await conn.query(`
@@ -235,19 +349,33 @@ const gdalHandler = (format: ExportFormat): Handler => async (opts) => {
 };
 
 const handlers: Record<ExportFormat, Handler> = {
-    // Direct pass-through — no DuckDB needed.
+    // Direct pass-through — no DuckDB needed unless combining tables or applying a featureFilter.
     parquet: async (opts) => {
-        if (combinedTables(opts).length === 0) {
+        if (combinedTables(opts).length === 0 && opts.featureFilter === undefined) {
             opts.onProgress?.({ stage: 'downloading', message: 'Fetching parquet…' });
             const res = await fetch(opts.parquetUrl);
             if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
             return res.blob();
         }
         return withConnection(async (conn, db) => {
-            opts.onProgress?.({ stage: 'converting', message: 'Combining tables…' });
+            if (opts.geometryColumn) await loadSpatial(conn);
+            opts.onProgress?.({ stage: 'converting', message: opts.featureFilter !== undefined ? 'Filtering features…' : 'Combining tables…' });
             const source = await exportSource(conn, opts);
+            let selectSql = `SELECT * FROM ${source}`;
+            if (opts.geometryColumn) {
+                const geomCol = quoteIdent(opts.geometryColumn);
+                const described = await conn.query(`DESCRIBE SELECT ${geomCol} FROM ${source}`);
+                const geomType = String((described.toArray()[0]?.toJSON() as Record<string, unknown>)?.column_type ?? '');
+                const geomExpr = geomType === 'BLOB' ? `ST_GeomFromWKB(${geomCol})` : geomCol;
+                const transformFrom = await resolveTransformFrom(conn, opts, geomExpr, geomCol);
+                if (transformFrom) {
+                    // DuckDB COPY FORMAT PARQUET omits source projected CRS metadata; reproject to
+                    // GeoParquet's default WGS84 so exported files align in GIS clients.
+                    selectSql = `SELECT * REPLACE (ST_Force2D(ST_Transform(${geomExpr}, '${transformFrom}', 'EPSG:4326', true)) AS ${geomCol}) FROM ${source}`;
+                }
+            }
             const virtualPath = virtualExportPath('parquet');
-            await conn.query(`COPY (SELECT * FROM ${source}) TO '${virtualPath}' (FORMAT PARQUET)`);
+            await conn.query(`COPY (${selectSql}) TO '${virtualPath}' (FORMAT PARQUET)`);
             return bufferToBlob(db, virtualPath, EXPORT_FORMATS.parquet.mimeType);
         });
     },
@@ -322,19 +450,41 @@ const uniqueEntryNames = (relatedTables: RelatedTable[]): string[] => {
 const buildRelatedCsvFiles = async (
     parquetUrl: string,
     relatedTables: RelatedTable[],
+    featureFilter?: FilterSpecification,
 ): Promise<Record<string, string>> => {
     const files: Record<string, string> = {};
     const entryNames = uniqueEntryNames(relatedTables);
+    const whereSql = featureFilter !== undefined ? maplibreFilterToSql(featureFilter) : null;
     await Promise.all(relatedTables.map(async (table, idx) => {
         if (!table.matchingField) return;
         try {
             let values: string[] = [];
-            if (table.fetchMode !== 'parquet') {
-                if (!table.targetField) return; // STAC-backed entry not yet resolved
-                values = await queryParquetDistinctValues({ url: parquetUrl, field: table.targetField });
+            if (table.fetchMode !== 'parquet' || whereSql) {
+                const targetField = table.targetField;
+                if (!targetField) return; // STAC-backed entry not yet resolved
+                if (whereSql) {
+                    values = await withConnection(async (conn) => {
+                        const col = quoteIdent(targetField);
+                        const res = await conn.query(
+                            `SELECT DISTINCT CAST(${col} AS VARCHAR) AS v FROM read_parquet('${escapeSql(parquetUrl)}') WHERE (${whereSql}) AND ${col} IS NOT NULL`,
+                        );
+                        return res.toArray().flatMap(r => {
+                            const v = Reflect.get(r.toJSON() as object, 'v');
+                            return typeof v === 'string' ? [v] : [];
+                        });
+                    });
+                } else {
+                    values = await queryParquetDistinctValues({ url: parquetUrl, field: targetField });
+                }
                 if (values.length === 0) return;
             }
-            const rows = await fetchRelatedRowsBulk(table, values);
+            let rows = await fetchRelatedRowsBulk(table, values);
+            if (whereSql && table.fetchMode === 'parquet') {
+                // `fetchRelatedRowsBulk` reads parquet assets whole; filter to the matched parent keys.
+                const allowed = new Set(values);
+                const matchCol = table.matchingField;
+                rows = rows.filter(r => r[matchCol] != null && allowed.has(String(r[matchCol])));
+            }
             if (rows.length === 0) return;
             files[`related-${entryNames[idx]}.csv`] = relatedRowsToCsv(rows, table);
         } catch (err) {
@@ -361,7 +511,7 @@ export const exportParquet = async (opts: ExportOptions): Promise<void> => {
         }
 
         opts.onProgress?.({ stage: 'converting', message: 'Fetching related tables…' });
-        const relatedFiles = await buildRelatedCsvFiles(opts.parquetUrl, relatedTables);
+        const relatedFiles = await buildRelatedCsvFiles(opts.parquetUrl, relatedTables, opts.featureFilter);
 
         opts.onProgress?.({ stage: 'writing', message: 'Saving files…' });
         if (Object.keys(relatedFiles).length === 0) {

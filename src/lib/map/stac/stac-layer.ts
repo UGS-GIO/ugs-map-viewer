@@ -347,6 +347,7 @@ function mergeStacIntoLayer(layer: PMTilesLayerProps, item: StacItem): PMTilesLa
         renders,
         defaultRenderId: layer.defaultRenderId ?? renders?.[0]?.id,
         downloadParquetUrl: layer.downloadParquetUrl ?? parquetHref(item),
+        downloadSourceCrs: layer.downloadSourceCrs ?? item.properties['proj:code'],
         // Credit line under the layer title. An explicit `subtitle` or `sourceAgency`
         // authored on the layer config takes precedence over STAC `ugs:point_of_contact`.
         subtitle: layer.subtitle ?? (layer.sourceAgency ? undefined : item.properties['ugs:point_of_contact']),

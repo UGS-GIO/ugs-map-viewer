@@ -573,6 +573,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
             arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
             legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}
             downloadParquetUrl={layerConfig.downloadParquetUrl}
+            downloadSourceCrs={layerConfig.downloadSourceCrs}
+            featureFilter={isPMTilesLayer(layerConfig) ? layerConfig.featureFilter : undefined}
             relatedTables={relatedTables}
             disableExport={disableExport}
             filtersContent={layerConfig.title ? layerExtrasRender?.(layerConfig.title, layerConfig) : undefined}
