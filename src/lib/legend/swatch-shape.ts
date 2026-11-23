@@ -29,7 +29,7 @@ export function swatchSvgHtml(shape: SwatchShape, color: string, stroke?: string
     }
     if (shape === 'hatch') {
         const pid = `swatch-hatch-${++svgPatternSeq}`
-        return `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><defs><pattern id="${pid}" width="6" height="6" patternUnits="userSpaceOnUse"><line x1="-1" y1="1" x2="1" y2="-1" stroke="${fill}" stroke-width="1.5"/><line x1="0" y1="6" x2="6" y2="0" stroke="${fill}" stroke-width="1.5"/><line x1="5" y1="7" x2="7" y2="5" stroke="${fill}" stroke-width="1.5"/></pattern></defs><rect x="2" y="4" width="16" height="12" rx="1.5" fill="url(#${pid})" stroke="${edge}" stroke-width="1.2"/></svg>`
+        return `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><defs><pattern id="${pid}" width="5" height="5" patternUnits="userSpaceOnUse"><line x1="-1" y1="1" x2="1" y2="-1" stroke="${fill}" stroke-width="1"/><line x1="0" y1="5" x2="5" y2="0" stroke="${fill}" stroke-width="1"/><line x1="4" y1="6" x2="6" y2="4" stroke="${fill}" stroke-width="1"/></pattern></defs><rect x="2" y="4" width="16" height="12" rx="1.5" fill="url(#${pid})" stroke="${edge}" stroke-width="1.2"/></svg>`
     }
     if (shape === 'fill') {
         return `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 20 20"><rect x="2" y="4" width="16" height="12" rx="1.5" fill="${fill}" stroke="${edge}" stroke-width="1.2"/></svg>`

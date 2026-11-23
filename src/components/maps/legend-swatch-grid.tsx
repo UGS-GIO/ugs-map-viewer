@@ -72,10 +72,10 @@ export function LegendSwatch({ shape = 'circle', color, stroke }: { shape?: Swat
                 <span className="legend-swatch h-3.5 w-7 overflow-hidden rounded-sm border" style={{ borderColor: stroke ?? 'rgba(0,0,0,0.3)' }}>
                     <svg viewBox="0 0 28 14" preserveAspectRatio="xMidYMid slice" className="block size-full">
                         <defs>
-                            <pattern id={patternId} width="6" height="6" patternUnits="userSpaceOnUse">
-                                <line x1="-1" y1="1" x2="1" y2="-1" stroke={color} strokeWidth="1.5" />
-                                <line x1="0" y1="6" x2="6" y2="0" stroke={color} strokeWidth="1.5" />
-                                <line x1="5" y1="7" x2="7" y2="5" stroke={color} strokeWidth="1.5" />
+                            <pattern id={patternId} width="5" height="5" patternUnits="userSpaceOnUse">
+                                <line x1="-1" y1="1" x2="1" y2="-1" stroke={color} strokeWidth="1" />
+                                <line x1="0" y1="5" x2="5" y2="0" stroke={color} strokeWidth="1" />
+                                <line x1="4" y1="6" x2="6" y2="4" stroke={color} strokeWidth="1" />
                             </pattern>
                         </defs>
                         <rect width="28" height="14" fill={`url(#${patternId})`} />
