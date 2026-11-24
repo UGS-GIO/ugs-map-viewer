@@ -146,14 +146,14 @@ describe('buildPmtilesLayerSpecs', () => {
 
     it('scales authored numeric and expression opacities proportionally', () => {
         const specs = specsOf({
-            layer: { title: 'Test', sourceLayer: 'test' } as PMTilesLayerProps,
+            layer: { type: 'pmtiles', title: 'Test', sourceLayer: 'test', pmtilesUrl: '' },
             fragment: {
                 layers: [
-                    { id: 'f', type: 'fill' as const, paint: { 'fill-opacity': 0.4 } },
-                    { id: 'e', type: 'fill' as const, paint: { 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 6, 0.2, 14, 0.6] } },
-                    { id: 'c', type: 'circle' as const, paint: { 'circle-opacity': 0.8, 'circle-stroke-opacity': 0.5 } },
-                    { id: 's', type: 'line' as const, paint: { 'line-opacity': ['step', ['zoom'], 0.4, 10, 0.8] } },
-                    { id: 'd', type: 'line' as const, paint: { 'line-opacity': ['get', 'o'] } },
+                    { id: 'f', type: 'fill', paint: { 'fill-opacity': 0.4 } },
+                    { id: 'e', type: 'fill', paint: { 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 6, 0.2, 14, 0.6] } },
+                    { id: 'c', type: 'circle', paint: { 'circle-opacity': 0.8, 'circle-stroke-opacity': 0.5 } },
+                    { id: 's', type: 'line', paint: { 'line-opacity': ['step', ['zoom'], 0.4, 10, 0.8] } },
+                    { id: 'd', type: 'line', paint: { 'line-opacity': ['get', 'o'] } },
                 ],
             },
             opacity: 0.5,

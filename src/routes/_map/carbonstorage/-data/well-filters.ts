@@ -1,4 +1,4 @@
-import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
+import type { ExpressionSpecification } from 'maplibre-gl'
 import { z } from 'zod'
 
 export type YesNoAll = 'yes' | 'no' | 'all'
@@ -86,8 +86,8 @@ export function parseWellFilter(raw: string | null | undefined): WellFilterState
     return { core, las, formations, formation_operator }
 }
 
-/** Build a MapLibre {@link FilterSpecification} directly from structured well filter state. */
-export function buildWellsMaplibreFilter(state: WellFilterState): FilterSpecification | null {
+/** Build a MapLibre filter expression directly from structured well filter state. */
+export function buildWellsMaplibreFilter(state: WellFilterState): ExpressionSpecification | null {
     const clauses: ExpressionSpecification[] = []
 
     if (state.core === 'yes') clauses.push(['==', ['get', 'hascore'], 'True'])
@@ -106,11 +106,10 @@ export function buildWellsMaplibreFilter(state: WellFilterState): FilterSpecific
         if (presence.length === 1) {
             clauses.push(presence[0])
         } else {
-            const op = state.formation_operator === 'and' ? 'all' : 'any'
-            clauses.push([op, ...presence] as ExpressionSpecification)
+            clauses.push(state.formation_operator === 'and' ? ['all', ...presence] : ['any', ...presence])
         }
     }
 
     if (clauses.length === 0) return null
-    return (clauses.length === 1 ? clauses[0] : ['all', ...clauses]) as FilterSpecification
+    return clauses.length === 1 ? clauses[0] : ['all', ...clauses]
 }

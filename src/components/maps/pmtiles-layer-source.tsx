@@ -27,7 +27,7 @@ interface StyleFragmentLayer {
     layout?: Record<string, unknown>
     paint?: Record<string, unknown>
     'source-layer'?: string
-    filter?: unknown
+    filter?: maplibregl.ExpressionSpecification
     /** Zoom gate authored in ugs-styles (PLSS draws only when zoomed in). */
     minzoom?: number
     maxzoom?: number
@@ -79,7 +79,8 @@ export function fetchStyleFragment(styleUrl: string): Promise<StyleFragment> {
         pending = fetch(styleUrl)
             .then(res => {
                 if (!res.ok) throw new Error(`PMTiles style fetch failed: ${res.status}`)
-                return res.json() as Promise<StyleFragment>
+                const fragment: Promise<StyleFragment> = res.json()
+                return fragment
             })
             .catch(err => {
                 styleFragmentCache.delete(styleUrl)
@@ -139,7 +140,7 @@ function fetchDecodedSpriteSheet(url: string): Promise<DecodedSpriteSlice[]> {
     if (!pending) {
         pending = (async () => {
             const [json, blob] = await Promise.all([
-                fetch(`${url}.json`).then(r => { if (!r.ok) throw new Error(`sprite json ${r.status}`); return r.json() as Promise<Record<string, SpriteEntry>> }),
+                fetch(`${url}.json`).then(r => { if (!r.ok) throw new Error(`sprite json ${r.status}`); const sheet: Promise<Record<string, SpriteEntry>> = r.json(); return sheet }),
                 fetch(`${url}.png`).then(r => { if (!r.ok) throw new Error(`sprite png ${r.status}`); return r.blob() }),
             ])
             const bitmap = await createImageBitmap(blob)
@@ -320,7 +321,7 @@ export function buildPmtilesLayerSpecs({
 }: {
     layer: PMTilesLayerProps
     fragment: StyleFragment
-    layerFilter?: maplibregl.FilterSpecification
+    layerFilter?: maplibregl.ExpressionSpecification
     hidden?: boolean
     opacity?: number
     styleOverride?: PMTilesStyleOverride
@@ -330,9 +331,8 @@ export function buildPmtilesLayerSpecs({
     const layersToRender = resolveLayersToRender(layer, fragment, styleOverride)
 
     return layersToRender.map((l, i) => {
-        const fragmentFilter = l.filter as maplibregl.FilterSpecification | undefined
-        const filters = [fragmentFilter, layer.featureFilter, layerFilter].filter(Boolean) as maplibregl.FilterSpecification[]
-        const filter = filters.length > 1 ? (['all', ...filters] as unknown as maplibregl.FilterSpecification) : filters[0]
+        const filters = [l.filter, layer.featureFilter, layerFilter].filter(f => f !== undefined)
+        const filter: maplibregl.ExpressionSpecification | undefined = filters.length > 1 ? ['all', ...filters] : filters[0]
 
         const spec = buildFragmentLayerSpec(l, {
             layerId: i === 0 ? primaryId : `${primaryId}-${i}`,
@@ -360,7 +360,7 @@ export function PMTilesLayerSource({
     fragment: StyleFragment
     activeSymbology?: string
     beforeId?: string
-    layerFilter?: maplibregl.FilterSpecification
+    layerFilter?: maplibregl.ExpressionSpecification
     hidden?: boolean
     opacity?: number
     styleOverride?: PMTilesStyleOverride

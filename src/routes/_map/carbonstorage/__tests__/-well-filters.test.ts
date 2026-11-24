@@ -4,11 +4,12 @@ import {
     EMPTY_WELL_FILTER,
     parseWellFilter,
     serializeWellFilter,
+    type WellFilterState,
 } from '../-data/well-filters'
 
 describe('well-filters', () => {
     it('round-trips structured filter state through JSON', () => {
-        const state = { core: 'yes' as const, las: 'no' as const, formations: ['fm_navajo', 'fm_wingate'], formation_operator: 'and' as const }
+        const state: WellFilterState = { core: 'yes', las: 'no', formations: ['fm_navajo', 'fm_wingate'], formation_operator: 'and' }
         const raw = serializeWellFilter(state)
         expect(raw.startsWith('{')).toBe(true)
         expect(parseWellFilter(raw)).toEqual(state)

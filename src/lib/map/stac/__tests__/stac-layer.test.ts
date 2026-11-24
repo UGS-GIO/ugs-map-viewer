@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { fetchStacItem, fetchStacItemIndex, resolveStacLayerTree, stacItemHref, type StacItem } from '../stac-layer'
 import type { PMTilesLayerProps } from '@/lib/types/mapping-types'
+import { isPMTilesLayer } from '@/lib/map/layer-utils'
 
 const entry: StacItem = {
     id: 'enmin_ucrc_wells',
@@ -27,6 +28,12 @@ const mockFetch = (impl: (url: string) => Partial<Response>) =>
     vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(impl(url) as Response)))
 
 afterEach(() => vi.unstubAllGlobals())
+
+async function resolveOne(layer: PMTilesLayerProps): Promise<PMTilesLayerProps> {
+    const [resolved] = await resolveStacLayerTree([layer])
+    if (!resolved || !isPMTilesLayer(resolved)) throw new Error('layer did not resolve to PMTiles')
+    return resolved
+}
 
 describe('stacItemHref', () => {
     it('nests the item under its dbt schema', () => {
@@ -107,7 +114,7 @@ describe('resolveStacLayerTree sourceAgency precedence', () => {
             title: 'Wells Database',
             sourceAgency: 'Utah Division of Oil, Gas and Mining',
         }
-        const [resolved] = await resolveStacLayerTree([layer]) as PMTilesLayerProps[]
+        const resolved = await resolveOne(layer)
         expect(resolved.sourceAgency).toBe('Utah Division of Oil, Gas and Mining')
         expect(resolved.subtitle).toBeUndefined()
     })
@@ -130,10 +137,9 @@ describe('resolveStacLayerTree sourceAgency precedence', () => {
                 { rel: 'pmtiles', href: 'https://x/Geology_arc.pmtiles', 'pmtiles:layers': ['Geology_arc'] },
             ],
         }
-        const fetchSpy = vi.fn((url: string) => Promise.resolve({
-            ok: url === pubUrl,
-            json: () => Promise.resolve(pubDoc),
-        } as Response))
+        const fetchSpy = vi.fn((url: string) => Promise.resolve(
+            new Response(JSON.stringify(pubDoc), { status: url === pubUrl ? 200 : 404 }),
+        ))
         vi.stubGlobal('fetch', fetchSpy)
 
         const layer: PMTilesLayerProps = {
@@ -146,7 +152,7 @@ describe('resolveStacLayerTree sourceAgency precedence', () => {
             title: 'Utah Faults',
             renders: [{ id: 'faults', styleUrl: 'https://x/faults.json' }],
         }
-        const [resolved] = await resolveStacLayerTree([layer]) as PMTilesLayerProps[]
+        const resolved = await resolveOne(layer)
         expect(fetchSpy).toHaveBeenCalledTimes(1)
         expect(fetchSpy).toHaveBeenCalledWith(pubUrl)
         expect(resolved.pmtilesUrl).toBe('https://x/Geology_arc.pmtiles')

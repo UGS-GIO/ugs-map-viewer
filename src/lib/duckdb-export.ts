@@ -83,7 +83,7 @@ const resolveTransformFrom = async (
         SELECT max(abs(ST_X(ST_Centroid(${geomExpr})))) AS max_x
         FROM (SELECT ${geomCol} FROM read_parquet('${escapeSql(opts.parquetUrl)}') WHERE ${geomCol} IS NOT NULL LIMIT 100)
     `);
-    const maxX = Number((probe.toArray()[0]?.toJSON() as Record<string, unknown>)?.max_x ?? 0);
+    const maxX = Number(probe.toArray()[0]?.toJSON().max_x ?? 0);
     return maxX > 180 ? 'EPSG:3857' : null;
 };
 
@@ -444,7 +444,7 @@ const buildRelatedCsvFiles = async (
                             `SELECT DISTINCT CAST(${col} AS VARCHAR) AS v FROM read_parquet('${escapeSql(parquetUrl)}') WHERE (${whereSql}) AND ${col} IS NOT NULL`,
                         );
                         return res.toArray().flatMap(r => {
-                            const v = Reflect.get(r.toJSON() as object, 'v');
+                            const v: unknown = r.toJSON().v;
                             return typeof v === 'string' ? [v] : [];
                         });
                     });

@@ -4,7 +4,7 @@ import type { Geometry } from 'geojson';
 import { LngLat, LngLatBounds } from 'maplibre-gl';
 import { bbox as turfBbox } from '@turf/bbox';
 import type { MapLibreMap } from '@/lib/types/map-types';
-import { OPACITY_PROPS, scaledOpacityPaint } from '@/lib/map/scale-opacity';
+import { OPACITY_PROPS, isRecord, scaledOpacityPaint } from '@/lib/map/scale-opacity';
 
 // Re-export type guards from their canonical location
 export { isWMSLayer, isGroupLayer } from '@/lib/map/layer-utils';
@@ -45,8 +45,9 @@ interface RenderedLayer { id: string; type: string; baseOpacity?: Record<string,
 function findRenderedLayersByTitle(mapInstance: MapLibreMap, title: string): RenderedLayer[] {
     const matches: RenderedLayer[] = [];
     for (const layer of mapInstance.getStyle()?.layers ?? []) {
-        const md = layer.metadata as { title?: unknown; baseOpacity?: Record<string, unknown> } | undefined;
-        if (md?.title === title) matches.push({ id: layer.id, type: layer.type, baseOpacity: md.baseOpacity });
+        const md = layer.metadata;
+        if (!isRecord(md) || md.title !== title) continue;
+        matches.push({ id: layer.id, type: layer.type, baseOpacity: isRecord(md.baseOpacity) ? md.baseOpacity : undefined });
     }
     return matches;
 }

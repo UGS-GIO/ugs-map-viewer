@@ -67,14 +67,13 @@ export function DatasetDownloads() {
         queryKey: ['dataset-downloads-warehouse-parquet', stems],
         queryFn: async () => {
             const index = await fetchStacItemIndex();
-            const entries = stems
-                .map(s => {
-                    const item = index[s];
-                    const href = item?.assets?.data?.href;
-                    return href ? [s, { href, crs: item.properties?.['proj:code'] }] as const : null;
-                })
-                .filter((entry): entry is readonly [string, { href: string; crs: string | undefined }] => entry !== null);
-            return Object.fromEntries(entries);
+            const upgraded: Record<string, { href: string; crs: string | undefined }> = {};
+            for (const s of stems) {
+                const item = index[s];
+                const href = item?.assets?.data?.href;
+                if (href) upgraded[s] = { href, crs: item.properties?.['proj:code'] };
+            }
+            return upgraded;
         },
         enabled: stems.length > 0,
         staleTime: 30 * 60 * 1000,

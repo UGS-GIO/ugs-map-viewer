@@ -12,7 +12,7 @@ import { geothermalTEMLayerTitle, gravityStationsLayeTitle, powerplantsTitle } f
 import { powerplantsFilterSchema } from '@/routes/_map/-shared/layers/powerplants-schema'
 import { toMaplibreFilter } from '@/lib/filter/generators'
 import { fromCql } from '@/lib/filter/parse'
-import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
+import type { ExpressionSpecification } from 'maplibre-gl'
 
 export default function Map() {
     const { updateLayerSelection } = useLayerUrl();
@@ -26,7 +26,7 @@ export default function Map() {
     // filter expression for the PMTiles layer.
     const vectorLayerFilters = useMemo(() => {
         const powerplantsCql = filtersFromUrl[powerplantsFilterSchema.recordKey]
-        const result: Record<string, FilterSpecification> = {}
+        const result: Record<string, ExpressionSpecification> = {}
         if (powerplantsCql) {
             const expr: ExpressionSpecification | null = toMaplibreFilter(powerplantsFilterSchema, fromCql(powerplantsFilterSchema, powerplantsCql))
             if (expr) result[powerplantsTitle] = expr

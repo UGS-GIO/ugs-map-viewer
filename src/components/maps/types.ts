@@ -72,7 +72,7 @@ export interface DataMapProps {
   /** GeoServer style names for WMS layers, keyed by layer title */
   layerStyles?: Record<string, string>
   /** MapLibre filter expressions for vector (WFS/GeoJSON) layers, keyed by layer title */
-  vectorLayerFilters?: Record<string, maplibregl.FilterSpecification>
+  vectorLayerFilters?: Record<string, maplibregl.ExpressionSpecification>
   /** Active symbology mode key for vector layers (e.g. 'box-type'); empty/undefined = default circle styling. */
   vectorLayerSymbology?: Record<string, string>
   /** Dynamic style overrides for PMTiles layers (e.g. choropleth fill-color), keyed by layer title */

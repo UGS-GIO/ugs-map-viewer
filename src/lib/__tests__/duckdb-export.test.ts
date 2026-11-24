@@ -118,7 +118,7 @@ describe('maplibreFilterToSql', () => {
     })
 
     it('throws on unsupported operators or legacy bare-property filters rather than silently mis-filtering', () => {
-        expect(() => maplibreFilterToSql(['match', ['get', 'x'], 'a', true, false] as never)).toThrow(/Unsupported filter in export/)
-        expect(() => maplibreFilterToSql(['==', 'projectscale', 'Regional'] as never)).toThrow(/Unsupported filter in export/)
+        expect(() => maplibreFilterToSql(['match', ['get', 'x'], 'a', true, false])).toThrow(/Unsupported filter in export/)
+        expect(() => maplibreFilterToSql(['==', 'projectscale', 'Regional'])).toThrow(/Unsupported filter in export/)
     })
 })

@@ -13,7 +13,7 @@ import { PROD_POSTGREST_URL, parquetUrl } from '@/lib/constants'
 import { ucrcFilterSchema } from '@/routes/_map/-shared/layers/ucrc-schema'
 import { toMaplibreFilter } from '@/lib/filter/generators'
 import { fromCql } from '@/lib/filter/parse'
-import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
+import type { ExpressionSpecification } from 'maplibre-gl'
 
 // Layer filter mapping (URL filter key -> WMS layer title)
 const CCS_FILTER_MAPPING: Record<string, string> = {
@@ -134,7 +134,7 @@ export default function Map() {
   // Translate UCRC's stored CQL filter into a maplibre filter expression for the WFS vector layer
   const vectorLayerFilters = useMemo(() => {
     const ucrcCql = filtersFromUrl[ucrcWellsWMSTitle]
-    const result: Record<string, FilterSpecification> = {}
+    const result: Record<string, ExpressionSpecification> = {}
     if (ucrcCql) {
       const expr: ExpressionSpecification | null = toMaplibreFilter(ucrcFilterSchema, fromCql(ucrcFilterSchema, ucrcCql))
       if (expr) result[ucrcWellsWMSTitle] = expr

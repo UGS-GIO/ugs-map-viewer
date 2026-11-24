@@ -18,14 +18,25 @@ export const OPACITY_PROPS: Partial<Record<string, readonly OpacityProp[]>> = {
  * Scale an authored opacity by the slider value. Zoom curves must stay top-level
  * `interpolate`/`step`, so their stop outputs are scaled instead of wrapping in `*`.
  */
+export const isRecord = (v: unknown): v is Record<string, unknown> =>
+    typeof v === 'object' && v !== null && !Array.isArray(v)
+
+// Authored style JSON; MapLibre validates the full expression when the layer is added.
+const isExpression = (v: unknown): v is ExpressionSpecification => Array.isArray(v) && typeof v[0] === 'string'
+
 export function scaleOpacityValue(base: unknown, opacity: number): number | ExpressionSpecification {
     if (typeof base === 'number') return base * opacity
-    if (!Array.isArray(base)) return opacity
-    if (opacity === 1) return base as ExpressionSpecification
-    const [op] = base
-    const scaleFrom = typeof op === 'string' && op.startsWith('interpolate') ? 4 : op === 'step' ? 2 : null
-    if (scaleFrom == null) return ['*', base as ExpressionSpecification, opacity]
-    return base.map((v, i) => (i >= scaleFrom && i % 2 === 0 ? scaleOpacityValue(v, opacity) : v)) as ExpressionSpecification
+    if (!isExpression(base)) return opacity
+    if (opacity === 1) return base
+    if (base[0] === 'interpolate') {
+        const [op, interpolation, input, ...stops] = base
+        return [op, interpolation, input, ...stops.map((v, i) => (i % 2 === 1 ? scaleOpacityValue(v, opacity) : v))]
+    }
+    if (base[0] === 'step') {
+        const [op, input, first, ...stops] = base
+        return [op, input, scaleOpacityValue(first, opacity), ...stops.map((v, i) => (i % 2 === 1 ? scaleOpacityValue(v, opacity) : v))]
+    }
+    return ['*', base, opacity]
 }
 
 /** The opacity props for `type`, each scaled from `base` (authored paint). */

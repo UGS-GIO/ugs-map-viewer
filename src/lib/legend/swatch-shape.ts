@@ -17,14 +17,22 @@ export function swatchShapeOf(layerTypes: readonly string[]): SwatchShape {
 }
 
 /** Line swatch in a 28×14 box, shared by the sidebar legend and the map export legend. */
-export function lineSwatchGeometry(lineStyle?: LineStyle, teeth?: boolean) {
+interface LineSwatchGeometry {
+    y: number
+    strokeWidth: number
+    dash: string | undefined
+    cap: 'butt' | 'round'
+    teeth: string[]
+}
+
+export function lineSwatchGeometry(lineStyle?: LineStyle, teeth?: boolean): LineSwatchGeometry {
     return {
         y: teeth ? 10.5 : 7,
         strokeWidth: 1.75,
         dash: lineStyle === 'dashed' ? '5.5 3.5' : lineStyle === 'dotted' ? '1.6 3' : undefined,
         cap: lineStyle === 'dashed' ? 'butt' : 'round',
         teeth: teeth ? ['6,10.5 9,4.5 12,10.5', '16,10.5 19,4.5 22,10.5'] : [],
-    } as const
+    }
 }
 
 function escAttr(s: string): string {

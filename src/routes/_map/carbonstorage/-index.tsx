@@ -13,7 +13,7 @@ import { powerplantsFilterSchema } from '@/routes/_map/-shared/layers/powerplant
 import { buildWellsMaplibreFilter, parseWellFilter } from './-data/well-filters'
 import { toMaplibreFilter } from '@/lib/filter/generators'
 import { fromCql } from '@/lib/filter/parse'
-import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
+import type { ExpressionSpecification } from 'maplibre-gl'
 
 const CCS_FILTER_MAPPING: Record<string, string> = {
   [wellWithTopsWMSTitle]: wellWithTopsWMSTitle,
@@ -86,7 +86,7 @@ export default function Map() {
   // Build MapLibre filter expressions for Wells Database (directly from structured
   // state) and Power Plants (from its checkbox legend schema).
   const vectorLayerFilters = useMemo(() => {
-    const result: Record<string, FilterSpecification> = {}
+    const result: Record<string, ExpressionSpecification> = {}
     const wellsRaw = filtersFromUrl[wellWithTopsWMSTitle]
     if (wellsRaw) {
       const wellsExpr = buildWellsMaplibreFilter(parseWellFilter(wellsRaw))

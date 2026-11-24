@@ -13,7 +13,7 @@ import type { LayerContentProps, ExtendedFeature } from '@/components/maps/popup
 import { QueryResultsTable } from '@/components/data-table/query-results-table'
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { flattenDataLayersWithAncestors, resolveLeafVisibility } from '@/lib/map/layer-utils'
+import { flattenDataLayersWithAncestors, isPMTilesLayer, resolveLeafVisibility } from '@/lib/map/layer-utils'
 import { useMapUrlSync, type ViewMode } from '@/hooks/use-map-url-sync'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { PopupContentWithPagination } from '@/components/maps/popups/popup-content-with-pagination'
@@ -113,8 +113,8 @@ async function fetchLegendDataForVisibleLayers(
     for (const layer of layerArray) {
       if (layer.type === 'group' && 'layers' in layer) {
         visible.push(...getVisiblePmtilesLayers(layer.layers || []))
-      } else if (layer.type === 'pmtiles' && displayedTitles.has(layer.title || '')) {
-        visible.push(layer as PMTilesLayerProps)
+      } else if (isPMTilesLayer(layer) && displayedTitles.has(layer.title || '')) {
+        visible.push(layer)
       }
     }
     return visible
@@ -283,7 +283,7 @@ interface GenericMapContainerProps {
   /** Optional GeoServer style names for WMS layers, keyed by layer title */
   layerStyles?: Record<string, string>
   /** Optional MapLibre filter expressions for vector (WFS) layers, keyed by layer title */
-  vectorLayerFilters?: Record<string, maplibregl.FilterSpecification>
+  vectorLayerFilters?: Record<string, maplibregl.ExpressionSpecification>
   /** Optional active symbology mode key for vector layers, keyed by layer title */
   vectorLayerSymbology?: Record<string, string>
   /** Optional style overrides for PMTiles layers (e.g. choropleth fill-color), keyed by layer title */

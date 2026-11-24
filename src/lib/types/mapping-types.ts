@@ -1,5 +1,5 @@
 import { FeatureCollection, GeoJsonProperties } from "geojson"
-import type { FilterSpecification } from "maplibre-gl"
+import type { ExpressionSpecification } from "maplibre-gl"
 import type { SwatchShape } from "@/lib/legend/swatch-shape"
 
 
@@ -272,7 +272,7 @@ export interface PMTilesLayerProps extends BaseLayerProps {
     /** Source layer name within the PMTiles file */
     sourceLayer: string;
     /** Filter ANDed onto every render; kept off the style so STAC renders can't drop it. */
-    featureFilter?: FilterSpecification;
+    featureFilter?: ExpressionSpecification;
     /** Optional sublayer config for popups/queries */
     sublayers?: ExtendedSublayerProperties[];
     /** Polygon layers only: draw the style's point-placed text once per polygon, inside its visible part, instead of once per tile. On a point layer its icons would disappear. */

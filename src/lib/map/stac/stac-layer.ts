@@ -24,6 +24,7 @@ import type {
     RelatedTable,
 } from '@/lib/types/mapping-types';
 import { toTitleCase } from '@/lib/utils';
+import { isPMTilesLayer } from '@/lib/map/layer-utils';
 
 const STAC_SERVING_TOPICS_BASE =
     'https://maps-assets.geology.utah.gov/warehouse/stac/ugs-serving-topics';
@@ -314,10 +315,9 @@ async function fetchStacItemByUrl(url: string): Promise<StacItem | null> {
 /** Collect every `stacItemId` and `stacItemUrl` referenced in a (possibly nested) layer tree. */
 function collectStacRefs(layers: LayerProps[], ids: Set<string>, urls: Set<string>): void {
     for (const layer of layers) {
-        if (layer.type === 'pmtiles') {
-            const pm = layer as PMTilesLayerProps;
-            if (pm.stacItemUrl) urls.add(pm.stacItemUrl);
-            else if (pm.stacItemId) ids.add(pm.stacItemId);
+        if (isPMTilesLayer(layer)) {
+            if (layer.stacItemUrl) urls.add(layer.stacItemUrl);
+            else if (layer.stacItemId) ids.add(layer.stacItemId);
         }
         if ('layers' in layer && Array.isArray(layer.layers)) {
             collectStacRefs(layer.layers, ids, urls);
@@ -410,17 +410,11 @@ export async function resolveStacLayerTree(layers: LayerProps[]): Promise<LayerP
                 out.push({ ...layer, layers: mapTree(layer.layers) } as LayerProps);
                 continue;
             }
-            if (layer.type !== 'pmtiles') { out.push(layer); continue; }
-            const pm = layer as PMTilesLayerProps;
-            const item = pm.stacItemUrl
-                ? urlItems.get(pm.stacItemUrl)
-                : pm.stacItemId
-                    ? items.get(pm.stacItemId)
-                    : undefined;
-            if (!pm.stacItemUrl && !pm.stacItemId) { out.push(layer); continue; }
+            if (!isPMTilesLayer(layer) || (!layer.stacItemUrl && !layer.stacItemId)) { out.push(layer); continue; }
+            const item = layer.stacItemUrl ? urlItems.get(layer.stacItemUrl) : items.get(layer.stacItemId ?? '');
             if (!item) { console.warn(`[resolveStacLayerTree] dropping unresolved STAC layer '${layer.title}'`); continue; }
             try {
-                out.push(mergeStacIntoLayer(pm, item));
+                out.push(mergeStacIntoLayer(layer, item));
             } catch (err) {
                 console.error(`[resolveStacLayerTree] merge failed for '${layer.title}':`, err);
             }
