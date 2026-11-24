@@ -103,7 +103,7 @@ describe('maplibreFilterToSql', () => {
         expect(maplibreFilterToSql(['==', ['get', 'projectscale'], 'Regional']))
             .toBe(`("projectscale" = 'Regional')`)
         expect(maplibreFilterToSql(['==', ['downcase', ['to-string', ['get', 'TYPE']]], 'fault']))
-            .toBe(`(LOWER(COALESCE(CAST(COALESCE(CAST("TYPE" AS VARCHAR), '') AS VARCHAR), '')) = 'fault')`)
+            .toBe(`(LOWER(COALESCE(CAST("TYPE" AS VARCHAR), '')) = 'fault')`)
     })
 
     it('compiles compound all/any/in/null/not-equal/negation predicates and escapes quotes', () => {
@@ -114,11 +114,11 @@ describe('maplibreFilterToSql', () => {
             ['!=', ['get', 'code'], ['literal', null]],
             ['!', ['==', ['get', 'flag'], 'x']],
             ['in', ['get', 'kind'], ['literal', ["o'neill", 'other']]],
-        ])).toBe(`(("name" IS NOT NULL) AND ("status" IS DISTINCT FROM 'archived') AND ("code" IS NOT NULL) AND (NOT COALESCE((("flag" = 'x')), FALSE)) AND ("kind" IN ('o''neill', 'other')))`)
+        ])).toBe(`(("name" IS NOT NULL) AND ("status" IS DISTINCT FROM 'archived') AND ("code" IS NOT NULL) AND (NOT COALESCE(("flag" = 'x'), FALSE)) AND ("kind" IN ('o''neill', 'other')))`)
     })
 
     it('throws on unsupported operators or legacy bare-property filters rather than silently mis-filtering', () => {
-        expect(() => maplibreFilterToSql(['match', ['get', 'x'], 'a', true, false] as never)).toThrow(/Unsupported MapLibre filter operator/)
-        expect(() => maplibreFilterToSql(['==', 'projectscale', 'Regional'] as never)).toThrow(/Legacy MapLibre filter syntax/)
+        expect(() => maplibreFilterToSql(['match', ['get', 'x'], 'a', true, false] as never)).toThrow(/Unsupported filter in export/)
+        expect(() => maplibreFilterToSql(['==', 'projectscale', 'Regional'] as never)).toThrow(/Unsupported filter in export/)
     })
 })

@@ -62,8 +62,6 @@ const disableGeoParquetRead = async (conn: duckdb.AsyncDuckDBConnection): Promis
     }
 };
 
-let tempTableCounter = 0;
-
 /**
  * Resolve the source CRS to reproject from, or null when already WGS84.
  * Prefers authoritative STAC `proj:code`; falls back to probing easting magnitude
@@ -90,106 +88,61 @@ const resolveTransformFrom = async (
 };
 
 const sqlLiteral = (val: unknown): string => {
-    if (val === null || val === undefined) return 'NULL';
+    if (val == null) return 'NULL';
     if (typeof val === 'string') return `'${escapeSql(val)}'`;
-    if (typeof val === 'number') {
-        if (!Number.isFinite(val)) throw new Error(`Unsupported non-finite numeric filter literal: ${val}`);
-        return String(val);
-    }
+    if (typeof val === 'number' && Number.isFinite(val)) return String(val);
     if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
-    throw new Error(`Unsupported MapLibre filter literal: ${JSON.stringify(val)}`);
+    throw new Error(`Unsupported filter literal in export: ${JSON.stringify(val)}`);
 };
 
-const isNullExpr = (expr: unknown): boolean =>
-    expr === null ||
-    expr === undefined ||
-    (Array.isArray(expr) && expr[0] === 'literal' && (expr[1] === null || expr[1] === undefined));
+const isNull = (e: unknown): boolean => e == null || (Array.isArray(e) && e[0] === 'literal' && e[1] == null);
 
-const assertNotLegacyBareProp = (op: string, lhs: unknown, expr: unknown): void => {
-    if (typeof lhs === 'string') {
-        throw new Error(
-            `Legacy MapLibre filter syntax with bare property string in '${op}' is not supported in export; use ['get', '${lhs}']: ${JSON.stringify(expr)}`,
-        );
-    }
-};
-
+// Only the operators layer `featureFilter`s use; anything else throws so an export never comes out unfiltered.
 const compileExpr = (expr: unknown): string => {
     if (!Array.isArray(expr)) return sqlLiteral(expr);
     const [op, ...args] = expr;
-    if (typeof op !== 'string') throw new Error(`Invalid MapLibre filter expression: ${JSON.stringify(expr)}`);
-
+    const fail = (): never => { throw new Error(`Unsupported filter in export: ${JSON.stringify(expr)}`); };
+    // A bare property name is legacy filter syntax; as a literal it would silently match nothing.
+    if (['==', '!=', 'in'].includes(op) && typeof args[0] === 'string') fail();
     switch (op) {
         case 'get':
-            if (typeof args[0] !== 'string' || args.length !== 1) {
-                throw new Error(`Unsupported 'get' expression in export filter: ${JSON.stringify(expr)}`);
-            }
-            return quoteIdent(args[0]);
+        case 'has':
+            if (typeof args[0] !== 'string' || args.length !== 1) return fail();
+            return op === 'get' ? quoteIdent(args[0]) : `(${quoteIdent(args[0])} IS NOT NULL)`;
         case 'literal':
-            if (args.length !== 1) throw new Error(`Invalid 'literal' expression: ${JSON.stringify(expr)}`);
             return sqlLiteral(args[0]);
         case 'to-string':
-            if (args.length !== 1) throw new Error(`Invalid 'to-string' expression: ${JSON.stringify(expr)}`);
             return `COALESCE(CAST(${compileExpr(args[0])} AS VARCHAR), '')`;
         case 'downcase':
-            if (args.length !== 1) throw new Error(`Invalid 'downcase' expression: ${JSON.stringify(expr)}`);
-            return `LOWER(COALESCE(CAST(${compileExpr(args[0])} AS VARCHAR), ''))`;
-        case 'upcase':
-            if (args.length !== 1) throw new Error(`Invalid 'upcase' expression: ${JSON.stringify(expr)}`);
-            return `UPPER(COALESCE(CAST(${compileExpr(args[0])} AS VARCHAR), ''))`;
-        case 'has':
-            if (typeof args[0] !== 'string' || args.length !== 1) {
-                throw new Error(`Unsupported 'has' expression in export filter: ${JSON.stringify(expr)}`);
-            }
-            return `(${quoteIdent(args[0])} IS NOT NULL)`;
+            return `LOWER(${compileExpr(args[0])})`;
         case '!':
-            if (args.length !== 1) throw new Error(`Invalid '!' expression: ${JSON.stringify(expr)}`);
-            return `(NOT COALESCE((${compileExpr(args[0])}), FALSE))`;
+            return `(NOT COALESCE(${compileExpr(args[0])}, FALSE))`;
         case 'all':
-            if (args.length === 0) return 'TRUE';
-            return `(${args.map(compileExpr).join(' AND ')})`;
         case 'any':
-            if (args.length === 0) return 'FALSE';
-            return `(${args.map(compileExpr).join(' OR ')})`;
+            if (args.length === 0) return op === 'all' ? 'TRUE' : 'FALSE';
+            return `(${args.map(compileExpr).join(op === 'all' ? ' AND ' : ' OR ')})`;
         case '==':
         case '!=': {
-            if (args.length !== 2) throw new Error(`Invalid '${op}' expression: ${JSON.stringify(expr)}`);
             const [lhs, rhs] = args;
-            assertNotLegacyBareProp(op, lhs, expr);
-            if (isNullExpr(rhs)) return `(${compileExpr(lhs)} ${op === '==' ? 'IS NULL' : 'IS NOT NULL'})`;
-            if (isNullExpr(lhs)) return `(${compileExpr(rhs)} ${op === '==' ? 'IS NULL' : 'IS NOT NULL'})`;
+            if (isNull(lhs) || isNull(rhs)) {
+                return `(${compileExpr(isNull(rhs) ? lhs : rhs)} ${op === '==' ? 'IS NULL' : 'IS NOT NULL'})`;
+            }
             return `(${compileExpr(lhs)} ${op === '==' ? '=' : 'IS DISTINCT FROM'} ${compileExpr(rhs)})`;
         }
-        case '<':
-        case '<=':
-        case '>':
-        case '>=':
-            if (args.length !== 2) throw new Error(`Invalid '${op}' expression: ${JSON.stringify(expr)}`);
-            assertNotLegacyBareProp(op, args[0], expr);
-            return `(${compileExpr(args[0])} ${op} ${compileExpr(args[1])})`;
         case 'in': {
-            if (args.length !== 2) throw new Error(`Invalid 'in' expression: ${JSON.stringify(expr)}`);
             const [needle, haystack] = args;
-            assertNotLegacyBareProp(op, needle, expr);
-            if (Array.isArray(haystack) && haystack[0] === 'literal' && Array.isArray(haystack[1])) {
-                const items = haystack[1];
-                if (items.length === 0) return 'FALSE';
-                return `(${compileExpr(needle)} IN (${items.map(sqlLiteral).join(', ')}))`;
-            }
-            throw new Error(`Unsupported 'in' haystack in export filter: ${JSON.stringify(expr)}`);
+            if (!Array.isArray(haystack) || haystack[0] !== 'literal' || !Array.isArray(haystack[1])) return fail();
+            const items: unknown[] = haystack[1];
+            return items.length === 0 ? 'FALSE' : `(${compileExpr(needle)} IN (${items.map(sqlLiteral).join(', ')}))`;
         }
         default:
-            throw new Error(`Unsupported MapLibre filter operator '${op}' in export`);
+            return fail();
     }
 };
 
-/**
- * Compile a MapLibre `FilterSpecification` into a DuckDB SQL `WHERE` predicate.
- * Fails loud on unsupported operators so a filtered layer never silently exports unfiltered rows.
- */
-export const maplibreFilterToSql = (filter: FilterSpecification): string => {
-    if (typeof filter === 'boolean') return filter ? 'TRUE' : 'FALSE';
-    return compileExpr(filter);
-};
+/** Compile a layer `featureFilter` into a DuckDB `WHERE` predicate. */
+export const maplibreFilterToSql = (filter: FilterSpecification): string =>
+    typeof filter === 'boolean' ? (filter ? 'TRUE' : 'FALSE') : compileExpr(filter);
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -391,37 +344,12 @@ const handlers: Record<ExportFormat, Handler> = {
         }
         return withConnection(async (conn, db) => {
             opts.onProgress?.({ stage: 'converting', message: opts.featureFilter !== undefined ? 'Filtering features…' : 'Combining tables…' });
-            const virtualPath = virtualExportPath('parquet');
-            if (!opts.geometryColumn) {
-                await disableGeoParquetRead(conn);
-                const source = await exportSource(conn, opts);
-                await conn.query(`COPY (SELECT * FROM ${source}) TO '${virtualPath}' (FORMAT PARQUET)`);
-                return bufferToBlob(db, virtualPath, EXPORT_FORMATS.parquet.mimeType);
-            }
-
-            await loadSpatial(conn);
-            await conn.query(`SET enable_geoparquet_conversion = false`);
+            // Rows keep the source CRS, same as the unfiltered pass-through.
+            await disableGeoParquetRead(conn);
             const source = await exportSource(conn, opts);
-            const geomCol = quoteIdent(opts.geometryColumn);
-            const described = await conn.query(`DESCRIBE SELECT ${geomCol} FROM ${source}`);
-            const geomType = String((described.toArray()[0]?.toJSON() as Record<string, unknown>)?.column_type ?? '').toUpperCase();
-            const geomExpr = geomType.includes('BLOB') ? `ST_GeomFromWKB(${geomCol})` : geomCol;
-            const transformFrom = await resolveTransformFrom(conn, opts, geomExpr, geomCol);
-            const outGeom = transformFrom
-                ? `ST_Force2D(ST_Transform(${geomExpr}, '${transformFrom}', 'EPSG:4326', true))`
-                : `ST_Force2D(${geomExpr})`;
-            const tmpTable = `_parquet_export_${++tempTableCounter}`;
-            try {
-                // Read with conversion off (avoids "stoi: no conversion" on warehouse CRS metadata),
-                // then re-enable it for COPY so the output carries GeoParquet `geo` metadata in WGS84.
-                await conn.query(`CREATE TEMP TABLE ${tmpTable} AS SELECT * REPLACE (${outGeom} AS ${geomCol}) FROM ${source}`);
-                await conn.query(`SET enable_geoparquet_conversion = true`);
-                await conn.query(`COPY ${tmpTable} TO '${virtualPath}' (FORMAT PARQUET)`);
-                return await bufferToBlob(db, virtualPath, EXPORT_FORMATS.parquet.mimeType);
-            } finally {
-                await conn.query(`DROP TABLE IF EXISTS ${tmpTable}`).catch(() => {});
-                await disableGeoParquetRead(conn);
-            }
+            const virtualPath = virtualExportPath('parquet');
+            await conn.query(`COPY (SELECT * FROM ${source}) TO '${virtualPath}' (FORMAT PARQUET)`);
+            return bufferToBlob(db, virtualPath, EXPORT_FORMATS.parquet.mimeType);
         });
     },
 
