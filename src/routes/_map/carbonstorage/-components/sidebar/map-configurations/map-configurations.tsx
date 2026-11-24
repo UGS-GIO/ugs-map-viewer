@@ -74,11 +74,8 @@ const fetchFormationData = async (): Promise<FormationMapping[]> => {
         `;
         const result = await conn.query(query);
         return result.toArray().map((r) => {
-            const json = r.toJSON() as { label: unknown; value: unknown };
-            return {
-                label: String(json.label),
-                value: String(json.value),
-            };
+            const { label, value } = r.toJSON();
+            return { label: String(label), value: String(value) };
         });
     });
 };

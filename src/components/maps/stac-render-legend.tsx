@@ -1,17 +1,17 @@
 import { useQuery } from '@tanstack/react-query'
-import { useSearch } from '@tanstack/react-router'
 import { activeRenderOf, styleFragmentQueryOptions } from '@/components/maps/pmtiles-layer-source'
 import { LegendSwatchGrid } from '@/components/maps/legend-swatch-grid'
 import type { PMTilesLayerProps } from '@/lib/types/mapping-types'
 import { swatchShapeOf } from '@/lib/legend/swatch-shape'
+import { useVectorSymbology } from '@/components/sidebar/filter/symbology-legend'
 
 /**
  * Read-only legend for a PMTiles layer, straight from its active STAC render's `legend`.
  * Replaces the WMS GetLegendGraphic image that vector layers no longer have.
  */
 export function StacRenderLegend({ layer }: { layer: PMTilesLayerProps }) {
-    const searchSymbology = (useSearch({ strict: false }) as { vector_symbology?: Record<string, string> }).vector_symbology
-    const render = activeRenderOf(layer, searchSymbology?.[layer.title || ''])
+    const { value: symbology } = useVectorSymbology(layer.title ?? '')
+    const render = activeRenderOf(layer, symbology)
     const entries = render?.legend ?? []
     const allShaped = entries.length > 0 && entries.every(e => e.shape != null)
     // Same query the map draws from, so this is normally a cache hit. Skip when there are no

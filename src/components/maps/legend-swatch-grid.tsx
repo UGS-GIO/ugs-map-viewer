@@ -1,7 +1,7 @@
 import { useId } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { cn } from '@/lib/utils'
-import type { LineStyle, SwatchShape } from '@/lib/legend/swatch-shape'
+import { lineSwatchGeometry, type LineStyle, type SwatchShape } from '@/lib/legend/swatch-shape'
 import { LEGEND_ROW_CLASS, LEGEND_SWATCH_SLOT_CLASS } from '@/lib/legend/legend-layout'
 
 export interface LegendSwatchItem {
@@ -75,6 +75,7 @@ export function LegendSwatch({
     const patternId = useId()
     const paint = { backgroundImage: `linear-gradient(${color}, ${color})`, borderColor: stroke ?? 'rgba(0,0,0,0.3)' }
     const needsLineSvg = shape === 'line' && (teeth || (lineStyle && lineStyle !== 'solid'))
+    const line = lineSwatchGeometry(lineStyle, teeth)
     return (
         <span className={LEGEND_SWATCH_SLOT_CLASS} aria-hidden>
             {shape === 'line' && !needsLineSvg && (
@@ -96,20 +97,15 @@ export function LegendSwatch({
                 >
                     <line
                         x1="1"
-                        y1={teeth ? 10.5 : 7}
+                        y1={line.y}
                         x2="27"
-                        y2={teeth ? 10.5 : 7}
+                        y2={line.y}
                         stroke={color}
-                        strokeWidth="1.75"
-                        strokeDasharray={lineStyle === 'dashed' ? '5.5 3.5' : lineStyle === 'dotted' ? '1.6 3' : undefined}
-                        strokeLinecap={lineStyle === 'dashed' ? 'butt' : 'round'}
+                        strokeWidth={line.strokeWidth}
+                        strokeDasharray={line.dash}
+                        strokeLinecap={line.cap}
                     />
-                    {teeth && (
-                        <>
-                            <polygon points="6,10.5 9,4.5 12,10.5" fill={color} />
-                            <polygon points="16,10.5 19,4.5 22,10.5" fill={color} />
-                        </>
-                    )}
+                    {line.teeth.map(points => <polygon key={points} points={points} fill={color} />)}
                 </svg>
             )}
             {shape === 'circle' && <span className="legend-swatch size-2.5 rounded-full border" style={paint} />}

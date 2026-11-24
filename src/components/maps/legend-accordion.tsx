@@ -47,19 +47,11 @@ const LegendAccordion = ({ url, isOpen, layerName, customLegend, bivariateLegend
     // Use empty string instead of undefined to keep accordion controlled
     const accordionValue = isOpen ? "legend-accordion" : "";
 
-    const hasBivariateStac = Boolean(pmtilesLegend?.length && parseStacBivariateLegend(pmtilesLegend));
+    const bivariateGrid = bivariateLegend && pmtilesLegend?.length ? parseStacBivariateLegend(pmtilesLegend) : null;
 
     const renderContent = () => {
-        if (bivariateLegend && (hasBivariateStac || (url && layerName))) {
-            return (
-                <BivariateLegend
-                    wmsUrl={url}
-                    layerName={layerName ?? undefined}
-                    stacLegend={hasBivariateStac ? pmtilesLegend : undefined}
-                    xLabel={bivariateLegend.xLabel}
-                    yLabel={bivariateLegend.yLabel}
-                />
-            );
+        if (bivariateLegend && bivariateGrid) {
+            return <BivariateLegend grid={bivariateGrid} xLabel={bivariateLegend.xLabel} yLabel={bivariateLegend.yLabel} />;
         }
 
         if (customLegend) return customLegend;

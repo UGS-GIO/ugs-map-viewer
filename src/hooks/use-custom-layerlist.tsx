@@ -19,7 +19,7 @@ import LayerControls from '@/components/maps/layer-controls';
 import { WfsVectorLegend } from '@/components/maps/wfs-vector-legend';
 import { StacRenderLegend } from '@/components/maps/stac-render-legend';
 import { activeRenderOf } from '@/components/maps/pmtiles-layer-source';
-import { useSearch } from '@tanstack/react-router';
+import { useVectorSymbology } from '@/components/sidebar/filter/symbology-legend';
 import { ZoomHintPill } from '@/components/maps/zoom-hint-pill';
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from '@/lib/constants';
 import { useLayerUrl } from '@/context/layer-url-provider';
@@ -220,6 +220,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
 
     // Related tables live on sublayer popup config (WMS/PMTiles). Flattened
     // across sublayers so the download menu can bundle them all in one zip.
+    const { value: symbology } = useVectorSymbology(layerConfig.title ?? '');
     const relatedTables = useMemo(() => {
         if (isWMSLayer(layerConfig) || isPMTilesLayer(layerConfig)) {
             return layerConfig.sublayers?.flatMap(sub => sub.relatedTables ?? []) ?? [];
@@ -550,9 +551,8 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
         // PMTiles layers have no GetLegendGraphic; swatches come from the STAC render.
         ?? (isPMTilesLayer(layerConfig) ? <StacRenderLegend layer={layerConfig} /> : undefined);
 
-    const searchSymbology = (useSearch({ strict: false }) as { vector_symbology?: Record<string, string> }).vector_symbology;
     const pmtilesLegend = isPMTilesLayer(layerConfig)
-        ? activeRenderOf(layerConfig, searchSymbology?.[layerConfig.title || ''])?.legend
+        ? activeRenderOf(layerConfig, symbology)?.legend
         : undefined;
 
     // --- Single Layer Rendering ---
