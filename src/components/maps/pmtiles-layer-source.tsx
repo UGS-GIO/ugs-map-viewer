@@ -17,6 +17,7 @@ import { Source, Layer, useMap, type LayerProps } from 'react-map-gl/maplibre'
 import type * as maplibregl from 'maplibre-gl'
 import type { PMTilesLayerProps, PMTilesRender } from '@/lib/types/mapping-types'
 import { buildFragmentLayerSpec } from '@/lib/map/layer-utils'
+import { baseOpacityOf, scaledOpacityPaint } from '@/lib/map/scale-opacity'
 import type { WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
 import { labelDiff, toFeatureCollection, viewportLabelPoints, type LabelPoints } from '@/lib/map/viewport-labels'
 
@@ -255,39 +256,10 @@ export function queryPmtilesLayersAtPoint(
     ], layers)
 }
 
-const OPACITY_PROP: Record<string, string> = {
-    circle: 'circle-opacity',
-    line: 'line-opacity',
-    fill: 'fill-opacity',
-    symbol: 'icon-opacity',
-    'fill-extrusion': 'fill-extrusion-opacity',
-}
-
-// Authored paint properties per mounted sublayer id, used by live slider drags
-// (MapLibreLayerProxy) so dragging scales proportionally rather than overwriting
-// authored opacity values or zoom expressions.
-const pmtilesBasePaint = new Map<string, Record<string, unknown>>()
-
-export function getPmtilesBasePaint(layerId: string): Record<string, unknown> | undefined {
-    return pmtilesBasePaint.get(layerId)
-}
-
-export function scaleOpacityValue(base: unknown, opacity: number): number | maplibregl.ExpressionSpecification {
-    if (base == null) return opacity
-    if (typeof base === 'number') return base * opacity
-    if (Array.isArray(base)) return (opacity === 1 ? base : ['*', base, opacity]) as maplibregl.ExpressionSpecification
-    return opacity
-}
-
 /** Apply the layer's opacity-slider override proportionally onto a fragment layer's paint. */
 function withOpacity(paint: Record<string, unknown> | undefined, type: string, opacity: number | undefined): Record<string, unknown> {
     const out = { ...(paint ?? {}) }
-    if (opacity == null) return out
-    const key = OPACITY_PROP[type]
-    if (key) out[key] = scaleOpacityValue(paint?.[key], opacity)
-    if (type === 'circle') out['circle-stroke-opacity'] = scaleOpacityValue(paint?.['circle-stroke-opacity'], opacity)
-    if (type === 'symbol') out['text-opacity'] = scaleOpacityValue(paint?.['text-opacity'], opacity)
-    return out
+    return opacity == null ? out : { ...out, ...Object.fromEntries(scaledOpacityPaint(paint, type, opacity)) }
 }
 
 export interface PMTilesStyleOverride {
@@ -369,7 +341,7 @@ export function buildPmtilesLayerSpecs({
             visible: !hidden,
             paint: withOpacity(l.paint, l.type, opacity ?? layer.opacity),
             filter,
-            metadata: { title: layer.title, pmtilesLayer: true, pmtilesSourceId: sourceId },
+            metadata: { title: layer.title, pmtilesLayer: true, pmtilesSourceId: sourceId, baseOpacity: baseOpacityOf(l.paint, l.type) },
             visibleZoomRange: layer.visibleZoomRange,
         })
         // Line-placed text follows the polygon's edge, which a label point doesn't have
@@ -460,22 +432,6 @@ export function PMTilesLayerSource({
     const specs = buildPmtilesLayerSpecs({ layer, fragment, layerFilter, hidden, opacity, styleOverride })
     const isLabel = (spec: LayerProps) => 'source' in spec && spec.source === labelSourceId
     const labelSpecs = specs.filter(isLabel)
-
-    // Register each sublayer's authored base paint so live slider drags scale
-    // proportionally against fragment opacity values/expressions.
-    useEffect(() => {
-        const primaryId = getPmtilesLayerId(layer)
-        const layersToRender = resolveLayersToRender(layer, fragment, styleOverride)
-        const registeredIds: string[] = []
-        layersToRender.forEach((resolved, i) => {
-            const id = i === 0 ? primaryId : `${primaryId}-${i}`
-            pmtilesBasePaint.set(id, resolved.paint ?? {})
-            registeredIds.push(id)
-        })
-        return () => {
-            for (const id of registeredIds) pmtilesBasePaint.delete(id)
-        }
-    }, [layer, fragment, styleOverride])
 
     return (
         <>
