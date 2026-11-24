@@ -10,11 +10,14 @@ import { useGetCurrentPage } from '@/hooks/use-get-current-page';
 import { EXPORT_DISABLED_PAGES, MAPS_ASSETS_CDN_URL } from '@/lib/constants';
 import { isPMTilesLayer, isWMSLayer } from '@/lib/map/layer-utils';
 import { fetchStacItemIndex } from '@/lib/map/stac/stac-layer';
+import type { FilterSpecification } from 'maplibre-gl';
 import type { LayerProps, RelatedTable } from '@/lib/types/mapping-types';
 
 interface DownloadableDataset {
     title: string;
     parquetUrl: string | null;
+    sourceCrs?: string;
+    featureFilter?: FilterSpecification;
     relatedTables: RelatedTable[];
     subtitle?: string;
     sourceAgency?: string;
@@ -36,6 +39,8 @@ const collectDatasets = (layers: LayerProps[]): DownloadableDataset[] =>
         return [{
             title: layer.title,
             parquetUrl: layer.downloadParquetUrl ?? null,
+            sourceCrs: layer.downloadSourceCrs,
+            featureFilter: isPMTilesLayer(layer) ? layer.featureFilter : undefined,
             relatedTables: relatedTablesOf(layer),
             subtitle: layer.subtitle,
             sourceAgency: layer.sourceAgency,
@@ -57,15 +62,18 @@ export function DatasetDownloads() {
         [all],
     );
 
-    // Upgrades a hand-authored CDN parquet to its warehouse copy by stem match.
+    // Upgrades a hand-authored CDN parquet to its warehouse copy by stem match, keeping CRS in sync.
     const { data: warehouseByStem } = useQuery({
         queryKey: ['dataset-downloads-warehouse-parquet', stems],
         queryFn: async () => {
             const index = await fetchStacItemIndex();
-            const entries = stems
-                .map(s => [s, index[s]?.assets?.data?.href] as const)
-                .filter((entry): entry is [string, string] => !!entry[1]);
-            return Object.fromEntries(entries);
+            const upgraded: Record<string, { href: string; crs: string | undefined }> = {};
+            for (const s of stems) {
+                const item = index[s];
+                const href = item?.assets?.data?.href;
+                if (href) upgraded[s] = { href, crs: item.properties?.['proj:code'] };
+            }
+            return upgraded;
         },
         enabled: stems.length > 0,
         staleTime: 30 * 60 * 1000,
@@ -75,10 +83,14 @@ export function DatasetDownloads() {
     const tierOf = (d: DownloadableDataset) => d.parquetUrl ? 0 : d.sourceUrl ? 1 : 2;
 
     const sorted = useMemo(() => {
-        const resolved = all.map(d => ({
-            ...d,
-            parquetUrl: d.parquetUrl ? warehouseByStem?.[stemOf(d.parquetUrl)] ?? d.parquetUrl : null,
-        }));
+        const resolved = all.map(d => {
+            const upgraded = d.parquetUrl ? warehouseByStem?.[stemOf(d.parquetUrl)] : undefined;
+            return {
+                ...d,
+                parquetUrl: upgraded?.href ?? d.parquetUrl,
+                sourceCrs: upgraded ? upgraded.crs : d.sourceCrs,
+            };
+        });
         return resolved.sort((a, b) => tierOf(a) - tierOf(b) || a.title.localeCompare(b.title));
     }, [all, warehouseByStem]);
 
@@ -105,6 +117,8 @@ export function DatasetDownloads() {
                                 compact
                                 parquetUrl={dataset.parquetUrl}
                                 layerTitle={dataset.title}
+                                sourceCrs={dataset.sourceCrs}
+                                featureFilter={dataset.featureFilter}
                                 relatedTables={dataset.relatedTables}
                             />
                             : dataset.sourceUrl

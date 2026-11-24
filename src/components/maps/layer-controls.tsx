@@ -23,10 +23,15 @@ interface LayerControlsProps {
     layerName?: string | null;
     customLegend?: React.ReactNode;
     bivariateLegend?: { xLabel: string; yLabel: string };
+    pmtilesLegend?: import('@/lib/types/mapping-types').PMTilesRender['legend'];
     arcgisUrl?: string;
     legendUnit?: string;
     /** GeoParquet URL for client-side export. When set, download dropdown is enabled. */
     downloadParquetUrl?: string;
+    /** Source CRS of `downloadParquetUrl` (e.g. "EPSG:26712"), populated from STAC `proj:code`. */
+    downloadSourceCrs?: string;
+    /** Optional MapLibre `featureFilter` forwarded to client-side exports. */
+    featureFilter?: import('maplibre-gl').FilterSpecification;
     /** Related tables configured on the layer's sublayers (e.g. formation tops, geochemistry).
      * When non-empty, the download menu offers an "Include related data" option. */
     relatedTables?: RelatedTable[];
@@ -71,9 +76,12 @@ const LayerControls: React.FC<LayerControlsProps> = ({
     layerName,
     customLegend,
     bivariateLegend,
+    pmtilesLegend,
     arcgisUrl,
     legendUnit,
     downloadParquetUrl,
+    downloadSourceCrs,
+    featureFilter,
     relatedTables,
     disableExport = false,
     filtersContent,
@@ -203,7 +211,13 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                         </Toggle>
 
                         {!disableExport && downloadParquetUrl && (
-                            <ParquetDownloadMenu parquetUrl={downloadParquetUrl} layerTitle={title} relatedTables={relatedTables} />
+                            <ParquetDownloadMenu
+                                parquetUrl={downloadParquetUrl}
+                                layerTitle={title}
+                                sourceCrs={downloadSourceCrs}
+                                featureFilter={featureFilter}
+                                relatedTables={relatedTables}
+                            />
                         )}
 
                         {filtersContent && (
@@ -246,6 +260,7 @@ const LayerControls: React.FC<LayerControlsProps> = ({
                     layerName={layerName}
                     customLegend={customLegend}
                     bivariateLegend={bivariateLegend}
+                    pmtilesLegend={pmtilesLegend}
                     arcgisUrl={arcgisUrl}
                     legendUnit={legendUnit}
                     styleName={styleName}

@@ -8,13 +8,13 @@ import { useMapContextState } from '@/hooks/use-map-context-state'
 import { MapContext } from '@/context/map-context'
 import { TourAutoStart } from '@/components/tour-auto-start'
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect, type SearchComboboxHandle } from '@/components/sidebar/filter/search-combobox'
-import { PROD_POSTGREST_URL, parquetUrl } from '@/lib/constants'
-import { powerplantsFilterSchema } from './-data/layers/powerplants-schema'
+import { parquetUrl } from '@/lib/constants'
+import { powerplantsFilterSchema } from '@/routes/_map/-shared/layers/powerplants-schema'
+import { buildWellsMaplibreFilter, parseWellFilter } from './-data/well-filters'
 import { toMaplibreFilter } from '@/lib/filter/generators'
 import { fromCql } from '@/lib/filter/parse'
-import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
+import type { ExpressionSpecification } from 'maplibre-gl'
 
-// Carbon Storage specific filter mapping
 const CCS_FILTER_MAPPING: Record<string, string> = {
   [wellWithTopsWMSTitle]: wellWithTopsWMSTitle,
 }
@@ -22,19 +22,15 @@ const CCS_FILTER_MAPPING: Record<string, string> = {
 const searchConfig: SearchSourceConfig[] = [
   defaultMasqueradeConfig,
   {
-    type: 'postgREST',
-    url: `${PROD_POSTGREST_URL}/wellswithtops_hascore`,
+    type: 'parquet',
+    parquetUrl: parquetUrl('enmin_ccs_wells_formation'),
     sourceName: 'Wells Database',
     layerName: wellWithTopsWMSTitle,
     displayField: 'api',
     secondaryDisplayField: 'wellname',
+    idField: 'api',
     params: {
-      targetFields: ['api', 'wellname'],
-      select: 'api,wellname,shape',
-    },
-    headers: {
-      'Accept-Profile': 'emp',
-      'Accept': 'application/geo+json',
+      targetFields: ['api', 'wellname', 'operator'],
     },
   },
   {
@@ -87,23 +83,16 @@ export default function Map() {
   const searchParams = useSearch({ from: '/_map/carbonstorage/' })
   const filtersFromUrl = searchParams.filters ?? {}
 
-  // Build CQL filters for layers
-  const layerFilters = useMemo(() => {
-    const filters: Record<string, string> = {}
-    for (const [filterKey, layerTitle] of Object.entries(CCS_FILTER_MAPPING)) {
-      const filterValue = filtersFromUrl[filterKey]
-      if (filterValue) {
-        filters[layerTitle] = filterValue
-      }
-    }
-    return filters
-  }, [filtersFromUrl])
-
-  // Translate Power Plants' stored CQL filter (from its checkbox legend) into a maplibre
-  // filter expression for the PMTiles layer.
+  // Build MapLibre filter expressions for Wells Database (directly from structured
+  // state) and Power Plants (from its checkbox legend schema).
   const vectorLayerFilters = useMemo(() => {
+    const result: Record<string, ExpressionSpecification> = {}
+    const wellsRaw = filtersFromUrl[wellWithTopsWMSTitle]
+    if (wellsRaw) {
+      const wellsExpr = buildWellsMaplibreFilter(parseWellFilter(wellsRaw))
+      if (wellsExpr) result[wellWithTopsWMSTitle] = wellsExpr
+    }
     const powerplantsCql = filtersFromUrl[powerplantsFilterSchema.recordKey]
-    const result: Record<string, FilterSpecification> = {}
     if (powerplantsCql) {
       const expr: ExpressionSpecification | null = toMaplibreFilter(powerplantsFilterSchema, fromCql(powerplantsFilterSchema, powerplantsCql))
       if (expr) result[powerplantsTitle] = expr
@@ -137,7 +126,6 @@ export default function Map() {
         }
       >
         <GenericMapContainer
-          layerFilters={layerFilters}
           vectorLayerFilters={vectorLayerFilters}
           onClearSearch={() => searchRef.current?.clear()}
         />

@@ -13,7 +13,7 @@ import type { LayerContentProps, ExtendedFeature } from '@/components/maps/popup
 import { QueryResultsTable } from '@/components/data-table/query-results-table'
 import { useGetLayerConfigsData } from '@/hooks/use-get-layer-configs'
 import { useLayerUrl } from '@/context/layer-url-provider'
-import { flattenDataLayersWithAncestors, resolveLeafVisibility } from '@/lib/map/layer-utils'
+import { flattenDataLayersWithAncestors, isPMTilesLayer, resolveLeafVisibility } from '@/lib/map/layer-utils'
 import { useMapUrlSync, type ViewMode } from '@/hooks/use-map-url-sync'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { PopupContentWithPagination } from '@/components/maps/popups/popup-content-with-pagination'
@@ -34,7 +34,10 @@ import type { LegendItem } from '@/components/maps/controls'
 import { useFeatureSelection, toHighlightFeatures } from '@/hooks/use-feature-selection'
 import { rasterQueries, usePopupData } from '@/hooks/use-popup-data'
 import { getBboxCenter } from '@/lib/map/conversion-utils'
-import type { LayerProps, WMSLayerProps, COGLayerProps } from '@/lib/types/mapping-types'
+import type { LayerProps, WMSLayerProps, COGLayerProps, PMTilesLayerProps } from '@/lib/types/mapping-types'
+import { parseStacBivariateLegend } from '@/components/maps/bivariate-legend'
+import { activeRenderOf, fetchStyleFragment } from '@/components/maps/pmtiles-layer-source'
+import { swatchShapeOf, swatchSvgHtml, type SwatchShape } from '@/lib/legend/swatch-shape'
 import { createSVGSymbol } from '@/lib/legend/symbol-generator'
 import { createRasterSymbol } from '@/lib/legend/symbolizers/raster'
 import { loadCogMetadata, deriveRange } from '@/hooks/use-cog-metadata'
@@ -51,19 +54,10 @@ interface MapBounds {
   height: number
 }
 
-const BIVARIATE_CELL_RE = /^bivariate_(\d+)_(\d+)$/
-
-/** Extract short tick label: "High Cap / Low Cost" → "High" (first word of the nth part) */
-function shortLabel(title: string, index: 0 | 1): string {
-  const part = title.split(' / ')[index]?.trim() ?? ''
-  return part.split(' ')[0] ?? ''
-}
-
 interface VisibleWmsLayer {
   title: string
   layerName: string
   url: string
-  bivariateLegend?: { xLabel: string; yLabel: string }
 }
 
 // Room kept between a tapped spot and the top of the phone sheet.
@@ -77,7 +71,8 @@ const NO_LAYERS: LayerProps[] = []
 async function fetchLegendDataForVisibleLayers(
   layers: LayerProps[],
   displayedTitles: Set<string>,
-  bounds?: MapBounds
+  bounds?: MapBounds,
+  vectorLayerSymbology: Record<string, string> = {},
 ): Promise<LegendItem[]> {
   const results: LegendItem[] = []
 
@@ -94,7 +89,6 @@ async function fetchLegendDataForVisibleLayers(
             title: layer.title || sublayer.name,
             layerName: sublayer.name,
             url: wmsLayer.url || `${PROD_GEOSERVER_URL}/wms`,
-            bivariateLegend: layer.bivariateLegend,
           })
         }
       }
@@ -114,8 +108,67 @@ async function fetchLegendDataForVisibleLayers(
     return visible
   }
 
+  const getVisiblePmtilesLayers = (layerArray: LayerProps[]): PMTilesLayerProps[] => {
+    const visible: PMTilesLayerProps[] = []
+    for (const layer of layerArray) {
+      if (layer.type === 'group' && 'layers' in layer) {
+        visible.push(...getVisiblePmtilesLayers(layer.layers || []))
+      } else if (isPMTilesLayer(layer) && displayedTitles.has(layer.title || '')) {
+        visible.push(layer)
+      }
+    }
+    return visible
+  }
+
   const visibleLayers = getVisibleWmsLayers(layers)
   const visibleCogLayers = getVisibleCogLayers(layers)
+  const visiblePmtilesLayers = getVisiblePmtilesLayers(layers)
+
+  for (const pmLayer of visiblePmtilesLayers) {
+    const render = activeRenderOf(pmLayer, vectorLayerSymbology[pmLayer.title || ''])
+    const layerTitle = pmLayer.title || pmLayer.sourceLayer
+    if (pmLayer.bivariateLegend) {
+      const grid = render?.legend ? parseStacBivariateLegend(render.legend) : null
+      if (grid) {
+        results.push({
+          layerTitle,
+          symbols: [],
+          bivariate: {
+            colors: grid.colors,
+            xLabel: pmLayer.bivariateLegend.xLabel,
+            yLabel: pmLayer.bivariateLegend.yLabel,
+            xTicks: grid.xTicks,
+            yTicks: grid.yTicks,
+            noData: grid.noData ?? undefined,
+          },
+        })
+      }
+      continue
+    }
+
+    if (pmLayer.customLegend || !render?.legend?.length) continue
+
+    const allShaped = render.legend.every(entry => entry.shape != null)
+    let fallbackShape: SwatchShape = 'circle'
+    if (!allShaped && render.styleUrl) {
+      try {
+        const fragment = await fetchStyleFragment(render.styleUrl)
+        fallbackShape = swatchShapeOf(fragment.layers?.map(l => l.type) ?? [])
+      } catch (e) {
+        console.warn(`Failed to fetch style fragment for ${layerTitle}:`, e)
+      }
+    }
+    results.push({
+      layerTitle,
+      symbols: render.legend.map(entry => ({
+        label: entry.label,
+        svgHtml: swatchSvgHtml(entry.shape ?? fallbackShape, entry.color, entry.stroke, {
+          lineStyle: entry.lineStyle,
+          teeth: entry.teeth,
+        }),
+      })),
+    })
+  }
 
   // Fetch legend for each visible layer
   for (const layer of visibleLayers) {
@@ -131,8 +184,7 @@ async function fetchLegendDataForVisibleLayers(
 
       // Add extent parameters for content-dependent legend (GeoServer feature)
       // Requires hideEmptyRules to actually filter out symbols with no features in view
-      // Skip for bivariate layers — we need the full grid regardless of viewport
-      if (bounds && !layer.bivariateLegend) {
+      if (bounds) {
         params.set('BBOX', `${bounds.south},${bounds.west},${bounds.north},${bounds.east}`)
         params.set('CRS', 'EPSG:4326')
         params.set('WIDTH', String(Math.round(bounds.width)))
@@ -155,55 +207,6 @@ async function fetchLegendDataForVisibleLayers(
       const rules = legendData?.Legend?.[0]?.rules || []
 
       if (rules.length === 0) continue
-
-      // Bivariate legend: parse grid from bivariate_R_C rule names
-      if (layer.bivariateLegend) {
-        const cells: { row: number; col: number; color: string; title: string }[] = []
-        let noData: { color: string; opacity: number; label: string } | undefined
-        for (const rule of rules) {
-          const poly = rule.symbolizers?.[0]?.Polygon
-          if (!poly) continue
-          if (rule.name === 'bivariate_nodata') {
-            noData = {
-              color: poly.fill ?? '#fff',
-              opacity: parseFloat(poly['fill-opacity'] ?? '1'),
-              label: rule.title || 'No Data',
-            }
-            continue
-          }
-          const m = rule.name?.match(BIVARIATE_CELL_RE)
-          if (m) {
-            cells.push({ row: +m[1], col: +m[2], color: poly.fill ?? '#000', title: rule.title || '' })
-          }
-        }
-        if (cells.length > 0) {
-          const maxRow = Math.max(...cells.map(c => c.row))
-          const maxCol = Math.max(...cells.map(c => c.col))
-          const colors: string[][] = Array.from({ length: maxRow + 1 }, () =>
-            Array.from({ length: maxCol + 1 }, () => '#000')
-          )
-          const yTicks: string[] = Array.from({ length: maxRow + 1 }, () => '')
-          const xTicks: string[] = Array.from({ length: maxCol + 1 }, () => '')
-          for (const c of cells) {
-            colors[c.row][c.col] = c.color
-            if (!yTicks[c.row]) yTicks[c.row] = shortLabel(c.title, 0)
-            if (!xTicks[c.col]) xTicks[c.col] = shortLabel(c.title, 1)
-          }
-          results.push({
-            layerTitle: layer.title,
-            symbols: [],
-            bivariate: {
-              colors,
-              xLabel: layer.bivariateLegend.xLabel,
-              yLabel: layer.bivariateLegend.yLabel,
-              xTicks,
-              yTicks,
-              noData,
-            }
-          })
-        }
-        continue
-      }
 
       const symbols: LegendItem['symbols'] = []
       for (const rule of rules) {
@@ -280,7 +283,7 @@ interface GenericMapContainerProps {
   /** Optional GeoServer style names for WMS layers, keyed by layer title */
   layerStyles?: Record<string, string>
   /** Optional MapLibre filter expressions for vector (WFS) layers, keyed by layer title */
-  vectorLayerFilters?: Record<string, maplibregl.FilterSpecification>
+  vectorLayerFilters?: Record<string, maplibregl.ExpressionSpecification>
   /** Optional active symbology mode key for vector layers, keyed by layer title */
   vectorLayerSymbology?: Record<string, string>
   /** Optional style overrides for PMTiles layers (e.g. choropleth fill-color), keyed by layer title */
@@ -447,9 +450,12 @@ export default function GenericMapContainer({
     clearAllSelections,
   ])
 
+  const vectorSymbologyRef = useRef(vectorLayerSymbology)
+  vectorSymbologyRef.current = vectorLayerSymbology
+
   // Legend data for the export control; reads the refs so the control never needs re-creating.
   const getLegendData = useCallback(
-    (bounds: MapBounds) => fetchLegendDataForVisibleLayers(layersConfigRef.current, displayedTitlesRef.current, bounds),
+    (bounds: MapBounds) => fetchLegendDataForVisibleLayers(layersConfigRef.current, displayedTitlesRef.current, bounds, vectorSymbologyRef.current),
     [],
   )
 

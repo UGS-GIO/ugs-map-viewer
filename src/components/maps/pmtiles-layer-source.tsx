@@ -17,6 +17,7 @@ import { Source, Layer, useMap, type LayerProps } from 'react-map-gl/maplibre'
 import type * as maplibregl from 'maplibre-gl'
 import type { PMTilesLayerProps, PMTilesRender } from '@/lib/types/mapping-types'
 import { buildFragmentLayerSpec } from '@/lib/map/layer-utils'
+import { baseOpacityOf, scaledOpacityPaint } from '@/lib/map/scale-opacity'
 import type { WfsLayerFeature } from '@/hooks/use-wfs-layer-data'
 import { labelDiff, toFeatureCollection, viewportLabelPoints, type LabelPoints } from '@/lib/map/viewport-labels'
 
@@ -26,7 +27,7 @@ interface StyleFragmentLayer {
     layout?: Record<string, unknown>
     paint?: Record<string, unknown>
     'source-layer'?: string
-    filter?: unknown
+    filter?: maplibregl.ExpressionSpecification
     /** Zoom gate authored in ugs-styles (PLSS draws only when zoomed in). */
     minzoom?: number
     maxzoom?: number
@@ -70,14 +71,32 @@ export function activeRenderOf(layer: PMTilesLayerProps, activeSymbology?: strin
     return renders.find(r => r.id === id) ?? renders[0]
 }
 
+const styleFragmentCache = new Map<string, Promise<StyleFragment>>()
+
+export function fetchStyleFragment(styleUrl: string): Promise<StyleFragment> {
+    let pending = styleFragmentCache.get(styleUrl)
+    if (!pending) {
+        pending = fetch(styleUrl)
+            .then(res => {
+                if (!res.ok) throw new Error(`PMTiles style fetch failed: ${res.status}`)
+                const fragment: Promise<StyleFragment> = res.json()
+                return fragment
+            })
+            .catch(err => {
+                styleFragmentCache.delete(styleUrl)
+                throw err
+            })
+        styleFragmentCache.set(styleUrl, pending)
+    }
+    return pending
+}
+
 /** A render's style fragment. Shared so the legend reads the same cached fragment the map draws. */
 export const styleFragmentQueryOptions = (styleUrl: string | undefined) => queryOptions({
     queryKey: ['pmtiles-style-fragment', styleUrl ?? ''],
     queryFn: async (): Promise<StyleFragment> => {
         if (!styleUrl) throw new Error('PMTiles render has no styleUrl')
-        const res = await fetch(styleUrl)
-        if (!res.ok) throw new Error(`PMTiles style fetch failed: ${res.status}`)
-        return res.json()
+        return fetchStyleFragment(styleUrl)
     },
     enabled: !!styleUrl,
     staleTime: Infinity,
@@ -112,6 +131,47 @@ function spriteUrl(sprite: string): string {
 }
 
 interface SpriteEntry { x: number; y: number; width: number; height: number; pixelRatio?: number }
+interface DecodedSpriteSlice { name: string; imageData: ImageData; pixelRatio: number }
+
+const spriteSheetCache = new Map<string, Promise<DecodedSpriteSlice[]>>()
+
+function fetchDecodedSpriteSheet(url: string): Promise<DecodedSpriteSlice[]> {
+    let pending = spriteSheetCache.get(url)
+    if (!pending) {
+        pending = (async () => {
+            const [json, blob] = await Promise.all([
+                fetch(`${url}.json`).then(r => { if (!r.ok) throw new Error(`sprite json ${r.status}`); const sheet: Promise<Record<string, SpriteEntry>> = r.json(); return sheet }),
+                fetch(`${url}.png`).then(r => { if (!r.ok) throw new Error(`sprite png ${r.status}`); return r.blob() }),
+            ])
+            const bitmap = await createImageBitmap(blob)
+            try {
+                const canvas = document.createElement('canvas')
+                const ctx = canvas.getContext('2d')
+                if (!ctx) return []
+                const slices: DecodedSpriteSlice[] = []
+                for (const [name, s] of Object.entries(json)) {
+                    canvas.width = s.width
+                    canvas.height = s.height
+                    ctx.clearRect(0, 0, s.width, s.height)
+                    ctx.drawImage(bitmap, s.x, s.y, s.width, s.height, 0, 0, s.width, s.height)
+                    slices.push({
+                        name,
+                        imageData: ctx.getImageData(0, 0, s.width, s.height),
+                        pixelRatio: s.pixelRatio ?? 1,
+                    })
+                }
+                return slices
+            } finally {
+                bitmap.close()
+            }
+        })().catch(err => {
+            spriteSheetCache.delete(url)
+            throw err
+        })
+        spriteSheetCache.set(url, pending)
+    }
+    return pending
+}
 
 /**
  * Load a baked sprite sheet (`<base>.json` + `<base>.png`) and register each
@@ -120,24 +180,13 @@ interface SpriteEntry { x: number; y: number; width: number; height: number; pix
  * `addSprite` (which namespaces as `id:icon`) can't satisfy them — we slice the
  * sheet ourselves. Idempotent: existing images are skipped.
  */
-async function loadSpriteSheet(map: maplibregl.Map, base: string): Promise<void> {
-    const url = spriteUrl(base)
-    const [json, blob] = await Promise.all([
-        fetch(`${url}.json`).then(r => { if (!r.ok) throw new Error(`sprite json ${r.status}`); return r.json() as Promise<Record<string, SpriteEntry>> }),
-        fetch(`${url}.png`).then(r => { if (!r.ok) throw new Error(`sprite png ${r.status}`); return r.blob() }),
-    ])
-    const bitmap = await createImageBitmap(blob)
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    for (const [name, s] of Object.entries(json)) {
-        if (map.hasImage(name)) continue
-        canvas.width = s.width
-        canvas.height = s.height
-        ctx.clearRect(0, 0, s.width, s.height)
-        ctx.drawImage(bitmap, s.x, s.y, s.width, s.height, 0, 0, s.width, s.height)
+async function loadSpriteSheet(map: maplibregl.Map, base: string, isCancelled?: () => boolean): Promise<void> {
+    const slices = await fetchDecodedSpriteSheet(spriteUrl(base))
+    if (isCancelled?.()) return
+    for (const s of slices) {
+        if (map.hasImage(s.name)) continue
         try {
-            map.addImage(name, ctx.getImageData(0, 0, s.width, s.height), { pixelRatio: s.pixelRatio ?? 1 })
+            map.addImage(s.name, s.imageData, { pixelRatio: s.pixelRatio })
         } catch { /* concurrent add — ignore */ }
     }
 }
@@ -208,23 +257,10 @@ export function queryPmtilesLayersAtPoint(
     ], layers)
 }
 
-const OPACITY_PROP: Record<string, string> = {
-    circle: 'circle-opacity',
-    line: 'line-opacity',
-    fill: 'fill-opacity',
-    symbol: 'icon-opacity',
-    'fill-extrusion': 'fill-extrusion-opacity',
-}
-
-/** Apply the layer's opacity-slider override onto a fragment layer's paint. */
+/** Apply the layer's opacity-slider override proportionally onto a fragment layer's paint. */
 function withOpacity(paint: Record<string, unknown> | undefined, type: string, opacity: number | undefined): Record<string, unknown> {
     const out = { ...(paint ?? {}) }
-    if (opacity == null) return out
-    const key = OPACITY_PROP[type]
-    if (key) out[key] = opacity
-    if (type === 'circle') out['circle-stroke-opacity'] = opacity
-    if (type === 'symbol') out['text-opacity'] = opacity
-    return out
+    return opacity == null ? out : { ...out, ...Object.fromEntries(scaledOpacityPaint(paint, type, opacity)) }
 }
 
 export interface PMTilesStyleOverride {
@@ -232,25 +268,11 @@ export interface PMTilesStyleOverride {
     paint?: Record<string, unknown>
 }
 
-/**
- * Build the MapLibre layer specs for one PMTiles layer's active style fragment.
- *
- * Every fragment property survives — notably the `minzoom`/`maxzoom` ugs-styles
- * authors (PLSS sections are gated to ~z11); only viewer-owned fields are
- * overridden. A config `visibleZoomRange` wins over the fragment's own zoom.
- * Kept separate from the JSX so the mapping is unit-testable. [ALL-5727]
- */
-export function buildPmtilesLayerSpecs({
-    layer, fragment, layerFilter, hidden, opacity, styleOverride,
-}: {
-    layer: PMTilesLayerProps
-    fragment: StyleFragment
-    layerFilter?: maplibregl.FilterSpecification
-    hidden?: boolean
-    opacity?: number
-    styleOverride?: PMTilesStyleOverride
-}): LayerProps[] {
-    const sourceId = getPmtilesSourceId(layer)
+function resolveLayersToRender(
+    layer: PMTilesLayerProps,
+    fragment: StyleFragment,
+    styleOverride?: PMTilesStyleOverride,
+): StyleFragmentLayer[] {
     const primaryId = getPmtilesLayerId(layer)
     const rawLayers = fragment.layers ?? []
     const styleLayers = rawLayers.filter(
@@ -274,11 +296,7 @@ export function buildPmtilesLayerSpecs({
         }
     }
 
-    return layersToRender.map((l, i) => {
-        const fragmentFilter = l.filter as maplibregl.FilterSpecification | undefined
-        const filters = [fragmentFilter, layer.featureFilter, layerFilter].filter(Boolean) as maplibregl.FilterSpecification[]
-        const filter = filters.length > 1 ? (['all', ...filters] as unknown as maplibregl.FilterSpecification) : filters[0]
-
+    return layersToRender.map(l => {
         let paint = l.paint
         if (styleOverride?.fillColor && l.type === 'fill') {
             paint = { ...paint, 'fill-color': styleOverride.fillColor }
@@ -286,14 +304,44 @@ export function buildPmtilesLayerSpecs({
         if (styleOverride?.paint) {
             paint = { ...paint, ...styleOverride.paint }
         }
+        return paint === l.paint ? l : { ...l, paint }
+    })
+}
+
+/**
+ * Build the MapLibre layer specs for one PMTiles layer's active style fragment.
+ *
+ * Every fragment property survives — notably the `minzoom`/`maxzoom` ugs-styles
+ * authors (PLSS sections are gated to ~z11); only viewer-owned fields are
+ * overridden. A config `visibleZoomRange` wins over the fragment's own zoom.
+ * Kept separate from the JSX so the mapping is unit-testable. [ALL-5727]
+ */
+export function buildPmtilesLayerSpecs({
+    layer, fragment, layerFilter, hidden, opacity, styleOverride,
+}: {
+    layer: PMTilesLayerProps
+    fragment: StyleFragment
+    layerFilter?: maplibregl.ExpressionSpecification
+    hidden?: boolean
+    opacity?: number
+    styleOverride?: PMTilesStyleOverride
+}): LayerProps[] {
+    const sourceId = getPmtilesSourceId(layer)
+    const primaryId = getPmtilesLayerId(layer)
+    const layersToRender = resolveLayersToRender(layer, fragment, styleOverride)
+
+    return layersToRender.map((l, i) => {
+        const filters = [l.filter, layer.featureFilter, layerFilter].filter(f => f !== undefined)
+        const filter: maplibregl.ExpressionSpecification | undefined = filters.length > 1 ? ['all', ...filters] : filters[0]
+
         const spec = buildFragmentLayerSpec(l, {
             layerId: i === 0 ? primaryId : `${primaryId}-${i}`,
             sourceId,
             sourceLayer: layer.sourceLayer,
             visible: !hidden,
-            paint: withOpacity(paint, l.type, opacity ?? layer.opacity),
+            paint: withOpacity(l.paint, l.type, opacity ?? layer.opacity),
             filter,
-            metadata: { title: layer.title, pmtilesLayer: true, pmtilesSourceId: sourceId },
+            metadata: { title: layer.title, pmtilesLayer: true, pmtilesSourceId: sourceId, baseOpacity: baseOpacityOf(l.paint, l.type) },
             visibleZoomRange: layer.visibleZoomRange,
         })
         // Line-placed text follows the polygon's edge, which a label point doesn't have
@@ -312,7 +360,7 @@ export function PMTilesLayerSource({
     fragment: StyleFragment
     activeSymbology?: string
     beforeId?: string
-    layerFilter?: maplibregl.FilterSpecification
+    layerFilter?: maplibregl.ExpressionSpecification
     hidden?: boolean
     opacity?: number
     styleOverride?: PMTilesStyleOverride
@@ -324,14 +372,24 @@ export function PMTilesLayerSource({
         ? `pmtiles://${layer.pmtilesUrl}`
         : `pmtiles://${window.location.origin}${layer.pmtilesUrl}`
 
-    // Icon renders ship a baked sprite sheet the base style lacks; slice it and
-    // register each icon under its bare name so `icon-image` resolves.
+    // Icon and fill-pattern renders ship a baked sprite sheet the base style lacks;
+    // slice it and register each image under its bare name, re-applying after basemap swaps.
     useEffect(() => {
         if (!render?.sprite || !mapRef) return
         const map = mapRef.getMap()
-        loadSpriteSheet(map, render.sprite).catch(err =>
-            console.warn(`[PMTilesLayerSource] sprite load failed for ${layer.title}/${render.id}:`, err),
-        )
+        const spriteBase = render.sprite
+        let cancelled = false
+        const register = () => {
+            loadSpriteSheet(map, spriteBase, () => cancelled).catch(err =>
+                console.warn(`[PMTilesLayerSource] sprite load failed for ${layer.title}/${render.id}:`, err),
+            )
+        }
+        register()
+        map.on('styledata', register)
+        return () => {
+            cancelled = true
+            map.off('styledata', register)
+        }
     }, [render, mapRef, layer.title])
 
     const labelSourceId = getPmtilesLabelSourceId(layer)
@@ -346,7 +404,7 @@ export function PMTilesLayerSource({
             cancelAnimationFrame(raf)
             raf = requestAnimationFrame(() => {
                 const source = map.getSource<maplibregl.GeoJSONSource>(labelSourceId)
-                if (!source) return
+                if (!source || !map.getSource(sourceId)) return
                 const b = map.getBounds()
                 const pieces = map.querySourceFeatures(sourceId, { sourceLayer: layer.sourceLayer })
                 const next = viewportLabelPoints(pieces, [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()], labels)

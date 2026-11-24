@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { joinedRelationSql } from '../duckdb-export'
+import { joinedRelationSql, maplibreFilterToSql } from '../duckdb-export'
 import { mergedColumnNames } from '../export-formats'
 import type { RelatedTable } from '@/lib/types/mapping-types'
 
@@ -95,5 +95,30 @@ describe('mergedColumnNames', () => {
     it('does not repeat a main column, so the shapefile check sees no phantom collision', () => {
         const names = mergedColumnNames(['uwi', 'notes_public'], [intervals])
         expect(names).not.toContain('notes_public')
+    })
+})
+
+describe('maplibreFilterToSql', () => {
+    it('compiles equality and case-folded string filters used by derivative layers', () => {
+        expect(maplibreFilterToSql(['==', ['get', 'projectscale'], 'Regional']))
+            .toBe(`("projectscale" = 'Regional')`)
+        expect(maplibreFilterToSql(['==', ['downcase', ['to-string', ['get', 'TYPE']]], 'fault']))
+            .toBe(`(LOWER(COALESCE(CAST("TYPE" AS VARCHAR), '')) = 'fault')`)
+    })
+
+    it('compiles compound all/any/in/null/not-equal/negation predicates and escapes quotes', () => {
+        expect(maplibreFilterToSql([
+            'all',
+            ['has', 'name'],
+            ['!=', ['get', 'status'], 'archived'],
+            ['!=', ['get', 'code'], ['literal', null]],
+            ['!', ['==', ['get', 'flag'], 'x']],
+            ['in', ['get', 'kind'], ['literal', ["o'neill", 'other']]],
+        ])).toBe(`(("name" IS NOT NULL) AND ("status" IS DISTINCT FROM 'archived') AND ("code" IS NOT NULL) AND (NOT COALESCE(("flag" = 'x'), FALSE)) AND ("kind" IN ('o''neill', 'other')))`)
+    })
+
+    it('throws on unsupported operators or legacy bare-property filters rather than silently mis-filtering', () => {
+        expect(() => maplibreFilterToSql(['match', ['get', 'x'], 'a', true, false])).toThrow(/Unsupported filter in export/)
+        expect(() => maplibreFilterToSql(['==', 'projectscale', 'Regional'])).toThrow(/Unsupported filter in export/)
     })
 })

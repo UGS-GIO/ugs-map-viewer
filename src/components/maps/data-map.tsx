@@ -170,7 +170,7 @@ function WfsLayerSource({
   layer: WFSLayerProps
   geojson: FeatureCollection
   beforeId: string | undefined
-  layerFilter?: maplibregl.FilterSpecification
+  layerFilter?: maplibregl.ExpressionSpecification
   activeSymbology?: string
   hidden?: boolean
   opacity?: number

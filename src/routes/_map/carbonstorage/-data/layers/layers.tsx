@@ -1,28 +1,34 @@
-import { Link, linkIfUrl } from "@/components/ui/link";
-import { MAPS_ASSETS_CDN_URL, parquetUrl, ENERGY_MINERALS_WORKSPACE, GEN_GIS_WORKSPACE, HAZARDS_WORKSPACE, MAPPING_WORKSPACE, PROD_GEOSERVER_URL, PROD_POSTGREST_URL } from "@/lib/constants";
-import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps, WFSLayerProps, WMSLayerProps } from "@/lib/types/mapping-types";
-import { addThousandsSeparator, toTitleCase, toSentenceCase } from "@/lib/utils";
+import { isHttpUrl, Link, linkIfUrl } from "@/components/ui/link";
+import { MAPS_ASSETS_CDN_URL, parquetUrl } from "@/lib/constants";
+import { ArcGISMapServerLayerProps, LayerProps, PMTilesLayerProps } from "@/lib/types/mapping-types";
+import { addThousandsSeparator, toTitleCase } from "@/lib/utils";
 import { GeoJsonProperties } from "geojson";
 import { ucrcWellsConfig } from "@/routes/_map/-shared/layers/ucrc-wells";
+import { nonpetrolWellsConfig, nonpetrolWellsTitle } from "@/routes/_map/-shared/layers/non-petroleum-wells";
 
-// GeoRegions WMS Layer
+export { nonpetrolWellsTitle };
+
 const CCUS_IMAGE_BASE_URL = `${MAPS_ASSETS_CDN_URL}/ccus/png`;
-const georegionsLayerName = 'enmin_ccus_georegions_current';
-const georegionsWMSTitle = 'Geo-Region Carbon Storage Ranking';
-const georegionsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: georegionsWMSTitle,
+
+// Geo-Region Carbon Storage Ranking
+const georegionsLayerName = 'enmin_ccs_georegions';
+export const georegionsTitle = 'Geo-Region Carbon Storage Ranking';
+export const georegionsWMSTitle = georegionsTitle;
+const georegionsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: georegionsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: georegionsLayerName,
+    title: georegionsTitle,
     formerTitles: ['Geo-region Carbon Storage Ranking'],
     sectionHeading: 'Statewide',
     visible: true,
     opacity: 0.3,
-    crs: 'EPSG:3857',
-    downloadParquetUrl: parquetUrl("enmin_ccus_georegions"),
+    polygonLabels: true,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${georegionsLayerName}`,
+            name: georegionsLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
@@ -51,72 +57,81 @@ const georegionsWMSConfig: WMSLayerProps = {
     ],
 };
 
-// Oil and Gas Fields WMS Layer
-const oilGasFieldsLayerName = 'enmin_oilgasfields_ogm_current';
-const oilGasFieldsWMSTitle = 'Oil and Gas Fields';
-const oilGasFieldsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: oilGasFieldsWMSTitle,
+// Oil and Gas Fields
+const oilGasFieldsLayerName = 'enmin_oilgasfields_ogm';
+export const oilGasFieldsTitle = 'Oil and Gas Fields';
+export const oilGasFieldsWMSTitle = oilGasFieldsTitle;
+const oilGasFieldsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: oilGasFieldsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: oilGasFieldsLayerName,
+    title: oilGasFieldsTitle,
     visible: false,
-    crs: 'EPSG:3857',
+    opacity: 0.8,
     sourceAgency: 'Utah Division of Oil, Gas and Mining',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${oilGasFieldsLayerName}`,
+            name: oilGasFieldsLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
                 'Field Name': { field: 'fieldname', type: 'string' },
                 'Field Type': { field: 'type', type: 'string' },
                 'Producing Formations': { field: 'prodformations', type: 'string' },
-                'Reservoir Age': { field: 'reservoirrocks', type: 'string' },
+                'Reservoir Age': { field: 'reservoir_rocks', type: 'string' },
                 'Status': { field: 'status_1', type: 'string' }
             },
         },
     ],
 };
 
-// Pipelines WMS Layer
-const pipelinesLayerName = 'pipelines';
-const pipelinesWMSTitle = 'Pipelines';
-const pipelinesWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: pipelinesWMSTitle,
+// Pipelines
+const pipelinesLayerName = 'enmin_pipelines';
+export const pipelinesTitle = 'Pipelines';
+export const pipelinesWMSTitle = pipelinesTitle;
+const pipelinesConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: pipelinesLayerName,
+    pmtilesUrl: '',
+    sourceLayer: pipelinesLayerName,
+    title: pipelinesTitle,
     visible: false,
-    crs: 'EPSG:3857',
+    opacity: 0.8,
     sourceAgency: 'UGRC',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${pipelinesLayerName}`,
+            name: pipelinesLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
                 'Operator': { field: 'operator', type: 'string' },
                 'Commodity': { field: 'commodity', type: 'string' },
                 'Acronym': { field: 'acronym', type: 'string' },
-                'Code Remarks': { field: 'coderemarks', type: 'string' }
+                'Code Remarks': { field: 'code_rmrks', type: 'string' }
             },
         },
     ],
 };
 
-// SCO2 Grid Summary WMS Layer (aggregated - one row per grid cell, capacity color + cost labels)
-const sco2GridSummaryLayerName = 'sco2_grid_summary';
-const sco2GridSummaryWMSTitle = 'Statewide Storage Resource Estimates';
-const sco2GridSummaryWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: sco2GridSummaryWMSTitle,
+// Statewide Storage Resource Estimates
+const sco2GridSummaryLayerName = 'enmin_ccs_sco2_gridsummaries';
+export const sco2GridSummaryTitle = 'Statewide Storage Resource Estimates';
+export const sco2GridSummaryWMSTitle = sco2GridSummaryTitle;
+const sco2GridSummaryConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: sco2GridSummaryLayerName,
+    pmtilesUrl: '',
+    sourceLayer: sco2GridSummaryLayerName,
+    title: sco2GridSummaryTitle,
     sectionHeading: 'Statewide',
     visible: false,
     opacity: 0.75,
-    crs: 'EPSG:4326',
+    polygonLabels: true,
     bivariateLegend: { xLabel: 'Cost', yLabel: 'Capacity' },
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${sco2GridSummaryLayerName}`,
+            name: sco2GridSummaryLayerName,
             popupEnabled: true,
             queryable: true,
             popupFields: {
@@ -161,10 +176,8 @@ const sco2GridSummaryWMSConfig: WMSLayerProps = {
                     fieldLabel: 'Formation Details',
                     matchingField: 'basegrid_id',
                     targetField: 'id50km',
-                    url: `${PROD_GEOSERVER_URL}/wfs`,
-                    headers: {},
-                    fetchMode: 'wfs',
-                    wfsTypeName: `${ENERGY_MINERALS_WORKSPACE}:sco2_draft_13aug24`,
+                    url: parquetUrl('enmin_ccs_sco2_points'),
+                    fetchMode: 'parquet',
                     sortBy: 'capacity_mtco2',
                     sortDirection: 'desc',
                     displayAs: 'table',
@@ -179,20 +192,23 @@ const sco2GridSummaryWMSConfig: WMSLayerProps = {
     ],
 };
 
-// Rivers WMS Layer
-const riversLayerName = 'rivers';
-const riversWMSTitle = 'Major Rivers';
-const riversWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: riversWMSTitle,
+// Rivers
+const riversLayerName = 'enmin_ccs_rivers';
+export const riversTitle = 'Major Rivers';
+export const riversWMSTitle = riversTitle;
+const riversConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: riversLayerName,
+    pmtilesUrl: '',
+    sourceLayer: riversLayerName,
+    title: riversTitle,
     visible: false,
-    crs: 'EPSG:3857',
+    opacity: 0.8,
     sourceAgency: 'UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-major-rivers-polygons/about',
     sublayers: [
         {
-            name: `${GEN_GIS_WORKSPACE}:${riversLayerName}`,
+            name: riversLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
@@ -203,20 +219,23 @@ const riversWMSConfig: WMSLayerProps = {
     ],
 };
 
-// Roads WMS Layer
-const roadsLayerName = 'ccus_majorroads';
-const roadsWMSTitle = 'Major Roads';
-const roadsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: roadsWMSTitle,
+// Major Roads
+const roadsLayerName = 'enmin_ccs_majorroads';
+export const roadsTitle = 'Major Roads';
+export const roadsWMSTitle = roadsTitle;
+const roadsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: roadsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: roadsLayerName,
+    title: roadsTitle,
     visible: false,
-    crs: 'EPSG:3857',
+    opacity: 0.8,
     sourceAgency: 'Local data stewards, UDOT, and UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-roads/about',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${roadsLayerName}`,
+            name: roadsLayerName,
             popupEnabled: false,
             queryable: false,
             popupFields: {
@@ -226,20 +245,23 @@ const roadsWMSConfig: WMSLayerProps = {
     ],
 };
 
-// Railroads WMS Layer
-const railroadsLayerName = 'ccus_railroads';
-const railroadsWMSTitle = 'Railroads';
-const railroadsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: railroadsWMSTitle,
+// Railroads
+const railroadsLayerName = 'enmin_ccs_railroads';
+export const railroadsTitle = 'Railroads';
+export const railroadsWMSTitle = railroadsTitle;
+const railroadsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: railroadsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: railroadsLayerName,
+    title: railroadsTitle,
     visible: false,
-    crs: 'EPSG:26912',
+    opacity: 0.8,
     sourceAgency: 'UGRC',
     sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-railroads/about',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${railroadsLayerName}`,
+            name: railroadsLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
@@ -249,43 +271,50 @@ const railroadsWMSConfig: WMSLayerProps = {
     ],
 };
 
-// Transmission Lines WMS Layer
-const transmissionLinesLayerName = 'ccus_transmissionlines';
-const transmissionLinesWMSTitle = 'Transmission Lines';
-const transmissionLinesWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: transmissionLinesWMSTitle,
+// Transmission Lines
+const transmissionLinesLayerName = 'enmin_transmissionlines';
+export const transmissionLinesTitle = 'Transmission Lines';
+export const transmissionLinesWMSTitle = transmissionLinesTitle;
+const transmissionLinesConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: transmissionLinesLayerName,
+    pmtilesUrl: '',
+    sourceLayer: transmissionLinesLayerName,
+    title: transmissionLinesTitle,
     visible: false,
-    crs: 'EPSG:26912',
-    sourceAgency: 'UGRC',
-    sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah::utah-transmission-lines/about',
+    opacity: 0.8,
+    sourceAgency: 'HIFLD / U.S. Government',
+    sourceUrl: 'https://www.arcgis.com/home/item.html?id=d4090758322c4d32a4cd002ffaa0aa12',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${transmissionLinesLayerName}`,
+            name: transmissionLinesLayerName,
             popupEnabled: false,
             queryable: false,
             popupFields: {
-                'Voltage': { field: 'layer', type: 'string' },
+                'Voltage': { field: 'voltage', type: 'string' },
             },
         },
     ],
-}
+};
 
-// Seamless Geological Units WMS Layer
-const seamlessGeolunitsLayerName = 'mapping_geolunits_500k';
-export const seamlessGeolunitsWMSTitle = 'Geologic Units (500k)';
-const seamlessGeolunitsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: seamlessGeolunitsWMSTitle,
+// Seamless Geological Units (500k)
+const seamlessGeolunitsLayerName = 'geolmap_geolunits_500k';
+export const seamlessGeolunitsTitle = 'Geologic Units (500k)';
+export const seamlessGeolunitsWMSTitle = seamlessGeolunitsTitle;
+const seamlessGeolunitsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: seamlessGeolunitsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: seamlessGeolunitsLayerName,
+    title: seamlessGeolunitsTitle,
     opacity: 0.5,
-    crs: 'EPSG:26912',
+    visible: false,
     sourceAgency: 'Utah Geological Survey',
     sourceUrl: 'https://geology.utah.gov/publication-details/?pub=M-179dm',
+    customLegend: <div className="px-1 py-1 text-xs text-muted-foreground italic">No Legend Provided</div>,
     sublayers: [
         {
-            name: `${MAPPING_WORKSPACE}:${seamlessGeolunitsLayerName}`,
+            name: seamlessGeolunitsLayerName,
             popupEnabled: true,
             queryable: true,
             popupFields: {
@@ -293,24 +322,22 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
                     field: 'custom',
                     type: 'custom',
                     transform: (props: GeoJsonProperties | null | undefined) => {
-                        const unitName = props?.['unit_name'];
-                        const unitSymbol = props?.['unit_symbol'];
-                        const value = `${unitName} (${unitSymbol})`;
-                        return value;
+                        const unitName = props?.['unitname'] ?? props?.['unit_name'];
+                        const unitSymbol = props?.['unitsymbol'] ?? props?.['unit_symbol'];
+                        return `${unitName} (${unitSymbol})`;
                     }
                 },
-                'Unit Description': { field: 'unit_description', type: 'string' },
-                'Source': { field: 'series_id', type: 'string' },
+                'Unit Description': { field: 'notes', type: 'string' },
+                'Source': { field: 'metadata_publication_id', type: 'string' },
             },
             linkFields: {
-                'series_id': {
+                'metadata_publication_id': {
                     baseUrl: '',
                     transform: (value: string) => {
-                        const transformedValues = {
+                        return [{
                             href: `https://doi.org/10.34191/${value}`,
                             label: `${value}`
-                        };
-                        return [transformedValues];
+                        }];
                     }
                 }
             }
@@ -318,18 +345,22 @@ const seamlessGeolunitsWMSConfig: WMSLayerProps = {
     ],
 };
 
-export const wellWithTopsLayerName = 'wellswithtops_hascore';
-export const wellWithTopsWMSTitle = 'Wells Database';
-const wellWithTopsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: wellWithTopsWMSTitle,
+// Wells Database
+export const wellWithTopsLayerName = 'enmin_ccs_wells_formation';
+export const wellWithTopsTitle = 'Wells Database';
+export const wellWithTopsWMSTitle = wellWithTopsTitle;
+const wellWithTopsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: wellWithTopsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: wellWithTopsLayerName,
+    title: wellWithTopsTitle,
     visible: true,
-    crs: 'EPSG:26912',
+    opacity: 0.8,
     sourceAgency: 'Utah Division of Oil, Gas and Mining',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${wellWithTopsLayerName}`,
+            name: wellWithTopsLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
@@ -344,14 +375,9 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
             relatedTables: [
                 {
                     fieldLabel: 'Formation Tops',
+                    stacAsset: 'enmin_ccs_wells_formationdepths',
                     matchingField: 'api',
                     targetField: 'api',
-                    url: PROD_POSTGREST_URL + '/view_wellswithtops_hascore',
-                    headers: {
-                        "Accept-Profile": 'emp',
-                        "Accept": "application/json",
-                        "Cache-Control": "no-cache",
-                    },
                     displayFields: [
                         { field: 'formation_alias', label: 'Formation Name' },
                         { field: 'formation_depth', label: 'Formation Depth (ft)', format: 'number' },
@@ -362,14 +388,9 @@ const wellWithTopsWMSConfig: WMSLayerProps = {
                 },
                 {
                     fieldLabel: 'LAS File Information',
-                    matchingField: 'display_api',
+                    stacAsset: 'enmin_ccs_las',
+                    matchingField: 'wells_formation_api',
                     targetField: 'api',
-                    url: PROD_POSTGREST_URL + '/ccus_las_display_view',
-                    headers: {
-                        "Accept-Profile": 'emp',
-                        "Accept": "application/json",
-                        "Cache-Control": "no-cache",
-                    },
                     displayFields: [
                         { field: 'display_description', label: 'Description', transform: (value: string | null) => value !== '' ? value : 'No Data' },
                         { field: 'display_field_name', label: 'Field Name', transform: (value: string | null) => value !== '' ? value : 'No Data' },
@@ -403,19 +424,41 @@ const SITLAConfig: ArcGISMapServerLayerProps = {
     sourceAgency: 'Utah School and Institutional Trust Lands Administration (SITLA)',
 };
 
-const faultsLayerName = 'faults_m-179dm';
-const faultsWMSTitle = 'Utah Faults';
-const faultsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: faultsWMSTitle,
+// Utah Faults (M-179DM publication Geology_arc filtered to TYPE='fault')
+const faultsSourceLayer = 'Geology_arc';
+const M179DM_GEOLOGY_ARC_STAC_URL =
+    `${MAPS_ASSETS_CDN_URL}/warehouse/stac/ugs-publications/M/M-179DM/M-179DM__Geology_arc/M-179DM__Geology_arc.json`;
+export const faultsTitle = 'Utah Faults';
+export const faultsWMSTitle = faultsTitle;
+const faultsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemUrl: M179DM_GEOLOGY_ARC_STAC_URL,
+    defaultRenderId: 'faults',
+    pmtilesUrl: '',
+    sourceLayer: faultsSourceLayer,
+    title: faultsTitle,
+    featureFilter: ['==', ['downcase', ['to-string', ['get', 'TYPE']]], 'fault'],
     visible: false,
-    crs: 'EPSG:26912',
+    opacity: 0.8,
     sourceAgency: 'Utah Geological Survey',
     sourceUrl: 'https://geology.utah.gov/publication-details/?pub=M-179dm',
+    // Publication STAC items are not yet rebound by `ugs-warehouse.restyle`; point directly at the published CDN render.
+    renders: [{
+        id: 'faults',
+        styleUrl: `${MAPS_ASSETS_CDN_URL}/styles/styles/M-179DM__Geology_arc/faults.json`,
+        sprite: `${MAPS_ASSETS_CDN_URL}/styles/styles/M-179DM__Geology_arc/sprite`,
+        legend: [
+            { label: 'Fault, Normal, Well Located', color: '#000000', shape: 'line' },
+            { label: 'Fault, Normal, Approximately Located', color: '#000000', shape: 'line', lineStyle: 'dashed' },
+            { label: 'Fault, Normal, Concealed', color: '#000000', shape: 'line', lineStyle: 'dotted' },
+            { label: 'Fault, Thrust, Well Located', color: '#000000', shape: 'line', teeth: true },
+            { label: 'Fault, Thrust, Approximately Located', color: '#000000', shape: 'line', lineStyle: 'dashed', teeth: true },
+            { label: 'Fault, Thrust, Concealed', color: '#000000', shape: 'line', lineStyle: 'dotted', teeth: true },
+        ],
+    }],
     sublayers: [
         {
-            name: `${MAPPING_WORKSPACE}:${faultsLayerName}`,
+            name: faultsSourceLayer,
             popupEnabled: false,
             queryable: true,
             popupFields: {
@@ -423,53 +466,52 @@ const faultsWMSConfig: WMSLayerProps = {
                     field: 'custom',
                     type: 'custom',
                     transform: (props: GeoJsonProperties | null | undefined) => {
-                        const subtype = props?.['subtype'];
-                        const type = props?.['type'];
-                        const modifier = props?.['modifier'];
-                        const value = `${subtype} ${type}, ${modifier}`
-                        return toSentenceCase(value);
-                    }
+                        const subtype = props?.['SUBTYPE'];
+                        const type = props?.['TYPE'];
+                        const modifier = props?.['MODIFIER'];
+                        const kind = [subtype, type].filter(Boolean).join(' ');
+                        return [kind, modifier].filter(Boolean).join(', ');
+                    },
                 },
                 'Scale': {
-                    field: 'scale',
-                    type: 'string',
-                    transform: (value: string | null) => {
-                        if (value === 'small') return '1:500,000'
-                        return ''
-                    }
+                    field: 'custom',
+                    type: 'custom',
+                    transform: () => '1:500,000',
                 },
-                'Source': { field: 'series_id', type: 'string' },
+                'Source': {
+                    field: 'fault_source_link',
+                    type: 'custom',
+                    transform: () => 'M-179DM',
+                },
             },
             linkFields: {
-                'series_id': {
-                    baseUrl: '',
-                    transform: (value: string) => {
-                        // the value is a url that needs to be transformed into href and label for the link
-                        const transformedValues = {
-                            href: `https://doi.org/10.34191/${value}`,
-                            label: `${value}`
-                        };
-                        return [transformedValues];
-                    }
-                }
-            }
+                'fault_source_link': {
+                    transform: (value: string | null) => [{
+                        href: 'https://doi.org/10.34191/M-179DM',
+                        label: value || 'M-179DM',
+                    }],
+                },
+            },
         },
     ],
 };
 
-const qFaultsLayerName = 'hazards_qfaults_current';
-const qFaultsWMSTitle = 'Hazardous Faults - Utah Quaternary Fault Database';
-const qFaultsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: qFaultsWMSTitle,
+// Utah Faults (Quaternary Faults)
+const qFaultsLayerName = 'hazards_qfaults';
+export const qFaultsTitle = 'Hazardous Faults - Utah Quaternary Fault Database';
+export const qFaultsWMSTitle = qFaultsTitle;
+const qFaultsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: qFaultsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: qFaultsLayerName,
+    title: qFaultsTitle,
     visible: false,
-    crs: 'EPSG:26912',
-    downloadParquetUrl: parquetUrl("hazards_qfaults"),
+    opacity: 0.8,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
-            name: `${HAZARDS_WORKSPACE}:${qFaultsLayerName}`,
+            name: qFaultsLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
@@ -504,7 +546,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 'notes': {
                     transform: (value: unknown) => {
                         const str = String(value ?? '');
-                        if (!str || !str.startsWith('http')) {
+                        if (!str || !isHttpUrl(str)) {
                             return [{ label: 'Detailed report not currently available', href: '' }];
                         }
                         return [{ label: str, href: str }];
@@ -513,7 +555,7 @@ const qFaultsWMSConfig: WMSLayerProps = {
                 'usgs_link': {
                     transform: (value: unknown) => {
                         const str = String(value ?? '');
-                        if (!str || !str.startsWith('http')) {
+                        if (!str || !isHttpUrl(str)) {
                             return [{ label: str || 'No USGS link available', href: '' }];
                         }
                         return [{ label: 'USGS Reference', href: str }];
@@ -524,56 +566,29 @@ const qFaultsWMSConfig: WMSLayerProps = {
     ],
 };
 
-// CO2 Sources WFS Layer (vector — avoids WMS tile-edge clipping of symbols)
-const co2SourcesLayerName = 'ccus_co2_sources';
-const co2SourcesWFSTitle = 'CO₂ Sources';
-const CO2_SOURCE_COLORS: Record<string, string> = {
-    'Agriculture': '#7F1D1D',
-    'Cement/lime plant': '#0B6623',
-    'Coal power plant': '#5B2C6F',
-    'Landfill': '#FFEB3B',
-    'Manufacturing': '#000000',
-    'Military': '#1F77B4',
-    'Natural resources extraction': '#F39C12',
-    'NG pipeline compressor station': '#7F8C8D',
-    'NG power plant': '#F5F5F5',
-    'NG processing': '#F5F5F5',
-    'Refinery': '#5DADE2',
-    'University': '#52BE80',
-};
-const co2SourcesWFSConfig: WFSLayerProps = {
-    type: 'wfs',
-    wfsUrl: `${PROD_GEOSERVER_URL}/wfs`,
-    typeName: `${ENERGY_MINERALS_WORKSPACE}:${co2SourcesLayerName}`,
-    title: co2SourcesWFSTitle,
+// CO2 Sources
+const co2SourcesLayerName = 'enmin_ccs_co2_sources';
+export const co2SourcesTitle = 'CO₂ Sources';
+export const co2SourcesWFSTitle = co2SourcesTitle;
+const co2SourcesConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: co2SourcesLayerName,
+    pmtilesUrl: '',
+    sourceLayer: co2SourcesLayerName,
+    title: co2SourcesTitle,
     visible: false,
     opacity: 0.8,
     sourceAgency: 'EPA FLIGHT Data, 2023',
-    crs: 'EPSG:4326',
-    geometryType: 'point',
-    style: {
-        circleRadiusProperty: {
-            field: 'ghg_quantity__metric_tons_co2e_',
-            stops: [400, 3, 4_500_000, 11],
-        },
-        circleColorMatch: {
-            field: 'description',
-            matches: CO2_SOURCE_COLORS,
-            defaultColor: '#888',
-        },
-        circleStrokeColor: '#222',
-        circleStrokeWidth: 1,
-    },
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${co2SourcesLayerName}`,
+            name: co2SourcesLayerName,
             popupEnabled: true,
             queryable: true,
             popupFields: {
                 'Facility Name': { field: 'facility_name', type: 'string', transform: (value: string | null) => toTitleCase(value || '') },
                 'Description': { field: 'description', type: 'string' },
                 'Greenhouse Gas Emissions': {
-                    field: 'ghg_quantity__metric_tons_co2e_',
+                    field: 'ghg_quantity_metric_tons_co2e',
                     type: 'string',
                     transform: (value: string | null) => {
                         if (value === null) {
@@ -605,19 +620,23 @@ const co2SourcesWFSConfig: WFSLayerProps = {
     ],
 };
 
-const wildernessStudyAreasLayerName = 'ccus_wsa';
-const wildernessStudyAreasWMSTitle = 'Wilderness Study Areas';
-const wildernessStudyAreasWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: wildernessStudyAreasWMSTitle,
+// Wilderness Study Areas
+const wildernessStudyAreasLayerName = 'enmin_ccs_wsa';
+export const wildernessStudyAreasTitle = 'Wilderness Study Areas';
+export const wildernessStudyAreasWMSTitle = wildernessStudyAreasTitle;
+const wildernessStudyAreasConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: wildernessStudyAreasLayerName,
+    pmtilesUrl: '',
+    sourceLayer: wildernessStudyAreasLayerName,
+    title: wildernessStudyAreasTitle,
     visible: false,
-    crs: 'EPSG:26912',
+    opacity: 0.8,
     sourceAgency: 'U.S. Bureau of Land Management',
     sourceUrl: 'https://gbp-blm-egis.hub.arcgis.com/maps/0ae90ebbc1f54f77b80b76a6148ab83d/about',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${wildernessStudyAreasLayerName}`,
+            name: wildernessStudyAreasLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
@@ -630,31 +649,34 @@ const wildernessStudyAreasWMSConfig: WMSLayerProps = {
     ],
 };
 
-const sitlaReportsLayerName = 'ccus_sitla_reports';
-const sitlaReportsWMSTitle = 'CO₂ Storage Potential on SITLA Blocks';
-const sitlaReportsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: sitlaReportsWMSTitle,
+// CO2 Storage Potential on SITLA Blocks
+const sitlaReportsLayerName = 'enmin_ccs_sitlareports';
+export const sitlaReportsTitle = 'CO₂ Storage Potential on SITLA Blocks';
+export const sitlaReportsWMSTitle = sitlaReportsTitle;
+const sitlaReportsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: sitlaReportsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: sitlaReportsLayerName,
+    title: sitlaReportsTitle,
     sectionHeading: 'Statewide',
     visible: false,
-    crs: 'EPSG:26912',
+    opacity: 0.8,
     sourceAgency: 'Utah Geological Survey',
     sourceUrl: 'https://ugspub.nr.utah.gov/publications/non_lib_pubs/contract_deliverables/EMP-1.pdf',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${sitlaReportsLayerName}`,
+            name: sitlaReportsLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
-                'Name': { field: 'new_block_', type: 'string' },
+                'Name': { field: 'new_block', type: 'string' },
                 'Ranking': {
                     field: 'ranking', type: 'string',
                     transform: (value: string | null) => {
                         if (value === 'None' || value === null) {
                             return 'Not Evaluated';
                         }
-                        // Strip leading number (e.g., "4.0 Good Potential" -> "Good Potential")
                         return value.replace(/^\d+(\.\d+)?\s*/, '');
                     }
                 },
@@ -677,7 +699,7 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
                     if (strValue.includes("good")) return "#CFFF00";
                     if (strValue.includes("some")) return "#FFE700";
                     if (strValue.includes("limited")) return "#FF7E00";
-                    return "#CDCDCD"; // Not Evaluated
+                    return "#CDCDCD";
                 }
             },
             colorCodingMode: 'background',
@@ -685,31 +707,42 @@ const sitlaReportsWMSConfig: WMSLayerProps = {
     ],
 };
 
-const ccsExclusionAreasLayerName = 'ccus_noccuszone';
-const ccsExclusionAreasWMSTitle = 'CCS Exclusion Areas';
-const ccsExclusionAreasWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: ccsExclusionAreasWMSTitle,
+// CCS Exclusion Areas
+const ccsExclusionAreasLayerName = 'enmin_ccs_exclusionzones';
+export const ccsExclusionAreasTitle = 'CCS Exclusion Areas';
+export const ccsExclusionAreasWMSTitle = ccsExclusionAreasTitle;
+const ccsExclusionAreasConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: ccsExclusionAreasLayerName,
+    pmtilesUrl: '',
+    sourceLayer: ccsExclusionAreasLayerName,
+    title: ccsExclusionAreasTitle,
     visible: false,
-    crs: 'EPSG:26912',
+    opacity: 0.8,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${ccsExclusionAreasLayerName}`,
+            name: ccsExclusionAreasLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
                 'Notes': { field: 'notes', type: 'string' },
-
-            }
-        }
+                'Type': {
+                    field: 'grade',
+                    type: 'string',
+                    transform: (value: string | null) => {
+                        const normalized = value?.toLowerCase();
+                        if (normalized === 'no-ccus-zone') return 'Exclusion Zones - Land Management';
+                        if (normalized === 'no-ccus-zone-geo') return 'Exclusion Zones - Geology';
+                        return value;
+                    }
+                },
+            },
+        },
     ],
 };
 
-
-// Past and Ongoing Projects — STAC-driven PMTiles item `enmin_ccs_pastprojects`, one layer
-// per `projectscale`. Statewide rows are skipped: those projects already have their own layers.
+// Past and Ongoing Projects
 const pastProjectsLayerName = 'enmin_ccs_pastprojects';
 export const pastProjectsRegionalTitle = 'Past and Ongoing Projects - Regional';
 export const pastProjectsSiteSpecificTitle = 'Past and Ongoing Projects - Site-Specific';
@@ -731,7 +764,6 @@ const pastProjectsConfig = ({ title, sectionHeading, projectScale, defaultRender
     featureFilter: ['==', ['get', 'projectscale'], projectScale],
     visible,
     opacity: 1,
-    downloadParquetUrl: parquetUrl(pastProjectsLayerName),
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
@@ -776,8 +808,7 @@ export const pastProjectsSiteSpecificConfig = pastProjectsConfig({
     visible: true,
 });
 
-// STAC-driven: pmtilesUrl, sourceLayer, renders (colour by `primsource`, radius by `total_mw`)
-// and parquet come from the warehouse item `enmin_powerplants`. Symbology lives in ugs-styles.
+// Power Plants
 const powerplantsLayerName = 'enmin_powerplants';
 export const powerplantsTitle = 'Power Plants';
 const powerplantsConfig: PMTilesLayerProps = {
@@ -806,17 +837,17 @@ const powerplantsConfig: PMTilesLayerProps = {
     ],
 };
 
-// Rock Property Data — wells and fields from warehouse items `enmin_ccus_geochemistry` and
-// `enmin_ccus_geochemfieldpolys`. Symbology lives in ugs-styles.
+// Rock Property Data: Wells & Fields
 const rockPropertySourceField = { field: 'source_detailed', label: 'Source', transform: linkIfUrl() };
 
 const geochemWellsLayerName = 'enmin_ccus_geochemistry';
+export const geochemWellsTitle = 'Rock Property Data: Wells';
 const geochemWellsConfig: PMTilesLayerProps = {
     type: 'pmtiles',
     stacItemId: geochemWellsLayerName,
     pmtilesUrl: '',
     sourceLayer: geochemWellsLayerName,
-    title: 'Rock Property Data: Wells',
+    title: geochemWellsTitle,
     formerTitles: ['Wells with Rock Property Data'],
     visible: false,
     opacity: 1,
@@ -874,16 +905,15 @@ const geochemWellsConfig: PMTilesLayerProps = {
     ],
 };
 
-// No warehouse related asset for fields yet, so the measurements join stays on PostgREST.
 const geochemFieldsLayerName = 'enmin_ccus_geochemfieldpolys';
+export const geochemFieldsTitle = 'Rock Property Data: Fields';
 const geochemFieldsConfig: PMTilesLayerProps = {
     type: 'pmtiles',
     stacItemId: geochemFieldsLayerName,
     pmtilesUrl: '',
     sourceLayer: geochemFieldsLayerName,
-    title: 'Rock Property Data: Fields',
+    title: geochemFieldsTitle,
     visible: false,
-    // Slider value replaces the style's fill-opacity, so set it see-through here.
     opacity: 0.5,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
@@ -902,14 +932,7 @@ const geochemFieldsConfig: PMTilesLayerProps = {
             relatedTables: [
                 {
                     fieldLabel: 'Rock Property Data',
-                    matchingField: 'fieldnamejoin',
-                    targetField: 'field',
-                    url: PROD_POSTGREST_URL + '/enmin_geochemistry_fields_current',
-                    headers: {
-                        "Accept-Profile": 'emp',
-                        "Accept": "application/json",
-                        "Cache-Control": "no-cache",
-                    },
+                    stacAsset: 'enmin_geochemistry_fields',
                     displayFields: [
                         { field: 'formation', label: 'Formation' },
                         { field: 'depth_top_interval', label: 'Depth (ft)' },
@@ -927,21 +950,23 @@ const geochemFieldsConfig: PMTilesLayerProps = {
     ],
 };
 
-
-// Wells and Springs with Joins WMS Layer
-const geothermalWellsJoinsName = 'enmin_geothermal_ingenious_wellfeatures_current';
-const geothermalWellsJoinsTitle = 'Groundwater Wells';
-const geothermalWellsJoinsConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
+// Geothermal Groundwater Wells
+const geothermalWellsJoinsName = 'enmin_geothermal_ingenious_wellfeatures';
+export const geothermalWellsJoinsTitle = 'Groundwater Wells';
+export const geothermalWellsJoinsWMSTitle = geothermalWellsJoinsTitle;
+const geothermalWellsJoinsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: geothermalWellsJoinsName,
+    pmtilesUrl: '',
+    sourceLayer: geothermalWellsJoinsName,
     title: geothermalWellsJoinsTitle,
     formerTitles: ['Geothermal Wells'],
     visible: false,
-    downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_wellfeatures"),
+    opacity: 0.8,
     sourceAgency: 'INGENIOUS Project, 2022',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsJoinsName}`,
+            name: geothermalWellsJoinsName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
@@ -988,27 +1013,30 @@ const geothermalWellsJoinsConfig: WMSLayerProps = {
     ],
 };
 
-// Springs with Joins WMS Layer
-const geothermalSpringsJoinsName = 'enmin_geothermal_ingenious_springfeatures_current';
-const geothermalSpringsJoinsTitle = 'Springs';
-const geothermalSpringsJoinsConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
+// Geothermal Springs
+const geothermalSpringsJoinsName = 'enmin_geothermal_ingenious_springfeatures';
+export const geothermalSpringsJoinsTitle = 'Springs';
+export const geothermalSpringsJoinsWMSTitle = geothermalSpringsJoinsTitle;
+const geothermalSpringsJoinsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: geothermalSpringsJoinsName,
+    pmtilesUrl: '',
+    sourceLayer: geothermalSpringsJoinsName,
     title: geothermalSpringsJoinsTitle,
     formerTitles: ['Geothermal Springs'],
     visible: false,
-    downloadParquetUrl: parquetUrl("enmin_geothermal_ingenious_springfeatures"),
+    opacity: 0.8,
     sourceAgency: 'INGENIOUS Project, 2022',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalSpringsJoinsName}`,
+            name: geothermalSpringsJoinsName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
                 'Feature URI': { field: 'featureuri', type: 'string' },
                 'Spring Name': { field: 'springname', type: 'string' },
                 'Thermal Class': { field: 'thermalclass', type: 'string' },
-                'Max Measured Temperature (°C)': { field: 'maxmeasured_temp_c', type: 'number' },
+                'Max Measured Temperature (°C)': { field: 'maxmeasuredtemp_c', type: 'number' },
                 'Latitude': { field: 'latdegree', type: 'number' },
                 'Longitude': { field: 'longdegree', type: 'number' },
                 'Elevation Ground Level (m)': { field: 'elevationgl_m', type: 'number' },
@@ -1044,18 +1072,22 @@ const geothermalSpringsJoinsConfig: WMSLayerProps = {
     ],
 };
 
-// geothermalWells WMS Layer
-const geothermalWellsLayerName = 'mart_geothermal_wellsandsprings_current';
-const geothermalWellsWMSTitle = 'Geothermal Wells & Springs';
-const geothermalWellsWMSConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: geothermalWellsWMSTitle,
+// Geothermal Wells & Springs
+const geothermalWellsLayerName = 'enmin_geothermal_wellsandsprings';
+export const geothermalWellsTitle = 'Geothermal Wells & Springs';
+export const geothermalWellsWMSTitle = geothermalWellsTitle;
+const geothermalWellsConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: geothermalWellsLayerName,
+    pmtilesUrl: '',
+    sourceLayer: geothermalWellsLayerName,
+    title: geothermalWellsTitle,
     visible: false,
+    opacity: 0.8,
     sourceAgency: 'Utah Geological Survey',
     sublayers: [
         {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${geothermalWellsLayerName}`,
+            name: geothermalWellsLayerName,
             popupEnabled: false,
             queryable: true,
             popupFields: {
@@ -1063,9 +1095,10 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                     field: 'type',
                     type: 'string',
                     transform: (value) => {
-                        if (value === 'W') return 'Well'
-                        if (value === 'S') return 'Spring'
-                        return value
+                        if (value === 'W' || value === 'W?') return 'Well';
+                        if (value === 'S' || value === 'S?') return 'Spring';
+                        if (value === 'M') return 'Mine';
+                        return value;
                     }
                 },
                 'Map Number': { field: 'mapno', type: 'string' },
@@ -1073,21 +1106,10 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
                     field: 'custom',
                     type: 'custom',
                     transform: (props) => {
-                        const toTitleCase = (str: string) => {
-                            return str
-                                .toLowerCase()
-                                .split(' ')
-                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                                .join(' ');
-                        };
-
                         const regionl = props?.['region_loc'];
                         const countyl = props?.['county'];
-
-                        // Convert to title case if they are strings
                         const formattedStart = typeof regionl === 'string' ? toTitleCase(regionl) : regionl;
                         const formattedEnd = typeof countyl === 'string' ? toTitleCase(countyl) : countyl;
-
                         return `${formattedStart}, ${formattedEnd}`;
                     }
                 },
@@ -1136,44 +1158,52 @@ const geothermalWellsWMSConfig: WMSLayerProps = {
     ],
 };
 
-// Utah counties
-const utCountiesConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: 'Utah Counties',
+// Utah Counties
+const utCountiesLayerName = 'enmin_ut_counties';
+export const utCountiesTitle = 'Utah Counties';
+export const utCountiesWMSTitle = utCountiesTitle;
+const utCountiesConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: utCountiesLayerName,
+    pmtilesUrl: '',
+    sourceLayer: utCountiesLayerName,
+    title: utCountiesTitle,
     visible: false,
-    crs: 'EPSG:3857',
+    opacity: 0.8,
+    polygonLabels: true,
     sourceAgency: 'UGRC',
-    sourceUrl: 'https://gis.utah.gov/products/sgid/boundaries/county/',
+    sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-county-boundaries/about',
     sublayers: [{
-        name: `${ENERGY_MINERALS_WORKSPACE}:enmin_ut_counties_current`,
+        name: utCountiesLayerName,
         popupEnabled: false,
         queryable: false,
     }],
 };
 
-// Utah township & ranges
-export const utTownshipRangesLayerName = 'enmin_plss_townshiprange_current';
-export const utTownshipRangesTitle = 'Utah Township & Ranges'; 
-const utTownshipRangesConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
+// Utah Township and Ranges
+const utTownshipRangesLayerName = 'enmin_plss_townshiprange';
+export const utTownshipRangesTitle = 'Utah Township & Ranges';
+export const utTownshipRangesWMSTitle = utTownshipRangesTitle;
+const utTownshipRangesConfig: PMTilesLayerProps = {
+    type: 'pmtiles',
+    stacItemId: utTownshipRangesLayerName,
+    pmtilesUrl: '',
+    sourceLayer: utTownshipRangesLayerName,
     title: utTownshipRangesTitle,
     visible: false,
-    crs: 'EPSG:3857',
+    opacity: 0.8,
     visibleZoomRange: [11, 22],
+    polygonLabels: true,
     sourceAgency: 'UGRC',
-    sourceUrl: 'https://gis.utah.gov/products/sgid/cadastre/plss-sections/',
+    sourceUrl: 'https://opendata.gis.utah.gov/datasets/utah-township-and-ranges/about',
     sublayers: [{
-        name: `${ENERGY_MINERALS_WORKSPACE}:${utTownshipRangesLayerName}`,
+        name: utTownshipRangesLayerName,
         popupEnabled: false,
         queryable: false,
     }],
 };
 
-// Sections — STAC-driven: pmtilesUrl, sourceLayer, and renders come from the
-// warehouse item `enmin_plss_sections`. Sits just below Township & Range
-// (same PLSS/UGRC source) in both the layer list and the map stack.
+// Sections
 const sectionsLayerName = 'enmin_plss_sections';
 export const sectionsTitle = 'Sections';
 const sectionsConfig: PMTilesLayerProps = {
@@ -1195,209 +1225,11 @@ const sectionsConfig: PMTilesLayerProps = {
     }],
 };
 
+// Non-Petroleum Wells (shared STAC config lives in -shared/layers/non-petroleum-wells.tsx)
 
-// Non Petroleum Wells Layer — STAC-driven: pmtilesUrl, sourceLayer, and
-// renders come from the warehouse item `enmin_non_petroleum_wells`.
-const nonpetrolWellsLayerName = 'enmin_non_petroleum_wells';
-const nonpetrolWellsTitle = 'Exploration Boreholes - Downhole Data';
-const nonpetrolWellsConfig: PMTilesLayerProps = {
-  type: 'pmtiles',
-  stacItemId: nonpetrolWellsLayerName,
-  pmtilesUrl: '',
-  sourceLayer: nonpetrolWellsLayerName,
-  title: nonpetrolWellsTitle,
-  visible: false,
-  opacity: 1,
-  sourceAgency: 'Utah Geological Survey',
-  sublayers: [
-    {
-      name: nonpetrolWellsLayerName,
-      popupEnabled: true,
-      queryable: true,
-      popupFields: {
-        'Name': { field: 'well_name', type: 'string' },
-        'UWI': { field: 'uwi', type: 'string' },
-        'Operator': { field: 'operator', type: 'string' },
-        'Depth': {
-            field: 'custom',
-            type: 'custom',
-            transform: (props) => {
-                const bht = props?.['depth'];
-                return `${bht} ft`;
-            }
-        },
-        'County': {
-            field: 'custom',
-            type: 'custom',
-            transform: (props) => {
-                const cnty = props?.['county'];
-                const st = props?.['state'];
-                return `${cnty} , ${st}`;
-            }
-        },
-        'Location': {
-            field: 'custom',
-            type: 'custom',
-            transform: (props) => {
-              const tnum = props?.['town_num'];
-              const tdir = props?.['town_dir'];
-              const rnum = props?.['range_num'];
-              const rdir = props?.['range_dir'];
-              const sect = props?.['sect'];
-              return `${tnum}${tdir} ${rnum}${rdir} Section ${sect}`;
-            }
-        },
-        'Meridian': { field: 'meridian', type: 'string' },
-        'Purpose': {
-          field: 'purpose',
-          type: 'string',
-          transform: (value: string | null) => {
-            if (value === 'C') return 'Coal';
-            if (value === 'T') return 'Tar Sands';
-            if (value === 'SH') return 'Oil Shale';
-            if (value === 'W') return 'Water/Geothermal';
-            return 'Unknown';
-          }
-        },
-        'Reports': {
-          field: 'analyses',
-          type: 'string',
-          transform: (value: string | null) => {
-            if (value === 'Y') return 'Available';
-            if (value === 'N') return 'None';
-            return 'Unknown';
-          }
-        },
-        'Well Logs': {
-          field: 'well_logs',
-          type: 'string',
-          transform: (value: string | null) => {
-            if (value === 'Y') return 'Available';
-            if (value === 'N') return 'None';
-            return 'Unknown';
-          }
-        },
-      },
-      relatedTables: [
-                {
-                    fieldLabel: 'Well Log Files',
-                    matchingField: 'well_id',
-                    targetField: 'uwi',
-                    url: PROD_POSTGREST_URL + '/nwpd_welllogs',
-                    headers: {
-                        "Accept-Profile": 'emp',
-                        "Accept": "application/json",
-                        "Cache-Control": "no-cache",
-                    },
-                    displayFields: [
-                        {
-                            field: 'filename',
-                            label: '',
-                            transform: (value: string | null, row) => {
-                                const path = row?.['full_path'];
-                                if (!path) return value || 'No link available';
-                                return <Link to={String('http://maps-assets.geology.utah.gov/' + path)}>{value || 'View File'}</Link>;
-                            }
-                        },
-                    ],
-                    sortDirection: 'asc',
-                },
-                {
-                    fieldLabel: 'Well Analyses Files',
-                    matchingField: 'well_id',
-                    targetField: 'uwi',
-                    url: PROD_POSTGREST_URL + '/nwpd_wellanalyses',
-                    headers: {
-                        "Accept-Profile": 'emp',
-                        "Accept": "application/json",
-                        "Cache-Control": "no-cache",
-                    },
-                    displayFields: [
-                        {
-                            field: 'filename',
-                            label: '',
-                            transform: (value: string | null, row) => {
-                                const path = row?.['full_path'];
-                                if (!path) return value || 'No link available';
-                                return <Link to={String('http://maps-assets.geology.utah.gov/' + path)}>{value || 'View File'}</Link>;
-                            }
-                        },
-                    ],
-                }]
-        },
-  ]
-};
-
-// Non-Petroleum Well Catalogue Data
-/*
-const nonPetroleumCatLayerName = 'nwpd_nonpetroleumwellcatalogwells';
-const nonPetroleumCatLayerTitle = 'Non-Petroleum Wells';
-const nonPetroleumCatLayerConfig: WMSLayerProps = {
-    type: 'wms',
-    url: `${PROD_GEOSERVER_URL}/wms`,
-    title: nonPetroleumCatLayerTitle,
-    visible: false,
-    sublayers: [
-        {
-            name: `${ENERGY_MINERALS_WORKSPACE}:${nonPetroleumCatLayerName}`,
-            popupEnabled: false,
-            queryable: true,
-            popupFields: {
-                'Name': { field: 'well_name', type: 'string' },
-                'API/UWI': { field: 'uwi', type: 'string' },
-                'Operator': { field: 'operator', type: 'string' },
-                'County': { field: 'county', type: 'string' },
-                'Location': {
-                    field: 'custom',
-                    type: 'custom',
-                    transform: (props) => {
-                        const townNum = props?.['town_num'];
-                        const townDir = props?.['town_dir'];
-                        const rangeNum = props?.['range_num'];
-                        const rangeDir = props?.['range_dir'];
-                        const sect = props?.['sect'];
-                        return `${townNum}${townDir} ${rangeNum}${rangeDir} Section ${sect}`;
-                    }
-                },
-                'Field/Area': { field: 'field_area', type: 'string' },
-                'Purpose': { field: 'purpose', type: 'string' },
-                'Depth': { field: 'depth', type: 'number' }
-            },
-        },
-    ],
-};
-*/
-
-
-// NatCarb Locations Layer — STAC-driven: pmtilesUrl, sourceLayer, and related
-// table (enmin_ccs_natcarb_measurement) come from the warehouse item `enmin_ccs_natcarb_location`.
+// NatCarb Locations Layer
 const natCarbLocationsLayerName = 'enmin_ccs_natcarb_location';
 export const natCarbLocationsTitle = 'NATCARB Atlas (2015)';
-
-// Temporary inline style until published to @ugs-gio/ugs-styles. Once published in the STAC
-// catalog renders extension, delete this defaultNatCarbStyle and the renders array below.
-const defaultNatCarbStyle = `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify({
-    layers: [
-        {
-            id: 'enmin_ccs_natcarb_location-fill',
-            type: 'fill',
-            'source-layer': 'enmin_ccs_natcarb_location',
-            paint: {
-                'fill-color': '#d2b48c',
-                'fill-opacity': 0.3,
-            },
-        },
-        {
-            id: 'enmin_ccs_natcarb_location-line',
-            type: 'line',
-            'source-layer': 'enmin_ccs_natcarb_location',
-            paint: {
-                'line-color': '#8b6d47',
-                'line-width': 1.5,
-            },
-        },
-    ],
-}))}`;
 
 export const natCarbLocationsConfig: PMTilesLayerProps = {
     type: 'pmtiles',
@@ -1407,22 +1239,8 @@ export const natCarbLocationsConfig: PMTilesLayerProps = {
     title: natCarbLocationsTitle,
     sectionHeading: 'Statewide',
     visible: false,
-    opacity: 1,
+    opacity: 0.3,
     sourceAgency: 'Utah Geological Survey',
-    renders: [
-        {
-            id: 'default',
-            title: 'NATCARB Atlas (2015)',
-            styleUrl: defaultNatCarbStyle,
-            legend: [
-                {
-                    label: 'NATCARB Grid Cell',
-                    color: 'rgba(210, 180, 140, 0.3)',
-                    stroke: '#8b6d47',
-                },
-            ],
-        },
-    ],
     sublayers: [
         {
             name: natCarbLocationsLayerName,
@@ -1454,61 +1272,60 @@ export const natCarbLocationsConfig: PMTilesLayerProps = {
     ],
 };
 
-// Energy and Minerals Group Layer
+// Groups
 const ccsResourcesConfig: LayerProps = {
     type: 'group',
     title: 'Carbon Storage Resources',
     visible: true,
     layers: [
-        sco2GridSummaryWMSConfig,
-        georegionsWMSConfig,
+        sco2GridSummaryConfig,
+        georegionsConfig,
         natCarbLocationsConfig,
-        sitlaReportsWMSConfig,
+        sitlaReportsConfig,
         pastProjectsRegionalConfig,
         pastProjectsSiteSpecificConfig,
     ]
-}
+};
 
 const infrastructureAndLandUseConfig: LayerProps = {
     type: 'group',
     title: 'Infrastructure and Land Use',
     visible: false,
     layers: [
-        co2SourcesWFSConfig,
-        ccsExclusionAreasWMSConfig,
+        co2SourcesConfig,
+        ccsExclusionAreasConfig,
         powerplantsConfig,
-        pipelinesWMSConfig,
-        riversWMSConfig,
-        roadsWMSConfig,
-        railroadsWMSConfig,
-        transmissionLinesWMSConfig,
-        wildernessStudyAreasWMSConfig,
+        pipelinesConfig,
+        riversConfig,
+        roadsConfig,
+        railroadsConfig,
+        transmissionLinesConfig,
+        wildernessStudyAreasConfig,
         SITLAConfig,
         utCountiesConfig,
         utTownshipRangesConfig,
         sectionsConfig,
     ]
-}
+};
 
 const geologicalInformationConfig: LayerProps = {
     type: 'group',
     title: 'Geological Information',
     visible: false,
     layers: [
-        qFaultsWMSConfig,
-        faultsWMSConfig,
-        seamlessGeolunitsWMSConfig,
+        qFaultsConfig,
+        faultsConfig,
+        seamlessGeolunitsConfig,
     ]
-}
+};
+
 const subsurfaceDataConfig: LayerProps = {
     type: 'group',
     title: 'Subsurface Data',
     visible: false,
     layers: [
-        wellWithTopsWMSConfig,
+        wellWithTopsConfig,
         geochemWellsConfig,
-        // UCRC inventory replaces the old WMS cores layer (ALL-4356). popupFooterLink is set here
-        // (not the shared config) so the per-well subsurface deep link is carbonstorage-only.
         {
             ...ucrcWellsConfig,
             visible: false,
@@ -1524,17 +1341,14 @@ const subsurfaceDataConfig: LayerProps = {
                 },
             },
         },
-        oilGasFieldsWMSConfig,
-        geothermalWellsWMSConfig,
+        oilGasFieldsConfig,
+        geothermalWellsConfig,
         geothermalSpringsJoinsConfig,
         geothermalWellsJoinsConfig,
         nonpetrolWellsConfig,
-        // Last so the field polygons draw under every point layer.
         geochemFieldsConfig,
     ]
-}
-
-
+};
 
 const layersConfig: LayerProps[] = [
     ccsResourcesConfig,

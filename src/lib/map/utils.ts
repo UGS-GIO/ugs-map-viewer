@@ -4,6 +4,7 @@ import type { Geometry } from 'geojson';
 import { LngLat, LngLatBounds } from 'maplibre-gl';
 import { bbox as turfBbox } from '@turf/bbox';
 import type { MapLibreMap } from '@/lib/types/map-types';
+import { OPACITY_PROPS, isRecord, scaledOpacityPaint } from '@/lib/map/scale-opacity';
 
 // Re-export type guards from their canonical location
 export { isWMSLayer, isGroupLayer } from '@/lib/map/layer-utils';
@@ -37,74 +38,54 @@ export function createPointBufferBbox(
     return null;
 }
 
-/** The rendered layer whose viewer `metadata.title` matches, or null. */
-function findRenderedLayerIdByTitle(mapInstance: MapLibreMap, title: string): string | null {
-    const style = mapInstance.getStyle();
-    for (const layer of style?.layers ?? []) {
-        const metadata = layer.metadata;
-        if (metadata && typeof metadata === 'object' && 'title' in metadata) {
-            if ((metadata as Record<string, unknown>).title === title) return layer.id;
-        }
+interface RenderedLayer { id: string; type: string; baseOpacity?: Record<string, unknown> }
+
+/** All rendered layers whose viewer `metadata.title` matches. */
+
+function findRenderedLayersByTitle(mapInstance: MapLibreMap, title: string): RenderedLayer[] {
+    const matches: RenderedLayer[] = [];
+    for (const layer of mapInstance.getStyle()?.layers ?? []) {
+        const md = layer.metadata;
+        if (!isRecord(md) || md.title !== title) continue;
+        matches.push({ id: layer.id, type: layer.type, baseOpacity: isRecord(md.baseOpacity) ? md.baseOpacity : undefined });
     }
-    return null;
+    return matches;
 }
 
 export function findLayerByTitle(mapInstance: MapLibreMap, title: string): MapLibreLayerProxy | null {
     // Return a proxy object that allows setting opacity and visibility
-    // The proxy intercepts property assignments and applies them to the MapLibre layer
-    const layerId = findRenderedLayerIdByTitle(mapInstance, title);
-    return layerId ? new MapLibreLayerProxy(mapInstance, layerId) : null;
+    // The proxy intercepts property assignments and applies them to all matching MapLibre layers
+    const layers = findRenderedLayersByTitle(mapInstance, title);
+    return layers.length > 0 ? new MapLibreLayerProxy(mapInstance, layers) : null;
 }
 
 /**
  * Proxy object for MapLibre layers to allow setting opacity and visibility
- * like ArcGIS layers, while applying changes to the MapLibre map instance.
+ * like ArcGIS layers, while applying changes to all matching MapLibre sublayers.
  */
 class MapLibreLayerProxy {
     private map: MapLibreMap;
+    private layers: RenderedLayer[];
     private layerId: string;
     private _opacity: number;
     private _layerType: string;
 
-    constructor(map: MapLibreMap, layerId: string) {
+    constructor(map: MapLibreMap, layers: RenderedLayer[]) {
         this.map = map;
-        this.layerId = layerId;
-        // Cache the layer type on construction
-        this._layerType = this.getLayerType();
-        // Read initial opacity from the map layer
+        this.layers = layers;
+        this.layerId = layers[0].id;
+        this._layerType = layers[0].type || 'raster';
         this._opacity = this.readCurrentOpacity();
     }
 
     private readCurrentOpacity(): number {
         if (!this.map) return 1;
         try {
-            const opacityProp = this.getOpacityProperty();
+            const opacityProp = OPACITY_PROPS[this._layerType]?.[0] ?? 'raster-opacity';
             const currentOpacity = this.map.getPaintProperty(this.layerId, opacityProp);
             return typeof currentOpacity === 'number' ? currentOpacity : 1;
         } catch {
             return 1;
-        }
-    }
-
-    private getLayerType(): string {
-        if (!this.map) return 'raster';
-        const layer = this.map.getLayer(this.layerId);
-        return layer?.type || 'raster';
-    }
-
-    private getOpacityProperty(): 'fill-opacity' | 'line-opacity' | 'circle-opacity' | 'icon-opacity' | 'raster-opacity' {
-        switch (this._layerType) {
-            case 'fill':
-                return 'fill-opacity';
-            case 'line':
-                return 'line-opacity';
-            case 'circle':
-                return 'circle-opacity';
-            case 'symbol':
-                return 'icon-opacity';
-            case 'raster':
-            default:
-                return 'raster-opacity';
         }
     }
 
@@ -114,13 +95,11 @@ class MapLibreLayerProxy {
 
     set opacity(value: number) {
         this._opacity = value;
-        if (this.map && typeof this.map.setPaintProperty === 'function') {
-            const opacityProp = this.getOpacityProperty();
-            this.map.setPaintProperty(this.layerId, opacityProp, value);
-            // Circle layers also have a separate stroke-opacity that must track the fill,
-            // otherwise strokes stay solid while the fill fades during a slider drag.
-            if (this._layerType === 'circle') {
-                this.map.setPaintProperty(this.layerId, 'circle-stroke-opacity', value);
+        if (!this.map || typeof this.map.setPaintProperty !== 'function') return;
+        // Circle strokes and symbol text track the fill; PMTiles sublayers scale from their authored opacity.
+        for (const { id, type, baseOpacity } of this.layers) {
+            for (const [prop, val] of scaledOpacityPaint(baseOpacity, type, value)) {
+                this.map.setPaintProperty(id, prop, val);
             }
         }
     }
@@ -133,7 +112,10 @@ class MapLibreLayerProxy {
 
     set visible(value: boolean) {
         if (this.map && typeof this.map.setLayoutProperty === 'function') {
-            this.map.setLayoutProperty(this.layerId, 'visibility', value ? 'visible' : 'none');
+            const vis = value ? 'visible' : 'none';
+            for (const { id } of this.layers) {
+                this.map.setLayoutProperty(id, 'visibility', vis);
+            }
         }
     }
 

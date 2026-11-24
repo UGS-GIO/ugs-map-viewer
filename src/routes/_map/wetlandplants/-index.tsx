@@ -1,5 +1,5 @@
 import { useMemo, useEffect } from 'react'
-import type { FilterSpecification } from 'maplibre-gl'
+import type { ExpressionSpecification } from 'maplibre-gl'
 import { useSearch } from '@tanstack/react-router'
 import { useQuery, keepPreviousData } from '@tanstack/react-query'
 import GenericMapContainer from '@/components/maps/generic-map-container'
@@ -77,8 +77,8 @@ export default function Map() {
         staleTime: 1000 * 60 * 10,
     });
 
-    const vectorLayerFilters = useMemo<Record<string, FilterSpecification>>(() => {
-        const clauses: unknown[] = [];
+    const vectorLayerFilters = useMemo<Record<string, ExpressionSpecification>>(() => {
+        const clauses: ExpressionSpecification[] = [];
 
         if (wetlandCql) {
             const attrExpr = toMaplibreFilter(wetlandPlantsFilterSchema, filterState);
@@ -99,11 +99,11 @@ export default function Map() {
             }
         }
 
-        const result: Record<string, FilterSpecification> = {};
+        const result: Record<string, ExpressionSpecification> = {};
         if (clauses.length === 1) {
-            result[wetlandSurveySitesTitle] = clauses[0] as FilterSpecification;
+            result[wetlandSurveySitesTitle] = clauses[0];
         } else if (clauses.length > 1) {
-            result[wetlandSurveySitesTitle] = ['all', ...clauses] as FilterSpecification;
+            result[wetlandSurveySitesTitle] = ['all', ...clauses];
         }
         return result;
     }, [wetlandCql, filterState, speciesNames.length, speciesEventIds, isSpeciesLoading, speciesJoinKey]);

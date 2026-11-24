@@ -53,14 +53,19 @@ async function zipOutputs(gdal: Gdal, stem: string, target: GdalTarget, shpStems
     const entries: Record<string, Uint8Array> = {}
     for (const f of await gdal.getOutputFiles()) {
         const name = basename(f.path)
-        if (target.ext === 'gdb' && f.path.includes(`${gdbPath}.gdb/`)) {
+        if (target.ext === 'gdb' && f.path.includes(`/${gdbPath}.gdb/`)) {
             entries[`${stem}.gdb/${name}`] = await gdal.getFileBytes(f.path)
         } else if (target.ext === 'shp' && shpStems.some(s => name.startsWith(`${s}.`))) {
             entries[name] = await gdal.getFileBytes(f.path)
         }
     }
+    if (Object.keys(entries).length === 0) {
+        throw new Error(`GDAL produced no ${target.ext} output files for "${stem}".`)
+    }
     return { bytes: zipSync(entries), filename: `${stem}.${target.ext}.zip`, mime: 'application/zip' }
 }
+
+let singleRuns = 0
 
 /**
  * GeoJSON (WGS84) → `target`, reprojected to `epsg`. `floatCols` get an OGR-SQL CAST:
@@ -78,8 +83,10 @@ export async function convertGeoJSON(
     const input = new File([geojson], 'in.geojson', { type: 'application/geo+json' })
     const { datasets } = await gdal.open(input)
     const ds = datasets[0]
-    // Shapefile takes the bare stem — the driver appends .shp/.dbf/…
-    const outName = target.ext === 'shp' ? stem : `${stem}.${target.ext}`
+    // gdal3.js appends `.${driver.extension}` to `outputName`; never include the extension here
+    // (doing so writes `<stem>.gdb.gdb/` and breaks zipOutputs). Fresh path per non-shp run so
+    // repeated .gdb/.gpkg/.fgb exports don't collide in MEMFS.
+    const outName = target.ext === 'shp' ? stem : `${stem}-${++singleRuns}`
     // -nln names the layer after the dataset, else it inherits "in" from in.geojson.
     const args = ['-f', target.driver, '-t_srs', `EPSG:${epsg}`, '-nln', stem]
     if (floatCols.length && cols.length) {
@@ -99,7 +106,7 @@ export async function convertGeoJSON(
             return { bytes, filename: `${stem}.${target.ext}`, mime: 'application/octet-stream' }
         }
 
-        return await zipOutputs(gdal, stem, target, [stem])
+        return await zipOutputs(gdal, stem, target, [stem], outName)
     } finally {
         try { await gdal.close(ds) } catch { /* best-effort */ }
     }

@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { fetchStacItem, fetchStacItemIndex, stacItemHref, type StacItem } from '../stac-layer'
+import { fetchStacItem, fetchStacItemIndex, resolveStacLayerTree, stacItemHref, type StacItem } from '../stac-layer'
+import type { PMTilesLayerProps } from '@/lib/types/mapping-types'
+import { isPMTilesLayer } from '@/lib/map/layer-utils'
 
 const entry: StacItem = {
     id: 'enmin_ucrc_wells',
@@ -26,6 +28,12 @@ const mockFetch = (impl: (url: string) => Partial<Response>) =>
     vi.stubGlobal('fetch', vi.fn((url: string) => Promise.resolve(impl(url) as Response)))
 
 afterEach(() => vi.unstubAllGlobals())
+
+async function resolveOne(layer: PMTilesLayerProps): Promise<PMTilesLayerProps> {
+    const [resolved] = await resolveStacLayerTree([layer])
+    if (!resolved || !isPMTilesLayer(resolved)) throw new Error('layer did not resolve to PMTiles')
+    return resolved
+}
 
 describe('stacItemHref', () => {
     it('nests the item under its dbt schema', () => {
@@ -78,5 +86,79 @@ describe('fetchStacItem', () => {
         expect(await fetchStacItem(noSchema)).toEqual(noSchema)
         expect(fetchSpy).not.toHaveBeenCalled()
         err.mockRestore()
+    })
+})
+
+describe('resolveStacLayerTree sourceAgency precedence', () => {
+    it('preserves app-authored sourceAgency over STAC point_of_contact', async () => {
+        const stacDoc = {
+            id: 'enmin_ccs_wells_formation',
+            properties: {
+                'ugs:dbt_schema': 'emp',
+                'ugs:point_of_contact': 'Utah Geological Survey',
+            },
+            assets: {
+                pmtiles: { href: 'https://x/wells.pmtiles', type: 'application/vnd.pmtiles' },
+            },
+        }
+        mockFetch((url) => ({
+            ok: true,
+            json: () => Promise.resolve(url.endsWith('items.json') ? { items: [stacDoc] } : stacDoc),
+        }))
+
+        const layer: PMTilesLayerProps = {
+            type: 'pmtiles',
+            stacItemId: 'enmin_ccs_wells_formation',
+            pmtilesUrl: '',
+            sourceLayer: 'enmin_ccs_wells_formation',
+            title: 'Wells Database',
+            sourceAgency: 'Utah Division of Oil, Gas and Mining',
+        }
+        const resolved = await resolveOne(layer)
+        expect(resolved.sourceAgency).toBe('Utah Division of Oil, Gas and Mining')
+        expect(resolved.subtitle).toBeUndefined()
+    })
+
+    it('resolves stacItemUrl directly using pmtiles:layers[0] and keeps missing fallback renders', async () => {
+        const pubUrl = 'https://maps-assets.geology.utah.gov/warehouse/stac/ugs-publications/M/M-179DM/M-179DM__Geology_arc/M-179DM__Geology_arc.json'
+        const pubDoc = {
+            id: 'M-179DM__Geology_arc',
+            properties: {
+                'proj:code': 'EPSG:26712',
+                'ugs:renders': {
+                    default: { title: 'Publication layer style', assets: ['pmtiles'], style_url: 'https://x/default.json' },
+                },
+            },
+            assets: {
+                pmtiles: { href: 'https://x/Geology_arc.pmtiles', type: 'application/vnd.pmtiles' },
+                data: { href: 'https://x/Geology_arc.parquet', type: 'application/vnd.apache.parquet' },
+            },
+            links: [
+                { rel: 'pmtiles', href: 'https://x/Geology_arc.pmtiles', 'pmtiles:layers': ['Geology_arc'] },
+            ],
+        }
+        const fetchSpy = vi.fn((url: string) => Promise.resolve(
+            new Response(JSON.stringify(pubDoc), { status: url === pubUrl ? 200 : 404 }),
+        ))
+        vi.stubGlobal('fetch', fetchSpy)
+
+        const layer: PMTilesLayerProps = {
+            type: 'pmtiles',
+            stacItemUrl: pubUrl,
+            defaultRenderId: 'faults',
+            pmtilesUrl: '',
+            sourceLayer: '',
+            downloadParquetUrl: '',
+            title: 'Utah Faults',
+            renders: [{ id: 'faults', styleUrl: 'https://x/faults.json' }],
+        }
+        const resolved = await resolveOne(layer)
+        expect(fetchSpy).toHaveBeenCalledTimes(1)
+        expect(fetchSpy).toHaveBeenCalledWith(pubUrl)
+        expect(resolved.pmtilesUrl).toBe('https://x/Geology_arc.pmtiles')
+        expect(resolved.sourceLayer).toBe('Geology_arc')
+        expect(resolved.downloadParquetUrl).toBe('')
+        expect(resolved.downloadSourceCrs).toBe('EPSG:26712')
+        expect(resolved.renders?.map(r => r.id)).toEqual(['default', 'faults'])
     })
 })

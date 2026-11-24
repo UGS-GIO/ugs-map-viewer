@@ -22,19 +22,15 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, ChevronsUpDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useMap } from '@/hooks/use-map';
+import { fetchStacAssetHref } from '@/lib/map/stac/stac-layer';
 import { wellWithTopsWMSTitle } from '../../../-data/layers/layers';
+import {
+    parseWellFilter,
+    serializeWellFilter,
+    type WellFilterState,
+    type YesNoAll,
+} from '../../../-data/well-filters';
 import { Badge } from '@/components/ui/badge';
-import { applyLayerFilter } from '@/lib/sidebar/filter/util';
-
-type YesNoAll = "yes" | "no" | "all";
-
-interface FilterState {
-    core: YesNoAll;
-    las: YesNoAll;
-    formations: string[];
-    formation_operator?: 'and';
-}
 
 const wellsHasCoreFilterConfig = {
     label: "Cores/Cuttings Available?",
@@ -56,143 +52,46 @@ const wellsHasLasFilterConfig = {
 
 const formationNameMappingConfig = {
     label: "Formation Present",
-    postgrestUrl: "https://postgrest-seamlessgeolmap-734948684426.us-central1.run.app",
-    tableName: "view_wellswithtops_hascore",
-    fieldsToSelect: "formation_alias,formation_name",
-    displayField: "formation_alias",
-    columnNameField: "formation_name",
-    acceptProfile: "emp"
 };
 
 interface FormationMapping {
-    value: string; // GeoServer column name (e.g., 'fm_greenriver')
+    value: string; // Column name (e.g., 'fm_greenriver')
     label: string; // user-friendly alias (e.g., 'Green River')
 }
 
 const fetchFormationData = async (): Promise<FormationMapping[]> => {
-    const {
-        postgrestUrl,
-        tableName,
-        fieldsToSelect,
-        displayField,
-        columnNameField,
-        acceptProfile
-    } = formationNameMappingConfig;
-
-    const url = `${postgrestUrl}/${tableName}?select=${fieldsToSelect}`;
-    const response = await fetch(url, {
-        headers: {
-            "Accept-Profile": acceptProfile,
-            "Accept": "application/json"
-        }
+    const parquetUrl = await fetchStacAssetHref('enmin_ccs_wells_formation', 'enmin_ccs_wells_formationdepths');
+    if (!parquetUrl) {
+        throw new Error('Related asset enmin_ccs_wells_formationdepths not found on STAC item enmin_ccs_wells_formation');
+    }
+    const { withConnection, escapeSql } = await import('@/lib/duckdb/client');
+    return withConnection(async (conn) => {
+        const query = `
+            SELECT DISTINCT formation_alias AS label, formation_name AS value
+            FROM read_parquet('${escapeSql(parquetUrl)}')
+            WHERE formation_alias IS NOT NULL AND formation_name IS NOT NULL
+            ORDER BY formation_alias ASC
+        `;
+        const result = await conn.query(query);
+        return result.toArray().map((r) => {
+            const { label, value } = r.toJSON();
+            return { label: String(label), value: String(value) };
+        });
     });
-
-    if (!response.ok) {
-        throw new Error(`HTTP error fetching formation mappings! status: ${response.status}`);
-    }
-
-    const data: unknown = await response.json();
-    if (!Array.isArray(data)) {
-        throw new Error('Expected array response from formation data endpoint');
-    }
-
-    const uniqueMappings = new Map<string, string>();
-
-    for (const item of data) {
-        if (typeof item !== 'object' || item === null) continue;
-
-        const alias = displayField in item ? item[displayField] : undefined;
-        const columnName = columnNameField in item ? item[columnNameField] : undefined;
-
-        if (typeof alias === 'string' && typeof columnName === 'string' && !uniqueMappings.has(alias)) {
-            uniqueMappings.set(alias, columnName);
-        }
-    }
-
-    return Array.from(uniqueMappings, ([label, value]) => ({ label, value }))
-        .sort((a, b) => a.label.localeCompare(b.label));
 };
 
-/**
- * Parses a CQL filter string into a simplified filter state object.
- * Handles 'hascore', 'has_las', and formation presence filters.
- * @param cqlFilter - The CQL filter string from the URL or null/undefined.
- * @returns A FilterState object representing the simplified filter state.
- **/
-const parseCQLFilter = (cqlFilter: string | null | undefined): FilterState => {
-    if (!cqlFilter) {
-        return { core: 'all', las: 'all', formations: [], formation_operator: undefined };
-    }
-
-    const core: YesNoAll = cqlFilter.includes(`hascore = 'True'`)
-        ? 'yes'
-        : cqlFilter.includes(`hascore = 'False'`)
-            ? 'no'
-            : 'all';
-
-    const las: YesNoAll = cqlFilter.includes(`has_las = 'True'`)
-        ? 'yes'
-        : cqlFilter.includes(`has_las = 'False'`)
-            ? 'no'
-            : 'all';
-
-    const formationMatches = cqlFilter.match(/\b([a-zA-Z0-9_]+)\s+IS NOT NULL/gi) || [];
-    const formations = formationMatches.map(match => match.split(' ')[0]);
-
-    let formation_operator: 'and' | undefined = undefined;
-
-    // Only determine the operator if there are multiple formations to join.
-    if (formations.length > 1) {
-        // this regex checks for "AND" between two "IS NOT NULL" clauses
-        // - case-insensitive (/i)
-        // - handles variable whitespace (\s+)
-        // - avoids the bug of matching ANDs between filter groups
-        const hasAndBetweenFormations =
-            /IS\s+NOT\s+NULL\s*\)?\s*AND\s*\(?\s*[a-zA-Z0-9_]+\s+IS\s+NOT\s+NULL/i.test(cqlFilter);
-
-        if (hasAndBetweenFormations) {
-            formation_operator = 'and';
-        }
-    }
-
-    return { core, las, formations, formation_operator };
-};
-
-const generateCQLFilter = (state: FilterState) => {
-    const { core, las, formations, formation_operator } = state;
-
-    const wellFilterParts: string[] = [];
-    if (core === "yes") wellFilterParts.push(`hascore = 'True'`);
-    if (core === "no") wellFilterParts.push(`hascore = 'False'`);
-    if (las === "yes") wellFilterParts.push(`has_las = 'True'`);
-    if (las === "no") wellFilterParts.push(`has_las = 'False'`);
-
-    if (formations && formations.length > 0) {
-        const operator = formation_operator === 'and' ? ' AND ' : ' OR ';
-        const formationFilter = formations.map(f => `${f} IS NOT NULL`).join(operator);
-        wellFilterParts.push(formations.length > 1 ? `(${formationFilter})` : formationFilter);
-    }
-
-    return wellFilterParts.join(' AND ');
-};
-
-/**
-    * Custom hook to manage well filter state and URL synchronization.
-    * Encapsulates logic for parsing URL filters and updating them.
-    * @returns An object containing the simplified filter state and an update function.
-**/
 const useWellFilterManager = () => {
     const navigate = useNavigate({ from: '/carbonstorage/' });
     const search = useSearch({ from: '/_map/carbonstorage/' });
 
-    const cqlFilter = useMemo(() =>
+    const rawFilter = useMemo(() =>
         search.filters?.[wellWithTopsWMSTitle],
         [search.filters]
     );
 
     const simpleState = useMemo(() =>
-        parseCQLFilter(cqlFilter),
-        [cqlFilter]
+        parseWellFilter(rawFilter),
+        [rawFilter]
     );
 
     const stateRef = useRef(simpleState);
@@ -201,13 +100,13 @@ const useWellFilterManager = () => {
         stateRef.current = simpleState;
     }, [simpleState]);
 
-    const updateFilters = useCallback((newState: Partial<FilterState>) => {
-        const updatedState: FilterState = {
+    const updateFilters = useCallback((newState: Partial<WellFilterState>) => {
+        const updatedState: WellFilterState = {
             ...stateRef.current,
             ...newState
         };
 
-        const combinedWellFilter = generateCQLFilter(updatedState);
+        const serialized = serializeWellFilter(updatedState);
 
         // Get current filters from the search object directly
         navigate({
@@ -215,8 +114,8 @@ const useWellFilterManager = () => {
                 const currentFilters = prev.filters || {};
                 let newFilters: Record<string, string> | undefined;
 
-                if (combinedWellFilter) {
-                    newFilters = { ...currentFilters, [wellWithTopsWMSTitle]: combinedWellFilter };
+                if (serialized) {
+                    newFilters = { ...currentFilters, [wellWithTopsWMSTitle]: serialized };
                 } else {
                     const { [wellWithTopsWMSTitle]: _, ...rest } = currentFilters;
                     newFilters = Object.keys(rest).length > 0 ? rest : undefined;
@@ -232,9 +131,6 @@ const useWellFilterManager = () => {
 };
 
 const MapConfigurations = () => {
-    const { map } = useMap();
-    const search = useSearch({ from: '/_map/carbonstorage/' });
-
     const { simpleState, updateFilters } = useWellFilterManager();
     const { core, las, formations, formation_operator } = simpleState;
 
@@ -247,17 +143,6 @@ const MapConfigurations = () => {
         queryFn: fetchFormationData,
         staleTime: 1000 * 60 * 60,
     });
-
-    // Apply filter to map when it changes
-    useEffect(() => {
-        if (!map) {
-            return;
-        }
-
-        const filterFromUrl = search.filters?.[wellWithTopsWMSTitle] ?? null;
-
-        applyLayerFilter(map, wellWithTopsWMSTitle, filterFromUrl);
-    }, [map, search.filters]);
 
     const handleHasCoreChange = useCallback((value: YesNoAll) => {
         updateFilters({ core: value });

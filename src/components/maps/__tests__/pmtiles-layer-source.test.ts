@@ -121,7 +121,7 @@ describe('buildPmtilesLayerSpecs', () => {
         expect(specs[0]['source-layer']).toBe('enmin_plss_sections')
         expect(sub(specs[0], 'layout').visibility).toBe('none')
         expect(sub(specs[0], 'paint')['line-opacity']).toBe(0.5)
-        expect(specs[0].metadata).toEqual({ title: 'Sections', pmtilesLayer: true, pmtilesSourceId: 'pmtiles-sections' })
+        expect(specs[0].metadata).toEqual({ title: 'Sections', pmtilesLayer: true, pmtilesSourceId: 'pmtiles-sections', baseOpacity: {} })
         // The symbol sublayer keeps its own layout keys alongside the forced visibility.
         expect(sub(specs[1], 'layout')['text-field']).toBe('{frstdivlab}')
     })
@@ -142,5 +142,29 @@ describe('buildPmtilesLayerSpecs', () => {
             layerFilter: ['==', 'b', 2] as never,
         })
         expect(specs[0].filter).toEqual(['all', ['==', 'a', 1], ['==', 'c', 3], ['==', 'b', 2]])
+    })
+
+    it('scales authored numeric and expression opacities proportionally', () => {
+        const specs = specsOf({
+            layer: { type: 'pmtiles', title: 'Test', sourceLayer: 'test', pmtilesUrl: '' },
+            fragment: {
+                layers: [
+                    { id: 'f', type: 'fill', paint: { 'fill-opacity': 0.4 } },
+                    { id: 'e', type: 'fill', paint: { 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 6, 0.2, 14, 0.6] } },
+                    { id: 'c', type: 'circle', paint: { 'circle-opacity': 0.8, 'circle-stroke-opacity': 0.5 } },
+                    { id: 's', type: 'line', paint: { 'line-opacity': ['step', ['zoom'], 0.4, 10, 0.8] } },
+                    { id: 'd', type: 'line', paint: { 'line-opacity': ['get', 'o'] } },
+                ],
+            },
+            opacity: 0.5,
+        })
+        expect(sub(specs[0], 'paint')['fill-opacity']).toBeCloseTo(0.2)
+        // Zoom curves must stay top-level, so their stops scale rather than wrapping in `*`.
+        expect(sub(specs[1], 'paint')['fill-opacity']).toEqual(['interpolate', ['linear'], ['zoom'], 6, 0.1, 14, 0.3])
+        expect(sub(specs[2], 'paint')['circle-opacity']).toBeCloseTo(0.4)
+        expect(sub(specs[2], 'paint')['circle-stroke-opacity']).toBeCloseTo(0.25)
+        expect(sub(specs[3], 'paint')['line-opacity']).toEqual(['step', ['zoom'], 0.2, 10, 0.4])
+        expect(sub(specs[4], 'paint')['line-opacity']).toEqual(['*', ['get', 'o'], 0.5])
+        expect(sub(specs[1], 'metadata').baseOpacity).toEqual({ 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 6, 0.2, 14, 0.6] })
     })
 })

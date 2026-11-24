@@ -9,10 +9,10 @@ import { TourAutoStart } from '@/components/tour-auto-start'
 import { PROD_POSTGREST_URL, parquetUrl } from '@/lib/constants';
 import { SearchCombobox, SearchSourceConfig, defaultMasqueradeConfig, handleCollectionSelect, handleSearchSelect } from '@/components/sidebar/filter/search-combobox';
 import { geothermalTEMLayerTitle, gravityStationsLayeTitle, powerplantsTitle } from './-data/layers/layers';
-import { powerplantsFilterSchema } from './-data/layers/powerplants-schema'
+import { powerplantsFilterSchema } from '@/routes/_map/-shared/layers/powerplants-schema'
 import { toMaplibreFilter } from '@/lib/filter/generators'
 import { fromCql } from '@/lib/filter/parse'
-import type { ExpressionSpecification, FilterSpecification } from 'maplibre-gl'
+import type { ExpressionSpecification } from 'maplibre-gl'
 
 export default function Map() {
     const { updateLayerSelection } = useLayerUrl();
@@ -26,7 +26,7 @@ export default function Map() {
     // filter expression for the PMTiles layer.
     const vectorLayerFilters = useMemo(() => {
         const powerplantsCql = filtersFromUrl[powerplantsFilterSchema.recordKey]
-        const result: Record<string, FilterSpecification> = {}
+        const result: Record<string, ExpressionSpecification> = {}
         if (powerplantsCql) {
             const expr: ExpressionSpecification | null = toMaplibreFilter(powerplantsFilterSchema, fromCql(powerplantsFilterSchema, powerplantsCql))
             if (expr) result[powerplantsTitle] = expr

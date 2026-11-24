@@ -1,5 +1,6 @@
 import { FeatureCollection, GeoJsonProperties } from "geojson"
-import type { FilterSpecification } from "maplibre-gl"
+import type { ExpressionSpecification } from "maplibre-gl"
+import type { SwatchShape } from "@/lib/legend/swatch-shape"
 
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -138,6 +139,8 @@ interface BaseLayerProps {
     bivariateLegend?: { xLabel: string; yLabel: string };
     /** GeoParquet URL for client-side export. When set, download button in layer controls is enabled. */
     downloadParquetUrl?: string;
+    /** Source CRS of `downloadParquetUrl` (e.g. "EPSG:26712"), populated from STAC `proj:code`. */
+    downloadSourceCrs?: string;
     /** Agency/organization that sources this layer's data, shown in the Data Sources download list (e.g. "Utah Geological Survey", "UGRC"). */
     sourceAgency?: string;
     /** Hard-coded external link to the data's home (e.g. a UGRC open-data page or a UGS publication), shown in place of a download button when there's no `downloadParquetUrl`. */
@@ -212,6 +215,16 @@ export interface LegendEntry {
     value?: string;
     values?: readonly { value: string; color: string; label?: string }[];
     stroke?: string;
+    /** Explicit swatch geometry authored on the STAC legend entry (e.g. 'triangle', 'hatch'). */
+    shape?: SwatchShape;
+    /** Dash pattern for `shape: 'line'` swatches (defaults to 'solid'). */
+    lineStyle?: 'solid' | 'dashed' | 'dotted';
+    /** Draw thrust-fault triangle teeth along a `shape: 'line'` swatch. */
+    teeth?: boolean;
+    /** Bivariate matrix coordinates (0-indexed) or NoData flag authored on the STAC legend entry. */
+    row?: number;
+    col?: number;
+    noData?: boolean;
 }
 
 export interface PMTilesRender {
@@ -238,6 +251,12 @@ export interface PMTilesLayerProps extends BaseLayerProps {
      * (title, sublayers/popups, visibility). See `resolveStacLayerTree`.
      */
     stacItemId?: string;
+    /**
+     * Direct URL to a STAC item JSON outside `ugs-serving-topics` (e.g., a
+     * `ugs-publications` item). Resolved directly by `resolveStacLayerTree`,
+     * reading `sourceLayer` from the item's `pmtiles` link (`pmtiles:layers[0]`).
+     */
+    stacItemUrl?: string;
     /** URL to the PMTiles file (can be relative like '/pmtiles/layer.pmtiles' or absolute). Filled from STAC when `stacItemId` is set. */
     pmtilesUrl: string;
     /** URL to the style JSON file, or inline style layers */
@@ -254,7 +273,7 @@ export interface PMTilesLayerProps extends BaseLayerProps {
     /** Source layer name within the PMTiles file */
     sourceLayer: string;
     /** Filter ANDed onto every render; kept off the style so STAC renders can't drop it. */
-    featureFilter?: FilterSpecification;
+    featureFilter?: ExpressionSpecification;
     /** Optional sublayer config for popups/queries */
     sublayers?: ExtendedSublayerProperties[];
     /** Polygon layers only: draw the style's point-placed text once per polygon, inside its visible part, instead of once per tile. On a point layer its icons would disappear. */

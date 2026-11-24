@@ -18,11 +18,13 @@ import type {
     DisplayField,
     ExtendedSublayerProperties,
     LayerProps,
+    LegendEntry,
     PMTilesLayerProps,
     PMTilesRender,
     RelatedTable,
 } from '@/lib/types/mapping-types';
 import { toTitleCase } from '@/lib/utils';
+import { isPMTilesLayer } from '@/lib/map/layer-utils';
 
 const STAC_SERVING_TOPICS_BASE =
     'https://maps-assets.geology.utah.gov/warehouse/stac/ugs-serving-topics';
@@ -49,7 +51,7 @@ export interface StacRenderEntry {
     /** Absolute sprite-sheet base URL (no extension) for icon renders. */
     sprite?: string;
     /** Legend swatches; icon renders carry this explicitly. */
-    legend?: Array<{ label: string; value?: string; color: string; values?: readonly { value: string; color: string; label?: string }[]; stroke?: string }>;
+    legend?: LegendEntry[];
     /** Feature attribute this render symbolizes. */
     field?: string;
 }
@@ -81,6 +83,12 @@ export interface StacItem {
         /** Column schema for related-data assets, used to default displayFields. */
         'table:columns'?: Array<{ name: string; type?: string }>;
     }>;
+    /** STAC links; publication vector items declare their PMTiles internal layer name on the `pmtiles` link. */
+    links?: Array<{
+        rel?: string;
+        href?: string;
+        'pmtiles:layers'?: string[];
+    }>;
 }
 
 /**
@@ -110,6 +118,14 @@ function pmtilesHref(item: StacItem): string | undefined {
 function parquetHref(item: StacItem): string | undefined {
     return item.assets?.data?.href
         ?? Object.values(item.assets ?? {}).find(a => a.type === 'application/vnd.apache.parquet')?.href;
+}
+
+/** PMTiles internal vector layer name: explicit `pmtiles:layers[0]` link if present, else STAC item id. */
+function pmtilesSourceLayer(item: StacItem): string {
+    const link = item.links?.find(
+        l => l.rel === 'pmtiles' && Array.isArray(l['pmtiles:layers']) && l['pmtiles:layers'].length > 0,
+    );
+    return link?.['pmtiles:layers']?.[0] ?? item.id;
 }
 
 /** Default displayFields from a related asset's table:columns (drop join/pk columns). */
@@ -220,6 +236,7 @@ export function resolveStacPMTilesLayer(item: StacItem, app: StacLayerAppConfig)
         visible: app.visible ?? false,
         opacity: app.opacity ?? 0.85,
         downloadParquetUrl: parquetHref(item),
+        downloadSourceCrs: item.properties['proj:code'],
         sublayers: resolveSublayerRelatedTables(app.sublayers, item),
     };
 }
@@ -282,14 +299,28 @@ export async function fetchStacAssetHref(stacItemId: string, assetKey: string): 
     return index[stacItemId]?.assets?.[assetKey]?.href;
 }
 
-/** Collect every `stacItemId` referenced in a (possibly nested) layer tree. */
-function collectStacItemIds(layers: LayerProps[], into: Set<string>): void {
+/** Fetch a full STAC item directly by URL (for items outside `ugs-serving-topics`, e.g. `ugs-publications`). */
+async function fetchStacItemByUrl(url: string): Promise<StacItem | null> {
+    try {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`${res.status}`);
+        const item: StacItem = await res.json();
+        return { ...item, partial: false };
+    } catch (err) {
+        console.error(`[stac] failed to fetch item from ${url}:`, err);
+        return null;
+    }
+}
+
+/** Collect every `stacItemId` and `stacItemUrl` referenced in a (possibly nested) layer tree. */
+function collectStacRefs(layers: LayerProps[], ids: Set<string>, urls: Set<string>): void {
     for (const layer of layers) {
-        if (layer.type === 'pmtiles' && (layer as PMTilesLayerProps).stacItemId) {
-            into.add((layer as PMTilesLayerProps).stacItemId!);
+        if (isPMTilesLayer(layer)) {
+            if (layer.stacItemUrl) urls.add(layer.stacItemUrl);
+            else if (layer.stacItemId) ids.add(layer.stacItemId);
         }
         if ('layers' in layer && Array.isArray(layer.layers)) {
-            collectStacItemIds(layer.layers, into);
+            collectStacRefs(layer.layers, ids, urls);
         }
     }
 }
@@ -301,19 +332,26 @@ function collectStacItemIds(layers: LayerProps[], into: Set<string>): void {
 function mergeStacIntoLayer(layer: PMTilesLayerProps, item: StacItem): PMTilesLayerProps {
     const pmtilesUrl = pmtilesHref(item);
     if (!pmtilesUrl) throw new Error(`STAC item '${item.id}' has no PMTiles asset`);
-    const renders = stacRendersToPMTiles(item.properties['ugs:renders'] ?? item.properties.renders);
+    const stacRenders = stacRendersToPMTiles(item.properties['ugs:renders'] ?? item.properties.renders)
+        .map(r => {
+            if (r.legend?.length) return r;
+            const appLegend = layer.renders?.find(lr => lr.id === r.id)?.legend;
+            return appLegend?.length ? { ...r, legend: appLegend } : r;
+        });
+    const stacIds = new Set(stacRenders.map(r => r.id));
+    const missingAppRenders = (layer.renders ?? []).filter(r => !stacIds.has(r.id));
+    const renders = stacRenders.length > 0 ? [...stacRenders, ...missingAppRenders] : layer.renders;
     return {
         ...layer,
         pmtilesUrl,
-        // Tile source-layer = STAC item id (warehouse convention), authoritative
-        // over any app-provided value.
-        sourceLayer: item.id,
-        renders: renders.length > 0 ? renders : layer.renders,
-        defaultRenderId: layer.defaultRenderId ?? renders[0]?.id,
+        sourceLayer: pmtilesSourceLayer(item),
+        renders,
+        defaultRenderId: layer.defaultRenderId ?? renders?.[0]?.id,
         downloadParquetUrl: layer.downloadParquetUrl ?? parquetHref(item),
-        // Credit line under the layer title. STAC is the source of truth; an
-        // app-authored `subtitle` still wins so a layer can override it.
-        subtitle: layer.subtitle ?? item.properties['ugs:point_of_contact'],
+        downloadSourceCrs: layer.downloadSourceCrs ?? item.properties['proj:code'],
+        // Credit line under the layer title. An explicit `subtitle` or `sourceAgency`
+        // authored on the layer config takes precedence over STAC `ugs:point_of_contact`.
+        subtitle: layer.subtitle ?? (layer.sourceAgency ? undefined : item.properties['ugs:point_of_contact']),
         sublayers: resolveSublayerRelatedTables(layer.sublayers, item),
     };
 }
@@ -321,29 +359,49 @@ function mergeStacIntoLayer(layer: PMTilesLayerProps, item: StacItem): PMTilesLa
 /**
  * Resolve every STAC-backed layer in a config tree against the warehouse
  * catalog, in place of the app hand-authoring pmtiles URLs / styles. Layers
- * without `stacItemId` pass through untouched, so maps that reference no STAC
- * items make zero network calls. A layer whose item fails to resolve is dropped
- * (logged) rather than failing the whole config load.
+ * without `stacItemId` or `stacItemUrl` pass through untouched, so maps that
+ * reference no STAC items make zero network calls. A layer whose item fails to
+ * resolve is dropped (logged) rather than failing the whole config load.
  */
 export async function resolveStacLayerTree(layers: LayerProps[]): Promise<LayerProps[]> {
     const ids = new Set<string>();
-    collectStacItemIds(layers, ids);
-    if (ids.size === 0) return layers;
+    const urls = new Set<string>();
+    collectStacRefs(layers, ids, urls);
+    if (ids.size === 0 && urls.size === 0) return layers;
 
-    const index = await fetchStacItemIndex();
-    const found: StacItem[] = [];
-    for (const id of ids) {
-        const entry = index[id];
-        if (!entry) {
-            console.error(`[resolveStacLayerTree] failed to resolve STAC item '${id}': not in serving-topics index`);
-            continue;
-        }
-        found.push(entry);
-    }
-    // Related tables need join metadata the index trims off, so read the full items.
-    // Key on the requested id, not the fetched doc's, so lookups can't miss.
-    const hydrated = await Promise.all(found.map(fetchStacItem));
-    const items = new Map(found.map((entry, i) => [entry.id, hydrated[i]] as const));
+    const items = new Map<string, StacItem>();
+    const urlItems = new Map<string, StacItem>();
+
+    const idPromise = ids.size > 0
+        ? (async () => {
+            const index = await fetchStacItemIndex();
+            const found: StacItem[] = [];
+            for (const id of ids) {
+                const entry = index[id];
+                if (!entry) {
+                    console.error(`[resolveStacLayerTree] failed to resolve STAC item '${id}': not in serving-topics index`);
+                    continue;
+                }
+                found.push(entry);
+            }
+            // Related tables need join metadata the index trims off, so read the full items.
+            // Key on the requested id, not the fetched doc's, so lookups can't miss.
+            const hydrated = await Promise.all(found.map(fetchStacItem));
+            found.forEach((entry, i) => items.set(entry.id, hydrated[i]));
+        })()
+        : Promise.resolve();
+
+    const urlList = [...urls];
+    const urlPromise = urlList.length > 0
+        ? Promise.all(urlList.map(fetchStacItemByUrl)).then(fetched => {
+            urlList.forEach((url, i) => {
+                const item = fetched[i];
+                if (item) urlItems.set(url, item);
+            });
+        })
+        : Promise.resolve();
+
+    await Promise.all([idPromise, urlPromise]);
 
     const mapTree = (list: LayerProps[]): LayerProps[] => {
         const out: LayerProps[] = [];
@@ -352,12 +410,11 @@ export async function resolveStacLayerTree(layers: LayerProps[]): Promise<LayerP
                 out.push({ ...layer, layers: mapTree(layer.layers) } as LayerProps);
                 continue;
             }
-            const stacId = layer.type === 'pmtiles' ? (layer as PMTilesLayerProps).stacItemId : undefined;
-            if (!stacId) { out.push(layer); continue; }
-            const item = items.get(stacId);
+            if (!isPMTilesLayer(layer) || (!layer.stacItemUrl && !layer.stacItemId)) { out.push(layer); continue; }
+            const item = layer.stacItemUrl ? urlItems.get(layer.stacItemUrl) : items.get(layer.stacItemId ?? '');
             if (!item) { console.warn(`[resolveStacLayerTree] dropping unresolved STAC layer '${layer.title}'`); continue; }
             try {
-                out.push(mergeStacIntoLayer(layer as PMTilesLayerProps, item));
+                out.push(mergeStacIntoLayer(layer, item));
             } catch (err) {
                 console.error(`[resolveStacLayerTree] merge failed for '${layer.title}':`, err);
             }

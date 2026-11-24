@@ -2,7 +2,7 @@ import type { LayerProps } from '@/lib/types/mapping-types'
 import { isPMTilesLayer } from '@/lib/map/layer-utils'
 import { SymbologyLegend } from '@/components/sidebar/filter/symbology-legend'
 import { powerplantsTitle } from '../../-data/layers/layers'
-import { powerplantsFilterSchema } from '../../-data/layers/powerplants-schema'
+import { powerplantsFilterSchema } from '@/routes/_map/-shared/layers/powerplants-schema'
 
 /**
  * Carbon storage's `layerLegendRender` wiring. The legend engine ({@link SymbologyLegend})

@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { useParquetSchema } from '@/hooks/use-parquet-schema';
 import { EXPORT_FORMATS, availableFormats, isCombinedTable, mergedColumnNames, type ExportFormat } from '@/lib/export-formats';
 import { shapefileFieldChecks } from '@/lib/shapefile-field-checks';
+import type { FilterSpecification } from 'maplibre-gl';
 import type { RelatedTable } from '@/lib/types/mapping-types';
 
 interface ParquetDownloadMenuProps {
@@ -22,6 +23,10 @@ interface ParquetDownloadMenuProps {
     parquetUrl: string;
     /** Used as the download filename stem */
     layerTitle: string;
+    /** Source CRS of the GeoParquet (e.g. "EPSG:26712"), populated from STAC `proj:code`. */
+    sourceCrs?: string;
+    /** Optional MapLibre `featureFilter` applied as a SQL WHERE clause on export. */
+    featureFilter?: FilterSpecification;
     /** Related tables configured on the layer (e.g. formation tops, geochemistry). When
      * non-empty, adds an "Include related data" option that bundles them as a zip. */
     relatedTables?: RelatedTable[];
@@ -29,7 +34,14 @@ interface ParquetDownloadMenuProps {
     compact?: boolean;
 }
 
-export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parquetUrl, layerTitle, relatedTables, compact = false }) => {
+export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({
+    parquetUrl,
+    layerTitle,
+    sourceCrs,
+    featureFilter,
+    relatedTables,
+    compact = false,
+}) => {
     // Schema probe (a small range request) waits for the menu to actually open, so
     // rendering a list of these doesn't fire a network request per row up front.
     // `enabled` (not the query key) gates the fetch — selecting a DropdownMenuItem
@@ -79,6 +91,8 @@ export const ParquetDownloadMenu: React.FC<ParquetDownloadMenuProps> = ({ parque
                 filename: safeFilename(layerTitle),
                 format,
                 geometryColumn: schema?.geometryColumn ?? null,
+                sourceCrs,
+                featureFilter,
                 relatedTables: includeRelated ? [...combined, ...separate] : combined,
                 onProgress: (stage) => {
                     if (stage.stage === 'error') {

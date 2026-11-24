@@ -18,6 +18,8 @@ import { usePhoneSheetActions } from '@/components/maps/phone-sheet/use-phone-sh
 import LayerControls from '@/components/maps/layer-controls';
 import { WfsVectorLegend } from '@/components/maps/wfs-vector-legend';
 import { StacRenderLegend } from '@/components/maps/stac-render-legend';
+import { activeRenderOf } from '@/components/maps/pmtiles-layer-source';
+import { useVectorSymbology } from '@/components/sidebar/filter/symbology-legend';
 import { ZoomHintPill } from '@/components/maps/zoom-hint-pill';
 import { PROD_GEOSERVER_URL, HAZARDS_WORKSPACE } from '@/lib/constants';
 import { useLayerUrl } from '@/context/layer-url-provider';
@@ -218,6 +220,7 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
 
     // Related tables live on sublayer popup config (WMS/PMTiles). Flattened
     // across sublayers so the download menu can bundle them all in one zip.
+    const { value: symbology } = useVectorSymbology(layerConfig.title ?? '');
     const relatedTables = useMemo(() => {
         if (isWMSLayer(layerConfig) || isPMTilesLayer(layerConfig)) {
             return layerConfig.sublayers?.flatMap(sub => sub.relatedTables ?? []) ?? [];
@@ -548,10 +551,14 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
         // PMTiles layers have no GetLegendGraphic; swatches come from the STAC render.
         ?? (isPMTilesLayer(layerConfig) ? <StacRenderLegend layer={layerConfig} /> : undefined);
 
+    const pmtilesLegend = isPMTilesLayer(layerConfig)
+        ? activeRenderOf(layerConfig, symbology)?.legend
+        : undefined;
+
     // --- Single Layer Rendering ---
     const layerControls = (
         <LayerControls
-            layerOpacity={isSelected ? (layerOpacityMap.get(layerConfig.title || '') ?? layerConfig.opacity ?? 0.8) : null}
+            layerOpacity={isSelected ? (layerOpacityMap.get(layerConfig.title || '') ?? layerConfig.opacity ?? (isPMTilesLayer(layerConfig) ? 1 : 0.8)) : null}
             handleOpacityChange={handleOpacityChange}
             handleOpacityCommit={handleOpacityCommit}
             title={layerConfig.title || ''}
@@ -562,9 +569,12 @@ const LayerAccordionItem = ({ layerConfig, isTopLevel, disableExport, hasLayerFi
             layerName={extentOptions.type === 'wms' ? extentOptions.layerName : null}
             customLegend={resolvedCustomLegend}
             bivariateLegend={layerConfig.bivariateLegend}
+            pmtilesLegend={pmtilesLegend}
             arcgisUrl={extentOptions.type === 'arcgis' ? extentOptions.mapServerUrl : undefined}
             legendUnit={isWMSLayer(layerConfig) ? layerConfig.legendUnit : undefined}
             downloadParquetUrl={layerConfig.downloadParquetUrl}
+            downloadSourceCrs={layerConfig.downloadSourceCrs}
+            featureFilter={isPMTilesLayer(layerConfig) ? layerConfig.featureFilter : undefined}
             relatedTables={relatedTables}
             disableExport={disableExport}
             filtersContent={layerConfig.title ? layerExtrasRender?.(layerConfig.title, layerConfig) : undefined}

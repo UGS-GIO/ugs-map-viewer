@@ -44,7 +44,7 @@ const countLabel = (shown: number, total: number) =>
 // A colour group derived from a legend entry that carries `values` (grouped renders,
 // e.g. box types → Core/Cuttings/Other). `color` is the group's base hue (header); each
 // value carries its own shade of it.
-interface LegendGroup { key: string; label: string; color: string; values: readonly { value: string; color: string }[] }
+interface LegendGroup { key: string; label: string; color: string; stroke?: string; shape?: SwatchShape; values: readonly { value: string; color: string }[] }
 
 // One symbology option, derived from a STAC render.
 interface Mode { id: string; label: string; field: string; entries: readonly LegendEntry[]; styleUrl?: string }
@@ -109,7 +109,11 @@ export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
         ?? modes.find(m => m.id === layer.defaultRenderId)
         ?? modes[0]
     const field = mode ? schema.fields.find(f => f.field === mode.field) : undefined
-    const { data: fragment } = useQuery(styleFragmentQueryOptions(mode?.styleUrl))
+    const modeEntries = mode?.entries ?? []
+    const allShaped = modeEntries.length > 0 && modeEntries.every(e => e.shape != null)
+    const { data: fragment, isLoading: fragmentLoading } = useQuery(
+        styleFragmentQueryOptions(!allShaped ? mode?.styleUrl : undefined),
+    )
     const layerTitle = layer.title ?? ''
 
     // Switching renders resets the outgoing field, so an all-off legend can't leave the map
@@ -155,14 +159,20 @@ export function SymbologyLegend({ layer, schema }: SymbologyLegendProps) {
                     </Select>
                 </div>
             )}
-            <CategoryLegendGrid schema={schema} field={field} entries={mode.entries} shape={swatchShapeOf(fragment?.layers?.map(l => l.type) ?? [])} />
+            <CategoryLegendGrid
+                schema={schema}
+                field={field}
+                entries={mode.entries}
+                shape={swatchShapeOf(fragment?.layers?.map(l => l.type) ?? [])}
+                shapeLoading={!allShaped && fragmentLoading}
+            />
         </div>
     )
 }
 
 function CategoryLegendGrid(
-    { schema, field, entries, shape }:
-        { schema: FilterSchema; field: FilterFieldKind; entries: readonly LegendEntry[]; shape: SwatchShape },
+    { schema, field, entries, shape, shapeLoading }:
+        { schema: FilterSchema; field: FilterFieldKind; entries: readonly LegendEntry[]; shape: SwatchShape; shapeLoading?: boolean },
 ) {
     const mgr = useLayerFilter(schema)
     const isContains = field.kind === 'containsAny'
@@ -172,11 +182,11 @@ function CategoryLegendGrid(
     const totals = data?.totals ?? {}
     const options = useMemo(() => orderedCategories(data?.totals, data?.counts), [data])
 
-    const { colorFor, strokeFor, labelFor } = useMemo(() => legendLookups(entries), [entries])
+    const { colorFor, strokeFor, shapeFor, labelFor } = useMemo(() => legendLookups(entries), [entries])
     // Grouped render when any legend entry carries `values`; each entry becomes a colour group.
     const groups = useMemo<LegendGroup[] | null>(() =>
         entries.some(e => e.values && e.values.length)
-            ? entries.map(e => ({ key: e.label, label: e.label, color: e.color, values: e.values ?? [] }))
+            ? entries.map(e => ({ key: e.label, label: e.label, color: e.color, stroke: e.stroke, shape: e.shape, values: e.values ?? [] }))
             : null
     , [entries])
 
@@ -209,7 +219,7 @@ function CategoryLegendGrid(
     }
 
     // keepPreviousData can leave the previous field's rows on screen after a symbology switch.
-    if (isLoading || isPlaceholderData) return <p className="text-xs text-muted-foreground px-1">Loading…</p>
+    if (shapeLoading || isLoading || isPlaceholderData) return <p className="text-xs text-muted-foreground px-1">Loading…</p>
     if (options.length === 0) return null
 
     const renderRows = (items: string[], showSwatch = true) => (
@@ -223,6 +233,7 @@ function CategoryLegendGrid(
                 label: labelFor(value),
                 color: colorFor(value),
                 stroke: strokeFor(value),
+                shape: shapeFor(value),
                 count: countLabel(counts[value] ?? 0, totals[value] ?? 0),
                 disabled: (counts[value] ?? 0) === 0,
             }))}
@@ -293,7 +304,7 @@ function CategoryLegendGrid(
                                     onCheckedChange={() => !groupDisabled && toggleGroup()}
                                     aria-label={`Toggle ${g.label} group`}
                                 />
-                                <LegendSwatch shape={shape} color={g.color} />
+                                <LegendSwatch shape={g.shape ?? shape} color={g.color} stroke={g.stroke} />
                                 <Label className={cn("text-sm font-semibold cursor-pointer", groupDisabled && "cursor-not-allowed")}>
                                     {g.label}
                                     <span className="ml-1 font-normal text-muted-foreground">
